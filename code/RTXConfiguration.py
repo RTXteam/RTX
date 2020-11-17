@@ -73,30 +73,37 @@ class RTXConfiguration:
         self.cohd_database_host = self.config["Global"]["cohd_database"]["host"]
         self.cohd_database_username = self.config["Global"]["cohd_database"]["username"]
         self.cohd_database_path = self.config["Contextual"][self.live]["cohd_database"]["path"]
+        self.cohd_database_version = self.config["Contextual"][self.live]["cohd_database"]["version"]
 
         self.graph_database_host = self.config["Global"]["graph_database"]["host"]
         self.graph_database_username = self.config["Global"]["graph_database"]["username"]
         self.graph_database_path = self.config["Contextual"][self.live]["graph_database"]["path"]
+        self.graph_database_version = self.config["Contextual"][self.live]["graph_database"]["version"]
 
         self.log_model_host = self.config["Global"]["log_model"]["host"]
         self.log_model_username = self.config["Global"]["log_model"]["username"]
         self.log_model_path = self.config["Contextual"][self.live]["log_model"]["path"]
+        self.log_model_version = self.config["Contextual"][self.live]["log_model"]["version"]
 
         self.curie_to_pmids_host = self.config["Global"]["curie_to_pmids"]["host"]
         self.curie_to_pmids_username = self.config["Global"]["curie_to_pmids"]["username"]
         self.curie_to_pmids_path = self.config["Contextual"][self.live]["curie_to_pmids"]["path"]
+        self.curie_to_pmids_version = self.config["Contextual"][self.live]["curie_to_pmids"]["version"]
 
         self.node_synonymizer_host = self.config["Global"]["node_synonymizer"]["host"]
         self.node_synonymizer_username = self.config["Global"]["node_synonymizer"]["username"]
         self.node_synonymizer_path = self.config["Contextual"][self.live]["node_synonymizer"]["path"]
+        self.node_synonymizer_version = self.config["Contextual"][self.live]["node_synonymizer"]["version"]
 
         self.rel_max_host = self.config["Global"]["rel_max"]["host"]
         self.rel_max_username = self.config["Global"]["rel_max"]["username"]
         self.rel_max_path = self.config["Contextual"][self.live]["rel_max"]["path"]
+        self.rel_max_version = self.config["Contextual"][self.live]["rel_max"]["version"]
 
         self.map_txt_host = self.config["Global"]["map_txt"]["host"]
         self.map_txt_username = self.config["Global"]["map_txt"]["username"]
         self.map_txt_path = self.config["Contextual"][self.live]["map_txt"]["path"]
+        self.map_txt_version = self.config["Contextual"][self.live]["map_txt"]["version"]
 
         self.mysql_feedback_host = self.config["Global"]["mysql_feedback"]["host"]
         self.mysql_feedback_port = self.config["Global"]["mysql_feedback"]["port"]
