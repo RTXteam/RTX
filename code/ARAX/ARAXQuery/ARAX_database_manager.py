@@ -21,10 +21,20 @@ class ARAXDatabaseManager:
         RTXindex = pathlist.index("RTX")
 
         pred_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
-        ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
-        cohd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
-        synonymizer_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NodeSynonymizer'])
+        if not  os.path.exists(pred_filepath):
+            os.system(f"mkdir -p {pred_filepath}")
         
+        ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
+        if not  os.path.exists(ngd_filepath):
+            os.system(f"mkdir -p {ngd_filepath}")
+        
+        cohd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
+        if not  os.path.exists(cohd_filepath):
+            os.system(f"mkdir -p {cohd_filepath}")
+        
+        synonymizer_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer'])
+        if not  os.path.exists(synonymizer_filepath):
+            os.system(f"mkdir -p {synonymizer_filepath}")
 
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
