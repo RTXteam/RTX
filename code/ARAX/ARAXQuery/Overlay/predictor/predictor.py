@@ -11,9 +11,22 @@ except:
         import joblib
 
 
+import sys
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+RTXConfig = RTXConfiguration()
+RTXConfig.live = "Production"
+
+
+
 class predictor():
 
-    def __init__(self, model_file=os.path.dirname(os.path.abspath(__file__))+'LogModel.pkl'):
+    def __init__(self, model_file=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.log_model_path.split('/')[-1]]), live = None):
+        if live is not None:
+            RTXConfig.live = live
+            model_file = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.log_model_path.split('/')[-1]])
         self.model = joblib.load(model_file)
         self.graph_cur = None
         self.X = None
@@ -54,7 +67,7 @@ class predictor():
         res.pop(0)
         return res
 
-    def import_file(self, file, graph_database=os.path.dirname(os.path.abspath(__file__))+'/retrain_data/GRAPH.sqlite'):
+    def import_file(self, file, graph_database=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.graph_database_path.split('/')[-1]]), live = None):
         """
         Imports all necisary files to take curie ids and extract their feature vectors.
 
@@ -63,6 +76,10 @@ class predictor():
         """
         #graph = pd.read_csv(graph_file, sep=' ', skiprows=1, header=None, index_col=None)
         #self.graph = graph.sort_values(0).reset_index(drop=True)
+        if live is not None:
+            RTXConfig.live = live
+            graph_database = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.graph_database_path.split('/')[-1]])
+
         conn = sqlite3.connect(graph_database)
         self.graph_cur = conn.cursor()
 
