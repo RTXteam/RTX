@@ -36,7 +36,7 @@ class ARAXFilterResults:
         }
         self.direction_info = {
             "is_required": True,
-            "examples": ['descending', 'd', 'ascending', 'a'],
+            "enum": ['descending', 'd', 'ascending', 'a'],
             "type": "string",
             "description": "The direction in which to order results. (ascending or descending)"
         }
