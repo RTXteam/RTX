@@ -160,10 +160,10 @@ class ARAXMessenger:
                     },
                 'is_set': {
                     'is_required': False,
-                    'enum': [ 'true', 'false' ],
+                    'enum': [ 'true', 'false', 't', 'f', 'yes', 'no' ],
                     'examples': [ 'true', 'false' ],
                     'type': 'boolean',
-                    'description': 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes (assumed to be false if not specified)'
+                    'description': 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes (assumed to be false if not specified or value is not recognized as true/t/yes/y case insensitive)'
                     },
             }
         }
@@ -231,7 +231,7 @@ class ARAXMessenger:
 
         # Set the is_set parameter to what the user selected
         if parameters['is_set'] is not None:
-            qnode.is_set = (parameters['is_set'].lower() == 'true')
+            qnode.is_set = (parameters['is_set'].lower() == 'true' or parameters['is_set'].lower() == 't' or parameters['is_set'].lower() == 'yes' or parameters['is_set'].lower() == 'y')
 
         #### If the CURIE is specified, try to find that
         if parameters['curie'] is not None:
@@ -765,6 +765,13 @@ class ARAXMessenger:
 
 ##########################################################################################
 def main():
+
+    #### Testing true/false
+    #options = [ 'true', 'false', 'True', 'False', 'TRUE', 'FALSE', 'T', 'F', 'yes', 'no', 'y', 'n', 'toon' ]
+    #for option in options:
+    #    interpretation = (option.lower() == 'true' or option.lower() == 't' or option.lower() == 'yes' or option.lower() == 'y')
+    #    print(f"{option}\t{interpretation}")
+    #exit()
 
     #### Create a response object
     response = Response()
