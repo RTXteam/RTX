@@ -146,6 +146,14 @@ class ARAXOverlay:
                     'description': "A float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05",
                     'default': None
                 }
+        self.COHD_method: {
+            "is_required": False,
+            "examples": ["paired_concept_freq", "chi_square", "observed_expected_ratio"],
+            "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
+            "default": "paired_concept_freq",
+            "type": "string",
+            "description": "Which measure from COHD should be considered."
+            }
 
         # descriptions
         self.command_definitions = {
@@ -212,9 +220,7 @@ This information is then included as an edge attribute.
                     'chi_square'
                 ],
                 "parameters": {
-                    'paired_concept_frequency': self.paired_concept_frequency_info,
-                    'observed_expected_ratio': self.observed_expected_ratio_info,
-                    'chi_square': self.chi_square_info,
+                    'COHD_method': self.COHD_method,
                     'virtual_relation_label' : self.virtual_relation_label_info,
                     'source_qnode_id': self.source_qnode_id_info,
                     'target_qnode_id': self.target_qnode_id_info
@@ -548,6 +554,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'overlay_clinical_info'},
+                                    'COHD_method': {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'},
                                     'paired_concept_frequency': {'true', 'false'},
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
@@ -557,6 +564,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     }
         else:
             allowable_parameters = {'action': {'overlay_clinical_info'},
+                                    'COHD_method': {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'},
                                     'paired_concept_frequency': {'true', 'false'},
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
@@ -578,9 +586,14 @@ This information is included in edge attributes with the name 'icees_p-value'.
             return self.response
 
         #check if conflicting parameters have been provided
-        mutually_exclusive_params = {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}
-        if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
-            self.response.error(f"The parameters {mutually_exclusive_params} are mutually exclusive. Please provide only one for each call to overlay(action=overlay_clinical_info)")
+        if 'COHD_method' in parameters:
+            for method in {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}:
+                parameters[method] = 'false'
+            parameters[parameters['COHD_method']] = 'true'
+        else: 
+            mutually_exclusive_params = {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}
+            if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
+                self.response.error(f"The parameters {mutually_exclusive_params} are mutually exclusive. Please provide only one for each call to overlay(action=overlay_clinical_info)")
         if self.response.status != 'OK':
             return self.response
 
