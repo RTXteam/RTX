@@ -7,7 +7,9 @@ import json
 import time
 import argparse
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 
 class ARAXDatabaseManager:
@@ -18,21 +20,20 @@ class ARAXDatabaseManager:
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
 
-        predict_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'retrain_data'])
+        pred_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
         ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
         cohd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
-        cohd_name = self.RTXConfig.cohd_database_path.split('/')[-1]
         synonymizer_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NodeSynonymizer'])
-        prob_sqlite_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'retrain_data'])
+        
 
         self.local_paths = {
-            'cohd_database': f"{cohd_filepath}/{cohd_name}",
-            'graph_database': f"{predict_filepath}/GRAPH.sqlite",
-            'log_model': f"{predict_filepath}/LogModel.pkl",
-            'curie_to_pmids': f"{ngd_filepath}/ngd/curie_to_pmids.sqlite",
-            'node_synonymizer': f"{synonymizer_filepath}/node_synonymizer.sqlite",
-            'rel_max': f"{prob_sqlite_filepath}/rel_max.emb.gz",
-            'map_txt': f"{prob_sqlite_filepath}/map.txt"
+            'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
+            'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
+            'log_model': f"{pred_filepath}{os.path.sep}{self.RTXConfig.log_model_path.split('/')[-1]}",
+            'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
+            'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
+            'rel_max': f"{pred_filepath}{os.path.sep}{self.RTXConfig.rel_max_path.split('/')[-1]}",
+            'map_txt': f"{pred_filepath}{os.path.sep}{self.RTXConfig.map_txt_path.split('/')[-1]}"
         }
         self.remote_locations = {
             'cohd_database': f"{self.RTXConfig.cohd_database_username}@{self.RTXConfig.cohd_database_host}:{self.RTXConfig.cohd_database_path}",
@@ -56,12 +57,12 @@ class ARAXDatabaseManager:
         else:
             return True
 
-    def scp_database(self, remote_location, local_path):
-        os.system(f"scp {remote_location} {local_path}")
+    def rsync_database(self, remote_location, local_path):
+        os.system(f"rsync -hzc {remote_location} {local_path}")
 
     def force_download_all(self):
         for database_name in self.remote_locations.keys():
-            self.scp_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name])
+            self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name])
 
     def check_all(self, max_days=31, debug=False):
         update_flag = False
@@ -91,7 +92,7 @@ class ARAXDatabaseManager:
             if self.check_date(local_path, max_days=max_days):
                 if debug:
                     print(f"{database_name} not present or older than {max_days} days. Updating file...")
-                self.scp_database(remote_location=self.remote_locations[database_name], local_path=local_path)
+                self.rsync_database(remote_location=self.remote_locations[database_name], local_path=local_path)
 
 
 def main():
