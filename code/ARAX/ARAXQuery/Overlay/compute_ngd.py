@@ -22,10 +22,13 @@ from swagger_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 RTXConfig.live = "Production"
+
 
 
 class ComputeNGD:
@@ -36,7 +39,7 @@ class ComputeNGD:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        self.ngd_database_name = "curie_to_pmids.sqlite"
+        self.ngd_database_name = self.RTXConfig.curie_to_pmids_path.split('/')[-1]
         self.connection, self.cursor = self._setup_ngd_database()
         self.curie_to_pmids_map = dict()
         self.ngd_normalizer = 2.2e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
@@ -223,8 +226,10 @@ class ComputeNGD:
 
     def _setup_ngd_database(self):
         # Download the ngd database if there isn't already a local copy or if a newer version is available
-        db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{self.ngd_database_name}"
+        #db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{self.ngd_database_name}"
         #db_path_remote = f"/data/orangeboard/databases/KG2.3.4/{self.ngd_database_name}"
+        ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
+        db_path_local = f"{ngd_filepath}{os.path.sep}{self.ngd_database_name}"
         db_path_remote = RTXConfig.curie_to_pmids_path
         if not os.path.exists(f"{db_path_local}"):
             self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
