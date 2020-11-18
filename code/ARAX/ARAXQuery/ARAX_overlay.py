@@ -132,28 +132,30 @@ class ARAXOverlay:
                     'type': 'string',
                     'description': "A specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"
                 }
-        self.top_n_info = {
-                    'is_required': False,
-                    'examples': ['all', 5, 50],
-                    'type': 'int or None',
-                    'description': "An int indicating the top number (the smallest) of p-values to return (optional, otherwise all results returned)",
-                    'default': None
+        self.COHD_method_info: {
+                    "is_required": False,
+                    "examples": ["paired_concept_freq", "chi_square", "observed_expected_ratio"],
+                    "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
+                    "default": "paired_concept_freq",
+                    "type": "string",
+                    "description": "Which measure from COHD should be considered."
                 }
-        self.cutoff_info = {
-                    'is_required': False,
-                    'examples': ['all', 0.05, 0.95],
-                    'type': 'float or None',
-                    'description': "A float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05",
+        self.filter_type_info = {
+                    "is_required": False,
+                    "examples": ['top_n', 'cutoff', None],
+                    "enum": ['top_n', 'cutoff', None],
+                    'type': 'string or None',
+                    'description': "If `top_n` is set this indicate the top number (the smallest) of p-values will be returned acording to what is specified in the `value` parameter. If `cutoff` is set then this indicates the p-value cutoff should be used to return results acording to what is specified in the `value` parameter. (optional, otherwise all results returned)",
+                    'default': None,
+                    'depends_on': 'value'
+        }
+        self.fet_value_info: {
+                    "is_required": False,
+                    "examples": ['all', 0.05, 0.95, 5, 50],
+                    'type': 'int or float or None',
+                    'description': "If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)",
                     'default': None
-                }
-        self.COHD_method: {
-            "is_required": False,
-            "examples": ["paired_concept_freq", "chi_square", "observed_expected_ratio"],
-            "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
-            "default": "paired_concept_freq",
-            "type": "string",
-            "description": "Which measure from COHD should be considered."
-            }
+        }
 
         # descriptions
         self.command_definitions = {
@@ -220,7 +222,7 @@ This information is then included as an edge attribute.
                     'chi_square'
                 ],
                 "parameters": {
-                    'COHD_method': self.COHD_method,
+                    'COHD_method': self.COHD_method_info,
                     'virtual_relation_label' : self.virtual_relation_label_info,
                     'source_qnode_id': self.source_qnode_id_info,
                     'target_qnode_id': self.target_qnode_id_info
@@ -336,8 +338,8 @@ It can also allow you to filter out the user-defined insignificance of connectio
                     'virtual_relation_label': self.virtual_relation_label_required_info,
                     'target_qnode_id': self.target_qnode_id_required_info,
                     'rel_edge_id': self.rel_edge_id_info,
-                    'top_n': self.top_n_info,
-                    'cutoff': self.cutoff_info
+                    'filter_type': self.filter_type_info,
+                    'value': self.fet_value_info
                 }
             },
             "overlay_exposures_data": {
@@ -796,7 +798,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     'target_qnode_id': allowable_target_qnode_id,
                                     'rel_edge_id': allowwable_rel_edge_id,
                                     'top_n': [None,int()],
-                                    'cutoff': [None,float()]
+                                    'cutoff': [None,float()],
+                                    'filter_type': {'cutoff', 'top_n'},
+                                    'value': [None,int(),float()],
                                     }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
@@ -805,7 +809,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     'target_qnode_id': {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
                                     'rel_edge_id': {"a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"},
                                     'top_n': {"an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10"},
-                                    'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"}
+                                    'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"},
+                                    'filter_type': {'cutoff', 'top_n'},
+                                    'value': {'If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)'},
                                     }
 
         # A little function to describe what this thing does
@@ -816,6 +822,19 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
         # return if bad parameters have been passed
+        if 'filter_type' in self.parameters and 'value' in self.parameters:
+            if self.parameters['filter_type'] == 'cutoff':
+                self.parameters['cutoff'] = self.parameters['value']
+                if 'top_n' in self.parameters:
+                    del self.parameters['top_n']
+            elif self.parameters['filter_type'] == 'top_n':
+                self.parameters['top_n'] = self.parameters['value']
+                if type(self.parameters['top_n']) == float:
+                    self.response.error(
+                        f"Supplied value {self.parameters['top_n']} is not permitted. If 'top_n' is supplied for the 'filter_type' parameter, then the 'value' parameter cannot be a float it must be an integer or None.",
+                        error_code="UnknownValue")
+                if 'cutoff' in self.parameters:
+                    del self.parameters['cutoff']
         if self.response.status != 'OK':
             return self.response
 
