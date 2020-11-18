@@ -160,10 +160,10 @@ class ARAXMessenger:
                     },
                 'is_set': {
                     'is_required': False,
-                    'enum': [ 'true', 'false' ],
+                    'enum': [ 'true', 'false', 't', 'f', 'yes', 'no' ],
                     'examples': [ 'true', 'false' ],
                     'type': 'boolean',
-                    'description': 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes (assumed to be false if not specified)'
+                    'description': 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes (assumed to be false if not specified or value is not recognized as true/t/yes/y case insensitive)'
                     },
             }
         }
