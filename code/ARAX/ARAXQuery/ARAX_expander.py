@@ -204,18 +204,24 @@ class ARAXExpander:
 
         # Define a complete set of allowed parameters and their defaults
         kp = input_parameters.get("kp", "ARAX/KG1")
+        if kp not in self.command_definitions:
+            response.error(f"Invalid KP. Options are: {set(self.command_definitions)}", error_code="InvalidKP")
+            return response
         parameters = {"kp": kp}
         for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
             if info_dict["type"] == "boolean":
-                parameters[kp_parameter_name] = self._convert_string_to_bool_if_bool(info_dict.get("default", ""))
+                parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
             else:
                 parameters[kp_parameter_name] = info_dict.get("default", None)
+
         # Override default values for any parameters passed in
-        for key, value in input_parameters.items():
-            if key and key not in parameters:
-                response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
+        parameter_names_for_all_kps = {param for kp_documentation in self.command_definitions.values() for param in kp_documentation["parameters"]}
+        for param_name, value in input_parameters.items():
+            if param_name and param_name not in parameters:
+                kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
+                response.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}", error_code="InvalidParameter")
             else:
-                parameters[key] = self._convert_string_to_bool_if_bool(value) if isinstance(value, str) else value
+                parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
 
         # Handle situation where 'ARAX/KG2c' is entered as the kp (technically invalid, but we won't error out)
         if parameters['kp'].upper() == "ARAX/KG2C":
@@ -718,7 +724,7 @@ class ARAXExpander:
         return None
 
     @staticmethod
-    def _convert_string_to_bool_if_bool(bool_string: str) -> Union[bool, str]:
+    def _convert_bool_string_to_bool(bool_string: str) -> Union[bool, str]:
         if bool_string.lower() in {"true", "t"}:
             return True
         elif bool_string.lower() in {"false", "f"}:
