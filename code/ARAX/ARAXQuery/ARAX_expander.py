@@ -38,7 +38,7 @@ class ARAXExpander:
         self.continue_if_no_results_parameter_info = {
             "is_required": False,
             "examples": ["true", "false"],
-            "enum": ["true", "false"],
+            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
             "default": "false",
             "type": "boolean",
             "description": "Whether to continue execution if no paths are found matching the query graph."
@@ -46,7 +46,7 @@ class ARAXExpander:
         self.enforce_directionality_parameter_info = {
             "is_required": False,
             "examples": ["true", "false"],
-            "enum": ["true", "false"],
+            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
             "default": "false",
             "type": "boolean",
             "description": "Whether to obey (vs. ignore) edge directions in the query graph."
@@ -54,7 +54,7 @@ class ARAXExpander:
         self.use_synonyms_parameter_info = {
             "is_required": False,
             "examples": ["true", "false"],
-            "enum": ["true", "false"],
+            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
             "default": "true",
             "type": "boolean",
             "description": "Whether to consider curie synonyms and merge synonymous nodes."
@@ -146,7 +146,7 @@ class ARAXExpander:
                     "include_integrated_score": {
                         "is_required": False,
                         "examples": ["true", "false"],
-                        "enum": ["true", "false"],
+                        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
                         "default": "false",
                         "type": "boolean",
                         "description": "Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP."
