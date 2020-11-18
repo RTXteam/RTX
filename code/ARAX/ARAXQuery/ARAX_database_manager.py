@@ -57,12 +57,17 @@ class ARAXDatabaseManager:
         else:
             return True
 
-    def rsync_database(self, remote_location, local_path):
-        os.system(f"rsync -hzc {remote_location} {local_path}")
+    def rsync_database(self, remote_location, local_path, debug=False):
+        verbose = ""
+        if debug:
+            verbose = "vv"
+        os.system(f"rsync -hzc{verbose} {remote_location} {local_path}")
 
-    def force_download_all(self):
+    def force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
-            self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name])
+            if debug:
+                print(f"Downloading {self.remote_locations[database_name].sep('/')[-1]}...")
+            self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
 
     def check_all(self, max_days=31, debug=False):
         update_flag = False
@@ -92,17 +97,20 @@ class ARAXDatabaseManager:
             if self.check_date(local_path, max_days=max_days):
                 if debug:
                     print(f"{database_name} not present or older than {max_days} days. Updating file...")
-                self.rsync_database(remote_location=self.remote_locations[database_name], local_path=local_path)
+                self.rsync_database(remote_location=self.remote_locations[database_name], local_path=local_path, debug=debug)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--check_local", action='store_true')
+    parser.add_argument("-f", "--force_download", action='store_true')
     parser.add_argument("-l", "--live", type=str, help="Live parameter for RTXConfiguration", default="Production", required=False)
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager(arguments.live)
     if arguments.check_local:
         DBManager.check_all(debug=True)
+    elif arguments.force_download:
+        DBManager.force_download_all(debug=True)
     else:
         DBManager.update_databases(debug=True)
 
