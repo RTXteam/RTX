@@ -360,9 +360,9 @@ def _parse_boolean_case_insensitive(input_string:  str) -> bool:
     if input_string is None:
         raise ValueError("invalid value for input_string")
     input_string = input_string.lower()
-    if input_string == 'true':
+    if input_string in {"true", "t"}:
         return True
-    elif input_string == 'false':
+    elif input_string in {"false", "f"}:
         return False
     else:
         raise ValueError("invalid value for input_string")
