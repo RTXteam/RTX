@@ -206,7 +206,7 @@ def test_FET_ex1():
         "add_qnode(type=chemical_substance, is_set=true, id=n02)",
         "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
         "expand(edge_id=e01, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2, rel_edge_id=e01, cutoff=0.05)",
+        "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2, rel_edge_id=e01, filter_type=cutoff, value=0.05)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -307,7 +307,7 @@ def test_paired_concept_frequency_attribute():
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
         "expand(edge_id=e0)",
-        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "overlay(action=overlay_clinical_info, COHD_method=paired_concept_frequency)",
         "resultify()",
         "return(message=true, store=false)",
     ]}}
@@ -343,7 +343,7 @@ def test_observed_expected_ratio_attribute():
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
         "expand(edge_id=e0)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio)",
         "resultify()",
         "return(message=true, store=false)",
     ]}}
@@ -379,7 +379,7 @@ def test_chi_square_attribute():
         "add_qnode(type=chemical_substance, id=n1)",
         "add_qedge(source_id=n0, target_id=n1, id=e0)",
         "expand(edge_id=e0)",
-        "overlay(action=overlay_clinical_info, chi_square=true)",
+        "overlay(action=overlay_clinical_info, COHD_method=chi_square)",
         "resultify()",
         "return(message=true, store=false)",
     ]}}

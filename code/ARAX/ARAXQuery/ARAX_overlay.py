@@ -132,11 +132,11 @@ class ARAXOverlay:
                     'type': 'string',
                     'description': "A specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"
                 }
-        self.COHD_method_info: {
+        self.COHD_method_info = {
                     "is_required": False,
-                    "examples": ["paired_concept_freq", "chi_square", "observed_expected_ratio"],
-                    "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
-                    "default": "paired_concept_freq",
+                    "examples": ['paired_concept_frequency', 'observed_expected_ratio', 'chi_square'],
+                    "enum": ['paired_concept_frequency', 'observed_expected_ratio', 'chi_square'],
+                    "default": "paired_concept_frequency",
                     "type": "string",
                     "description": "Which measure from COHD should be considered."
                 }
@@ -149,7 +149,7 @@ class ARAXOverlay:
                     'default': None,
                     'depends_on': 'value'
         }
-        self.fet_value_info: {
+        self.fet_value_info = {
                     "is_required": False,
                     "examples": ['all', 0.05, 0.95, 5, 50],
                     'type': 'int or float or None',
@@ -588,10 +588,13 @@ This information is included in edge attributes with the name 'icees_p-value'.
             return self.response
 
         #check if conflicting parameters have been provided
-        if 'COHD_method' in parameters:
+        if 'COHD_method' in self.parameters:
             for method in {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}:
-                parameters[method] = 'false'
-            parameters[parameters['COHD_method']] = 'true'
+                self.parameters[method] = 'false'
+            self.parameters[parameters['COHD_method']] = 'true'
+        elif 'paired_concept_frequency' not in self.parameters and 'observed_expected_ratio' not in self.parameters and 'chi_square' not in self.parameters:
+            self.parameters['paired_concept_frequency'] = 'true'
+            self.parameters['COHD_method'] = 'paired_concept_frequency'
         else: 
             mutually_exclusive_params = {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}
             if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
