@@ -133,10 +133,10 @@ class ARAXOverlay:
                     'description': "A specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"
                 }
         self.COHD_method_info = {
-                    "is_required": False,
-                    "examples": ['paired_concept_frequency', 'observed_expected_ratio', 'chi_square'],
+                    "is_required": True,
+                    #"examples": ['paired_concept_frequency', 'observed_expected_ratio', 'chi_square'],
                     "enum": ['paired_concept_frequency', 'observed_expected_ratio', 'chi_square'],
-                    "default": "paired_concept_frequency",
+                    #"default": "paired_concept_frequency",
                     "type": "string",
                     "description": "Which measure from COHD should be considered."
                 }
