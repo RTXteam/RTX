@@ -1772,7 +1772,14 @@ function show_dsl_command_options(command) {
 	com_node.appendChild(document.createElement('br'));
     }
 
+    var skipped = '';
     for (var par in araxi_commands[command].parameters) {
+        if (araxi_commands[command].parameters[par]['UI_display'] &&
+	    araxi_commands[command].parameters[par]['UI_display'] == 'false') {
+	    if (skipped) skipped += ", ";
+	    skipped += par;
+	    continue;
+	}
 	com_node.appendChild(document.createElement('br'));
 
 	var span = document.createElement('span');
@@ -1846,6 +1853,13 @@ function show_dsl_command_options(command) {
     }
 
     com_node.appendChild(document.createElement('br'));
+
+    if (skipped) {
+	com_node.appendChild(document.createElement('br'));
+	com_node.appendChild(document.createTextNode('The following advanced parameters are also available: '+skipped+'. Please consult the full documentation for more information.'));
+	com_node.appendChild(document.createElement('br'));
+	com_node.appendChild(document.createElement('br'));
+    }
 
     var button = document.createElement("input");
     button.className = 'questionBox button';
