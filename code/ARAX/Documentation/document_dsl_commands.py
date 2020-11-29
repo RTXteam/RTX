@@ -83,6 +83,8 @@ for (module, cls) in zip(modules, classes):
                     to_print += '    - ' + param_val['description'] + '\n\n'
                 if 'type' in param_val:
                     to_print += '    - Acceptable input types: ' + param_val['type'] + '.\n\n'
+                if 'depends_on' in param_val:
+                    to_print += '    - *NOTE*:  If this parameter is included then the parameter `' + param_val['depends_on'] + '` must also be included for it to function.\n\n'
                 if 'is_required' in param_val:
                     if param_val['is_required']:
                         to_print += '    - This is a required parameter and must be included.\n\n'
