@@ -12,6 +12,10 @@ RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 
+knowledge_sources_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
+versons_path = ps.path.sep.join([knowledge_sources_filepath, 'db_versions.json'])
+
+
 class ARAXDatabaseManager:
     def __init__(self, live = "Production"):
         self.RTXConfig = RTXConfiguration()
@@ -43,7 +47,8 @@ class ARAXDatabaseManager:
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
             'rel_max': f"{pred_filepath}{os.path.sep}{self.RTXConfig.rel_max_path.split('/')[-1]}",
-            'map_txt': f"{pred_filepath}{os.path.sep}{self.RTXConfig.map_txt_path.split('/')[-1]}"
+            'map_txt': f"{pred_filepath}{os.path.sep}{self.RTXConfig.map_txt_path.split('/')[-1]}",
+            'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
         }
         self.remote_locations = {
             'cohd_database': f"{self.RTXConfig.cohd_database_username}@{self.RTXConfig.cohd_database_host}:{self.RTXConfig.cohd_database_path}",
@@ -52,8 +57,101 @@ class ARAXDatabaseManager:
             'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_username}@{self.RTXConfig.curie_to_pmids_host}:{self.RTXConfig.curie_to_pmids_path}",
             'node_synonymizer': f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:{self.RTXConfig.node_synonymizer_path}",
             'rel_max': f"{self.RTXConfig.rel_max_username}@{self.RTXConfig.rel_max_host}:{self.RTXConfig.rel_max_path}",
-            'map_txt': f"{self.RTXConfig.map_txt_username}@{self.RTXConfig.map_txt_host}:{self.RTXConfig.map_txt_path}"
+            'map_txt': f"{self.RTXConfig.map_txt_username}@{self.RTXConfig.map_txt_host}:{self.RTXConfig.map_txt_path}",
+            'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}"
         }
+
+        self.db_versions = {
+            'cohd_database': {
+                'path': self.local_paths['cohd_database']
+                'version': self.RTXConfig.cohd_database_version
+            },
+            'graph_database': {
+                'path': self.local_paths['graph_database']
+                'version': self.RTXConfig.graph_database_version
+            },
+            'log_model': {
+                'path': self.local_paths['log_model']
+                'version': self.RTXConfig.log_model_version
+            },
+            'curie_to_pmids': {
+                'path': self.local_paths['curie_to_pmids']
+                'version': self.RTXConfig.curie_to_pmids_version
+            },
+            'node_synonymizer': {
+                'path': self.local_paths['node_synonymizer']
+                'version': self.RTXConfig.node_synonymizer_version
+            },
+            'rel_max': {
+                'path': self.local_paths['rel_max']
+                'version': self.RTXConfig.rel_max_version
+            },
+            'map_txt': {
+                'path': self.local_paths['map_txt']
+                'version': self.RTXConfig.map_txt_version
+            },
+            'dtd_prob': {
+                'path': self.local_paths['dtd_prob']
+                'version': self.RTXConfig.dtd_prob_version
+            }
+        }
+
+    def update_databases(self, debug = False):
+        if os.path.exists(versions_path):
+            with open(versions_path,"r") as fid:
+                local_versions = json.load(fid)
+            for database_name, local_path in self.local_paths.items():
+                if database_name not in local_versions:
+                    if debug:
+                        print(f"{database_name} not present locally, downloading now...")
+                    self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
+                elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']:
+                    if debug:
+                        print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
+                        prinf("downloading remote version...")
+                    self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
+                    if debug:
+                        print("Removing local version...")
+                    self.system(f"rm {local_versions[database_name]['path']}")
+                else:
+                    if debug:
+                        print(f"Local version of {database_name} matches the remote version, skipping...")
+            with open(versions_path,"w") as fid:
+                if debug:
+                    print("Saving new version file...")
+                json.dump(self.db_versions, fid)
+        else:
+            if debug:
+                print("No local verson json file present. Downloading all databases...")
+            self.force_download_all(debug=debug)
+            with open(versions_path,"w") as fid:
+                if debug:
+                    print("Saving new version file...")
+                json.dump(self.db_versions, fid)
+
+    def check_versions(self, debug=False):
+        download_flag = False
+        if os.path.exists(versions_path):
+            with open(versions_path,"r") as fid:
+                local_versions = json.load(fid)
+            for database_name, local_path in self.local_paths.items():
+                if database_name not in local_versions:
+                    if debug:
+                        print(f"{database_name} not present locally")
+                    download_flag = True
+                elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']:
+                    if debug:
+                        print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
+                    download_flag = True
+                else:
+                    if debug:
+                        print(f"Local version of {database_name} matches the remote version")
+        else:
+            if debug:
+                print("No local verson json file present")
+            download_flag = True
+        return download_flag
+
 
     def check_date(self, file_path, max_days = 31):
         if os.path.exists(file_path):
@@ -102,7 +200,7 @@ class ARAXDatabaseManager:
                     return True
         return update_flag
 
-    def update_databases(self, max_days=31, debug=False):
+    def update_databases_by_date(self, max_days=31, debug=False):
         for database_name, local_path in self.local_paths.items():
             if self.check_date(local_path, max_days=max_days):
                 if debug:
@@ -118,7 +216,7 @@ def main():
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager(arguments.live)
     if arguments.check_local:
-        DBManager.check_all(debug=True)
+        DBManager.check_versions(debug=True)
     elif arguments.force_download:
         DBManager.force_download_all(debug=True)
     else:
