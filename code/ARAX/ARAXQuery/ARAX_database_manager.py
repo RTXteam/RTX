@@ -13,7 +13,7 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 
 knowledge_sources_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
-versons_path = ps.path.sep.join([knowledge_sources_filepath, 'db_versions.json'])
+versions_path = os.path.sep.join([knowledge_sources_filepath, 'db_versions.json'])
 
 
 class ARAXDatabaseManager:
@@ -63,35 +63,35 @@ class ARAXDatabaseManager:
 
         self.db_versions = {
             'cohd_database': {
-                'path': self.local_paths['cohd_database']
+                'path': self.local_paths['cohd_database'],
                 'version': self.RTXConfig.cohd_database_version
             },
             'graph_database': {
-                'path': self.local_paths['graph_database']
+                'path': self.local_paths['graph_database'],
                 'version': self.RTXConfig.graph_database_version
             },
             'log_model': {
-                'path': self.local_paths['log_model']
+                'path': self.local_paths['log_model'],
                 'version': self.RTXConfig.log_model_version
             },
             'curie_to_pmids': {
-                'path': self.local_paths['curie_to_pmids']
+                'path': self.local_paths['curie_to_pmids'],
                 'version': self.RTXConfig.curie_to_pmids_version
             },
             'node_synonymizer': {
-                'path': self.local_paths['node_synonymizer']
+                'path': self.local_paths['node_synonymizer'],
                 'version': self.RTXConfig.node_synonymizer_version
             },
             'rel_max': {
-                'path': self.local_paths['rel_max']
+                'path': self.local_paths['rel_max'],
                 'version': self.RTXConfig.rel_max_version
             },
             'map_txt': {
-                'path': self.local_paths['map_txt']
+                'path': self.local_paths['map_txt'],
                 'version': self.RTXConfig.map_txt_version
             },
             'dtd_prob': {
-                'path': self.local_paths['dtd_prob']
+                'path': self.local_paths['dtd_prob'],
                 'version': self.RTXConfig.dtd_prob_version
             }
         }
@@ -113,6 +113,10 @@ class ARAXDatabaseManager:
                     if debug:
                         print("Removing local version...")
                     self.system(f"rm {local_versions[database_name]['path']}")
+                elif not os.path.exists(self.local_paths[database_name]):
+                    if debug:
+                        print(f"{database_name} not present locally, downloading now...")
+                    self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
                 else:
                     if debug:
                         print(f"Local version of {database_name} matches the remote version, skipping...")
@@ -169,12 +173,12 @@ class ARAXDatabaseManager:
         verbose = ""
         if debug:
             verbose = "vv"
-        os.system(f"rsync -hzc{verbose} {remote_location} {local_path}")
+        os.system(f"rsync -hzc{verbose} --progress {remote_location} {local_path}")
 
     def force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
             if debug:
-                print(f"Downloading {self.remote_locations[database_name].sep('/')[-1]}...")
+                print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
             self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
 
     def check_all(self, max_days=31, debug=False):
@@ -216,7 +220,8 @@ def main():
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager(arguments.live)
     if arguments.check_local:
-        DBManager.check_versions(debug=True)
+        if not DBManager.check_versions(debug=True):
+            print("All local versions are up to date")
     elif arguments.force_download:
         DBManager.force_download_all(debug=True)
     else:
