@@ -17,7 +17,10 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 #sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../QuestionAnswering")
 
 #import ReasoningUtilities as RU
-#from RTXConfiguration import RTXConfiguration
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
 
 from sri_node_normalizer import SriNodeNormalizer
 
@@ -38,7 +41,7 @@ def sizeof(obj):
 class NodeSynonymizer:
 
     # Constructor
-    def __init__(self):
+    def __init__(self, live="Production"):
 
         self.databaseLocation = os.path.dirname(os.path.abspath(__file__))
         self.options = {}
@@ -50,7 +53,11 @@ class NodeSynonymizer:
         }
         self.normalizer = None
 
-        self.databaseName = "node_synonymizer.sqlite"
+        self.RTXConfig = RTXConfiguration()
+        self.RTXConfig.live = live
+
+        #self.databaseName = "node_synonymizer.sqlite"
+        self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
         self.engine_type = "sqlite"
 
         self.connection = None
