@@ -54,11 +54,12 @@ class PredictDrugTreatsDisease:
             os.system(f"scp {RTXConfig.graph_database_username}@{RTXConfig.graph_database_host}:{RTXConfig.graph_database_path} {db_file}")
 
         ## check if there is DTD_probability_database.db
-        DTD_prob_db_file = f"{filepath}/DTD_probability_database_v1.0.db"
+        DTD_prob_db_file = f"{filepath}{os.path.sep}{RTXConfig.dtd_prob_path.split('/')[-1]}"
         if os.path.exists(DTD_prob_db_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/DTD_probability_database_v1.0.db " + DTD_prob_db_file)
+            #os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/DTD_probability_database_v1.0.db " + DTD_prob_db_file)
+            os.system(f"scp {RTXConfig.dtd_prob_username}@{RTXConfig.dtd_prob_host}:{RTXConfig.dtd_prob_path} {DTD_prob_db_file}")
 
         # use NodeSynonymizer to replace map.txt
         # check if there is map.txt
