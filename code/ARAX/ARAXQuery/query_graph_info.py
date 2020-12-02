@@ -170,6 +170,17 @@ class QueryGraphInfo:
                 self.is_bifurcated_graph = True
                 response.warning("QueryGraph appears to have a fork in it. This might cause trouble")
 
+        #### If this doesn't produce any singletons, then try curie based selection
+        if len(singletons) == 0:
+            for node_id,node_data in node_info.items():
+                if node_data['has_curie']:
+                    singletons.append(node_data)
+
+        #### If this doesn't produce any singletons, then we don't know how to continue
+        if len(singletons) == 0:
+            response.error("Unable to understand the query graph", error_code="QueryGraphCircular")
+            return response
+
         #### Try to identify the start_node and the end_node
         start_node = singletons[0]
         if len(nodes) == 1:
