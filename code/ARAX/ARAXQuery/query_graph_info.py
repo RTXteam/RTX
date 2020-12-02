@@ -83,10 +83,15 @@ class QueryGraphInfo:
 
             if qnode.type is not None:
                 node_info[id]['has_type'] = True
+
             #if qnode.is_set is not None: node_info[id]['is_set'] = True
             if qnode.id is None:
                 response.error("QueryGraph has a node with no id. This is not permitted", error_code="QueryGraphNodeWithNoId")
                 return response
+
+            #### Remap the node types from unsupported to supported
+            if qnode.type is not None:
+                qnode.type = self.remap_node_type(qnode.type)
 
             #### Store lookup of types
             warning_counter = 0
@@ -302,6 +307,15 @@ class QueryGraphInfo:
         #### Return the response
         return response
 
+
+    ##########################################################################################
+    #### Remap node types from the new TRAPI 1.0 style to the older TRAPI 0.9.x style
+    def remap_node_type(self, node_type):
+        match = re.match(r'biolink:(.+)', node_type)
+        if match:
+            node_type = match.group(1)
+            node_type = re.sub(r'(?<!^)(?=[A-Z])', '_', node_type).lower()
+        return node_type
 
 
 ##########################################################################################
