@@ -273,7 +273,8 @@ class ARAXQueryGraphInterpreter:
 
 
 ##########################################################################################
-def main():
+
+def QGI_test1():
 
     #### Some qnode examples
     test_query_graphs = [
@@ -333,6 +334,52 @@ def main():
         #print(response.show(level=Response.DEBUG))
         #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
         #sys.exit(1)
+
+
+##########################################################################################
+
+def QGI_test2():
+
+    #### Set example query_graph
+    input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "type": "biolink:Drug" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "type": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
+
+    #### Create a template Message
+    response = Response()
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+
+    interpreter = ARAXQueryGraphInterpreter()
+    result = interpreter.translate_to_araxi(message)
+    response.merge(result)
+    if result.status != 'OK':
+        print(response.show(level=Response.DEBUG))
+        return response
+
+    araxi_commands = result.data['araxi_commands']
+    print(araxi_commands)
+
+    #### Show the final result
+    print('-------------------------')
+    print(response.show(level=Response.DEBUG))
+    print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+    #sys.exit(1)
+
+
+
+
+##########################################################################################
+def main():
+
+    import argparse
+
+    argparser = argparse.ArgumentParser(description='Class for parsing an incoming query graph and deciding what to do')
+    argparser.add_argument('test_number', type=str, nargs='*', help='Optional test to run')
+    params = argparser.parse_args()
+
+    print(params.test_number)
+    if params.test_number[0] == '2':
+        QGI_test2()
+    else:
+        QGI_test1()
 
 
 if __name__ == "__main__": main()
