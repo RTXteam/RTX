@@ -321,6 +321,7 @@ class ARAXQuery:
             #### Check if there is a query_graph
             if "query_graph" in query["message"] and query["message"]["query_graph"] is not None:
                 response.data["have_query_graph"] = 1
+                self.validate_incoming_query_graph(query["message"])
 
             #### If there is both a query_type_id and a query_graph, then return an error
             if "have_query_graph" in response.data and "have_query_type_id_and_terms" in response.data:
@@ -339,7 +340,38 @@ class ARAXQuery:
         return response
 
 
+    ############################################################################################
+    def validate_incoming_query_graph(self,message):
 
+        response = self.response
+        response.info(f"Validating the input query graph")
+
+        # Define allowed qnode and qedge attributes to check later
+        allowed_qnode_attributes = { 'id': 1, 'type':1, 'curie': 1, 'is_set': 1 }
+        allowed_qedge_attributes = { 'id': 1, 'type':1, 'source_id': 1, 'target_id': 1 }
+
+        #### Loop through nodes checking the attributes
+        for qnode in message['query_graph']['nodes']:
+            id = '??'
+            if id in qnode:
+                id = qnode['id']
+            for attr in qnode:
+                if attr not in allowed_qnode_attributes:
+                    response.warning(f"Query graph node '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue", error_code="QueryGraphUnexpectedProperty")
+
+        #### Loop through edges checking the attributes
+        for qedge in message['query_graph']['edges']:
+            id = '??'
+            if id in qedge:
+                id = qedge['id']
+            for attr in qedge:
+                if attr not in allowed_qedge_attributes:
+                    response.warning(f"Query graph edge '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue", error_code="QueryGraphUnexpectedProperty")
+
+        return response
+
+
+    ############################################################################################
     def limit_message(self,message,query):
         if "max_results" in query and query["max_results"] is not None:
             if message.results is not None:
