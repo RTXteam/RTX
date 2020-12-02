@@ -78,6 +78,7 @@ class KGQuerier:
             qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
             for qnode in qnodes_with_curies:
                 qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
+                qnode.type = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         # Run the actual query and process results
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kg_name, log)
