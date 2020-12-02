@@ -39,7 +39,7 @@ class ComputeNGD:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        self.ngd_database_name = self.RTXConfig.curie_to_pmids_path.split('/')[-1]
+        self.ngd_database_name = RTXConfig.curie_to_pmids_path.split('/')[-1]
         self.connection, self.cursor = self._setup_ngd_database()
         self.curie_to_pmids_map = dict()
         self.ngd_normalizer = 2.2e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article

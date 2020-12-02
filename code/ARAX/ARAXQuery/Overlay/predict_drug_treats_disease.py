@@ -35,7 +35,7 @@ class PredictDrugTreatsDisease:
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor','retrain_data'])
 
         ## check if there is LogModel.pkl
-        log_model_name = f"{RTXConfig.log_model_path.split("/")[-1]}"
+        log_model_name = RTXConfig.log_model_path.split("/")[-1]
         pkl_file = f"{filepath}{os.path.sep}{log_model_name}"
         if os.path.exists(pkl_file):
             pass
@@ -45,7 +45,7 @@ class PredictDrugTreatsDisease:
 
 
         ## check if there is GRAPH.sqlite
-        graph_database_name = f"{RTXConfig.graph_database_path.split("/")[-1]}"
+        graph_database_name = RTXConfig.graph_database_path.split("/")[-1]
         db_file = f"{filepath}{os.path.sep}{graph_database_name}"
         if os.path.exists(db_file):
             pass
