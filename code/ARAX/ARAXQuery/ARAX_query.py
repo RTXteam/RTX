@@ -353,20 +353,20 @@ class ARAXQuery:
         #### Loop through nodes checking the attributes
         for qnode in message['query_graph']['nodes']:
             id = '??'
-            if id in qnode:
+            if 'id' in qnode:
                 id = qnode['id']
             for attr in qnode:
                 if attr not in allowed_qnode_attributes:
-                    response.warning(f"Query graph node '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue", error_code="QueryGraphUnexpectedProperty")
+                    response.warning(f"Query graph node '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
 
         #### Loop through edges checking the attributes
         for qedge in message['query_graph']['edges']:
             id = '??'
-            if id in qedge:
+            if 'id' in qedge:
                 id = qedge['id']
             for attr in qedge:
                 if attr not in allowed_qedge_attributes:
-                    response.warning(f"Query graph edge '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue", error_code="QueryGraphUnexpectedProperty")
+                    response.warning(f"Query graph edge '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
 
         return response
 
