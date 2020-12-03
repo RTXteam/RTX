@@ -60,10 +60,28 @@ class PredictDrugTreatsDisease:
 
         self.use_prob_db = True
         if self.use_prob_db is True:
-            self.pred = predictor(DTD_prob_file=DTD_prob_db_file, use_prob_db=True)
+            try:
+                self.pred = predictor(DTD_prob_file=DTD_prob_db_file, use_prob_db=True)
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Internal Error encountered connecting to the local DTD prediction database.")
         else:
-            self.pred = predictor(model_file=pkl_file, use_prob_db=False)
-            self.pred.import_file(None, graph_database=db_file)
+            try:
+                self.pred = predictor(model_file=pkl_file, use_prob_db=False)
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Internal Error encountered connecting to the local LogModel.pkl file.")
+            try:
+                self.pred.import_file(None, graph_database=db_file)
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Internal Error encountered connecting to the local graph database file.")
         # with open(map_file, 'r') as infile:
         #     map_file_content = infile.readlines()
         #     map_file_content.pop(0) ## remove title
