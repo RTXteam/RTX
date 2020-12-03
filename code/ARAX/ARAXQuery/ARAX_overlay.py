@@ -615,8 +615,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
 
         from Overlay.overlay_clinical_info import OverlayClinicalInfo
         OCI = OverlayClinicalInfo(self.response, self.message, default_params)
-        if self.response.status != 'OK':
-            return self.response
+        if OCI.response.status != 'OK':
+            return OCI.response
         response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function # 606
         return response
 
@@ -763,8 +763,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # now do the call out to NGD
         from Overlay.predict_drug_treats_disease import PredictDrugTreatsDisease
         PDTD = PredictDrugTreatsDisease(self.response, self.message, parameters)
-        if self.response.status != 'OK':
-            return self.response
+        if PDTD.response.status != 'OK':
+            return PDTD.response
         response = PDTD.predict_drug_treats_disease()
         return response
 
