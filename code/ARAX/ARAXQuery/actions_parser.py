@@ -140,7 +140,7 @@ def main():
         "expand(edge_id=[e00], sort_by=[type], empty_list=[] , dangling_comma=[p,q,])",
         "overlay(compute_ngd=true,default)",
         "overlay(add_pubmed_ids=true, start_node=2)",
-        "return(message=true,store=false)"
+        "return(message=true,store=false,test=accept=true)"
     ]
 
     #### Parse the action_list

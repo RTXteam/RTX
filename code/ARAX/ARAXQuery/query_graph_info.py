@@ -83,10 +83,15 @@ class QueryGraphInfo:
 
             if qnode.type is not None:
                 node_info[id]['has_type'] = True
+
             #if qnode.is_set is not None: node_info[id]['is_set'] = True
             if qnode.id is None:
                 response.error("QueryGraph has a node with no id. This is not permitted", error_code="QueryGraphNodeWithNoId")
                 return response
+
+            #### Remap the node types from unsupported to supported
+            if qnode.type is not None:
+                qnode.type = self.remap_node_type(qnode.type)
 
             #### Store lookup of types
             warning_counter = 0
@@ -164,6 +169,17 @@ class QueryGraphInfo:
             elif node_data['n_links'] > 2:
                 self.is_bifurcated_graph = True
                 response.warning("QueryGraph appears to have a fork in it. This might cause trouble")
+
+        #### If this doesn't produce any singletons, then try curie based selection
+        if len(singletons) == 0:
+            for node_id,node_data in node_info.items():
+                if node_data['has_curie']:
+                    singletons.append(node_data)
+
+        #### If this doesn't produce any singletons, then we don't know how to continue
+        if len(singletons) == 0:
+            response.error("Unable to understand the query graph", error_code="QueryGraphCircular")
+            return response
 
         #### Try to identify the start_node and the end_node
         start_node = singletons[0]
@@ -302,6 +318,15 @@ class QueryGraphInfo:
         #### Return the response
         return response
 
+
+    ##########################################################################################
+    #### Remap node types from the new TRAPI 1.0 style to the older TRAPI 0.9.x style
+    def remap_node_type(self, node_type):
+        match = re.match(r'biolink:(.+)', node_type)
+        if match:
+            node_type = match.group(1)
+            node_type = re.sub(r'(?<!^)(?=[A-Z])', '_', node_type).lower()
+        return node_type
 
 
 ##########################################################################################

@@ -108,7 +108,7 @@ function pasteQuestion(question) {
 }
 function pasteExample(type) {
     if (type == "DSL") {
-	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, id=n0)\nadd_qnode(type=protein, id=n1)\nadd_qedge(source_id=n0, target_id=n1, id=e0)\nexpand(edge_id=e0)\noverlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)\nresultify()\n';
+	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, id=n0)\nadd_qnode(type=protein, id=n1)\nadd_qedge(source_id=n0, target_id=n1, id=e0)\nexpand(edge_id=e0,kp=ARAX/KG2)\noverlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=50)';
     }
     else {
 	document.getElementById("jsonText").value = '{\n   "edges": [\n      {\n         "id": "qg2",\n         "source_id": "qg1",\n         "target_id": "qg0"\n      }\n   ],\n   "nodes": [\n      {\n         "id": "qg0",\n         "curie": "CHEMBL.COMPOUND:CHEMBL112"\n      },\n      {\n         "id": "qg1",\n         "type": "protein"\n      }\n   ]\n}';
@@ -1772,7 +1772,14 @@ function show_dsl_command_options(command) {
 	com_node.appendChild(document.createElement('br'));
     }
 
+    var skipped = '';
     for (var par in araxi_commands[command].parameters) {
+        if (araxi_commands[command].parameters[par]['UI_display'] &&
+	    araxi_commands[command].parameters[par]['UI_display'] == 'false') {
+	    if (skipped) skipped += ", ";
+	    skipped += par;
+	    continue;
+	}
 	com_node.appendChild(document.createElement('br'));
 
 	var span = document.createElement('span');
@@ -1846,6 +1853,13 @@ function show_dsl_command_options(command) {
     }
 
     com_node.appendChild(document.createElement('br'));
+
+    if (skipped) {
+	com_node.appendChild(document.createElement('br'));
+	com_node.appendChild(document.createTextNode('The following advanced parameters are also available: '+skipped+'. Please consult the full documentation for more information.'));
+	com_node.appendChild(document.createElement('br'));
+	com_node.appendChild(document.createElement('br'));
+    }
 
     var button = document.createElement("input");
     button.className = 'questionBox button';
