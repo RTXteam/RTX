@@ -19,7 +19,7 @@ import collections
 import math
 import os
 import sys
-from typing import List, Dict, Set, Union, Iterable, cast, Optional
+from typing import List, Dict, Set, Union, Iterable, cast, Optional, Tuple
 from response import Response
 
 __author__ = 'Stephen Ramsey and Amy Glen'
@@ -505,35 +505,6 @@ def _get_query_edge(qedge_id: str, query_graph: QueryGraph) -> QEdge:
     return None
 
 
-def _get_qnodes_in_order(query_graph: QueryGraph) -> List[QNode]:
-    if len(query_graph.edges) == 0:
-        return [query_graph.nodes[0]]
-    elif len(query_graph.edges) == 1:
-        qedge = query_graph.edges[0]
-        return [_get_query_node(qedge.source_id, query_graph), _get_query_node(qedge.target_id, query_graph)]
-    else:
-        qnode_ids_remaining = [qnode.id for qnode in query_graph.nodes]
-        ordered_qnode_ids = []
-        while qnode_ids_remaining:
-            if not ordered_qnode_ids:
-                starting_qnode_id = qnode_ids_remaining.pop()
-                ordered_qnode_ids = [starting_qnode_id]
-            else:
-                new_right_most_qnode_id = _get_connected_qnode(ordered_qnode_ids[-1], qnode_ids_remaining, query_graph)
-                new_left_most_qnode_id = _get_connected_qnode(ordered_qnode_ids[0], qnode_ids_remaining, query_graph)
-                if new_right_most_qnode_id:
-                    ordered_qnode_ids.append(new_right_most_qnode_id)
-                    qnode_ids_remaining.pop(qnode_ids_remaining.index(new_right_most_qnode_id))
-                elif new_left_most_qnode_id:
-                    ordered_qnode_ids.insert(0, new_left_most_qnode_id)
-                    qnode_ids_remaining.pop(qnode_ids_remaining.index(new_left_most_qnode_id))
-                else:
-                    disconnected_qnode_id = qnode_ids_remaining[0]
-                    ordered_qnode_ids.append(disconnected_qnode_id)
-                    qnode_ids_remaining.pop(qnode_ids_remaining.index(disconnected_qnode_id))
-    return [_get_query_node(qnode_id, query_graph) for qnode_id in ordered_qnode_ids]
-
-
 def _get_kg_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
     node_ids_by_qg_id = dict()
     for node in knowledge_graph.nodes:
@@ -631,6 +602,33 @@ def _result_graph_is_fulfilled(result_graph: Dict[str, Dict[str, Set[str]]], que
     return True
 
 
+def _get_all_adjacent_nodes(kg_node_ids: Set[str], start_qnode_id: str, target_qnode_id: str,
+                            kg_node_adj_map_by_qg_id: Dict[str, Dict[str, Dict[str, Set[str]]]]) -> Set[str]:
+    """
+    This function returns all nodes adjacent to a set of nodes (kg_node_ids) that fulfill the target_qnode_id. The
+    start_qnode_id is the qnode ID that the set of input nodes fulfill. Being adjacent to the set of nodes means that
+    the node is connected to ANY of the individual input nodes in the set (not ALL).
+    """
+    connections = [kg_node_adj_map_by_qg_id[start_qnode_id][kg_node_id][target_qnode_id] for kg_node_id in kg_node_ids]
+    return {node_id for node_id_set in connections for node_id in node_id_set}
+
+
+def _find_qnode_connected_to_sub_qg(qnode_ids_to_connect_to: Set[str], qnode_ids_to_choose_from: Set[str], qg: QueryGraph) -> Tuple[str, Set[str]]:
+    """
+    This function selects a qnode ID from the qnode_ids_to_choose_from that connects to one or more of the qnode IDs
+    in the qnode_ids_to_connect_to (which itself could be considered a sub-graph of the QG). It also returns the IDs
+    of the connection points (all qnode ID(s) in qnode_ids_to_connect_to that the chosen node connects to).
+    """
+    for qnode_id_option in qnode_ids_to_choose_from:
+        all_qedges_using_qnode = [qedge for qedge in qg.edges if qnode_id_option in {qedge.source_id, qedge.target_id}]
+        all_connected_qnode_ids = {qnode_id for qedge in all_qedges_using_qnode
+                                   for qnode_id in {qedge.source_id, qedge.target_id}}.difference({qnode_id_option})
+        subgraph_connections = qnode_ids_to_connect_to.intersection(all_connected_qnode_ids)
+        if subgraph_connections:
+            return qnode_id_option, subgraph_connections
+    return "", set()
+
+
 def _create_results(kg: KnowledgeGraph,
                     qg: QueryGraph,
                     ignore_edge_direction: bool = True) -> List[Result]:
@@ -638,39 +636,63 @@ def _create_results(kg: KnowledgeGraph,
     kg_node_ids_by_qg_id = _get_kg_node_ids_by_qg_id(kg)
     kg_node_adj_map_by_qg_id = _get_kg_node_adj_map_by_qg_id(kg_node_ids_by_qg_id, kg, qg)
     kg_node_lookup = {node.id: node for node in kg.nodes}
-    qnodes_in_order = _get_qnodes_in_order(qg)
+    qg_node_lookup = {qnode.id: qnode for qnode in qg.nodes}
 
-    # First create result graphs with only the nodes filled out
-    for qnode in qnodes_in_order:
-        prior_qnode = qnodes_in_order[qnodes_in_order.index(qnode) - 1] if qnodes_in_order.index(qnode) > 0 else None
+    # Exclude orphan qnodes from this method of result creation (TODO: handle disjoint QG without any orphans)
+    qnode_ids_used_by_qedges = {qnode_id for qedge in qg.edges for qnode_id in {qedge.source_id, qedge.target_id}}
+    qnode_ids_remaining = set(qg_node_lookup).intersection(qnode_ids_used_by_qedges)
+    qnode_ids_already_handled = set()
+    while qnode_ids_remaining:
+        # Start with a random qnode if this is our first iteration
+        if not qnode_ids_already_handled:
+            current_qnode_id = list(qnode_ids_remaining)[0]
+            prior_qnode_connections = set()
+        # Otherwise find a yet unhandled qnode ID that connects somehow to the part of the QG we've already handled
+        else:
+            current_qnode_id, prior_qnode_connections = _find_qnode_connected_to_sub_qg(qnode_ids_already_handled, qnode_ids_remaining, qg)
+        current_qnode = qg_node_lookup[current_qnode_id]
+
+        # Initialize our result graphs if this is our first iteration
         if not result_graphs:
-            all_node_ids_in_kg_for_this_qnode_id = kg_node_ids_by_qg_id.get(qnode.id)
-            if qnode.is_set:
+            all_node_ids_in_kg_for_this_qnode_id = kg_node_ids_by_qg_id.get(current_qnode_id)
+            # We'll start with one result graph with ALL corresponding nodes in the KG in this spot if is_set=True
+            if current_qnode.is_set:
                 new_result_graph = _create_new_empty_result_graph(qg)
-                new_result_graph['nodes'][qnode.id] = all_node_ids_in_kg_for_this_qnode_id
+                new_result_graph["nodes"][current_qnode_id] = all_node_ids_in_kg_for_this_qnode_id
                 result_graphs.append(new_result_graph)
+            # Otherwise, we'll start with a result graph for EACH corresponding node in the KG
             else:
                 for node_id in all_node_ids_in_kg_for_this_qnode_id:
                     new_result_graph = _create_new_empty_result_graph(qg)
-                    new_result_graph['nodes'][qnode.id] = {node_id}
+                    new_result_graph["nodes"][current_qnode_id] = {node_id}
                     result_graphs.append(new_result_graph)
+        # Otherwise fan out our existing result graphs, filling out this qnode spot in them based on prior contents
         else:
             new_result_graphs = []
             for result_graph in result_graphs:
-                node_ids_for_prior_qnode_id = result_graph['nodes'][prior_qnode.id]
-                connected_node_ids = set()
-                for node_id in node_ids_for_prior_qnode_id:
-                    connected_node_ids = connected_node_ids.union(kg_node_adj_map_by_qg_id[prior_qnode.id][node_id][qnode.id])
-                if qnode.is_set:
+                # Figure out which KG nodes could fulfill the current qnode in this result
+                prior_qnodes_kg_nodes = {prior_qnode_id: result_graph["nodes"][prior_qnode_id] for prior_qnode_id in prior_qnode_connections}
+                current_kg_node_possibilities = [_get_all_adjacent_nodes(corresponding_kg_nodes, prior_qnode_id, current_qnode_id, kg_node_adj_map_by_qg_id)
+                                                 for prior_qnode_id, corresponding_kg_nodes in prior_qnodes_kg_nodes.items()]
+                # Only keep connections that have links to KG nodes in ALL prior connected qnode roles
+                final_connected_kg_nodes = set.intersection(*current_kg_node_possibilities)
+                if current_qnode.is_set:
+                    # Replace this result graph with a new one with all valid connections listed under this qnode
                     new_result_graph = _copy_result_graph(result_graph)
-                    new_result_graph['nodes'][qnode.id] = connected_node_ids
+                    new_result_graph["nodes"][current_qnode_id] = final_connected_kg_nodes
                     new_result_graphs.append(new_result_graph)
                 else:
-                    for node_id in connected_node_ids:
+                    # Create a new result graph for each new valid connected node
+                    for connected_node_id in final_connected_kg_nodes:
                         new_result_graph = _copy_result_graph(result_graph)
-                        new_result_graph['nodes'][qnode.id] = {node_id}
+                        new_result_graph["nodes"][current_qnode_id] = {connected_node_id}
+                        # TODO: Prune this new result graph to make sure prior is_set nodes link to our new connected node?
                         new_result_graphs.append(new_result_graph)
             result_graphs = new_result_graphs
+
+        # Update our records about which qnodes we've already processed
+        qnode_ids_remaining.remove(current_qnode_id)
+        qnode_ids_already_handled.add(current_qnode_id)
 
     # Then add edges to our result graphs as appropriate
     edges_by_node_pairs = {qedge.id: dict() for qedge in qg.edges}
