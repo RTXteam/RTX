@@ -266,9 +266,11 @@ class KGQuerier:
         swagger_node.id = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.type = neo4j_node.get('types')
+        swagger_node.uri = neo4j_node.get('iri')
+        swagger_node.description = neo4j_node.get('description')
         # Add all additional properties on KG2c nodes as swagger NodeAttribute objects
         swagger_node.node_attributes = []
-        additional_kg2c_node_properties = ['equivalent_curies', 'publications']
+        additional_kg2c_node_properties = ['equivalent_curies', 'publications', 'all_names']
         node_attributes = self._create_swagger_attributes("node", additional_kg2c_node_properties, neo4j_node)
         swagger_node.node_attributes += node_attributes
         return swagger_node
