@@ -60,6 +60,9 @@ class ARAXQuery:
         self.response = None
         self.message = None
         self.DBManager = ARAXDatabaseManager(live = "Production")
+        if self.DBManager.check_versions():
+            response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
+            response = self.DBManager.update_databases(response=response)
         
 
     def query_return_stream(self,query):
@@ -145,9 +148,6 @@ class ARAXQuery:
         if result.status != 'OK':
             return response
         query_attributes = result.data
-        if self.DBManager.check_all(max_days=31):
-            response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
-            self.DBManager.update_databases(max_days=31)
 
 
         # #### If we have a query_graph in the input query
