@@ -629,6 +629,62 @@ def _find_qnode_connected_to_sub_qg(qnode_ids_to_connect_to: Set[str], qnode_ids
     return "", set()
 
 
+def _get_qg_adj_map_undirected(qg) -> Dict[str, Set[str]]:
+    """
+    This function creates a node adjacency map for a given query graph. Example: {"n0": {"n1"}, "n1": {"n0"}}
+    """
+    qg_adj_map = dict()
+    for qnode in qg.nodes:
+        connected_qedges = [qedge for qedge in qg.edges if qnode.id in {qedge.source_id, qedge.target_id}]
+        connected_qnode_ids = {qnode_id for qedge in connected_qedges
+                               for qnode_id in {qedge.source_id, qedge.target_id}}.difference({qnode.id})
+        qg_adj_map[qnode.id] = connected_qnode_ids
+    return qg_adj_map
+
+
+def _extract_sub_qg_adj_map(qg_adj_map: Dict[str, Set[str]], allowed_qnode_ids: Set[str]) -> Dict[str, Set[str]]:
+    """
+    This function extracts the node adjacency info for a "subgraph" of the query graph (represented by
+    allowed_qnode_ids). Example of qg_adj_map: {"n0": {"n1"}, "n1": {"n0"}}
+    """
+    return {qnode_id: neighbor_qnode_ids.intersection(allowed_qnode_ids)
+            for qnode_id, neighbor_qnode_ids in qg_adj_map.items() if qnode_id in allowed_qnode_ids}
+
+
+def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
+                        fulfilled_qnode_ids: Set[str],
+                        sub_qg_adj_map: Dict[str, Set[str]],
+                        kg_node_adj_map_by_qg_id: Dict[str, Dict[str, Dict[str, Set[str]]]]) -> Dict[str, Dict[str, Set[str]]]:
+    """
+    This function iteratively removes "dead ends" from a result graph until no more dead ends can be found. Dead ends
+    can be thought of as intermediate nodes (typically for is_set=True qnodes) that connect to only a subset of the
+    nodes they should be connected to according to the query graph.
+    """
+    found_dead_ends = True
+    while found_dead_ends:
+        found_dead_ends = False
+        nodes_to_remove = dict()
+        # Go through each qnode "role" in our result graph, and check the nodes corresponding to that qnode
+        for qnode_id in fulfilled_qnode_ids:
+            corresponding_node_ids = result_graph["nodes"][qnode_id]
+            required_neighbor_qnode_ids = sub_qg_adj_map[qnode_id]
+            # Make sure each node for this qnode ID is connected to at LEAST one node fulfilling each neighbor qnode ID
+            for corresponding_node_id in corresponding_node_ids:
+                for neighbor_qnode_id in required_neighbor_qnode_ids:
+                    # Look for at least one node in the result graph in this neighbor spot that this node is linked to
+                    neighbors_in_kg = kg_node_adj_map_by_qg_id[qnode_id][corresponding_node_id][neighbor_qnode_id]
+                    if not neighbors_in_kg.intersection(result_graph["nodes"][neighbor_qnode_id]):
+                        # Mark this node for removal from this result graph since it's lacking a neighbor here
+                        found_dead_ends = True
+                        if qnode_id not in nodes_to_remove:
+                            nodes_to_remove[qnode_id] = set()
+                        nodes_to_remove[qnode_id].add(corresponding_node_id)
+        # Actually go through and remove our nodes marked for removal
+        for qnode_id, node_ids in nodes_to_remove.items():
+            result_graph["nodes"][qnode_id] = result_graph["nodes"][qnode_id].difference(node_ids)
+        return result_graph
+
+
 def _create_results(kg: KnowledgeGraph,
                     qg: QueryGraph,
                     ignore_edge_direction: bool = True) -> List[Result]:
@@ -637,6 +693,7 @@ def _create_results(kg: KnowledgeGraph,
     kg_node_adj_map_by_qg_id = _get_kg_node_adj_map_by_qg_id(kg_node_ids_by_qg_id, kg, qg)
     kg_node_lookup = {node.id: node for node in kg.nodes}
     qg_node_lookup = {qnode.id: qnode for qnode in qg.nodes}
+    qg_adj_map = _get_qg_adj_map_undirected(qg)
 
     # Exclude orphan qnodes from this method of result creation (TODO: handle disjoint QG without any orphans)
     qnode_ids_used_by_qedges = {qnode_id for qedge in qg.edges for qnode_id in {qedge.source_id, qedge.target_id}}
@@ -669,6 +726,7 @@ def _create_results(kg: KnowledgeGraph,
         # Otherwise fan out our existing result graphs, filling out this qnode spot in them based on prior contents
         else:
             new_result_graphs = []
+            sub_qg_adj_map = _extract_sub_qg_adj_map(qg_adj_map, qnode_ids_already_handled.union({current_qnode_id}))
             for result_graph in result_graphs:
                 # Figure out which KG nodes could fulfill the current qnode in this result
                 prior_qnodes_kg_nodes = {prior_qnode_id: result_graph["nodes"][prior_qnode_id] for prior_qnode_id in prior_qnode_connections}
@@ -680,14 +738,21 @@ def _create_results(kg: KnowledgeGraph,
                     # Replace this result graph with a new one with all valid connections listed under this qnode
                     new_result_graph = _copy_result_graph(result_graph)
                     new_result_graph["nodes"][current_qnode_id] = final_connected_kg_nodes
-                    new_result_graphs.append(new_result_graph)
+                    pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
+                                                              fulfilled_qnode_ids=qnode_ids_already_handled.union({current_qnode_id}),
+                                                              sub_qg_adj_map=sub_qg_adj_map,
+                                                              kg_node_adj_map_by_qg_id=kg_node_adj_map_by_qg_id)
+                    new_result_graphs.append(pruned_result_graph)
                 else:
                     # Create a new result graph for each new valid connected node
                     for connected_node_id in final_connected_kg_nodes:
                         new_result_graph = _copy_result_graph(result_graph)
                         new_result_graph["nodes"][current_qnode_id] = {connected_node_id}
-                        # TODO: Prune this new result graph to make sure prior is_set nodes link to our new connected node?
-                        new_result_graphs.append(new_result_graph)
+                        pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
+                                                                  fulfilled_qnode_ids=qnode_ids_already_handled.union({current_qnode_id}),
+                                                                  sub_qg_adj_map=sub_qg_adj_map,
+                                                                  kg_node_adj_map_by_qg_id=kg_node_adj_map_by_qg_id)
+                        new_result_graphs.append(pruned_result_graph)
             result_graphs = new_result_graphs
 
         # Update our records about which qnodes we've already processed
