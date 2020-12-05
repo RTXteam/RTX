@@ -652,14 +652,16 @@ def _extract_sub_qg_adj_map(qg_adj_map: Dict[str, Set[str]], allowed_qnode_ids: 
 
 
 def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
-                        fulfilled_qnode_ids: Set[str],
                         sub_qg_adj_map: Dict[str, Set[str]],
                         kg_node_adj_map_by_qg_id: Dict[str, Dict[str, Dict[str, Set[str]]]]) -> Dict[str, Dict[str, Set[str]]]:
     """
     This function iteratively removes "dead ends" from a result graph until no more dead ends can be found. Dead ends
     can be thought of as intermediate nodes (typically for is_set=True qnodes) that connect to only a subset of the
-    nodes they should be connected to according to the query graph.
+    nodes they should be connected to according to the query graph. Only the part of the result graph that has been
+    "fulfilled" so far during the result construction process is evaluated here: the sub_qg_adj_map must contain only
+    info for qnodes fulfilled thus far.
     """
+    fulfilled_qnode_ids = set(sub_qg_adj_map)
     found_dead_ends = True
     while found_dead_ends:
         found_dead_ends = False
@@ -682,7 +684,7 @@ def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
         # Actually go through and remove our nodes marked for removal
         for qnode_id, node_ids in nodes_to_remove.items():
             result_graph["nodes"][qnode_id] = result_graph["nodes"][qnode_id].difference(node_ids)
-        return result_graph
+    return result_graph
 
 
 def _create_results(kg: KnowledgeGraph,
@@ -739,7 +741,6 @@ def _create_results(kg: KnowledgeGraph,
                     new_result_graph = _copy_result_graph(result_graph)
                     new_result_graph["nodes"][current_qnode_id] = final_connected_kg_nodes
                     pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
-                                                              fulfilled_qnode_ids=qnode_ids_already_handled.union({current_qnode_id}),
                                                               sub_qg_adj_map=sub_qg_adj_map,
                                                               kg_node_adj_map_by_qg_id=kg_node_adj_map_by_qg_id)
                     new_result_graphs.append(pruned_result_graph)
@@ -749,7 +750,6 @@ def _create_results(kg: KnowledgeGraph,
                         new_result_graph = _copy_result_graph(result_graph)
                         new_result_graph["nodes"][current_qnode_id] = {connected_node_id}
                         pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
-                                                                  fulfilled_qnode_ids=qnode_ids_already_handled.union({current_qnode_id}),
                                                                   sub_qg_adj_map=sub_qg_adj_map,
                                                                   kg_node_adj_map_by_qg_id=kg_node_adj_map_by_qg_id)
                         new_result_graphs.append(pruned_result_graph)
