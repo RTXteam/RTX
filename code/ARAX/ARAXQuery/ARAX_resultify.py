@@ -471,7 +471,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     results: List[Result] = []
 
-    # Return empty result list if the QG isn't fulfilled
+    # Return empty result list if the KG doesn't fulfill the QG
     unfulfilled_qnode_ids = [qnode.id for qnode in qg.nodes if not kg_node_ids_by_qg_id.get(qnode.id)]
     unfulfilled_qedge_ids = [qedge.id for qedge in qg.edges if not kg_edge_ids_by_qg_id.get(qedge.id)]
     if unfulfilled_qnode_ids or unfulfilled_qedge_ids or not kg.nodes:
@@ -697,9 +697,8 @@ def _create_results(kg: KnowledgeGraph,
     qg_node_lookup = {qnode.id: qnode for qnode in qg.nodes}
     qg_adj_map = _get_qg_adj_map_undirected(qg)
 
-    # Exclude orphan qnodes from this method of result creation (TODO: handle disjoint QG without any orphans)
-    qnode_ids_used_by_qedges = {qnode_id for qedge in qg.edges for qnode_id in {qedge.source_id, qedge.target_id}}
-    qnode_ids_remaining = set(qg_node_lookup).intersection(qnode_ids_used_by_qedges)
+    # Iteratively construct "result graphs" (initially containing only nodes, not edges) by walking through all qnodes
+    qnode_ids_remaining = set(qg_node_lookup)
     qnode_ids_already_handled = set()
     while qnode_ids_remaining:
         # Start with a random qnode if this is our first iteration

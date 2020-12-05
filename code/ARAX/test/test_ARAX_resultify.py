@@ -1184,8 +1184,7 @@ def test_single_node():
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    n00_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n00" in node.qnode_ids]
-    assert len(message.results) == len(n00_nodes_in_kg)
+    assert len(message.results) > 0
 
 
 def test_parallel_edges_between_nodes():
