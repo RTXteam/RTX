@@ -1165,26 +1165,14 @@ def test_issue833_extraneous_intermediate_nodes():
     knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
-    kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
-    kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
-    assert len(message.results) == 1
     for result in message.results:
-        result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
-        result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
-        # Make sure all intermediate nodes are connected to at least one (real, not virtual) edge on BOTH sides
-        for n01_node_id in result_nodes_by_qg_id['n01']:
-            assert any(edge for edge in result_edges_by_qg_id['e00'].values() if
-                       edge.source_id == n01_node_id or edge.target_id == n01_node_id)
-            assert any(edge for edge in result_edges_by_qg_id['e01'].values() if
-                       edge.source_id == n01_node_id or edge.target_id == n01_node_id)
-        # Make sure all edges' nodes actually exist in this result (includes virtual and real edges)
-        for qedge_id, edges_map in result_edges_by_qg_id.items():
-            qedge = next(qedge for qedge in message.query_graph.edges if qedge.id == qedge_id)
-            for edge_id, edge in edges_map.items():
-                assert (edge.source_id in result_nodes_by_qg_id[qedge.source_id] and edge.target_id in
-                        result_nodes_by_qg_id[qedge.target_id]) or \
-                       (edge.target_id in result_nodes_by_qg_id[qedge.source_id] and edge.source_id in
-                        result_nodes_by_qg_id[qedge.target_id])
+        result_n01_nodes = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+        result_e01_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"}
+        result_e00_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00"}
+        for n01_node in result_n01_nodes:
+            kg_edges_using_this_node = {edge.id for edge in message.knowledge_graph.edges if n01_node in {edge.source_id, edge.target_id}}
+            assert result_e01_edges.intersection(kg_edges_using_this_node)
+            assert result_e00_edges.intersection(kg_edges_using_this_node)
 
 
 def test_single_node():
