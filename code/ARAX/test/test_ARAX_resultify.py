@@ -691,7 +691,7 @@ def test08():
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
     n01_nodes = {node.id for node in message.knowledge_graph.nodes if "n01" in node.qnode_ids}
-    assert len(message.results) == len(n01_nodes)
+    assert message.results and len(message.results) == len(n01_nodes)
 
 
 @pytest.mark.slow
@@ -729,7 +729,8 @@ def test_example1():
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert len(message.results) == len({node.id for node in message.knowledge_graph.nodes if "qg1" in node.qnode_ids})
+    qg1_nodes = {node.id for node in message.knowledge_graph.nodes if "qg1" in node.qnode_ids}
+    assert message.results and len(message.results) == len(qg1_nodes)
     assert message.results[0].essence is not None
 
 
@@ -941,7 +942,7 @@ def test_issue687():
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert len(message.results) == len(message.knowledge_graph.nodes)
+    assert message.results and len(message.results) == len(message.knowledge_graph.nodes)
 
 
 def test_issue727():
@@ -1093,7 +1094,7 @@ def test_issue720_1():
     ]
     response, message = _do_arax_query(actions)
     n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
-    assert len(message.results) == len(n02_nodes_in_kg)
+    assert message.results and len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
 
 
@@ -1112,7 +1113,7 @@ def test_issue720_2():
     ]
     response, message = _do_arax_query(actions)
     n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
-    assert len(message.results) == len(n02_nodes_in_kg)
+    assert message.results and len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
 
 
@@ -1207,7 +1208,7 @@ def test_parallel_edges_between_nodes():
     kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
     kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
     n02_nodes = {node_id for node_id, node in kg_nodes_map.items() if "n02" in node.qnode_ids}
-    assert len(message.results) == len(n02_nodes)
+    assert message.results and len(message.results) == len(n02_nodes)
     # Make sure every n01 node is connected to both an e01 edge and a parallel01 edge in each result
     for result in message.results:
         result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
