@@ -700,7 +700,7 @@ def test09():
         "add_qnode(name=DOID:731, id=n00, type=disease, is_set=false)",
         "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00)",
+        "expand(edge_id=e00, kp=ARAX/KG1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "filter_results(action=limit_number_of_results, max_results=100)",
         "return(message=true, store=false)"
@@ -723,7 +723,7 @@ def test_example1():
         "add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(id=qg1, type=protein)",
         "add_qedge(source_id=qg1, target_id=qg0, id=qe0)",
-        "expand(edge_id=qe0)",
+        "expand(edge_id=qe0, kp=ARAX/KG1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)"
     ]
@@ -899,7 +899,7 @@ def test_issue686a():
     # Tests that an error is thrown when an invalid parameter is passed to resultify
     actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand()',
+        'expand(kp=ARAX/KG1)',
         'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
         "return(message=true, store=false)"
     ]
@@ -911,7 +911,7 @@ def test_issue686b():
     # Tests that resultify can be called with no parameters passed in
     actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand()',
+        'expand(kp=ARAX/KG1)',
         'resultify()',
         "return(message=true, store=false)"
     ]
@@ -923,7 +923,7 @@ def test_issue686c():
     # Tests that setting ignore_edge_direction to an invalid value results in an error
     actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand()',
+        'expand(kp=ARAX/KG1)',
         'resultify(ignore_edge_direction=foo)',
         "return(message=true, store=false)"
     ]
@@ -935,7 +935,7 @@ def test_issue687():
     # Tests that ignore_edge_direction need not be specified
     actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand()',
+        'expand(kp=ARAX/KG1)',
         'resultify(debug=true)',
         "return(message=true, store=false)"
     ]
@@ -1087,7 +1087,7 @@ def test_issue720_1():
         "add_qnode(type=disease, id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand()",
+        "expand(kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1126,7 +1126,7 @@ def test_issue720_3():
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "add_qedge(id=e01, source_id=n01, target_id=n02)",
         "add_qedge(id=e02, source_id=n02, target_id=n03)",
-        "expand(use_synonyms=false)",
+        "expand(use_synonyms=false, kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1178,7 +1178,7 @@ def test_issue833_extraneous_intermediate_nodes():
 def test_single_node():
     actions = [
         "add_qnode(name=ibuprofen, id=n00)",
-        "expand(node_id=n00)",
+        "expand(node_id=n00, kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
