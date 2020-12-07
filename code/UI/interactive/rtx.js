@@ -108,7 +108,7 @@ function pasteQuestion(question) {
 }
 function pasteExample(type) {
     if (type == "DSL") {
-	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, id=n0)\nadd_qnode(type=protein, id=n1)\nadd_qedge(source_id=n0, target_id=n1, id=e0)\nexpand(edge_id=e0,kp=ARAX/KG2)\noverlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=50)';
+	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, id=n0)\nadd_qnode(type=protein, id=n1)\nadd_qedge(source_id=n0, target_id=n1, id=e0)\nexpand(edge_id=e0,kp=ARAX/KG2)\noverlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n0, target_qnode_id=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=50)\n';
     }
     else {
 	document.getElementById("jsonText").value = '{\n   "edges": [\n      {\n         "id": "qg2",\n         "source_id": "qg1",\n         "target_id": "qg0"\n      }\n   ],\n   "nodes": [\n      {\n         "id": "qg0",\n         "curie": "CHEMBL.COMPOUND:CHEMBL112"\n      },\n      {\n         "id": "qg1",\n         "type": "protein"\n      }\n   ]\n}';
@@ -1160,6 +1160,7 @@ function show_attributes(html_div, atts) {
 
 	if (att.value != null) {
 	    if (att.name == "normalized_google_distance" ||
+		att.name == "fisher_exact_test_p-value"  ||
 		att.name == "probability_drug_treats"    ||
 		att.name == "observed_expected_ratio"    ||
 		att.name == "paired_concept_frequency"   ||

@@ -118,7 +118,7 @@ def test_example_3():
         "add_qnode(type=protein, id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand(edge_id=[e00,e01])",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_id=n01)",
         "filter_kg(action=remove_orphaned_nodes, node_type=protein)",

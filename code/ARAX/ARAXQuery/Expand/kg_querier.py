@@ -107,6 +107,7 @@ class KGQuerier:
                 qnode.type = None  # Important to clear this, otherwise results are limited (#889)
             elif kg_name == "KG2c":
                 qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
+                qnode.type = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
