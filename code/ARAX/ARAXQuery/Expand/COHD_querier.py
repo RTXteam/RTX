@@ -917,7 +917,11 @@ class COHDQuerier:
                 return {}
             else:
                 preferred_curie = res[qnode.curie]['preferred_curie']
-            omop_ids = self.cohdindex.get_concept_ids(qnode.curie)
+            try:
+                omop_ids = self.cohdindex.get_concept_ids(qnode.curie)
+            except:
+                log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
+                return {}
             res_dict[preferred_curie] = omop_ids
 
         else:
@@ -932,7 +936,11 @@ class COHDQuerier:
                         res_dict[res[curie]['preferred_curie']] = []
 
             for preferred_curie in res_dict:
-                omop_ids = self.cohdindex.get_concept_ids(preferred_curie)
+                try:
+                    omop_ids = self.cohdindex.get_concept_ids(preferred_curie)
+                except:
+                    log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
+                    return {}
                 res_dict[preferred_curie] = omop_ids
 
         return res_dict

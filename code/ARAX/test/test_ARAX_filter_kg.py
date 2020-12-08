@@ -51,7 +51,7 @@ def test_warning():
             "add_qnode(name=DOID:1227, id=n00)",
             "add_qnode(type=chemical_substance, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
@@ -68,7 +68,7 @@ def test_error():
             "add_qnode(name=DOID:1227, id=n00)",
             "add_qnode(type=chemical_substance, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG1)",
             "filter_kg(action=remove_edges_by_type, edge_type=contraindicated_for, remove_connected_nodes=t)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"

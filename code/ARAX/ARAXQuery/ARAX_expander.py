@@ -23,6 +23,7 @@ class ARAXExpander:
     def __init__(self):
         self.response = None
         self.message = None
+        self.default_kp = "ARAX/KG2"
         self.edge_id_parameter_info = {
             "is_required": False,
             "examples": ["e00", "[e00, e01]"],
@@ -203,7 +204,7 @@ class ARAXExpander:
             return response
 
         # Define a complete set of allowed parameters and their defaults
-        kp = input_parameters.get("kp", "ARAX/KG1")
+        kp = input_parameters.get("kp", self.default_kp)
         if kp not in self.command_definitions:
             response.error(f"Invalid KP. Options are: {set(self.command_definitions)}", error_code="InvalidKP")
             return response

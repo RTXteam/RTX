@@ -126,6 +126,7 @@ def make_kg2(curies_to_categories: dict,
     for ont_source_info_dict in ont_urls_and_files:
         if ont_source_info_dict['download']:
             # get the OWL file onto the local file system and get a full path to it
+            print(ont_source_info_dict["url"])
             local_file_name = kg2_util.download_file_if_not_exist_locally(ont_source_info_dict['url'],
                                                                           ont_source_info_dict['file'])
         else:
@@ -505,8 +506,12 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
         assert iri_of_ontology is not None
 
         ontology_curie_id = uri_to_curie_shortener(iri_of_ontology)
+
         if ontology_curie_id is None or len(ontology_curie_id) == 0:
             ontology_curie_id = iri_of_ontology
+
+        print(f"processing ontology: {ontology_curie_id}", file=sys.stderr)
+
         umls_sver = ontology_info_dict.get('umls-sver', None)
         updated_date = None
         if umls_sver is not None:

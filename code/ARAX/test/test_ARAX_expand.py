@@ -168,7 +168,7 @@ def test_acetaminophen_example_enforcing_directionality():
         "add_qnode(curie=CHEMBL.COMPOUND:CHEMBL112, id=n00)",
         "add_qnode(type=disease, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00, enforce_directionality=true)",
+        "expand(kp=ARAX/KG1, edge_id=e00, enforce_directionality=true)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -185,7 +185,7 @@ def test_720_ambitious_query_causing_multiple_qnode_ids_error():
         "add_qnode(type=disease, id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand(edge_id=[e00, e01])",
+        "expand(kp=ARAX/KG1, edge_id=[e00, e01])",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -202,7 +202,7 @@ def test_720_multiple_qg_ids_in_different_results():
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "add_qedge(id=e01, source_id=n01, target_id=n02)",
         "add_qedge(id=e02, source_id=n02, target_id=n03)",
-        "expand()",
+        "expand(kp=ARAX/KG1)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -320,7 +320,7 @@ def test_three_hop_query():
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
         "add_qedge(source_id=n02, target_id=n03, id=e02)",
-        "expand()",
+        "expand(kp=ARAX/KG1)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -336,7 +336,7 @@ def test_branched_query():
         "add_qedge(source_id=n01, target_id=n00, id=e00)",
         "add_qedge(source_id=n02, target_id=n00, id=e01)",
         "add_qedge(source_id=n00, target_id=n03, id=e02)",
-        "expand()",
+        "expand(kp=ARAX/KG1)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -519,7 +519,7 @@ def test_987_override_node_types():
         "add_qnode(name=DOID:8398, id=n00)",
         "add_qnode(type=phenotypic_feature, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, type=has_phenotype, id=e00)",
-        "expand(edge_id=e00)",
+        "expand(edge_id=e00, kp=ARAX/KG1)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)

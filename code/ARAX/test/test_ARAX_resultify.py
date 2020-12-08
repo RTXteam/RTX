@@ -691,7 +691,7 @@ def test08():
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
     n01_nodes = {node.id for node in message.knowledge_graph.nodes if "n01" in node.qnode_ids}
-    assert len(message.results) == len(n01_nodes)
+    assert message.results and len(message.results) == len(n01_nodes)
 
 
 @pytest.mark.slow
@@ -700,7 +700,7 @@ def test09():
         "add_qnode(name=DOID:731, id=n00, type=disease, is_set=false)",
         "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00)",
+        "expand(edge_id=e00, kp=ARAX/KG1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "filter_results(action=limit_number_of_results, max_results=100)",
         "return(message=true, store=false)"
@@ -723,13 +723,14 @@ def test_example1():
         "add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(id=qg1, type=protein)",
         "add_qedge(source_id=qg1, target_id=qg0, id=qe0)",
-        "expand(edge_id=qe0)",
+        "expand(edge_id=qe0, kp=ARAX/KG1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert len(message.results) == len({node.id for node in message.knowledge_graph.nodes if "qg1" in node.qnode_ids})
+    qg1_nodes = {node.id for node in message.knowledge_graph.nodes if "qg1" in node.qnode_ids}
+    assert message.results and len(message.results) == len(qg1_nodes)
     assert message.results[0].essence is not None
 
 
@@ -899,7 +900,7 @@ def test_issue686a():
     # Tests that an error is thrown when an invalid parameter is passed to resultify
     actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand()',
+        'expand(kp=ARAX/KG1)',
         'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
         "return(message=true, store=false)"
     ]
@@ -911,7 +912,7 @@ def test_issue686b():
     # Tests that resultify can be called with no parameters passed in
     actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand()',
+        'expand(kp=ARAX/KG1)',
         'resultify()',
         "return(message=true, store=false)"
     ]
@@ -923,7 +924,7 @@ def test_issue686c():
     # Tests that setting ignore_edge_direction to an invalid value results in an error
     actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand()',
+        'expand(kp=ARAX/KG1)',
         'resultify(ignore_edge_direction=foo)',
         "return(message=true, store=false)"
     ]
@@ -935,13 +936,13 @@ def test_issue687():
     # Tests that ignore_edge_direction need not be specified
     actions = [
         'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand()',
+        'expand(kp=ARAX/KG1)',
         'resultify(debug=true)',
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert len(message.results) == len(message.knowledge_graph.nodes)
+    assert message.results and len(message.results) == len(message.knowledge_graph.nodes)
 
 
 def test_issue727():
@@ -1087,13 +1088,13 @@ def test_issue720_1():
         "add_qnode(type=disease, id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand()",
+        "expand(kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
-    assert len(message.results) == len(n02_nodes_in_kg)
+    assert message.results and len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
 
 
@@ -1112,7 +1113,7 @@ def test_issue720_2():
     ]
     response, message = _do_arax_query(actions)
     n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
-    assert len(message.results) == len(n02_nodes_in_kg)
+    assert message.results and len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
 
 
@@ -1126,7 +1127,7 @@ def test_issue720_3():
         "add_qedge(id=e00, source_id=n00, target_id=n01)",
         "add_qedge(id=e01, source_id=n01, target_id=n02)",
         "add_qedge(id=e02, source_id=n02, target_id=n03)",
-        "expand(use_synonyms=false)",
+        "expand(use_synonyms=false, kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1165,39 +1166,26 @@ def test_issue833_extraneous_intermediate_nodes():
     knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
-    kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
-    kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
-    assert len(message.results) == 1
     for result in message.results:
-        result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
-        result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
-        # Make sure all intermediate nodes are connected to at least one (real, not virtual) edge on BOTH sides
-        for n01_node_id in result_nodes_by_qg_id['n01']:
-            assert any(edge for edge in result_edges_by_qg_id['e00'].values() if
-                       edge.source_id == n01_node_id or edge.target_id == n01_node_id)
-            assert any(edge for edge in result_edges_by_qg_id['e01'].values() if
-                       edge.source_id == n01_node_id or edge.target_id == n01_node_id)
-        # Make sure all edges' nodes actually exist in this result (includes virtual and real edges)
-        for qedge_id, edges_map in result_edges_by_qg_id.items():
-            qedge = next(qedge for qedge in message.query_graph.edges if qedge.id == qedge_id)
-            for edge_id, edge in edges_map.items():
-                assert (edge.source_id in result_nodes_by_qg_id[qedge.source_id] and edge.target_id in
-                        result_nodes_by_qg_id[qedge.target_id]) or \
-                       (edge.target_id in result_nodes_by_qg_id[qedge.source_id] and edge.source_id in
-                        result_nodes_by_qg_id[qedge.target_id])
+        result_n01_nodes = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+        result_e01_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"}
+        result_e00_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00"}
+        for n01_node in result_n01_nodes:
+            kg_edges_using_this_node = {edge.id for edge in message.knowledge_graph.edges if n01_node in {edge.source_id, edge.target_id}}
+            assert result_e01_edges.intersection(kg_edges_using_this_node)
+            assert result_e00_edges.intersection(kg_edges_using_this_node)
 
 
 def test_single_node():
     actions = [
         "add_qnode(name=ibuprofen, id=n00)",
-        "expand(node_id=n00)",
+        "expand(node_id=n00, kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    n00_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n00" in node.qnode_ids]
-    assert len(message.results) == len(n00_nodes_in_kg)
+    assert len(message.results) > 0
 
 
 def test_parallel_edges_between_nodes():
@@ -1220,7 +1208,7 @@ def test_parallel_edges_between_nodes():
     kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
     kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
     n02_nodes = {node_id for node_id, node in kg_nodes_map.items() if "n02" in node.qnode_ids}
-    assert len(message.results) == len(n02_nodes)
+    assert message.results and len(message.results) == len(n02_nodes)
     # Make sure every n01 node is connected to both an e01 edge and a parallel01 edge in each result
     for result in message.results:
         result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
@@ -1308,6 +1296,48 @@ def test_issue1119_b():
     # Make sure the kryptonite edge and its leaf qnode don't appear in any results
     assert not any(node_binding.qg_id == "n03" for result in message.results for node_binding in result.node_bindings)
     assert not any(edge_binding.qg_id == "e02" for result in message.results for edge_binding in result.edge_bindings)
+
+
+def test_issue1146():
+    actions = [
+        "add_qnode(id=n0, curie=MONDO:0001475, type=disease)",
+        "add_qnode(id=n2, type=chemical_substance)",
+        "add_qnode(id=n1, type=protein, is_set=true)",
+        "add_qedge(id=e0, source_id=n2, target_id=n1, type=physically_interacts_with)",
+        "add_qedge(id=e1, source_id=n1, target_id=n0)",
+        "expand(kp=ARAX/KG1)",
+        "overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n0, target_qnode_id=n2)",
+        "resultify(debug=true)",
+        "filter_results(action=limit_number_of_results, max_results=4)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) == 4
+    # Make sure every n1 node is connected to an e1 and e0 edge
+    for result in message.results:
+        result_n1_nodes = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == "n1"}
+        result_e1_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e1"}
+        result_e0_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e0"}
+        for n1_node in result_n1_nodes:
+            kg_edges_using_this_node = {edge.id for edge in message.knowledge_graph.edges if n1_node in {edge.source_id, edge.target_id}}
+            assert result_e1_edges.intersection(kg_edges_using_this_node)
+            assert result_e0_edges.intersection(kg_edges_using_this_node)
+
+
+def test_disconnected_qg():
+    # Ensure an (informative) error is thrown when the QG is disconnected (has more than one component)
+    actions = [
+        "add_qnode(name=ibuprofen, id=n00)",
+        "add_qnode(name=acetaminophen, id=n01)",
+        "add_qnode(type=disease, id=n02)",
+        "add_qedge(id=e00, source_id=n01, target_id=n02)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status != 'OK'
+    assert "Query graph is disconnected" in response.show()
 
 
 if __name__ == '__main__':
