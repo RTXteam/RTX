@@ -453,6 +453,19 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                                      f"{kg_source_node_id} (qnode_ids: {kg_source_node.qnode_ids}) and "
                                      f"{kg_target_node_id} (qnode_ids: {kg_target_node.qnode_ids}).")
 
+    # ---------------------- checking to make sure the QG is connected ------------------------
+    qnode_ids_examined = {qg.nodes[0].id} if qg.nodes else {}  # Start with any qnode
+    qnode_ids_remaining = {qnode.id for qnode in qg.nodes}.difference(qnode_ids_examined)
+    # Repeatedly look for a qnode connected to at least one of the already examined qnodes
+    connected_qnode_id, _ = _find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
+    while connected_qnode_id and qnode_ids_remaining:
+        qnode_ids_remaining.remove(connected_qnode_id)
+        qnode_ids_examined.add(connected_qnode_id)
+        connected_qnode_id, _ = _find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
+    # The QG must be disconnected if there are qnodes remaining that are not connected to any of our examined ones
+    if not connected_qnode_id and qnode_ids_remaining:
+        raise ValueError(f"Query graph is disconnected (has more than one component). Such QGs are not supported.")
+
     # ============= save until SAR can discuss with {EWD,DMK} whether there can be unmapped nodes in the KG =============
     # # if any node in the KG is not bound to a node in the QG, drop the KG node; redefine "kg" as the filtered KG
     # kg_node_ids_keep = {node.id for node in kg.nodes if node.id in node_bindings_map}

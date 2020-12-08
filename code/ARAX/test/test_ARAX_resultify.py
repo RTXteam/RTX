@@ -1270,5 +1270,20 @@ def test_issue1146():
             assert result_e0_edges.intersection(kg_edges_using_this_node)
 
 
+def test_disconnected_qg():
+    # Ensure an (informative) error is thrown when the QG is disconnected (has more than one component)
+    actions = [
+        "add_qnode(name=ibuprofen, id=n00)",
+        "add_qnode(name=acetaminophen, id=n01)",
+        "add_qnode(type=disease, id=n02)",
+        "add_qedge(id=e00, source_id=n01, target_id=n02)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status != 'OK'
+    assert "Query graph is disconnected" in response.show()
+
+
 if __name__ == '__main__':
     pytest.main(['-v', 'test_ARAX_resultify.py'])
