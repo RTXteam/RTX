@@ -149,6 +149,7 @@ class ARAXQuery:
             # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
             # and then will later execute the processing plan
             if "have_previous_message_processing_plan" in query_attributes:
+                query['message'] = ARAXMessenger().from_dict(query['message'])
                 pass
             else:
                 response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
