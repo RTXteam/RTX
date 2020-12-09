@@ -1344,6 +1344,31 @@ def test_issue1119_c():
                                                    if "n01" in node.qnode_ids])
 
 
+@pytest.mark.slow
+def test_issue1119_d():
+    # Test query with multiple option groups and a 'not' edge
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
+        "add_qedge(id=e01, source_id=n00, target_id=n01, type=correlated_with, option_group_id=1)",
+        "add_qedge(id=e02, source_id=n00, target_id=n01, type=affects, option_group_id=2)",
+        "add_qedge(id=e03, source_id=n00, target_id=n01, exclude=True, type=contraindicated_for)",
+        "expand(kp=ARAX/KG2)",
+        "resultify(debug=true)",
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+    for result in message.results:
+        assert any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00")
+        assert not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e03")
+    # Make sure our "optional" edges appear in one or more results
+    assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"))
+    assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e02"))
+    _print_results_for_debug(message.results)
+
+
 def test_issue1146_a():
     actions = [
         "add_qnode(id=n0, curie=MONDO:0001475, type=disease)",
