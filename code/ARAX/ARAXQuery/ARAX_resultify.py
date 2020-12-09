@@ -472,19 +472,6 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                                      f"{kg_source_node_id} (qnode_ids: {kg_source_node.qnode_ids}) and "
                                      f"{kg_target_node_id} (qnode_ids: {kg_target_node.qnode_ids}).")
 
-    # ---------------------- checking to make sure the QG is connected ------------------------
-    qnode_ids_examined = {qg.nodes[0].id} if qg.nodes else {}  # Start with any qnode
-    qnode_ids_remaining = {qnode.id for qnode in qg.nodes}.difference(qnode_ids_examined)
-    # Repeatedly look for a qnode connected to at least one of the already examined qnodes
-    connected_qnode_id, _ = _find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
-    while connected_qnode_id and qnode_ids_remaining:
-        qnode_ids_remaining.remove(connected_qnode_id)
-        qnode_ids_examined.add(connected_qnode_id)
-        connected_qnode_id, _ = _find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
-    # The QG must be disconnected if there are qnodes remaining that are not connected to any of our examined ones
-    if not connected_qnode_id and qnode_ids_remaining:
-        raise ValueError(f"Query graph is disconnected (has more than one component). Such QGs are not supported.")
-
     # ============= save until SAR can discuss with {EWD,DMK} whether there can be unmapped nodes in the KG =============
     # # if any node in the KG is not bound to a node in the QG, drop the KG node; redefine "kg" as the filtered KG
     # kg_node_ids_keep = {node.id for node in kg.nodes if node.id in node_bindings_map}
@@ -509,9 +496,87 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if unfulfilled_qnode_ids or unfulfilled_qedge_ids or not kg.nodes:
         return results
 
-    results = _create_results(kg, qg, ignore_edge_direction)
+    # Create results off the "required" portion of the QG
+    required_qg = QueryGraph(nodes=[qnode for qnode in qg.nodes if not qnode.option_group_id],
+                             edges=[qedge for qedge in qg.edges if not qedge.option_group_id])
+    qg_is_disconnected = _qg_is_disconnected(required_qg)
+    if qg_is_disconnected:
+        raise ValueError(f"Required portion of QG is disconnected. This isn't allowed! 'Required' qnode IDs are: "
+                         f"{[qnode.id for qnode in required_qg.nodes]}")
+    result_graphs_required = _create_result_graphs(kg, required_qg, ignore_edge_direction)
+
+    # Then create results for each of the "option groups" in the QG
+    option_groups_in_qg = {qedge.option_group_id for qedge in qg.edges if qedge.option_group_id}
+    option_group_results_dict = dict()
+    for option_group in option_groups_in_qg:
+        # Include qnodes/qedges that are either required or belong to this option group in our QG for this run
+        option_group_qg = QueryGraph(nodes=[qnode for qnode in qg.nodes if qnode.option_group_id == option_group or not qnode.option_group_id],
+                                     edges=[qedge for qedge in qg.edges if qedge.option_group_id == option_group or not qedge.option_group_id])
+        qg_is_disconnected = _qg_is_disconnected(option_group_qg)
+        if qg_is_disconnected:
+            raise ValueError(f"Required + option group {option_group} part of the QG is disconnected. This isn't allowed!")
+        result_graphs_for_option_group = _create_result_graphs(kg, option_group_qg, ignore_edge_direction)
+        option_group_results_dict[option_group] = result_graphs_for_option_group
+
+    # TODO: Merge the option group results into the required results
+    final_result_graphs = result_graphs_required
+
+    # Convert the result graphs into actual Swagger object model results
+    results = []
+    for result_graph in final_result_graphs:
+        node_bindings = []
+        for qnode_id, node_ids in result_graph['nodes'].items():
+            for node_id in node_ids:
+                node_bindings.append(NodeBinding(qg_id=qnode_id, kg_id=node_id))
+        edge_bindings = []
+        for qedge_id, edge_ids in result_graph['edges'].items():
+            for edge_id in edge_ids:
+                edge_bindings.append(EdgeBinding(qg_id=qedge_id, kg_id=edge_id))
+        result = Result(node_bindings=node_bindings, edge_bindings=edge_bindings)
+
+        # Fill out the essence for the result
+        essence_qnode_id = _get_essence_node_for_qg(qg)
+        essence_qnode = _get_query_node(essence_qnode_id, qg)
+        essence_kg_node_id_set = result_graph['nodes'].get(essence_qnode_id, set())
+        if len(essence_kg_node_id_set) == 1:
+            essence_kg_node_id = next(iter(essence_kg_node_id_set))
+            essence_kg_node = kg_nodes_map[essence_kg_node_id]
+            result.essence = essence_kg_node.name
+            if result.essence is None:
+                result.essence = essence_kg_node_id
+            assert result.essence is not None
+            if essence_kg_node.symbol is not None:
+                result.essence += " (" + str(essence_kg_node.symbol) + ")"
+            result.essence_type = str(essence_qnode.type) if essence_qnode else None
+        elif len(essence_kg_node_id_set) == 0:
+            result.essence = cast(str, None)
+            result.essence_type = cast(str, None)
+        else:
+            raise ValueError(
+                f"Result contains more than one node that is a candidate for the essence: {essence_kg_node_id_set}")
+
+        # Programmatically generating an informative description for each result
+        # seems difficult, but having something non-None is required by the
+        # database.  Just put in a placeholder for now, as is done by the
+        # QueryGraphReasoner
+        result.description = "No description available"  # see issue 642
+
+        results.append(result)
 
     return results
+
+
+def _qg_is_disconnected(qg: QueryGraph):
+    qnode_ids_examined = {qg.nodes[0].id} if qg.nodes else {}  # Start with any qnode
+    qnode_ids_remaining = {qnode.id for qnode in qg.nodes}.difference(qnode_ids_examined)
+    # Repeatedly look for a qnode connected to at least one of the already examined qnodes
+    connected_qnode_id, _ = _find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
+    while connected_qnode_id and qnode_ids_remaining:
+        qnode_ids_remaining.remove(connected_qnode_id)
+        qnode_ids_examined.add(connected_qnode_id)
+        connected_qnode_id, _ = _find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
+    # The QG must be disconnected if there are qnodes remaining that are not connected to any of our examined ones
+    return True if not connected_qnode_id and qnode_ids_remaining else False
 
 
 def _get_connected_qnode(qnode_id: str, qnode_ids_to_choose_from: [str], query_graph: QueryGraph) -> Optional[str]:
@@ -719,13 +784,12 @@ def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
     return result_graph
 
 
-def _create_results(kg: KnowledgeGraph,
-                    qg: QueryGraph,
-                    ignore_edge_direction: bool = True) -> List[Result]:
+def _create_result_graphs(kg: KnowledgeGraph,
+                          qg: QueryGraph,
+                          ignore_edge_direction: bool = True) -> List[Result]:
     result_graphs = []
     kg_node_ids_by_qg_id = _get_kg_node_ids_by_qg_id(kg)
     kg_node_adj_map_by_qg_id = _get_kg_node_adj_map_by_qg_id(kg_node_ids_by_qg_id, kg, qg)
-    kg_node_lookup = {node.id: node for node in kg.nodes}
     qg_node_lookup = {qnode.id: qnode for qnode in qg.nodes}
     qg_adj_map = _get_qg_adj_map_undirected(qg)
 
@@ -819,49 +883,7 @@ def _create_results(kg: KnowledgeGraph,
                 result_graph['edges'][qedge_id] = result_graph['edges'][qedge_id].union(ids_of_matching_edges)
 
     final_result_graphs = [result_graph for result_graph in result_graphs if _result_graph_is_fulfilled(result_graph, qg)]
-
-    # Convert these into actual object model results
-    results = []
-    for result_graph in final_result_graphs:
-        node_bindings = []
-        for qnode_id, node_ids in result_graph['nodes'].items():
-            for node_id in node_ids:
-                node_bindings.append(NodeBinding(qg_id=qnode_id, kg_id=node_id))
-        edge_bindings = []
-        for qedge_id, edge_ids in result_graph['edges'].items():
-            for edge_id in edge_ids:
-                edge_bindings.append(EdgeBinding(qg_id=qedge_id, kg_id=edge_id))
-        result = Result(node_bindings=node_bindings, edge_bindings=edge_bindings)
-
-        # Fill out the essence for the result
-        essence_qnode_id = _get_essence_node_for_qg(qg)
-        essence_qnode = _get_query_node(essence_qnode_id, qg)
-        essence_kg_node_id_set = result_graph['nodes'].get(essence_qnode_id, set())
-        if len(essence_kg_node_id_set) == 1:
-            essence_kg_node_id = next(iter(essence_kg_node_id_set))
-            essence_kg_node = kg_node_lookup[essence_kg_node_id]
-            result.essence = essence_kg_node.name
-            if result.essence is None:
-                result.essence = essence_kg_node_id
-            assert result.essence is not None
-            if essence_kg_node.symbol is not None:
-                result.essence += " (" + str(essence_kg_node.symbol) + ")"
-            result.essence_type = str(essence_qnode.type) if essence_qnode else None
-        elif len(essence_kg_node_id_set) == 0:
-            result.essence = cast(str, None)
-            result.essence_type = cast(str, None)
-        else:
-            raise ValueError(f"Result contains more than one node that is a candidate for the essence: {essence_kg_node_id_set}")
-
-        # Programmatically generating an informative description for each result
-        # seems difficult, but having something non-None is required by the
-        # database.  Just put in a placeholder for now, as is done by the
-        # QueryGraphReasoner
-        result.description = "No description available"  # see issue 642
-
-        results.append(result)
-
-    return results
+    return final_result_graphs
 
 
 

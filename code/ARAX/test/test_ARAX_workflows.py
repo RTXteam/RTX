@@ -92,7 +92,7 @@ def test_option_group_id():
             "add_qnode(type=chemical_substance, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, type=indicated_for, option_group_id=a, id=e00)",
             "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, option_group_id=1, id=e01)",
-            "expand(edge_id=[e00,e01])",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
         ]}}
     [response, message] = _do_arax_query(query)
     for edge in message.query_graph.edges:
@@ -108,7 +108,7 @@ def test_exclude():
             "add_qnode(type=chemical_substance, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
             "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
-            "expand(edge_id=[e00,e01])",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'

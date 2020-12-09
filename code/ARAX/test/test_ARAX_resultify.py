@@ -1332,12 +1332,13 @@ def test_disconnected_qg():
         "add_qnode(name=acetaminophen, id=n01)",
         "add_qnode(type=disease, id=n02)",
         "add_qedge(id=e00, source_id=n01, target_id=n02)",
+        "expand(kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status != 'OK'
-    assert "Query graph is disconnected" in response.show()
+    assert "QG is disconnected" in response.show()
 
 
 if __name__ == '__main__':
