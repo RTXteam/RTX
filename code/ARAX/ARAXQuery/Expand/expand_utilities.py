@@ -43,6 +43,10 @@ class DictKnowledgeGraph:
     def get_all_node_ids(self) -> Set[str]:
         return {node.id for nodes in self.nodes_by_qg_id.values() for node in nodes.values()}
 
+    def is_empty(self) -> bool:
+        print(self.nodes_by_qg_id.values())
+        return True if not self.nodes_by_qg_id.values() else False
+
 
 def get_curie_prefix(curie: str) -> str:
     if ':' in curie:
@@ -124,7 +128,8 @@ def get_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> Dict[str, int]:
 
 def get_printable_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> str:
     counts_by_qg_id = get_counts_by_qg_id(dict_kg)
-    return ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
+    counts_string = ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
+    return counts_string if counts_string else "none found"
 
 
 def get_query_node(query_graph: QueryGraph, qnode_id: str) -> QNode:

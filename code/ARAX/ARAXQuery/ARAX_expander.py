@@ -271,7 +271,7 @@ class ARAXExpander:
                                                                    query_graph, use_synonyms, log)
                 if log.status != 'OK':
                     return response
-                elif qedge.exclude:
+                elif qedge.exclude and not answer_kg.is_empty():
                     self._apply_kryptonite(answer_kg, dict_kg, node_usages_by_edges_map, query_graph, log)
                 else:
                     node_usages_by_edges_map[qedge.id] = edge_node_usage_map
@@ -367,7 +367,7 @@ class ARAXExpander:
                 answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
 
             # Make sure our query has been fulfilled (unless we're continuing if no results)
-            if not eu.qg_is_fulfilled(edge_query_graph, answer_kg):
+            if not eu.qg_is_fulfilled(edge_query_graph, answer_kg) and not qedge.exclude:
                 if continue_if_no_results:
                     log.warning(f"No paths were found in {kp_to_use} satisfying this query graph")
                 else:

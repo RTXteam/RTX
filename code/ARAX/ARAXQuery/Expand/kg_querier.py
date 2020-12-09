@@ -66,7 +66,7 @@ class KGQuerier:
             log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph with more than two nodes: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
             return final_kg, edge_to_nodes_map
-        qedge_id = query_graph.edges[0].id
+        qedge = query_graph.edges[0]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
         if use_synonyms and kg_name == "KG1":
@@ -84,7 +84,7 @@ class KGQuerier:
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kg_name, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_id, kg_name, continue_if_no_results, log)
+        neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge, kg_name, continue_if_no_results, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         final_kg, edge_to_nodes_map = self._load_answers_into_kg(neo4j_results, kg_name, query_graph, log)
@@ -186,15 +186,15 @@ class KGQuerier:
             log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
             return ""
 
-    def _answer_query_using_neo4j(self, cypher_query: str, qedge_id: str, kg_name: str, continue_if_no_results: bool,
+    def _answer_query_using_neo4j(self, cypher_query: str, qedge: QEdge, kg_name: str, continue_if_no_results: bool,
                                   log: Response) -> List[Dict[str, List[Dict[str, any]]]]:
-        log.info(f"Sending cypher query for edge {qedge_id} to {kg_name} neo4j")
+        log.info(f"Sending cypher query for edge {qedge.id} to {kg_name} neo4j")
         results_from_neo4j = self._run_cypher_query(cypher_query, kg_name, log)
         if log.status == 'OK':
             columns_with_lengths = dict()
             for column in results_from_neo4j[0]:
                 columns_with_lengths[column] = len(results_from_neo4j[0].get(column))
-            if any(length == 0 for length in columns_with_lengths.values()):
+            if any(length == 0 for length in columns_with_lengths.values()) and not qedge.exclude:
                 if continue_if_no_results:
                     log.warning(f"No paths were found in {kg_name} satisfying this query graph")
                 else:
