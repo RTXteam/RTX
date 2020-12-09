@@ -1298,7 +1298,53 @@ def test_issue1119_b():
     assert not any(edge_binding.qg_id == "e02" for result in message.results for edge_binding in result.edge_bindings)
 
 
-def test_issue1146():
+@pytest.mark.slow
+def test_issue1119_c():
+    # Test simple query with single option group
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
+        "add_qedge(id=e01, source_id=n00, target_id=n01, type=correlated_with, option_group_id=1)",
+        "expand(kp=ARAX/KG2)",
+        "resultify(debug=true)",
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+    for result in message.results:
+        assert any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00")
+    # Make sure at least one of our results has the "optional" group 1 edge
+    results_with_optional_edge = [result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01")]
+    assert results_with_optional_edge
+
+    # Make sure the number of results is the same as if we asked only for the required portion
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
+        "expand(kp=ARAX/KG2)",
+        "resultify(debug=true)",
+    ]
+    response, message_without_option_group = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message_without_option_group.results) == len(message.results)
+
+    # And make sure the number of results with an option group edge makes sense
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        f"add_qnode(id=n01, curie=[{', '.join([node.id for node in message.knowledge_graph.nodes if 'n01' in node.qnode_ids])}])",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=correlated_with)",
+        "expand(kp=ARAX/KG2)",
+        # Note: skipping resultify here due to issue #1152
+    ]
+    response, message_option_edge_only = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(results_with_optional_edge) == len([node for node in message_option_edge_only.knowledge_graph.nodes
+                                                   if "n01" in node.qnode_ids])
+
+
+def test_issue1146_a():
     actions = [
         "add_qnode(id=n0, curie=MONDO:0001475, type=disease)",
         "add_qnode(id=n2, type=chemical_substance)",
@@ -1309,7 +1355,6 @@ def test_issue1146():
         "overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n0, target_qnode_id=n2)",
         "resultify(debug=true)",
         "filter_results(action=limit_number_of_results, max_results=4)",
-        "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
