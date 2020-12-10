@@ -583,12 +583,40 @@ def test_ngd_expand():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_genetics_kp_query():
+def test_genetics_kp_simple():
     actions_list = [
         "add_qnode(name=type 2 diabetes mellitus, type=disease, id=n00)",
         "add_qnode(type=gene, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=GeneticsKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_genetics_kp_2_hop():
+    actions_list = [
+        "add_qnode(curie=UniProtKB:Q99712, id=n00, type=protein)",
+        "add_qnode(type=disease, id=n01)",
+        "add_qnode(type=gene, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(kp=GeneticsKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+@pytest.mark.slow
+def test_genetics_kp_multi_kp():
+    actions_list = [
+        "add_qnode(id=n0, name=AMYLIN, type=chemical_substance)",
+        "add_qnode(id=n1, type=disease, is_set=true)",
+        "add_qnode(id=n2, type=protein)",
+        "add_qedge(id=e0, source_id=n0, target_id=n1)",
+        "add_qedge(id=e1, source_id=n1, target_id=n2)",
+        "expand(kp=ARAX/KG2, edge_id=e0)",
+        "expand(kp=GeneticsKP, edge_id=e1)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
