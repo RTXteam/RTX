@@ -65,6 +65,7 @@ class ARAXQueryGraphInterpreter:
             return response
 
         query_graph_template = query_graph_info.query_graph_templates['detailed']
+        #print(json.dumps(query_graph_template,sort_keys=True,indent=2))
 
         # Check the number of nodes since the tree is based on the number of nodes
         n_nodes = query_graph_template['n_nodes']
@@ -109,20 +110,32 @@ class ARAXQueryGraphInterpreter:
 
             # Else it's an edge. Don't do anything with those currently
             else:
-                possible_next_steps.append( { 'content': '', 'score': 0 } )
+                # Go through the list of possible things it could be and those or lesser possible next steps
+                if component['has_type'] and component['type_value']:
+                    possible_next_steps.append( { 'content': f"type={component['type_value']}", 'score': 90 } )
+                    possible_next_steps.append( { 'content': 'type', 'score': 10 } )
+                    possible_next_steps.append( { 'content': '', 'score': 0 } )
+
+                elif component['has_type']:
+                    possible_next_steps.append( { 'content': 'type', 'score': 10 } )
+                    possible_next_steps.append( { 'content': '', 'score': 0 } )
+
+                else:
+                    possible_next_steps.append( { 'content': '', 'score': 0 } )
 
             # For each of the current tree pointers
             new_tree_pointers = []
             for tree_pointer in tree_pointers:
+                if debug: print(f"    - pointer={tree_pointer}")
 
                 # Consider each of the new possibilities
                 for possible_next_step in possible_next_steps:
                     component_string = f"{component['component_id']}({possible_next_step['content']})"
-                    if debug: print(f"  - component_string={component_string}")
+                    if debug: print(f"    - component_string={component_string}")
 
                     # If this component is a possible next step in the tree, then add the next step to new_tree_pointers
                     if component_string in tree_pointer['pointer']:
-                        if debug: print(f"    - Found this component with score {possible_next_step['score']}")
+                        if debug: print(f"      - Found this component with score {possible_next_step['score']}")
                         new_tree_pointers.append( { 'pointer': tree_pointer['pointer'][component_string], 'score': tree_pointer['score'] + possible_next_step['score'] })
                         #tree_pointer = tree_pointer[component_string]
 
@@ -260,10 +273,12 @@ class ARAXQueryGraphInterpreter:
 
 
 ##########################################################################################
-def main():
+
+def QGI_test1():
 
     #### Some qnode examples
     test_query_graphs = [
+        [ { 'id': 'n10', 'curie': 'DOID:9281', 'type': 'disease'}, { 'id': 'n11', 'type': 'chemical_substance'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11', 'type': 'treats'} ],
         [ { 'id': 'n10', 'curie': 'DOID:9281'}, { 'id': 'n11', 'type': 'protein'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11'} ],
         [ { 'id': 'n10', 'curie': 'DOID:9281'}, { 'id': 'n11', 'type': 'protein'}, { 'id': 'n12', 'type': 'chemical_substance'},
             { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11'}, { 'id': 'e11', 'source_id': 'n11', 'target_id': 'n12'} ],
@@ -294,6 +309,7 @@ def main():
                     print(response.show(level=Response.DEBUG))
                     return response
             elif 'e' in parameters['id']:
+                #print(f"++ Adding qedge with {parameters}")
                 result = messenger.add_qedge(message, parameters)
                 response.merge(result)
                 if result.status != 'OK':
@@ -316,7 +332,54 @@ def main():
         #### Show the final result
         #print('-------------------------')
         #print(response.show(level=Response.DEBUG))
-        #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+        #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+        #sys.exit(1)
+
+
+##########################################################################################
+
+def QGI_test2():
+
+    #### Set example query_graph
+    input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "type": "biolink:Drug" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "type": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
+
+    #### Create a template Message
+    response = Response()
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+
+    interpreter = ARAXQueryGraphInterpreter()
+    result = interpreter.translate_to_araxi(message)
+    response.merge(result)
+    if result.status != 'OK':
+        print(response.show(level=Response.DEBUG))
+        return response
+
+    araxi_commands = result.data['araxi_commands']
+    print(araxi_commands)
+
+    #### Show the final result
+    print('-------------------------')
+    print(response.show(level=Response.DEBUG))
+    print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+    #sys.exit(1)
+
+
+
+
+##########################################################################################
+def main():
+
+    import argparse
+
+    argparser = argparse.ArgumentParser(description='Class for parsing an incoming query graph and deciding what to do')
+    argparser.add_argument('test_number', type=str, nargs='*', help='Optional test to run')
+    params = argparser.parse_args()
+
+    print(params.test_number)
+    if params.test_number[0] == '2':
+        QGI_test2()
+    else:
+        QGI_test1()
 
 
 if __name__ == "__main__": main()

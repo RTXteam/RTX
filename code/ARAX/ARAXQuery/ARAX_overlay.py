@@ -30,6 +30,339 @@ class ARAXOverlay:
         }
         self.report_stats = True
 
+        # parameter descriptions
+        self.default_value_info = {
+                    'is_required': False,
+                    'examples': ['0', 'inf'],
+                    'default': 'inf',
+                    'type': 'string',
+                    'description': 'The default value of the normalized Google distance (if its value cannot be determined)'
+                }
+        self.virtual_relation_label_info =  {
+                    'is_required': False,
+                    'examples': ['N1', 'N2'],
+                    'type': 'string',
+                    'description': 'Any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'
+                }
+        self.source_qnode_id_info = {
+                    'is_required': False,
+                    'examples': ['n00', 'n01'],
+                    'type': 'string',
+                    'description': 'A specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
+                }
+        self.target_qnode_id_info = {
+                    'is_required': False,
+                    'examples': ['n00', 'n01'],
+                    'type': 'string',
+                    'description': 'A specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
+                }
+        self.paired_concept_frequency_info = {
+                    'is_required': False,
+                    'examples': ['true', 'false'],
+                    'type': 'string',
+                    'description': "Indicates if you want to use the paired concept frequency option. Mutually exlisive with: "+\
+                    "`paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error."
+                }
+        self.observed_expected_ratio_info = {
+                    'is_required': False,
+                    'examples': ['true', 'false'],
+                    'type': 'string',
+                    'description': "Indicates if you want to use the paired concept frequency option. Mutually exlisive with: "+\
+                    "`paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error."
+                }
+        self.chi_square_info = {
+                    'is_required': False,
+                    'examples': ['true', 'false'],
+                    'type': 'string',
+                    'description': "Indicates if you want to use the paired concept frequency option. Mutually exlisive with: "+\
+                    "`paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error."
+                }
+        self.virtual_relation_label_info = {
+                    'is_required': False,
+                    'examples': ['N1', 'J2'],
+                    'type': 'string',
+                    'description': "An optional label to help identify the virtual edge in the relation field."
+                }
+        self.max_num_info = {
+                    'is_required': False,
+                    'examples': ['all', 5, 50],
+                    'type': 'int or string',
+                    'description': "The maximum number of values to return. Enter 'all' to return everything",
+                    'default': 100
+                }
+        self.start_node_id_info = {
+                    'is_required': True,
+                    'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'],
+                    'type': 'string',
+                    'description': "A curie id specifying the starting node"
+                }
+        self.intermediate_node_id_info = {
+                    'is_required': True,
+                    'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'],
+                    'type': 'string',
+                    'description': "A curie id specifying the intermediate node"
+                }
+        self.end_node_id_info = {
+                    'is_required': True,
+                    'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'],
+                    'type': 'string',
+                    'description': "A curie id specifying the ending node"
+                }
+        self.virtual_relation_label_required_info = {
+                    'is_required': True,
+                    'examples': ['N1', 'J2', 'FET'],
+                    'type': 'string',
+                    'description': "An optional label to help identify the virtual edge in the relation field."
+                }
+        self.source_qnode_id_required_info = {
+                    'is_required': True,
+                    'examples': ['n00', 'n01'],
+                    'type': 'string',
+                    'description': 'A specific source query node id (required)'
+                }
+        self.target_qnode_id_required_info = {
+                    'is_required': True,
+                    'examples': ['n00', 'n01'],
+                    'type': 'string',
+                    'description': 'A specific target query node id (required)'
+                }
+        self.rel_edge_id_info = {
+                    'is_required': False,
+                    'examples': ['e00', 'e01'],
+                    'type': 'string',
+                    'description': "A specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"
+                }
+        self.COHD_method_info = {
+                    "is_required": False,
+                    #"examples": ['paired_concept_frequency', 'observed_expected_ratio', 'chi_square'],
+                    "enum": ['paired_concept_frequency', 'observed_expected_ratio', 'chi_square'],
+                    "default": "paired_concept_frequency",
+                    "type": "string",
+                    "description": "Which measure from COHD should be considered."
+                }
+        self.filter_type_info = {
+                    "is_required": False,
+                    "examples": ['top_n', 'cutoff', None],
+                    "enum": ['top_n', 'cutoff', None],
+                    'type': 'string or None',
+                    'description': "If `top_n` is set this indicate the top number (the smallest) of p-values will be returned acording to what is specified in the `value` parameter. If `cutoff` is set then this indicates the p-value cutoff should be used to return results acording to what is specified in the `value` parameter. (optional, otherwise all results returned)",
+                    'default': None,
+                    'depends_on': 'value'
+        }
+        self.fet_value_info = {
+                    "is_required": False,
+                    "examples": ['all', 0.05, 0.95, 5, 50],
+                    'type': 'int or float or None',
+                    'description': "If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)",
+                    'default': None
+        }
+
+        # descriptions
+        self.command_definitions = {
+            "compute_ngd": {
+                "dsl_command": "overlay(action=compute_ngd)",
+                "description": """
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+compute_ngd computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name normalized_google_distance.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by virtual_relation_label.
+                    """,
+                "parameters": {
+                    'default_value': self.default_value_info,
+                    'virtual_relation_label': self.virtual_relation_label_info,
+                    'source_qnode_id': self.source_qnode_id_info,
+                    'target_qnode_id': self.target_qnode_id_info
+                }
+            },
+            "overlay_clinical_info": {
+                "dsl_command": "overlay(action=overlay_clinical_info)",
+                "description": """
+`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+These virtual edges have the following types:
+
+* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
+* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
+* `chi_square` has the virtual edge type `has_chi_square_with`
+
+Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
+
+* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge source and target nodes and adds these values as edge attributes.
+* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
+* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+overlay_clinical_info overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as 'paired_concept_frequency', 'observed_expected_ratio', etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+                    """,
+                "mutually_exclusive_params":[
+                    'paired_concept_frequency', 
+                    'observed_expected_ratio', 
+                    'chi_square'
+                ],
+                "parameters": {
+                    'COHD_method': self.COHD_method_info,
+                    'virtual_relation_label' : self.virtual_relation_label_info,
+                    'source_qnode_id': self.source_qnode_id_info,
+                    'target_qnode_id': self.target_qnode_id_info
+                }
+            },
+            "compute_jaccard": {
+                "dsl_command": "overlay(action=compute_jaccard)",
+                "description":  """
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
+The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
+This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
+This can be used for downstream filtering to concentrate on relevant bioentities.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+compute_jaccard creates virtual edges and adds an edge attribute (with the property name 'jaccard_index') containing the following information:
+The jaccard similarity measures how many 'intermediate_node_id's are shared in common between each 'start_node_id' and 'target_node_id'.
+This is used for purposes such as "find me all drugs ('start_node_id') that have many proteins ('intermediate_node_id') in common with this disease ('end_node_id')."
+This can be used for downstream filtering to concentrate on relevant bioentities.
+                    """,
+                "parameters": {
+                    'start_node_id': self.start_node_id_info,
+                    'intermediate_node_id': self.intermediate_node_id_info,
+                    'end_node_id': self.end_node_id_info,
+                    'virtual_relation_label': self.virtual_relation_label_required_info
+                }
+            },
+            "add_node_pmids": {
+                "dsl_command": "overlay(action=add_node_pmids)",
+                "description": """
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+add_node_pmids adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+                    """,
+                "parameters": {
+                    'max_num': self.max_num_info
+                }
+            },
+            "predict_drug_treats_disease": {
+                "dsl_command": "overlay(action=predict_drug_treats_disease)",
+                "description": """
+`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
+Use cases include:
+
+* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
+* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    """,
+                'brief_description': """
+predict_drug_treats_disease utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see this publication (https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name 'probability_treats').
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+                    """,
+                "parameters": {
+                    'virtual_relation_label': self.virtual_relation_label_info,
+                    'source_qnode_id': self.source_qnode_id_info,
+                    'target_qnode_id': self.target_qnode_id_info
+                }
+            },
+            "fisher_exact_test": {
+                "dsl_command": "overlay(action=fisher_exact_test)",
+                "description": """
+`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
+This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
+It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+Use cases include:
+
+* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
+* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
+* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
+
+This p-value is calculated from fisher's exact test based on the contingency table with following format:
+
+|||||
+|-----|-----|-----|-----|
+|                                  | in query node list | not in query node list | row total |
+| connect to certain adjacent node |         a          |           b            |   a+b     |
+| not connect to adjacent node     |         c          |           d            |   c+d     |
+|         column total             |        a+c         |          b+d           |  a+b+c+d  |
+
+The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
+The code is as follows:
+
+```
+_, pvalue = stats.fisher_exact([[a, b], [c, d]])
+```
+                    """,
+                'brief_description': """
+fisher_exact_test computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
+This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
+It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+                    """,
+                "parameters": {
+                    'source_qnode_id': self.source_qnode_id_required_info,
+                    'virtual_relation_label': self.virtual_relation_label_required_info,
+                    'target_qnode_id': self.target_qnode_id_required_info,
+                    'rel_edge_id': self.rel_edge_id_info,
+                    'filter_type': self.filter_type_info,
+                    'value': self.fet_value_info
+                }
+            },
+            "overlay_exposures_data": {
+                "dsl_command": "overlay(action=overlay_exposures_data)",
+                "description": """
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+                    """,
+                'brief_description': """
+overlay_exposures_data overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name 'icees_p-value'.
+                    """,
+                "parameters": {
+                    'virtual_relation_label': self.virtual_relation_label_info,
+                    'source_qnode_id': self.source_qnode_id_info,
+                    'target_qnode_id': self.target_qnode_id_info
+                }
+            }
+        }
+
     def report_response_stats(self, response):
         """
         Little helper function that will report the KG, QG, and results stats to the debug in the process of executing actions. Basically to help diagnose problems
@@ -68,14 +401,15 @@ class ARAXOverlay:
         return description_list
 
 
-    # Write a little helper function to test parameters
     def check_params(self, allowable_parameters):
+        # Write a little helper function to test parameters
         """
         Checks to see if the input parameters are allowed
         :param input_parameters: input parameters supplied to ARAXOverlay.apply()
         :param allowable_parameters: the allowable parameters
         :return: None
         """
+        #allowable_parameters = self.command_definitions['parameters']
         for key, item in self.parameters.items():
             if key not in allowable_parameters:
                 self.response.error(
@@ -178,22 +512,11 @@ class ARAXOverlay:
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = """
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-"""
-            allowable_parameters['brief_description'] = brief_description
-            return allowable_parameters
+            description_dict = self.command_definitions['compute_ngd']
+            return description_dict
 
         # Make sure only allowable parameters and values have been passed
+        # FIXME : this will need to be fixed
         self.check_params(allowable_parameters)
         # return if bad parameters have been passed
         if self.response.status != 'OK':
@@ -206,9 +529,11 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
             if parameters['default_value'] == '0':
                 parameters['default_value'] = '0'
             else:
-                parameters['default_value'] = float("-inf")
+                parameters['default_value'] = float("inf")
 
         # Check if all virtual edge params have been provided properly
+
+        # FIXME : this will need to be fixed
         self.check_virtual_edge_params(allowable_parameters)
         if self.response.status != 'OK':
             return self.response
@@ -231,6 +556,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'overlay_clinical_info'},
+                                    'COHD_method': {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'},
                                     'paired_concept_frequency': {'true', 'false'},
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
@@ -240,6 +566,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
                                     }
         else:
             allowable_parameters = {'action': {'overlay_clinical_info'},
+                                    'COHD_method': {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'},
                                     'paired_concept_frequency': {'true', 'false'},
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
@@ -250,30 +577,8 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = """
-`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
-All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
-This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
-This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
-These virtual edges have the following types:
-
-* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
-* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
-* `chi_square` has the virtual edge type `has_chi_square_with`
-
-Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
-
-* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge source and target nodes and adds these values as edge attributes.
-* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
-* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
-* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-"""
-            allowable_parameters['brief_description'] = brief_description
-            return allowable_parameters
+            description_dict = self.command_definitions['overlay_clinical_info']
+            return description_dict
 
 
         # Make sure only allowable parameters and values have been passed
@@ -283,9 +588,17 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
             return self.response
 
         #check if conflicting parameters have been provided
-        mutually_exclusive_params = {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}
-        if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
-            self.response.error(f"The parameters {mutually_exclusive_params} are mutually exclusive. Please provide only one for each call to overlay(action=overlay_clinical_info)")
+        if 'COHD_method' in self.parameters:
+            for method in {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}:
+                self.parameters[method] = 'false'
+            self.parameters[parameters['COHD_method']] = 'true'
+        elif 'paired_concept_frequency' not in self.parameters and 'observed_expected_ratio' not in self.parameters and 'chi_square' not in self.parameters:
+            self.parameters['paired_concept_frequency'] = 'true'
+            self.parameters['COHD_method'] = 'paired_concept_frequency'
+        else: 
+            mutually_exclusive_params = {'paired_concept_frequency', 'observed_expected_ratio', 'chi_square'}
+            if np.sum([x in mutually_exclusive_params for x in parameters]) > 1:
+                self.response.error(f"The parameters {mutually_exclusive_params} are mutually exclusive. Please provide only one for each call to overlay(action=overlay_clinical_info)")
         if self.response.status != 'OK':
             return self.response
 
@@ -302,6 +615,8 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
         from Overlay.overlay_clinical_info import OverlayClinicalInfo
         OCI = OverlayClinicalInfo(self.response, self.message, default_params)
+        if OCI.response.status != 'OK':
+            return OCI.response
         response = OCI.decorate()  # TODO: refactor this so it's basically another apply() like function # 606
         return response
 
@@ -324,15 +639,8 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = """
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-"""
-            allowable_parameters['brief_description'] = brief_description
-            return allowable_parameters
+            description_dict = self.command_definitions['add_node_pmids']
+            return description_dict
 
 
         # Make sure only allowable parameters and values have been passed
@@ -396,16 +704,8 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # print(allowable_parameters)
         # A little function to describe what this thing does
         if describe:
-            brief_description = """
-`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
-The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
-This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
-This can be used for downstream filtering to concentrate on relevant bioentities.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-"""
-            allowable_parameters['brief_description'] = brief_description
-            return allowable_parameters
+            description_dict = self.command_definitions['compute_jaccard']
+            return description_dict
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -447,22 +747,8 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = """
-`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substanct treats a disease/phenotypic feature.
-For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-Use cases include:
-
-* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
-* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-"""
-            allowable_parameters['brief_description'] = brief_description
-            return allowable_parameters
+            description_dict = self.command_definitions['predict_drug_treats_disease']
+            return description_dict
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -477,6 +763,8 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
         # now do the call out to NGD
         from Overlay.predict_drug_treats_disease import PredictDrugTreatsDisease
         PDTD = PredictDrugTreatsDisease(self.response, self.message, parameters)
+        if PDTD.response.status != 'OK':
+            return PDTD.response
         response = PDTD.predict_drug_treats_disease()
         return response
 
@@ -517,7 +805,9 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
                                     'target_qnode_id': allowable_target_qnode_id,
                                     'rel_edge_id': allowwable_rel_edge_id,
                                     'top_n': [None,int()],
-                                    'cutoff': [None,float()]
+                                    'cutoff': [None,float()],
+                                    'filter_type': {'cutoff', 'top_n'},
+                                    'value': [None,int(),float()],
                                     }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
@@ -526,47 +816,32 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
                                     'target_qnode_id': {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
                                     'rel_edge_id': {"a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"},
                                     'top_n': {"an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10"},
-                                    'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"}
+                                    'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"},
+                                    'filter_type': {'cutoff', 'top_n'},
+                                    'value': {'If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)'},
                                     }
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = """
-`fisher_exact_test` computes the the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
-This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
-It can also allow you filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-Use cases include:
-
-* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
-* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
-* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
-
-This p-value is calculated from fisher's exact test based on the contingency table with following format:
-
-|||||
-|-----|-----|-----|-----|
-|                                  | in query node list | not in query node list | row total |
-| connect to certain adjacent node |         a          |           b            |   a+b     |
-| not connect to adjacent node     |         c          |           d            |   c+d     |
-|         column total             |        a+c         |          b+d           |  a+b+c+d  |
-    
-The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
-The code is as follows:
-
-```
- _, pvalue = stats.fisher_exact([[a, b], [c, d]])
-```
-
-"""
-            allowable_parameters['brief_description'] = brief_description
-            return allowable_parameters
+            description_dict = self.command_definitions['fisher_exact_test']
+            return description_dict
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
         # return if bad parameters have been passed
+        if 'filter_type' in self.parameters and 'value' in self.parameters:
+            if self.parameters['filter_type'] == 'cutoff':
+                self.parameters['cutoff'] = self.parameters['value']
+                if 'top_n' in self.parameters:
+                    del self.parameters['top_n']
+            elif self.parameters['filter_type'] == 'top_n':
+                self.parameters['top_n'] = self.parameters['value']
+                if type(self.parameters['top_n']) == float:
+                    self.response.error(
+                        f"Supplied value {self.parameters['top_n']} is not permitted. If 'top_n' is supplied for the 'filter_type' parameter, then the 'value' parameter cannot be a float it must be an integer or None.",
+                        error_code="UnknownValue")
+                if 'cutoff' in self.parameters:
+                    del self.parameters['cutoff']
         if self.response.status != 'OK':
             return self.response
 
@@ -601,15 +876,8 @@ The code is as follows:
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = """
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
-
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
-            """
-            allowable_parameters['brief_description'] = brief_description
-            return allowable_parameters
+            description_dict = self.command_definitions['overlay_exposures_data']
+            return description_dict
 
         # Make sure only allowable parameters and values have been passed
         self.check_params(allowable_parameters)
@@ -679,7 +947,7 @@ def main():
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
     message = ARAXMessenger().from_dict(message_dict)
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
     #### Create an overlay object and use it to apply action[0] from the list
     print("Applying action")
@@ -713,7 +981,7 @@ def main():
     # look at the edges
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
-    #print(json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2))
+    #print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
     #print(response.show(level=Response.DEBUG))
 
     # just print off the values
@@ -721,7 +989,7 @@ def main():
     #for edge in message.knowledge_graph.edges:
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    #print(f"Message: {json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2)}")
+    #print(f"Message: {json.dumps(message.to_dict(), sort_keys=True, indent=2)}")
     #print(message)
     print(f"KG edges: {json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2)}")
     #print(response.show(level=Response.DEBUG))

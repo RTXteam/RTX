@@ -7,10 +7,11 @@ import itertools
 import numpy as np
 from typing import List, Dict, Tuple
 
-import Expand.expand_utilities as eu
-from Expand.expand_utilities import DictKnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import expand_utilities as eu
+from expand_utilities import DictKnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from response import Response
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../UI/OpenAPI/python-flask-server/")
@@ -916,7 +917,11 @@ class COHDQuerier:
                 return {}
             else:
                 preferred_curie = res[qnode.curie]['preferred_curie']
-            omop_ids = self.cohdindex.get_concept_ids(qnode.curie)
+            try:
+                omop_ids = self.cohdindex.get_concept_ids(qnode.curie)
+            except:
+                log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
+                return {}
             res_dict[preferred_curie] = omop_ids
 
         else:
@@ -931,7 +936,11 @@ class COHDQuerier:
                         res_dict[res[curie]['preferred_curie']] = []
 
             for preferred_curie in res_dict:
-                omop_ids = self.cohdindex.get_concept_ids(preferred_curie)
+                try:
+                    omop_ids = self.cohdindex.get_concept_ids(preferred_curie)
+                except:
+                    log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
+                    return {}
                 res_dict[preferred_curie] = omop_ids
 
         return res_dict

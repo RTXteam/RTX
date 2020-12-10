@@ -9,6 +9,9 @@ import re
 
 from response import Response
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
+from node_synonymizer import NodeSynonymizer
+
 
 class QueryGraphInfo:
 
@@ -67,12 +70,28 @@ class QueryGraphInfo:
         for qnode in nodes:
             id = qnode.id
             node_info[id] = { 'id': id, 'node_object': qnode, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
-            if qnode.curie is not None: node_info[id]['has_curie'] = True
-            if qnode.type is not None: node_info[id]['has_type'] = True
+            if qnode.curie is not None:
+                node_info[id]['has_curie'] = True
+
+                #### If the user did not specify a type, but there is a curie, try to figure out the type
+                if node_info[id]['type'] is None:
+                    synonymizer = NodeSynonymizer()
+                    canonical_curies = synonymizer.get_canonical_curies(curies=[qnode.curie], return_all_types=True)
+                    if qnode.curie in canonical_curies and 'preferred_type' in canonical_curies[qnode.curie]:
+                        node_info[id]['has_type'] = True
+                        node_info[id]['type'] = canonical_curies[qnode.curie]['preferred_type']
+
+            if qnode.type is not None:
+                node_info[id]['has_type'] = True
+
             #if qnode.is_set is not None: node_info[id]['is_set'] = True
             if qnode.id is None:
                 response.error("QueryGraph has a node with no id. This is not permitted", error_code="QueryGraphNodeWithNoId")
                 return response
+
+            #### Remap the node types from unsupported to supported
+            if qnode.type is not None:
+                qnode.type = self.remap_node_type(qnode.type)
 
             #### Store lookup of types
             warning_counter = 0
@@ -103,7 +122,7 @@ class QueryGraphInfo:
             #if qnode.type is not None:
             if qedge.type is not None:
                 edge_info[id]['has_type'] = True
-                edge_info[id]['type'] = qnode.type
+                edge_info[id]['type'] = qedge.type
             if qedge.id is None:
                 response.error("QueryGraph has a edge with no id. This is not permitted", error_code="QueryGraphEdgeWithNoId")
                 return response
@@ -150,6 +169,17 @@ class QueryGraphInfo:
             elif node_data['n_links'] > 2:
                 self.is_bifurcated_graph = True
                 response.warning("QueryGraph appears to have a fork in it. This might cause trouble")
+
+        #### If this doesn't produce any singletons, then try curie based selection
+        if len(singletons) == 0:
+            for node_id,node_data in node_info.items():
+                if node_data['has_curie']:
+                    singletons.append(node_data)
+
+        #### If this doesn't produce any singletons, then we don't know how to continue
+        if len(singletons) == 0:
+            response.error("Unable to understand the query graph", error_code="QueryGraphCircular")
+            return response
 
         #### Try to identify the start_node and the end_node
         start_node = singletons[0]
@@ -258,10 +288,23 @@ class QueryGraphInfo:
 
             node_index += 1
             if node_index < self.n_nodes:
+                #print(json.dumps(ast.literal_eval(repr(node)),sort_keys=True,indent=2))
+
+                #### Extract the has_type and type_value from the edges of the node
+                #### This could fail if there are two edges coming out of the node FIXME
+                has_type = False
+                type_value = None
+                if 'edges' in node:
+                    for related_edge in node['edges']:
+                        if related_edge['source_id'] == node['id']:
+                            has_type = related_edge['has_type']
+                            if has_type is True and 'type' in related_edge:
+                                type_value = related_edge['type']
+
                 component_id = f"e{edge_index:02}"
                 template_part = f"-{component_id}()-"
                 self.query_graph_templates['simple'] += template_part
-                component = { 'component_type': 'edge', 'component_id': component_id, 'has_curie': False, 'has_type': False }
+                component = { 'component_type': 'edge', 'component_id': component_id, 'has_curie': False, 'has_type': has_type, 'type_value': type_value }
                 self.query_graph_templates['detailed']['components'].append(component)
                 edge_index += 1
 
@@ -275,6 +318,15 @@ class QueryGraphInfo:
         #### Return the response
         return response
 
+
+    ##########################################################################################
+    #### Remap node types from the new TRAPI 1.0 style to the older TRAPI 0.9.x style
+    def remap_node_type(self, node_type):
+        match = re.match(r'biolink:(.+)', node_type)
+        if match:
+            node_type = match.group(1)
+            node_type = re.sub(r'(?<!^)(?=[A-Z])', '_', node_type).lower()
+        return node_type
 
 
 ##########################################################################################
@@ -310,7 +362,7 @@ def main():
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
     message = ARAXMessenger().from_dict(message_dict)
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
     #### Create a filter object and use it to apply action[0] from the list
     query_graph_info = QueryGraphInfo()

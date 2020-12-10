@@ -36,7 +36,7 @@ def test_query_by_query_graph_2():
     print(result.show())
     assert result.status == 'OK'
     message = araxq.message
-    assert message.n_results == 32
+    assert message.n_results >= 32
     assert message.schema_version == '0.9.3'
 
 

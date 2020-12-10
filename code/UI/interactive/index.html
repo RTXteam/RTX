@@ -6,6 +6,7 @@
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="rtx.js"></script>
+<script src="araxi.js"></script>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="/rtxcomplete/data/quick_def.json"></script>
@@ -24,6 +25,7 @@
 <div onclick="openSection(this,'queryDiv');" class="menucurrent">Query</div>
 <div onclick="openSection(this,'listaDiv');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
 <div onclick="openSection(this,'listbDiv');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
+<div onclick="openSection(this,'compareDiv');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
 <br>
 <div onclick="openSection(this,'historyDiv');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
 <!-- div onclick="openSection(this,'statusDiv');" class="menuleftitem">Status</div -->
@@ -97,7 +99,7 @@
 
   <div class="inputsection" id="qgraph_input">
     <h3 style="display:inline;">Query Graph:</h3>
-    <span style="position:absolute;left:80%;">
+    <span style="position:relative;left:70%;top:5px;">
       <span style="position:relative;right:100px;border:1px solid #000;color:#000;" title="edit query graph" class="clq" onclick="edit_qg(1);">&#9998;</span>
       <span title="remove all elements from query graph" class="clq" onclick="clear_qg(1);">&#9587;</span>
     </span><br><br>
@@ -162,6 +164,14 @@
     <form id="dslForm" name="dslForm" method="post" action="postQuery('DSL');">
       <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="clearDSL();">&#9587;</span>
       <br/>
+      <span class="qgselect">
+	<select id="dsl_command" onchange="show_dsl_command_options(this.value)">
+	  <option style="border-bottom:1px solid black;" value="">Select DSL Command&nbsp;&nbsp;&nbsp;&#8675;</option>
+	</select>
+      </span>
+      <div id="dsl_command_form"></div>
+      <br/>
+      <br/>
       <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL');">
     </form>
   </div>
@@ -185,7 +195,10 @@
 <div class="status" id="listdivB">Items in this list can be passed as input to queries that support list input, by specifying [B] as a parameter.</div>
 </div>
 
-
+<div class="pagesection" id="compareDiv">
+<div class="statushead">Compare Lists A and B </div>
+<div class="status" id="comparelists">Items in lists A and B will be automatically displayed side-by-side for ease of comparison.</div>
+</div>
 
 <div class="pagesection" id="statusDiv">
 </div>

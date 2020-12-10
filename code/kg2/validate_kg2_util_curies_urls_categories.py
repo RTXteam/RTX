@@ -44,7 +44,7 @@ kg2_util.download_file_if_not_exist_locally(biolink_model_url, biolink_model_fil
 biolink_ont = kg2_util.make_ontology_from_local_file(biolink_model_file_name)
 biolink_categories_ontology_depths = kg2_util.get_biolink_categories_ontology_depths(biolink_ont)
 
-biolink_edge_labels = {url.replace(kg2_util.BASE_URL_BIOLINK_META, '') for url in
+biolink_predicates = {url.replace(kg2_util.BASE_URL_BIOLINK_META, '') for url in
                        biolink_ont.children(kg2_util.BASE_URL_BIOLINK_META + 'SlotDefinition')}
 
 for variable_name in dir(kg2_util):
@@ -58,8 +58,8 @@ for variable_name in dir(kg2_util):
     elif variable_name.startswith('BIOLINK_CATEGORY_'):
         category_label = variable_value
         category_camelcase = kg2_util.convert_space_case_to_camel_case(category_label)
-        category_iri = kg2_util.BASE_URL_BIOLINK_META + category_camelcase
-        assert category_camelcase in biolink_categories_ontology_depths or category_iri in biolink_ont.nodes(), category_label
+        category_curie = kg2_util.CURIE_PREFIX_BIOLINK + ':' + category_camelcase
+        assert category_camelcase in biolink_categories_ontology_depths or category_curie in biolink_ont.nodes(), category_label
         #  assert category_label in categories_to_check, category_label
     elif variable_name.startswith('CURIE_ID_'):
         curie_id = variable_value
@@ -69,5 +69,5 @@ for variable_name in dir(kg2_util):
         url = variable_value
         assert iri_shortener(url) is not None, url
     elif variable_name.startswith('EDGE_LABEL_BIOLINK_'):
-        edge_label = variable_value
-        assert edge_label in biolink_edge_labels
+        predicate = variable_value
+        assert kg2_util.CURIE_PREFIX_BIOLINK + ':' + predicate in biolink_predicates

@@ -13,6 +13,8 @@ import traceback
 from collections import Counter
 import numpy as np
 import threading
+import json
+import uuid
 
 from response import Response
 from query_graph_info import QueryGraphInfo
@@ -55,7 +57,7 @@ class ARAXQuery:
     def __init__(self):
         self.response = None
         self.message = None
-
+        
 
     def query_return_stream(self,query):
 
@@ -147,6 +149,7 @@ class ARAXQuery:
             # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
             # and then will later execute the processing plan
             if "have_previous_message_processing_plan" in query_attributes:
+                query['message'] = ARAXMessenger().from_dict(query['message'])
                 pass
             else:
                 response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
@@ -319,6 +322,7 @@ class ARAXQuery:
             #### Check if there is a query_graph
             if "query_graph" in query["message"] and query["message"]["query_graph"] is not None:
                 response.data["have_query_graph"] = 1
+                self.validate_incoming_query_graph(query["message"])
 
             #### If there is both a query_type_id and a query_graph, then return an error
             if "have_query_graph" in response.data and "have_query_type_id_and_terms" in response.data:
@@ -337,7 +341,38 @@ class ARAXQuery:
         return response
 
 
+    ############################################################################################
+    def validate_incoming_query_graph(self,message):
 
+        response = self.response
+        response.info(f"Validating the input query graph")
+
+        # Define allowed qnode and qedge attributes to check later
+        allowed_qnode_attributes = { 'id': 1, 'type':1, 'curie': 1, 'is_set': 1 }
+        allowed_qedge_attributes = { 'id': 1, 'type':1, 'source_id': 1, 'target_id': 1 }
+
+        #### Loop through nodes checking the attributes
+        for qnode in message['query_graph']['nodes']:
+            id = '??'
+            if 'id' in qnode:
+                id = qnode['id']
+            for attr in qnode:
+                if attr not in allowed_qnode_attributes:
+                    response.warning(f"Query graph node '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
+
+        #### Loop through edges checking the attributes
+        for qedge in message['query_graph']['edges']:
+            id = '??'
+            if 'id' in qedge:
+                id = qedge['id']
+            for attr in qedge:
+                if attr not in allowed_qedge_attributes:
+                    response.warning(f"Query graph edge '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
+
+        return response
+
+
+    ############################################################################################
     def limit_message(self,message,query):
         if "max_results" in query and query["max_results"] is not None:
             if message.results is not None:
@@ -376,7 +411,7 @@ class ARAXQuery:
             response.debug(f"Found previous_message_uris")
             for uri in envelope.previous_message_uris:
                 response.debug(f"    messageURI={uri}")
-                matchResult = re.match( r'http[s]://arax.rtx.ai/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
+                matchResult = re.match( r'http[s]://arax.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
                 if matchResult:
                     referenced_message_id = matchResult.group(1)
                     response.debug(f"Found local RTX identifier corresponding to respond_id {referenced_message_id}")
@@ -482,6 +517,11 @@ class ARAXQuery:
                         message = result.data['message']
                         self.message = message
 
+                    elif action['command'] == 'fetch_message':
+                        result = messenger.apply_fetch_message(message,action['parameters'])
+                        message = messenger.message
+                        self.message = message
+
                     elif action['command'] == 'add_qnode':
                         result = messenger.add_qnode(message,action['parameters'])
 
@@ -518,6 +558,17 @@ class ARAXQuery:
                     elif action['command'] == 'return':
                         action_stats['return_action'] = action
                         break
+
+                    elif action['command'] == 'rank_results':
+                        response.info(f"Running experimental reranker on results")
+                        try:
+                            ranker = ARAXRanker()
+                            #ranker.aggregate_scores(message, response=response)
+                            ranker.aggregate_scores_dmk(message, response=response)
+                        except Exception as error:
+                            exception_type, exception_value, exception_traceback = sys.exc_info()
+                            response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                            return response
 
                     else:
                         response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
@@ -571,9 +622,8 @@ class ARAXQuery:
             # If store=true, then put the message in the database
             if return_action['parameters']['store'] == 'true':
                 response.debug(f"Storing resulting Message")
-                message_id = rtxFeedback.addNewMessage(message,query)
-
-
+                message_id = rtxFeedback.addNewMessage(message, query)
+                
             #### If asking for the full message back
             if return_action['parameters']['message'] == 'true':
                 response.info(f"Processing is complete. Transmitting resulting Message back to client.")
@@ -584,7 +634,7 @@ class ARAXQuery:
                 if message_id is None:
                     message_id = 0
                 response.info(f"Processing is complete. Resulting Message id is {message_id} and is available to fetch via /message endpoint.")
-                return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.rtx.ai/api/rtx/v1/message/"+str(message_id) }, 200)
+                return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(message_id) }, 200)
 
 
 
@@ -870,7 +920,7 @@ def main():
     elif params.example_number == 19:  # Let's see what happens if you ask for a node in KG2, but not in KG1 and try to expand
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=CUI:C1452002, id=n00)",
+            "add_qnode(name=UMLS:C1452002, id=n00)",
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=interacts_with)",
             "expand(edge_id=e00)",
@@ -879,7 +929,7 @@ def main():
     elif params.example_number == 20:  # Now try with KG2 expander
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=CUI:C1452002, id=n00)",
+            "add_qnode(name=UMLS:C1452002, id=n00)",
             "add_qnode(type=chemical_substance, is_set=true, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00, type=interacts_with)",
             "expand(edge_id=e00, kp=ARAX/KG2)",
@@ -1305,13 +1355,46 @@ def main():
             "filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)",
         ]}}
+    elif params.example_number == 8673:  # test_one_hop_based_on_types_1
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(curie=MONDO:0001475, id=n00, type=disease)",
+            "add_qnode(type=protein, id=n01, is_set=true)",
+            "add_qnode(type=chemical_substance, id=n02)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG2, continue_if_no_results=true)",
+            #- expand(edge_id=[e00,e01], kp=BTE, continue_if_no_results=true)",
+            "expand(edge_id=e00, kp=BTE, continue_if_no_results=true)",
+            #- expand(edge_id=e00, kp=GeneticsKP, continue_if_no_results=true)",
+            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
+            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            "overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n02)",
+            #"overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)",
+            #"overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n00, target_qnode_id=n02)",
+            #"overlay(action=compute_ngd, virtual_relation_label=N3, source_qnode_id=n01, target_qnode_id=n02)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=100)",
+            "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 9999:
+        query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=acetaminophen, id=n0)",
+            "add_qnode(type=protein, id=n1)",
+            "add_qedge(source_id=n0, target_id=n1, id=e0)",
+            "expand(edge_id=e0)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=100)",
+            "return(message=true, store=json)",
+        ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
 
     if 0:
         message = araxq.query_return_message(query)
-        print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+        print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
         return
 
     result = araxq.query(query)
@@ -1326,7 +1409,7 @@ def main():
     #### Print out the message that came back
     #print(response.show(level=Response.DEBUG))
     #print("Returned message:\n")
-    #print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))

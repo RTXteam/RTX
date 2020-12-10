@@ -24,7 +24,7 @@ class PredictDrugTreatsDisease:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.rtx.ai
+        ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor','retrain_data'])
@@ -34,14 +34,21 @@ class PredictDrugTreatsDisease:
         if os.path.exists(pkl_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/LogModel.pkl " + pkl_file)
+            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
 
         ## check if there is GRAPH.sqlite
         db_file = f"{filepath}/GRAPH.sqlite"
         if os.path.exists(db_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/GRAPH.sqlite " + db_file)
+            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/GRAPH.sqlite " + db_file)
+
+        ## check if there is DTD_probability_database.db
+        DTD_prob_db_file = f"{filepath}/DTD_probability_database_v1.0.db"
+        if os.path.exists(DTD_prob_db_file):
+            pass
+        else:
+            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/DTD_probability_database_v1.0.db " + DTD_prob_db_file)
 
         # use NodeSynonymizer to replace map.txt
         # check if there is map.txt
@@ -49,10 +56,32 @@ class PredictDrugTreatsDisease:
         # if os.path.exists(map_file):
         #     pass
         # else:
-        #     os.system("scp rtxconfig@arax.rtx.ai:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
+        #     os.system("scp rtxconfig@arax.ncats.io:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
 
-        self.pred = predictor(model_file=pkl_file)
-        self.pred.import_file(None, graph_database=db_file)
+        self.use_prob_db = True
+        if self.use_prob_db is True:
+            try:
+                self.pred = predictor(DTD_prob_file=DTD_prob_db_file, use_prob_db=True)
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Internal Error encountered connecting to the local DTD prediction database.")
+        else:
+            try:
+                self.pred = predictor(model_file=pkl_file, use_prob_db=False)
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Internal Error encountered connecting to the local LogModel.pkl file.")
+            try:
+                self.pred.import_file(None, graph_database=db_file)
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"Internal Error encountered connecting to the local graph database file.")
         # with open(map_file, 'r') as infile:
         #     map_file_content = infile.readlines()
         #     map_file_content.pop(0) ## remove title
@@ -64,7 +93,7 @@ class PredictDrugTreatsDisease:
         """
         Takes an input curie from the KG, uses the synonymizer, and then returns something that the map.csv can handle
         """
-        normalizer_result = self.synonymizer.get_equivalent_nodes(input_curie, kg_name='KG2')
+        normalizer_result = self.synonymizer.get_canonical_curies(input_curie)
         curies_in_model = normalizer_result[input_curie]
         # curies_in_model = [curie for curie in curies_in_model if curie in self.known_curies]
         # equivalent_curies = []  # start with empty equivalent_curies
@@ -125,14 +154,38 @@ class PredictDrugTreatsDisease:
 
                 max_probability = 0
                 converted_source_curie = self.convert_to_trained_curies(source_curie)
-                converted_target_curie = self.convert_to_trained_curies(target_curie)
-                if converted_source_curie is None or converted_target_curie is None:
+                if converted_source_curie is None:
                     continue
-                res = list(itertools.product(converted_source_curie, converted_target_curie))
-                if len(res) != 0:
-                    all_probabilities = self.pred.prob_all(res)
-                    if isinstance(all_probabilities, list):
-                        max_probability = max([value for value in all_probabilities if np.isfinite(value)])
+                else:
+                    preferred_type = converted_source_curie['preferred_type']
+                    if preferred_type == "drug" or preferred_type == "chemical_substance":
+                        converted_source_curie = converted_source_curie['preferred_curie']
+                    else:
+                        continue
+                converted_target_curie = self.convert_to_trained_curies(target_curie)
+                if converted_target_curie is None:
+                    continue
+                else:
+                    preferred_type = converted_target_curie['preferred_type']
+                    if preferred_type == "disease" or preferred_type == "phenotypic_feature":
+                        converted_target_curie = converted_target_curie['preferred_curie']
+                    else:
+                        continue
+                if self.use_prob_db is True:
+                    probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
+                    if probability is not None:
+                        if np.isfinite(probability):
+                            max_probability = probability
+                else:
+                    probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+                    if probability is not None:
+                        probability = probability[0]
+                        if np.isfinite(probability):
+                            max_probability = probability
+                # if len(res) != 0:
+                #     all_probabilities = self.pred.prob_all(res)
+                #     if isinstance(all_probabilities, list):
+                #         max_probability = max([value for value in all_probabilities if np.isfinite(value)])
 
                 value = max_probability
 
@@ -197,19 +250,43 @@ class PredictDrugTreatsDisease:
                     source_types = curie_to_type[source_curie]
                     target_types = curie_to_type[target_curie]
                     if (("drug" in source_types) or ("chemical_substance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types)):
-                        temp_value = 0
                         # loop over all pairs of equivalent curies and take the highest probability
                         self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
                         converted_source_curie = self.convert_to_trained_curies(source_curie)
-                        converted_target_curie = self.convert_to_trained_curies(target_curie)
-                        if converted_source_curie is None or converted_target_curie is None:
+                        if converted_source_curie is None:
                             continue
-                        res = list(itertools.product(converted_source_curie, converted_target_curie))
-                        if len(res) != 0:
-                            all_probabilities = self.pred.prob_all(res)
-                            if isinstance(all_probabilities, list):
-                                max_probability = max([value for value in all_probabilities if np.isfinite(value)])
+                        else:
+                            preferred_type = converted_source_curie['preferred_type']
+                            if preferred_type == "drug" or preferred_type == "chemical_substance":
+                                converted_source_curie = converted_source_curie['preferred_curie']
+                            else:
+                                continue
+                        converted_target_curie = self.convert_to_trained_curies(target_curie)
+                        if converted_target_curie is None:
+                            continue
+                        else:
+                            preferred_type = converted_target_curie['preferred_type']
+                            if preferred_type == "disease" or preferred_type == "phenotypic_feature":
+                                converted_target_curie = converted_target_curie['preferred_curie']
+                            else:
+                                continue
+                        if self.use_prob_db is True:
+                            probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
+                            if probability is not None:
+                                if np.isfinite(probability):
+                                    max_probability = probability
+                        else:
+                            probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+                            if probability is not None:
+                                probability = probability[0]
+                                if np.isfinite(probability):
+                                    max_probability = probability
+                        # res = list(itertools.product(converted_source_curie, converted_target_curie))
+                        # if len(res) != 0:
+                        #     all_probabilities = self.pred.prob_all(res)
+                        #     if isinstance(all_probabilities, list):
+                        #         max_probability = max([value for value in all_probabilities if np.isfinite(value)])
 
                         value = max_probability
 
@@ -223,14 +300,40 @@ class PredictDrugTreatsDisease:
                         self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
                         converted_source_curie = self.convert_to_trained_curies(source_curie)
-                        converted_target_curie = self.convert_to_trained_curies(target_curie)
-                        if converted_source_curie is None or converted_target_curie is None:
+                        if converted_source_curie is None:
                             continue
-                        res = list(itertools.product(converted_target_curie, converted_source_curie))
-                        if len(res) != 0:
-                            all_probabilities = self.pred.prob_all(res)
-                            if isinstance(all_probabilities, list):
-                                max_probability = max([value for value in all_probabilities if np.isfinite(value)])
+                        else:
+                            preferred_type = converted_source_curie['preferred_type']
+                            if preferred_type == "disease" or preferred_type == "phenotypic_feature":
+                                converted_source_curie = converted_source_curie['preferred_curie']
+                            else:
+                                continue
+                        converted_target_curie = self.convert_to_trained_curies(target_curie)
+                        if converted_target_curie is None:
+                            continue
+                        else:
+                            preferred_type = converted_target_curie['preferred_type']
+                            if preferred_type == "drug" or preferred_type == "chemical_substance":
+                                converted_target_curie = converted_target_curie['preferred_curie']
+                            else:
+                                continue
+
+                        if self.use_prob_db is True:
+                            probability = self.pred.get_prob_from_DTD_db(converted_target_curie, converted_source_curie)
+                            if probability is not None:
+                                if np.isfinite(probability):
+                                    max_probability = probability
+                        else:
+                            probability = self.pred.prob_single(converted_target_curie, converted_source_curie)
+                            if probability is not None:
+                                probability = probability[0]
+                                if np.isfinite(probability):
+                                    max_probability = probability
+                        # res = list(itertools.product(converted_target_curie, converted_source_curie))
+                        # if len(res) != 0:
+                        #     all_probabilities = self.pred.prob_all(res)
+                        #     if isinstance(all_probabilities, list):
+                        #         max_probability = max([value for value in all_probabilities if np.isfinite(value)])
 
                         value = max_probability
 

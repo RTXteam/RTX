@@ -184,6 +184,34 @@ class ARAXRanker:
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
         self.kg_edge_id_to_edge = dict()  # map between the edge id's in the results and the actual edges themselves
 
+    def describe_me(self):
+        """
+        Little helper function for internal use that describes the actions and what they can do
+        :return:
+        """
+
+        brief_description = """
+rank_results iterates through all edges in the results list aggrigating and 
+normalizing the scores stored within the edge_attributes property. After combining these scores into 
+one score the ranker then scores each result through a combination of max flow, longest path, 
+and frobenius norm.
+        """
+        description = """
+`rank_results` iterates through all edges in the results list aggrigating and 
+normalizing the scores stored within the `edge_attributes` property. After combining these scores into 
+one score the ranker then scores each result through a combination of 
+[max flow](https://en.wikipedia.org/wiki/Maximum_flow_problem), 
+[longest path](https://en.wikipedia.org/wiki/Longest_path_problem), 
+and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
+        """
+        description_list = []
+        params_dict = dict()
+        params_dict['brief_description'] = brief_description
+        params_dict['description'] = description
+        params_dict["dsl_command"] = "rank_results()"
+        description_list.append(params_dict)
+        return description_list
+
     def result_confidence_maker(self, result):
         ###############################
         # old method of just multiplying ALL the edge confidences together
@@ -433,6 +461,7 @@ class ARAXRanker:
         # #### 2) Collect some min,max stats for edge_attributes that we may need later
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
         score_stats = self.score_stats
+        no_non_inf_float_flag = True
         for edge in message.knowledge_graph.edges:
             kg_edge_id_to_edge[edge.id] = edge
             if edge.edge_attributes is not None:
@@ -444,6 +473,7 @@ class ARAXRanker:
                             value = float(edge_attribute.value)
                             # initialize if not None already
                             if not np.isinf(value) and not np.isinf(-value) and not np.isnan(value):  # Ignore inf, -inf, and nan
+                                no_non_inf_float_flag = False
                                 if not score_stats[attribute_name]['minimum']:
                                     score_stats[attribute_name]['minimum'] = value
                                 if not score_stats[attribute_name]['maximum']:
@@ -453,6 +483,9 @@ class ARAXRanker:
                                 if value < score_stats[attribute_name]['minimum']:
                                     score_stats[attribute_name]['minimum'] = value
 
+        if no_non_inf_float_flag:
+            response.warning(
+                        f"No non-infinate value was encountered in any edge attribute in the knowledge graph.")
         response.info(f"Summary of available edge metrics: {score_stats}")
 
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
@@ -764,13 +797,13 @@ def main():
     from ARAX_messenger import ARAXMessenger
     messenger = ARAXMessenger()
     if not params.local:
-        print("INFO: Fetching message to work on from arax.rtx.ai", flush=True)
-        message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2703')  # a huge one with jaccard
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2706')  # small one with paired concept frequency
-        # message = messenger.fetch_message('https://arax.rtx.ai/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
+        print("INFO: Fetching message to work on from arax.ncats.io", flush=True)
+        message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2614')  # acetaminophen - > protein, just NGD as virtual edge
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2687')  # neutropenia -> drug, predict_drug_treats_disease and ngd
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2701') # observed_expected_ratio and ngd
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2703')  # a huge one with jaccard
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2706')  # small one with paired concept frequency
+        # message = messenger.fetch_message('https://arax.ncats.io/api/rtx/v1/message/2709')  # bigger one with paired concept frequency
 
     # For local messages due to local changes in code not rolled out to production:
     if params.local:
@@ -825,7 +858,7 @@ def main():
         if confidence is None:
             confidence = 0.0
         print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
-    # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
     # Show the message number
     print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))

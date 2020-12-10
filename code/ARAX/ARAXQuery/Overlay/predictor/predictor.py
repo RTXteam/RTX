@@ -13,10 +13,15 @@ except:
 
 class predictor():
 
-    def __init__(self, model_file=os.path.dirname(os.path.abspath(__file__))+'LogModel.pkl'):
-        self.model = joblib.load(model_file)
-        self.graph_cur = None
-        self.X = None
+    def __init__(self, DTD_prob_file=os.path.dirname(os.path.abspath(__file__))+'/DTD_probability_database.db', model_file=os.path.dirname(os.path.abspath(__file__))+'/LogModel.pkl', use_prob_db=True):
+
+        self.use_prob_db = use_prob_db
+        if self.use_prob_db is True:
+            self.connection = sqlite3.connect(DTD_prob_file)
+        else:
+            self.model = joblib.load(model_file)
+            self.graph_cur = None
+            self.X = None
 
     def prob(self, X):
         """
@@ -48,7 +53,7 @@ class predictor():
         row = self.graph_cur.execute(f"select * from GRAPH where curie='{curie_name}'")
         res = row.fetchone()
         if res is None:
-            # print(f"No curie named '{curie_name}' was found from database")
+            print(f"No curie named '{curie_name}' was found from database")
             return None
         res = list(res)
         res.pop(0)
@@ -63,30 +68,31 @@ class predictor():
         """
         #graph = pd.read_csv(graph_file, sep=' ', skiprows=1, header=None, index_col=None)
         #self.graph = graph.sort_values(0).reset_index(drop=True)
-        conn = sqlite3.connect(graph_database)
-        self.graph_cur = conn.cursor()
+        if self.use_prob_db is not True:
+            conn = sqlite3.connect(graph_database)
+            self.graph_cur = conn.cursor()
 
-        if file is not None:
-            data = pd.read_csv(file, index_col=None)
+            if file is not None:
+                data = pd.read_csv(file, index_col=None)
 
-            map_dict = {}
-            X_list = []
-            drop_list = []
-            for row in range(len(data)):
-                source_curie = data['source'][row]
-                target_curie = data['target'][row]
-                source_feature = self.get_feature(source_curie)
-                target_feature = self.get_feature(target_curie)
+                map_dict = {}
+                X_list = []
+                drop_list = []
+                for row in range(len(data)):
+                    source_curie = data['source'][row]
+                    target_curie = data['target'][row]
+                    source_feature = self.get_feature(source_curie)
+                    target_feature = self.get_feature(target_curie)
 
-                if source_feature is not None and target_feature is not None:
-                    X_list += [[a * b for a, b in zip(source_feature, target_feature)]]  # use 'Hadamard product' method instead of 'Concatenate' method
-                    #X_list += [list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])]
-                else:
-                    drop_list += [row]
+                    if source_feature is not None and target_feature is not None:
+                        X_list += [[a * b for a, b in zip(source_feature, target_feature)]]  # use 'Hadamard product' method instead of 'Concatenate' method
+                        #X_list += [list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])]
+                    else:
+                        drop_list += [row]
 
-            self.X = np.array(X_list)
-            self.data = data.drop(data.index[drop_list]).reset_index(drop=True)
-            self.dropped_data = data.iloc[drop_list].reset_index(drop=True)
+                self.X = np.array(X_list)
+                self.data = data.drop(data.index[drop_list]).reset_index(drop=True)
+                self.dropped_data = data.iloc[drop_list].reset_index(drop=True)
 
     def prob_file(self):
         """
@@ -139,25 +145,26 @@ class predictor():
         :param source_curie: A string containg the curie id of the source node
         :param target_curie: A string containg the curie id of the target node
         """
-        if self.graph_cur is None:
-            self.import_file(None)
+        if self.use_prob_db is not True:
+            if self.graph_cur is None:
+                self.import_file(None)
 
-        source_feature = self.get_feature(source_curie)
-        target_feature = self.get_feature(target_curie)
-        if source_feature is not None and target_feature is not None:
-            X = np.array([[a*b for a,b in zip(source_feature, target_feature)]]) # use 'Hadamard product' method instead of 'Concatenate' method
-            #X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
-            return self.predict(X)
-        elif source_feature is not None:
-            pass
-            # print(target_curie + ' was not in the largest connected component of graph.')
-        elif target_feature is not None:
-            pass
-            # print(source_curie + ' was not in the largest connected component of graph.')
-        else:
-            # print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
-            pass
-        return None
+            source_feature = self.get_feature(source_curie)
+            target_feature = self.get_feature(target_curie)
+            if source_feature is not None and target_feature is not None:
+                X = np.array([[a*b for a,b in zip(source_feature, target_feature)]]) # use 'Hadamard product' method instead of 'Concatenate' method
+                #X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
+                return self.predict(X)
+            elif source_feature is not None:
+                pass
+                # print(target_curie + ' was not in the largest connected component of graph.')
+            elif target_feature is not None:
+                pass
+                # print(source_curie + ' was not in the largest connected component of graph.')
+            else:
+                # print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
+                pass
+            return None
 
     def predict_all(self, source_target_curie_list):
         """
@@ -165,30 +172,31 @@ class predictor():
 
         :source_target_curie_list: A list containing a bunch of tuples which contain the curie ids of the source and target nodes
         """
-        if self.graph_cur is None:
-            self.import_file(None)
+        if self.use_prob_db is not True:
+            if self.graph_cur is None:
+                self.import_file(None)
 
-        if isinstance(source_target_curie_list, list):
+            if isinstance(source_target_curie_list, list):
 
-            X_list = []
-            for (equiv_source_curie, equiv_target_curie) in source_target_curie_list:
+                X_list = []
+                for (equiv_source_curie, equiv_target_curie) in source_target_curie_list:
 
-                source_feature = self.get_feature(equiv_source_curie)
-                target_feature = self.get_feature(equiv_target_curie)
+                    source_feature = self.get_feature(equiv_source_curie)
+                    target_feature = self.get_feature(equiv_target_curie)
 
-                if source_feature is not None and target_feature is not None:
-                    X_list += [[a * b for a, b in zip(source_feature, target_feature)]]
+                    if source_feature is not None and target_feature is not None:
+                        X_list += [[a * b for a, b in zip(source_feature, target_feature)]]
+                    else:
+                        continue
+
+                if len(X_list) != 0:
+                    X = np.array(X_list)
+                    return list(self.predict(X))
                 else:
-                    continue
-
-            if len(X_list) != 0:
-                X = np.array(X_list)
-                return list(self.predict(X))
+                    return None
             else:
-                return None
-        else:
 
-            return None
+                return None
 
     def prob_single(self, source_curie, target_curie):
         """
@@ -197,26 +205,26 @@ class predictor():
         :param source_curie: A string containg the curie id of the source node
         :param target_curie: A string containg the curie id of the target node
         """
+        if self.use_prob_db is not True:
+            if self.graph_cur is None:
+                self.import_file(None)
 
-        if self.graph_cur is None:
-            self.import_file(None)
-
-        source_feature = self.get_feature(source_curie)
-        target_feature = self.get_feature(target_curie)
-        if source_feature is not None and target_feature is not None:
-            X = np.array([[a * b for a, b in zip(source_feature, target_feature)]])  # use 'Hadamard product' method instead of 'Concatenate' method
-            # X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
-            return self.prob(X)[:, 1]
-        elif source_feature is not None:
-            # print(target_curie + ' was not in the largest connected component of graph.')
-            pass
-        elif target_feature is not None:
-            # print(source_curie + ' was not in the largest connected component of graph.')
-            pass
-        else:
-            # print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
-            pass
-        return None
+            source_feature = self.get_feature(source_curie)
+            target_feature = self.get_feature(target_curie)
+            if source_feature is not None and target_feature is not None:
+                X = np.array([[a * b for a, b in zip(source_feature, target_feature)]])  # use 'Hadamard product' method instead of 'Concatenate' method
+                # X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
+                return self.prob(X)[:, 1]
+            elif source_feature is not None:
+                # print(target_curie + ' was not in the largest connected component of graph.')
+                pass
+            elif target_feature is not None:
+                # print(source_curie + ' was not in the largest connected component of graph.')
+                pass
+            else:
+                # print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
+                pass
+            return None
 
     def prob_all(self, source_target_curie_list):
         """
@@ -224,28 +232,49 @@ class predictor():
 
         :source_target_curie_list: A list containing a bunch of tuples which contain the curie ids of the source and target nodes
         """
-        if self.graph_cur is None:
-            self.import_file(None)
+        if self.use_prob_db is not True:
+            if self.graph_cur is None:
+                self.import_file(None)
 
-        if isinstance(source_target_curie_list, list):
+            if isinstance(source_target_curie_list, list):
 
-            X_list = []
-            for (equiv_source_curie, equiv_target_curie) in source_target_curie_list:
+                X_list = []
+                for (equiv_source_curie, equiv_target_curie) in source_target_curie_list:
 
-                source_feature = self.get_feature(equiv_source_curie)
-                target_feature = self.get_feature(equiv_target_curie)
+                    source_feature = self.get_feature(equiv_source_curie)
+                    target_feature = self.get_feature(equiv_target_curie)
 
-                if source_feature is not None and target_feature is not None:
-                    X_list += [[a * b for a, b in zip(source_feature, target_feature)]]
+                    if source_feature is not None and target_feature is not None:
+                        X_list += [[a * b for a, b in zip(source_feature, target_feature)]]
+                    else:
+                        continue
+                if len(X_list)!=0:
+                    X = np.array(X_list)
+                    return list(self.prob(X)[:, 1])
                 else:
-                    continue
-            if len(X_list)!=0:
-                X = np.array(X_list)
-                return list(self.prob(X)[:, 1])
+                    return None
             else:
                 return None
-        else:
-            return None
+
+    def get_prob_from_DTD_db(self, source_curie, target_curie):
+        """
+        Get the probability of a single pair of source and target curie ids from DTD probability database
+
+        :param source_curie: A string containg the curie id of the source node
+        :param target_curie: A string containg the curie id of the target node
+        """
+
+        if self.use_prob_db is True:
+            cursor = self.connection.cursor()
+            drug = source_curie
+            disease = target_curie
+
+            row = cursor.execute(f"select * from DTD_PROBABILITY where disease = '{disease}' and drug = '{drug}'")
+            res = row.fetchone()
+            if res is None:
+                return None
+            else:
+                return res[2]
 
     def test(self):
         self.import_file('test_set.csv')

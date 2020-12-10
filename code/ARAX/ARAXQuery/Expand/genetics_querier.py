@@ -5,11 +5,13 @@ import traceback
 import ast
 from typing import List, Dict, Tuple, Set
 
-import Expand.expand_utilities as eu
 import requests
-from Expand.expand_utilities import DictKnowledgeGraph
-from response import Response
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import expand_utilities as eu
+from expand_utilities import DictKnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
+from response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
@@ -106,7 +108,8 @@ class GeneticsQuerier:
             formatted_qnode_types = {self.node_type_remappings.get(qnode_type, qnode_type) for qnode_type in eu.convert_string_or_list_to_list(qnode.type)}
             accepted_qnode_types = formatted_qnode_types.intersection(self.accepted_node_types)
             if not accepted_qnode_types:
-                log.error(f"Can't answer this query using the Genetics Provider; unaccepted type for QNode {qnode.id}", error_code="UnsupportedQueryForKP")
+                log.error(f"GeneticsKP can only be used for queries involving {self.accepted_node_types} "
+                          f"and QNode {qnode.id} has type '{qnode.type}'", error_code="UnsupportedQueryForKP")
                 return query_graph
             else:
                 qnode.type = list(accepted_qnode_types)[0]

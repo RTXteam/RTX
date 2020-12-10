@@ -27,6 +27,184 @@ class ARAXFilterResults:
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
+        #parameter descriptions
+        self.edge_attribute_info = {
+            "is_required": True,
+            "examples": ["jaccard_index", "observed_expected_ratio", "normalized_google_distance"],
+            "type": "string",
+            "description": "The name of the attribute to filter by."
+        }
+        self.direction_info = {
+            "is_required": True,
+            "enum": ['descending', 'd', 'ascending', 'a'],
+            "type": "string",
+            "description": "The direction in which to order results. (ascending or descending)"
+        }
+        self.max_results_info = {
+            "is_required": False,
+            "examples": [5,10,50],
+            "min":0,
+            "max":'inf',
+            "type": "int",
+            "description": "The maximum number of results to return. If not provided all results will be returned."
+        }
+        self.max_results_required_info = {
+            "is_required": True,
+            "examples": [5,10,50],
+            "min":0,
+            "max":'inf',
+            "type": "int",
+            "description": "The maximum number of results to return. If not provided all results will be returned."
+        }
+        self.edge_relation_info = {
+            "is_required": False,
+            "examples": ['N1', 'C1'],
+            "type": "string",
+            "description": "The name of unique identifier to only filter on edges with matching relation field. (stored in the relation neo4j edge property) "+\
+            "If not provided the edge relation will not be considered when filtering."
+        }
+        self.node_attribute_info = {
+            "is_required": True,
+            "examples": ["pubmed_ids"],
+            "type": "string",
+            "description": "The name of the attribute to filter by."
+        }
+        self.node_type_info = {
+            "is_required": False,
+            "examples": ["chemical_substance", "disease"],
+            "type": "ARAXnode",
+            "description": "The name of the node type to only filter on nodes of the matching type. " +\
+            "If not provided the node type will not be considered when filtering."
+        }
+        self.prune_kg_info = {
+            "is_required": False,
+            "enum": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
+            "type": "boolean",
+            "description": "This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG.",
+            "default": "true"
+        }
+
+        #command descriptions
+        self.command_definitions = {
+            "sort_by_edge_attribute": {
+                "dsl_command": "filter_results(action=sort_by_edge_attribute)",
+                "description": """
+`sort_by_edge_attribute` sorts the results by the edges based on a a certain edge attribute.
+Edge attributes are a list of additional attributes for an edge.
+Use cases include:
+
+* sorting the results by the value of the jaccard index and take the top ten `filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=10)`
+* etc. etc.
+                
+You have the option to specify the edge type (e.g. via `edge_relation=<an edge relation>`)
+Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
+                    """,
+                'brief_description': """
+sort_by_edge_attribute sorts the results by the edges based on a a certain edge attribute.
+Edge attributes are a list of additional attributes for an edge.
+                    """,
+                "parameters": {
+                    "edge_attribute": self.edge_attribute_info,
+                    "edge_relation": self.edge_relation_info,
+                    "direction": self.direction_info,
+                    "max_results": self.max_results_info,
+                    "prune_kg": self.prune_kg_info
+                }
+            },
+            "sort_by_node_attribute": {
+                "dsl_command": "filter_results(action=sort_by_node_attribute)",
+                "description": """
+`sort_by_node_attribute` sorts the results by the nodes based on a a certain node attribute.
+Node attributes are a list of additional attributes for an node.
+Use cases include:
+
+* Sorting the results by the number of pubmed ids and returning the top 20. `"filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=d, max_results=20)"`
+* etc. etc.
+                
+You have the option to specify the node type. (e.g. via `node_type=<an node type>`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
+                    """,
+                'brief_description': """
+sort_by_node_attribute sorts the results by the nodes based on a a certain node attribute.
+Node attributes are a list of additional attributes for an node.
+                    """,
+                "parameters": {
+                    "node_attribute": self.node_attribute_info,
+                    "node_type": self.node_type_info,
+                    "direction": self.direction_info,
+                    "max_results": self.max_results_info,
+                    "prune_kg": self.prune_kg_info
+                }
+            },
+            "limit_number_of_results": {
+                "dsl_command": "filter_results(action=limit_number_of_results)",
+                "description": """
+`limit_number_of_results` removes excess results over the specified maximum.
+
+Use cases include:
+
+* limiting the number of results to 100 `filter_results(action=limit_number_of_results, max_results=100)`
+* etc. etc.
+                    """,
+                'brief_description': """
+limit_number_of_results removes excess results over the specified maximum.
+                    """,
+                "parameters": {
+                    "max_results": self.max_results_required_info,
+                    "prune_kg": self.prune_kg_info
+                }
+            },
+            "sort_by_edge_count": {
+                "dsl_command": "filter_results(action=sort_by_edge_count)",
+                "description": """
+`sort_by_edge_count` sorts the results by the number of edges in the results.
+Use cases include:
+
+* return the results with the 10 fewest edges. `filter_results(action=sort_by_edge_count, direction=ascending, max_results=10)`
+* etc. etc.
+                
+You have the option to specify the direction. (e.g. `direction=descending`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
+                    """,
+                'brief_description': """
+sort_by_edge_count sorts the results by the number of edges in the results.
+                    """,
+                "parameters": {
+                    "direction": self.direction_info,
+                    "max_results": self.max_results_info,
+                    "prune_kg": self.prune_kg_info
+                }
+            },
+            "sort_by_node_count": {
+                "dsl_command": "filter_results(action=sort_by_node_count)",
+                "description": """
+`sort_by_node_count` sorts the results by the number of nodes in the results.
+Use cases include:
+
+* return the results with the 10 most nodes. `filter_results(action=sort_by_node_count, direction=descending, max_results=10)`
+* etc. etc.
+                
+You have the option to specify the direction. (e.g. `direction=descending`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
+                    """,
+                'brief_description': """
+sort_by_node_count sorts the results by the number of nodes in the results.
+                    """,
+                "parameters": {
+                    "direction": self.direction_info,
+                    "max_results": self.max_results_info,
+                    "prune_kg": self.prune_kg_info
+                }
+            }
+        }
+
+    def check_results(self, message):
+        if not hasattr(message, 'results') or len(message.results) == 0:
+            self.response.warning(
+                        f"filter_results called with no results.")
+            return True
+        return False
+
     def report_response_stats(self, response):
         """
         Little helper function that will report the KG, QG, and results stats to the debug in the process of executing actions. Basically to help diagnose problems
@@ -57,10 +235,11 @@ class ARAXFilterResults:
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
-        description_list = []
-        for action in self.allowable_actions:
-            description_list.append(getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True))
-        return description_list
+        #description_list = []
+        #for action in self.allowable_actions:
+        #    description_list.append(getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True))
+        #return description_list
+        return list(self.command_definitions.values())
 
     # Write a little helper function to test parameters
     def check_params(self, allowable_parameters):
@@ -148,34 +327,28 @@ class ARAXFilterResults:
                                     'edge_attribute': known_attributes,
                                     'edge_relation': set([x.relation for x in self.message.knowledge_graph.edges]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': {'an edge attribute'},
                                     'edge_relation': {'an edge relation'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {'the maximum number of results to return'}
+                                    'max_results': {'the maximum number of results to return'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
         if describe:
-            # TODO: add more use cases
-            brief_description = """
-`sort_by_edge_attribute` sorts the results by the edges based on a a certain edge attribute.
-Edge attributes are a list of additional attributes for an edge.
-Use cases include:
-
-* sorting the results by the value of the jaccard index and take the top ten `filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=10)`
-* etc. etc.
-                
-You have the option to specify the edge type (e.g. via `edge_relation=<an edge relation>`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
-"""
+            brief_description = self.command_definitions['sort_by_edge_attribute']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
         edge_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in edge_params:
@@ -214,6 +387,17 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             self.response.error(
                 f"Edge attribute must be provided, allowable attributes are: {list(allowable_parameters['edge_attribute'])}",
                 error_code="UnknownValue")
+        if 'prune_kg' not in edge_params:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            edge_params['prune_kg'] = False
+        else:
+            value = edge_params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
+                    error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
 
@@ -243,34 +427,29 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                                     'node_attribute': known_attributes,
                                     'node_type': set([t for x in self.message.knowledge_graph.nodes for t in x.type]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_node_attribute'},
                                     'node_attribute': {'an node attribute'},
                                     'node_type': {'an node type'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {'the maximum number of results to return'}
+                                    'max_results': {'the maximum number of results to return'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
         if describe:
             # TODO: add more use cases
-            brief_description = """
-`sort_by_node_attribute` sorts the results by the nodes based on a a certain node attribute.
-node attributes are a list of additional attributes for an node.
-Use cases include:
-
-* sorting the rsults by the number of pubmed ids returning the top 20. `"filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=d, max_results=20)"`
-* etc. etc.
-                
-You have the option to specify the node type (e.g. via `node_type=<an node type>`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
-"""
+            brief_description = self.command_definitions['sort_by_node_attribute']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
         node_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in node_params:
@@ -309,6 +488,17 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             self.response.error(
                 f"node attribute must be provided, allowable attributes are: {list(allowable_parameters['node_attribute'])}",
                 error_code="UnknownValue")
+        if 'prune_kg' not in node_params:
+            node_params['prune_kg'] = True
+        elif node_params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            node_params['prune_kg'] = True
+        elif node_params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            node_params['prune_kg'] = False
+        else:
+            value = node_params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
+                    error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
 
@@ -329,28 +519,26 @@ Also, you have the option of limiting the number of results returned (e.g. via `
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'results'):
             allowable_parameters = {'action': {'limit_number_of_results'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'limit_number_of_results'},
-                                    'max_results': {'a non-negative integer'}
+                                    'max_results': {'a non-negative integer'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
         if describe:
             # TODO: add more use cases
-            brief_description = """
-`limit_number_of_results` removes excess results over the specified maximum.
-
-Use cases include:
-
-* limiting the number of results to 100 `filter_results(action=limit_number_of_results, max_results=100)`
-* etc. etc.
-"""
+            brief_description = self.command_definitions['limit_number_of_results']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
         params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
 
         # Make sure only allowable parameters and values have been passed
@@ -376,7 +564,17 @@ Use cases include:
                 f"Max results must be provided, allowable attributes are: {list(allowable_parameters['max_results'])}",
                 error_code="UnknownValue")
 
-        
+        if 'prune_kg' not in params:
+            params['prune_kg'] = True
+        elif params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            params['prune_kg'] = True
+        elif params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            params['prune_kg'] = False
+        else:
+            value = params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
+                    error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
 
@@ -399,31 +597,27 @@ Use cases include:
         if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
             allowable_parameters = {'action': {'sort_by_edge_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {'the maximum number of results to return'}
+                                    'max_results': {'the maximum number of results to return'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
         if describe:
             # TODO: add more use cases
-            brief_description = """
-`sort_by_edge_count` sorts the results by the number of edges in the results.
-Use cases include:
-
-* return the results with the 10 fewest edges. `filter_results(action=sort_by_edge_count, direction=ascending, max_results=10)`
-* etc. etc.
-                
-You have the option to specify the direction (e.g. `direction=descending`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
-"""
+            brief_description = self.command_definitions['sort_by_edge_count']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
         edge_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in edge_params:
@@ -458,6 +652,17 @@ Also, you have the option of limiting the number of results returned (e.g. via `
                 self.response.error(
                     f"Supplied value {value} is not permitted. In parameter direction, allowable values are: {list(allowable_parameters['direction'])}",
                     error_code="UnknownValue")
+        if 'prune_kg' not in edge_params:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            edge_params['prune_kg'] = False
+        else:
+            value = edge_params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
+                    error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
 
@@ -478,31 +683,27 @@ Also, you have the option of limiting the number of results returned (e.g. via `
         if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'nodes'):
             allowable_parameters = {'action': {'sort_by_node_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {float()}
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_node_count'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
-                                    'max_results': {'the maximum number of results to return'}
+                                    'max_results': {'the maximum number of results to return'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
 
         # A little function to describe what this thing does
         if describe:
             # TODO: add more use cases
-            brief_description = """
-`sort_by_node_count` sorts the results by the number of nodes in the results.
-Use cases include:
-
-* return the results with the 10 most nodes. `filter_results(action=sort_by_node_count, direction=descending, max_results=10)`
-* etc. etc.
-                
-You have the option to specify the direction (e.g. `direction=descending`)
-Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
-"""
+            brief_description = self.command_definitions['sort_by_node_count']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
         node_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
 
         # try to convert the max results to an int
         if 'max_results' in node_params:
@@ -536,6 +737,17 @@ Also, you have the option of limiting the number of results returned (e.g. via `
             else:
                 self.response.error(
                     f"Supplied value {value} is not permitted. In parameter direction, allowable values are: {list(allowable_parameters['direction'])}",
+                    error_code="UnknownValue")
+        if 'prune_kg' not in node_params:
+            node_params['prune_kg'] = True
+        elif node_params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            node_params['prune_kg'] = True
+        elif node_params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            node_params['prune_kg'] = False
+        else:
+            value = node_params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
                     error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response
@@ -598,7 +810,7 @@ def main():
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger
     message = ARAXMessenger().from_dict(message_dict)
-    # print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
     #### Create an overlay object and use it to apply action[0] from the list
     #filterkg = ARAXFilterKG()
@@ -640,7 +852,7 @@ def main():
     # look at the edges
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
-    # print(json.dumps(ast.literal_eval(repr(message)), sort_keys=True, indent=2))
+    # print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
     # print(response.show(level=Response.DEBUG))
 
     # just print off the values

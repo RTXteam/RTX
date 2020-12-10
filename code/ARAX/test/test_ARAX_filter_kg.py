@@ -15,6 +15,7 @@ from typing import List, Union
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
+from ARAX_filter_kg import ARAXFilterKG
 from ARAX_query import ARAXQuery
 from response import Response
 
@@ -40,13 +41,17 @@ def _do_arax_query(query: dict, print_response: bool=True) -> List[Union[Respons
         print(response.show(level=response.DEBUG))
     return [response, araxq.message]
 
+def test_command_definitions():
+    fkg = ARAXFilterKG()
+    assert fkg.allowable_actions == set(fkg.command_definitions.keys())
+
 def test_warning():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=DOID:1227, id=n00)",
             "add_qnode(type=chemical_substance, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
@@ -63,7 +68,7 @@ def test_error():
             "add_qnode(name=DOID:1227, id=n00)",
             "add_qnode(type=chemical_substance, id=n01)",
             "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00)",
+            "expand(edge_id=e00, kp=ARAX/KG1)",
             "filter_kg(action=remove_edges_by_type, edge_type=contraindicated_for, remove_connected_nodes=t)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"

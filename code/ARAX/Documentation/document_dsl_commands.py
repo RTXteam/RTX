@@ -5,11 +5,11 @@ from tomark import Tomark
 import re
 import md_toc
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-modules = ["ARAX_messenger", "ARAX_expander", "ARAX_overlay", "ARAX_filter_kg", "ARAX_filter_results", "ARAX_resultify"]
-classes = ["ARAXMessenger", "ARAXExpander", "ARAXOverlay", "ARAXFilterKG", "ARAXFilterResults", "ARAXResultify"]
+modules = ["ARAX_messenger", "ARAX_expander", "ARAX_overlay", "ARAX_filter_kg", "ARAX_filter_results", "ARAX_resultify", "ARAX_ranker"]
+classes = ["ARAXMessenger", "ARAXExpander", "ARAXOverlay", "ARAXFilterKG", "ARAXFilterResults", "ARAXResultify", "ARAXRanker"]
 modules_to_command_name = {'ARAX_resultify': '`resultify()`', 'ARAX_messenger': '`create_message()`',
                            'ARAX_overlay': '`overlay()`', 'ARAX_filter_kg': '`filter_kg()`','ARAX_filter_results': '`filter_results()`', 
-                           'ARAX_expander': '`expand()`'}
+                           'ARAX_expander': '`expand()`', 'ARAX_ranker': '`rank_results()`'}
 to_print = ""
 header_info = """
 # Domain Specific Langauage (DSL) description
@@ -66,18 +66,55 @@ for (module, cls) in zip(modules, classes):
             to_print += '### ' + dsl_command + '\n'
         else:  # for classes that don't use the `action=` paradigm like `expand()` and `resultify()`
             to_print += '### ' + dsl_name + '\n'
-        if 'brief_description' in dic:
-            to_print += dic['brief_description'] + '\n\n'
-            del dic['brief_description']
-        if dic:  # if the dic is empty, then don't create a table
-            temp_table = Tomark.table([dic])
-            temp_table_split = temp_table.split("\n")
-            #better_table = "|"+re.sub('\(\)',f'(action={action})', dsl_name) + ('|' * temp_table_split[0].count('|')) + '\n'
-            better_table = ('|' * (temp_table_split[0].count('|')+1)) + '\n'
-            better_table += temp_table_split[1] + '-----|\n'
-            better_table += '|_DSL parameters_' + temp_table_split[0] + "\n"
-            better_table += '|_DSL arguments_' + temp_table_split[2] + "\n"
-            to_print += better_table + '\n'
+        if 'description' in dic:
+            to_print += dic['description'] + '\n\n'
+            del dic['description']
+        if 'mutually_exclusive_params' in dic:
+            if len(dic['mutually_exclusive_params']) < 3:
+                mutual_string = '`' + '` and `'.join([str(x) for x in dic['mutually_exclusive_params']]) + '`'
+            else:
+                mutual_string = '`' + '`, `'.join([str(x) for x in dic['mutually_exclusive_params'][:-1]]) + '`, and `' + str(dic['mutually_exclusive_params'][-1]) + '`'
+            to_print += "**NOTE:** The parameters " + mutual_string + ' are mutually exclusive and thus will cause an error when more than one is included.\n\n'
+        if 'parameters' in dic:
+            to_print += '#### parameters: ' + '\n\n'
+            for param_key,param_val in dic['parameters'].items():
+                to_print += '* ##### ' + param_key + '\n\n'
+                if 'description' in param_val:
+                    to_print += '    - ' + param_val['description'] + '\n\n'
+                if 'type' in param_val:
+                    to_print += '    - Acceptable input types: ' + param_val['type'] + '.\n\n'
+                if 'depends_on' in param_val:
+                    to_print += '    - *NOTE*:  If this parameter is included then the parameter `' + param_val['depends_on'] + '` must also be included for it to function.\n\n'
+                if 'is_required' in param_val:
+                    if param_val['is_required']:
+                        to_print += '    - This is a required parameter and must be included.\n\n'
+                    else:
+                        to_print += '    - This is not a required parameter and may be omitted.\n\n'
+                if 'examples' in param_val:
+                    if len(param_val['examples']) < 3:
+                        example_string = '`' + '` and `'.join([str(x) for x in param_val['examples']]) + '`'
+                    else:
+                        example_string = '`' + '`, `'.join([str(x) for x in param_val['examples'][:-1]]) + '`, and `' + str(param_val['examples'][-1]) + '`'                 
+                    to_print += '    - ' + example_string + ' are examples of valid inputs.\n\n'
+                if 'enum' in param_val:
+                    if len(param_val['enum']) < 3:
+                        enum_string = '`' + '` and `'.join([str(x) for x in param_val['enum']]) + '`'
+                    else:
+                        enum_string = '`' + '`, `'.join([str(x) for x in param_val['enum'][:-1]]) + '`, and `' + str(param_val['enum'][-1]) + '`'                 
+                    to_print += '    - ' + enum_string + ' are all possible valid inputs.\n\n'
+                if 'max' in param_val and 'min' in param_val:
+                    to_print += '    - The values for this parameter can range from a minimum value of ' +str(param_val['min'])+ ' to a maximum value of ' +str(param_val['max'])+ '.\n\n'
+                if 'default' in param_val:
+                    to_print += '    - If not specified the default input will be ' + str(param_val['default']) + '. \n\n'
+        # if dic:  # if the dic is empty, then don't create a table
+        #     temp_table = Tomark.table([dic])
+        #     temp_table_split = temp_table.split("\n")
+        #     #better_table = "|"+re.sub('\(\)',f'(action={action})', dsl_name) + ('|' * temp_table_split[0].count('|')) + '\n'
+        #     better_table = ('|' * (temp_table_split[0].count('|')+1)) + '\n'
+        #     better_table += temp_table_split[1] + '-----|\n'
+        #     better_table += '|_DSL parameters_' + temp_table_split[0] + "\n"
+        #     better_table += '|_DSL arguments_' + temp_table_split[2] + "\n"
+        #     to_print += better_table + '\n'
         else:
             to_print += '\n'
 

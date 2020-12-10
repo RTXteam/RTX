@@ -7,6 +7,7 @@ import json
 import ast
 import re
 import inspect
+import csv
 
 
 class KnowledgeSourceMetadata:
@@ -37,18 +38,13 @@ class KnowledgeSourceMetadata:
         predicates = {}
         iline = 0
         with open(input_filename) as infile:
-            for line in infile:
+            rows = csv.reader(infile, delimiter=',', quotechar='"')
+            for columns in rows:
                 iline += 1
-
-                # Skip empty or comment lines or first line
-                if len(line) < 3 or line[0] == '#' or iline == 1:
-                    continue
-
-                columns = line.strip().split(',')
 
                 # Ensure there are exactly 3 columns
                 if len(columns) != 3:
-                    eprint(f"ERROR [{method_name}]: input file {input_filename} line '{line} does not have 3 columns")
+                    eprint(f"ERROR [{method_name}]: input file {input_filename} line '{iline} does not have 3 columns")
                     continue
 
                 if columns[0] not in predicates:

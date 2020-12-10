@@ -37,6 +37,9 @@ class SortResults:
         try:
             n = params['max_results']
             self.message.results = self.message.results[:n]
+            if params['prune_kg']:
+                self.prune_kg()
+            self.message.n_results = n
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -84,7 +87,13 @@ class SortResults:
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
+                prune_val = self.parameters['prune_kg']
+                self.parameters['prune_kg'] = False
                 self.limit_number_of_results()
+                self.parameters['prune_kg'] = prune_val
+            if params['prune_kg']:
+                self.prune_kg()
+            self.message.n_results = len(self.message.results)
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -112,7 +121,13 @@ class SortResults:
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
+                prune_val = self.parameters['prune_kg']
+                self.parameters['prune_kg'] = False
                 self.limit_number_of_results()
+                self.parameters['prune_kg'] = prune_val
+            if params['prune_kg']:
+                self.prune_kg()
+            self.message.n_results = len(self.message.results)
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -163,7 +178,13 @@ class SortResults:
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
+                prune_val = self.parameters['prune_kg']
+                self.parameters['prune_kg'] = False
                 self.limit_number_of_results()
+                self.parameters['prune_kg'] = prune_val
+            if params['prune_kg']:
+                self.prune_kg()
+            self.message.n_results = len(self.message.results)
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -191,7 +212,13 @@ class SortResults:
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
+                prune_val = self.parameters['prune_kg']
+                self.parameters['prune_kg'] = False
                 self.limit_number_of_results()
+                self.parameters['prune_kg'] = prune_val
+            if params['prune_kg']:
+                self.prune_kg()
+            self.message.n_results = len(self.message.results)
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -200,7 +227,51 @@ class SortResults:
         else:
             self.response.info(f"Results successfully sorted")
 
+
         return self.response
+
+    def prune_kg(self):
+        """
+        prune the kg to match the results
+        :return: response
+        """
+        try:
+            node_ids = set()
+            edge_ids = set()
+            nodes_to_remove = set()
+            edges_to_remove = set()
+            for result in self.message.results:
+                for node_binding in result.node_bindings:
+                    node_ids.add(node_binding.kg_id)
+                for edge_binding in result.edge_bindings:
+                    edge_ids.add(edge_binding.kg_id)
+            node_ids_to_remove = set()
+            i = 0
+            for node in self.message.knowledge_graph.nodes:
+                if node.id not in node_ids:
+                    nodes_to_remove.add(i)
+                    node_ids_to_remove.add(node.id)
+                i += 1
+            self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
+            i = 0
+            edges_to_remove = set()
+            # iterate over edges find edges connected to the nodes
+            for edge in self.message.knowledge_graph.edges:
+                if edge.id not in edge_ids or edge.source_id in node_ids_to_remove or edge.target_id in node_ids_to_remove:
+                    edges_to_remove.add(i)
+                i += 1
+            # remove edges
+            self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error(f"Something went wrong prunning the KG")
+        else:
+            self.response.info(f"KG successfully pruned to match results")
+
+
+
 
     
 

@@ -118,7 +118,7 @@ def test_example_3():
         "add_qnode(type=protein, id=n02)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand(edge_id=[e00,e01])",
+        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_id=n01)",
         "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
@@ -130,7 +130,7 @@ def test_example_3():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     #assert len(message.results) in [47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
-    assert len(message.results) in range(60, 90)  # FIXME: BUG: sometimes the workflow returns 47 results, sometimes 48, sometime smore or less?! Probably due to API's not returning results (API calls to NGD and/or COHD sometimes don't go through)
+    assert len(message.results) >= 60
     assert message.results[0].essence is not None
     _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
@@ -145,17 +145,17 @@ def test_FET_example_1():
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(edge_id=e00, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1, rel_edge_id=e00)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n01)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n01)",
         "add_qnode(type=chemical_substance, is_set=true, id=n02)",
         "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
         "expand(edge_id=e01, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2, rel_edge_id=e01)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n02)",
         "add_qnode(type=phenotypic_feature, id=n03)",
         "add_qedge(source_id=n02, target_id=n03, id=e02)",
         "expand(edge_id=e02, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3, rel_edge_id=e02)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n03)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n03)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -171,7 +171,7 @@ def test_FET_example_1():
         assert hasattr(edge, 'edge_attributes')
         assert edge.edge_attributes
         assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
-        assert 0 <= float(edge.edge_attributes[0].value) < 0.001
+        assert 0 <= float(edge.edge_attributes[0].value) < 0.005
         assert edge.edge_attributes[0].type == 'EDAM:data_1669'
         assert edge.is_defined_by == 'ARAX'
         assert edge.provided_by == 'ARAX'
@@ -401,9 +401,9 @@ def test_clinical_overlay_example():
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C2)",
         "overlay(action=overlay_clinical_info, chi_square=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C3)",
         # filter some stuff out for the fun of it
-        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=paired_concept_frequency, type=std, remove_connected_nodes=F)",
-        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=observed_expected_ratio, type=std, remove_connected_nodes=F)",
-        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=chi_square, type=std, remove_connected_nodes=F)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=above, threshold=0.5, remove_connected_nodes=true, qnode_id=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=above, threshold=1, remove_connected_nodes=true, qnode_id=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=chi_square, direction=below, threshold=0.05, remove_connected_nodes=true, qnode_id=n02)",
         # return results
         "resultify(ignore_edge_direction=true)",
         "return(message=true, store=false)",
@@ -470,7 +470,7 @@ def test_two_hop_based_on_types_1():
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=50)",
-            "return(message=true, store=true)",
+            "return(message=false, store=true)",
         ]}}
         [response, message] = _do_arax_query(query)
         print(message.id)
@@ -502,7 +502,7 @@ def test_one_hop_based_on_types_1():
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=50)",
-            "return(message=true, store=true)",
+            "return(message=true, store=false)",
         ]}}
         [response, message] = _do_arax_query(query)
         print(message.id)

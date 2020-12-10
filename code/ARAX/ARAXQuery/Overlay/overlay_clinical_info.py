@@ -30,7 +30,13 @@ class OverlayClinicalInfo:
         self.who_knows_about_what = {'COHD': ['chemical_substance', 'phenotypic_feature', 'disease']}  # FIXME: replace this with information about the KP's, KS's, and their API's
         self.node_curie_to_type = dict()
         self.global_iter = 0
-        self.cohdIndex = COHDIndex()
+        try:
+            self.cohdIndex = COHDIndex()
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error(f"Internal Error encountered connecting to the local COHD database.")
 
     def decorate(self):
         """

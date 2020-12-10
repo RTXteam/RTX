@@ -1,12 +1,13 @@
 #!/bin/env python3
 import sys
 import os
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from response import Response
-from Expand.expand_utilities import DictKnowledgeGraph
-import Expand.expand_utilities as eu
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
+import expand_utilities as eu
+from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
@@ -22,39 +23,173 @@ class ARAXExpander:
     def __init__(self):
         self.response = None
         self.message = None
-        self.parameters = {'edge_id': None, 'node_id': None, 'kp': None, 'enforce_directionality': None,
-                           'use_synonyms': None, 'continue_if_no_results': None, 'COHD_method': None,
-                           'COHD_method_percentile': None, 'include_integrated_score': None}
-        self.valid_kps = {"ARAX/KG1", "ARAX/KG2", "BTE", "COHD", "GeneticsKP", "NGD"}
+        self.default_kp = "ARAX/KG2"
+        self.edge_id_parameter_info = {
+            "is_required": False,
+            "examples": ["e00", "[e00, e01]"],
+            "type": "string",
+            "description": "A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."
+        }
+        self.node_id_parameter_info = {
+            "is_required": False,
+            "examples": ["n00", "[n00, n01]"],
+            "type": "string",
+            "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
+        }
+        self.continue_if_no_results_parameter_info = {
+            "is_required": False,
+            "examples": ["true", "false"],
+            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+            "default": "false",
+            "type": "boolean",
+            "description": "Whether to continue execution if no paths are found matching the query graph."
+        }
+        self.enforce_directionality_parameter_info = {
+            "is_required": False,
+            "examples": ["true", "false"],
+            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+            "default": "false",
+            "type": "boolean",
+            "description": "Whether to obey (vs. ignore) edge directions in the query graph."
+        }
+        self.use_synonyms_parameter_info = {
+            "is_required": False,
+            "examples": ["true", "false"],
+            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+            "default": "true",
+            "type": "boolean",
+            "description": "Whether to consider curie synonyms and merge synonymous nodes."
+        }
+        self.command_definitions = {
+            "ARAX/KG1": {
+                "dsl_command": "expand(kp=ARAX/KG1)",
+                "description": "This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths "
+                               "that satisfy the query graph.",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "enforce_directionality": self.enforce_directionality_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info
+                }
+            },
+            "ARAX/KG2": {
+                "dsl_command": "expand(kp=ARAX/KG2)",
+                "description": "This command reaches out to the RTX KG2 knowledge graph to find all bioentity subpaths "
+                               "that satisfy the query graph. If use_synonyms=true, it uses the KG2canonicalized "
+                               "('KG2c') Neo4j instance; otherwise, the regular KG2 Neo4j instance is used.",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "enforce_directionality": self.enforce_directionality_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info
+                }
+            },
+            "BTE": {
+                "dsl_command": "expand(kp=BTE)",
+                "description": "This command uses BioThings Explorer (from the Service Provider) to find all bioentity "
+                               "subpaths that satisfy the query graph. Of note, all query nodes must have a type "
+                               "specified for BTE queries. In addition, bi-directional queries are only partially "
+                               "supported (the ARAX system knows how to ignore edge direction when deciding which "
+                               "query node for a query edge will be the 'input' qnode, but BTE itself returns only "
+                               "answers matching the input edge direction).",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "enforce_directionality": self.enforce_directionality_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info
+                }
+            },
+            "COHD": {
+                "dsl_command": "expand(kp=COHD)",
+                "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
+                               " satisfy the query graph.",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                    "COHD_method": {
+                        "is_required": False,
+                        "examples": ["paired_concept_freq", "chi_square"],
+                        "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
+                        "default": "paired_concept_freq",
+                        "type": "string",
+                        "description": "Which measure from COHD should be considered."
+                    },
+                    "COHD_method_percentile": {
+                        "is_required": False,
+                        "examples": [95, 80],
+                        "min": 0,
+                        "max": 100,
+                        "default": 99,
+                        "type": "integer",
+                        "description": "What percentile to use as a cut-off/threshold for the specified COHD method."
+                    }
+                }
+            },
+            "GeneticsKP": {
+                "dsl_command": "expand(kp=GeneticsKP)",
+                "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
+                               "satisfy the query graph. It currently can answer questions involving the following "
+                               "node types: gene, protein, disease, phenotypic_feature, pathway. QNode types are "
+                               "required for GeneticsKP queries. Temporarily (while the integration is under "
+                               "development), it can only be used as the first hop in a query. Note that QEdge types "
+                               "are irrelevant for GeneticsKP queries, since GeneticsKP only outputs edges with a type "
+                               "of 'associated' (so Expand always uses that as the QEdge type behind the scenes).",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                    "include_integrated_score": {
+                        "is_required": False,
+                        "examples": ["true", "false"],
+                        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+                        "default": "false",
+                        "type": "boolean",
+                        "description": "Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP."
+                    }
+                }
+            },
+            "MolePro": {
+                "dsl_command": "expand(kp=MolePro)",
+                "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
+                               "subpaths that satisfy the query graph. It currently can answer questions involving "
+                               "the following node types: gene, protein, disease, chemical_substance. QNode types are "
+                               "required for MolePro queries. Generally you should not specify a QEdge type for "
+                               "MolePro queries (Expand uses 'correlated_with' by default behind the scenes, which is "
+                               "the primary edge type of interest for ARAX in MolePro).",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "NGD": {
+                "dsl_command": "expand(kp=NGD)",
+                "description": "This command uses ARAX's in-house normalized google distance (NGD) database to expand "
+                               "a query graph; it returns edges between nodes with an NGD value below a certain "
+                               "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
+                               "configurable/smarter in the future.",
+                "parameters": {
+                    "edge_id": self.edge_id_parameter_info,
+                    "node_id": self.node_id_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info
+                }
+            }
+        }
 
-    @staticmethod
-    def describe_me():
+    def describe_me(self):
         """
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
-        # this is quite different than the `describe_me` in ARAX_overlay and ARAX_filter_kg due to expander being less
-        # of a dispatcher (like overlay and filter_kg) and more of a single self contained class
-        brief_description = """
-        `expand` effectively takes a query graph (QG) and reaches out to various knowledge providers (KP's) to find 
-        all bioentity subgraphs that satisfy that QG and augments the knowledge graph (KG) with them. As currently 
-        implemented, `expand` can utilize the ARA Expander team KG1 and KG2 Neo4j instances as well as BioThings 
-        Explorer to fulfill QG's, with functionality built in to reach out to other KP's as they are rolled out.
-        """
-        description_list = []
-        params_dict = dict()
-        params_dict['brief_description'] = brief_description
-        params_dict['edge_id'] = {"a query graph edge ID or list of such IDs to expand (optional, default is to expand entire query graph)"}  # this is a workaround due to how self.parameters is utilized in this class
-        params_dict['node_id'] = {"a query graph node ID to expand (optional, default is to expand entire query graph)"}
-        params_dict['kp'] = {"the knowledge provider to use - current options are `ARAX/KG1`, `ARAX/KG2`, `BTE`, `COHD`, `GeneticsKP`, `NGD` (optional, default is `ARAX/KG1`)"}
-        params_dict['enforce_directionality'] = {"whether to obey (vs. ignore) edge directions in query graph - options are `true` or `false` (optional, default is `false`)"}
-        params_dict['use_synonyms'] = {"whether to consider curie synonyms and merge synonymous nodes - options are `true` or `false` (optional, default is `true`)"}
-        params_dict['continue_if_no_results'] = {"whether to continue execution if no paths are found matching the query graph - options are `true` or `false` (optional, default is `false`)"}
-        params_dict['COHD_method'] = {"what method used to expand - current options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square` (optional, default is `paired_concept_freq`)"}
-        params_dict['COHD_method_percentile'] = {"what percentile used as a threshold for specified COHD method (optional, default is 99 (99%), range is [0, 100])"}
-        params_dict['include_integrated_score'] = {"whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP - options are `true` or `false` (optional, default is `false`); relevant only when `kp=GeneticsKP`"}
-        description_list.append(params_dict)
-        return description_list
+        return list(self.command_definitions.values())
 
     def apply(self, input_message, input_parameters, response=None):
 
@@ -69,30 +204,31 @@ class ARAXExpander:
             return response
 
         # Define a complete set of allowed parameters and their defaults
-        parameters = self.parameters
-        parameters['kp'] = "ARAX/KG1"
-        parameters['enforce_directionality'] = False
-        parameters['use_synonyms'] = True
-        parameters['continue_if_no_results'] = False
-        parameters['COHD_method'] = 'paired_concept_freq'
-        parameters['COHD_method_percentile'] = 99
-        parameters['include_integrated_score'] = False
-        # Override default values for any parameters passed in
-        for key, value in input_parameters.items():
-            if key and key not in parameters:
-                response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
+        kp = input_parameters.get("kp", self.default_kp)
+        if kp not in self.command_definitions:
+            response.error(f"Invalid KP. Options are: {set(self.command_definitions)}", error_code="InvalidKP")
+            return response
+        parameters = {"kp": kp}
+        for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
+            if info_dict["type"] == "boolean":
+                parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
             else:
-                if type(value) is str and value.lower() == "true":
-                    value = True
-                elif type(value) is str and value.lower() == "false":
-                    value = False
-                parameters[key] = value
+                parameters[kp_parameter_name] = info_dict.get("default", None)
 
-        # Handle situation where 'ARAX/KG2C' is entered as the kp (technically invalid, but we won't error out)
-        if parameters['kp'] == "ARAX/KG2C":
+        # Override default values for any parameters passed in
+        parameter_names_for_all_kps = {param for kp_documentation in self.command_definitions.values() for param in kp_documentation["parameters"]}
+        for param_name, value in input_parameters.items():
+            if param_name and param_name not in parameters:
+                kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
+                response.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}", error_code="InvalidParameter")
+            else:
+                parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
+
+        # Handle situation where 'ARAX/KG2c' is entered as the kp (technically invalid, but we won't error out)
+        if parameters['kp'].upper() == "ARAX/KG2C":
             parameters['kp'] = "ARAX/KG2"
             if not parameters['use_synonyms']:
-                response.warning(f"KG2C is only used when use_synonyms=true; overriding use_synonyms to True")
+                response.warning(f"KG2c is only used when use_synonyms=true; overriding use_synonyms to True")
                 parameters['use_synonyms'] = True
 
         # Default to expanding the entire query graph if the user didn't specify what to expand
@@ -180,12 +316,12 @@ class ARAXExpander:
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
                      query_graph: QueryGraph, use_synonyms: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
-        log.info(f"Expanding edge {qedge.id} using {kp_to_use}")
+        log.info(f"Expanding qedge {qedge.id} using {kp_to_use}")
         answer_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
         # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
-        edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg)
+        edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, log)
         if log.status != 'OK':
             return answer_kg, edge_to_nodes_map
         if not any(qnode for qnode in edge_query_graph.nodes if qnode.curie):
@@ -193,8 +329,9 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
 
-        if kp_to_use not in self.valid_kps:
-            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(self.valid_kps)}",
+        allowable_kps = set(self.command_definitions.keys())
+        if kp_to_use not in allowable_kps:
+            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
             return answer_kg, edge_to_nodes_map
         else:
@@ -210,6 +347,9 @@ class ARAXExpander:
             elif kp_to_use == 'GeneticsKP':
                 from Expand.genetics_querier import GeneticsQuerier
                 kp_querier = GeneticsQuerier(log)
+            elif kp_to_use == 'MolePro':
+                from Expand.molepro_querier import MoleProQuerier
+                kp_querier = MoleProQuerier(log)
             else:
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
@@ -219,7 +359,7 @@ class ARAXExpander:
             log.debug(f"Query for edge {qedge.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
-            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2C is already deduplicated
+            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
                 answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
             if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
                 answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
@@ -266,7 +406,7 @@ class ARAXExpander:
                               error_code="UnfulfilledQGID")
                     return answer_kg
 
-            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2C is already deduplicated
+            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
                 answer_kg, edge_node_usage_map = self._deduplicate_nodes(dict_kg=answer_kg,
                                                                          edge_to_nodes_map={},
                                                                          log=log)
@@ -276,8 +416,7 @@ class ARAXExpander:
                       f"{', '.join(valid_kps_for_single_node_queries)}", error_code="InvalidKP")
             return answer_kg
 
-    @staticmethod
-    def _get_query_graph_for_edge(qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> QueryGraph:
+    def _get_query_graph_for_edge(self, qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, log: Response) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_query_graph = QueryGraph(nodes=[], edges=[])
         qnodes = [eu.get_query_node(query_graph, qedge.source_id),
@@ -292,14 +431,27 @@ class ARAXExpander:
             qnode_copy = eu.copy_qnode(qnode)
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
             qnode_already_fulfilled = qnode_copy.id in dict_kg.nodes_by_qg_id
-            if qnode_already_fulfilled and not qnode_copy.curie and not qedge_has_already_been_expanded:
-                qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
+            if qnode_already_fulfilled and not qnode_copy.curie:
+                if qedge_has_already_been_expanded:
+                    if self._is_input_qnode(qnode_copy, qedge):
+                        qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
+                else:
+                    qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
             edge_query_graph.nodes.append(qnode_copy)
 
         # Consider both protein and gene if qnode's type is one of those (since KPs handle these differently)
         for qnode in edge_query_graph.nodes:
             if qnode.type in ['protein', 'gene']:
                 qnode.type = ['protein', 'gene']
+
+        # Display a summary of what the modified query graph for this edge looks like
+        qnodes_with_curies = [qnode for qnode in edge_query_graph.nodes if qnode.curie]
+        input_qnode = qnodes_with_curies[0] if qnodes_with_curies else edge_query_graph.nodes[0]
+        output_qnode = next(qnode for qnode in edge_query_graph.nodes if qnode.id != input_qnode.id)
+        input_curie_summary = self._get_qnode_curie_summary(input_qnode)
+        output_curie_summary = self._get_qnode_curie_summary(output_qnode)
+        log.debug(f"Modified QG for this qedge is ({input_qnode.id}:{input_qnode.type}{input_curie_summary})-"
+                  f"{qedge.type if qedge.type else ''}-({output_qnode.id}:{output_qnode.type}{output_curie_summary})")
         return edge_query_graph
 
     @staticmethod
@@ -425,8 +577,8 @@ class ARAXExpander:
                     qnode_connections_map[qnode.id].add(connected_qnode_id)
 
         # Create a map of which nodes each node is connected to (organized by the qnode_id they're fulfilling)
-        # Example node_usages_by_edges_map: {'e00': {'KG1:111221': {'n00': 'CUI:122', 'n01': 'CUI:124'}}}
-        # Example node_connections_map: {'CUI:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22', 'UniProtKB:333'}}}
+        # Example node_usages_by_edges_map: {'e00': {'KG1:111221': {'n00': 'UMLS:122', 'n01': 'UMLS:124'}}}
+        # Example node_connections_map: {'UMLS:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22', 'UniProtKB:333'}}}
         node_connections_map = dict()
         for qedge_id, edges_to_nodes_dict in node_usages_by_edges_map.items():
             current_qedge = next(qedge for qedge in full_query_graph.edges if qedge.id == qedge_id)
@@ -500,6 +652,15 @@ class ARAXExpander:
                         edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
         return ordered_edges
 
+    def _is_input_qnode(self, qnode: QNode, qedge: QEdge) -> bool:
+        all_ordered_qedges = self._get_order_to_expand_edges_in(self.message.query_graph)
+        current_qedge_index = all_ordered_qedges.index(qedge)
+        previous_qedge = all_ordered_qedges[current_qedge_index - 1] if current_qedge_index > 0 else None
+        if previous_qedge and qnode.id in {previous_qedge.source_id, previous_qedge.target_id}:
+            return True
+        else:
+            return False
+
     @staticmethod
     def _remove_self_edges(kg: DictKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]], qedge_id: QEdge,
                            qnodes: List[QNode], log: Response) -> DictKnowledgeGraph:
@@ -562,6 +723,33 @@ class ARAXExpander:
             if edge_node_ids.intersection(potential_connected_edge_node_ids):
                 return potential_connected_edge
         return None
+
+    @staticmethod
+    def _convert_bool_string_to_bool(bool_string: str) -> Union[bool, str]:
+        if bool_string.lower() in {"true", "t"}:
+            return True
+        elif bool_string.lower() in {"false", "f"}:
+            return False
+        else:
+            return bool_string
+
+    @staticmethod
+    def _get_number_of_curies(qnode: QNode) -> int:
+        if qnode.curie and isinstance(qnode.curie, list):
+            return len(qnode.curie)
+        elif qnode.curie and isinstance(qnode.curie, str):
+            return 1
+        else:
+            return 0
+
+    def _get_qnode_curie_summary(self, qnode: QNode) -> str:
+        num_curies = self._get_number_of_curies(qnode)
+        if num_curies == 1:
+            return f" {qnode.curie if isinstance(qnode.curie, str) else qnode.curie[0]}"
+        elif num_curies > 1:
+            return f" [{num_curies} curies]"
+        else:
+            return ""
 
 
 def main():
