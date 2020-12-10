@@ -158,7 +158,7 @@ class MoleProQuerier:
         stripped_qedge = {'id': qedge.id,
                           'source_id': qedge.source_id,
                           'target_id': qedge.target_id,
-                          'type': qedge.type if qedge.type else 'correlated_with'}
+                          'type': qedge.type if qedge.type else list(self.accepted_edge_types)[0]}
         if stripped_qedge['type'] not in self.accepted_edge_types:
             log.warning(f"{self.kp_name} only accepts the following edge types: {self.accepted_edge_types}")
         source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].source_id)

@@ -27,6 +27,7 @@ class GeneticsQuerier:
         self.kp_name = "GeneticsKP"
         # TODO: Eventually validate queries better based on info in future TRAPI knowledge_map endpoint
         self.accepted_node_types = {"gene", "pathway", "phenotypic_feature", "disease"}
+        self.accepted_edge_types = {"associated"}
         self.node_type_overrides_for_kp = {"protein": "gene"}
         self.kp_preferred_prefixes = {"gene": "NCBIGene", "pathway": "GO", "phenotypic_feature": "EFO", "disease": "EFO"}
         self.magma_score_name = "MAGMA-pvalue"
@@ -159,7 +160,7 @@ class GeneticsQuerier:
         stripped_qedge = {'id': qedge.id,
                           'source_id': qedge.source_id,
                           'target_id': qedge.target_id,
-                          'type': 'associated'}
+                          'type': list(self.accepted_edge_types)[0]}
         source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].source_id)
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
@@ -202,4 +203,5 @@ class GeneticsQuerier:
                     name=kp_node.get('name'))
 
     def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
-        return f"{self.kp_name}:{swagger_edge.source_id}-{swagger_edge.type}-{swagger_edge.target_id}"
+        kind_of_edge = swagger_edge.edge_attributes[0].name if swagger_edge.edge_attributes else swagger_edge.type
+        return f"{self.kp_name}:{swagger_edge.source_id}-{kind_of_edge}-{swagger_edge.target_id}"
