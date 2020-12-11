@@ -81,9 +81,10 @@ class GeneticsQuerier:
                     edge_to_nodes_map[swagger_edge.id] = {source_qnode_id: swagger_edge.source_id,
                                                           target_qnode_id: swagger_edge.target_id}
             for returned_node in returned_kg['nodes']:
-                swagger_node = self._create_swagger_node_from_kp_node(returned_node)
-                for qnode_id in qg_id_mappings['nodes'][swagger_node.id]:
-                    final_kg.add_node(swagger_node, qnode_id)
+                if returned_node['id']:  # Skip any nodes with 'None' for their ID (see discussion in #1154)
+                    swagger_node = self._create_swagger_node_from_kp_node(returned_node)
+                    for qnode_id in qg_id_mappings['nodes'][swagger_node.id]:
+                        final_kg.add_node(swagger_node, qnode_id)
 
         if not eu.qg_is_fulfilled(query_graph, final_kg):
             if continue_if_no_results:
