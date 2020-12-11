@@ -594,6 +594,18 @@ def test_genetics_kp_simple():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+def test_genetics_kp_quantile():
+    actions_list = [
+        "add_qnode(name=type 2 diabetes mellitus, type=disease, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=GeneticsKP, include_integrated_score=true)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+@pytest.mark.slow
 def test_genetics_kp_2_hop():
     actions_list = [
         "add_qnode(curie=UniProtKB:Q99712, id=n00, type=protein)",
