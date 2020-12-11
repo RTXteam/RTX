@@ -70,21 +70,34 @@ class GeneticsQuerier:
         else:
             # Build a map of node/edge IDs to qnode/qedge IDs
             qg_id_mappings = self._get_qg_id_mappings_from_results(json_response['results'])
+            unknown_scores_encountered = set()
             # Populate our final KG with nodes and edges
             for returned_edge in returned_kg['edges']:
-                # Always include edges for integrated scores, but only include magma edges if that flag is set
-                if include_integrated_score or returned_edge['score_name'] == self.magma_score_name:
-                    swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
-                    for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
-                        swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
-                        final_kg.add_edge(swagger_edge, qedge_id)
-                    edge_to_nodes_map[swagger_edge.id] = {source_qnode_id: swagger_edge.source_id,
-                                                          target_qnode_id: swagger_edge.target_id}
+                # Skip edges missing a source and/or target ID (have encountered these before)
+                if not returned_edge['source_id'] or not returned_edge['target_id']:
+                    log.warning(f"Edge returned from GeneticsKP is lacking a source_id and/or target_id: {returned_edge}."
+                                f" Will skip adding this edge to the KG.")
+                else:
+                    if returned_edge['score_name'] not in self.score_type_lookup:
+                        unknown_scores_encountered.add(returned_edge['score_name'])
+                    # Always include edges for integrated scores, but only include magma edges if that flag is set
+                    if include_integrated_score or returned_edge['score_name'] == self.magma_score_name:
+                        swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
+                        for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
+                            swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
+                            final_kg.add_edge(swagger_edge, qedge_id)
+                        edge_to_nodes_map[swagger_edge.id] = {source_qnode_id: swagger_edge.source_id,
+                                                              target_qnode_id: swagger_edge.target_id}
+            log.warning(f"Encountered unknown score(s) from {self.kp_name}: {unknown_scores_encountered}. "
+                        f"Not sure what data type to assign these.")
             for returned_node in returned_kg['nodes']:
                 if returned_node['id']:  # Skip any nodes with 'None' for their ID (see discussion in #1154)
                     swagger_node = self._create_swagger_node_from_kp_node(returned_node)
                     for qnode_id in qg_id_mappings['nodes'][swagger_node.id]:
                         final_kg.add_node(swagger_node, qnode_id)
+                else:
+                    log.warning(f"Node returned from {self.kp_name} is lacking an ID: {returned_node}."
+                                f" Will skip adding this node to the KG.")
 
         if not eu.qg_is_fulfilled(query_graph, final_kg):
             if continue_if_no_results:
@@ -185,16 +198,18 @@ class GeneticsQuerier:
         return combined_response
 
     def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Edge:
-        score_name = kp_edge['score_name']
         swagger_edge = Edge(id=kp_edge['id'],
                             source_id=kp_edge['source_id'],
                             target_id=kp_edge['target_id'],
                             type=kp_edge['type'],
                             provided_by=self.kp_name,
-                            is_defined_by='ARAX',
-                            edge_attributes=[EdgeAttribute(name=score_name,
-                                                           type=self.score_type_lookup[score_name],
-                                                           value=kp_edge['score'])])
+                            is_defined_by='ARAX')
+        score_name = kp_edge['score_name']
+        score_value = kp_edge.get('score')
+        if score_value:  # Some returned edges are missing a score value for whatever reason
+            swagger_edge.edge_attributes = [EdgeAttribute(name=score_name,
+                                                          type=self.score_type_lookup.get(score_name),
+                                                          value=score_value)]
         return swagger_edge
 
     @staticmethod
