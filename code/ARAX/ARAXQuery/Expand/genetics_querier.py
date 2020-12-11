@@ -31,9 +31,8 @@ class GeneticsQuerier:
         self.node_type_overrides_for_kp = {"protein": "gene"}
         self.kp_preferred_prefixes = {"gene": "NCBIGene", "pathway": "GO", "phenotypic_feature": "EFO", "disease": "EFO"}
         self.magma_score_name = "MAGMA-pvalue"
-        self.quantile_score_name = "Genetics-quantile"
         self.score_type_lookup = {self.magma_score_name: "EDAM:data_1669",
-                                  self.quantile_score_name: "SIO:001414"}
+                                  "Genetics-quantile": "SIO:001414"}
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
@@ -47,7 +46,7 @@ class GeneticsQuerier:
         """
         log = self.response
         continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
-        include_integrated_score = self.response.data['parameters']['include_integrated_score']
+        include_all_scores = self.response.data['parameters']['include_all_scores']
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
@@ -81,7 +80,7 @@ class GeneticsQuerier:
                     if returned_edge['score_name'] not in self.score_type_lookup:
                         unknown_scores_encountered.add(returned_edge['score_name'])
                     # Always include edges for integrated scores, but only include magma edges if that flag is set
-                    if include_integrated_score or returned_edge['score_name'] == self.magma_score_name:
+                    if include_all_scores or returned_edge['score_name'] == self.magma_score_name:
                         swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
                         for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
                             swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us

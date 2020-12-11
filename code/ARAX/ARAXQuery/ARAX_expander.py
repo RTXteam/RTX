@@ -135,22 +135,25 @@ class ARAXExpander:
                 "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
                                "satisfy the query graph. It currently can answer questions involving the following "
                                "node types: gene, protein, disease, phenotypic_feature, pathway. QNode types are "
-                               "required for GeneticsKP queries. Temporarily (while the integration is under "
-                               "development), it can only be used as the first hop in a query. Note that QEdge types "
-                               "are irrelevant for GeneticsKP queries, since GeneticsKP only outputs edges with a type "
-                               "of 'associated' (so Expand always uses that as the QEdge type behind the scenes).",
+                               "required for GeneticsKP queries and it is sensitive to the use of disease vs. "
+                               "phenotypic_feature. Note that QEdge types are irrelevant for GeneticsKP queries, since "
+                               "GeneticsKP only outputs edges with a type of 'associated' (so Expand always uses that "
+                               "as the QEdge type behind the scenes). Only MAGMA p-value edges are added by default, "
+                               "but setting 'include_all_scores=true' will return all edges/scores the GeneticsKP "
+                               "returns, including genetics-quantile scores.",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "use_synonyms": self.use_synonyms_parameter_info,
-                    "include_integrated_score": {
+                    "include_all_scores": {
                         "is_required": False,
                         "examples": ["true", "false"],
                         "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
                         "default": "false",
                         "type": "boolean",
-                        "description": "Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP."
+                        "description": "Whether to return all scores/edges returned from the GeneticsKP (including "
+                                       "genetics-quantile edges) or only MAGMA p-value edges."
                     }
                 }
             },

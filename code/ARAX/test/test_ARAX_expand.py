@@ -594,12 +594,12 @@ def test_genetics_kp_simple():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_genetics_kp_quantile():
+def test_genetics_kp_all_scores():
     actions_list = [
         "add_qnode(name=type 2 diabetes mellitus, type=disease, id=n00)",
         "add_qnode(type=protein, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(kp=GeneticsKP, include_integrated_score=true)",
+        "expand(kp=GeneticsKP, include_all_scores=true)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
