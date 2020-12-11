@@ -33,7 +33,7 @@ class GeneticsQuerier:
         self.magma_score_name = "MAGMA-pvalue"
         self.quantile_score_name = "Genetics-quantile"
         self.score_type_lookup = {self.magma_score_name: "EDAM:data_1669",
-                                  self.quantile_score_name: "?"}  # TODO: Find EDAM type for quantile score
+                                  self.quantile_score_name: "SIO:001414"}
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
