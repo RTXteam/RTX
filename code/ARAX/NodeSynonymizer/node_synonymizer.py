@@ -191,6 +191,7 @@ class NodeSynonymizer:
             #### For debugging problems
             debug_flag = False
             #if 'HGNC:29603' in node_curie: debug_flag = True
+            if node_name.lower() == 'ache': debug_flag = True
 
             if debug_flag:
                 print("===============================================")
@@ -1244,6 +1245,8 @@ class NodeSynonymizer:
         batch_size = 0
         if curies is not None:
             for curie in curies:
+                if curie is None:
+                    continue
                 results[curie] = None
                 uc_curie = curie.upper()
                 curie_map[uc_curie] = curie
@@ -1263,6 +1266,8 @@ class NodeSynonymizer:
         batch_size = 0
         if names is not None:
             for name in names:
+                if name is None:
+                    continue
                 results[name] = None
                 lc_name = name.lower()
                 name_map[lc_name] = name
@@ -1727,7 +1732,7 @@ def run_example_9():
 
     print("==== Get canonical curies for a set of input curies ============================")
     curies = [ "DOID:14330", "UMLS:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
-    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
+    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"', None ]
     #curies = [ "UMLS:C0002371", "UMLS:C0889200" ]
     
     combined_list = copy.copy(curies)
@@ -1780,7 +1785,7 @@ def run_example_11():
 
 # ############################################################################################
 def run_examples():
-    run_example_6()
+    run_example_9()
     return
     run_example_1()
     run_example_2()
