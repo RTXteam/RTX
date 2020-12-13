@@ -279,7 +279,7 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
 
-                self._prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map, log)
+                self._prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map, qedge, log)
                 if log.status != 'OK':
                     return response
 
@@ -603,48 +603,68 @@ class ARAXExpander:
                 dict_kg.edges_by_qg_id[linked_qedge_id].pop(edge_id_to_blow_away)
 
     @staticmethod
-    def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, full_query_graph: QueryGraph,
-                              node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], log: Response):
+    def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, query_graph: QueryGraph,
+                              node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], qedge_expanded: QEdge,
+                              log: Response):
         # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         # found in the last expansion will connect to edges in the next one)
         log.debug(f"Pruning any paths that are now dead ends")
 
-        # Create a map of which qnodes are connected to which other qnodes
+        # Grab the part of the QG the most recently expanded qedge belongs to ('required' part or an option group)
+        if qedge_expanded.option_group_id:
+            group_qnode_ids = {qnode.id for qnode in query_graph.nodes if qnode.option_group_id == qedge_expanded.option_group_id}
+            group_qedges = [qedge for qedge in query_graph.edges if qedge.option_group_id == qedge_expanded.option_group_id]
+            sub_qg_qedge_ids = {qedge.id for qedge in group_qedges}
+            qnode_ids_used_by_group_qedges = {qnode_id for qedge in group_qedges for qnode_id in {qedge.source_id, qedge.target_id}}
+            sub_qg_qnode_ids = group_qnode_ids.union(qnode_ids_used_by_group_qedges)
+            sub_qg = QueryGraph(nodes=[qnode for qnode in query_graph.nodes if qnode.id in sub_qg_qnode_ids],
+                                edges=[qedge for qedge in query_graph.edges if qedge.id in sub_qg_qedge_ids])
+        else:
+            required_qnode_ids = {qnode.id for qnode in query_graph.nodes if not qnode.option_group_id}
+            sub_qg_qedge_ids = {qedge.id for qedge in query_graph.edges if not qedge.option_group_id}
+            sub_qg = QueryGraph(nodes=[qnode for qnode in query_graph.nodes if qnode.id in required_qnode_ids],
+                                edges=[qedge for qedge in query_graph.edges if qedge.id in sub_qg_qedge_ids])
+            sub_qg_qnode_ids = required_qnode_ids
+
+        # Create a map of which qnodes are connected to which other qnodes (only for the relevant portion of the QG)
         # Example qnode_connections_map: {'n00': {'n01'}, 'n01': {'n00', 'n02'}, 'n02': {'n01'}}
         qnode_connections_map = dict()
-        for qnode in full_query_graph.nodes:
+        for qnode in sub_qg.nodes:
             qnode_connections_map[qnode.id] = set()
-            for qedge in full_query_graph.edges:
+            for qedge in sub_qg.edges:
                 if qedge.source_id == qnode.id or qedge.target_id == qnode.id:
-                    connected_qnode_id = qedge.target_id if qedge.target_id != qnode.id else qedge.source_id
-                    qnode_connections_map[qnode.id].add(connected_qnode_id)
+                    other_qnode_id = qedge.target_id if qedge.target_id != qnode.id else qedge.source_id
+                    qnode_connections_map[qnode.id].add(other_qnode_id)
 
         # Create a map of which nodes each node is connected to (organized by the qnode_id they're fulfilling)
         # Example node_usages_by_edges_map: {'e00': {'KG1:111221': {'n00': 'UMLS:122', 'n01': 'UMLS:124'}}}
-        # Example node_connections_map: {'UMLS:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22', 'UniProtKB:333'}}}
+        # Example node_connections_map: {'n01': {'UMLS:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22'}}}, ...}
         node_connections_map = dict()
         for qedge_id, edges_to_nodes_dict in node_usages_by_edges_map.items():
-            current_qedge = next(qedge for qedge in full_query_graph.edges if qedge.id == qedge_id)
-            qnode_ids = [current_qedge.source_id, current_qedge.target_id]
-            for edge_id, node_usages_dict in edges_to_nodes_dict.items():
-                for current_qnode_id in qnode_ids:
-                    connected_qnode_id = next(qnode_id for qnode_id in qnode_ids if qnode_id != current_qnode_id)
-                    current_node_id = node_usages_dict[current_qnode_id]
-                    connected_node_id = node_usages_dict[connected_qnode_id]
-                    if current_qnode_id not in node_connections_map:
-                        node_connections_map[current_qnode_id] = dict()
-                    if current_node_id not in node_connections_map[current_qnode_id]:
-                        node_connections_map[current_qnode_id][current_node_id] = dict()
-                    if connected_qnode_id not in node_connections_map[current_qnode_id][current_node_id]:
-                        node_connections_map[current_qnode_id][current_node_id][connected_qnode_id] = set()
-                    node_connections_map[current_qnode_id][current_node_id][connected_qnode_id].add(connected_node_id)
+            if qedge_id in sub_qg_qedge_ids:  # Only collect info for edges in the portion of the QG we're considering
+                current_qedge = eu.get_query_edge(sub_qg, qedge_id)
+                edges_to_nodes_dict = node_usages_by_edges_map[current_qedge.id]
+                current_qedges_qnode_ids = {current_qedge.source_id, current_qedge.target_id}
+                for edge_id, node_usages_dict in edges_to_nodes_dict.items():
+                    for current_qnode_id in current_qedges_qnode_ids:
+                        other_qnode_id = list(current_qedges_qnode_ids.difference({current_qnode_id}))[0]
+                        current_node_id = node_usages_dict[current_qnode_id]
+                        other_node_id = node_usages_dict[other_qnode_id]
+                        if current_qnode_id not in node_connections_map:
+                            node_connections_map[current_qnode_id] = dict()
+                        if current_node_id not in node_connections_map[current_qnode_id]:
+                            node_connections_map[current_qnode_id][current_node_id] = dict()
+                        if other_qnode_id not in node_connections_map[current_qnode_id][current_node_id]:
+                            node_connections_map[current_qnode_id][current_node_id][other_qnode_id] = set()
+                        node_connections_map[current_qnode_id][current_node_id][other_qnode_id].add(other_node_id)
 
-        # Iteratively remove all disconnected nodes until there are none left
-        qnode_ids_already_expanded = list(node_connections_map.keys())
+        # Iteratively remove all disconnected nodes until there are none left (for the relevant portion of the QG)
+        qnode_ids_already_expanded = set(node_connections_map)
+        qnode_ids_to_prune = qnode_ids_already_expanded.intersection(sub_qg_qnode_ids)
         found_dead_end = True
         while found_dead_end:
             found_dead_end = False
-            for qnode_id in qnode_ids_already_expanded:
+            for qnode_id in qnode_ids_to_prune:
                 qnode_ids_should_be_connected_to = qnode_connections_map[qnode_id].intersection(qnode_ids_already_expanded)
                 for node_id, node_mappings_dict in node_connections_map[qnode_id].items():
                     # Check if any mappings are even entered for all qnode_ids this node should be connected to
@@ -654,8 +674,8 @@ class ARAXExpander:
                             found_dead_end = True
                     else:
                         # Verify that at least one of the entered connections still exists (for each connected qnode_id)
-                        for connected_qnode_id, connected_node_ids in node_mappings_dict.items():
-                            if not connected_node_ids.intersection(set(dict_kg.nodes_by_qg_id[connected_qnode_id].keys())):
+                        for other_qnode_id, connected_node_ids in node_mappings_dict.items():
+                            if not connected_node_ids.intersection(set(dict_kg.nodes_by_qg_id[other_qnode_id].keys())):
                                 if node_id in dict_kg.nodes_by_qg_id[qnode_id]:
                                     dict_kg.nodes_by_qg_id[qnode_id].pop(node_id)
                                     found_dead_end = True
@@ -669,14 +689,16 @@ class ARAXExpander:
                             dict_kg.edges_by_qg_id[qedge_id].pop(edge_key)
 
         # And remove all orphaned nodes (that aren't supposed to be orphans - some qnodes may be orphans by design)
-        qnode_ids_used_by_qedges = {qedge.source_id for qedge in full_query_graph.edges}.union(qedge.target_id for qedge in full_query_graph.edges)
-        non_orphan_qnode_ids = {qnode.id for qnode in full_query_graph.nodes if qnode.id in qnode_ids_used_by_qedges}
+        qnode_ids_used_by_qedges = {qnode_id for qedge in query_graph.edges for qnode_id in {qedge.source_id, qedge.target_id}}
+        non_orphan_qnode_ids = {qnode.id for qnode in query_graph.nodes if qnode.id in qnode_ids_used_by_qedges}
         node_ids_used_by_edges = dict_kg.get_all_node_ids_used_by_edges()
         for non_orphan_qnode_id in non_orphan_qnode_ids:
             node_ids_in_kg = set(dict_kg.nodes_by_qg_id.get(non_orphan_qnode_id, []))
             orphan_node_ids = node_ids_in_kg.difference(node_ids_used_by_edges)
             for orphan_node_id in orphan_node_ids:
                 dict_kg.nodes_by_qg_id[non_orphan_qnode_id].pop(orphan_node_id)
+
+        log.debug(f"After pruning, KG counts are: {eu.get_printable_counts_by_qg_id(dict_kg)}")
 
     def _get_order_to_expand_qedges_in(self, query_graph: QueryGraph) -> List[QEdge]:
         """
