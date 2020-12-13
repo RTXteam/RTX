@@ -431,17 +431,28 @@ class ARAXExpander:
         edge_query_graph.edges.append(eu.copy_qedge(qedge))
 
         # Update this qedge's qnodes as appropriate and add (copies of) them to the edge query graph
-        qedge_has_already_been_expanded = qedge.id in dict_kg.edges_by_qg_id
+        required_qedge_ids = {qedge.id for qedge in query_graph.edges if not qedge.option_group_id}
+        expanded_qedge_ids = set(dict_kg.edges_by_qg_id)
+        qedge_has_already_been_expanded = qedge.id in expanded_qedge_ids
+        qedge_is_required = qedge.id in required_qedge_ids
         for qnode in qnodes:
             qnode_copy = eu.copy_qnode(qnode)
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
             qnode_already_fulfilled = qnode_copy.id in dict_kg.nodes_by_qg_id
             if qnode_already_fulfilled and not qnode_copy.curie:
+                existing_curies_for_this_qnode_id = list(dict_kg.nodes_by_qg_id[qnode_copy.id])
                 if qedge_has_already_been_expanded:
+                    # Feed in curies only for 'input' qnodes if we're re-expanding this edge (i.e., with another KP)
                     if self._is_input_qnode(qnode_copy, qedge):
-                        qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
+                        qnode_copy.curie = existing_curies_for_this_qnode_id
+                elif qedge_is_required:
+                    # Only feed in curies to required qnodes if it was expansion of a REQUIRED qedge that grabbed them
+                    qedge_ids_connected_to_qnode = {qedge.id for qedge in query_graph.edges if qnode.id in {qedge.source_id, qedge.target_id}}
+                    was_populated_by_required_edge = qedge_ids_connected_to_qnode.intersection(required_qedge_ids, expanded_qedge_ids)
+                    if was_populated_by_required_edge:
+                        qnode_copy.curie = existing_curies_for_this_qnode_id
                 else:
-                    qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
+                    qnode_copy.curie = existing_curies_for_this_qnode_id
             edge_query_graph.nodes.append(qnode_copy)
 
         # Consider both protein and gene if qnode's type is one of those (since KPs handle these differently)
