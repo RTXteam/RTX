@@ -496,7 +496,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if unfulfilled_qnode_ids or unfulfilled_qedge_ids or not kg.nodes:
         return results
 
-    # Create results off the "required" portion of the QG
+    # Create results off the "required" portion of the QG (excluding any qnodes/qedges belong to an "option group")
     required_qg = QueryGraph(nodes=[qnode for qnode in qg.nodes if not qnode.option_group_id],
                              edges=[qedge for qedge in qg.edges if not qedge.option_group_id])
     qg_is_disconnected = _qg_is_disconnected(required_qg)
@@ -505,7 +505,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                          f"{[qnode.id for qnode in required_qg.nodes]}")
     result_graphs_required = _create_result_graphs(kg, required_qg, ignore_edge_direction)
 
-    # Then create results for each of the "option groups" in the QG
+    # Then create results for each of the "option groups" in the QG (including the required portion of the QG with each)
     option_groups_in_qg = {qedge.option_group_id for qedge in qg.edges if qedge.option_group_id}
     option_group_results_dict = dict()
     for option_group_id in option_groups_in_qg:
@@ -530,15 +530,13 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     for option_group_id in option_groups_in_qg:
         for option_group_result_graph in option_group_results_dict[option_group_id]:
             result_key = _get_result_graph_key(option_group_result_graph, required_non_set_qnode_ids)
-            corresponding_result_graph = result_graphs_by_key.get(result_key)
-            if corresponding_result_graph:
-                # Merge this optional result's contents into its corresponding "required" result
-                result_graphs_by_key[result_key] = _merge_two_result_graphs(option_group_result_graph, corresponding_result_graph)
-    # TODO: would we ever need to prune down kg nodes for is_set qnodes?
+            corresponding_result_graph = result_graphs_by_key[result_key]
+            # Merge this optional result's contents into its corresponding "required" result
+            result_graphs_by_key[result_key] = _merge_two_result_graphs(option_group_result_graph, corresponding_result_graph)
 
     final_result_graphs = list(result_graphs_by_key.values())
 
-    # Convert the result graphs into actual Swagger object model results
+    # Convert the final result graphs into actual Swagger object model results
     results = []
     for result_graph in final_result_graphs:
         node_bindings = []

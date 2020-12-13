@@ -1375,8 +1375,8 @@ def test_issue1119_e():
         "add_qnode(id=n01, curie=CHEBI:48607)",
         "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
         "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
-        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1)",
-        "add_qedge(id=e02, source_id=n02, target_id=n01, option_group_id=1)",
+        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
+        "add_qedge(id=e02, source_id=n02, target_id=n01, option_group_id=1, type=physically_interacts_with)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
@@ -1406,7 +1406,25 @@ def test_issue1119_f():
     assert response.status == 'OK'
     assert message.results
     # TODO: erroring if is_set=false for n02
-    # TODO: test a non-curie to curie situation. (curie - general type). probably need to adjust edge qg creation there?
+
+
+@pytest.mark.slow
+def test_issue1119_g():
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
+        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
+        "add_qedge(id=e02, source_id=n02, target_id=n01, option_group_id=1, type=physically_interacts_with)",
+        "expand()",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+    # TODO: erroring if is_set=false for n02
 
 
 def test_issue1146_a():
