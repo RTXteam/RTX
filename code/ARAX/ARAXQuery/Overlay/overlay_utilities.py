@@ -3,7 +3,7 @@
 import itertools
 import os
 import sys
-from typing import Dict, Set, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
@@ -77,3 +77,11 @@ def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]
                     edge_ids_by_qg_id[qedge_id] = set()
                 edge_ids_by_qg_id[qedge_id].add(edge.id)
     return edge_ids_by_qg_id
+
+
+def determine_virtual_qedges_option_group(source_node_id: str, target_node_id: str, query_graph: QueryGraph) -> Optional[str]:
+    # Determines what option group ID a virtual qedge between the two input qnodes should have
+    qnodes = [qnode for qnode in query_graph.nodes if qnode.id in {source_node_id, target_node_id}]
+    qnodes_option_group_ids = [qnode.option_group_id for qnode in qnodes if qnode.option_group_id]
+    qedge_option_group_id = qnodes_option_group_ids[0] if qnodes_option_group_ids else None
+    return qedge_option_group_id
