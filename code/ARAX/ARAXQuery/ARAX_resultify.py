@@ -596,14 +596,16 @@ def _qg_is_disconnected(qg: QueryGraph):
     return True if not connected_qnode_id and qnode_ids_remaining else False
 
 
-def _merge_two_result_graphs(result_graph_a: Dict[str, Dict[str, Set[str]]], result_graph_b: Dict[str, Dict[str, Set[str]]]) -> Dict[str, Dict[str, Set[str]]]:
-    merged_result_graph = {"nodes": {qnode_id: set() for qnode_id in set(result_graph_a["nodes"]).union(set(result_graph_b["nodes"]))},
-                           "edges": {qedge_id: set() for qedge_id in set(result_graph_a["edges"]).union(set(result_graph_b["edges"]))}}
-    for result_graph in [result_graph_a, result_graph_b]:
-        for qnode_id, kg_node_ids in result_graph["nodes"].items():
-            merged_result_graph["nodes"][qnode_id] = merged_result_graph["nodes"][qnode_id].union(kg_node_ids)
-        for qedge_id, kg_edge_ids in result_graph["edges"].items():
-            merged_result_graph["edges"][qedge_id] = merged_result_graph["edges"][qedge_id].union(kg_edge_ids)
+def _merge_two_result_graphs(optional_result_graph: Dict[str, Dict[str, Set[str]]],
+                             required_result_graph: Dict[str, Dict[str, Set[str]]]) -> Dict[str, Dict[str, Set[str]]]:
+    # Start with the required result graph and then add in any nodes/edges from the optional graph as appropriate
+    merged_result_graph = _copy_result_graph(required_result_graph)
+    for qnode_id, kg_node_ids in optional_result_graph["nodes"].items():
+        if qnode_id not in required_result_graph["nodes"]:
+            merged_result_graph["nodes"][qnode_id] = kg_node_ids
+    for qedge_id, kg_edge_ids in optional_result_graph["edges"].items():
+        if qedge_id not in required_result_graph["edges"]:
+            merged_result_graph["edges"][qedge_id] = kg_edge_ids
     return merged_result_graph
 
 

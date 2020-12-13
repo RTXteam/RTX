@@ -44,7 +44,6 @@ class DictKnowledgeGraph:
         return {node.id for nodes in self.nodes_by_qg_id.values() for node in nodes.values()}
 
     def is_empty(self) -> bool:
-        print(self.nodes_by_qg_id.values())
         return True if not self.nodes_by_qg_id.values() else False
 
 

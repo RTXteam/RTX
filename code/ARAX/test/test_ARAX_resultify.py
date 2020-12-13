@@ -1366,7 +1366,6 @@ def test_issue1119_d():
     # Make sure our "optional" edges appear in one or more results
     assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"))
     assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e02"))
-    _print_results_for_debug(message.results)
 
 
 def test_issue1146_a():
