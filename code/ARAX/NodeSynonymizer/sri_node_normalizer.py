@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 """ An interface to the SRI Node and Edge Normalizer https://nodenormalization-sri.renci.org/apidocs/
+    e.g.:  https://nodenormalization-sri.renci.org/get_normalized_nodes?curie=CHEMBL.COMPOUND:CHEMBL76729
 """
 
 import sys
@@ -206,6 +207,9 @@ class SriNodeNormalizer:
 
         node_types = {}
         for node_type in response_dict['semantic_types']['types']:
+            # FIXME Temporary hack to work around the biolink:ChemicalSubstance - chemical_substance duality
+            node_type = re.sub(r'biolink:','',node_type)
+            node_type = re.sub(r'(?<!^)(?=[A-Z])', '_', node_type).lower()
             node_types[node_type] = 1
 
         if len(node_types) == 0:
@@ -227,7 +231,6 @@ class SriNodeNormalizer:
         supported_prefixes = {}
 
         # Build the URL and fetch the result
-        #print(f"INFO: Get prefixes for {node_type}")
         url = f"https://nodenormalization-sri.renci.org/get_curie_prefixes"
         response_content = requests.get(url, headers={'accept': 'application/json'})
         status_code = response_content.status_code
@@ -352,7 +355,11 @@ class SriNodeNormalizer:
 
         # If there is a returned type, store it
         if 'type' in results[normalizer_curie]:
-            response['type'] = results[normalizer_curie]['type'][0]
+            node_type = results[normalizer_curie]['type'][0]
+            # FIXME Temporary hack to work around the biolink:ChemicalSubstance - chemical_substance duality
+            node_type = re.sub(r'biolink:','',node_type)
+            node_type = re.sub(r'(?<!^)(?=[A-Z])', '_', node_type).lower()
+            response['type'] = node_type
 
         # If there are additional equivalent identifiers and names, store them
         names = {}
@@ -386,9 +393,11 @@ def main():
                         help="Specify a curie to look up with the SRI Node Normalizer (e.g., UniProtKB:P01308, Orphanet:2322, DRUGBANK:DB11655", default=None)
     parser.add_argument('-p', '--prefixes', action="store_true",
                         help="If set, list the SRI Node Normalizer supported prefixes", default=None)
+    parser.add_argument('-t', '--types', action="store_true",
+                        help="If set, list the SRI Node Normalizer supported types", default=None)
     args = parser.parse_args()
 
-    if not args.build and not args.curie and not args.prefixes:
+    if not args.build and not args.curie and not args.prefixes and not args.types:
         parser.print_help()
         sys.exit(2)
 
@@ -399,8 +408,13 @@ def main():
         print(json.dumps(supported_prefixes, indent=2, sort_keys=True))
         return
 
+    if args.types:
+        supported_types = normalizer.get_supported_types()
+        print(json.dumps(supported_types, indent=2, sort_keys=True))
+        return
+
     if args.build:
-        print("INFO: Beginning SRI Node Normalizer cache building process for both KG1 and KG2. Make sure you have a good network connection as this will download ~500 MB of data.")
+        print("INFO: Beginning SRI Node Normalizer cache building process for both KG1 and KG2. Make sure you have a good network connection as this will download ~1 GB of data.")
         normalizer.fill_cache(kg_name='KG2')
         normalizer.fill_cache(kg_name='KG1')
         normalizer.store_cache()
