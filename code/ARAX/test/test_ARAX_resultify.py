@@ -1427,6 +1427,27 @@ def test_issue1119_g():
     # TODO: erroring if is_set=false for n02
 
 
+@pytest.mark.slow
+def test_issue1119_h():
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
+        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
+        "add_qedge(id=e02, source_id=n02, target_id=n01, option_group_id=1, type=physically_interacts_with)",
+        "expand()",
+        "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N1,source_qnode_id=n00,target_qnode_id=n01)",
+        "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N2,source_qnode_id=n00,target_qnode_id=n02)",
+        "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N3,source_qnode_id=n02,target_qnode_id=n01)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+
+
 def test_issue1146_a():
     actions = [
         "add_qnode(id=n0, curie=MONDO:0001475, type=disease)",

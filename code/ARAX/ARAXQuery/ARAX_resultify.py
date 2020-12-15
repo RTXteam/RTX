@@ -472,6 +472,16 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                                      f"{kg_source_node_id} (qnode_ids: {kg_source_node.qnode_ids}) and "
                                      f"{kg_target_node_id} (qnode_ids: {kg_target_node.qnode_ids}).")
 
+    # ------------------- checking to make sure option groups in QG are valid ---------------------
+    # Qedges with an optional qnode must themselves be labeled optional
+    optional_qnode_ids = {qnode.id for qnode in qg.nodes if qnode.option_group_id}
+    optional_qedge_ids = {qedge.id for qedge in qg.edges if qedge.option_group_id}
+    qedge_ids_with_optional_qnode = {qedge.id for qedge in qg.edges if {qedge.source_id, qedge.target_id}.intersection(optional_qnode_ids)}
+    qedge_ids_missing_optional_label = qedge_ids_with_optional_qnode.difference(optional_qedge_ids)
+    if qedge_ids_missing_optional_label:
+        raise ValueError(f"These qedges need to be labeled optional because they link to an optional qnode: "
+                         f"{qedge_ids_missing_optional_label}")
+
     # ============= save until SAR can discuss with {EWD,DMK} whether there can be unmapped nodes in the KG =============
     # # if any node in the KG is not bound to a node in the QG, drop the KG node; redefine "kg" as the filtered KG
     # kg_node_ids_keep = {node.id for node in kg.nodes if node.id in node_bindings_map}
