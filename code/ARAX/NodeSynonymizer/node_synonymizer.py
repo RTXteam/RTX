@@ -1824,13 +1824,15 @@ def main():
                         help="If set perform the test query and return", default=None)
     parser.add_argument('-g', '--get', action="store",
                         help="Get nodes for the specified list in the specified kg_name", default=None)
+    parser.add_argument('-c', '--live', action="store",
+                        help="Get the config.json field for the filename", default="Production")
     args = parser.parse_args()
 
     if not args.build and not args.test and not args.recollate and not args.lookup and not args.query and not args.get:
         parser.print_help()
         sys.exit(2)
 
-    synonymizer = NodeSynonymizer()
+    synonymizer = NodeSynonymizer(live = args.live)
 
     # If the user asks to perform the SELECT statement, do it
     if args.query:
