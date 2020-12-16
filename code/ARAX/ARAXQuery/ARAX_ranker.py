@@ -168,7 +168,8 @@ class ARAXRanker:
         # edge attributes we know about
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
                                  'probability_treats', 'paired_concept_frequency',
-                                 'observed_expected_ratio', 'chi_square', 'MAGMA-pvalue', 'Genetics-quantile '}
+                                 'observed_expected_ratio', 'chi_square', 'MAGMA-pvalue', 'Genetics-quantile',
+                                 'fisher_exact_test_p-value','Richards-effector-genes','ABC-genes'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
@@ -179,6 +180,9 @@ class ARAXRanker:
                                           'chi_square': 0.8,
                                           'MAGMA-pvalue': 1.0,
                                           'Genetics-quantile': 1.0,
+                                          'fisher_exact_test_p-value': 1.0,
+                                          'Richards-effector-genes': 0.5,
+                                          'ABC-genes': 0.5,
                                           }
         self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
@@ -419,6 +423,31 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         the quantile as-is is best. With DML, SAR, EWD.
         """
 
+        return value
+
+    def __normalize_fisher_exact_test_p_value(self, value):
+        """
+        For FET p-values: Including two options
+        The first option is to simply use 1-(p-value)
+        The second is a custom logorithmic. 0.05 should correspond to ~0.95 after the logistic is applied.
+        """
+
+        # option 1:
+        # normalized_value = 1-value
+
+        # option 2:
+        value = -np.log(value)
+        max_value = 1.0
+        curve_steepness = 1.01682
+        logistic_midpoint = 0.1
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+
+        return normalized_value
+
+    def __normalize_Richards_effector_genes(self, value):
+        return value
+
+    def __normalize_ABC_genes(self, value):
         return value
 
 
