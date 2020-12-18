@@ -1300,7 +1300,7 @@ def test_issue1119_b():
 
 @pytest.mark.slow
 def test_issue1119_c():
-    # Test simple query with single option group
+    # Test a simple one-hop query with one single-edge option group
     actions = [
         "add_qnode(id=n00, curie=DOID:3312)",
         "add_qnode(id=n01, type=chemical_substance)",
@@ -1346,7 +1346,7 @@ def test_issue1119_c():
 
 @pytest.mark.slow
 def test_issue1119_d():
-    # Test query with multiple option groups and a 'not' edge
+    # Test one-hop query with multiple single-edge option groups and a required 'not' edge
     actions = [
         "add_qnode(id=n00, curie=DOID:3312)",
         "add_qnode(id=n01, type=chemical_substance)",
@@ -1360,16 +1360,20 @@ def test_issue1119_d():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert message.results
+    # Make sure every result has a required edge
     for result in message.results:
         assert any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00")
         assert not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e03")
     # Make sure our "optional" edges appear in one or more results
     assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"))
     assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e02"))
+    # Verify there are some results without any optional portion (happens to be true for this query)
+    assert any(result for result in message.results if not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id in {"e01", "e02"}))
 
 
 @pytest.mark.slow
 def test_issue1119_e():
+    # Test (curie)--(curie) query where required portion is one-hop and there's one optional group that's two-hop
     actions = [
         "add_qnode(id=n00, curie=DOID:3312)",
         "add_qnode(id=n01, curie=CHEBI:48607)",
@@ -1382,13 +1386,34 @@ def test_issue1119_e():
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
-    assert response.status == 'OK'
-    assert message.results
-    # TODO: erroring if is_set=false for n02
+    assert len(message.results) == 1
+    intermediate_proteins_in_result = {node_binding.kg_id for node_binding in message.results[0].node_bindings if node_binding.qg_id == "n02"}
+    assert len(intermediate_proteins_in_result) > 1
+
+    # Then make sure when we introduce a not edge on our option group, we see a reduction in the proteins in the result
+    actions = [
+        "add_qnode(id=n0, curie=DOID:3312)",
+        "add_qnode(id=n1, curie=CHEBI:48607)",
+        "add_qnode(id=group1_n1, type=protein, option_group_id=1, is_set=true)",
+        "add_qnode(id=group1_n2, curie=UMLS:C0023692, option_group_id=1)",
+        "add_qedge(id=e0, source_id=n0, target_id=n1, type=related_to)",
+        "add_qedge(id=group1_e1, source_id=n0, target_id=group1_n1, option_group_id=1, type=predisposes)",
+        "add_qedge(id=group1_e2, source_id=group1_n1, target_id=n1, option_group_id=1, type=physically_interacts_with)",
+        "add_qedge(id=group1_ex, source_id=group1_n2, target_id=group1_n1, option_group_id=1, exclude=True)",
+        "expand()",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response_x, message_x = _do_arax_query(actions)
+    assert response_x.status == 'OK'
+    assert len(message_x.results) == 1
+    intermediate_proteins_in_result_x = {node_binding.kg_id for node_binding in message_x.results[0].node_bindings if node_binding.qg_id == "group1_n1"}
+    assert len(intermediate_proteins_in_result) > len(intermediate_proteins_in_result_x)
 
 
 @pytest.mark.slow
 def test_issue1119_f():
+    # Test (curie)--(curie) query where required portion is one-hop and there's one 3-hop optional group
     actions = [
         "add_qnode(id=n00, curie=DOID:3312)",
         "add_qnode(id=n01, curie=CHEBI:48607)",
@@ -1404,48 +1429,30 @@ def test_issue1119_f():
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert message.results
-    # TODO: erroring if is_set=false for n02
+    assert len(message.results) == 1
+    n02_proteins = {node_binding.kg_id for node_binding in message.results[0].node_bindings if node_binding.qg_id == "n02"}
 
-
-@pytest.mark.slow
-def test_issue1119_g():
+    # Then introduce a not edge going from the option group to the required (start) node
     actions = [
         "add_qnode(id=n00, curie=DOID:3312)",
-        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qnode(id=n01, curie=CHEBI:48607)",
         "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
+        "add_qnode(id=n03, type=pathway, option_group_id=1, is_set=true)",
         "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
         "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
-        "add_qedge(id=e02, source_id=n02, target_id=n01, option_group_id=1, type=physically_interacts_with)",
+        "add_qedge(id=e02, source_id=n02, target_id=n03, option_group_id=1, type=affects)",
+        "add_qedge(id=e03, source_id=n03, target_id=n01, option_group_id=1, type=disrupts)",
+        "add_qedge(id=e0x, source_id=n02, target_id=n00, option_group_id=1, type=prevents, exclude=True)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
     ]
-    response, message = _do_arax_query(actions)
-    assert response.status == 'OK'
-    assert message.results
-    # TODO: erroring if is_set=false for n02
-
-
-@pytest.mark.slow
-def test_issue1119_h():
-    actions = [
-        "add_qnode(id=n00, curie=DOID:3312)",
-        "add_qnode(id=n01, type=chemical_substance)",
-        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
-        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
-        "add_qedge(id=e02, source_id=n02, target_id=n01, option_group_id=1, type=physically_interacts_with)",
-        "expand()",
-        "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N1,source_qnode_id=n00,target_qnode_id=n01)",
-        "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N2,source_qnode_id=n00,target_qnode_id=n02)",
-        "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N3,source_qnode_id=n02,target_qnode_id=n01)",
-        "resultify()",
-        "return(message=true, store=false)"
-    ]
-    response, message = _do_arax_query(actions)
-    assert response.status == 'OK'
-    assert message.results
+    response_x, message_x = _do_arax_query(actions)
+    assert response_x.status == 'OK'
+    assert len(message_x.results) == 1
+    # Make sure this time we have fewer proteins included in our option group
+    n02_proteins_x = {node_binding.kg_id for node_binding in message_x.results[0].node_bindings if node_binding.qg_id == "n02"}
+    assert len(n02_proteins_x) < len(n02_proteins)
 
 
 def test_issue1146_a():
