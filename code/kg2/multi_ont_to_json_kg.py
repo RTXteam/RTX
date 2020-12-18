@@ -663,6 +663,9 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                         if bpv_pred_curie is None:
                             bpv_pred_curie = bpv_pred
                         bpv_val = basic_property_value_dict['val']
+                        if bpv_pred_curie == kg2_util.CURIE_ID_HGNC_LOCUS_TYPE:
+                            if "phenotype only" == bpv_val:  # HGNC no longer maintain symbols for phenotypes. See Issues #1170, #1169 
+                                continue
                         if bpv_pred_curie in {kg2_util.CURIE_ID_OIO_CREATION_DATE,
                                               kg2_util.CURIE_ID_DCTERMS_ISSUED,
                                               kg2_util.CURIE_ID_HGNC_DATE_CREATED}:
