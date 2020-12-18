@@ -621,7 +621,8 @@ class ARAXExpander:
         This function breaks any paths in the KG for which a "not" (exclude=True) condition has been met; the remains
         of the broken paths not used in other paths in the KG are cleaned up during later pruning of dead ends. The
         paths are broken by removing edge IDs vs. node IDs in order to help ensure that nodes that may also be used in
-        valid paths are not accidentally removed from the KG.
+        valid paths are not accidentally removed from the KG. Optional kryptonite qedges are applied only to the option
+        group they belong in; required kryptonite qedges are applied to all.
         """
         for qedge_id, edge_node_usage_map in node_usages_by_edges_map.items():
             current_qedge = eu.get_query_edge(full_query_graph, qedge_id)
@@ -629,25 +630,30 @@ class ARAXExpander:
             # Find kryptonite qedges that share one or more qnodes in common with our current qedge
             linked_kryptonite_qedges = [qedge for qedge in full_query_graph.edges if qedge.exclude and
                                         {qedge.source_id, qedge.target_id}.intersection(current_qedge_qnode_ids)]
+            # Apply kryptonite edges only to edges within their same group (but apply required ones no matter what)
+            linked_kryptonite_qedges_to_apply = [qedge for qedge in linked_kryptonite_qedges if
+                                                 qedge.option_group_id == current_qedge.option_group_id or
+                                                 qedge.option_group_id is None]
             edge_ids_to_remove = set()
-            # Look for paths to blow away based on each (already expanded) kryptonite qedge
-            for linked_kryptonite_qedge in linked_kryptonite_qedges:
-                if linked_kryptonite_qedge.id in encountered_kryptonite_edges_info:
-                    # Mark edges for destruction if they match a kryptonite edge for all qnodes they have in common
-                    kryptonite_qedge_qnode_ids = {linked_kryptonite_qedge.source_id, linked_kryptonite_qedge.target_id}
+            # Look for paths to blow away based on each (already expanded) kryptonite qedge in the same group
+            for kryptonite_qedge in linked_kryptonite_qedges_to_apply:
+                if kryptonite_qedge.id in encountered_kryptonite_edges_info:
+                    # Mark edges for destruction if they match the kryptonite edge for all qnodes they have in common
+                    kryptonite_qedge_qnode_ids = {kryptonite_qedge.source_id, kryptonite_qedge.target_id}
                     qnode_ids_in_common = list(current_qedge_qnode_ids.intersection(kryptonite_qedge_qnode_ids))
                     for edge_id, node_usages in edge_node_usage_map.items():
                         identical_nodes = [node_usages[qnode_id] for qnode_id in qnode_ids_in_common if node_usages[qnode_id]
-                                           in encountered_kryptonite_edges_info[linked_kryptonite_qedge.id][qnode_id]]
+                                           in encountered_kryptonite_edges_info[kryptonite_qedge.id][qnode_id]]
                         if len(identical_nodes) == len(qnode_ids_in_common):
                             edge_ids_to_remove.add(edge_id)
 
             # Actually remove the edges we've marked for destruction
-            log.debug(f"Blowing away {len(edge_ids_to_remove)} {qedge_id} edges because they lie on a path with a "
-                      f"'not' condition met (kryptonite)")
-            for edge_id in edge_ids_to_remove:
-                node_usages_by_edges_map[qedge_id].pop(edge_id)
-                dict_kg.edges_by_qg_id[qedge_id].pop(edge_id)
+            if edge_ids_to_remove:
+                log.debug(f"Blowing away {len(edge_ids_to_remove)} {qedge_id} edges because they lie on a path with a "
+                          f"'not' condition met (kryptonite)")
+                for edge_id in edge_ids_to_remove:
+                    node_usages_by_edges_map[qedge_id].pop(edge_id)
+                    dict_kg.edges_by_qg_id[qedge_id].pop(edge_id)
 
     @staticmethod
     def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, query_graph: QueryGraph,
