@@ -1,7 +1,7 @@
 #!/bin/env python3
 import sys
 import os
-from typing import List, Dict, Tuple, Union, Set
+from typing import List, Dict, Tuple, Union, Set, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from response import Response
@@ -755,37 +755,57 @@ class ARAXExpander:
 
     def _get_order_to_expand_qedges_in(self, query_graph: QueryGraph) -> List[QEdge]:
         """
-        This function determines what order to expand the edges in a query graph in; it looks for a qedge that has
-        a qnode with a specific curie, and moves out from there. It opts to expand kryptonite qedges only after all
-        qedges adjacent to the kryptonite qedge have been expanded.
+        This function determines what order to expand the edges in a query graph in; it aims to start with a required,
+        non-kryptonite qedge that has a qnode with a curie specified. It then looks for a qedge connected to that
+        starting qedge, and so on.
         """
         qedges_remaining = [edge for edge in query_graph.edges]
         ordered_qedges = []
         while qedges_remaining:
             if not ordered_qedges:
-                # Start with an edge that has a node with a curie specified (and is not a kryptonite edge)
-                qedges_with_curie = self._get_edges_with_curie_node(query_graph)
-                non_kryptonite_curie_qedges = [qedge for qedge in qedges_with_curie if not qedge.exclude]
-                if non_kryptonite_curie_qedges:
-                    first_qedge = non_kryptonite_curie_qedges[0]
+                # Try to start with a required, non-kryptonite qedge that has a qnode with a curie specified
+                qedges_with_curie = self._get_qedges_with_curie_qnode(query_graph)
+                required_curie_qedges = [qedge for qedge in qedges_with_curie if not qedge.option_group_id]
+                non_kryptonite_required_curie_qedges = [qedge for qedge in required_curie_qedges if not qedge.exclude]
+                if non_kryptonite_required_curie_qedges:
+                    first_qedge = non_kryptonite_required_curie_qedges[0]
+                elif required_curie_qedges:
+                    first_qedge = required_curie_qedges[0]
+                elif qedges_with_curie:
+                    first_qedge = qedges_with_curie[0]
                 else:
-                    first_qedge = qedges_with_curie[0] if qedges_with_curie else qedges_remaining[0]
+                    first_qedge = qedges_remaining[0]
                 ordered_qedges = [first_qedge]
                 qedges_remaining.pop(qedges_remaining.index(first_qedge))
             else:
-                # Add connected edges in a rightward (target) direction if possible
-                right_end_qedge = ordered_qedges[-1]
-                qedge_connected_to_right_end = self._find_connected_qedge(qedges_remaining, right_end_qedge)
-                if qedge_connected_to_right_end:
-                    ordered_qedges.append(qedge_connected_to_right_end)
-                    qedges_remaining.pop(qedges_remaining.index(qedge_connected_to_right_end))
+                # Add look for a qedge connected to the "subgraph" of qedges we've already added to our ordered list
+                connected_qedge = self._find_qedge_connected_to_subgraph(ordered_qedges, qedges_remaining)
+                if connected_qedge:
+                    ordered_qedges.append(connected_qedge)
+                    qedges_remaining.pop(qedges_remaining.index(connected_qedge))
                 else:
-                    left_end_qedge = ordered_qedges[0]
-                    qedge_connected_to_left_end = self._find_connected_qedge(qedges_remaining, left_end_qedge)
-                    if qedge_connected_to_left_end:
-                        ordered_qedges.insert(0, qedge_connected_to_left_end)
-                        qedges_remaining.pop(qedges_remaining.index(qedge_connected_to_left_end))
+                    self.response.error(f"Query graph is disconnected (has more than one component)", error_code="UnsupportedQG")
+                    return []
         return ordered_qedges
+
+    @staticmethod
+    def _find_qedge_connected_to_subgraph(subgraph_qedge_list: List[QEdge], qedges_to_choose_from: List[QEdge]) -> Optional[QEdge]:
+        qnode_ids_in_subgraph = {qnode_id for qedge in subgraph_qedge_list for qnode_id in {qedge.source_id, qedge.target_id}}
+        connected_qedges = [qedge for qedge in qedges_to_choose_from if
+                            qnode_ids_in_subgraph.intersection({qedge.source_id, qedge.target_id})]
+        required_qedges = [qedge for qedge in connected_qedges if not qedge.option_group_id]
+        required_kryptonite_qedges = [qedge for qedge in required_qedges if qedge.exclude]
+        optional_kryptonite_qedges = [qedge for qedge in connected_qedges if qedge.option_group_id and qedge.exclude]
+        if required_kryptonite_qedges:
+            return required_kryptonite_qedges[0]
+        elif required_qedges:
+            return required_qedges[0]
+        elif optional_kryptonite_qedges:
+            return optional_kryptonite_qedges[0]
+        elif connected_qedges:
+            return connected_qedges[0]
+        else:
+            return None
 
     def _is_input_qnode(self, qnode: QNode, qedge: QEdge) -> bool:
         all_ordered_qedges = self._get_order_to_expand_qedges_in(self.message.query_graph)
@@ -842,7 +862,7 @@ class ARAXExpander:
         return list(node_ids.difference(node_ids_used_by_edges))
 
     @staticmethod
-    def _get_edges_with_curie_node(query_graph: QueryGraph) -> List[QEdge]:
+    def _get_qedges_with_curie_qnode(query_graph: QueryGraph) -> List[QEdge]:
         return [qedge for qedge in query_graph.edges if eu.get_query_node(query_graph, qedge.source_id).curie or
                 eu.get_query_node(query_graph, qedge.target_id).curie]
 
