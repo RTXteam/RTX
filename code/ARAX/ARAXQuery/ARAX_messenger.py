@@ -203,6 +203,16 @@ class ARAXMessenger:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
             else:
                 parameters[key] = value
+
+        #### Check for option_group_id and is_set:
+        if parameters['option_group_id'] is not None:
+            if parameters['is_set'] is None:
+                parameters['is_set'] = 'true'
+                response.warning(f"An 'option_group_id' was set to {parameters['option_group_id']}, but 'is_set' was not an included parameter. It must be true when an 'option_group_id' is given, so automatically setting to true. Avoid this warning by explictly setting to true.")
+            elif not ( parameters['is_set'].lower() == 'true' or parameters['is_set'].lower() == 't' ):
+                response.error(f"When an 'option_group_id' is given 'is_set' must be set to true. However, supplied input for parameter 'is_set' was {parameters['is_set']}.", error_code="InputMismatch")
+
+
         #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
             return response
