@@ -1,7 +1,7 @@
 #!/bin/env python3
 import sys
 import os
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union, Set
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from response import Response
@@ -13,6 +13,7 @@ from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.q_node import QNode
+from swagger_server.models.edge import Edge
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -200,6 +201,13 @@ class ARAXExpander:
             response = Response()
         self.response = response
         self.message = input_message
+        # Create global slots to store some info that needs to persist between expand() calls
+        if not hasattr(self.message, "encountered_kryptonite_edges_info"):
+            self.message.encountered_kryptonite_edges_info = dict()
+        encountered_kryptonite_edges_info = self.message.encountered_kryptonite_edges_info
+        if not hasattr(self.message, "node_usages_by_edges_map"):
+            self.message.node_usages_by_edges_map = dict()
+        node_usages_by_edges_map = self.message.node_usages_by_edges_map
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -247,8 +255,8 @@ class ARAXExpander:
 
         # Do the actual expansion
         response.debug(f"Applying Expand to Message with parameters {parameters}")
-        input_edge_ids = eu.convert_string_or_list_to_list(parameters['edge_id'])
-        input_node_ids = eu.convert_string_or_list_to_list(parameters['node_id'])
+        input_qedge_ids = eu.convert_string_or_list_to_list(parameters['edge_id'])
+        input_qnode_ids = eu.convert_string_or_list_to_list(parameters['node_id'])
         kp_to_use = self.parameters['kp']
         continue_if_no_results = self.parameters['continue_if_no_results']
         use_synonyms = self.parameters['use_synonyms']
@@ -259,15 +267,14 @@ class ARAXExpander:
         dict_kg = eu.convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
 
         # Expand any specified edges
-        if input_edge_ids:
-            query_sub_graph = self._extract_query_subgraph(input_edge_ids, query_graph, log)
+        if input_qedge_ids:
+            query_sub_graph = self._extract_query_subgraph(input_qedge_ids, query_graph, log)
             if log.status != 'OK':
                 return response
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
             # Expand the query graph edge by edge (much faster for neo4j queries, and allows easy integration with BTE)
             ordered_qedges_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph)
-            node_usages_by_edges_map = dict()
 
             for qedge in ordered_qedges_to_expand:
                 answer_kg, edge_node_usage_map = self._expand_edge(qedge, kp_to_use, dict_kg, continue_if_no_results,
@@ -275,20 +282,24 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
                 elif qedge.exclude and not answer_kg.is_empty():
-                    self._apply_kryptonite(answer_kg, dict_kg, node_usages_by_edges_map, query_graph, log)
+                    self._store_kryptonite_edge_info(edge_node_usage_map, qedge, encountered_kryptonite_edges_info, log)
                 else:
-                    node_usages_by_edges_map[qedge.id] = edge_node_usage_map
+                    # Update our map of which qnodes each of an edge's nodes fulfill (differs from source vs. target)
+                    if qedge.id not in node_usages_by_edges_map:
+                        node_usages_by_edges_map[qedge.id] = dict()
+                    node_usages_by_edges_map[qedge.id].update(edge_node_usage_map)
                     self._merge_answer_into_message_kg(answer_kg, dict_kg, log)
                 if log.status != 'OK':
                     return response
 
+                self._apply_any_kryptonite_edges(dict_kg, query_graph, node_usages_by_edges_map, encountered_kryptonite_edges_info, log)
                 self._prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map, qedge, log)
                 if log.status != 'OK':
                     return response
 
         # Expand any specified nodes
-        if input_node_ids:
-            for qnode_id in input_node_ids:
+        if input_qnode_ids:
+            for qnode_id in input_qnode_ids:
                 answer_kg = self._expand_node(qnode_id, kp_to_use, continue_if_no_results, query_graph, use_synonyms, log)
                 if log.status != 'OK':
                     return response
@@ -311,7 +322,8 @@ class ARAXExpander:
 
         # Return the response and done
         kg = self.message.knowledge_graph
-        if not kg.nodes and not continue_if_no_results:
+        only_kryptonite_qedges_expanded = all([eu.get_query_edge(query_graph, qedge_id).exclude for qedge_id in input_qedge_ids])
+        if not kg.nodes and not continue_if_no_results and not only_kryptonite_qedges_expanded:
             log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
         else:
             log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
@@ -576,45 +588,66 @@ class ARAXExpander:
                 dict_kg.add_edge(edge, qedge_id)
 
     @staticmethod
-    def _apply_kryptonite(answer_dict_kg: DictKnowledgeGraph, dict_kg: DictKnowledgeGraph,
-                          node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], full_query_graph: QueryGraph,
-                          log: Response):
-        # This function is like an anti-expand, used for qedges with exclude=True
-        log.debug(f"Applying qedge {list(answer_dict_kg.edges_by_qg_id)[0]}'s kryptonite powers")
-        kryptonite_qedge_id = list(answer_dict_kg.edges_by_qg_id)[0]
-        kryptonite_qedge = eu.get_query_edge(full_query_graph, kryptonite_qedge_id)
-        kryptonite_qnode_ids = {eu.get_query_node(full_query_graph, kryptonite_qedge.source_id).id,
-                                eu.get_query_node(full_query_graph, kryptonite_qedge.target_id).id}
-        # Find which qedges in the KG link to our kryptonite edge
-        linked_qedge_ids = {qedge_id for qedge_id in dict_kg.edges_by_qg_id
-                            if eu.get_query_edge(full_query_graph, qedge_id).source_id in kryptonite_qnode_ids
-                            or eu.get_query_edge(full_query_graph, qedge_id).target_id in kryptonite_qnode_ids}
-        # Figure out which edges in the KG we need to below away
-        for linked_qedge_id in linked_qedge_ids:
-            linked_qedge = eu.get_query_edge(full_query_graph, linked_qedge_id)
-            kg_edge_node_usage_map = node_usages_by_edges_map.get(linked_qedge_id, dict())
-            kg_edges_dict = dict_kg.edges_by_qg_id[linked_qedge_id]
-            edge_ids_to_blow_away = set()
-            for kg_edge_id, kg_edge in kg_edges_dict.items():
-                kg_node_a = kg_edge.source_id if kg_edge.source_id in dict_kg.nodes_by_qg_id[linked_qedge.source_id] else kg_edge.target_id
-                kg_node_b = kg_edge.target_id if kg_node_a != kg_edge.target_id else kg_edge.source_id
-                # If nodes match for all qnode IDs this edge shares with kryptonite edge, we need to blow the edge away
-                if kryptonite_qnode_ids == {linked_qedge.source_id, linked_qedge.target_id}:
-                    if kg_node_a in answer_dict_kg.nodes_by_qg_id[linked_qedge.source_id] and \
-                            kg_node_b in answer_dict_kg.nodes_by_qg_id[linked_qedge.target_id]:
-                        edge_ids_to_blow_away.add(kg_edge_id)
-                elif linked_qedge.source_id in kryptonite_qnode_ids:
-                    if kg_node_a in answer_dict_kg.nodes_by_qg_id[linked_qedge.source_id]:
-                        edge_ids_to_blow_away.add(kg_edge_id)
-                elif linked_qedge.target_id in kryptonite_qnode_ids:
-                    if kg_node_b in answer_dict_kg.nodes_by_qg_id[linked_qedge.target_id]:
-                        edge_ids_to_blow_away.add(kg_edge_id)
-            log.debug(f"Blowing away {len(edge_ids_to_blow_away)} KG edges due to kryptonite qedge")
-            # Actually get rid of all the edges we identified as needing elimination
-            for edge_id_to_blow_away in edge_ids_to_blow_away:
-                if edge_id_to_blow_away in kg_edge_node_usage_map:
-                    kg_edge_node_usage_map.pop(edge_id_to_blow_away)
-                dict_kg.edges_by_qg_id[linked_qedge_id].pop(edge_id_to_blow_away)
+    def _store_kryptonite_edge_info(edge_node_usage_map: Dict[str, Dict[str, str]], kryptonite_qedge: QEdge,
+                                    encountered_kryptonite_edges_info: Dict[str, Dict[str, Set[str]]], log: Response):
+        """
+        This function adds the IDs of nodes found by expansion of the given kryptonite ("not") edge to the global
+        encountered_kryptonite_edges_info dictionary, which is organized by QG IDs. This allows Expand to "remember"
+        which kryptonite edges/nodes it found previously, without adding them to the KG.
+        Example of encountered_kryptonite_edges_info: {"e01": {"n00": {"MONDO:1"}, "n01": {"PR:1", "PR:2"}}}
+        """
+        log.debug(f"Storing info for kryptonite edges found")
+        qnode_a_id = kryptonite_qedge.source_id
+        qnode_b_id = kryptonite_qedge.target_id
+        node_ids_fulfilling_qnode_a = {node_usages_dict[qnode_a_id] for node_usages_dict in edge_node_usage_map.values()}
+        node_ids_fulfilling_qnode_b = {node_usages_dict[qnode_b_id] for node_usages_dict in edge_node_usage_map.values()}
+        if kryptonite_qedge.id not in encountered_kryptonite_edges_info:
+            encountered_kryptonite_edges_info[kryptonite_qedge.id] = dict()
+        kryptonite_nodes_dict = encountered_kryptonite_edges_info[kryptonite_qedge.id]
+        if qnode_a_id not in kryptonite_nodes_dict:
+            kryptonite_nodes_dict[qnode_a_id] = set()
+        if qnode_b_id not in kryptonite_nodes_dict:
+            kryptonite_nodes_dict[qnode_b_id] = set()
+        kryptonite_nodes_dict[qnode_a_id].update(node_ids_fulfilling_qnode_a)
+        kryptonite_nodes_dict[qnode_b_id].update(node_ids_fulfilling_qnode_b)
+        log.debug(f"Stored {len(node_ids_fulfilling_qnode_a)} {qnode_a_id} nodes and "
+                  f"{len(node_ids_fulfilling_qnode_b)} {qnode_b_id} nodes from {kryptonite_qedge.id} kryptonite edges")
+
+    @staticmethod
+    def _apply_any_kryptonite_edges(dict_kg: DictKnowledgeGraph, full_query_graph: QueryGraph,
+                                    node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]],
+                                    encountered_kryptonite_edges_info: Dict[str, Dict[str, Set[str]]], log):
+        """
+        This function breaks any paths in the KG for which a "not" (exclude=True) condition has been met; the remains
+        of the broken paths not used in other paths in the KG are cleaned up during later pruning of dead ends. The
+        paths are broken by removing edge IDs vs. node IDs in order to help ensure that nodes that may also be used in
+        valid paths are not accidentally removed from the KG.
+        """
+        for qedge_id, edge_node_usage_map in node_usages_by_edges_map.items():
+            current_qedge = eu.get_query_edge(full_query_graph, qedge_id)
+            current_qedge_qnode_ids = {current_qedge.source_id, current_qedge.target_id}
+            # Find kryptonite qedges that share one or more qnodes in common with our current qedge
+            linked_kryptonite_qedges = [qedge for qedge in full_query_graph.edges if qedge.exclude and
+                                        {qedge.source_id, qedge.target_id}.intersection(current_qedge_qnode_ids)]
+            edge_ids_to_remove = set()
+            # Look for paths to blow away based on each (already expanded) kryptonite qedge
+            for linked_kryptonite_qedge in linked_kryptonite_qedges:
+                if linked_kryptonite_qedge.id in encountered_kryptonite_edges_info:
+                    # Mark edges for destruction if they match a kryptonite edge for all qnodes they have in common
+                    kryptonite_qedge_qnode_ids = {linked_kryptonite_qedge.source_id, linked_kryptonite_qedge.target_id}
+                    qnode_ids_in_common = list(current_qedge_qnode_ids.intersection(kryptonite_qedge_qnode_ids))
+                    for edge_id, node_usages in edge_node_usage_map.items():
+                        identical_nodes = [node_usages[qnode_id] for qnode_id in qnode_ids_in_common if node_usages[qnode_id]
+                                           in encountered_kryptonite_edges_info[linked_kryptonite_qedge.id][qnode_id]]
+                        if len(identical_nodes) == len(qnode_ids_in_common):
+                            edge_ids_to_remove.add(edge_id)
+
+            # Actually remove the edges we've marked for destruction
+            log.debug(f"Blowing away {len(edge_ids_to_remove)} {qedge_id} edges because they lie on a path with a "
+                      f"'not' condition met (kryptonite)")
+            for edge_id in edge_ids_to_remove:
+                node_usages_by_edges_map[qedge_id].pop(edge_id)
+                dict_kg.edges_by_qg_id[qedge_id].pop(edge_id)
 
     @staticmethod
     def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, query_graph: QueryGraph,
