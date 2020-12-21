@@ -180,7 +180,7 @@ class ARAXRanker:
                                           'chi_square': 0.8,
                                           'MAGMA-pvalue': 1.0,
                                           'Genetics-quantile': 1.0,
-                                          'fisher_exact_test_p-value': 1.0,
+                                          'fisher_exact_test_p-value': 0.8,
                                           'Richards-effector-genes': 0.5,
                                           'ABC-genes': 0.5,
                                           }
