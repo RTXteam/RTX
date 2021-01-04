@@ -169,7 +169,7 @@ class ARAXRanker:
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
                                  'probability_treats', 'paired_concept_frequency',
                                  'observed_expected_ratio', 'chi_square', 'MAGMA-pvalue', 'Genetics-quantile',
-                                 'fisher_exact_test_p-value','Richards-effector-genes','ABC-genes'}
+                                 'fisher_exact_test_p-value','Richards-effector-genes'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
@@ -182,7 +182,6 @@ class ARAXRanker:
                                           'Genetics-quantile': 1.0,
                                           'fisher_exact_test_p-value': 0.8,
                                           'Richards-effector-genes': 0.5,
-                                          'ABC-genes': 0.5,
                                           }
         self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
@@ -446,10 +445,6 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
     def __normalize_Richards_effector_genes(self, value):
         return value
-
-    def __normalize_ABC_genes(self, value):
-        return value
-
 
     def aggregate_scores_dmk(self, message, response=None):
         """
