@@ -14,9 +14,44 @@ from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 RTXConfig.live = "KG2"
 
+python = "python3.7"
 
 rule all:
     input:
-        "makeall.txt"
+        f"{node_synonymizer_path_local}{os.path.sep}{RTXConfig.node_synonymizer_path.split('/')[-1]}"
 
+KGmetadata_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'data', 'KGmetadata'])
+
+rule KGmetadata:
+    output:
+        f"{KGmetadata_path}{os.path.sep}EdgeTypes.tsv",
+        f"{KGmetadata_path}{os.path.sep}NodeLabels.tsv",
+        f"{KGmetadata_path}{os.path.sep}NodeNamesDescriptions_KG1.tsv",
+        f"{KGmetadata_path}{os.path.sep}NodeNamesDescriptions_KG2.tsv"
+    shell:
+        f"""
+        (
+        cd {KGmetadata_path}
+        {python} dumpdata.py
+        )
+        """
+
+node_synonymizer_path_local = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer'])
+
+rule node_synonymizer:
+    input:
+        f"{KGmetadata_path}{os.path.sep}EdgeTypes.tsv",
+        f"{KGmetadata_path}{os.path.sep}NodeLabels.tsv",
+        f"{KGmetadata_path}{os.path.sep}NodeNamesDescriptions_KG1.tsv",
+        f"{KGmetadata_path}{os.path.sep}NodeNamesDescriptions_KG2.tsv"
+    output:
+        f"{node_synonymizer_path_local}{os.path.sep}{RTXConfig.node_synonymizer_path.split('/')[-1]}"
+    shell:
+        f"""
+        (
+        cd {node_synonymizer_path_local}
+        {python} sri_node_normalizer.py --build
+        {python} node_synonymizer.py --build --kg_name=both
+        )
+        """
 
