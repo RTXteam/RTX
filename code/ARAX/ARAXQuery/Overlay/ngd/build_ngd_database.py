@@ -30,16 +30,19 @@ from lxml import etree
 import pickledb
 from neo4j import GraphDatabase
 
-sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../../../NodeSynonymizer/")
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX','NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")  # code directory
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))  # code directory
 from RTXConfiguration import RTXConfiguration
 
 
 class NGDDatabaseBuilder:
     def __init__(self, pubmed_directory_path, is_test, live = "Production"):
-        RTXConfig = RTXConfiguration()
-        RTXConfig.live = live
+        self.RTXConfig = RTXConfiguration()
+        self.RTXConfig.live = live
         ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
         self.pubmed_directory_path = pubmed_directory_path
         self.conceptname_to_pmids_db_path = "conceptname_to_pmids.db"
