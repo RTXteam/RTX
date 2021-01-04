@@ -461,6 +461,8 @@ class Result(Model):
         :param node_bindings: The node_bindings of this Result.
         :type node_bindings: List[NodeBinding]
         """
+        if node_bindings is None:
+            raise ValueError("Invalid value for `node_bindings`, must not be `None`")  # noqa: E501
 
         self._node_bindings = node_bindings
 
@@ -484,5 +486,7 @@ class Result(Model):
         :param edge_bindings: The edge_bindings of this Result.
         :type edge_bindings: List[EdgeBinding]
         """
+        if edge_bindings is None:
+            raise ValueError("Invalid value for `edge_bindings`, must not be `None`")  # noqa: E501
 
         self._edge_bindings = edge_bindings

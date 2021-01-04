@@ -377,22 +377,36 @@ class QueryNCBIeUtils:
         if res is not None:
             status_code = res.status_code
             if status_code == 200:
-                res_int = [int(res.json()['esearchresult']['count'])]
-                if n_terms >= 2:
-                    if 'errorlist' in res.json()['esearchresult'].keys():
-                        if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
-                                res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                if 'esearchresult' in res.json().keys():
+                    if 'count' in res.json()['esearchresult'].keys():
+                        res_int = [int(res.json()['esearchresult']['count'])]
+                        if n_terms >= 2:
+                            if 'errorlist' in res.json()['esearchresult'].keys():
+                                if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
+                                    if res.json()['esearchresult']['errorlist']['phrasesnotfound'] != []:
+                                        res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                                    elif 'translationstack' in res.json()['esearchresult'].keys():
+                                        for a in range(len(res.json()['esearchresult']['translationstack'])):
+                                            if type(res.json()['esearchresult']['translationstack'][a]) == dict:
+                                                res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
+                                            elif res.json()['esearchresult']['translationstack'][a] == 'OR':
+                                                res_int = [res_int[0]]
+                                                res_int += ['null_flag']
+                                                return res_int
+                            else:
+                                for a in range(len(res.json()['esearchresult']['translationstack'])):
+                                    if type(res.json()['esearchresult']['translationstack'][a]) == dict:
+                                        res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
+                                    elif res.json()['esearchresult']['translationstack'][a] == 'OR':
+                                        res_int = [res_int[0]]
+                                        res_int += ['null_flag']
+                                        return res_int
                     else:
-                        for a in range(len(res.json()['esearchresult']['translationstack'])):
-                            if type(res.json()['esearchresult']['translationstack'][a]) == dict:
-                                res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
-                            elif res.json()['esearchresult']['translationstack'][a] == 'OR':
-                                res_int = [res_int[0]]
-                                res_int += ['null_flag']
-                                return res_int
-
+                        return [0]*n_terms
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
+        if res_int is None:
+            res_int = [0]*n_terms
         return res_int
 
     @staticmethod
@@ -684,8 +698,103 @@ class QueryNCBIeUtils:
                                                         mesh_ids = mesh_data.get('links', None)
                                                         res_set |= set([int(uid_str) for uid_str in mesh_ids])
         return res_set
-    
-    def test_phrase_not_found():
+
+    @staticmethod
+    def multi_pubmed_pmids(term_str, n_terms=1):
+        '''
+        This is almost the same as the above get_pubmed_hit_counts but is made to work with multi_normalized_google_distance
+        '''
+        term_str_encoded = urllib.parse.quote(term_str, safe='')
+        res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
+                                             'db=pubmed&term=' + term_str_encoded)
+        if res is None:
+            params = {
+                'db': 'pubmed',
+                'term': term_str
+            }
+            res = QueryNCBIeUtils.send_query_post('esearch.fcgi',
+                                                  params)
+        res_pmids = []
+        if res is not None:
+            status_code = res.status_code
+            if status_code == 200:
+                res_pmids = [res.json()['esearchresult']['idlist']]
+                if n_terms >= 2:
+                    if 'errorlist' in res.json()['esearchresult'].keys():
+                        if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
+                            #res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                            pass
+                    else:
+                        for a in range(len(res.json()['esearchresult']['translationstack'])):
+                            if type(res.json()['esearchresult']['translationstack'][a]) == dict:
+                                #print(res.json()['esearchresult']['translationstack'][a])  # FIXME this returns a dict that looks like
+                                #{'term': '"hypertension"[MeSH Terms]', 'field': 'MeSH Terms', 'count': '250821','explode': 'Y'}
+                                #{'term': '"neutropenia"[MeSH Terms]', 'field': 'MeSH Terms', 'count': '18429','explode': 'Y'}
+                                #{'term': '"leukopenia"[MeSH Terms]', 'field': 'MeSH Terms', 'count': '36815','explode': 'Y'}
+                                #res_pmids += [res.json()['esearchresult']['translationstack'][a]['idlist']]  # FIXME: so can't get an idlist
+                                pass
+                            elif res.json()['esearchresult']['translationstack'][a] == 'OR':
+                                res_pmids = [res_pmids[0]]
+                                res_pmids += ['null_flag']
+                                return res_pmids
+
+            else:
+                print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(
+                    term=term_str))
+        return res_pmids
+
+    @staticmethod
+    def multi_normalized_pmids(name_list, mesh_flags=None):
+        """
+        returns the normalized Google distance for a list of n MeSH Terms
+        :param name_list: a list of strings containing search terms for each node
+        :param mesh_flags: a list of boolean values indicating which terms need [MeSH Terms] appended to it.
+        :returns: list of pmids
+        """
+
+        if mesh_flags is None:
+            mesh_flags = [True] * len(name_list)
+        elif len(name_list) != len(mesh_flags):
+            print('Warning: mismatching lengths for input lists of names and flags returning None...')
+            return None
+
+        search_string = '('
+
+        if sum(mesh_flags) == len(mesh_flags):
+            search_string += '[MeSH Terms]) AND ('.join(name_list) + '[MeSH Terms])'
+            pmids = QueryNCBIeUtils.multi_pubmed_pmids(search_string, n_terms=len(name_list))
+        else:
+            for a in range(len(name_list)):
+                search_string += name_list[a]
+                if mesh_flags[a]:
+                    search_string += "[MeSH Terms]"
+                if a < len(name_list) - 1:
+                    search_string += ') AND ('
+            search_string += ')'
+            pmids = QueryNCBIeUtils.multi_pubmed_pmids(search_string, n_terms=1)
+            for a in range(len(name_list)):
+                name = name_list[a]
+                if mesh_flags[a]:
+                    name += "[MeSH Terms]"
+                pmids += QueryNCBIeUtils.multi_pubmed_pmids(name, n_terms=1)
+
+        if len(pmids) > 1 and type(pmids[1]) == str:
+            if pmids[1] == 'null_flag':
+                missed_names = [name + '[MeSH Terms]' for name in name_list]
+            else:
+                missed_names = pmids[1:]
+            pmids = [pmids[0]]
+            for name in name_list:
+                name_decorated = name + '[MeSH Terms]'
+                if name_decorated in missed_names:
+                    pmids += QueryNCBIeUtils.multi_pubmed_pmids(name, n_terms=1)
+                else:
+                    pmids += QueryNCBIeUtils.multi_pubmed_pmids(name_decorated, n_terms=1)
+
+        return pmids
+
+
+def test_phrase_not_found():
         print('----------')
         print('Result and time for 1st error (joint search):')
         print('----------')

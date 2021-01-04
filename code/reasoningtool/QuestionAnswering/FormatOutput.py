@@ -382,6 +382,12 @@ class FormatResponse:
 		if self.message.results is None: return()
 		n_results = len(self.message.results)
 		if n_results == 0: return()
+
+		# Convert knowledge graph nodes to dictionary format for faster processing below
+		kg_nodes_dict = dict()
+		for node in self.message.knowledge_graph.nodes:
+			kg_nodes_dict[node.id] = node
+
 		for result in self.message.results:
 			essence_node_curie = None
 			essence_node_name = "?"
@@ -393,16 +399,16 @@ class FormatResponse:
 					essence_node_curie = result.node_bindings[essence_node]
 					if isinstance(essence_node_curie,list):
 						essence_node_curie = essence_node_curie[0]                  ## FIXME. Just taking element 0 isn't very good
-					#print(f"looking for {essence_node_curie}")
-					for node in self.message.knowledge_graph.nodes:
-						#print(f" --> {node.id}")
-						if node.id == essence_node_curie:
-							essence_node_name = node.name
-							essence_node_type = node.type
-							if isinstance(essence_node_type,list):
-								essence_node_type = essence_node_type[0]                  ## FIXME. Just taking element 0 isn't very good
-							result.essence = essence_node_name
-							result.essence_type = essence_node_type
+
+					# print(f"looking for {essence_node_curie}")
+					matching_node_in_kg = kg_nodes_dict.get(essence_node_curie)
+					if matching_node_in_kg:
+						essence_node_name = matching_node_in_kg.name
+						essence_node_type = matching_node_in_kg.type
+						if isinstance(essence_node_type, list):
+							essence_node_type = essence_node_type[0]  ## FIXME. Just taking element 0 isn't very good
+						result.essence = essence_node_name
+						result.essence_type = essence_node_type
 
 			#### Reorganize the 0.9.1 formatted node bindings to 0.9.2 formatted bindings
 			if result.node_bindings is not None:

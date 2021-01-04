@@ -7,24 +7,17 @@ __maintainer__ = ''
 __email__ = ''
 __status__ = 'Prototype'
 
-# import requests
-import urllib
 import math
 import sys
 import time
-from io import StringIO
-import re
-import pandas
-import pprint
 import CachedMethods
 from cache_control_helper import CacheControlHelper
-# import requests_cache
-import numpy
+
 from QueryNCBIeUtils import QueryNCBIeUtils
 from QueryDisont import QueryDisont  # DOID -> MeSH
 from QueryEBIOLS import QueryEBIOLS  # UBERON -> MeSH
-from QueryPubChem import QueryPubChem  # ChEMBL -> PubMed id
 from QueryMyChem import QueryMyChem
+import sqlite3
 
 # requests_cache.install_cache('NGDCache')
 
@@ -49,6 +42,9 @@ class NormGoogleDistance:
         except requests.exceptions.ConnectionError:
             print('HTTP connection error in SemMedInterface.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections
+            return None
+        except sqlite3.OperationalError:
+            print('Error reading sqlite cache; URL: ' + url_str, file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
@@ -242,6 +238,43 @@ class NormGoogleDistance:
                 response['value'] = value
         return response
 
-
-if __name__ == '__main__':
-    pass
+    @staticmethod
+    # @CachedMethods.register
+    def get_pmids_for_all(curie_id_list, description_list):
+        """
+        Takes a list of currie ids and descriptions then calculates the normalized google distance for the set of nodes.
+        Params:
+            curie_id_list - a list of strings containing the curie ids of the nodes. Formatted <source abbreviation>:<number> e.g. DOID:8398
+            description_list - a list of strings containing the English names for the nodes
+        """
+        assert len(curie_id_list) == len(description_list)
+        terms = [None] * len(curie_id_list)
+        for a in range(len(description_list)):
+            terms[a] = NormGoogleDistance.get_mesh_term_for_all(curie_id_list[a], description_list[a])
+            if type(terms[a]) != list:
+                terms[a] = [terms[a]]
+            if len(terms[a]) == 0:
+                terms[a] = [description_list[a]]
+            if len(terms[a]) > 30:
+                terms[a] = terms[a][:30]
+        terms_combined = [''] * len(terms)
+        mesh_flags = [True] * len(terms)
+        for a in range(len(terms)):
+            if len(terms[a]) > 1:
+                if not terms[a][0].endswith('[uid]'):
+                    for b in range(len(terms[a])):
+                        if QueryNCBIeUtils.is_mesh_term(terms[a][b]) and not terms[a][b].endswith('[MeSH Terms]'):
+                            terms[a][b] += '[MeSH Terms]'
+                terms_combined[a] = '|'.join(terms[a])
+                mesh_flags[a] = False
+            else:
+                terms_combined[a] = terms[a][0]
+                if terms[a][0].endswith('[MeSH Terms]'):
+                    terms_combined[a] = terms[a][0][:-12]
+                elif not QueryNCBIeUtils.is_mesh_term(terms[a][0]):
+                    mesh_flags[a] = False
+        pmids = QueryNCBIeUtils.multi_normalized_pmids(terms_combined, mesh_flags)
+        pmids_with_prefix = []
+        for lst in pmids:
+            pmids_with_prefix.append([f"PMID:{x}" for x in lst])
+        return pmids_with_prefix

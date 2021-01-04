@@ -11,7 +11,7 @@ import requests
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server")
 from swagger_server.models.response import Response
 
-url = "http://rtx.ncats.io/api/rtx/v1/query"
+url = "http://arax.ncats.io/api/rtx/v1/query"
 
 query = {
   "known_query_type_id": "Q3",

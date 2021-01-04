@@ -17,7 +17,9 @@ import sys
 import argparse
 import requests_cache
 import timeit
+import os
 import re
+import os
 from Orangeboard import Orangeboard
 from QueryOMIM import QueryOMIM
 from QueryMyGene import QueryMyGene
@@ -39,7 +41,12 @@ if sys.version_info[0] < 3 or sys.version_info[1] < 5:
     print("This script requires Python version 3.5 or greater")
     sys.exit(1)
 
-requests_cache.install_cache('orangeboard')
+#requests_cache.install_cache('orangeboard')
+# specifiy the path of orangeboard database
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+dbpath = os.path.sep.join([*pathlist[:(RTXindex+1)],'data','orangeboard'])
+requests_cache.install_cache(dbpath)
 
 query_omim_obj = QueryOMIM()
 query_mygene_obj = QueryMyGene(debug=False)

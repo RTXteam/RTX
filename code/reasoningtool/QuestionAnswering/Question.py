@@ -31,14 +31,6 @@ import re
 
 from KGNodeIndex import KGNodeIndex
 
-KGNodeIndex = KGNodeIndex()
-KGNodeIndex.connect()
-
-# If the database isn't built, build it now (will take a bit)
-if not os.path.exists(KGNodeIndex.databaseName):
-	KGNodeIndex.createDatabase()
-	KGNodeIndex.createIndex()
-
 re_no_punc = re.compile('[%s]|\s' % re.escape(string.punctuation))
 
 # TODO: replace this stuff with the RU.get_node_property (along with RU.node_exists_with_property)
@@ -74,25 +66,28 @@ def find_node_name(string):
 	:param string: a string you're trying to match to a node name in the KG
 	:return: list of strings (of id's)
 	"""
+
+	kg_node_index = KGNodeIndex()
+
 	# if it's a string, convert "[COX1,PTGS1]" -> ['Uniprot:123', 'Uniprot:234']
 	if "[" == string[0] and "]" == string[-1]:
 		terms = [x.replace("]", "").replace("[", "").strip() for x in string.split(",")]
 		to_return = []
 		for term in terms:
-			if KGNodeIndex.is_curie_present(term):
+			if kg_node_index.is_curie_present(term):
 				to_return.append(term)
 			if term.lower() != "is" and term.lower() != "as":
-				to_return.extend(KGNodeIndex.get_curies(term))
+				to_return.extend(kg_node_index.get_curies(term))
 			else:
 				pass
 
 		return list(set(to_return))  # uniquify it just in case
 	else:  # Otherwise, treat it as usual
-		if KGNodeIndex.is_curie_present(string):
+		if kg_node_index.is_curie_present(string):
 			return [string]
 
 		if string.lower() != "is" and string.lower() != "as":
-			return KGNodeIndex.get_curies(string)
+			return kg_node_index.get_curies(string)
 		else:
 			return []
 

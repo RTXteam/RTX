@@ -1,25 +1,31 @@
-# Code for the RTX Proof-of-Concept software
+# Code for the RTX Proof-of-Concept software 
 
-### Subdirectory `reasoningtool`
+### Subdirectory `ARAX`
 
-- Contains the engine-level code for the RTX proof-of-concept software.
-
-### Subdirectory `UI`
-
-- Contains the user-interface code for the RTX proof-of-concept software.
+- Contains the code for the ARAX system; see the [RTX/ARAX main repository page](..) for a high-level overview.
 
 ### Subdirectory `NLPCode`
 
-- Contains the natural language processing code to be used in the RTX software (not yet implemented).  
+- Contains the natural language processing code to be used in the RTX software (not yet implemented).
+
+### Subdirectory `UI`
+
+- Contains the user-interface code for the RTX software.
 
 ### Subdirectory `autocomplete`
 
-- Contains the query suggestion backend and frontend code to be used in the RTX UI
+- Contains the query suggestion backend and frontend code to be used in the RTX UI.
+
+### Subdirectory `kg2`
+
+- Contains the code for the RTX-KG2 knowledge graph.
+
+### Subdirectory `reasoningtool`
+
+- Contains the engine-level code for the RTX software.
 
 ### License
 
-- The RTX team will be open-sourcing the RTX software under the MIT license. The
-copyright statement in the LICENSE file in this directory applies to the
-software code in the `reasoningtool`, `UI`, and `docker` subdirectories. For the
-copyright on the code in the `NLPCode` subdirectory, see the LICENSE file in
-that subdirectory.
+- See the [License section of the RTX/ARAX main repository page](../#license).
+
+

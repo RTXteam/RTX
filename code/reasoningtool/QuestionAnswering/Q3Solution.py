@@ -1,5 +1,7 @@
-import os
 import sys
+def eprint(*args, **kwargs):
+	print(*args, file=sys.stderr, **kwargs)
+import os
 import argparse
 # PyCharm doesn't play well with relative imports + python console + terminal
 try:
@@ -81,7 +83,7 @@ class Q3:
 		if not use_json:
 			results_list = list()
 			for target_number in target_numbers:
-				data = g.node[target_number]
+				data = g.nodes[target_number]
 				results_list.append(
 					{'type': list(set(data['labels'])-{'Base'}).pop(),
 					 'name': data['properties']['name'],
@@ -93,14 +95,14 @@ class Q3:
 		else:
 			response = FormatOutput.FormatResponse(3)  # it's a Q3 question
 			response.message.table_column_names = ["source name", "source ID", "target name", "target ID"]
-			source_description = g.node[source_node_number]['properties']['name']
+			source_description = g.nodes[source_node_number]['properties']['name']
 
 			#### Create the QueryGraph for this type of question
 			query_graph = QueryGraph()
 			source_node = QNode()
 			source_node.id = "n00"
-			source_node.curie = g.node[source_node_number]['properties']['id']
-			source_node.type = g.node[source_node_number]['properties']['category']
+			source_node.curie = g.nodes[source_node_number]['properties']['id']
+			source_node.type = g.nodes[source_node_number]['properties']['category']
 			target_node = QNode()
 			target_node.id = "n01"
 			target_node.type = target_label
@@ -122,7 +124,7 @@ class Q3:
 
 			#### Loop over all the returned targets and put them into the response structure
 			for target_number in target_numbers:
-				target_description = g.node[target_number]['properties']['name']
+				target_description = g.nodes[target_number]['properties']['name']
 				if not has_intermediate_node:
 					subgraph = g.subgraph([source_node_number, target_number])
 				else:
@@ -131,12 +133,12 @@ class Q3:
 									"%s and %s are connected by the relationship %s" % (
 									source_description, target_description,	relationship_type), 1, return_result=True)
 				res.essence = "%s" % target_description  # populate with essence of question result
-				res.essence_type = g.node[target_number]['properties']['category']  # populate with the type of the essence of question result
+				res.essence_type = g.nodes[target_number]['properties']['category']  # populate with the type of the essence of question result
 				row_data = []  # initialize the row data
 				row_data.append("%s" % source_description)
-				row_data.append("%s" % g.node[source_node_number]['properties']['id'])
+				row_data.append("%s" % g.nodes[source_node_number]['properties']['id'])
 				row_data.append("%s" % target_description)
-				row_data.append("%s" % g.node[target_number]['properties']['id'])
+				row_data.append("%s" % g.nodes[target_number]['properties']['id'])
 				res.row_data = row_data
 			return response
 

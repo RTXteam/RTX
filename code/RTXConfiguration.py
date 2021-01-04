@@ -1,30 +1,31 @@
 #!/usr/bin/python3
 
-import re
 import os
-import sys
 import datetime
 import json
 import time
 
+
 class RTXConfiguration:
 
-    #### Constructor
+    _GET_FILE_CMD = "scp araxconfig@araxconfig.rtx.ai:config.json "
+
+    # ### Constructor
     def __init__(self):
-        self.version = "RTX 0.5.4"
+        self.version = "ARAX 0.6.0"
 
         file_path = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
 
         if not os.path.exists(file_path):
             # scp the file
-            os.system("scp rtxconfig@rtx.ncats.io:/mnt/temp/config.json " + file_path)
+            os.system(RTXConfiguration._GET_FILE_CMD + file_path)
         else:
             now_time = datetime.datetime.now()
             modified_time = time.localtime(os.stat(file_path).st_mtime)
             modified_time = datetime.datetime(*modified_time[:6])
             if (now_time - modified_time).days > 0:
                 # scp the file
-                os.system("scp rtxconfig@rtx.ncats.io:/mnt/temp/config.json " + file_path)
+                os.system(RTXConfiguration._GET_FILE_CMD + file_path)
 
         f = open(file_path, 'r')
         config_data = f.read()
@@ -38,7 +39,7 @@ class RTXConfiguration:
         # self.live = "staging"
         # self.live = "local"
 
-    #### Define attribute version
+    # ### Define attribute version
     @property
     def version(self) -> str:
         return self._version
@@ -92,12 +93,12 @@ class RTXConfiguration:
             self.mysql_umls_password = self.config[self.live]["mysql_umls"]["password"]
 
         # if self.live == "Production":
-        #     self.bolt = "bolt://rtx.ncats.io:7687"
-        #     self.database = "rtx.ncats.io:7474/db/data"
+        #     self.bolt = "bolt://arax.ncats.io:7687"
+        #     self.database = "arax.ncats.io:7474/db/data"
         #
         # elif self.live == "KG2":
-        #     self.bolt = "bolt://rtx.ncats.io:7787"
-        #     self.database = "rtx.ncats.io:7574/db/data"
+        #     self.bolt = "bolt://arax.ncats.io:7787"
+        #     self.database = "arax.ncats.io:7574/db/data"
         #
         # elif self.live == "rtxdev":
         #     self.bolt = "bolt://rtxdev.saramsey.org:7887"
@@ -265,7 +266,6 @@ def main():
     print("mysql umls port: %s" % rtxConfig.mysql_umls_port)
     print("mysql umls username: %s" % rtxConfig.mysql_umls_username)
     print("mysql umls password: %s" % rtxConfig.mysql_umls_password)
-
 
     # print("bolt protocol: %s" % rtxConfig.bolt)
     # print("database: %s" % rtxConfig.database)

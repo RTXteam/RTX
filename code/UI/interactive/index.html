@@ -1,12 +1,12 @@
-<!DOCTYPE html>
 <html>
 <head>
-<title>RTX User Interface</title>
+<title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
 <link rel="stylesheet" type="text/css" href="rtx.css">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="rtx.js"></script>
+<script src="araxi.js"></script>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="/rtxcomplete/data/quick_def.json"></script>
@@ -20,11 +20,12 @@
 <body onload="main();">
 
 <div class="menuleft">
-<br><br><br><br>
+<br><br><br>
 &nbsp;Input<br>
 <div onclick="openSection(this,'queryDiv');" class="menucurrent">Query</div>
 <div onclick="openSection(this,'listaDiv');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
 <div onclick="openSection(this,'listbDiv');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
+<div onclick="openSection(this,'compareDiv');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
 <br>
 <div onclick="openSection(this,'historyDiv');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
 <!-- div onclick="openSection(this,'statusDiv');" class="menuleftitem">Status</div -->
@@ -32,112 +33,152 @@
 &nbsp;Output<br>
 <div onclick="openSection(this,'summaryDiv');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
 <div onclick="openSection(this,'kgDiv');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge<br>Graph</div>
-<div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results <span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
+<div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
+<div onclick="openSection(this,'messagesDiv');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
 <br><br>
 <div onclick="openSection(this,'devDiv');" class="menuleftitem">Dev Info</div>
 <br><br><br><br>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
 </div>
 
-<div class="banner" banner-bg-text="RTX User Interface">
+<div class="banner" banner-bg-text="ARAX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a href="api/rtx/v1/ui/">API 0.9.2</a>
+<a href="api/rtx/v1/ui/">API 0.9.3</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
 
 
 <div class="page">
-<br><br><br><br><br>
-
+<br><br><br><br>
 
 <div class="pagesection" id="historyDiv">
-<div class="statushead">Session History (<span id="numlistitemsSESSION">-</span>)</div>
-<div class="status" id="listdivSESSION"><br>Your query history will be displayed here. It can be edited or re-set.<br><br></div>
+  <div class="statushead">Session History (<span id="numlistitemsSESSION">-</span>)</div>
+  <div class="status" id="listdivSESSION"><br>Your query history will be displayed here. It can be edited or re-set.<br><br></div>
 </div>
-
-
 
 <div class="pagesection" id="queryDiv">
-<h3 style="display:inline;">Enter question:</h3>
-<div class="sampleqs">
-<select id="qqq" onchange="javascript:pasteQuestion(this.value);">
-<option style="border-bottom:1px solid black;" value="">Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>
-<option value="what is lovastatin?">Q0: What is lovastatin?</option>
-<option value="what genetic conditions might offer protection against malaria?">Q1: What genetic conditions might offer protection against malaria?</option>
-<option value="what is the clinical outcome pathway of physostigmine for treatment of glaucoma?">Q2: What is the clinical outcome pathway of physostigmine for treatment of glaucoma?</option>
-<option value="what proteins does acetaminophen target?">Q3: What proteins does acetaminophen target?</option>
-<option value="what diseases are similar to malaria?">Q4: What diseases are similar to malaria?</option>
-</select>
-</div>
+  <h3 style="margin:0px;">Choose Query Type:</h3>
+  &nbsp;&nbsp;&nbsp;
+  <img src="qtxt.png"  class="slink" onclick="selectInput(this,'qtext_input');"  title="Enter Query using Natural Language"/>
+  <img src="qg.png"    class="slink" onclick="selectInput(this,'qgraph_input');" title="Enter Query Graph"/>
+  <img src="qjson.png" class="slink" onclick="selectInput(this,'qjson_input');"  title="Enter JSON representation of Query Graph"/>
+  <img src="qdsl.png"  class="slink" onclick="selectInput(this,'qdsl_input');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
 
-<form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion();">
-<span title="clear question" class="clq" onclick="javascript:pasteQuestion('');">&#215;</span>
+  <div class="inputsection" id="qtext_input">
+    <h3 style="display:inline;">Enter question:</h3>
+    <div class="sampleqs">
+      <select id="qqq" onchange="pasteQuestion(this.value);">
+	<option style="border-bottom:1px solid black;" value="">Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>
+	<option value="what is lovastatin?">Q0: What is lovastatin?</option>
+	<option value="what genetic conditions might offer protection against malaria?">Q1: What genetic conditions might offer protection against malaria?</option>
+	<option value="what is the clinical outcome pathway of physostigmine for treatment of glaucoma?">Q2: What is the clinical outcome pathway of physostigmine for treatment of glaucoma?</option>
+	<option value="what proteins does acetaminophen target?">Q3: What proteins does acetaminophen target?</option>
+	<option value="what diseases are similar to malaria?">Q4: What diseases are similar to malaria?</option>
+      </select>
+    </div>
 
-<input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="typeInput questionBox" id="questionText" name="questionText" size="100" maxlength="1000"/>
+    <form id="questionForm" name="questionForm" method="post" action="sendQuestion();">
+      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="typeInput questionBox" id="questionText" name="questionText" size="100" maxlength="1000"/>
 
-<input type="button" class="questionBox button" name="action" value="ASK" onClick="javascript:sendQuestion();"/>
-<br>
-<label id="useCacheText" class="tiny blue">
-  <span class="switch">
-    <input id="useCache" type="checkbox" checked="checked" onchange="togglecolor(this,'useCacheText');">
-    <span class="slider"></span>
-  </span>
-Use cache</label>
-</form>
-<br>
-<h3 style="display:inline;">Query Graph:</h3>
-<a style="position:relative; left:150px;" href="#" title="remove all elements from query graph" onclick="clear_qg(1);">[ clear ]</a>
-<a style="position:relative; left:150px;" href="#" title="edit query graph" onclick="edit_qg();">[ edit ]</a>
-<div class="cytograph_q">
-  <div style="height: 100%; width: 100%" id="cy999"></div>
-</div>
+      <input type="button" class="questionBox button" name="action" value="ASK" onClick="sendQuestion();"/>
+      <span title="clear question" class="clq" onclick="pasteQuestion('');">&#9587;</span>
 
-<div id="qg_items"></div>
-
-<div class="pagesection" id="qg_form">
-Enter new query node:
-<input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="enter_node(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_node_to_query_graph();">
-
-<!-- input type="text" class="questionBox" id="newquerynode" onkeydown="enter_node(this);" value="" size="30" -->
-
-<b>&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;</b>
-<span class="qgselect">
-  <select id="allnodetypes" onchange="javascript:add_nodetype_to_query_graph(this.value);">
-    <option style="border-bottom:1px solid black;" value="">Add a Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>
-    <option>...loading</option>
-  </select>
-</span>
-<br>
-Enter new relationship:
-<span class="qgselect">
-  <select id="qg_edge_n1" onchange="javascript:get_possible_edges();">
-    <option style="border-bottom:1px solid black;" value="">Source Node&nbsp;&nbsp;&nbsp;&#8675;</option>
-    <option>Must have a minimum of 2 nodes</option>
-  </select>
-</span>
-<span class="qgselect">
-  <select id="qg_edge_n2" onchange="javascript:get_possible_edges();">
-    <option style="border-bottom:1px solid black;" value="">Target Node&nbsp;&nbsp;&nbsp;&#8675;</option>
-    <option>Must have a minimum of 2 nodes</option>
-  </select>
-</span>
-<span class="qgselect">
-  <select id="qg_edge_type">
-    <option style="border-bottom:1px solid black;" value="">Edge Type&nbsp;&nbsp;&nbsp;&#8675;</option>
-    <option>Must have a minimum of 2 nodes</option>
-  </select>
-</span>
-<input type="button" class="questionBox button" name="action" value="Add" onClick="javascript:add_edge_to_query_graph();">  
-
-<input style="position:relative; left:150px;" type="button" class="questionBox button" name="action" value="QUERY" onClick="javascript:sendGraph();"/>
-</div>
+      <br>
+      <label id="useCacheText" class="tiny blue">
+	<span class="switch">
+	  <input id="useCache" type="checkbox" checked="checked" onchange="togglecolor(this,'useCacheText');">
+	  <span class="slider"></span>
+	</span>
+	Use cache</label>
+    </form>
+    <br>
+  </div>
 
 
-<br><br>
+  <div class="inputsection" id="qgraph_input">
+    <h3 style="display:inline;">Query Graph:</h3>
+    <span style="position:relative;left:70%;top:5px;">
+      <span style="position:relative;right:100px;border:1px solid #000;color:#000;" title="edit query graph" class="clq" onclick="edit_qg(1);">&#9998;</span>
+      <span title="remove all elements from query graph" class="clq" onclick="clear_qg(1);">&#9587;</span>
+    </span><br><br>
+    <div class="cytograph_q">
+      <div style="height: 100%; width: 100%" id="cy999"></div>
+    </div>
+    <div id="qg_items"></div>
 
-<div id="status_container"></div>
+    <div class="pagesection" id="qg_form">
+      Enter new query node:
+      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="enter_node(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add" onClick="add_node_to_query_graph();">
+
+      <!-- input type="text" class="questionBox" id="newquerynode" onkeydown="enter_node(this);" value="" size="30" -->
+
+      <b>&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;</b>
+      <span class="qgselect">
+	<select id="allnodetypes" onchange="add_nodeclass_to_query_graph(this.value);">
+	  <option style="border-bottom:1px solid black;" value="">Add a Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>
+	  <option>...loading</option>
+	</select>
+      </span>
+      <br>
+      Enter new relationship:
+      <span class="qgselect">
+	<select id="qg_edge_n1" onchange="get_possible_edges();">
+	  <option style="border-bottom:1px solid black;" value="">Source Node&nbsp;&nbsp;&nbsp;&#8675;</option>
+	  <option>Must have a minimum of 2 nodes</option>
+	</select>
+      </span>
+      <span class="qgselect">
+	<select id="qg_edge_n2" onchange="get_possible_edges();">
+	  <option style="border-bottom:1px solid black;" value="">Target Node&nbsp;&nbsp;&nbsp;&#8675;</option>
+	  <option>Must have a minimum of 2 nodes</option>
+	</select>
+      </span>
+      <span class="qgselect">
+	<select id="qg_edge_type">
+	  <option style="border-bottom:1px solid black;" value="">Edge Type&nbsp;&nbsp;&nbsp;&#8675;</option>
+	  <option>Must have a minimum of 2 nodes</option>
+	</select>
+      </span>
+      <input type="button" class="questionBox button" name="action" value="Add" onClick="add_edge_to_query_graph();">  
+      <br/>
+      <input type="button" class="questionBox button" name="action" value="QUERY" onClick="postQuery('qGraph');"/>
+    </div>
+  </div>
+  
+  <div class="inputsection" id="qjson_input">
+    <h3 style="display:inline;">JSON Input:</h3>
+    <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>"query_graph"</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
+    <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON');">
+            <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
+	    <br/>
+	    <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('JSON');">
+    </form>
+  </div>
+
+  <div class="inputsection" id="qdsl_input">
+    <h3 style="display:inline;">DSL Input:</h3>
+    <span class="tiny" style="position:relative; left:150px;">One line per DSL command, no quotes or commas;
+    <a href="https://github.com/RTXteam/RTX/blob/master/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a><a href="javascript:pasteExample('DSL');" style="position:relative; left:100px;">Example</a></span>
+    <form id="dslForm" name="dslForm" method="post" action="postQuery('DSL');">
+      <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="clearDSL();">&#9587;</span>
+      <br/>
+      <span class="qgselect">
+	<select id="dsl_command" onchange="show_dsl_command_options(this.value)">
+	  <option style="border-bottom:1px solid black;" value="">Select DSL Command&nbsp;&nbsp;&nbsp;&#8675;</option>
+	</select>
+      </span>
+      <div id="dsl_command_form"></div>
+      <br/>
+      <br/>
+      <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL');">
+    </form>
+  </div>
+  
+  <br><br>
+
+  <div id="status_container"></div>
 </div>
 
 
@@ -154,7 +195,10 @@ Enter new relationship:
 <div class="status" id="listdivB">Items in this list can be passed as input to queries that support list input, by specifying [B] as a parameter.</div>
 </div>
 
-
+<div class="pagesection" id="compareDiv">
+<div class="statushead">Compare Lists A and B </div>
+<div class="status" id="comparelists">Items in lists A and B will be automatically displayed side-by-side for ease of comparison.</div>
+</div>
 
 <div class="pagesection" id="statusDiv">
 </div>
@@ -180,10 +224,13 @@ Enter new relationship:
 <div id="result_container"></div>
 </div>
 
+<div class="pagesection" id="messagesDiv">
+  <div id="messages_container"></div>
+</div>
 
 
 <div class="pagesection" id="devDiv">
-  <input type="button" class="json_copy button" name="action" value="Copy Response JSON to clipboard" onClick="javascript:copyJSON();"/>
+  <input type="button" class="questionBox button" name="action" value="Copy Response JSON to clipboard" onClick="copyJSON(this);"/>
   <div id="dev_result_json_container"></div>
 </div>
 
@@ -193,4 +240,3 @@ Enter new relationship:
 <br>
 </body>
 </html>
-

@@ -90,7 +90,7 @@ class Q0:
 
 			#### Create the first result (potential answer)
 			result1 = Result()
-			result1.id = "http://rtx.ncats.io/api/v1/result/0000"
+			result1.id = "http://arax.ncats.io/api/v1/result/0000"
 			result1.description = "The term %s is in our knowledge graph and is defined as %s" % ( properties["name"],properties["description"] )
 			result1.confidence = 1.0
 			result1.essence = properties["name"]

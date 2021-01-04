@@ -1,9 +1,15 @@
 import numpy as np
 np.warnings.filterwarnings('ignore')
 import os
+import re
 import ReasoningUtilities as RU
 import requests_cache
-requests_cache.install_cache('orangeboard')
+#requests_cache.install_cache('orangeboard')
+# specifiy the path of orangeboard database
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+dbpath = os.path.sep.join([*pathlist[:(RTXindex+1)],'data','orangeboard'])
+requests_cache.install_cache(dbpath)
 import argparse
 from itertools import compress
 import sys

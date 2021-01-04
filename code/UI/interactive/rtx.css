@@ -3,23 +3,25 @@ body {
     margin:  0px;
     box-sizing:border-box;
     background-color:#eee;
-    font-size: 12pt;
+    font-size: 12px;
     font-family: Arial, sans-serif;
+}
+hr {
+    border: 1px dashed #444;
 }
 
 .banner {
     position: fixed;
     width: 100%;
-    min-height: 80px;
+    min-height: 50px;
     z-index: 9;
     box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
-    font-size: 20px;
     color: #ddd;
     background-color: #040;
     background-image: url(banner.png);
 }
 .banner::before {
-    font-size: 60px;
+    font-size: 40px;
     left: 30px;
     top: 0px;
     position: absolute;
@@ -32,7 +34,7 @@ body {
 
 .menulinks {
     position: relative;
-    top:55px;
+    top:30px;
     right: 30px;
     float: right;
 }
@@ -40,7 +42,7 @@ body {
     text-decoration: none;
     color: #eef;
     font-weight:bold;
-    padding: 55px 15px 15px 15px;
+    padding: 55px 15px 10px 15px;
 }
 .banner a:hover, .banner a:active{
     text-decoration: none;
@@ -49,45 +51,45 @@ body {
 }
 .currentpage {
     color: #c40;
-    background-color: #eef;
+    background-color: #eee;
     font-weight:bold;
     padding: 55px 15px 25px 15px;
 }
 
 .menuleft {
-	z-index: 8;
-	position: fixed;
-	width: 150px;
-	height: 100%;
-//	margin-top: 80px;
-	font-size: 20px;
-	color: #000;
-	border-right: 2px solid black;
-	background-color: #ddd;
+    z-index: 8;
+    position: fixed;
+    width: 150px;
+    height: 100%;
+    font-size: 15px;
+    font-weight: bold;
+    color: #000;
+    border-right: 2px solid black;
+    background-color: #ddd;
 }
 .menuleftitem  {
-	color: #666;
-	padding: 10px;
-	text-align:right;
-	display:block;
-	text-decoration: none;
-	cursor: pointer;
+    color: #666;
+    padding: 10px;
+    text-align:right;
+    display:block;
+    text-decoration: none;
+    cursor: pointer;
 }
 .menuleftitem:hover {
-	color: #000;
-	background-color: #9bc;
+    color: #000;
+    background-color: #9bc;
 }
 .menucurrent {
-	padding: 10px;
-	text-align:right;
-	display:block;
-	text-decoration: none;
-	color: #000;
-	background-color: #eee;
-	border-bottom: 2px solid black;
-	border-top: 2px solid black;
-	border-left: 15px solid #444;
-	margin-right: -2px;
+    padding: 10px;
+    text-align:right;
+    display:block;
+    text-decoration: none;
+    color: #000;
+    background-color: #eee;
+    border-bottom: 2px solid black;
+    border-top: 2px solid black;
+    border-left: 15px solid #444;
+    margin-right: -2px;
 }
 
 
@@ -95,10 +97,26 @@ body {
     margin-left: 170px;
     margin-right: 10px;
 }
-.pagesection {
+.pagesection, .inputsection {
     visibility: hidden;
     max-height: 0;
     overflow: hidden;
+}
+
+.slink {
+    padding: 10px 20px;
+    width: 70px;
+    border-top: 1px solid #eee;
+    border-left: 1px solid #eee;
+    border-right: 1px solid #eee;
+    border-bottom: 4px solid #eee;
+    cursor: pointer;
+}
+.slink:hover {
+    box-shadow: 0 0 5px #999;
+}
+.slink_on {
+    border-bottom: 4px solid #c40;
 }
 
 .sampleqs {
@@ -130,18 +148,13 @@ body {
     background-color: #c40;
 }
 
-.ratings {
-    display: inline-flex;
-    padding: 0;
-    margin: 0;
-    border: 1px solid #aaa;
-    color: #ccc;
-    width: 350px;
-    border-radius: 3px;
-    overflow: hidden;
-    background-color: #eee;
+#dslText, #jsonText {
+    width: 80%;
+    height: 20em;
+    overflow:scroll;
 }
-.ratings:hover, .qgselect:hover {
+
+.qgselect:hover {
     background-color: #fff;
 }
 
@@ -157,7 +170,7 @@ body {
     background-color: #ddd;
 }
 
-.sampleqs select, .ratings select, .qgselect select {
+.sampleqs select, .qgselect select {
     padding: 5px 8px;
     width: 130%;
     border: none;
@@ -168,7 +181,7 @@ body {
     -moz-appearance: none;
     appearance: none;
 }
-.sampleqs select:focus, .ratings select:focus, .qgselect select:focus {
+.sampleqs select:focus, .qgselect select:focus {
     outline: none;
     background-color: #eee;
 }
@@ -176,7 +189,7 @@ body {
 .statushead {
     background-color: #ccc;
     color: #000;
-//    cursor: pointer;
+/*    cursor: pointer; */
     margin-top: 15px;
     padding: 4px 10px;
     max-width: 100%;
@@ -185,7 +198,7 @@ body {
     border-right: 1px solid #444;
     text-align: left;
     outline: none;
-    font-size: 20px;
+    font-size: 16px;
     font-weight:bold;
     transition: 0.1s;
 }
@@ -197,6 +210,23 @@ body {
     padding: 0 25px;
     background-color: #fff;
     max-width: 100%;
+}
+.statushead .qprob {
+    font-size: 12px;
+}
+#logdiv {
+    padding: 0px;
+}
+
+#cmdoutput {
+    font-family: monospace;
+    border: 1px solid #444;
+    background-color: #ccd8e2;
+    box-shadow: inset 4px 4px 8px 0 rgba(0,0,0,0.2), inset -4px -4px 8px 0 rgba(0,0,0,0.2);
+    padding: 5px;
+    max-width: 100%;
+    height: 200px;
+    overflow: auto;
 }
 
 .accordion {
@@ -252,13 +282,6 @@ body {
     padding: 3px 15px;
     box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
 }
-.frating {
-    color: #fff;
-    border-radius: 12px;
-    border: 1px solid #fff;
-    padding: 2px 10px;
-    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2), 0 1px 2px 0 rgba(0,0,0,0.19);
-}
 .explevel {
     color: #fff;
     border-radius: 12px;
@@ -278,21 +301,56 @@ body {
     color: #444;
 }
 .numnew {
-    background-color: #b00;
+    background-color: #291;
     color: #fff;
-    border-color: #b00;
+    border-color: #291;
 }
 
-.p9 { background-color: #291; }
-.p7 { background-color: #7b4; }
-.p5 { background-color: #cc5; }
-.p3 { background-color: #f80; }
-.p1 { background-color: #821; }
-.p0 { background-color: #444; }
+.progress {
+    display: inline-block;
+    padding: 0;
+    height: 16px;
+    margin-left: 15px;
+    margin-top: 5px;
+    width: 802px;
+    border: 1px solid #000;
+    background-color: #ccd8e2;
+    box-shadow: inset 2px 2px 4px 0 rgba(0,0,0,0.2), inset -2px -2px 4px 0 rgba(0,0,0,0.2);
+}
+.bar {
+    display: inline-block;
+    padding: 0;
+    height: 14px;
+    margin: 0;
+    width: 0px;
+    border: 1px solid #3d6d98;
+    background-color: #5596d0;
+    color: #fff;
+    text-align: right;
+    font-weight: bold;
+    box-shadow: 4px 0px 4px 0 rgba(0,0,0,0.2);
+    transition-duration: 1s;
+}
+.barerror {
+    border: 1px solid #b00;
+    background-color: #b00;
+}
+
+
+.p9, .msgINFO    { background-color: #291; }
+.p7              { background-color: #7b4; }
+.p5              { background-color: #cc5; }
+.p3, .msgWARNING { background-color: #f80; }
+.p1, .msgERROR   { background-color: #821; }
+.p0, .msgDEBUG   { background-color: #444; }
 
 .srtx { background-color: #cb5; }
 .sind { background-color: #3bc; }
 .srob { background-color: #000; }
+
+.hide {
+    background-color: #bbb;
+}
 
 h1 {
     margin-top: 40px;
@@ -339,7 +397,7 @@ table.sumtab {
 }
 
 .hoverable:hover {
-    background-color: #9bc;
+    background-color: #ee6 !important;
 }
 
 .sumtab th {
@@ -350,13 +408,35 @@ table.sumtab {
     border-bottom: 1px solid #aaa;
     padding: 5px;
 }
+.sumtab tr:nth-child(even) {
+    background-color: #eee;
+}
+
+
+.msg {
+    display: block;
+    border-bottom: 1px solid #aaa;
+    padding: 4px 3px;
+}
+.DEBUG {
+    color: #999;
+}
+.INFO {
+    color: #333;
+}
+.WARNING {
+    color: #750;
+}
+.ERROR {
+    color: #c40;
+}
 
 
 td {
     vertical-align:top;
 }
 .textanswer {
-    width: 50%;
+    width: 30%;
 }
 .cytograph_controls {
     vertical-align:top;
@@ -371,30 +451,35 @@ td {
 .cytograph {
     border: 1px solid #444;
     height: 300px;
-    width: 50%;
-    background-color: #bcd;
+    width: 70%;
+    background-color: #fff;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
 }
 .cytograph_kg {
     border: 1px solid #444;
     height: 700px;
     width: 99%;
-    background-color: #bcd;
+    background-color: #fff;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
 }
 .cytograph_q {
     border: 1px solid #444;
-    height: 200px;
+    height: 280px;
     width: 80%;
-    background-color: #def;
+    background-color: #fff;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
 }
 
+.fieldname {
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
 .questionBox {
-    font-size: large;
     margin: 4px;
     padding: 6px;
     border: 2px solid black;
+    vertical-align: baseline;
 }
 
 .button {
@@ -405,6 +490,7 @@ td {
     transition-duration: 0.2s;
 }
 .button:hover {
+    cursor: pointer;
     background-color: #9bc;
     color: #333;
 }

@@ -9,56 +9,56 @@ info:
   license:
     name: "Apache 2.0"
     url: "https://www.apache.org/licenses/LICENSE-2.0.html"
-host: "rtx.ncats.io"
+host: "arax.rtx.ai"
 basePath: "/devED/api/rtx/v1"
 tags:
 - name: "translate"
   description: "Translate natural language question into a standardized query"
   externalDocs:
     description: "Documentation for the RTX translate function"
-    url: "https://rtx.ncats.io/devED/overview.html#translate"
+    url: "https://arax.rtx.ai/devED/overview.html#translate"
 - name: "predicates"
   description: "Get all supported relationships in the knowledge graph, organized\
     \ by source and target"
   externalDocs:
     description: "Documentation for the RTX predicates function"
-    url: "https://rtx.ncats.io/devED/overview.html#predicates"
+    url: "https://arax.rtx.ai/devED/overview.html#predicates"
 - name: "query"
   description: "Query RTX using a predefined question type"
   externalDocs:
     description: "Documentation for the RTX query function"
-    url: "https://rtx.ncats.io/devED/overview.html#query"
+    url: "https://arax.rtx.ai/devED/overview.html#query"
 - name: "entity"
   description: "Obtain the CURIE and type of some entity by name"
   externalDocs:
     description: "Documentation for the RTX entity endpoint"
-    url: "https://rtx.ncats.io/devED/overview.html#entity"
+    url: "https://arax.rtx.ai/devED/overview.html#entity"
 - name: "PubmedMeshNgd"
   description: "Query to get the Normalized Google Distance between two MeSH terms\
     \ based on co-occurance in all PubMed article annotations"
   externalDocs:
     description: "Documentation for the RTX PubmedMeshNgd function"
-    url: "https://rtx.ncats.io/devED/overview.html#PubmedMeshNgd"
+    url: "https://arax.rtx.ai/devED/overview.html#PubmedMeshNgd"
 - name: "message"
   description: "Request stored messages and feedback for messages"
   externalDocs:
     description: "Documentation for the RTX message function"
-    url: "https://rtx.ncats.io/devED/overview.html#message"
+    url: "https://arax.rtx.ai/devED/overview.html#message"
 - name: "result"
   description: "Request stored results and feedback for results"
   externalDocs:
     description: "Documentation for the RTX result function"
-    url: "https://rtx.ncats.io/devED/overview.html#result"
+    url: "https://arax.rtx.ai/devED/overview.html#result"
 - name: "exampleQuestions"
   description: "Request a list of example questions that can be answered by the system"
   externalDocs:
     description: "Documentation for the RTX exampleQuestions function"
-    url: "https://rtx.ncats.io/devED/overview.html#exampleQuestions"
+    url: "https://arax.rtx.ai/devED/overview.html#exampleQuestions"
 - name: "feedback"
   description: "Request feedback data"
   externalDocs:
     description: "Documentation for the RTX feedback function"
-    url: "https://rtx.ncats.io/devED/overview.html#feedback"
+    url: "https://arax.rtx.ai/devED/overview.html#feedback"
 schemes:
 - "https"
 paths:
@@ -81,13 +81,13 @@ paths:
         schema:
           $ref: "#/definitions/Question"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             type: "array"
             items:
               $ref: "#/definitions/Query"
-        400:
+        "400":
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.translate_controller"
   /predicates:
@@ -99,16 +99,16 @@ paths:
       operationId: "predicates"
       parameters: []
       responses:
-        200:
+        "200":
           description: "Predicates by source and target"
           schema:
             type: "object"
+            description: "Source map"
             example:
               chemical_substance:
                 gene:
                 - "directly_interacts_with"
                 - "decreases_activity_of"
-            description: "Source map"
             additionalProperties:
               type: "object"
               description: "Target map"
@@ -137,11 +137,11 @@ paths:
         schema:
           $ref: "#/definitions/Query"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/Message"
-        400:
+        "400":
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.query_controller"
   /entity/{search_string}:
@@ -160,14 +160,14 @@ paths:
         required: true
         type: "string"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             type: "array"
             items:
               type: "object"
               properties: {}
-        404:
+        "404":
           description: "Entity not found"
       x-swagger-router-controller: "swagger_server.controllers.entity_controller"
   /PubmedMeshNgd/{term1}/{term2}:
@@ -192,11 +192,11 @@ paths:
         required: true
         type: "string"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/MeshNgdResponse"
-        400:
+        "400":
           description: "Invalid terms"
       x-swagger-router-controller: "swagger_server.controllers.pubmed_mesh_ngd_controller"
   /exampleQuestions:
@@ -210,7 +210,7 @@ paths:
       - "application/json"
       parameters: []
       responses:
-        200:
+        "200":
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.example_questions_controller"
   /feedback/ratings:
@@ -224,7 +224,7 @@ paths:
       - "application/json"
       parameters: []
       responses:
-        200:
+        "200":
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
   /feedback/expertise_levels:
@@ -238,7 +238,7 @@ paths:
       - "application/json"
       parameters: []
       responses:
-        200:
+        "200":
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
   /feedback/all:
@@ -252,7 +252,7 @@ paths:
       - "application/json"
       parameters: []
       responses:
-        200:
+        "200":
           description: "successful operation"
       x-swagger-router-controller: "swagger_server.controllers.feedback_controller"
   /message/{message_id}:
@@ -271,11 +271,11 @@ paths:
         required: true
         type: "integer"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/Message"
-        404:
+        "404":
           description: "Message_id not found"
       x-swagger-router-controller: "swagger_server.controllers.message_controller"
   /message/{message_id}/feedback:
@@ -294,11 +294,11 @@ paths:
         required: true
         type: "integer"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/MessageFeedback"
-        404:
+        "404":
           description: "Message_id not found"
       x-swagger-router-controller: "swagger_server.controllers.message_controller"
   /result/{result_id}:
@@ -317,11 +317,11 @@ paths:
         required: true
         type: "integer"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/Result"
-        404:
+        "404":
           description: "result_id not found"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
   /result/{result_id}/feedback:
@@ -340,11 +340,11 @@ paths:
         required: true
         type: "integer"
       responses:
-        200:
+        "200":
           description: "successful operation"
           schema:
             $ref: "#/definitions/ResultFeedback"
-        404:
+        "404":
           description: "result_id not found"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
     post:
@@ -370,9 +370,9 @@ paths:
         schema:
           $ref: "#/definitions/Feedback"
       responses:
-        200:
+        "200":
           description: "successful operation"
-        400:
+        "400":
           description: "Invalid status value"
       x-swagger-router-controller: "swagger_server.controllers.result_controller"
 definitions:
@@ -476,7 +476,7 @@ definitions:
       previous_message_uris:
         type: "array"
         example:
-        - "https://rtx.ncats.io/devED/api/rtx/v1/message/300"
+        - "https://arax.rtx.ai/devED/api/rtx/v1/message/300"
         description: "List of URIs for Message objects to fetch and process"
         items:
           type: "string"
@@ -506,7 +506,7 @@ definitions:
     properties:
       context:
         type: "string"
-        example: "https://rtx.ncats.io/ns/translator.jsonld"
+        example: "https://arax.rtx.ai/ns/translator.jsonld"
         description: "JSON-LD context URI"
       type:
         type: "string"
@@ -514,7 +514,7 @@ definitions:
         description: "Entity type of this message"
       id:
         type: "string"
-        example: "https://rtx.ncats.io/devED/api/rtx/v1/message/123"
+        example: "https://arax.rtx.ai/devED/api/rtx/v1/message/123"
         description: "URI for this message"
       reasoner_id:
         type: "string"
@@ -602,10 +602,19 @@ definitions:
         description: "Connection information for a remote knowledge graph that is\
           \ a substitute for local KnowledgeGraph contained in this Message"
         properties: {}
+      log:
+        type: "array"
+        description: "List of logged information lines from the ARA, e.g. logged INFO,\
+          \ WARNING, and ERROR message lines"
+        items:
+          type: "string"
     example:
       original_question: "what proteins are affected by sickle cell anemia"
       query_options: "{coalesce=True,threshold=0.9}"
       remote_knowledge_graph: "{}"
+      log:
+      - "log"
+      - "log"
       n_results: 42
       restated_question: "Which proteins are affected by sickle cell anemia?"
       code_description: "9 results found"
@@ -626,9 +635,9 @@ definitions:
         metabolite: "ibuprofen"
         protein: "P12345"
         chemical_substance: "ibuprofen"
-      context: "https://rtx.ncats.io/ns/translator.jsonld"
+      context: "https://arax.rtx.ai/ns/translator.jsonld"
       reasoner_id: "reasoner"
-      id: "https://rtx.ncats.io/devED/api/rtx/v1/message/123"
+      id: "https://arax.rtx.ai/devED/api/rtx/v1/message/123"
       results:
       - result_type: "individual query answer"
         result_graph: "{}"
@@ -652,7 +661,7 @@ definitions:
           qg_id: "qg_id"
         - kg_id: "kg_id"
           qg_id: "qg_id"
-        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+        id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
         row_data:
         - "ibuprofen"
         - "CHEMBL:CHEMBL521"
@@ -680,7 +689,7 @@ definitions:
           qg_id: "qg_id"
         - kg_id: "kg_id"
           qg_id: "qg_id"
-        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+        id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
         row_data:
         - "ibuprofen"
         - "CHEMBL:CHEMBL521"
@@ -688,10 +697,13 @@ definitions:
         score_name: "Jaccard distance"
   Result:
     type: "object"
+    required:
+    - "edge_bindings"
+    - "node_bindings"
     properties:
       id:
         type: "string"
-        example: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+        example: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
         description: "URI for this message"
       description:
         type: "string"
@@ -798,7 +810,7 @@ definitions:
         qg_id: "qg_id"
       - kg_id: "kg_id"
         qg_id: "qg_id"
-      id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+      id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
       row_data:
       - "ibuprofen"
       - "CHEMBL:CHEMBL521"
@@ -910,6 +922,8 @@ definitions:
       \ to answer the question. This graph is a representation of a question."
   QNode:
     type: "object"
+    required:
+    - "id"
     properties:
       id:
         type: "string"
@@ -922,6 +936,11 @@ definitions:
         description: "CURIE identifier for this node"
       type:
         $ref: "#/definitions/BiolinkEntity"
+      is_set:
+        type: "boolean"
+        example: true
+        description: "Boolean that if set to true, indicates the QNode represents\
+          \ a set of entities rather than an individual entity"
     description: "A node in the QueryGraph"
   QEdge:
     type: "object"
@@ -992,6 +1011,15 @@ definitions:
         description: "A list of arbitrary attributes for the node"
         items:
           $ref: "#/definitions/NodeAttribute"
+      qnode_ids:
+        type: "array"
+        example:
+        - "n00"
+        description: "List of identifiers (ids) of QueryGraph QNodes in this same\
+          \ message that yield this Node in the KnowledgeGraph. Must always be a list,\
+          \ even if a list of one id."
+        items:
+          type: "string"
     description: "A node in the thought subgraph"
   NodeAttribute:
     type: "object"
@@ -1091,6 +1119,15 @@ definitions:
         description: "A list of additional attributes for this edge"
         items:
           $ref: "#/definitions/EdgeAttribute"
+      qedge_ids:
+        type: "array"
+        example:
+        - "n00"
+        description: "List of identifiers (ids) of QueryGraph QEdges in this same\
+          \ message that yielded this Edge in the KnowledgeGraph. Must be a list,\
+          \ even if only one id."
+        items:
+          type: "string"
     description: "An edge in the thought subgraph linking two nodes"
   EdgeAttribute:
     type: "object"
@@ -1118,11 +1155,11 @@ definitions:
     properties:
       id:
         type: "string"
-        example: "https://rtx.ncats.io/devED/api/rtx/v1/result/234/feedback/56"
+        example: "https://arax.rtx.ai/devED/api/rtx/v1/result/234/feedback/56"
         description: "URI for this feedback item"
       result_id:
         type: "string"
-        example: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+        example: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
         description: "URI for the result that this feedback corresponds to"
       expertise_level_id:
         type: "integer"
@@ -1153,10 +1190,10 @@ definitions:
       commenter_id: 1
       datetime: "2018-05-08 12:00"
       rating_id: 1
-      result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+      result_id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
       expertise_level_id: 1
       comment: "This is a great result because..."
-      id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234/feedback/56"
+      id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234/feedback/56"
       commenter_full_name: "John Smith"
   ResultFeedback:
     type: "object"
@@ -1172,18 +1209,18 @@ definitions:
       - commenter_id: 1
         datetime: "2018-05-08 12:00"
         rating_id: 1
-        result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+        result_id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234/feedback/56"
+        id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234/feedback/56"
         commenter_full_name: "John Smith"
       - commenter_id: 1
         datetime: "2018-05-08 12:00"
         rating_id: 1
-        result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+        result_id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234/feedback/56"
+        id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234/feedback/56"
         commenter_full_name: "John Smith"
   MessageFeedback:
     type: "object"
@@ -1199,18 +1236,18 @@ definitions:
       - commenter_id: 1
         datetime: "2018-05-08 12:00"
         rating_id: 1
-        result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+        result_id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234/feedback/56"
+        id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234/feedback/56"
         commenter_full_name: "John Smith"
       - commenter_id: 1
         datetime: "2018-05-08 12:00"
         rating_id: 1
-        result_id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234"
+        result_id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234"
         expertise_level_id: 1
         comment: "This is a great result because..."
-        id: "https://rtx.ncats.io/devED/api/rtx/v1/result/234/feedback/56"
+        id: "https://arax.rtx.ai/devED/api/rtx/v1/result/234/feedback/56"
         commenter_full_name: "John Smith"
   BiolinkEntity:
     type: "string"
@@ -1227,6 +1264,7 @@ definitions:
     description: "A relation, i.e. child of related_to (snake_case)"
     example: "affects"
   Message_terms:
+    type: "object"
     properties:
       disease:
         type: "string"
@@ -1252,4 +1290,4 @@ definitions:
       chemical_substance: "ibuprofen"
 externalDocs:
   description: "Documentation for the RTX web service"
-  url: "https://rtx.ncats.io/devED/overview.html"
+  url: "https://arax.rtx.ai/devED/overview.html"

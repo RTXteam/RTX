@@ -17,7 +17,7 @@ class Message(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, context: str=None, type: str=None, id: str=None, reasoner_id: str=None, tool_version: str=None, schema_version: str=None, _datetime: str=None, n_results: int=None, message_code: str=None, code_description: str=None, table_column_names: List[str]=None, original_question: str=None, restated_question: str=None, query_type_id: str=None, terms: MessageTerms=None, query_options: object=None, results: List[Result]=None, query_graph: object=None, knowledge_graph: object=None, remote_knowledge_graph: object=None):  # noqa: E501
+    def __init__(self, context: str=None, type: str=None, id: str=None, reasoner_id: str=None, tool_version: str=None, schema_version: str=None, _datetime: str=None, n_results: int=None, message_code: str=None, code_description: str=None, table_column_names: List[str]=None, original_question: str=None, restated_question: str=None, query_type_id: str=None, terms: MessageTerms=None, query_options: object=None, results: List[Result]=None, query_graph: object=None, knowledge_graph: object=None, remote_knowledge_graph: object=None, log: List[str]=None):  # noqa: E501
         """Message - a model defined in Swagger
 
         :param context: The context of this Message.  # noqa: E501
@@ -60,6 +60,8 @@ class Message(Model):
         :type knowledge_graph: object
         :param remote_knowledge_graph: The remote_knowledge_graph of this Message.  # noqa: E501
         :type remote_knowledge_graph: object
+        :param log: The log of this Message.  # noqa: E501
+        :type log: List[str]
         """
         self.swagger_types = {
             'context': str,
@@ -81,7 +83,8 @@ class Message(Model):
             'results': List[Result],
             'query_graph': object,
             'knowledge_graph': object,
-            'remote_knowledge_graph': object
+            'remote_knowledge_graph': object,
+            'log': List[str]
         }
 
         self.attribute_map = {
@@ -104,7 +107,8 @@ class Message(Model):
             'results': 'results',
             'query_graph': 'query_graph',
             'knowledge_graph': 'knowledge_graph',
-            'remote_knowledge_graph': 'remote_knowledge_graph'
+            'remote_knowledge_graph': 'remote_knowledge_graph',
+            'log': 'log'
         }
 
         self._context = context
@@ -127,6 +131,7 @@ class Message(Model):
         self._query_graph = query_graph
         self._knowledge_graph = knowledge_graph
         self._remote_knowledge_graph = remote_knowledge_graph
+        self._log = log
 
     @classmethod
     def from_dict(cls, dikt) -> 'Message':
@@ -596,3 +601,26 @@ class Message(Model):
         """
 
         self._remote_knowledge_graph = remote_knowledge_graph
+
+    @property
+    def log(self) -> List[str]:
+        """Gets the log of this Message.
+
+        List of logged information lines from the ARA, e.g. logged INFO, WARNING, and ERROR message lines  # noqa: E501
+
+        :return: The log of this Message.
+        :rtype: List[str]
+        """
+        return self._log
+
+    @log.setter
+    def log(self, log: List[str]):
+        """Sets the log of this Message.
+
+        List of logged information lines from the ARA, e.g. logged INFO, WARNING, and ERROR message lines  # noqa: E501
+
+        :param log: The log of this Message.
+        :type log: List[str]
+        """
+
+        self._log = log

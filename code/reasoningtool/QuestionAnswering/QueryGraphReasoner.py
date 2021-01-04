@@ -144,7 +144,7 @@ class QueryGraphReasoner:
         edges = query_graph["edges"]
         n_nodes = len(nodes)
         n_edges = len(edges)
-        eprint("DEBUG: n_nodes = %d, n_edges = %d" % (n_nodes,n_edges))
+        #eprint("DEBUG: n_nodes = %d, n_edges = %d" % (n_nodes,n_edges))
 
         #### Handle 0 nodes case
         if n_nodes == 0:
@@ -260,104 +260,6 @@ class QueryGraphReasoner:
     def postprocess_results(self, results, sort_flags, res_limit, ascending_flag):
         #### todo: write this function
         return results
-
-        """
-
-
-
-        #### Dang. I don't know how to do that, so instead do something super simple: describe qnode[0]
-        # See Q3Solution.py and SimilarityQuestionSolution.py for more insight into generating 0.9.0
-
-
-        #####################################################
-        # This is the old code but I didn't want to delete it
-
-    #### Pull out the first node and look it up in the KGNodeIndex
-        
-        entity = query_graph["nodes"][0]["curie"]
-        eprint("Looking up '%s' in KgNodeIndex" % entity)
-        kgNodeIndex = KGNodeIndex()
-        curies = kgNodeIndex.get_curies(entity)
-
-        #### If not in the KG, then return no information
-        if not curies:
-            if not TxltrApiFormat:
-                return None
-            else:
-                error_code = "TermNotFound"
-                error_message = "This concept is not in our knowledge graph"
-                response = FormatOutput.FormatResponse(0)
-                response.add_error_message(error_code, error_message)
-                return response.message
-
-        # Get label/kind of node the source is
-        eprint("Getting properties for '%s'" % curies[0])
-        properties = RU.get_node_properties(curies[0])
-        eprint("Properties are:")
-        eprint(properties)
-
-        #### By default, return the results just as a plain simple list of data structures
-        if not TxltrApiFormat:
-            return properties
-
-        #### Or, if requested, format the output as the standardized API output format
-        else:
-            #### Create a stub Message object
-            response = FormatOutput.FormatResponse(0)
-            response.message.table_column_names = [ "id", "type", "name", "description", "uri" ]
-            response.message.code_description = None
-
-            #### Include the original query_graph in the envelope
-            response.message.query_graph = query_graph
-
-            #### Create a Node object and fill it
-            node1 = Node()
-            node1.id = properties["id"]
-            node1.uri = properties["uri"]
-            node1.type = [ properties["category"] ]
-            node1.name = properties["name"]
-            node1.description = properties["description"]
-
-            #### Create the first result (potential answer)
-            result1 = Result()
-            result1.id = "http://rtx.ncats.io/api/v1/result/0000"
-            result1.description = "The term %s is in our knowledge graph and is defined as %s" % ( properties["name"],properties["description"] )
-            result1.confidence = 1.0
-            result1.essence = properties["name"]
-            result1.essence_type = properties["category"]
-            node_types = ",".join(node1.type)
-            result1.row_data = [ node1.id, node_types, node1.name, node1.description, node1.uri ]
-
-            #### Create a KnowledgeGraph object and put the list of nodes and edges into it
-            result_graph = KnowledgeGraph()
-            result_graph.nodes = [ node1 ]
-
-            #### Put the ResultGraph into the first result (potential answer)
-            #This is legal but deprecated and discouraged in v0.9.1
-            #result1.result_graph = result_graph
-
-            #### Put the first result (potential answer) into the message
-            results = [ result1 ]
-            response.message.results = results
-
-            #### Also put the union of all result_graph components into the top Message KnowledgeGraph
-            #### Normally the knowledge_graph will be much more complex than this, but take a shortcut for this single-node result
-            response.message.knowledge_graph = result_graph
-
-            #### Also manufacture a query_graph post hoc
-            qnode1 = QNode()
-            qnode1.id = "n00"
-            qnode1.curie = properties["id"]
-            qnode1.type = None
-
-            #### Create the corresponding knowledge_map for this result
-            node_bindings = { "n00": [ properties["id"] ] }
-            result1.node_bindings = node_bindings
-            result1.edge_bindings = []
-
-            return(response.message)
-        """
-
 
 
     def from_dict(self,query_graph_dict):
