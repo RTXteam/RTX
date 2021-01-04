@@ -437,8 +437,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # option 2:
         value = -np.log(value)
         max_value = 1.0
-        curve_steepness = 3.94
-        logistic_midpoint = 2.25
+        curve_steepness = 5.94
+        logistic_midpoint = 2.5
         normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
 
         return normalized_value
