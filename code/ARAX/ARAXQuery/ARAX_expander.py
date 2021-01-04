@@ -620,7 +620,7 @@ class ARAXExpander:
         """
         This function breaks any paths in the KG for which a "not" (exclude=True) condition has been met; the remains
         of the broken paths not used in other paths in the KG are cleaned up during later pruning of dead ends. The
-        paths are broken by removing edge IDs vs. node IDs in order to help ensure that nodes that may also be used in
+        paths are broken by removing edges (vs. nodes) in order to help ensure that nodes that may also be used in
         valid paths are not accidentally removed from the KG. Optional kryptonite qedges are applied only to the option
         group they belong in; required kryptonite qedges are applied to all.
         """
