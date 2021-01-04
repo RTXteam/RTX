@@ -15,6 +15,7 @@ RTXConfig = RTXConfiguration()
 RTXConfig.live = "KG2"
 
 python = "python3.7"
+python2 = "python2.7"
 
 pred_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
 if not  os.path.exists(pred_filepath):
@@ -96,3 +97,66 @@ rule cohd_database:
         {python} COHDIndex.py --build
         """
 
+py_scripts_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'py_scripts'])
+gsage_input_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'graphsage_input'])
+gsage_path "~/work/Graphsage/GraphSAGE"
+test_gsage_path=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'reasoningtool', 'MLDrugRepurposing', 'Test_graphsage'])
+gsage_train_prefix=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'reasoningtool', 'MLDrugRepurposing', 'Test_graphsage', 'graphsage_input', 'data'])
+
+## other parameters
+model_size='big' #Can be big or small
+learning_rate=0.001 #test 0.01 and 0.001, 'initial learning rate'
+epochs=10 #test 5 and 10, 'number of epochs to train'
+samples_1=96 #suggest 15-25, based on the paper, bigger is better
+samples_2=96 #script only allows to set K=2, the same as samples_1
+dim_1=256 #Size of output dim (final is 2x this)
+dim_2=256
+max_total_steps=500 #Maximum total number of iterations
+validate_iter=5000 #how often to run a validation minibatch
+identity_dim=50 #Set to positive value to use identity embedding features of that dimension. Default 0
+batch_size=512 #minibatch size
+max_degree=96
+
+rule dtd_prob:
+    output:
+        f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
+    shell:
+        f"""
+        # step 0
+        cd {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train'])}
+        {python} {os.path.sep.join([py_scripts_path, 'pull_canonicalized_KG2_3_4C.py'])}
+        {python} {os.path.sep.join([py_scripts_path, 'generate_training_data.py'])}
+        {python} {os.path.sep.join([py_scripts_path, 'BuildMapID.py'])} --path {os.path.sep.join([test_gsage_path, 'kg2_3_4', 'raw_training_data'])}
+        # step 1
+        {python} {py_scripts_path}/graphsage_data_generation.py --graph graph_edges.txt --node_class graph_nodes_label_remove_name.txt --feature_dim 1 --validation_percent 0.3 --output {graphsage_input}
+        {python} {py_scripts_path}/generate_random_walk.py --Gjson {gsage_input_path}{os.path.sep}data-G.json --walk_length 100 --number_of_walks 10 --batch_size 200000 --process 80 --output {graphsage_input}
+        # step 2
+        if ! [ -d {test_gsage_path}/graphsage ]; then
+            ln -s {gsage_path}/graphsage {test_gsage_path}/graphsage
+        fi
+        {python2} -m graphsage.unsupervised_train --train_prefix {gsage_train_prefix} --model_size {model_size} --learning_rate {learning_rate} --epochs {epochs} --samples_1 {samples_1} --samples_2 {samples_2} --dim_1 {dim_1} --dim_2 {dim_2} --model {model} --max_total_steps {max_total_steps} --validate_iter {validate_iter} --identity_dim {identity_dim} --batch_size {batch_size} --max_degree {max_degree}
+        # step 3
+        {python} {py_scripts_path}/transform_format.py --input {test_gsage_path}/graphsage_results/graphsage_mean_big_0.001000_l100_r8_512dim_70training_2layer_512batch_96neighbor --output {test_gsage_path}/graphsage_out/graph_l100_r8_512dim_70training_2layer_512batch_96neighbor.emb
+        # step 4
+        {python} {py_scripts_path}/create_embedding_sqlite_database.py --embfile {test_gsage_path}/kg2_3_4/graphsage_out/graphsage_mean_big_0.001000_l100_r10_512dim_70training_2layer_512batch_96neighbor_kg2canonical_2_3_4.emb --mapfile {test_gsage_path}/kg2_3_4/graphsage_input/id_map.txt --output {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor', 'retrain_data'])}
+        # step 5
+        mkdir -p {test_gsage_path}/kg2_3_4/temp
+        cd {test_gsage_path}/kg2_3_4/temp
+        ## generate a few folders
+        mkdir data results run
+        cd {test_gsage_path}/kg2_3_4/temp/data
+        cp {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor', 'retrain_data'])}/LogModel.pkl .
+        cat {test_gsage_path}/kg2_3_4/kg2canonicalized_data/drugs_in_graph.txt | cut -f 1 > drug_ids.txt
+        cat {test_gsage_path}/kg2_3_4/kg2canonicalized_data/diseases_in_graph.txt | cut -f 1 | sed '1d' > disease_ids.txt
+        scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/map_v1.0.txt map.txt
+        scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/rel_max_v1.0.emb.gz rel_max.emb.gz
+        {python} {py_scripts_path}/prepare_data_for_DTD_prob_database.py
+        mkdir diseases
+        cd {test_gsage_path}/kg2_3_4/temp/data/diseases
+        split -l 38 -a 4 -d ./disease_ids.txt batchfile
+        for i in {0000..7333}; do mkdir batch$i;done
+        for i in {0000..7333}; do mv batchfile$i batch$i;done
+        for i in {0000..7333}; do mv {test_gsage_path}/kg2_3_4/temp/data/diseases/batch$i; split -l 1 -a 2 -d batchfile$i curie;done
+        cp {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'run_one_disease.sh'])} ../../run/
+        cp {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'run.sh'])} ../../run/
+        """
