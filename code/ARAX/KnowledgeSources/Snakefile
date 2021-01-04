@@ -1,0 +1,22 @@
+import os
+import sys
+import datetime
+import json
+import time
+import argparse
+
+# os.path.realpath(__file__) does not work here since snakemake runs a different python file in the install directory
+pathlist = os.path.getcwd().split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+
+RTXConfig = RTXConfiguration()
+RTXConfig.live = "KG2"
+
+
+rule all:
+    input:
+        "makeall.txt"
+
+
