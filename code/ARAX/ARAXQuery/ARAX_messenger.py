@@ -205,7 +205,7 @@ class ARAXMessenger:
                 parameters[key] = value
 
         #### Check for option_group_id and is_set:
-        if parameters['option_group_id'] is not None:
+        if parameters['option_group_id'] is not None and parameters['curie'] is None and parameters['name'] is None:
             if parameters['is_set'] is None:
                 parameters['is_set'] = 'true'
                 response.warning(f"An 'option_group_id' was set to {parameters['option_group_id']}, but 'is_set' was not an included parameter. It must be true when an 'option_group_id' is given, so automatically setting to true. Avoid this warning by explictly setting to true.")
