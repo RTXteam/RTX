@@ -35,7 +35,8 @@ if not  os.path.exists(synonymizer_filepath):
 rule all:
     input:
         f"{synonymizer_filepath}{os.path.sep}{RTXConfig.node_synonymizer_path.split('/')[-1]}",
-        f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}"
+        f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
+        f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}"
 
 KGmetadata_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'data', 'KGmetadata'])
 
@@ -72,15 +73,26 @@ rule node_synonymizer:
 
 pubmed_xml_path = f"{os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'ngd'])}"
 
-rule curie_to_pmid:
+rule curie_to_pmids:
     input:
         f"{pubmed_xml_path}"
     output:
         f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}"
     shell:
         f"""
+        (
         cd {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'ngd'])}
         {python} build_ngd_database.py {pubmed_xml_path} --full
         mv curie_to_pmids.sqlite {ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}
+        )
+        """
+
+rule cohd_database:
+    output:
+        f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}"
+    shell:
+        f"""
+        cd {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'scripts'])}
+        {python} COHDIndex.py --build
         """
 
