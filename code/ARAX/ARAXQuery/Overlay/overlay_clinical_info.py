@@ -16,6 +16,8 @@ from QueryCOHD import QueryCOHD as COHD
 # FIXME:^ this should be pulled from a YAML file pointing to the parser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../KnowledgeSources/COHD_local/scripts/")
 from COHDIndex import COHDIndex
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import overlay_utilities as ou
 
 # TODO: boy howdy this can be modularized quite a bit. Since COHD and other clinical KP's will be adding edge attributes and/or edges, should pull out functions to easy their addition.
 
@@ -304,9 +306,13 @@ class OverlayClinicalInfo:
             edge_type = f"has_{name}_with"
             relation = parameters['virtual_relation_label']
             qedge_ids = [parameters['virtual_relation_label']]
+            source_qnode_id = parameters['source_qnode_id']
+            target_qnode_id = parameters['target_qnode_id']
+            option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+                                                                      self.message.query_graph, self.response)
             q_edge = QEdge(id=relation, type=edge_type, relation=relation,
-                           source_id=parameters['source_qnode_id'], target_id=parameters[
-                    'target_qnode_id'])  # TODO: ok to make the id and type the same thing?
+                           source_id=source_qnode_id, target_id=target_qnode_id,
+                           option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
             self.message.query_graph.edges.append(q_edge)
 
     def add_all_edges(self, name="", default=0.):

@@ -15,6 +15,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-f
 from swagger_server.models.edge_attribute import EdgeAttribute
 from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import overlay_utilities as ou
 
 class ComputeJaccard:
 
@@ -104,7 +106,12 @@ class ComputeJaccard:
                 message.knowledge_graph.edges.append(edge)
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
-            q_edge = QEdge(id=relation, type=edge_type, relation=relation, source_id=parameters['start_node_id'], target_id=parameters['end_node_id'])  # TODO: ok to make the id and type the same thing?
+            source_qnode_id = parameters['start_node_id']
+            target_qnode_id = parameters['end_node_id']
+            option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+                                                                      self.message.query_graph, self.response)
+            q_edge = QEdge(id=relation, type=edge_type, relation=relation, source_id=source_qnode_id,
+                           target_id=target_qnode_id, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
             self.message.query_graph.edges.append(q_edge)
 
             return self.response
