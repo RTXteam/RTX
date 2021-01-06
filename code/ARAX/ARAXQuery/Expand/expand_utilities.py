@@ -3,7 +3,7 @@
 import sys
 import os
 import traceback
-from typing import List, Dict, Union, Set
+from typing import List, Dict, Union, Set, Tuple
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
@@ -152,6 +152,11 @@ def get_qg_without_kryptonite_portion(query_graph: QueryGraph) -> QueryGraph:
                       edges=[qedge for qedge in query_graph.edges if qedge.id in normal_qedge_ids])
 
 
+def get_required_portion_of_qg(query_graph: QueryGraph) -> QueryGraph:
+    return QueryGraph(nodes=[qnode for qnode in query_graph.nodes if not qnode.option_group_id],
+                      edges=[qedge for qedge in query_graph.edges if not qedge.option_group_id])
+
+
 def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -> Union[QEdge, Edge]:
     return {edge_a.source_id, edge_a.target_id} == {edge_b.source_id, edge_b.target_id}
 
@@ -290,8 +295,7 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: Response) -> Li
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, enforce_required_only=False) -> bool:
     if enforce_required_only:
         qg_without_kryptonite_portion = get_qg_without_kryptonite_portion(query_graph)
-        query_graph = QueryGraph(nodes=[qnode for qnode in qg_without_kryptonite_portion.nodes if not qnode.option_group_id],
-                                 edges=[qedge for qedge in qg_without_kryptonite_portion.edges if not qedge.option_group_id])
+        query_graph = get_required_portion_of_qg(qg_without_kryptonite_portion)
     qnode_ids = [qnode.id for qnode in query_graph.nodes]
     qedge_ids = [qedge.id for qedge in query_graph.edges]
     for qnode_id in qnode_ids:
@@ -301,6 +305,35 @@ def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, enforc
         if qedge_id not in dict_kg.edges_by_qg_id or not dict_kg.edges_by_qg_id[qedge_id]:
             return False
     return True
+
+
+def qg_is_disconnected(qg: QueryGraph) -> bool:
+    qnode_ids_examined = {qg.nodes[0].id} if qg.nodes else {}  # Start with any qnode
+    qnode_ids_remaining = {qnode.id for qnode in qg.nodes}.difference(qnode_ids_examined)
+    # Repeatedly look for a qnode connected to at least one of the already examined qnodes
+    connected_qnode_id, _ = find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
+    while connected_qnode_id and qnode_ids_remaining:
+        qnode_ids_remaining.remove(connected_qnode_id)
+        qnode_ids_examined.add(connected_qnode_id)
+        connected_qnode_id, _ = find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
+    # The QG must be disconnected if there are qnodes remaining that are not connected to any of our examined ones
+    return True if not connected_qnode_id and qnode_ids_remaining else False
+
+
+def find_qnode_connected_to_sub_qg(qnode_ids_to_connect_to: Set[str], qnode_ids_to_choose_from: Set[str], qg: QueryGraph) -> Tuple[str, Set[str]]:
+    """
+    This function selects a qnode ID from the qnode_ids_to_choose_from that connects to one or more of the qnode IDs
+    in the qnode_ids_to_connect_to (which itself could be considered a sub-graph of the QG). It also returns the IDs
+    of the connection points (all qnode ID(s) in qnode_ids_to_connect_to that the chosen node connects to).
+    """
+    for qnode_id_option in qnode_ids_to_choose_from:
+        all_qedges_using_qnode = [qedge for qedge in qg.edges if qnode_id_option in {qedge.source_id, qedge.target_id}]
+        all_connected_qnode_ids = {qnode_id for qedge in all_qedges_using_qnode
+                                   for qnode_id in {qedge.source_id, qedge.target_id}}.difference({qnode_id_option})
+        subgraph_connections = qnode_ids_to_connect_to.intersection(all_connected_qnode_ids)
+        if subgraph_connections:
+            return qnode_id_option, subgraph_connections
+    return "", set()
 
 
 def switch_kg_to_arax_curie_format(dict_kg: DictKnowledgeGraph) -> DictKnowledgeGraph:

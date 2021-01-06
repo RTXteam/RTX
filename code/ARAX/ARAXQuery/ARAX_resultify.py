@@ -591,7 +591,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     return results
 
 
-def _qg_is_disconnected(qg: QueryGraph):
+def _qg_is_disconnected(qg: QueryGraph) -> bool:
     qnode_ids_examined = {qg.nodes[0].id} if qg.nodes else {}  # Start with any qnode
     qnode_ids_remaining = {qnode.id for qnode in qg.nodes}.difference(qnode_ids_examined)
     # Repeatedly look for a qnode connected to at least one of the already examined qnodes

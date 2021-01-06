@@ -201,6 +201,12 @@ class ARAXExpander:
             response = Response()
         self.response = response
         self.message = input_message
+        # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
+        required_portion_of_qg = eu.get_required_portion_of_qg(self.message.query_graph)
+        if required_portion_of_qg.edges and eu.qg_is_disconnected(required_portion_of_qg):
+            self.response.error(f"Required portion of QG is disconnected. This is not allowed.", error_code="InvalidQG")
+            return response
+
         # Create global slots to store some info that needs to persist between expand() calls
         if not hasattr(self.message, "encountered_kryptonite_edges_info"):
             self.message.encountered_kryptonite_edges_info = dict()
