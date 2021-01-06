@@ -141,7 +141,7 @@ def get_query_edge(query_graph: QueryGraph, qedge_id: str) -> QEdge:
     return matching_qedges[0] if matching_qedges else None
 
 
-def get_qg_without_kryptonite_edges(query_graph: QueryGraph) -> QueryGraph:
+def get_qg_without_kryptonite_portion(query_graph: QueryGraph) -> QueryGraph:
     kryptonite_qedges = [qedge for qedge in query_graph.edges if qedge.exclude]
     normal_qedges = [qedge for qedge in query_graph.edges if not qedge.exclude]
     normal_qedge_ids = {qedge.id for qedge in normal_qedges}
@@ -287,7 +287,11 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: Response) -> Li
             return []
 
 
-def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> bool:
+def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, enforce_required_only=False) -> bool:
+    if enforce_required_only:
+        qg_without_kryptonite_portion = get_qg_without_kryptonite_portion(query_graph)
+        query_graph = QueryGraph(nodes=[qnode for qnode in qg_without_kryptonite_portion.nodes if not qnode.option_group_id],
+                                 edges=[qedge for qedge in qg_without_kryptonite_portion.edges if not qedge.option_group_id])
     qnode_ids = [qnode.id for qnode in query_graph.nodes]
     qedge_ids = [qedge.id for qedge in query_graph.edges]
     for qnode_id in qnode_ids:
