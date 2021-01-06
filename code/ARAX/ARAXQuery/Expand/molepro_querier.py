@@ -42,7 +42,6 @@ class MoleProQuerier:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
-        continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
@@ -82,12 +81,6 @@ class MoleProQuerier:
                 swagger_node = self._create_swagger_node_from_kp_node(returned_node)
                 for qnode_id in qg_id_mappings['nodes'][swagger_node.id]:
                     final_kg.add_node(swagger_node, qnode_id)
-
-        if not eu.qg_is_fulfilled(query_graph, final_kg):
-            if continue_if_no_results:
-                log.warning(f"{self.kp_name} found no paths satisfying this query graph")
-            else:
-                log.error(f"{self.kp_name} found no paths satisfying this query graph", error_code="NoResults")
 
         return final_kg, edge_to_nodes_map
 

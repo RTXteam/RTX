@@ -47,7 +47,6 @@ class COHDQuerier:
         # Set up the required parameters
         log = self.response
         self.count = 0
-        continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         COHD_method = self.response.data['parameters']['COHD_method']
         COHD_method_percentile = self.response.data['parameters']['COHD_method_percentile']
         final_kg = DictKnowledgeGraph()
@@ -75,11 +74,11 @@ class COHDQuerier:
 
         # Run the actual query and process results
         if COHD_method.lower() == 'paired_concept_freq':
-            final_kg, edge_to_nodes_map = self._answer_query_using_COHD_paired_concept_freq(query_graph, COHD_method_percentile, continue_if_no_results, log)
+            final_kg, edge_to_nodes_map = self._answer_query_using_COHD_paired_concept_freq(query_graph, COHD_method_percentile, log)
         elif COHD_method.lower() == 'observed_expected_ratio':
-            final_kg, edge_to_nodes_map = self._answer_query_using_COHD_observed_expected_ratio(query_graph, COHD_method_percentile, continue_if_no_results, log)
+            final_kg, edge_to_nodes_map = self._answer_query_using_COHD_observed_expected_ratio(query_graph, COHD_method_percentile, log)
         elif COHD_method.lower() == 'chi_square':
-            final_kg, edge_to_nodes_map = self._answer_query_using_COHD_chi_square(query_graph, COHD_method_percentile, continue_if_no_results, log)
+            final_kg, edge_to_nodes_map = self._answer_query_using_COHD_chi_square(query_graph, COHD_method_percentile, log)
         else:
             log.error(f"The parameter 'COHD_method' was passed an invalid option. The current allowed options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square`.", error_code="InvalidParameterOption")
         if log.status != 'OK':
@@ -87,7 +86,7 @@ class COHDQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def _answer_query_using_COHD_paired_concept_freq(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_COHD_paired_concept_freq(self, query_graph: QueryGraph, COHD_method_percentile: float, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id} by using paired concept frequency")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -123,10 +122,6 @@ class COHDQuerier:
 
         # expand edges according to the OMOP id pairs
         if (source_qnode_omop_ids is None) and (target_qnode_omop_ids is None):
-            if continue_if_no_results:
-                log.warning(f"No paths were found in COHD satisfying this query graph")
-            else:
-                log.error(f"No paths were found in COHD satisfying this query graph", error_code="NoResults")
             return final_kg, edge_to_nodes_map
 
         elif (source_qnode_omop_ids is not None) and (target_qnode_omop_ids is not None):
@@ -360,7 +355,7 @@ class COHDQuerier:
 
             return final_kg, edge_to_nodes_map
 
-    def _answer_query_using_COHD_observed_expected_ratio(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_COHD_observed_expected_ratio(self, query_graph: QueryGraph, COHD_method_percentile: float, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id} by using natural logarithm of observed expected ratio")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -396,10 +391,6 @@ class COHDQuerier:
 
         # expand edges according to the OMOP id pairs
         if (source_qnode_omop_ids is None) and (target_qnode_omop_ids is None):
-            if continue_if_no_results:
-                log.warning(f"No paths were found in COHD satisfying this query graph")
-            else:
-                log.error(f"No paths were found in COHD satisfying this query graph", error_code="NoResults")
             return final_kg, edge_to_nodes_map
 
         elif (source_qnode_omop_ids is not None) and (target_qnode_omop_ids is not None):
@@ -629,7 +620,7 @@ class COHDQuerier:
                 log.info(f"The average threshold based on {COHD_method_percentile}th percentile of natural logarithm of observed expected ratio is {threshold/count}")
             return final_kg, edge_to_nodes_map
 
-    def _answer_query_using_COHD_chi_square(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_COHD_chi_square(self, query_graph: QueryGraph, COHD_method_percentile: float, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id} by using chi square pvalue")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -665,10 +656,6 @@ class COHDQuerier:
 
         # expand edges according to the OMOP id pairs
         if (source_qnode_omop_ids is None) and (target_qnode_omop_ids is None):
-            if continue_if_no_results:
-                log.warning(f"No paths were found in COHD satisfying this query graph")
-            else:
-                log.error(f"No paths were found in COHD satisfying this query graph", error_code="NoResults")
             return final_kg, edge_to_nodes_map
 
         elif (source_qnode_omop_ids is not None) and (target_qnode_omop_ids is not None):

@@ -37,7 +37,6 @@ class BTEQuerier:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
-        continue_if_no_results = self.response.data['parameters'].get('continue_if_no_results')
         use_synonyms = self.response.data['parameters'].get('use_synonyms')
         log = self.response
         answer_kg = DictKnowledgeGraph()
@@ -71,9 +70,9 @@ class BTEQuerier:
         if eu.qg_is_fulfilled(query_graph, answer_kg):
             answer_kg = eu.switch_kg_to_arax_curie_format(answer_kg)
             edge_to_nodes_map = self._create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
-        else:
-            self._log_proper_no_results_message(accepted_curies, continue_if_no_results, valid_bte_inputs_dict['curie_prefixes'], log)
-
+        elif not accepted_curies:
+            log.warning(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
+                        f"{valid_bte_inputs_dict['curie_prefixes']}")
         return answer_kg, edge_to_nodes_map
 
     def _answer_query_using_bte(self, input_qnode: QNode, output_qnode: QNode, qedge: QEdge,
@@ -222,20 +221,6 @@ class BTEQuerier:
         input_qnode.curie = [eu.convert_curie_to_bte_format(curie) for curie in input_curie_list]
 
         return qedge, input_qnode, output_qnode
-
-    @staticmethod
-    def _log_proper_no_results_message(accepted_curies: Set[str], continue_if_no_results: bool,
-                                       valid_prefixes: Set[str], log: Response):
-        if continue_if_no_results:
-            if not accepted_curies:
-                log.warning(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
-                            f"{valid_prefixes}")
-            log.warning(f"No paths were found in BTE satisfying this query graph")
-        else:
-            if not accepted_curies:
-                log.error(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
-                          f"{valid_prefixes}", error_code="InvalidPrefix")
-            log.error(f"No paths were found in BTE satisfying this query graph", error_code="NoResults")
 
     @staticmethod
     def _prune_answers_to_achieve_curie_to_curie_query(kg: DictKnowledgeGraph, output_qnode: QNode, qedge: QEdge) -> DictKnowledgeGraph:

@@ -165,6 +165,12 @@ class ARAXMessenger:
                     'type': 'boolean',
                     'description': 'If set to true, this QNode represents a set of nodes that are all in common between the two other linked QNodes (assumed to be false if not specified or value is not recognized as true/t case insensitive)'
                     },
+                'option_group_id': {
+                    'is_required': False,
+                    'examples': [ '1', 'a', 'b2', 'option'],
+                    'type': 'string',
+                    'description': 'A group identifier indicating a group of nodes and edges should either all be included or all excluded. An optional match for all elements in this group. If not included Node will be treated as required.'
+                    },
             }
         }
 
@@ -188,6 +194,7 @@ class ARAXMessenger:
             'name': None,
             'type': None,
             'is_set': None,
+            'option_group_id': None,
         }
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
@@ -196,6 +203,16 @@ class ARAXMessenger:
                 response.error(f"Supplied parameter {key} is not permitted", error_code="UnknownParameter")
             else:
                 parameters[key] = value
+
+        #### Check for option_group_id and is_set:
+        if parameters['option_group_id'] is not None and parameters['curie'] is None and parameters['name'] is None:
+            if parameters['is_set'] is None:
+                parameters['is_set'] = 'true'
+                response.warning(f"An 'option_group_id' was set to {parameters['option_group_id']}, but 'is_set' was not an included parameter. It must be true when an 'option_group_id' is given, so automatically setting to true. Avoid this warning by explictly setting to true.")
+            elif not ( parameters['is_set'].lower() == 'true' or parameters['is_set'].lower() == 't' ):
+                response.error(f"When an 'option_group_id' is given 'is_set' must be set to true. However, supplied input for parameter 'is_set' was {parameters['is_set']}.", error_code="InputMismatch")
+
+
         #### Return if any of the parameters generated an error (showing not just the first one)
         if response.status != 'OK':
             return response
@@ -229,6 +246,9 @@ class ARAXMessenger:
             id = self.__get_next_free_node_id()
         qnode.id = id
 
+        if parameters['option_group_id'] is not None:
+            qnode.option_group_id = parameters['option_group_id']
+        
         # Set the is_set parameter to what the user selected
         if parameters['is_set'] is not None:
             qnode.is_set = ( parameters['is_set'].lower() == 'true' or parameters['is_set'].lower() == 't' )
@@ -397,6 +417,19 @@ class ARAXMessenger:
                     'type': 'ARAXedge',
                     'description': 'Any valid Translator/BioLink relationship type (e.g. physically_interacts_with, participates_in)',
                     },
+                'option_group_id': {
+                    'is_required': False,
+                    'examples': [ '1', 'a', 'b2', 'option'],
+                    'type': 'string',
+                    'description': 'A group identifier indicating a group of nodes and edges should either all be included or all excluded. An optional match for all elements in this group. If not included Node will be treated as required.'
+                    },
+                'exclude': {
+                    'is_required': False,
+                    'enum': [ 'true', 'false' ],
+                    'examples': [ 'true', 'false' ],
+                    'type': 'boolean',
+                    'description': 'If set to true, results with this node will be excluded. If set to false or not included nodes will be treated as part of a normal query.'
+                    },
             }
         }
 
@@ -420,6 +453,8 @@ class ARAXMessenger:
             'source_id': None,
             'target_id': None,
             'type': None,
+            'option_group_id': None,
+            'exclude': None,
         }
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
@@ -488,6 +523,19 @@ class ARAXMessenger:
         #### Add the type if any. Need to verify it's an allowed type. FIXME
         if parameters['type'] is not None:
             qedge.type = parameters['type']
+
+        if parameters['exclude'] is not None:
+            if parameters['exclude'] in {'t', 'T', 'true', 'True'}:
+                qedge.exclude = True
+            elif parameters['exclude'] in {'f', 'F', 'false', 'False'}:
+                qedge.exclude = False
+            elif parameters['exclude'] not in {True, False}:
+                response.error(f"Supplied input, {parameters['exclude']}, for the 'exclude' parameter is not valid. Acceptable inputs are t, T, f, F, true, True, false, and False.", error_code="UnknownInput")
+        else:
+            qedge.exclude = False
+
+        if parameters['option_group_id'] is not None:
+            qedge.option_group_id = parameters['option_group_id']
 
         #### Add it to the query_graph edge list
         message.query_graph.edges.append(qedge)

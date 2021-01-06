@@ -21,6 +21,8 @@ from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import overlay_utilities as ou
 import collections
 
 
@@ -436,8 +438,11 @@ class ComputeFTEST:
             if count > 0:
                 self.response.debug(f"Adding virtual edge to message QG")
                 edge_type = "has_fisher_exact_test_p-value_with"
+                option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+                                                                          self.message.query_graph, self.response)
                 q_edge = QEdge(id=virtual_relation_label, type=edge_type, relation=virtual_relation_label,
-                               source_id=source_qnode_id, target_id=target_qnode_id)
+                               source_id=source_qnode_id, target_id=target_qnode_id,
+                               option_group_id=option_group_id)
                 self.message.query_graph.edges.append(q_edge)
                 self.response.debug(f"One virtual edge was added to message QG")
 

@@ -84,7 +84,9 @@ class OverlayExposuresData:
         new_qedge = QEdge(id=self.virtual_relation_label,
                           source_id=source_qnode_id,
                           target_id=target_qnode_id,
-                          type=self.icees_edge_type)
+                          type=self.icees_edge_type,
+                          option_group_id=ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+                                                                                  query_graph, log))
         query_graph.edges.append(new_qedge)
 
         if num_node_pairs_recognized:
