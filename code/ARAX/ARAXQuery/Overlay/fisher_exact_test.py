@@ -463,6 +463,9 @@ class ComputeFTEST:
 
         res = None
 
+        if kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
+            kp="ARAX/KG2"
+
         if use_cypher_command is True:
 
             #create the RTXConfiguration object
@@ -639,6 +642,9 @@ class ComputeFTEST:
         else:
             error_message.append("The '_query_size_of_adjacent_nodes_parallel' method within FET only accepts four arguments: node_curie, adjacent_type, kp, rel_type")
             return error_message
+
+        if kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
+            kp="ARAX/KG2"
 
         # construct the instance of ARAXQuery class
         araxq = ARAXQuery()
