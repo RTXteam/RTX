@@ -662,22 +662,29 @@ function process_log(logarr) {
 	status[s] = 0;
     }
     for (var msg of logarr) {
-	status[msg.level_str]++;
+	if (msg.prefix) { // upconvert TRAPI 0.9.3 --> 1.0
+	    msg.level = msg.level_str;
+	    msg.code = null;
+	}
+
+	status[msg.level]++;
 
 	var span = document.createElement("span");
-	span.className = "hoverable msg " + msg.level_str;
+	span.className = "hoverable msg " + msg.level;
 
-        if (msg.level_str == "DEBUG") { span.style.display = 'none'; }
+        if (msg.level == "DEBUG") { span.style.display = 'none'; }
 
 	var span2 = document.createElement("span");
-	span2.className = "explevel msg" + msg.level_str;
+	span2.className = "explevel msg" + msg.level;
 	span2.appendChild(document.createTextNode('\u00A0'));
 	span2.appendChild(document.createTextNode('\u00A0'));
         span.appendChild(span2);
 
 	span.appendChild(document.createTextNode('\u00A0'));
 
-	span.appendChild(document.createTextNode(msg.prefix));
+	span.appendChild(document.createTextNode(msg.timestamp+" "+msg.level+": "));
+	if (msg.code)
+	    span.appendChild(document.createTextNode("["+msg.code+"] "));
 //	span.appendChild(document.createElement("br"));
 
 	span.appendChild(document.createTextNode('\u00A0'));
