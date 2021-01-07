@@ -137,7 +137,7 @@ class SriNodeNormalizer:
                     supported_curies += 1
                     batch.append(normalizer_node_curie)
 
-                if len(batch) > 1500 or keep == 99:
+                if len(batch) > 1000 or keep == 99:
                     if bytes_read + 3 > filesize:
                         print("Drain final batch")
                     results = self.get_node_normalizer_results(batch)
@@ -292,7 +292,7 @@ class SriNodeNormalizer:
             #eprint(f"INFO: No normalization data for {curie}")
             return
         elif status_code != 200:
-            eprint(f"ERROR returned with status {status_code} while searching for {curie}")
+            eprint(f"ERROR returned with status {status_code} while searching for {curies}")
             eprint(response_content)
             return
 
@@ -414,7 +414,7 @@ def main():
         return
 
     if args.build:
-        print("INFO: Beginning SRI Node Normalizer cache building process for both KG1 and KG2. Make sure you have a good network connection as this will download ~1 GB of data.")
+        print("INFO: Beginning SRI Node Normalizer cache building process for both KG1 and KG2. Make sure you have a good network connection as this will download ~2 GB of data.")
         normalizer.fill_cache(kg_name='KG2')
         normalizer.fill_cache(kg_name='KG1')
         normalizer.store_cache()
