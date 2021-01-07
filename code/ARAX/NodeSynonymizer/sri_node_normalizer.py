@@ -279,21 +279,40 @@ class SriNodeNormalizer:
             url += f"{prefix}curie={curie}"
             prefix = '&'
 
-        try:
-            response_content = requests.get(url, headers={'accept': 'application/json'})
-        except:
-            print("Uncaught error during web request to SRI normalizer. Try again after 1 second")
-            time.sleep(1)
-            response_content = requests.get(url, headers={'accept': 'application/json'})
-        status_code = response_content.status_code
+        #eprint(f"{len(url)},")
 
-        # Check for a returned error
-        if status_code == 404:
-            #eprint(f"INFO: No normalization data for {curie}")
-            return
-        elif status_code != 200:
-            eprint(f"ERROR returned with status {status_code} while searching for {curies}")
-            eprint(response_content)
+        retry = 0
+        sleep_time = 5
+        error_state = True
+
+        while retry < 3 and error_state:
+
+            error_state = False
+
+            try:
+                response_content = requests.get(url, headers={'accept': 'application/json'})
+            except:
+                print("Uncaught error during web request to SRI normalizer")
+                error_state = True
+
+            status_code = response_content.status_code
+
+            # Check for a returned error
+            if status_code == 404:
+                #eprint(f"INFO: No normalization data for {curie}")
+                return
+            elif status_code != 200:
+                eprint(f"ERROR returned with status {status_code} while searching with URL of length {len(url)} including {curie}")
+                eprint(response_content)
+                error_state = True
+
+            if error_state:
+                print(f"Try again after {sleep_time} seconds")
+                time.sleep(sleep_time)
+                retry += 1
+                sleep_time += 20
+
+        if error_state:
             return
 
         # Unpack the response into a dict and return it
