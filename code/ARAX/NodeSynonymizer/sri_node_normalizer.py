@@ -207,9 +207,6 @@ class SriNodeNormalizer:
 
         node_types = {}
         for node_type in response_dict['semantic_types']['types']:
-            # FIXME Temporary hack to work around the biolink:ChemicalSubstance - chemical_substance duality
-            node_type = re.sub(r'biolink:','',node_type)
-            node_type = re.sub(r'(?<!^)(?=[A-Z])', '_', node_type).lower()
             node_types[node_type] = 1
 
         if len(node_types) == 0:
@@ -375,9 +372,6 @@ class SriNodeNormalizer:
         # If there is a returned type, store it
         if 'type' in results[normalizer_curie]:
             node_type = results[normalizer_curie]['type'][0]
-            # FIXME Temporary hack to work around the biolink:ChemicalSubstance - chemical_substance duality
-            node_type = re.sub(r'biolink:','',node_type)
-            node_type = re.sub(r'(?<!^)(?=[A-Z])', '_', node_type).lower()
             response['type'] = node_type
 
         # If there are additional equivalent identifiers and names, store them

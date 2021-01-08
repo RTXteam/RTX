@@ -151,10 +151,10 @@ class NodeSynonymizer:
 
         # The SRI NodeNormalizer conflates genes and proteins, so have a special lookup table to try to disambiguate them
         curie_prefix_types = {
-            'NCBIGene:': 'gene',
-            'ENSEMBL:ENSG': 'gene',
-            'HGNC:': 'gene',
-            'UniProtKB:': 'protein',
+            'NCBIGene:': 'biolink:Gene',
+            'ENSEMBL:ENSG': 'biolink:Gene',
+            'HGNC:': 'biolink:Gene',
+            'UniProtKB:': 'biolink:Protein',
         }
 
         # Open the file and organize all the data
@@ -249,7 +249,7 @@ class NodeSynonymizer:
                 if equivalence['status'] == 'OK':
 
                     # Unless the normalizer type is a gene and the current type is a protein. Then keep it a protein because proteins are the real machines
-                    if normalizer_type == 'gene' and node_type == 'protein':
+                    if normalizer_type == 'biolink:Gene' and node_type == 'biolink:Protein':
                         if debug_flag:
                             print(f"DEBUG: Since this is protein and the normalizer says gene, stay with this one as the unique_concept {node_curie}")
                         unique_concept_curie = node_curie
@@ -633,7 +633,7 @@ class NodeSynonymizer:
                         scores[uc_unique_concept_curie] += 100
 
                     # Give disease a boost over phenotypic_feature
-                    if kg_unique_concepts[uc_unique_concept_curie]['type'] == 'disease':
+                    if kg_unique_concepts[uc_unique_concept_curie]['type'] == 'biolink:Disease':
                         scores[uc_unique_concept_curie] += 150
 
                     scores[uc_unique_concept_curie] += len(kg_unique_concepts[uc_unique_concept_curie]['all_uc_curies'])
@@ -1708,7 +1708,7 @@ def run_example_7():
     for kg_name in [ 'KG1', 'KG2' ]:
         print(f"==== Get total number of concepts for several types for {kg_name} ============================")
         t0 = timeit.default_timer()
-        for entity_type in [ 'chemical_substance', 'drug', 'disease', 'protein', 'gene', 'cheesecake' ]:
+        for entity_type in [ 'biolink:ChemicalSubstance', 'biolink:Drug', 'biolink:Disease', 'biolink:Protein', 'biolink:Gene', 'cheesecake' ]:
             print(f"count({entity_type}) = {synonymizer.get_total_entity_count(entity_type, kg_name=kg_name)}")
         t1 = timeit.default_timer()
         print("Elapsed time: "+str(t1-t0))
