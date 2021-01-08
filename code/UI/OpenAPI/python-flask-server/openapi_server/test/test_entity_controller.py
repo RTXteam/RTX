@@ -21,7 +21,7 @@ class TestEntityController(BaseTestCase):
             'Accept': 'application/json',
         }
         response = self.client.open(
-            '/api/rtx/v1/entity/{search_string}'.format(search_string='search_string_example'),
+            '/api/arax/v1/entity/{search_string}'.format(search_string='search_string_example'),
             method='GET',
             headers=headers)
         self.assert200(response,
