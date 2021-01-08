@@ -13,7 +13,7 @@ def translate(request_body):  # noqa: E501
      # noqa: E501
 
     :param request_body: Question information to be translated
-    :type request_body: dict | bytes
+    :type request_body: Dict[str, ]
 
     :rtype: List[Query]
     """
