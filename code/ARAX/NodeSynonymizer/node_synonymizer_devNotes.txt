@@ -135,5 +135,39 @@ python KGNodeIndex.py --kg_name KG2 --lookup UniProtKB:P31146
 
 
 
+==========================================================================
+
+Problem associations debugging:
+
+python node_synonymizer.py --lookup UniProtKB:P04150
+
+python node_synonymizer.py --lookup UniProtKB:P04150 --export zz_GR.json
+
+mv node_synonymizer.sqlite node_synonymizer.sqlite-save1
+
+python node_synonymizer.py --build --kg_name both
+
+----
+
+rm node_synonymizer.sqlite
+mv node_synonymizer.sqlite-save1 node_synonymizer.sqlite
+
+python node_synonymizer.py --lookup UniProtKB:P22303 --export zz_TGFB1.json
+
+mv node_synonymizer.sqlite node_synonymizer.sqlite-save1
+
+python node_synonymizer.py --build --kg_name both
+
+
+
+
+
+
+
+
+
+
+
+
 
 
