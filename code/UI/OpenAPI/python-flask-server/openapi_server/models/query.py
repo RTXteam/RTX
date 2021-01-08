@@ -19,9 +19,11 @@ class Query(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, bypass_cache=None, asynchronous=None, max_results=None, page_size=None, page_number=None, reasoner_ids=None, query_message=None, previous_message_processing_plan=None):  # noqa: E501
+    def __init__(self, message=None, bypass_cache=None, asynchronous=None, max_results=None, page_size=None, page_number=None, reasoner_ids=None, previous_message_processing_plan=None):  # noqa: E501
         """Query - a model defined in OpenAPI
 
+        :param message: The message of this Query.  # noqa: E501
+        :type message: Message
         :param bypass_cache: The bypass_cache of this Query.  # noqa: E501
         :type bypass_cache: str
         :param asynchronous: The asynchronous of this Query.  # noqa: E501
@@ -34,40 +36,38 @@ class Query(Model):
         :type page_number: int
         :param reasoner_ids: The reasoner_ids of this Query.  # noqa: E501
         :type reasoner_ids: List[str]
-        :param query_message: The query_message of this Query.  # noqa: E501
-        :type query_message: List[Message]
         :param previous_message_processing_plan: The previous_message_processing_plan of this Query.  # noqa: E501
         :type previous_message_processing_plan: List[PreviousMessageProcessingPlan]
         """
         self.openapi_types = {
+            'message': Message,
             'bypass_cache': str,
             'asynchronous': str,
             'max_results': int,
             'page_size': int,
             'page_number': int,
             'reasoner_ids': List[str],
-            'query_message': List[Message],
             'previous_message_processing_plan': List[PreviousMessageProcessingPlan]
         }
 
         self.attribute_map = {
+            'message': 'message',
             'bypass_cache': 'bypass_cache',
             'asynchronous': 'asynchronous',
             'max_results': 'max_results',
             'page_size': 'page_size',
             'page_number': 'page_number',
             'reasoner_ids': 'reasoner_ids',
-            'query_message': 'query_message',
             'previous_message_processing_plan': 'previous_message_processing_plan'
         }
 
+        self._message = message
         self._bypass_cache = bypass_cache
         self._asynchronous = asynchronous
         self._max_results = max_results
         self._page_size = page_size
         self._page_number = page_number
         self._reasoner_ids = reasoner_ids
-        self._query_message = query_message
         self._previous_message_processing_plan = previous_message_processing_plan
 
     @classmethod
@@ -80,6 +80,31 @@ class Query(Model):
         :rtype: Query
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def message(self):
+        """Gets the message of this Query.
+
+        The query Message is a serialization of the user request. Content of the Message object depends on the intended TRAPI operation. For example, the fill operation requires a non-empty query_graph field as part of the Message, whereas other operations, e.g. overlay, require non-empty results and knowledge_graph fields.  # noqa: E501
+
+        :return: The message of this Query.
+        :rtype: Message
+        """
+        return self._message
+
+    @message.setter
+    def message(self, message):
+        """Sets the message of this Query.
+
+        The query Message is a serialization of the user request. Content of the Message object depends on the intended TRAPI operation. For example, the fill operation requires a non-empty query_graph field as part of the Message, whereas other operations, e.g. overlay, require non-empty results and knowledge_graph fields.  # noqa: E501
+
+        :param message: The message of this Query.
+        :type message: Message
+        """
+        if message is None:
+            raise ValueError("Invalid value for `message`, must not be `None`")  # noqa: E501
+
+        self._message = message
 
     @property
     def bypass_cache(self):
@@ -218,29 +243,6 @@ class Query(Model):
         """
 
         self._reasoner_ids = reasoner_ids
-
-    @property
-    def query_message(self):
-        """Gets the query_message of this Query.
-
-        Message object that represents the query to be answered  # noqa: E501
-
-        :return: The query_message of this Query.
-        :rtype: List[Message]
-        """
-        return self._query_message
-
-    @query_message.setter
-    def query_message(self, query_message):
-        """Sets the query_message of this Query.
-
-        Message object that represents the query to be answered  # noqa: E501
-
-        :param query_message: The query_message of this Query.
-        :type query_message: List[Message]
-        """
-
-        self._query_message = query_message
 
     @property
     def previous_message_processing_plan(self):

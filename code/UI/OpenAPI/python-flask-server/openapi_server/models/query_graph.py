@@ -23,13 +23,13 @@ class QueryGraph(Model):
         """QueryGraph - a model defined in OpenAPI
 
         :param nodes: The nodes of this QueryGraph.  # noqa: E501
-        :type nodes: List[QNode]
+        :type nodes: Dict[str, QNode]
         :param edges: The edges of this QueryGraph.  # noqa: E501
-        :type edges: List[QEdge]
+        :type edges: Dict[str, QEdge]
         """
         self.openapi_types = {
-            'nodes': List[QNode],
-            'edges': List[QEdge]
+            'nodes': Dict[str, QNode],
+            'edges': Dict[str, QEdge]
         }
 
         self.attribute_map = {
@@ -55,10 +55,10 @@ class QueryGraph(Model):
     def nodes(self):
         """Gets the nodes of this QueryGraph.
 
-        List of nodes in the QueryGraph  # noqa: E501
+        The node specifications. The keys of this map are unique node identifiers and the corresponding values include the constraints on bound nodes.  # noqa: E501
 
         :return: The nodes of this QueryGraph.
-        :rtype: List[QNode]
+        :rtype: Dict[str, QNode]
         """
         return self._nodes
 
@@ -66,11 +66,13 @@ class QueryGraph(Model):
     def nodes(self, nodes):
         """Sets the nodes of this QueryGraph.
 
-        List of nodes in the QueryGraph  # noqa: E501
+        The node specifications. The keys of this map are unique node identifiers and the corresponding values include the constraints on bound nodes.  # noqa: E501
 
         :param nodes: The nodes of this QueryGraph.
-        :type nodes: List[QNode]
+        :type nodes: Dict[str, QNode]
         """
+        if nodes is None:
+            raise ValueError("Invalid value for `nodes`, must not be `None`")  # noqa: E501
 
         self._nodes = nodes
 
@@ -78,10 +80,10 @@ class QueryGraph(Model):
     def edges(self):
         """Gets the edges of this QueryGraph.
 
-        List of edges in the QueryGraph  # noqa: E501
+        The edge specifications. The keys of this map are unique edge identifiers and the corresponding values include the constraints on bound edges, in addition to specifying the subject and object QNodes.  # noqa: E501
 
         :return: The edges of this QueryGraph.
-        :rtype: List[QEdge]
+        :rtype: Dict[str, QEdge]
         """
         return self._edges
 
@@ -89,10 +91,12 @@ class QueryGraph(Model):
     def edges(self, edges):
         """Sets the edges of this QueryGraph.
 
-        List of edges in the QueryGraph  # noqa: E501
+        The edge specifications. The keys of this map are unique edge identifiers and the corresponding values include the constraints on bound edges, in addition to specifying the subject and object QNodes.  # noqa: E501
 
         :param edges: The edges of this QueryGraph.
-        :type edges: List[QEdge]
+        :type edges: Dict[str, QEdge]
         """
+        if edges is None:
+            raise ValueError("Invalid value for `edges`, must not be `None`")  # noqa: E501
 
         self._edges = edges
