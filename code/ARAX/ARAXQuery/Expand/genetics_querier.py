@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
-from response import Response
+from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
@@ -21,7 +21,7 @@ from swagger_server.models.query_graph import QueryGraph
 
 class GeneticsQuerier:
 
-    def __init__(self, response_object: Response):
+    def __init__(self, response_object: ARAXResponse):
         self.response = response_object
         self.kp_api_url = "https://translator.broadinstitute.org/genetics_data_provider/query"
         self.kp_name = "GeneticsKP"
@@ -107,7 +107,7 @@ class GeneticsQuerier:
         return final_kg, edge_to_nodes_map
 
     @staticmethod
-    def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: Response):
+    def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):
         if len(query_graph.edges) != 1:
             log.error(f"answer_one_hop_query() was passed a query graph that is not one-hop: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
@@ -118,7 +118,7 @@ class GeneticsQuerier:
             log.error(f"answer_one_hop_query() was passed a query graph with less than two nodes: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
 
-    def _pre_process_query_graph(self, query_graph: QueryGraph, log: Response) -> QueryGraph:
+    def _pre_process_query_graph(self, query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:
         for qnode in query_graph.nodes:
             # Convert node types to preferred format and verify we can do this query
             formatted_qnode_types = {self.node_type_overrides_for_kp.get(qnode_type, qnode_type) for qnode_type in eu.convert_string_or_list_to_list(qnode.type)}
@@ -161,7 +161,7 @@ class GeneticsQuerier:
                     qedge_id_mappings[kg_id] = {qg_id}
         return {"nodes": qnode_id_mappings, "edges": qedge_id_mappings}
 
-    def _send_query_to_kp(self, query_graph: QueryGraph, log: Response) -> Dict[str, any]:
+    def _send_query_to_kp(self, query_graph: QueryGraph, log: ARAXResponse) -> Dict[str, any]:
         # Send query to their API (stripping down qnode/qedges to only the properties they like)
         stripped_qnodes = []
         for qnode in query_graph.nodes:

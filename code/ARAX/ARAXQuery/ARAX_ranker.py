@@ -10,7 +10,7 @@ import ast
 import re
 
 from typing import Set, Union, Dict, List, Callable
-from response import Response
+from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -458,7 +458,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # #### Set up the response object if one is not already available
         if response is None:
             if self.response is None:
-                response = Response()
+                response = ARAXResponse()
             else:
                 response = self.response
         else:
@@ -470,7 +470,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         result = query_graph_info.assess(message)
         # response.merge(result)
         # if result.status != 'OK':
-        #     print(response.show(level=Response.DEBUG))
+        #     print(response.show(level=ARAXResponse.DEBUG))
         #     return response
 
         # DMK FIXME: This need to be refactored so that:
@@ -573,7 +573,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # #### Set up the response object if one is not already available
         if response is None:
             if self.response is None:
-                response = Response()
+                response = ARAXResponse()
             else:
                 response = self.response
         else:
@@ -585,7 +585,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         result = query_graph_info.assess(message)
         # response.merge(result)
         # if result.status != 'OK':
-        #     print(response.show(level=Response.DEBUG))
+        #     print(response.show(level=ARAXResponse.DEBUG))
         #     return response
 
         # DMK FIXME: This need to be refactored so that:
@@ -814,7 +814,7 @@ def main():
     params = argparser.parse_args()
 
     # --- Create a response object
-    response = Response()
+    response = ARAXResponse()
     ranker = ARAXRanker()
 
     # --- Get a Message to work on
@@ -874,7 +874,7 @@ def main():
     ranker.aggregate_scores_dmk(message, response=response)
 
     # Show the final result
-    print(response.show(level=Response.DEBUG))
+    print(response.show(level=ARAXResponse.DEBUG))
     print("Results:")
 
     for result in message.results:

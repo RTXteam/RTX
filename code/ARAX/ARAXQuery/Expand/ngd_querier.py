@@ -10,7 +10,7 @@ import expand_utilities as eu
 from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_query import ARAXQuery
-from response import Response
+from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../Overlay/")
 from Overlay.compute_ngd import ComputeNGD
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -25,7 +25,7 @@ from swagger_server.models.message import Message
 
 class NGDQuerier:
 
-    def __init__(self, response_object: Response):
+    def __init__(self, response_object: ARAXResponse):
         self.response = response_object
         self.ngd_edge_type = "has_normalized_google_distance_with"
         self.ngd_edge_attribute_name = "normalized_google_distance"
@@ -147,7 +147,7 @@ class NGDQuerier:
         return ngd_node
 
     @staticmethod
-    def _run_arax_query(actions_list: List[str], log: Response) -> Tuple[Response, Message]:
+    def _run_arax_query(actions_list: List[str], log: ARAXResponse) -> Tuple[ARAXResponse, Message]:
         araxq = ARAXQuery()
         sub_query_response = araxq.query({"previous_message_processing_plan": {"processing_actions": actions_list}})
         if sub_query_response.status != 'OK':
@@ -170,7 +170,7 @@ class NGDQuerier:
         return f"type={qedge.type}" if qedge.type else ""
 
     @staticmethod
-    def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: Response):
+    def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):
         if len(query_graph.edges) != 1:
             log.error(f"answer_one_hop_query() was passed a query graph that is not one-hop: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")

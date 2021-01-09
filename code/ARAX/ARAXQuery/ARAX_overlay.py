@@ -7,7 +7,7 @@ import json
 import ast
 import re
 import numpy as np
-from response import Response
+from ARAX_response import ARAXResponse
 from collections import Counter
 import traceback
 import itertools
@@ -442,7 +442,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
 
         #### Define a default response
         if response is None:
-            response = Response()
+            response = ARAXResponse()
         self.response = response
         self.message = input_message
 
@@ -856,7 +856,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
         This function applies the action overlay_exposures_data. It adds ICEES+ p-values either as virtual edges (if
         the virtual_relation_label, source_qnode_id, and target_qnode_id are provided) or as EdgeAttributes tacked onto
         existing edges in the knowledge graph (applied to all edges).
-        return: Response
+        return: ARAXResponse
         """
         message = self.message
         parameters = self.parameters
@@ -896,7 +896,7 @@ def main():
     #### Note that most of this is just manually doing what ARAXQuery() would normally do for you
 
     #### Create a response object
-    response = Response()
+    response = ARAXResponse()
 
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
@@ -925,7 +925,7 @@ def main():
     result = actions_parser.parse(actions_list)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     actions = result.data['actions']
 
@@ -957,12 +957,12 @@ def main():
     print("Finished applying action")
 
     #if result.status != 'OK':
-    #    print(response.show(level=Response.DEBUG))
+    #    print(response.show(level=ARAXResponse.DEBUG))
     #    return response
     #response.data = result.data
 
     #### If successful, show the result
-    #print(response.show(level=Response.DEBUG))
+    #print(response.show(level=ARAXResponse.DEBUG))
     #response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
     #    'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
     #response.data['message_stats']['confidence_scores'] = []
@@ -974,7 +974,7 @@ def main():
     # a comment on the end so you can better see the network on github
 
     # look at the response
-    #print(response.show(level=Response.DEBUG))
+    #print(response.show(level=ARAXResponse.DEBUG))
     #print(response.show())
     #print("Still executed")
 
@@ -982,7 +982,7 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     #print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
-    #print(response.show(level=Response.DEBUG))
+    #print(response.show(level=ARAXResponse.DEBUG))
 
     # just print off the values
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
@@ -992,7 +992,7 @@ def main():
     #print(f"Message: {json.dumps(message.to_dict(), sort_keys=True, indent=2)}")
     #print(message)
     print(f"KG edges: {json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2)}")
-    #print(response.show(level=Response.DEBUG))
+    #print(response.show(level=ARAXResponse.DEBUG))
     print("Yet you still got here")
     #print(actions_parser.parse(actions_list))
 

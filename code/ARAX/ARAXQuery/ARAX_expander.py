@@ -4,7 +4,7 @@ import os
 from typing import List, Dict, Tuple, Union
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
-from response import Response
+from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import DictKnowledgeGraph
@@ -197,7 +197,7 @@ class ARAXExpander:
     def apply(self, input_message, input_parameters, response=None):
 
         if response is None:
-            response = Response()
+            response = ARAXResponse()
         self.response = response
         self.message = input_message
 
@@ -317,7 +317,7 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, qedge: QEdge, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
-                     query_graph: QueryGraph, use_synonyms: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+                     query_graph: QueryGraph, use_synonyms: bool, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         log.info(f"Expanding qedge {qedge.id} using {kp_to_use}")
         answer_kg = DictKnowledgeGraph()
@@ -377,7 +377,7 @@ class ARAXExpander:
             return answer_kg, edge_to_nodes_map
 
     def _expand_node(self, qnode_id: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
-                     use_synonyms: bool, log: Response) -> DictKnowledgeGraph:
+                     use_synonyms: bool, log: ARAXResponse) -> DictKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_id} using {kp_to_use}")
         query_node = eu.get_query_node(query_graph, qnode_id)
@@ -419,7 +419,7 @@ class ARAXExpander:
                       f"{', '.join(valid_kps_for_single_node_queries)}", error_code="InvalidKP")
             return answer_kg
 
-    def _get_query_graph_for_edge(self, qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, log: Response) -> QueryGraph:
+    def _get_query_graph_for_edge(self, qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_query_graph = QueryGraph(nodes=[], edges=[])
         qnodes = [eu.get_query_node(query_graph, qedge.source_id),
@@ -459,7 +459,7 @@ class ARAXExpander:
 
     @staticmethod
     def _deduplicate_nodes(dict_kg: DictKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]],
-                           log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+                           log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Deduplicating nodes")
         deduplicated_kg = DictKnowledgeGraph(nodes={qnode_id: dict() for qnode_id in dict_kg.nodes_by_qg_id},
                                              edges={qedge_id: dict() for qedge_id in dict_kg.edges_by_qg_id})
@@ -516,7 +516,7 @@ class ARAXExpander:
         return deduplicated_kg, updated_edge_to_nodes_map
 
     @staticmethod
-    def _extract_query_subgraph(qedge_ids_to_expand: List[str], query_graph: QueryGraph, log: Response) -> QueryGraph:
+    def _extract_query_subgraph(qedge_ids_to_expand: List[str], query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:
         # This function extracts a sub-query graph containing the provided qedge IDs from a larger query graph
         sub_query_graph = QueryGraph(nodes=[], edges=[])
 
@@ -552,7 +552,7 @@ class ARAXExpander:
         return sub_query_graph
 
     @staticmethod
-    def _merge_answer_into_message_kg(answer_dict_kg: DictKnowledgeGraph, dict_kg: DictKnowledgeGraph, log: Response):
+    def _merge_answer_into_message_kg(answer_dict_kg: DictKnowledgeGraph, dict_kg: DictKnowledgeGraph, log: ARAXResponse):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
         for qnode_id, nodes in answer_dict_kg.nodes_by_qg_id.items():
@@ -564,7 +564,7 @@ class ARAXExpander:
 
     @staticmethod
     def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, full_query_graph: QueryGraph,
-                              node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], log: Response):
+                              node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], log: ARAXResponse):
         # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         # found in the last expansion will connect to edges in the next one)
         log.debug(f"Pruning any paths that are now dead ends")
@@ -666,7 +666,7 @@ class ARAXExpander:
 
     @staticmethod
     def _remove_self_edges(kg: DictKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]], qedge_id: QEdge,
-                           qnodes: List[QNode], log: Response) -> DictKnowledgeGraph:
+                           qnodes: List[QNode], log: ARAXResponse) -> DictKnowledgeGraph:
         log.debug(f"Removing any self-edges from the answer KG")
         # Remove any self-edges
         edges_to_remove = []
@@ -757,7 +757,7 @@ class ARAXExpander:
 
 def main():
     # Note that most of this is just manually doing what ARAXQuery() would normally do for you
-    response = Response()
+    response = ARAXResponse()
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
     actions_list = [
@@ -773,7 +773,7 @@ def main():
     result = actions_parser.parse(actions_list)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     actions = result.data['actions']
 
@@ -795,18 +795,18 @@ def main():
             break
         else:
             response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
-            print(response.show(level=Response.DEBUG))
+            print(response.show(level=ARAXResponse.DEBUG))
             return response
 
         # Merge down this result and end if we're in an error state
         response.merge(result)
         if result.status != 'OK':
-            print(response.show(level=Response.DEBUG))
+            print(response.show(level=ARAXResponse.DEBUG))
             return response
 
     # Show the final response
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph)),sort_keys=True,indent=2))
-    print(response.show(level=Response.DEBUG))
+    print(response.show(level=ARAXResponse.DEBUG))
 
 
 if __name__ == "__main__":

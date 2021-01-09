@@ -7,7 +7,7 @@ import json
 import ast
 import re
 
-from response import Response
+from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 
 
@@ -31,7 +31,7 @@ class KnowledgeGraphInfo:
     def check_for_query_graph_tags(self, message, query_graph_info):
 
         #### Define a default response
-        response = Response()
+        response = ARAXResponse()
         self.response = response
         self.message = message
         response.debug(f"Checking KnowledgeGraph for QueryGraph tags")
@@ -102,7 +102,7 @@ class KnowledgeGraphInfo:
     def add_query_graph_tags(self, message, query_graph_info):
 
         #### Define a default response
-        response = Response()
+        response = ARAXResponse()
         self.response = response
         self.message = message
         response.debug(f"Adding temporary QueryGraph ids to KnowledgeGraph")
@@ -169,7 +169,7 @@ class KnowledgeGraphInfo:
 def main():
 
     #### Create a response object
-    response = Response()
+    response = ARAXResponse()
 
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
@@ -185,7 +185,7 @@ def main():
     result = actions_parser.parse(actions_list)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     actions = result.data['actions']
 
@@ -204,7 +204,7 @@ def main():
     result = query_graph_info.assess(message)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     #print(json.dumps(ast.literal_eval(repr(query_graph_info.node_order)),sort_keys=True,indent=2))
 
@@ -213,25 +213,25 @@ def main():
     result = knowledge_graph_info.check_for_query_graph_tags(message,query_graph_info)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
 
     #### Try to add query_graph_ids to the KnowledgeGraph
     result = knowledge_graph_info.add_query_graph_tags(message,query_graph_info)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
 
     #### Reassess some information about the KnowledgeGraph
     result = knowledge_graph_info.check_for_query_graph_tags(message,query_graph_info)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
 
 
-    print(response.show(level=Response.DEBUG))
+    print(response.show(level=ARAXResponse.DEBUG))
 
     tmp = { 'query_graph_id_node_status': knowledge_graph_info.query_graph_id_node_status, 'query_graph_id_edge_status': knowledge_graph_info.query_graph_id_edge_status, 
         'n_nodes': knowledge_graph_info.n_nodes, 'n_edges': knowledge_graph_info.n_edges }

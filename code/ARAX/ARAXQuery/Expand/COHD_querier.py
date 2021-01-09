@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
-from response import Response
+from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../UI/OpenAPI/python-flask-server/")
@@ -29,7 +29,7 @@ from node_synonymizer import NodeSynonymizer
 
 class COHDQuerier:
 
-    def __init__(self, response_object: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def __init__(self, response_object: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         self.response = response_object
         self.cohdindex = COHDIndex()
         self.synonymizer = NodeSynonymizer()
@@ -87,7 +87,7 @@ class COHDQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def _answer_query_using_COHD_paired_concept_freq(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_COHD_paired_concept_freq(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id} by using paired concept frequency")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -360,7 +360,7 @@ class COHDQuerier:
 
             return final_kg, edge_to_nodes_map
 
-    def _answer_query_using_COHD_observed_expected_ratio(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_COHD_observed_expected_ratio(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id} by using natural logarithm of observed expected ratio")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -629,7 +629,7 @@ class COHDQuerier:
                 log.info(f"The average threshold based on {COHD_method_percentile}th percentile of natural logarithm of observed expected ratio is {threshold/count}")
             return final_kg, edge_to_nodes_map
 
-    def _answer_query_using_COHD_chi_square(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_COHD_chi_square(self, query_graph: QueryGraph, COHD_method_percentile: float, continue_if_no_results: bool, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id} by using chi square pvalue")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -901,7 +901,7 @@ class COHDQuerier:
 
             return final_kg, edge_to_nodes_map
 
-    def _get_omop_id_from_curies(self, qnode: QNode, log: Response) -> Dict[str, list]:
+    def _get_omop_id_from_curies(self, qnode: QNode, log: ARAXResponse) -> Dict[str, list]:
         log.info(f"Getting the OMOP id for {qnode.id}")
 
         # check if the input qnode is valid

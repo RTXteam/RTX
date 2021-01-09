@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
-from response import Response
+from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -26,7 +26,7 @@ from swagger_server.models.q_edge import QEdge
 
 class KGQuerier:
 
-    def __init__(self, response_object: Response, input_kp: str):
+    def __init__(self, response_object: ARAXResponse, input_kp: str):
         self.response = response_object
         self.enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
         self.continue_if_no_results = self.response.data['parameters'].get('continue_if_no_results')
@@ -129,7 +129,7 @@ class KGQuerier:
         return final_kg
 
     def _convert_one_hop_query_graph_to_cypher_query(self, query_graph: QueryGraph, enforce_directionality: bool,
-                                                     kg_name: str, log: Response) -> str:
+                                                     kg_name: str, log: ARAXResponse) -> str:
         log.debug(f"Generating cypher for edge {query_graph.edges[0].id} query graph")
         try:
             # Build the match clause
@@ -187,7 +187,7 @@ class KGQuerier:
             return ""
 
     def _answer_query_using_neo4j(self, cypher_query: str, qedge_id: str, kg_name: str, continue_if_no_results: bool,
-                                  log: Response) -> List[Dict[str, List[Dict[str, any]]]]:
+                                  log: ARAXResponse) -> List[Dict[str, List[Dict[str, any]]]]:
         log.info(f"Sending cypher query for edge {qedge_id} to {kg_name} neo4j")
         results_from_neo4j = self._run_cypher_query(cypher_query, kg_name, log)
         if log.status == 'OK':
@@ -202,7 +202,7 @@ class KGQuerier:
         return results_from_neo4j
 
     def _load_answers_into_kg(self, neo4j_results: List[Dict[str, List[Dict[str, any]]]], kg_name: str,
-                              query_graph: QueryGraph, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+                              query_graph: QueryGraph, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id}")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -366,7 +366,7 @@ class KGQuerier:
         return new_attributes
 
     @staticmethod
-    def _run_cypher_query(cypher_query: str, kg_name: str, log: Response) -> List[Dict[str, any]]:
+    def _run_cypher_query(cypher_query: str, kg_name: str, log: ARAXResponse) -> List[Dict[str, any]]:
         rtxc = RTXConfiguration()
         if "KG2" in kg_name:  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
             rtxc.live = kg_name.upper()  # TODO: Eventually change config file to "KG2c" vs. "KG2C" (then won't need to convert case here)

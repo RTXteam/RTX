@@ -7,7 +7,7 @@ import json
 import ast
 import re
 
-from response import Response
+from ARAX_response import ARAXResponse
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
 from node_synonymizer import NodeSynonymizer
@@ -38,7 +38,7 @@ class QueryGraphInfo:
     def assess(self, message):
 
         #### Define a default response
-        response = Response()
+        response = ARAXResponse()
         self.response = response
         self.message = message
         response.debug(f"Assessing the QueryGraph for basic information")
@@ -333,7 +333,7 @@ class QueryGraphInfo:
 def main():
 
     #### Create a response object
-    response = Response()
+    response = ARAXResponse()
 
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
@@ -349,7 +349,7 @@ def main():
     result = actions_parser.parse(actions_list)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     actions = result.data['actions']
 
@@ -369,7 +369,7 @@ def main():
     result = query_graph_info.assess(message)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     
     query_graph_info_dict = {

@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
-from response import Response
+from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
@@ -23,7 +23,7 @@ from swagger_server.models.query_graph import QueryGraph
 
 class BTEQuerier:
 
-    def __init__(self, response_object: Response):
+    def __init__(self, response_object: ARAXResponse):
         self.response = response_object
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
@@ -78,7 +78,7 @@ class BTEQuerier:
 
     def _answer_query_using_bte(self, input_qnode: QNode, output_qnode: QNode, qedge: QEdge,
                                 answer_kg: DictKnowledgeGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
-                                log: Response) -> Tuple[DictKnowledgeGraph, Set[str]]:
+                                log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Set[str]]:
         accepted_curies = set()
         # Send this single-edge query to BTE, input curie by input curie (adding findings to our answer KG as we go)
         for curie in input_qnode.curie:
@@ -108,7 +108,7 @@ class BTEQuerier:
         return answer_kg, accepted_curies
 
     def _add_answers_to_kg(self, answer_kg: DictKnowledgeGraph, reasoner_std_response: Dict[str, any],
-                           input_qnode_id: str, output_qnode_id: str, qedge_id: str, log: Response) -> DictKnowledgeGraph:
+                           input_qnode_id: str, output_qnode_id: str, qedge_id: str, log: ARAXResponse) -> DictKnowledgeGraph:
         kg_to_qg_ids_dict = self._build_kg_to_qg_id_dict(reasoner_std_response['results'])
         if reasoner_std_response['knowledge_graph']['edges']:
             remapped_node_ids = dict()
@@ -164,7 +164,7 @@ class BTEQuerier:
 
     @staticmethod
     def _validate_and_pre_process_input(query_graph: QueryGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
-                                        enforce_directionality: bool, use_synonyms: bool, log: Response) -> Tuple[QEdge, QNode, QNode]:
+                                        enforce_directionality: bool, use_synonyms: bool, log: ARAXResponse) -> Tuple[QEdge, QNode, QNode]:
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             log.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} nodes and "
@@ -225,7 +225,7 @@ class BTEQuerier:
 
     @staticmethod
     def _log_proper_no_results_message(accepted_curies: Set[str], continue_if_no_results: bool,
-                                       valid_prefixes: Set[str], log: Response):
+                                       valid_prefixes: Set[str], log: ARAXResponse):
         if continue_if_no_results:
             if not accepted_curies:
                 log.warning(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "

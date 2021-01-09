@@ -7,7 +7,7 @@ import json
 import ast
 import re
 import numpy as np
-from response import Response
+from ARAX_response import ARAXResponse
 import traceback
 from collections import Counter
 
@@ -266,7 +266,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
     def apply(self, input_message, input_parameters):
 
         #### Define a default response
-        response = Response()
+        response = ARAXResponse()
         self.response = response
         self.message = input_message
 
@@ -763,7 +763,7 @@ def main():
     ### Note that most of this is just manually doing what ARAXQuery() would normally do for you
 
     #### Create a response object
-    response = Response()
+    response = ARAXResponse()
 
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
@@ -790,7 +790,7 @@ def main():
     result = actions_parser.parse(actions_list)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     actions = result.data['actions']
 
@@ -828,12 +828,12 @@ def main():
     response.merge(result)
 
     # if result.status != 'OK':
-    #    print(response.show(level=Response.DEBUG))
+    #    print(response.show(level=ARAXResponse.DEBUG))
     #    return response
     # response.data = result.data
 
     #### If successful, show the result
-    # print(response.show(level=Response.DEBUG))
+    # print(response.show(level=ARAXResponse.DEBUG))
     # response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
     #    'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
     # response.data['message_stats']['confidence_scores'] = []
@@ -845,7 +845,7 @@ def main():
     # a comment on the end so you can better see the network on github
 
     # look at the response
-    # print(response.show(level=Response.DEBUG))
+    # print(response.show(level=ARAXResponse.DEBUG))
     # print(response.show())
     # print("Still executed")
 
@@ -853,7 +853,7 @@ def main():
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     # print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
-    # print(response.show(level=Response.DEBUG))
+    # print(response.show(level=ARAXResponse.DEBUG))
 
     # just print off the values
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
@@ -861,7 +861,7 @@ def main():
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
     print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    print(response.show(level=Response.DEBUG))
+    print(response.show(level=ARAXResponse.DEBUG))
     vals = []
     for node in message.knowledge_graph.nodes:
         print(node.id)

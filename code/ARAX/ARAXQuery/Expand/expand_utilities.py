@@ -13,7 +13,7 @@ from swagger_server.models.q_edge import QEdge
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
-from response import Response
+from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
@@ -175,7 +175,7 @@ def convert_curie_to_bte_format(curie: str) -> str:
     return prefix + ':' + local_id
 
 
-def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]:
+def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
     curies = convert_string_or_list_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
@@ -201,7 +201,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Response) -> List[str]
             return []
 
 
-def get_canonical_curies_dict(curie: Union[str, List[str]], log: Response) -> Dict[str, Dict[str, str]]:
+def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, Dict[str, str]]:
     curies = convert_string_or_list_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
@@ -224,7 +224,7 @@ def get_canonical_curies_dict(curie: Union[str, List[str]], log: Response) -> Di
             return {}
 
 
-def get_canonical_curies_list(curie: Union[str, List[str]], log: Response) -> List[str]:
+def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
     curies = convert_string_or_list_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()

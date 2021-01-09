@@ -11,11 +11,11 @@ from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.message import Message
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_resultify import ARAXResultify
-from response import Response
+from ARAX_response import ARAXResponse
 
 
 def get_node_pairs_to_overlay(source_qnode_id: str, target_qnode_id: str, query_graph: QueryGraph,
-                              knowledge_graph: KnowledgeGraph, log: Response) -> Set[Tuple[str, str]]:
+                              knowledge_graph: KnowledgeGraph, log: ARAXResponse) -> Set[Tuple[str, str]]:
     """
     This function determines which combinations of source/target nodes in the KG need to be overlayed (e.g., have a
     virtual edge added between). It makes use of Resultify to determine what combinations of source and target nodes

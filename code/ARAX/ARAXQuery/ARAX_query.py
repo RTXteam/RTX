@@ -16,7 +16,7 @@ import threading
 import json
 import uuid
 
-from response import Response
+from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
 from actions_parser import ActionsParser
@@ -101,7 +101,7 @@ class ARAXQuery:
 
         #### Define a new response object if one does not yet exist
         if self.response is None:
-            self.response = Response()
+            self.response = ARAXResponse()
 
         result = self.query(query)
         message = self.message
@@ -132,9 +132,9 @@ class ARAXQuery:
 
     def query(self,query):
         #### Define a default response
-        response = Response()
+        response = ARAXResponse()
         self.response = response
-        #Response.output = 'STDERR'
+        #ARAXResponse.output = 'STDERR'
         response.info(f"ARAXQuery launching on incoming Message")
 
         #### Determine a plan for what to do based on the input
@@ -664,11 +664,11 @@ def main():
     if verbose is None: verbose = 1
 
     #### Create a response and ARAXQuery
-    response = Response()
+    response = ARAXResponse()
     araxq = ARAXQuery()
 
     #### For debugging purposes, you can send all messages as they are logged to STDERR
-    #Response.output = 'STDERR'
+    #ARAXResponse.output = 'STDERR'
 
     #### Set the query based on the supplied example_number
     if params.example_number == 1:
@@ -1400,14 +1400,14 @@ def main():
     result = araxq.query(query)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
 
     #### Retrieve the Translator Message from the result
     message = araxq.message
 
     #### Print out the message that came back
-    #print(response.show(level=Response.DEBUG))
+    #print(response.show(level=ARAXResponse.DEBUG))
     #print("Returned message:\n")
     #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
@@ -1415,9 +1415,9 @@ def main():
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
     print(json.dumps(ast.literal_eval(repr(message.id)), sort_keys=True, indent=2))
-    #print(response.show(level=Response.DEBUG))
+    #print(response.show(level=ARAXResponse.DEBUG))
 
-    print(response.show(level=Response.DEBUG))
+    print(response.show(level=ARAXResponse.DEBUG))
 
     print(f"Number of results: {len(message.results)}")
 

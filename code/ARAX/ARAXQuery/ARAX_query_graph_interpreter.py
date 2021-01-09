@@ -9,7 +9,7 @@ import re
 import yaml
 from datetime import datetime
 
-from response import Response
+from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
 from ARAX_messenger import ARAXMessenger
@@ -29,7 +29,7 @@ class ARAXQueryGraphInterpreter:
 
     #### Constructor
     def __init__(self):
-        self.response = Response()
+        self.response = ARAXResponse()
         self.message = None
         self.parameters = None
 
@@ -43,8 +43,8 @@ class ARAXQueryGraphInterpreter:
     def translate_to_araxi(self, message, describe=False):
         """
         Translate an input query_graph into ARAXi
-        :return: Response object with execution information and the DSL command set
-        :rtype: Response
+        :return: ARAXResponse object with execution information and the DSL command set
+        :rtype: ARAXResponse
         """
 
         #### Get a default response
@@ -61,7 +61,7 @@ class ARAXQueryGraphInterpreter:
         result = query_graph_info.assess(message)
         response.merge(result)
         if result.status != 'OK':
-            print(response.show(level=Response.DEBUG))
+            print(response.show(level=ARAXResponse.DEBUG))
             return response
 
         query_graph_template = query_graph_info.query_graph_templates['detailed']
@@ -293,7 +293,7 @@ def QGI_test1():
     for test_query_graph in test_query_graphs:
 
         #### Create a response object for each test
-        response = Response()
+        response = ARAXResponse()
 
         #### Create a template Message
         messenger = ARAXMessenger()
@@ -306,14 +306,14 @@ def QGI_test1():
                 result = messenger.add_qnode(message, parameters)
                 response.merge(result)
                 if result.status != 'OK':
-                    print(response.show(level=Response.DEBUG))
+                    print(response.show(level=ARAXResponse.DEBUG))
                     return response
             elif 'e' in parameters['id']:
                 #print(f"++ Adding qedge with {parameters}")
                 result = messenger.add_qedge(message, parameters)
                 response.merge(result)
                 if result.status != 'OK':
-                    print(response.show(level=Response.DEBUG))
+                    print(response.show(level=ARAXResponse.DEBUG))
                     return response
             else:
                 response.error(f"Unrecognized type {parameters['id']}")
@@ -323,7 +323,7 @@ def QGI_test1():
         result = interpreter.translate_to_araxi(message)
         response.merge(result)
         if result.status != 'OK':
-            print(response.show(level=Response.DEBUG))
+            print(response.show(level=ARAXResponse.DEBUG))
             return response
 
         araxi_commands = result.data['araxi_commands']
@@ -331,7 +331,7 @@ def QGI_test1():
 
         #### Show the final result
         #print('-------------------------')
-        #print(response.show(level=Response.DEBUG))
+        #print(response.show(level=ARAXResponse.DEBUG))
         #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
         #sys.exit(1)
 
@@ -344,14 +344,14 @@ def QGI_test2():
     input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "type": "biolink:Drug" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "type": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
 
     #### Create a template Message
-    response = Response()
+    response = ARAXResponse()
     message = ARAXMessenger().from_dict(input_query_graph['message'])
 
     interpreter = ARAXQueryGraphInterpreter()
     result = interpreter.translate_to_araxi(message)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
 
     araxi_commands = result.data['araxi_commands']
@@ -359,7 +359,7 @@ def QGI_test2():
 
     #### Show the final result
     print('-------------------------')
-    print(response.show(level=Response.DEBUG))
+    print(response.show(level=ARAXResponse.DEBUG))
     print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
     #sys.exit(1)
 
