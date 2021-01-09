@@ -17,7 +17,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 #sys.path.append(os.getcwd()+"/../ARAXQuery")
 from ARAX_filter_results import ARAXFilterResults
 from ARAX_query import ARAXQuery
-from response import Response
+from ARAX_response import ARAXResponse
 
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
@@ -34,7 +34,7 @@ from swagger_server.models.result import Result
 from swagger_server.models.message import Message
 
 
-def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
+def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
     if response.status != 'OK':
@@ -73,7 +73,7 @@ def test_no_results():
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
-    assert 'WARNING: filter_results called with no results.' in response.show(level=Response.WARNING)
+    assert 'WARNING: filter_results called with no results.' in response.show(level=ARAXResponse.WARNING)
     assert response.status == 'OK'
 
 def test_prune():

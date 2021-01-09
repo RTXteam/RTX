@@ -7,7 +7,7 @@ import sys
 import pytest
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-from response import Response
+from ARAX_response import ARAXResponse
 from typing import List, Union, Dict, Tuple
 
 import ARAX_resultify
@@ -77,7 +77,7 @@ def _get_result_edges_by_qg_id(result: Result, kg_edges_map: Dict[str, Edge], qg
                        if edge_binding.qg_id == qedge.id} for qedge in qg.edges}
 
 
-def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[Response, Message]:
+def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[ARAXResponse, Message]:
     query = {"previous_message_processing_plan": {"processing_actions": actions_list}}
     araxq = ARAXQuery()
     response = araxq.query(query)
@@ -91,8 +91,8 @@ def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[Response, Mess
 def _run_resultify_directly(query_graph: QueryGraph,
                             knowledge_graph: KnowledgeGraph,
                             ignore_edge_direction=True,
-                            debug=False) -> Tuple[Response, Message]:
-    response = Response()
+                            debug=False) -> Tuple[ARAXResponse, Message]:
+    response = ARAXResponse()
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
     actions_list = [f"resultify(ignore_edge_direction={ignore_edge_direction})"]
@@ -659,7 +659,7 @@ def test07():
 
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
-    response = Response()
+    response = ARAXResponse()
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
     actions_list = ['resultify(ignore_edge_direction=true)']
@@ -1077,7 +1077,7 @@ def test_issue692b():
                       knowledge_graph=KnowledgeGraph(nodes=[], edges=[]))
     resultifier = ARAXResultify()
     response = resultifier.apply(message, {})
-    assert 'WARNING: no results returned; empty knowledge graph' in response.messages_list()[0]
+    assert 'no results returned; empty knowledge graph' in response.messages_list()[0]['message']
 
 
 def test_issue720_1():

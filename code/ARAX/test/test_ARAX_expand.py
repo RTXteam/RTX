@@ -13,7 +13,7 @@ import pytest
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
-from response import Response
+from ARAX_response import ARAXResponse
 import Expand.expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.edge import Edge
@@ -28,7 +28,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     response = araxq.query({"previous_message_processing_plan": {"processing_actions": actions_list}})
     message = araxq.message
     if response.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
     assert response.status == 'OK' or should_throw_error
 
     # Convert output knowledge graph to a dictionary format for faster processing (organized by QG IDs)
@@ -41,7 +41,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
         _print_nodes(nodes_by_qg_id)
         _print_edges(edges_by_qg_id)
         _print_counts_by_qgid(nodes_by_qg_id, edges_by_qg_id)
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
 
     # Run standard testing (applies to every test case)
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg) or kg_should_be_incomplete or should_throw_error

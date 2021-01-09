@@ -17,7 +17,7 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_filter_kg import ARAXFilterKG
 from ARAX_query import ARAXQuery
-from response import Response
+from ARAX_response import ARAXResponse
 
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
@@ -34,7 +34,7 @@ from swagger_server.models.result import Result
 from swagger_server.models.message import Message
 
 
-def _do_arax_query(query: dict, print_response: bool=True) -> List[Union[Response, Message]]:
+def _do_arax_query(query: dict, print_response: bool=True) -> List[Union[ARAXResponse, Message]]:
     araxq = ARAXQuery()
     response = araxq.query(query)
     if response.status != 'OK' and print_response:
