@@ -18,11 +18,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.message import Message
-from swagger_server.models.knowledge_graph import KnowledgeGraph
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.q_node import QNode
-from swagger_server.models.q_edge import QEdge
+from openapi_server.models.message import Message
+from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.q_node import QNode
+from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
 from node_synonymizer import NodeSynonymizer
@@ -725,7 +725,7 @@ class ARAXMessenger:
     #### Convert a Message as a dict to a Message as objects
     def from_dict(self, message):
 
-        if str(message.__class__) != "<class 'swagger_server.models.message.Message'>":
+        if str(message.__class__) != "<class 'openapi_server.models.message.Message'>":
             message = Message().from_dict(message)
         message.query_graph = QueryGraph().from_dict(message.query_graph)
         message.knowledge_graph = KnowledgeGraph().from_dict(message.knowledge_graph)
@@ -756,7 +756,7 @@ class ARAXMessenger:
             for result in message.results:
                 if result.result_graph is not None:
                     #eprint(str(result.result_graph.__class__))
-                    if str(result.result_graph.__class__) != "<class 'swagger_server.models.knowledge_graph.KnowledgeGraph'>":
+                    if str(result.result_graph.__class__) != "<class 'openapi_server.models.knowledge_graph.KnowledgeGraph'>":
                         result.result_graph = KnowledgeGraph().from_dict(result.result_graph)
 
         return message
