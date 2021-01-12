@@ -6,7 +6,7 @@ import time
 import argparse
 
 # os.path.realpath(__file__) does not work here since snakemake runs a different python file in the install directory
-pathlist = os.path.getcwd().split(os.path.sep)
+pathlist = os.getcwd().split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
@@ -36,8 +36,8 @@ if not  os.path.exists(synonymizer_filepath):
 rule all:
     input:
         f"{synonymizer_filepath}{os.path.sep}{RTXConfig.node_synonymizer_path.split('/')[-1]}",
-        f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
-        f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}"
+        f"{ngd_filepath}{os.path.sep}{RTXConfig.curie_to_pmids_path.split('/')[-1]}",
+        f"{cohd_filepath}{os.path.sep}{RTXConfig.cohd_database_path.split('/')[-1]}"
 
 KGmetadata_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'data', 'KGmetadata'])
 
@@ -78,19 +78,19 @@ rule curie_to_pmids:
     input:
         f"{pubmed_xml_path}"
     output:
-        f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}"
+        f"{ngd_filepath}{os.path.sep}{RTXConfig.curie_to_pmids_path.split('/')[-1]}"
     shell:
         f"""
         (
         cd {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'ngd'])}
         {python} build_ngd_database.py {pubmed_xml_path} --full
-        mv curie_to_pmids.sqlite {ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}
+        mv curie_to_pmids.sqlite {ngd_filepath}{os.path.sep}{RTXConfig.curie_to_pmids_path.split('/')[-1]}
         )
         """
 
 rule cohd_database:
     output:
-        f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}"
+        f"{cohd_filepath}{os.path.sep}{RTXConfig.cohd_database_path.split('/')[-1]}"
     shell:
         f"""
         (
@@ -104,6 +104,16 @@ gsage_input_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX',
 gsage_path = "~/work/Graphsage/GraphSAGE"
 test_gsage_path=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'reasoningtool', 'MLDrugRepurposing', 'Test_graphsage'])
 gsage_train_prefix=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'reasoningtool', 'MLDrugRepurposing', 'Test_graphsage', 'graphsage_input', 'data'])
+
+## set model name
+model='graphsage_mean'
+## model option:
+#graphsage_mean -- GraphSage with mean-based aggregator
+#graphsage_seq -- GraphSage with LSTM-based aggregator
+#graphsage_maxpool -- GraphSage with max-pooling aggregator
+#graphsage_meanpool -- GraphSage with mean-pooling aggregator
+#gcn -- GraphSage with GCN-based aggregator
+#n2v -- an implementation of DeepWalk
 
 ## other parameters
 model_size='big' #Can be big or small
@@ -121,7 +131,7 @@ max_degree=96
 
 rule dtd_prob:
     output:
-        f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
+        f"{pred_filepath}{os.path.sep}{RTXConfig.dtd_prob_path.split('/')[-1]}"
     shell:
         f"""
         (
@@ -131,8 +141,8 @@ rule dtd_prob:
         {python} {os.path.sep.join([py_scripts_path, 'generate_training_data.py'])}
         {python} {os.path.sep.join([py_scripts_path, 'BuildMapID.py'])} --path {os.path.sep.join([test_gsage_path, 'kg2_3_4', 'raw_training_data'])}
         # step 1
-        {python} {py_scripts_path}/graphsage_data_generation.py --graph graph_edges.txt --node_class graph_nodes_label_remove_name.txt --feature_dim 1 --validation_percent 0.3 --output {graphsage_input}
-        {python} {py_scripts_path}/generate_random_walk.py --Gjson {gsage_input_path}{os.path.sep}data-G.json --walk_length 100 --number_of_walks 10 --batch_size 200000 --process 80 --output {graphsage_input}
+        {python} {py_scripts_path}/graphsage_data_generation.py --graph graph_edges.txt --node_class graph_nodes_label_remove_name.txt --feature_dim 1 --validation_percent 0.3 --output {gsage_input_path}
+        {python} {py_scripts_path}/generate_random_walk.py --Gjson {gsage_input_path}{os.path.sep}data-G.json --walk_length 100 --number_of_walks 10 --batch_size 200000 --process 80 --output {gsage_input_path}
         # step 2
         if ! [ -d {test_gsage_path}/graphsage ]; then
             ln -s {gsage_path}/graphsage {test_gsage_path}/graphsage
@@ -157,9 +167,9 @@ rule dtd_prob:
         mkdir diseases
         cd {test_gsage_path}/kg2_3_4/temp/data/diseases
         split -l 38 -a 4 -d ./disease_ids.txt batchfile
-        for i in {0000..7333}; do mkdir batch$i;done
-        for i in {0000..7333}; do mv batchfile$i batch$i;done
-        for i in {0000..7333}; do mv {test_gsage_path}/kg2_3_4/temp/data/diseases/batch$i; split -l 1 -a 2 -d batchfile$i curie;done
+        for i in {{0000..7333}}; do mkdir batch$i;done
+        for i in {{0000..7333}}; do mv batchfile$i batch$i;done
+        for i in {{0000..7333}}; do mv {test_gsage_path}/kg2_3_4/temp/data/diseases/batch$i; split -l 1 -a 2 -d batchfile$i curie;done
         cp {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'run_one_disease.sh'])} ../../run/
         cp {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'run.sh'])} ../../run/
         )
