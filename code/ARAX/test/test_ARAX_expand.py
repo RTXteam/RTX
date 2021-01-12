@@ -44,7 +44,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
         print(response.show(level=Response.DEBUG))
 
     # Run standard testing (applies to every test case)
-    assert eu.qg_is_fulfilled(message.query_graph, dict_kg) or kg_should_be_incomplete or should_throw_error
+    assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_format(nodes_by_qg_id, edges_by_qg_id)
     _check_node_types(message.knowledge_graph.nodes, message.query_graph)
@@ -583,12 +583,52 @@ def test_ngd_expand():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_genetics_kp_query():
+def test_genetics_kp_simple():
     actions_list = [
         "add_qnode(name=type 2 diabetes mellitus, type=disease, id=n00)",
         "add_qnode(type=gene, id=n01)",
         "add_qedge(source_id=n00, target_id=n01, id=e00)",
         "expand(kp=GeneticsKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_genetics_kp_all_scores():
+    actions_list = [
+        "add_qnode(name=type 2 diabetes mellitus, type=disease, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "expand(kp=GeneticsKP, include_all_scores=true)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+@pytest.mark.slow
+def test_genetics_kp_2_hop():
+    actions_list = [
+        "add_qnode(curie=UniProtKB:Q99712, id=n00, type=protein)",
+        "add_qnode(type=disease, id=n01)",
+        "add_qnode(type=gene, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "expand(kp=GeneticsKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+@pytest.mark.slow
+def test_genetics_kp_multi_kp():
+    actions_list = [
+        "add_qnode(id=n0, name=AMYLIN, type=chemical_substance)",
+        "add_qnode(id=n1, type=disease, is_set=true)",
+        "add_qnode(id=n2, type=protein)",
+        "add_qedge(id=e0, source_id=n0, target_id=n1)",
+        "add_qedge(id=e1, source_id=n1, target_id=n2)",
+        "expand(kp=ARAX/KG2, edge_id=e0)",
+        "expand(kp=GeneticsKP, edge_id=e1)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -618,6 +658,149 @@ def test_molepro_query():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_exclude_edge_parallel():
+    # First run a query without any kryptonite edges to get a baseline
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, id=e01)",
+        "expand(kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    node_ids_used_by_contraindicated_edge = eu.get_node_ids_used_by_edges(edges_by_qg_id["e01"])
+    n01_nodes_contraindicated = set(nodes_by_qg_id["n01"]).intersection(node_ids_used_by_contraindicated_edge)
+    assert n01_nodes_contraindicated
+
+    # Then exclude the contraindicated edge and make sure the appropriate nodes are blown away
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "expand(kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
+    # None of the contraindicated n01 nodes should appear in the answer this time
+    assert not n01_nodes_contraindicated.intersection(set(nodes_by_qg_id_not["n01"]))
+    assert "e01" not in edges_by_qg_id_not
+
+
+@pytest.mark.slow
+def test_exclude_edge_perpendicular():
+    # First run a query without any kryptonite edges to get a baseline
+    actions_list = [
+        "add_qnode(curie=DOID:3312, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(type=pathway, id=n03)",
+        "add_qedge(source_id=n01, target_id=n03, id=e02)",
+        "expand(kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    node_ids_used_by_kryptonite_edge = eu.get_node_ids_used_by_edges(edges_by_qg_id["e02"])
+    n01_nodes_to_blow_away = set(nodes_by_qg_id["n01"]).intersection(node_ids_used_by_kryptonite_edge)
+    assert n01_nodes_to_blow_away
+
+    # Then use a kryptonite edge and make sure the appropriate nodes are blown away
+    actions_list = [
+        "add_qnode(curie=DOID:3312, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(type=pathway, id=n03)",
+        "add_qedge(source_id=n01, target_id=n03, id=e02, exclude=true)",
+        "expand(kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
+    assert not n01_nodes_to_blow_away.intersection(set(nodes_by_qg_id_not["n01"]))
+    assert "e02" not in edges_by_qg_id_not and "n03" not in nodes_by_qg_id_not
+
+
+@pytest.mark.slow
+def test_exclude_edge_ordering():
+    # This test makes sures that kryptonite qedges are expanded AFTER their adjacent qedges
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "expand(kp=ARAX/KG1, edge_id=e00)",
+        "expand(kp=ARAX/KG1, edge_id=e01)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id_a, edges_by_qg_id_a = _run_query_and_do_standard_testing(actions_list)
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "expand(kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id_b, edges_by_qg_id_b = _run_query_and_do_standard_testing(actions_list)
+    actions_list = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "expand(kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id_c, edges_by_qg_id_c = _run_query_and_do_standard_testing(actions_list)
+    # All of these queries should produce the same KG contents
+    assert set(nodes_by_qg_id_a["n01"]) == set(nodes_by_qg_id_b["n01"]) == set(nodes_by_qg_id_c["n01"])
+    assert set(edges_by_qg_id_a["e00"]) == set(edges_by_qg_id_b["e00"]) == set(edges_by_qg_id_c["e00"])
+
+
+def test_exclude_edge_no_results():
+    # Tests query with an exclude edge that doesn't have any matches in the KP (shouldn't error out)
+    actions = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=not_a_real_edge_type, exclude=true, id=e01)",
+        "expand(kp=ARAX/KG1)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+
+
+def test_option_group_query_one_hop():
+    # Tests a simple one-hop query with an optional edge
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
+        "add_qedge(id=e01, source_id=n00, target_id=n01, type=correlated_with, option_group_id=1)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+
+
+def test_option_group_query_no_results():
+    # Tests query with optional path that doesn't have any matches in the KP (shouldn't error out)
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, curie=CHEBI:48607)",
+        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
+        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=not_a_real_edge_type)",
+        "add_qedge(id=e02, source_id=n02, target_id=n01, option_group_id=1, type=affects)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
 
 
 if __name__ == "__main__":

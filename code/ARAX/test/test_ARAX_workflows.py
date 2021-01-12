@@ -85,6 +85,39 @@ def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_n
     assert len(values) >= num_different_values
 
 
+def test_option_group_id():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:3312, id=n00)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, type=indicated_for, option_group_id=a, id=e00)",
+            "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, option_group_id=1, id=e01)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    for edge in message.query_graph.edges:
+        if edge.id == 'e01':
+            assert edge.option_group_id == '1'
+        if edge.id == 'e00':
+            assert edge.option_group_id == 'a'
+
+def test_exclude():
+    query = {"previous_message_processing_plan": {"processing_actions": [
+            "create_message",
+            "add_qnode(name=DOID:3312, id=n00)",
+            "add_qnode(type=chemical_substance, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+            "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    for edge in message.query_graph.edges:
+        if edge.id == 'e01':
+            assert edge.exclude
+        if edge.id == 'e00':
+            assert not edge.exclude
+
 @pytest.mark.slow
 def test_example_2():
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -358,6 +391,22 @@ def test_FET_example_4():
         assert query_exge.source_id in query_node_ids
         assert query_exge.target_id in query_node_ids
 
+@pytest.mark.slow
+def test_FET_ranking():
+    query = {"previous_message_processing_plan": { "processing_actions": [
+            "create_message",
+            "add_qnode(id=n00,curie=UniProtKB:P14136,type=protein)",
+            "add_qnode(type=biological_process, id=n01)",
+            "add_qedge(source_id=n00, target_id=n01, id=e00)",
+            "expand(edge_id=e00,kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET)",
+            "resultify()",
+            "return(message=true, store=false)",
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    ranks = [result.confidence for result in message.results]
+    assert min(ranks) != max(ranks)
 
 @pytest.mark.slow
 def test_example_2_kg2():

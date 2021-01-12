@@ -15,6 +15,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Overlay.predictor.predictor import predictor
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import overlay_utilities as ou
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
@@ -236,8 +238,12 @@ class PredictDrugTreatsDisease:
                 edge_type = "probably_treats"
                 relation = parameters['virtual_relation_label']
                 qedge_id = parameters['virtual_relation_label']
+                source_qnode_id = parameters['source_qnode_id']
+                target_qnode_id = parameters['target_qnode_id']
+                option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+                                                                          self.message.query_graph, self.response)
                 q_edge = QEdge(id=relation, type=edge_type, relation=relation,
-                               source_id=parameters['source_qnode_id'], target_id=parameters['target_qnode_id'])  # TODO: ok to make the id and type the same thing?
+                               source_id=source_qnode_id, target_id=target_qnode_id, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
                 self.message.query_graph.edges.append(q_edge)
             return self.response
 

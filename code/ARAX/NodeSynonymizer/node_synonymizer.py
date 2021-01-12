@@ -141,6 +141,16 @@ class NodeSynonymizer:
         filename = os.path.dirname(os.path.abspath(__file__)) + f"/../../../data/KGmetadata/NodeNamesDescriptions_{kg_name}{suffix}"
         filesize = os.path.getsize(filename)
 
+        exceptions_isnot = {
+            'UniProtKB:P00390': 'GR',
+            'UniProtKB:P04150': 'GR',
+            'UniProtKB:P01137': 'LAP',
+            'UniProtKB:P61812': 'LAP',
+            'UniProtKB:P10600': 'LAP',
+            'UniProtKB:P22303': 'AChE',
+        }
+
+
         # Set up the SriNormalizer
         if self.normalizer is not None:
             normalizer = self.normalizer
@@ -182,6 +192,19 @@ class NodeSynonymizer:
         if platform.system() == 'Windows':
             extra_bytes = 1
 
+        # For some modes of debugging, import a set of CURIEs to track
+        debug_flag = False
+        if debug_flag:
+            with open('zz_losartan.json') as debugfile:
+                debug_set = json.load(debugfile)
+                debug_set['identifiers'] = {}
+                for key in debug_set:
+                    if key == 'identifiers':
+                        continue
+                    for equivalence in debug_set[key]['equivalent_identifiers']:
+                        id = equivalence['identifier']
+                        debug_set['identifiers'][id] = 1
+
         # Loop over each line in the file
         for line in fh:
             bytes_read += len(line) + extra_bytes
@@ -195,9 +218,19 @@ class NodeSynonymizer:
             node_type = columns[2]
             original_node_name = node_name
 
+            #### Skip some known problems
+            if node_curie in exceptions_isnot and exceptions_isnot[node_curie] == node_name:
+                continue
+
+            #### If we're in debugging mode, only continue the the node_curie is in the debugging set
+            if debug_flag:
+                if node_curie not in debug_set['identifiers']:
+                    continue
+
             #### For debugging problems
-            debug_flag = False
+            #debug_flag = False
             #if 'HGNC:29603' in node_curie: debug_flag = True
+            #if node_name.lower() == 'ache': debug_flag = True
 
             if debug_flag:
                 print("===============================================")
@@ -235,6 +268,12 @@ class NodeSynonymizer:
                         print(f"\n  PROGRESS: Took {str(t1-t0)} to retrieve SRI data for {node_curie}")
                     if debug_flag:
                         print("DEBUG: SRI normalizer returned: ", json.dumps(equivalence, indent=2, sort_keys=True))
+
+                    # Custom hack, FIXME
+                    # This normally comes back as "ACHE" which interferes with pain. What a pain.
+                    if equivalence['preferred_curie'] == 'NCBIGene:43':
+                        equivalence['preferred_curie_name'] = 'AChE (protein)'
+                        equivalence['equivalent_names'] = [ 'AChE (protein)' ]
 
                     # Extract the preferred designation of the normalizer
                     normalizer_curie = equivalence['preferred_curie']
@@ -453,9 +492,9 @@ class NodeSynonymizer:
             if debug_flag:
                 print(f"kg_nodes['{uc_node_curie}'] = ",json.dumps(kg_nodes[uc_node_curie], indent=2, sort_keys=True))
                 print(f"kg_unique_concepts['{uc_unique_concept_curie}'] = ",json.dumps(kg_unique_concepts[uc_unique_concept_curie], indent=2, sort_keys=True))
-                input("Enter to continue...")
+                #input("Enter to continue...")
 
-            debug_flag = False
+            #debug_flag = False
             lineCounter += 1
             percentage = int(bytes_read*100.0/filesize)
             if percentage > previous_percentage:
@@ -861,9 +900,12 @@ class NodeSynonymizer:
             multipleNames = node_name.split("; ")
             if len(multipleNames) > 1:
                 for possibleName in multipleNames:
+                    #### Changed behavior 2020-12-14 to only keep the first in the list of semi-colon separated, so as to avoid gene symbol clashes, see #1165
                     if possibleName == multipleNames[0]:
-                        next
+                        #next
+                        break
                     names[possibleName] = 0
+                    break
 
         # Reactome names sometimes have an abbrevation in parentheses. Extract it and store both the abbreviation and the name without it
         elif re.match("REACT:R-HSA-", node_curie):
@@ -986,6 +1028,7 @@ class NodeSynonymizer:
                     uc_second_curie = second_curie.upper()
 
                 else:
+                    # TEMPDISABLE
                     print(f"ERROR: Niether {uc_node1_curie} nor {uc_node2_curie} found in kg_curies at line {iline+1}")
                     stats['neither curie found'] += 1
                     continue
@@ -1000,6 +1043,7 @@ class NodeSynonymizer:
                         stats['already equivalent'] += 1
                     else:
                         stats['association conflict'] += 1
+                        # TEMPDISABLE
                         print(f"WARNING: Association conflict: {linking_curie}->{uc_linking_unique_concept_curie} and {second_curie}->{uc_second_unique_concept_curie}")
                         kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 1
                         kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_unique_concept_curie] = 1
@@ -1251,6 +1295,8 @@ class NodeSynonymizer:
         batch_size = 0
         if curies is not None:
             for curie in curies:
+                if curie is None:
+                    continue
                 results[curie] = None
                 uc_curie = curie.upper()
                 curie_map[uc_curie] = curie
@@ -1270,6 +1316,8 @@ class NodeSynonymizer:
         batch_size = 0
         if names is not None:
             for name in names:
+                if name is None:
+                    continue
                 results[name] = None
                 lc_name = name.lower()
                 name_map[lc_name] = name
@@ -1734,7 +1782,7 @@ def run_example_9():
 
     print("==== Get canonical curies for a set of input curies ============================")
     curies = [ "DOID:14330", "UMLS:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
-    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"' ]
+    names = [ "phenylketonuria", "ibuprofen", "P06865", "HEXA", "Parkinson's disease", 'supernovas', "Bob's Uncle", 'double "quotes"', None ]
     #curies = [ "UMLS:C0002371", "UMLS:C0889200" ]
     
     combined_list = copy.copy(curies)
@@ -1787,7 +1835,7 @@ def run_example_11():
 
 # ############################################################################################
 def run_examples():
-    run_example_6()
+    run_example_9()
     return
     run_example_1()
     run_example_2()
@@ -1820,6 +1868,8 @@ def main():
                         help="If set, run a test of the index by doing several lookups", default=False)
     parser.add_argument('-l', '--lookup', action="store",
                         help="If set to a curie or name, then use the NodeSynonymizer (or SRI normalizer) to lookup the equivalence information for the curie or name", default=None)
+    parser.add_argument('-e', '--export', action="store",
+                        help="Specify a filename that the lookup results will be exported to as json (e.g. curie.json)", default=None)
     parser.add_argument('-q', '--query', action="store_true",
                         help="If set perform the test query and return", default=None)
     parser.add_argument('-g', '--get', action="store",
@@ -1856,6 +1906,9 @@ def main():
         equivalence = synonymizer.get_normalizer_results(entities, kg_name=args.kg_name)
         t1 = timeit.default_timer()
         print(json.dumps(equivalence, indent=2, sort_keys=True))
+        if args.export:
+            with open(args.export,'w') as outfile:
+                outfile.write(json.dumps(equivalence, indent=2, sort_keys=True) + "\n")
         print(f"INFO: Information retrieved in {t1-t0} sec")
         return
 
@@ -1902,6 +1955,7 @@ def main():
                 return
 
         # Import synonyms and equivalencies
+        # TEMPDISABLE
         synonymizer.import_equivalencies()
         synonymizer.coalesce_duplicates()
         synonymizer.remap_unique_concepts()

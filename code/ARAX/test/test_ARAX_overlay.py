@@ -40,28 +40,31 @@ def _do_arax_query(query: dict) -> List[Union[Response, Message]]:
     return [response, araxq.message]
 
 
-def _attribute_tester(message, attribute_name: str, attribute_type: str, num_different_values=2):
+def _attribute_tester(message, attribute_name: str, attribute_type: str, num_different_values=2, num_edges_of_interest=1):
     """
     Tests attributes of a message
     message: returned from _do_arax_query
     attribute_name: the attribute name to test (eg. 'jaccard_index')
     attribute_type: the attribute type (eg. 'EDAM:data_1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
+    num_edges_of_interest: the minimum number of edges in the KG you wish to see have the attribute of interest
     """
     edges_of_interest = []
     values = set()
     for edge in message.knowledge_graph.edges:
-        if hasattr(edge, 'edge_attributes'):
+        if hasattr(edge, 'edge_attributes') and edge.edge_attributes:
             for attr in edge.edge_attributes:
                 if attr.name == attribute_name:
                     edges_of_interest.append(edge)
                     assert attr.type == attribute_type
                     values.add(attr.value)
-    assert len(edges_of_interest) > 0
-    assert len(values) >= num_different_values
+    assert len(edges_of_interest) >= num_edges_of_interest
+    if edges_of_interest:
+        assert len(values) >= num_different_values
 
 
-def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_name: str, attribute_type: str, num_different_values=2):
+def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_name: str, attribute_type: str,
+                    num_different_values=2, num_edges_of_interest=1):
     """
     Tests overlay functions that add virtual edges
     message: returned from _do_arax_query
@@ -70,20 +73,22 @@ def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_n
     attribute_name: the attribute name to test (eg. 'jaccard_index')
     attribute_type: the attribute type (eg. 'EDAM:data_1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
+    num_edges_of_interest: the minimum number of virtual edges you wish to see have been added to the KG
     """
     edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
     assert edge_type in edge_types_in_kg
     edges_of_interest = [x for x in message.knowledge_graph.edges if x.relation == relation]
-    values = set()
-    assert len(edges_of_interest) > 0
-    for edge in edges_of_interest:
-        assert hasattr(edge, 'edge_attributes')
-        assert edge.edge_attributes
-        assert edge.edge_attributes[0].name == attribute_name
-        values.add(edge.edge_attributes[0].value)
-        assert edge.edge_attributes[0].type == attribute_type
-    # make sure two or more values were added
-    assert len(values) >= num_different_values
+    assert len(edges_of_interest) >= num_edges_of_interest
+    if edges_of_interest:
+        values = set()
+        for edge in edges_of_interest:
+            assert hasattr(edge, 'edge_attributes')
+            assert edge.edge_attributes
+            assert edge.edge_attributes[0].name == attribute_name
+            values.add(edge.edge_attributes[0].value)
+            assert edge.edge_attributes[0].type == attribute_type
+        # make sure two or more values were added
+        assert len(values) >= num_different_values
 
 
 def test_jaccard():
@@ -563,7 +568,7 @@ def test_overlay_exposures_data_virtual():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show())
-    _virtual_tester(message, 'has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1)
+    _virtual_tester(message, 'has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1, 0)
 
 
 def test_overlay_exposures_data_attribute():
@@ -579,7 +584,7 @@ def test_overlay_exposures_data_attribute():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show())
-    _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1)
+    _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1, 0)
 
 
 if __name__ == "__main__":

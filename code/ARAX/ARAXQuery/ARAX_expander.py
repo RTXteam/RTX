@@ -1,7 +1,7 @@
 #!/bin/env python3
 import sys
 import os
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union, Set, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from response import Response
@@ -13,6 +13,7 @@ from swagger_server.models.knowledge_graph import KnowledgeGraph
 from swagger_server.models.query_graph import QueryGraph
 from swagger_server.models.q_edge import QEdge
 from swagger_server.models.q_node import QNode
+from swagger_server.models.edge import Edge
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -135,22 +136,25 @@ class ARAXExpander:
                 "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
                                "satisfy the query graph. It currently can answer questions involving the following "
                                "node types: gene, protein, disease, phenotypic_feature, pathway. QNode types are "
-                               "required for GeneticsKP queries. Temporarily (while the integration is under "
-                               "development), it can only be used as the first hop in a query. Note that QEdge types "
-                               "are irrelevant for GeneticsKP queries, since GeneticsKP only outputs edges with a type "
-                               "of 'associated' (so Expand always uses that as the QEdge type behind the scenes).",
+                               "required for GeneticsKP queries and it is sensitive to the use of disease vs. "
+                               "phenotypic_feature. Note that QEdge types are irrelevant for GeneticsKP queries, since "
+                               "GeneticsKP only outputs edges with a type of 'associated' (so Expand always uses that "
+                               "as the QEdge type behind the scenes). Only MAGMA p-value edges are added by default, "
+                               "but setting 'include_all_scores=true' will return all edges/scores the GeneticsKP "
+                               "returns, including genetics-quantile scores.",
                 "parameters": {
                     "edge_id": self.edge_id_parameter_info,
                     "node_id": self.node_id_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "use_synonyms": self.use_synonyms_parameter_info,
-                    "include_integrated_score": {
+                    "include_all_scores": {
                         "is_required": False,
                         "examples": ["true", "false"],
                         "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
                         "default": "false",
                         "type": "boolean",
-                        "description": "Whether to add genetics-quantile edges (in addition to MAGMA edges) from the Genetics KP."
+                        "description": "Whether to return all scores/edges returned from the GeneticsKP (including "
+                                       "genetics-quantile edges) or only MAGMA p-value edges."
                     }
                 }
             },
@@ -197,6 +201,19 @@ class ARAXExpander:
             response = Response()
         self.response = response
         self.message = input_message
+        # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
+        required_portion_of_qg = eu.get_required_portion_of_qg(self.message.query_graph)
+        if required_portion_of_qg.edges and eu.qg_is_disconnected(required_portion_of_qg):
+            self.response.error(f"Required portion of QG is disconnected. This is not allowed.", error_code="InvalidQG")
+            return response
+
+        # Create global slots to store some info that needs to persist between expand() calls
+        if not hasattr(self.message, "encountered_kryptonite_edges_info"):
+            self.message.encountered_kryptonite_edges_info = dict()
+        encountered_kryptonite_edges_info = self.message.encountered_kryptonite_edges_info
+        if not hasattr(self.message, "node_usages_by_edges_map"):
+            self.message.node_usages_by_edges_map = dict()
+        node_usages_by_edges_map = self.message.node_usages_by_edges_map
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -244,8 +261,8 @@ class ARAXExpander:
 
         # Do the actual expansion
         response.debug(f"Applying Expand to Message with parameters {parameters}")
-        input_edge_ids = eu.convert_string_or_list_to_list(parameters['edge_id'])
-        input_node_ids = eu.convert_string_or_list_to_list(parameters['node_id'])
+        input_qedge_ids = eu.convert_string_or_list_to_list(parameters['edge_id'])
+        input_qnode_ids = eu.convert_string_or_list_to_list(parameters['node_id'])
         kp_to_use = self.parameters['kp']
         continue_if_no_results = self.parameters['continue_if_no_results']
         use_synonyms = self.parameters['use_synonyms']
@@ -256,34 +273,39 @@ class ARAXExpander:
         dict_kg = eu.convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
 
         # Expand any specified edges
-        if input_edge_ids:
-            query_sub_graph = self._extract_query_subgraph(input_edge_ids, query_graph, log)
+        if input_qedge_ids:
+            query_sub_graph = self._extract_query_subgraph(input_qedge_ids, query_graph, log)
             if log.status != 'OK':
                 return response
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
             # Expand the query graph edge by edge (much faster for neo4j queries, and allows easy integration with BTE)
-            ordered_qedges_to_expand = self._get_order_to_expand_edges_in(query_sub_graph)
-            node_usages_by_edges_map = dict()
+            ordered_qedges_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph)
 
             for qedge in ordered_qedges_to_expand:
                 answer_kg, edge_node_usage_map = self._expand_edge(qedge, kp_to_use, dict_kg, continue_if_no_results,
                                                                    query_graph, use_synonyms, log)
                 if log.status != 'OK':
                     return response
-                node_usages_by_edges_map[qedge.id] = edge_node_usage_map
-
-                self._merge_answer_into_message_kg(answer_kg, dict_kg, log)
+                elif qedge.exclude and not answer_kg.is_empty():
+                    self._store_kryptonite_edge_info(edge_node_usage_map, qedge, encountered_kryptonite_edges_info, log)
+                else:
+                    # Update our map of which qnodes each of an edge's nodes fulfill (differs from source vs. target)
+                    if qedge.id not in node_usages_by_edges_map:
+                        node_usages_by_edges_map[qedge.id] = dict()
+                    node_usages_by_edges_map[qedge.id].update(edge_node_usage_map)
+                    self._merge_answer_into_message_kg(answer_kg, dict_kg, log)
                 if log.status != 'OK':
                     return response
 
-                self._prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map, log)
+                self._apply_any_kryptonite_edges(dict_kg, query_graph, node_usages_by_edges_map, encountered_kryptonite_edges_info, log)
+                self._prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map, qedge, log)
                 if log.status != 'OK':
                     return response
 
         # Expand any specified nodes
-        if input_node_ids:
-            for qnode_id in input_node_ids:
+        if input_qnode_ids:
+            for qnode_id in input_qnode_ids:
                 answer_kg = self._expand_node(qnode_id, kp_to_use, continue_if_no_results, query_graph, use_synonyms, log)
                 if log.status != 'OK':
                     return response
@@ -306,7 +328,8 @@ class ARAXExpander:
 
         # Return the response and done
         kg = self.message.knowledge_graph
-        if not kg.nodes and not continue_if_no_results:
+        only_kryptonite_qedges_expanded = all([eu.get_query_edge(query_graph, qedge_id).exclude for qedge_id in input_qedge_ids])
+        if not kg.nodes and not continue_if_no_results and not only_kryptonite_qedges_expanded:
             log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
         else:
             log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
@@ -365,11 +388,11 @@ class ARAXExpander:
                 answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge.id, edge_query_graph.nodes, log)
 
             # Make sure our query has been fulfilled (unless we're continuing if no results)
-            if not eu.qg_is_fulfilled(edge_query_graph, answer_kg):
+            if not eu.qg_is_fulfilled(edge_query_graph, answer_kg) and not qedge.exclude and not qedge.option_group_id:
                 if continue_if_no_results:
-                    log.warning(f"No paths were found in {kp_to_use} satisfying this query graph")
+                    log.warning(f"No paths were found in {kp_to_use} satisfying qedge {qedge.id}")
                 else:
-                    log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
+                    log.error(f"No paths were found in {kp_to_use} satisfying qedge {qedge.id}", error_code="NoResults")
 
             return answer_kg, edge_to_nodes_map
 
@@ -426,17 +449,28 @@ class ARAXExpander:
         edge_query_graph.edges.append(eu.copy_qedge(qedge))
 
         # Update this qedge's qnodes as appropriate and add (copies of) them to the edge query graph
-        qedge_has_already_been_expanded = qedge.id in dict_kg.edges_by_qg_id
+        required_qedge_ids = {qedge.id for qedge in query_graph.edges if not qedge.option_group_id}
+        expanded_qedge_ids = set(dict_kg.edges_by_qg_id)
+        qedge_has_already_been_expanded = qedge.id in expanded_qedge_ids
+        qedge_is_required = qedge.id in required_qedge_ids
         for qnode in qnodes:
             qnode_copy = eu.copy_qnode(qnode)
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
             qnode_already_fulfilled = qnode_copy.id in dict_kg.nodes_by_qg_id
             if qnode_already_fulfilled and not qnode_copy.curie:
+                existing_curies_for_this_qnode_id = list(dict_kg.nodes_by_qg_id[qnode_copy.id])
                 if qedge_has_already_been_expanded:
+                    # Feed in curies only for 'input' qnodes if we're re-expanding this edge (i.e., with another KP)
                     if self._is_input_qnode(qnode_copy, qedge):
-                        qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
+                        qnode_copy.curie = existing_curies_for_this_qnode_id
+                elif qedge_is_required:
+                    # Only feed in curies to required qnodes if it was expansion of a REQUIRED qedge that grabbed them
+                    qedge_ids_connected_to_qnode = {qedge.id for qedge in query_graph.edges if qnode.id in {qedge.source_id, qedge.target_id}}
+                    was_populated_by_required_edge = qedge_ids_connected_to_qnode.intersection(required_qedge_ids, expanded_qedge_ids)
+                    if was_populated_by_required_edge:
+                        qnode_copy.curie = existing_curies_for_this_qnode_id
                 else:
-                    qnode_copy.curie = list(dict_kg.nodes_by_qg_id[qnode_copy.id].keys())
+                    qnode_copy.curie = existing_curies_for_this_qnode_id
             edge_query_graph.nodes.append(qnode_copy)
 
         # Consider both protein and gene if qnode's type is one of those (since KPs handle these differently)
@@ -560,48 +594,136 @@ class ARAXExpander:
                 dict_kg.add_edge(edge, qedge_id)
 
     @staticmethod
-    def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, full_query_graph: QueryGraph,
-                              node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], log: Response):
+    def _store_kryptonite_edge_info(edge_node_usage_map: Dict[str, Dict[str, str]], kryptonite_qedge: QEdge,
+                                    encountered_kryptonite_edges_info: Dict[str, Dict[str, Set[str]]], log: Response):
+        """
+        This function adds the IDs of nodes found by expansion of the given kryptonite ("not") edge to the global
+        encountered_kryptonite_edges_info dictionary, which is organized by QG IDs. This allows Expand to "remember"
+        which kryptonite edges/nodes it found previously, without adding them to the KG.
+        Example of encountered_kryptonite_edges_info: {"e01": {"n00": {"MONDO:1"}, "n01": {"PR:1", "PR:2"}}}
+        """
+        log.debug(f"Storing info for kryptonite edges found")
+        qnode_a_id = kryptonite_qedge.source_id
+        qnode_b_id = kryptonite_qedge.target_id
+        node_ids_fulfilling_qnode_a = {node_usages_dict[qnode_a_id] for node_usages_dict in edge_node_usage_map.values()}
+        node_ids_fulfilling_qnode_b = {node_usages_dict[qnode_b_id] for node_usages_dict in edge_node_usage_map.values()}
+        if kryptonite_qedge.id not in encountered_kryptonite_edges_info:
+            encountered_kryptonite_edges_info[kryptonite_qedge.id] = dict()
+        kryptonite_nodes_dict = encountered_kryptonite_edges_info[kryptonite_qedge.id]
+        if qnode_a_id not in kryptonite_nodes_dict:
+            kryptonite_nodes_dict[qnode_a_id] = set()
+        if qnode_b_id not in kryptonite_nodes_dict:
+            kryptonite_nodes_dict[qnode_b_id] = set()
+        kryptonite_nodes_dict[qnode_a_id].update(node_ids_fulfilling_qnode_a)
+        kryptonite_nodes_dict[qnode_b_id].update(node_ids_fulfilling_qnode_b)
+        log.debug(f"Stored {len(node_ids_fulfilling_qnode_a)} {qnode_a_id} nodes and "
+                  f"{len(node_ids_fulfilling_qnode_b)} {qnode_b_id} nodes from {kryptonite_qedge.id} kryptonite edges")
+
+    @staticmethod
+    def _apply_any_kryptonite_edges(dict_kg: DictKnowledgeGraph, full_query_graph: QueryGraph,
+                                    node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]],
+                                    encountered_kryptonite_edges_info: Dict[str, Dict[str, Set[str]]], log):
+        """
+        This function breaks any paths in the KG for which a "not" (exclude=True) condition has been met; the remains
+        of the broken paths not used in other paths in the KG are cleaned up during later pruning of dead ends. The
+        paths are broken by removing edges (vs. nodes) in order to help ensure that nodes that may also be used in
+        valid paths are not accidentally removed from the KG. Optional kryptonite qedges are applied only to the option
+        group they belong in; required kryptonite qedges are applied to all.
+        """
+        for qedge_id, edge_node_usage_map in node_usages_by_edges_map.items():
+            current_qedge = eu.get_query_edge(full_query_graph, qedge_id)
+            current_qedge_qnode_ids = {current_qedge.source_id, current_qedge.target_id}
+            # Find kryptonite qedges that share one or more qnodes in common with our current qedge
+            linked_kryptonite_qedges = [qedge for qedge in full_query_graph.edges if qedge.exclude and
+                                        {qedge.source_id, qedge.target_id}.intersection(current_qedge_qnode_ids)]
+            # Apply kryptonite edges only to edges within their same group (but apply required ones no matter what)
+            linked_kryptonite_qedges_to_apply = [qedge for qedge in linked_kryptonite_qedges if
+                                                 qedge.option_group_id == current_qedge.option_group_id or
+                                                 qedge.option_group_id is None]
+            edge_ids_to_remove = set()
+            # Look for paths to blow away based on each (already expanded) kryptonite qedge in the same group
+            for kryptonite_qedge in linked_kryptonite_qedges_to_apply:
+                if kryptonite_qedge.id in encountered_kryptonite_edges_info:
+                    # Mark edges for destruction if they match the kryptonite edge for all qnodes they have in common
+                    kryptonite_qedge_qnode_ids = {kryptonite_qedge.source_id, kryptonite_qedge.target_id}
+                    qnode_ids_in_common = list(current_qedge_qnode_ids.intersection(kryptonite_qedge_qnode_ids))
+                    for edge_id, node_usages in edge_node_usage_map.items():
+                        identical_nodes = [node_usages[qnode_id] for qnode_id in qnode_ids_in_common if node_usages[qnode_id]
+                                           in encountered_kryptonite_edges_info[kryptonite_qedge.id][qnode_id]]
+                        if len(identical_nodes) == len(qnode_ids_in_common):
+                            edge_ids_to_remove.add(edge_id)
+
+            # Actually remove the edges we've marked for destruction
+            if edge_ids_to_remove:
+                log.debug(f"Blowing away {len(edge_ids_to_remove)} {qedge_id} edges because they lie on a path with a "
+                          f"'not' condition met (kryptonite)")
+                for edge_id in edge_ids_to_remove:
+                    node_usages_by_edges_map[qedge_id].pop(edge_id)
+                    dict_kg.edges_by_qg_id[qedge_id].pop(edge_id)
+
+    @staticmethod
+    def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, query_graph: QueryGraph,
+                              node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], qedge_expanded: QEdge,
+                              log: Response):
         # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         # found in the last expansion will connect to edges in the next one)
         log.debug(f"Pruning any paths that are now dead ends")
 
-        # Create a map of which qnodes are connected to which other qnodes
+        # Grab the part of the QG the most recently expanded qedge belongs to ('required' part or an option group)
+        if qedge_expanded.option_group_id:
+            group_qnode_ids = {qnode.id for qnode in query_graph.nodes if qnode.option_group_id == qedge_expanded.option_group_id}
+            group_qedges = [qedge for qedge in query_graph.edges if qedge.option_group_id == qedge_expanded.option_group_id]
+            sub_qg_qedge_ids = {qedge.id for qedge in group_qedges}
+            qnode_ids_used_by_group_qedges = {qnode_id for qedge in group_qedges for qnode_id in {qedge.source_id, qedge.target_id}}
+            sub_qg_qnode_ids = group_qnode_ids.union(qnode_ids_used_by_group_qedges)
+            sub_qg = QueryGraph(nodes=[qnode for qnode in query_graph.nodes if qnode.id in sub_qg_qnode_ids],
+                                edges=[qedge for qedge in query_graph.edges if qedge.id in sub_qg_qedge_ids])
+        else:
+            required_qnode_ids = {qnode.id for qnode in query_graph.nodes if not qnode.option_group_id}
+            sub_qg_qedge_ids = {qedge.id for qedge in query_graph.edges if not qedge.option_group_id}
+            sub_qg = QueryGraph(nodes=[qnode for qnode in query_graph.nodes if qnode.id in required_qnode_ids],
+                                edges=[qedge for qedge in query_graph.edges if qedge.id in sub_qg_qedge_ids])
+            sub_qg_qnode_ids = required_qnode_ids
+
+        # Create a map of which qnodes are connected to which other qnodes (only for the relevant portion of the QG)
         # Example qnode_connections_map: {'n00': {'n01'}, 'n01': {'n00', 'n02'}, 'n02': {'n01'}}
         qnode_connections_map = dict()
-        for qnode in full_query_graph.nodes:
+        for qnode in sub_qg.nodes:
             qnode_connections_map[qnode.id] = set()
-            for qedge in full_query_graph.edges:
+            for qedge in sub_qg.edges:
                 if qedge.source_id == qnode.id or qedge.target_id == qnode.id:
-                    connected_qnode_id = qedge.target_id if qedge.target_id != qnode.id else qedge.source_id
-                    qnode_connections_map[qnode.id].add(connected_qnode_id)
+                    other_qnode_id = qedge.target_id if qedge.target_id != qnode.id else qedge.source_id
+                    qnode_connections_map[qnode.id].add(other_qnode_id)
 
         # Create a map of which nodes each node is connected to (organized by the qnode_id they're fulfilling)
         # Example node_usages_by_edges_map: {'e00': {'KG1:111221': {'n00': 'UMLS:122', 'n01': 'UMLS:124'}}}
-        # Example node_connections_map: {'UMLS:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22', 'UniProtKB:333'}}}
+        # Example node_connections_map: {'n01': {'UMLS:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22'}}}, ...}
         node_connections_map = dict()
         for qedge_id, edges_to_nodes_dict in node_usages_by_edges_map.items():
-            current_qedge = next(qedge for qedge in full_query_graph.edges if qedge.id == qedge_id)
-            qnode_ids = [current_qedge.source_id, current_qedge.target_id]
-            for edge_id, node_usages_dict in edges_to_nodes_dict.items():
-                for current_qnode_id in qnode_ids:
-                    connected_qnode_id = next(qnode_id for qnode_id in qnode_ids if qnode_id != current_qnode_id)
-                    current_node_id = node_usages_dict[current_qnode_id]
-                    connected_node_id = node_usages_dict[connected_qnode_id]
-                    if current_qnode_id not in node_connections_map:
-                        node_connections_map[current_qnode_id] = dict()
-                    if current_node_id not in node_connections_map[current_qnode_id]:
-                        node_connections_map[current_qnode_id][current_node_id] = dict()
-                    if connected_qnode_id not in node_connections_map[current_qnode_id][current_node_id]:
-                        node_connections_map[current_qnode_id][current_node_id][connected_qnode_id] = set()
-                    node_connections_map[current_qnode_id][current_node_id][connected_qnode_id].add(connected_node_id)
+            if qedge_id in sub_qg_qedge_ids:  # Only collect info for edges in the portion of the QG we're considering
+                current_qedge = eu.get_query_edge(sub_qg, qedge_id)
+                edges_to_nodes_dict = node_usages_by_edges_map[current_qedge.id]
+                current_qedges_qnode_ids = {current_qedge.source_id, current_qedge.target_id}
+                for edge_id, node_usages_dict in edges_to_nodes_dict.items():
+                    for current_qnode_id in current_qedges_qnode_ids:
+                        other_qnode_id = list(current_qedges_qnode_ids.difference({current_qnode_id}))[0]
+                        current_node_id = node_usages_dict[current_qnode_id]
+                        other_node_id = node_usages_dict[other_qnode_id]
+                        if current_qnode_id not in node_connections_map:
+                            node_connections_map[current_qnode_id] = dict()
+                        if current_node_id not in node_connections_map[current_qnode_id]:
+                            node_connections_map[current_qnode_id][current_node_id] = dict()
+                        if other_qnode_id not in node_connections_map[current_qnode_id][current_node_id]:
+                            node_connections_map[current_qnode_id][current_node_id][other_qnode_id] = set()
+                        node_connections_map[current_qnode_id][current_node_id][other_qnode_id].add(other_node_id)
 
-        # Iteratively remove all disconnected nodes until there are none left
-        qnode_ids_already_expanded = list(node_connections_map.keys())
+        # Iteratively remove all disconnected nodes until there are none left (for the relevant portion of the QG)
+        qnode_ids_already_expanded = set(node_connections_map)
+        qnode_ids_to_prune = qnode_ids_already_expanded.intersection(sub_qg_qnode_ids)
         found_dead_end = True
         while found_dead_end:
             found_dead_end = False
-            for qnode_id in qnode_ids_already_expanded:
+            for qnode_id in qnode_ids_to_prune:
                 qnode_ids_should_be_connected_to = qnode_connections_map[qnode_id].intersection(qnode_ids_already_expanded)
                 for node_id, node_mappings_dict in node_connections_map[qnode_id].items():
                     # Check if any mappings are even entered for all qnode_ids this node should be connected to
@@ -611,8 +733,8 @@ class ARAXExpander:
                             found_dead_end = True
                     else:
                         # Verify that at least one of the entered connections still exists (for each connected qnode_id)
-                        for connected_qnode_id, connected_node_ids in node_mappings_dict.items():
-                            if not connected_node_ids.intersection(set(dict_kg.nodes_by_qg_id[connected_qnode_id].keys())):
+                        for other_qnode_id, connected_node_ids in node_mappings_dict.items():
+                            if not connected_node_ids.intersection(set(dict_kg.nodes_by_qg_id[other_qnode_id].keys())):
                                 if node_id in dict_kg.nodes_by_qg_id[qnode_id]:
                                     dict_kg.nodes_by_qg_id[qnode_id].pop(node_id)
                                     found_dead_end = True
@@ -625,35 +747,74 @@ class ARAXExpander:
                         if edge_key in dict_kg.edges_by_qg_id[qedge_id]:
                             dict_kg.edges_by_qg_id[qedge_id].pop(edge_key)
 
-    def _get_order_to_expand_edges_in(self, query_graph: QueryGraph) -> List[QEdge]:
-        # This function determines what order to expand the edges in a query graph in; it attempts to start with
-        # qedges that have a qnode with a specific curie, and move out from there.
-        edges_remaining = [edge for edge in query_graph.edges]
-        ordered_edges = []
-        while edges_remaining:
-            if not ordered_edges:
-                # Start with an edge that has a node with a curie specified
-                edge_with_curie = self._get_edge_with_curie_node(query_graph)
-                first_edge = edge_with_curie if edge_with_curie else edges_remaining[0]
-                ordered_edges = [first_edge]
-                edges_remaining.pop(edges_remaining.index(first_edge))
-            else:
-                # Add connected edges in a rightward (target) direction if possible
-                right_end_edge = ordered_edges[-1]
-                edge_connected_to_right_end = self._find_connected_qedge(edges_remaining, right_end_edge)
-                if edge_connected_to_right_end:
-                    ordered_edges.append(edge_connected_to_right_end)
-                    edges_remaining.pop(edges_remaining.index(edge_connected_to_right_end))
+        # And remove all orphaned nodes (that aren't supposed to be orphans - some qnodes may be orphans by design)
+        qnode_ids_used_by_qedges = {qnode_id for qedge in query_graph.edges for qnode_id in {qedge.source_id, qedge.target_id}}
+        non_orphan_qnode_ids = {qnode.id for qnode in query_graph.nodes if qnode.id in qnode_ids_used_by_qedges}
+        node_ids_used_by_edges = dict_kg.get_all_node_ids_used_by_edges()
+        for non_orphan_qnode_id in non_orphan_qnode_ids:
+            node_ids_in_kg = set(dict_kg.nodes_by_qg_id.get(non_orphan_qnode_id, []))
+            orphan_node_ids = node_ids_in_kg.difference(node_ids_used_by_edges)
+            for orphan_node_id in orphan_node_ids:
+                dict_kg.nodes_by_qg_id[non_orphan_qnode_id].pop(orphan_node_id)
+
+        log.debug(f"After pruning, KG counts are: {eu.get_printable_counts_by_qg_id(dict_kg)}")
+
+    def _get_order_to_expand_qedges_in(self, query_graph: QueryGraph) -> List[QEdge]:
+        """
+        This function determines what order to expand the edges in a query graph in; it aims to start with a required,
+        non-kryptonite qedge that has a qnode with a curie specified. It then looks for a qedge connected to that
+        starting qedge, and so on.
+        """
+        qedges_remaining = [edge for edge in query_graph.edges]
+        ordered_qedges = []
+        while qedges_remaining:
+            if not ordered_qedges:
+                # Try to start with a required, non-kryptonite qedge that has a qnode with a curie specified
+                qedges_with_curie = self._get_qedges_with_curie_qnode(query_graph)
+                required_curie_qedges = [qedge for qedge in qedges_with_curie if not qedge.option_group_id]
+                non_kryptonite_required_curie_qedges = [qedge for qedge in required_curie_qedges if not qedge.exclude]
+                if non_kryptonite_required_curie_qedges:
+                    first_qedge = non_kryptonite_required_curie_qedges[0]
+                elif required_curie_qedges:
+                    first_qedge = required_curie_qedges[0]
+                elif qedges_with_curie:
+                    first_qedge = qedges_with_curie[0]
                 else:
-                    left_end_edge = ordered_edges[0]
-                    edge_connected_to_left_end = self._find_connected_qedge(edges_remaining, left_end_edge)
-                    if edge_connected_to_left_end:
-                        ordered_edges.insert(0, edge_connected_to_left_end)
-                        edges_remaining.pop(edges_remaining.index(edge_connected_to_left_end))
-        return ordered_edges
+                    first_qedge = qedges_remaining[0]
+                ordered_qedges = [first_qedge]
+                qedges_remaining.pop(qedges_remaining.index(first_qedge))
+            else:
+                # Add look for a qedge connected to the "subgraph" of qedges we've already added to our ordered list
+                connected_qedge = self._find_qedge_connected_to_subgraph(ordered_qedges, qedges_remaining)
+                if connected_qedge:
+                    ordered_qedges.append(connected_qedge)
+                    qedges_remaining.pop(qedges_remaining.index(connected_qedge))
+                else:
+                    self.response.error(f"Query graph is disconnected (has more than one component)", error_code="UnsupportedQG")
+                    return []
+        return ordered_qedges
+
+    @staticmethod
+    def _find_qedge_connected_to_subgraph(subgraph_qedge_list: List[QEdge], qedges_to_choose_from: List[QEdge]) -> Optional[QEdge]:
+        qnode_ids_in_subgraph = {qnode_id for qedge in subgraph_qedge_list for qnode_id in {qedge.source_id, qedge.target_id}}
+        connected_qedges = [qedge for qedge in qedges_to_choose_from if
+                            qnode_ids_in_subgraph.intersection({qedge.source_id, qedge.target_id})]
+        required_qedges = [qedge for qedge in connected_qedges if not qedge.option_group_id]
+        required_kryptonite_qedges = [qedge for qedge in required_qedges if qedge.exclude]
+        optional_kryptonite_qedges = [qedge for qedge in connected_qedges if qedge.option_group_id and qedge.exclude]
+        if required_kryptonite_qedges:
+            return required_kryptonite_qedges[0]
+        elif required_qedges:
+            return required_qedges[0]
+        elif optional_kryptonite_qedges:
+            return optional_kryptonite_qedges[0]
+        elif connected_qedges:
+            return connected_qedges[0]
+        else:
+            return None
 
     def _is_input_qnode(self, qnode: QNode, qedge: QEdge) -> bool:
-        all_ordered_qedges = self._get_order_to_expand_edges_in(self.message.query_graph)
+        all_ordered_qedges = self._get_order_to_expand_qedges_in(self.message.query_graph)
         current_qedge_index = all_ordered_qedges.index(qedge)
         previous_qedge = all_ordered_qedges[current_qedge_index - 1] if current_qedge_index > 0 else None
         if previous_qedge and qnode.id in {previous_qedge.source_id, previous_qedge.target_id}:
@@ -707,22 +868,23 @@ class ARAXExpander:
         return list(node_ids.difference(node_ids_used_by_edges))
 
     @staticmethod
-    def _get_edge_with_curie_node(query_graph: QueryGraph):
-        for edge in query_graph.edges:
-            source_qnode = eu.get_query_node(query_graph, edge.source_id)
-            target_qnode = eu.get_query_node(query_graph, edge.target_id)
-            if source_qnode.curie or target_qnode.curie:
-                return edge
-        return None
+    def _get_qedges_with_curie_qnode(query_graph: QueryGraph) -> List[QEdge]:
+        return [qedge for qedge in query_graph.edges if eu.get_query_node(query_graph, qedge.source_id).curie or
+                eu.get_query_node(query_graph, qedge.target_id).curie]
 
     @staticmethod
-    def _find_connected_qedge(edge_list: List[QEdge], edge: QEdge) -> QEdge:
-        edge_node_ids = {edge.source_id, edge.target_id}
-        for potential_connected_edge in edge_list:
-            potential_connected_edge_node_ids = {potential_connected_edge.source_id, potential_connected_edge.target_id}
-            if edge_node_ids.intersection(potential_connected_edge_node_ids):
-                return potential_connected_edge
-        return None
+    def _find_connected_qedge(qedge_choices: List[QEdge], qedge: QEdge) -> QEdge:
+        qedge_qnode_ids = {qedge.source_id, qedge.target_id}
+        connected_qedges = []
+        for other_qedge in qedge_choices:
+            other_qedge_qnode_ids = {other_qedge.source_id, other_qedge.target_id}
+            if qedge_qnode_ids.intersection(other_qedge_qnode_ids):
+                connected_qedges.append(other_qedge)
+        if connected_qedges:
+            non_kryptonite_qedges = [connected_qedge for connected_qedge in connected_qedges if not connected_qedge.exclude]
+            return non_kryptonite_qedges[0] if non_kryptonite_qedges else connected_qedges[0]
+        else:
+            return None
 
     @staticmethod
     def _convert_bool_string_to_bool(bool_string: str) -> Union[bool, str]:

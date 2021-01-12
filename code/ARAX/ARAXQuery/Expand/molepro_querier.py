@@ -14,8 +14,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from swagger_server.models.node import Node
 from swagger_server.models.edge import Edge
 from swagger_server.models.query_graph import QueryGraph
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
-from node_synonymizer import NodeSynonymizer
 
 
 class MoleProQuerier:
@@ -44,7 +42,6 @@ class MoleProQuerier:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
-        continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
@@ -84,12 +81,6 @@ class MoleProQuerier:
                 swagger_node = self._create_swagger_node_from_kp_node(returned_node)
                 for qnode_id in qg_id_mappings['nodes'][swagger_node.id]:
                     final_kg.add_node(swagger_node, qnode_id)
-
-        if not eu.qg_is_fulfilled(query_graph, final_kg):
-            if continue_if_no_results:
-                log.warning(f"{self.kp_name} found no paths satisfying this query graph")
-            else:
-                log.error(f"{self.kp_name} found no paths satisfying this query graph", error_code="NoResults")
 
         return final_kg, edge_to_nodes_map
 
@@ -160,14 +151,14 @@ class MoleProQuerier:
         stripped_qedge = {'id': qedge.id,
                           'source_id': qedge.source_id,
                           'target_id': qedge.target_id,
-                          'type': qedge.type if qedge.type else 'correlated_with'}
+                          'type': qedge.type if qedge.type else list(self.accepted_edge_types)[0]}
         if stripped_qedge['type'] not in self.accepted_edge_types:
-            log.warning(f"MolePro only accepts the following edge types: {self.accepted_edge_types}")
+            log.warning(f"{self.kp_name} only accepts the following edge types: {self.accepted_edge_types}")
         source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].source_id)
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
-            log.debug(f"Sending {query_graph.edges[0].id} query to MolePro for {input_curie}")
+            log.debug(f"Sending {qedge.id} query to {self.kp_name} for {input_curie}")
             source_stripped_qnode['curie'] = input_curie
             kp_response = requests.post(self.kp_api_url,
                                         json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': [stripped_qedge]}}},
@@ -200,6 +191,9 @@ class MoleProQuerier:
                     type=kp_node['type'],
                     name=kp_node.get('name'))
 
+    def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
+        return f"{self.kp_name}:{swagger_edge.source_id}-{swagger_edge.type}-{swagger_edge.target_id}"
+
     def _fix_prefix(self, curie: str) -> str:
         curie_prefix = curie.split(':')[0]
         curie_local_id = curie.split(':')[-1]
@@ -211,6 +205,3 @@ class MoleProQuerier:
         curie_local_id = curie.split(':')[-1]
         fixed_prefix = self.prefix_overrides_for_kp.get(curie_prefix, curie_prefix)
         return f"{fixed_prefix}:{curie_local_id}"
-
-    def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
-        return f"{self.kp_name}:{swagger_edge.source_id}-{swagger_edge.type}-{swagger_edge.target_id}"
