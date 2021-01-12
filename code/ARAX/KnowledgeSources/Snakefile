@@ -99,7 +99,7 @@ rule cohd_database:
 
 py_scripts_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'py_scripts'])
 gsage_input_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'graphsage_input'])
-gsage_path "~/work/Graphsage/GraphSAGE"
+gsage_path = "~/work/Graphsage/GraphSAGE"
 test_gsage_path=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'reasoningtool', 'MLDrugRepurposing', 'Test_graphsage'])
 gsage_train_prefix=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'reasoningtool', 'MLDrugRepurposing', 'Test_graphsage', 'graphsage_input', 'data'])
 
