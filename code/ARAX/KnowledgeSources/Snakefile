@@ -93,8 +93,10 @@ rule cohd_database:
         f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}"
     shell:
         f"""
+        (
         cd {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'scripts'])}
         {python} COHDIndex.py --build
+        )
         """
 
 py_scripts_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'py_scripts'])
@@ -122,6 +124,7 @@ rule dtd_prob:
         f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
     shell:
         f"""
+        (
         # step 0
         cd {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train'])}
         {python} {os.path.sep.join([py_scripts_path, 'pull_canonicalized_KG2_3_4C.py'])}
@@ -159,4 +162,5 @@ rule dtd_prob:
         for i in {0000..7333}; do mv {test_gsage_path}/kg2_3_4/temp/data/diseases/batch$i; split -l 1 -a 2 -d batchfile$i curie;done
         cp {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'run_one_disease.sh'])} ../../run/
         cp {os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'GraphSage_train', 'run.sh'])} ../../run/
+        )
         """
