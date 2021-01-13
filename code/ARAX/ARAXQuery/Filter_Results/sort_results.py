@@ -150,15 +150,15 @@ class SortResults:
             node_values = {}
             # iterate over the nodes find the attribute values
             for node in self.message.knowledge_graph.nodes:  # iterate over the nodes
-                node_values[str(node.id)] = {'value': None, 'type': node.type}
+                node_values[str(node.id)] = {'value': None, 'type': node.category}
                 if hasattr(node, 'node_attributes'):  # check if they have attributes
                     if node.node_attributes:  # if there are any node attributes
                         for attribute in node.node_attributes:  # for each attribute
                             if attribute.name == params['node_attribute']:  # check if it's the desired one
                                 if attribute.name == 'pubmed_ids':
-                                    node_values[str(node.id)] = {'value': attribute.value.count("PMID"), 'type': node.type}
+                                    node_values[str(node.id)] = {'value': attribute.value.count("PMID"), 'type': node.category}
                                 else:
-                                    node_values[str(node.id)] = {'value': attribute.value, 'type': node.type}
+                                    node_values[str(node.id)] = {'value': attribute.value, 'type': node.category}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:

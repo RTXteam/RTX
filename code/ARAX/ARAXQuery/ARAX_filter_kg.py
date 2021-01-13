@@ -341,8 +341,8 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
                 response.debug(f"Query graph is {message.query_graph}")
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
-                response.debug(f"Number of nodes in KG by type is {Counter([x.type[0] for x in message.knowledge_graph.nodes])}")  # type is a list, just get the first one
-                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.type for x in message.knowledge_graph.nodes])}")  # don't really need to worry about this now
+                response.debug(f"Number of nodes in KG by type is {Counter([x.category[0] for x in message.knowledge_graph.nodes])}")  # type is a list, just get the first one
+                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes])}")  # don't really need to worry about this now
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
                 response.debug(f"Number of edges in KG by type is {Counter([x.type for x in message.knowledge_graph.edges])}")
                 response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges if x.edge_attributes])}")
@@ -818,7 +818,7 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'remove_nodes_by_type'},
-                                    'node_type': set([t for x in self.message.knowledge_graph.nodes for t in x.type])
+                                    'node_type': set([t for x in self.message.knowledge_graph.nodes for t in x.category])
                                    }
         else:
             allowable_parameters = {'action': {'remove_nodes_by_type'}, 
@@ -923,7 +923,7 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'remove_orphaned_nodes'},
                                     'node_type': set(
-                                        [t for x in self.message.knowledge_graph.nodes for t in x.type])
+                                        [t for x in self.message.knowledge_graph.nodes for t in x.category])
                                     }
         else:
             allowable_parameters = {'action': {'remove_orphaned_nodes'},
