@@ -1243,7 +1243,219 @@ def test_issue912_clean_up_kg():
     assert not orphan_edges
 
 
-def test_issue1146():
+def test_issue1119_a():
+    # Run a query to identify chemical substances that are both indicated for and contraindicated for our disease
+    actions = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, id=e01)",
+        "expand(kp=ARAX/KG1)",
+        "resultify()"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+    n01_nodes_contraindicated = {node_binding.kg_id for result in message.results
+                                 for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+
+    # Verify those chemical substances aren't returned when we make the contraindicated_for edge kryptonite
+    actions = [
+        "add_qnode(name=DOID:3312, id=n00)",
+        "add_qnode(type=chemical_substance, id=n01)",
+        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
+        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "expand(kp=ARAX/KG1)",
+        "resultify()"
+    ]
+    kryptonite_response, kryptonite_message = _do_arax_query(actions)
+    assert kryptonite_response.status == 'OK'
+    assert kryptonite_message.results
+    n01_nodes_kryptonite_query = {node_binding.kg_id for result in kryptonite_message.results
+                                  for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+    assert not n01_nodes_contraindicated.intersection(n01_nodes_kryptonite_query)
+
+
+@pytest.mark.slow
+def test_issue1119_b():
+    # Tests a perpendicular kryptonite qedge situation
+    actions = [
+        "add_qnode(curie=DOID:3312, id=n00)",
+        "add_qnode(type=protein, id=n01)",
+        "add_qnode(type=chemical_substance, id=n02)",
+        "add_qedge(source_id=n00, target_id=n01, id=e00)",
+        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(type=pathway, id=n03)",
+        "add_qedge(source_id=n01, target_id=n03, id=e02, exclude=true)",
+        "expand(kp=ARAX/KG1)",
+        "resultify()"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+    # Make sure the kryptonite edge and its leaf qnode don't appear in any results
+    assert not any(node_binding.qg_id == "n03" for result in message.results for node_binding in result.node_bindings)
+    assert not any(edge_binding.qg_id == "e02" for result in message.results for edge_binding in result.edge_bindings)
+
+
+@pytest.mark.slow
+def test_issue1119_c():
+    # Test a simple one-hop query with one single-edge option group
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
+        "add_qedge(id=e01, source_id=n00, target_id=n01, type=correlated_with, option_group_id=1)",
+        "expand(kp=ARAX/KG2)",
+        "resultify(debug=true)",
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+    for result in message.results:
+        assert any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00")
+    # Make sure at least one of our results has the "optional" group 1 edge
+    results_with_optional_edge = [result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01")]
+    assert results_with_optional_edge
+
+    # Make sure the number of results is the same as if we asked only for the required portion
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
+        "expand(kp=ARAX/KG2)",
+        "resultify(debug=true)",
+    ]
+    response, message_without_option_group = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message_without_option_group.results) == len(message.results)
+
+    # And make sure the number of results with an option group edge makes sense
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        f"add_qnode(id=n01, curie=[{', '.join([node.id for node in message.knowledge_graph.nodes if 'n01' in node.qnode_ids])}])",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=correlated_with)",
+        "expand(kp=ARAX/KG2)",
+        # Note: skipping resultify here due to issue #1152
+    ]
+    response, message_option_edge_only = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(results_with_optional_edge) == len([node for node in message_option_edge_only.knowledge_graph.nodes
+                                                   if "n01" in node.qnode_ids])
+
+
+@pytest.mark.slow
+def test_issue1119_d():
+    # Test one-hop query with multiple single-edge option groups and a required 'not' edge
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, type=chemical_substance)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
+        "add_qedge(id=e01, source_id=n00, target_id=n01, type=correlated_with, option_group_id=1)",
+        "add_qedge(id=e02, source_id=n00, target_id=n01, type=affects, option_group_id=2)",
+        "add_qedge(id=e03, source_id=n00, target_id=n01, exclude=True, type=contraindicated_for)",
+        "expand(kp=ARAX/KG2)",
+        "resultify(debug=true)",
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert message.results
+    # Make sure every result has a required edge
+    for result in message.results:
+        assert any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00")
+        assert not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e03")
+    # Make sure our "optional" edges appear in one or more results
+    assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"))
+    assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e02"))
+    # Verify there are some results without any optional portion (happens to be true for this query)
+    assert any(result for result in message.results if not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id in {"e01", "e02"}))
+
+
+@pytest.mark.slow
+def test_issue1119_e():
+    # Test (curie)--(curie) query where required portion is one-hop and there's one optional group that's two-hop
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, curie=CHEBI:48607)",
+        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
+        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
+        "add_qedge(id=e02, source_id=n02, target_id=n01, option_group_id=1, type=physically_interacts_with)",
+        "expand()",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert len(message.results) == 1
+    intermediate_proteins_in_result = {node_binding.kg_id for node_binding in message.results[0].node_bindings if node_binding.qg_id == "n02"}
+    assert len(intermediate_proteins_in_result) > 1
+
+    # Then make sure when we introduce a not edge on our option group, we see a reduction in the proteins in the result
+    actions = [
+        "add_qnode(id=n0, curie=DOID:3312)",
+        "add_qnode(id=n1, curie=CHEBI:48607)",
+        "add_qnode(id=group1_n1, type=protein, option_group_id=1, is_set=true)",
+        "add_qnode(id=group1_n2, curie=UMLS:C0023692, option_group_id=1)",
+        "add_qedge(id=e0, source_id=n0, target_id=n1, type=related_to)",
+        "add_qedge(id=group1_e1, source_id=n0, target_id=group1_n1, option_group_id=1, type=predisposes)",
+        "add_qedge(id=group1_e2, source_id=group1_n1, target_id=n1, option_group_id=1, type=physically_interacts_with)",
+        "add_qedge(id=group1_ex, source_id=group1_n2, target_id=group1_n1, option_group_id=1, exclude=True)",
+        "expand()",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response_x, message_x = _do_arax_query(actions)
+    assert response_x.status == 'OK'
+    assert len(message_x.results) == 1
+    intermediate_proteins_in_result_x = {node_binding.kg_id for node_binding in message_x.results[0].node_bindings if node_binding.qg_id == "group1_n1"}
+    assert len(intermediate_proteins_in_result) > len(intermediate_proteins_in_result_x)
+
+
+@pytest.mark.slow
+def test_issue1119_f():
+    # Test (curie)--(curie) query where required portion is one-hop and there's one 3-hop optional group
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, curie=CHEBI:48607)",
+        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
+        "add_qnode(id=n03, type=pathway, option_group_id=1, is_set=true)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
+        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
+        "add_qedge(id=e02, source_id=n02, target_id=n03, option_group_id=1, type=affects)",
+        "add_qedge(id=e03, source_id=n03, target_id=n01, option_group_id=1, type=disrupts)",
+        "expand()",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) == 1
+    n02_proteins = {node_binding.kg_id for node_binding in message.results[0].node_bindings if node_binding.qg_id == "n02"}
+
+    # Then introduce a not edge going from the option group to the required (start) node
+    actions = [
+        "add_qnode(id=n00, curie=DOID:3312)",
+        "add_qnode(id=n01, curie=CHEBI:48607)",
+        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
+        "add_qnode(id=n03, type=pathway, option_group_id=1, is_set=true)",
+        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
+        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
+        "add_qedge(id=e02, source_id=n02, target_id=n03, option_group_id=1, type=affects)",
+        "add_qedge(id=e03, source_id=n03, target_id=n01, option_group_id=1, type=disrupts)",
+        "add_qedge(id=e0x, source_id=n02, target_id=n00, option_group_id=1, type=prevents, exclude=True)",
+        "expand()",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response_x, message_x = _do_arax_query(actions)
+    assert response_x.status == 'OK'
+    assert len(message_x.results) == 1
+    # Make sure this time we have fewer proteins included in our option group
+    n02_proteins_x = {node_binding.kg_id for node_binding in message_x.results[0].node_bindings if node_binding.qg_id == "n02"}
+    assert len(n02_proteins_x) < len(n02_proteins)
+
+
+def test_issue1146_a():
     actions = [
         "add_qnode(id=n0, curie=MONDO:0001475, type=disease)",
         "add_qnode(id=n2, type=chemical_substance)",
@@ -1254,7 +1466,6 @@ def test_issue1146():
         "overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n0, target_qnode_id=n2)",
         "resultify(debug=true)",
         "filter_results(action=limit_number_of_results, max_results=4)",
-        "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
@@ -1277,12 +1488,13 @@ def test_disconnected_qg():
         "add_qnode(name=acetaminophen, id=n01)",
         "add_qnode(type=disease, id=n02)",
         "add_qedge(id=e00, source_id=n01, target_id=n02)",
+        "expand(kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status != 'OK'
-    assert "Query graph is disconnected" in response.show()
+    assert "QG is disconnected" in response.show()
 
 
 if __name__ == '__main__':

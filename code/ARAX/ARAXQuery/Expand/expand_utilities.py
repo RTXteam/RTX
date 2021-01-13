@@ -3,7 +3,7 @@
 import sys
 import os
 import traceback
-from typing import List, Dict, Union, Tuple
+from typing import List, Dict, Union, Set, Tuple
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from swagger_server.models.knowledge_graph import KnowledgeGraph
@@ -23,6 +23,9 @@ class DictKnowledgeGraph:
         self.nodes_by_qg_id = nodes if nodes else dict()
         self.edges_by_qg_id = edges if edges else dict()
 
+    def __str__(self):
+        return f"nodes_by_qg_id:\n{self.nodes_by_qg_id}\nedges_by_qg_id:\n{self.edges_by_qg_id}"
+
     def add_node(self, node: Node, qnode_id: str):
         if qnode_id not in self.nodes_by_qg_id:
             self.nodes_by_qg_id[qnode_id] = dict()
@@ -32,6 +35,16 @@ class DictKnowledgeGraph:
         if qedge_id not in self.edges_by_qg_id:
             self.edges_by_qg_id[qedge_id] = dict()
         self.edges_by_qg_id[qedge_id][edge.id] = edge
+
+    def get_all_node_ids_used_by_edges(self) -> Set[str]:
+        return {node_id for edges in self.edges_by_qg_id.values() for edge in edges.values()
+                for node_id in [edge.source_id, edge.target_id]}
+
+    def get_all_node_ids(self) -> Set[str]:
+        return {node.id for nodes in self.nodes_by_qg_id.values() for node in nodes.values()}
+
+    def is_empty(self) -> bool:
+        return True if not self.nodes_by_qg_id.values() else False
 
 
 def get_curie_prefix(curie: str) -> str:
@@ -99,6 +112,10 @@ def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]) -> Lis
         return []
 
 
+def get_node_ids_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
+    return {node_id for edge in edges_dict.values() for node_id in [edge.source_id, edge.target_id]}
+
+
 def get_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> Dict[str, int]:
     counts_by_qg_id = dict()
     for qnode_id, nodes_dict in dict_kg.nodes_by_qg_id.items():
@@ -110,12 +127,38 @@ def get_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> Dict[str, int]:
 
 def get_printable_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> str:
     counts_by_qg_id = get_counts_by_qg_id(dict_kg)
-    return ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
+    counts_string = ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
+    return counts_string if counts_string else "none found"
 
 
 def get_query_node(query_graph: QueryGraph, qnode_id: str) -> QNode:
-    matching_nodes = [node for node in query_graph.nodes if node.id == qnode_id]
-    return matching_nodes[0] if matching_nodes else None
+    matching_qnodes = [qnode for qnode in query_graph.nodes if qnode.id == qnode_id]
+    return matching_qnodes[0] if matching_qnodes else None
+
+
+def get_query_edge(query_graph: QueryGraph, qedge_id: str) -> QEdge:
+    matching_qedges = [qedge for qedge in query_graph.edges if qedge.id == qedge_id]
+    return matching_qedges[0] if matching_qedges else None
+
+
+def get_qg_without_kryptonite_portion(query_graph: QueryGraph) -> QueryGraph:
+    kryptonite_qedges = [qedge for qedge in query_graph.edges if qedge.exclude]
+    normal_qedges = [qedge for qedge in query_graph.edges if not qedge.exclude]
+    normal_qedge_ids = {qedge.id for qedge in normal_qedges}
+    qnode_ids_used_by_kryptonite_qedges = {qnode_id for qedge in kryptonite_qedges for qnode_id in [qedge.source_id, qedge.target_id]}
+    qnode_ids_used_by_normal_qedges = {qnode_id for qedge in normal_qedges for qnode_id in [qedge.source_id, qedge.target_id]}
+    qnode_ids_used_only_by_kryptonite_qedges = qnode_ids_used_by_kryptonite_qedges.difference(qnode_ids_used_by_normal_qedges)
+    return QueryGraph(nodes=[qnode for qnode in query_graph.nodes if qnode.id not in qnode_ids_used_only_by_kryptonite_qedges],
+                      edges=[qedge for qedge in query_graph.edges if qedge.id in normal_qedge_ids])
+
+
+def get_required_portion_of_qg(query_graph: QueryGraph) -> QueryGraph:
+    return QueryGraph(nodes=[qnode for qnode in query_graph.nodes if not qnode.option_group_id],
+                      edges=[qedge for qedge in query_graph.edges if not qedge.option_group_id])
+
+
+def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -> Union[QEdge, Edge]:
+    return {edge_a.source_id, edge_a.target_id} == {edge_b.source_id, edge_b.target_id}
 
 
 def convert_standard_kg_to_dict_kg(knowledge_graph: KnowledgeGraph) -> DictKnowledgeGraph:
@@ -249,10 +292,12 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
             return []
 
 
-def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> bool:
+def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, enforce_required_only=False) -> bool:
+    if enforce_required_only:
+        qg_without_kryptonite_portion = get_qg_without_kryptonite_portion(query_graph)
+        query_graph = get_required_portion_of_qg(qg_without_kryptonite_portion)
     qnode_ids = [qnode.id for qnode in query_graph.nodes]
     qedge_ids = [qedge.id for qedge in query_graph.edges]
-
     for qnode_id in qnode_ids:
         if qnode_id not in dict_kg.nodes_by_qg_id or not dict_kg.nodes_by_qg_id[qnode_id]:
             return False
@@ -260,6 +305,35 @@ def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph) -> boo
         if qedge_id not in dict_kg.edges_by_qg_id or not dict_kg.edges_by_qg_id[qedge_id]:
             return False
     return True
+
+
+def qg_is_disconnected(qg: QueryGraph) -> bool:
+    qnode_ids_examined = {qg.nodes[0].id} if qg.nodes else {}  # Start with any qnode
+    qnode_ids_remaining = {qnode.id for qnode in qg.nodes}.difference(qnode_ids_examined)
+    # Repeatedly look for a qnode connected to at least one of the already examined qnodes
+    connected_qnode_id, _ = find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
+    while connected_qnode_id and qnode_ids_remaining:
+        qnode_ids_remaining.remove(connected_qnode_id)
+        qnode_ids_examined.add(connected_qnode_id)
+        connected_qnode_id, _ = find_qnode_connected_to_sub_qg(qnode_ids_examined, qnode_ids_remaining, qg)
+    # The QG must be disconnected if there are qnodes remaining that are not connected to any of our examined ones
+    return True if not connected_qnode_id and qnode_ids_remaining else False
+
+
+def find_qnode_connected_to_sub_qg(qnode_ids_to_connect_to: Set[str], qnode_ids_to_choose_from: Set[str], qg: QueryGraph) -> Tuple[str, Set[str]]:
+    """
+    This function selects a qnode ID from the qnode_ids_to_choose_from that connects to one or more of the qnode IDs
+    in the qnode_ids_to_connect_to (which itself could be considered a sub-graph of the QG). It also returns the IDs
+    of the connection points (all qnode ID(s) in qnode_ids_to_connect_to that the chosen node connects to).
+    """
+    for qnode_id_option in qnode_ids_to_choose_from:
+        all_qedges_using_qnode = [qedge for qedge in qg.edges if qnode_id_option in {qedge.source_id, qedge.target_id}]
+        all_connected_qnode_ids = {qnode_id for qedge in all_qedges_using_qnode
+                                   for qnode_id in {qedge.source_id, qedge.target_id}}.difference({qnode_id_option})
+        subgraph_connections = qnode_ids_to_connect_to.intersection(all_connected_qnode_ids)
+        if subgraph_connections:
+            return qnode_id_option, subgraph_connections
+    return "", set()
 
 
 def switch_kg_to_arax_curie_format(dict_kg: DictKnowledgeGraph) -> DictKnowledgeGraph:
