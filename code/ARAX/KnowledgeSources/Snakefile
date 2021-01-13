@@ -80,7 +80,7 @@ rule node_synonymizer:
         )
         """
 
-pubmed_xml_path = f"{os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'ngd'])}"
+pubmed_xml_path = f"{os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'ngd', 'pubmed_xml_files'])}"
 
 rule curie_to_pmids:
     input:
