@@ -33,6 +33,7 @@ class ARAXResponse:
         self.n_errors = 0
         self.n_warnings = 0
         self.data = {}
+        self.envelope = None
 
 
     #### Add a debugging message
