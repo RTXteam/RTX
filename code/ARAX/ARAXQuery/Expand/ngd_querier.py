@@ -43,7 +43,6 @@ class NGDQuerier:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
-        continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
 
@@ -115,12 +114,6 @@ class NGDQuerier:
                 final_kg.add_node(ngd_target_node, target_qnode.id)
                 edge_to_nodes_map[ngd_edge.id] = {source_qnode.id: ngd_source_node.id,
                                                   target_qnode.id: ngd_target_node.id}
-
-        if not eu.qg_is_fulfilled(query_graph, final_kg):
-            if continue_if_no_results:
-                log.warning(f"No paths were found satisfying this query graph using NGD")
-            else:
-                log.error(f"No paths were found satisfying this query graph using NGD", error_code="NoResults")
 
         return final_kg, edge_to_nodes_map
 

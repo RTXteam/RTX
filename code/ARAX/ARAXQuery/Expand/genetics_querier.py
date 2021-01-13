@@ -45,7 +45,6 @@ class GeneticsQuerier:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
-        continue_if_no_results = self.response.data['parameters']['continue_if_no_results']
         include_all_scores = self.response.data['parameters']['include_all_scores']
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -97,12 +96,6 @@ class GeneticsQuerier:
                 else:
                     log.warning(f"Node returned from {self.kp_name} is lacking an ID: {returned_node}."
                                 f" Will skip adding this node to the KG.")
-
-        if not eu.qg_is_fulfilled(query_graph, final_kg):
-            if continue_if_no_results:
-                log.warning(f"{self.kp_name} found no paths satisfying this query graph")
-            else:
-                log.error(f"{self.kp_name} found no paths satisfying this query graph", error_code="NoResults")
 
         return final_kg, edge_to_nodes_map
 

@@ -96,6 +96,17 @@ def test_add_qnode_type():
     assert message.query_graph.nodes[0].type == 'protein'
 
 
+def test_add_qnode_group_id_is_set_false():
+    messenger = ARAXMessenger()
+    response = messenger.create_message()
+    assert response.status == 'OK'
+    message = response.data['message']
+    response = messenger.add_qnode(message, { 'type': 'protein', 'is_set' : 'false', 'option_group_id' : '0' })
+    assert response.status == 'ERROR'
+    assert isinstance(message.query_graph.nodes, list)
+    assert len(message.query_graph.nodes) == 0
+    assert response.error_code == 'InputMismatch'
+
 def test_add_qnode_bad_name():
     messenger = ARAXMessenger()
     response = messenger.create_message()

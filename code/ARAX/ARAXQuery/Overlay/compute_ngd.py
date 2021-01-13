@@ -110,9 +110,10 @@ class ComputeNGD:
                 #edge_type = parameters['virtual_edge_type']
                 edge_type = "has_normalized_google_distance_with"
                 relation = parameters['virtual_relation_label']
+                option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id, qg, self.response)
                 q_edge = QEdge(id=relation, type=edge_type, relation=relation,
-                               source_id=parameters['source_qnode_id'], target_id=parameters[
-                        'target_qnode_id'])
+                               source_id=source_qnode_id, target_id=target_qnode_id,
+                               option_group_id=option_group_id)
                 self.message.query_graph.edges.append(q_edge)
 
             self.response.info(f"NGD values successfully added to edges")

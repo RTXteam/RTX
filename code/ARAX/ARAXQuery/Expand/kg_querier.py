@@ -29,7 +29,6 @@ class KGQuerier:
     def __init__(self, response_object: ARAXResponse, input_kp: str):
         self.response = response_object
         self.enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
-        self.continue_if_no_results = self.response.data['parameters'].get('continue_if_no_results')
         self.use_synonyms = self.response.data['parameters'].get('use_synonyms')
         if input_kp == "ARAX/KG2":
             if self.use_synonyms:
@@ -51,7 +50,6 @@ class KGQuerier:
         """
         log = self.response
         enforce_directionality = self.enforce_directionality
-        continue_if_no_results = self.continue_if_no_results
         use_synonyms = self.use_synonyms
         kg_name = self.kg_name
         final_kg = DictKnowledgeGraph()
@@ -66,7 +64,7 @@ class KGQuerier:
             log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph with more than two nodes: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
             return final_kg, edge_to_nodes_map
-        qedge_id = query_graph.edges[0].id
+        qedge = query_graph.edges[0]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
         if use_synonyms and kg_name == "KG1":
@@ -84,7 +82,7 @@ class KGQuerier:
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kg_name, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_id, kg_name, continue_if_no_results, log)
+        neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge, kg_name, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         final_kg, edge_to_nodes_map = self._load_answers_into_kg(neo4j_results, kg_name, query_graph, log)
@@ -94,7 +92,6 @@ class KGQuerier:
         return final_kg, edge_to_nodes_map
 
     def answer_single_node_query(self, qnode: QNode) -> DictKnowledgeGraph:
-        continue_if_no_results = self.continue_if_no_results
         kg_name = self.kg_name
         use_synonyms = self.use_synonyms
         log = self.response
@@ -116,11 +113,6 @@ class KGQuerier:
         results = self._run_cypher_query(cypher_query, kg_name, log)
 
         # Load the results into swagger object model and add to our answer knowledge graph
-        if not results:
-            if continue_if_no_results:
-                log.warning(f"No paths were found in {kg_name} satisfying this query graph")
-            else:
-                log.error(f"No paths were found in {kg_name} satisfying this query graph", error_code="NoResults")
         for result in results:
             neo4j_node = result.get(qnode.id)
             swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
@@ -186,19 +178,13 @@ class KGQuerier:
             log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
             return ""
 
-    def _answer_query_using_neo4j(self, cypher_query: str, qedge_id: str, kg_name: str, continue_if_no_results: bool,
-                                  log: ARAXResponse) -> List[Dict[str, List[Dict[str, any]]]]:
-        log.info(f"Sending cypher query for edge {qedge_id} to {kg_name} neo4j")
+    def _answer_query_using_neo4j(self, cypher_query: str, qedge: QEdge, kg_name: str, log: Response) -> List[Dict[str, List[Dict[str, any]]]]:
+        log.info(f"Sending cypher query for edge {qedge.id} to {kg_name} neo4j")
         results_from_neo4j = self._run_cypher_query(cypher_query, kg_name, log)
         if log.status == 'OK':
             columns_with_lengths = dict()
             for column in results_from_neo4j[0]:
                 columns_with_lengths[column] = len(results_from_neo4j[0].get(column))
-            if any(length == 0 for length in columns_with_lengths.values()):
-                if continue_if_no_results:
-                    log.warning(f"No paths were found in {kg_name} satisfying this query graph")
-                else:
-                    log.error(f"No paths were found in {kg_name} satisfying this query graph", error_code="NoResults")
         return results_from_neo4j
 
     def _load_answers_into_kg(self, neo4j_results: List[Dict[str, List[Dict[str, any]]]], kg_name: str,
