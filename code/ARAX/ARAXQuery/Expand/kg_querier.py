@@ -178,7 +178,7 @@ class KGQuerier:
             log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
             return ""
 
-    def _answer_query_using_neo4j(self, cypher_query: str, qedge: QEdge, kg_name: str, log: Response) -> List[Dict[str, List[Dict[str, any]]]]:
+    def _answer_query_using_neo4j(self, cypher_query: str, qedge: QEdge, kg_name: str, log: ARAXResponse) -> List[Dict[str, List[Dict[str, any]]]]:
         log.info(f"Sending cypher query for edge {qedge.id} to {kg_name} neo4j")
         results_from_neo4j = self._run_cypher_query(cypher_query, kg_name, log)
         if log.status == 'OK':
