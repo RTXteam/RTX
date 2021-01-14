@@ -15,13 +15,13 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.node import Node
-from swagger_server.models.edge import Edge
-from swagger_server.models.node_attribute import NodeAttribute
-from swagger_server.models.edge_attribute import EdgeAttribute
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.q_node import QNode
-from swagger_server.models.q_edge import QEdge
+from openapi_server.models.node import Node
+from openapi_server.models.edge import Edge
+from openapi_server.models.node_attribute import NodeAttribute
+from openapi_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.q_node import QNode
+from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/KnowledgeSources/COHD_local/scripts/")
 from COHDIndex import COHDIndex
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/NodeSynonymizer/")

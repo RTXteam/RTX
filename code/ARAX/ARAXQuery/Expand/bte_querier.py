@@ -14,11 +14,11 @@ from expand_utilities import DictKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.node import Node
-from swagger_server.models.edge import Edge
-from swagger_server.models.q_node import QNode
-from swagger_server.models.q_edge import QEdge
-from swagger_server.models.query_graph import QueryGraph
+from openapi_server.models.node import Node
+from openapi_server.models.edge import Edge
+from openapi_server.models.q_node import QNode
+from openapi_server.models.q_edge import QEdge
+from openapi_server.models.query_graph import QueryGraph
 
 
 class BTEQuerier:

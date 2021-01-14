@@ -7,7 +7,7 @@ import numpy as np
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute as EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
@@ -33,13 +33,13 @@ class RemoveEdges:
                 self.response.error(f"Fiter removed all of the nodes in the knowledge graph with the qnode id {k}", error_code="RemovedQueryNode")
 
 
-    def remove_edges_by_type(self):
+    def remove_edges_by_predicate(self):
         """
         Iterate over all the edges in the knowledge graph, remove any edges matching the discription provided.
         :return: response
         """
         self.response.debug(f"Removing Edges")
-        self.response.info(f"Removing edges from the knowledge graph matching the specified type")
+        self.response.info(f"Removing edges from the knowledge graph matching the specified predicate")
         edge_params = self.edge_parameters
         try:
             i = 0
@@ -50,7 +50,7 @@ class RemoveEdges:
                 edge_qid_dict[q_edge.id] = {'source':q_edge.source_id, 'target':q_edge.target_id}
             # iterate over the edges find the edges to remove
             for edge in self.message.knowledge_graph.edges:
-                if edge.predicate == edge_params['edge_type']:
+                if edge.predicate == edge_params['edge_predicate']:
                     edges_to_remove.add(i)
                     if edge_params['remove_connected_nodes']:
                         for qedge_id in edge.qedge_ids:

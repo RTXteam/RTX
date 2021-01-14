@@ -8,7 +8,7 @@ import math
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute as EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
@@ -150,25 +150,25 @@ class SortResults:
             node_values = {}
             # iterate over the nodes find the attribute values
             for node in self.message.knowledge_graph.nodes:  # iterate over the nodes
-                node_values[str(node.id)] = {'value': None, 'type': node.category}
+                node_values[str(node.id)] = {'value': None, 'category': node.category}
                 if hasattr(node, 'node_attributes'):  # check if they have attributes
                     if node.node_attributes:  # if there are any node attributes
                         for attribute in node.node_attributes:  # for each attribute
                             if attribute.name == params['node_attribute']:  # check if it's the desired one
                                 if attribute.name == 'pubmed_ids':
-                                    node_values[str(node.id)] = {'value': attribute.value.count("PMID"), 'type': node.category}
+                                    node_values[str(node.id)] = {'value': attribute.value.count("PMID"), 'category': node.category}
                                 else:
-                                    node_values[str(node.id)] = {'value': attribute.value, 'type': node.category}
+                                    node_values[str(node.id)] = {'value': attribute.value, 'category': node.category}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
                 value_list=[math.inf]*len(self.message.results)
             i = 0
-            type_flag = 'node_type' in params
+            type_flag = 'node_category' in params
             for result in self.message.results:
                 for binding in result.node_bindings:
                     if node_values[binding.kg_id]['value'] is not None:
-                        if not type_flag or (type_flag and params['node_type'] == node_values[binding.kg_id]['type']):
+                        if not type_flag or (type_flag and params['node_category'] == node_values[binding.kg_id]['category']):
                             if abs(value_list[i]) == math.inf:
                                 value_list[i] = node_values[binding.kg_id]['value']
                             else:
