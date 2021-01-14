@@ -739,21 +739,26 @@ class ARAXMessenger:
 
         if str(message.__class__) != "<class 'openapi_server.models.message.Message'>":
             message = Message().from_dict(message)
-        message.query_graph = QueryGraph().from_dict(message.query_graph)
-        message.knowledge_graph = KnowledgeGraph().from_dict(message.knowledge_graph)
+
+        # When tested from ARAX_query_graph_interpreter, none of this subsequent stuff is needed
+
+        #print(message.query_graph.__class__)
+        #message.query_graph = QueryGraph().from_dict(message.query_graph)
+        #message.knowledge_graph = KnowledgeGraph().from_dict(message.knowledge_graph)
 
         #### This is an unfortunate hack that fixes qnode.curie entries
         #### Officially a curie can be a str or a list. But Swagger 2.0 only permits one type and we set it to str
         #### so when it gets converted from_dict, the list gets converted to a str because that's its type
         #### Here we force it back. This should no longer be needed when we are properly on OpenAPI 3.0
-        if message.query_graph is not None and message.query_graph.nodes is not None:
-            for qnode in message.query_graph.nodes:
-                if qnode.curie is not None and isinstance(qnode.curie,str):
-                    if qnode.curie[0:2] == "['":
-                        try:
-                            qnode.curie = ast.literal_eval(qnode.curie)
-                        except:
-                            pass
+        #if message.query_graph is not None and message.query_graph.nodes is not None:
+        #    for qnode_key,qnode in message.query_graph.nodes.items():
+        #        print(qnode.__class__)
+                #if qnode.curie is not None and isinstance(qnode.curie,str):
+                #    if qnode.curie[0:2] == "['":
+                #        try:
+                #            qnode.curie = ast.literal_eval(qnode.curie)
+                #        except:
+                #            pass
 
         #new_nodes = []
         #for qnode in message.query_graph.nodes:
@@ -764,12 +769,12 @@ class ARAXMessenger:
         #    new_edges.append(QEdge().from_dict(qedge))
         #message.query_graph.edges = new_edges
 
-        if message.results is not None:
-            for result in message.results:
-                if result.result_graph is not None:
-                    #eprint(str(result.result_graph.__class__))
-                    if str(result.result_graph.__class__) != "<class 'openapi_server.models.knowledge_graph.KnowledgeGraph'>":
-                        result.result_graph = KnowledgeGraph().from_dict(result.result_graph)
+        #if message.results is not None:
+        #    for result in message.results:
+        #        if result.result_graph is not None:
+        #            #eprint(str(result.result_graph.__class__))
+        #            if str(result.result_graph.__class__) != "<class 'openapi_server.models.knowledge_graph.KnowledgeGraph'>":
+        #                result.result_graph = KnowledgeGraph().from_dict(result.result_graph)
 
         return message
 
