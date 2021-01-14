@@ -69,16 +69,16 @@ class QueryGraphInfo:
         self.node_category_map = {}
         for key,qnode in nodes.items():
             node_info[key] = { 'key': key, 'node_object': qnode, 'has_curie': False, 'category': qnode.category, 'has_category': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
-            if qnode.curie is not None:
+            if qnode.id is not None:
                 node_info[key]['has_curie'] = True
 
                 #### If the user did not specify a category, but there is a curie, try to figure out the category
                 if node_info[key]['category'] is None:
                     synonymizer = NodeSynonymizer()
-                    canonical_curies = synonymizer.get_canonical_curies(curies=[qnode.curie], return_all_types=True)
-                    if qnode.curie in canonical_curies and 'preferred_type' in canonical_curies[qnode.curie]:
+                    canonical_curies = synonymizer.get_canonical_curies(curies=[qnode.id], return_all_types=True)
+                    if qnode.id in canonical_curies and 'preferred_type' in canonical_curies[qnode.id]:
                         node_info[key]['has_category'] = True
-                        node_info[key]['category'] = canonical_curies[qnode.curie]['preferred_type']
+                        node_info[key]['category'] = canonical_curies[qnode.id]['preferred_type']
 
             if qnode.category is not None:
                 node_info[key]['has_category'] = True
