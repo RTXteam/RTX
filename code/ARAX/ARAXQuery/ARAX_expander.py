@@ -595,7 +595,7 @@ class ARAXExpander:
 
     @staticmethod
     def _store_kryptonite_edge_info(edge_node_usage_map: Dict[str, Dict[str, str]], kryptonite_qedge: QEdge,
-                                    encountered_kryptonite_edges_info: Dict[str, Dict[str, Set[str]]], log: Response):
+                                    encountered_kryptonite_edges_info: Dict[str, Dict[str, Set[str]]], log: ARAXResponse):
         """
         This function adds the IDs of nodes found by expansion of the given kryptonite ("not") edge to the global
         encountered_kryptonite_edges_info dictionary, which is organized by QG IDs. This allows Expand to "remember"
@@ -664,7 +664,7 @@ class ARAXExpander:
     @staticmethod
     def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, query_graph: QueryGraph,
                               node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], qedge_expanded: QEdge,
-                              log: Response):
+                              log: ARAXResponse):
         # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         # found in the last expansion will connect to edges in the next one)
         log.debug(f"Pruning any paths that are now dead ends")

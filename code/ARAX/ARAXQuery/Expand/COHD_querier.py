@@ -86,7 +86,7 @@ class COHDQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def _answer_query_using_COHD_paired_concept_freq(self, query_graph: QueryGraph, COHD_method_percentile: float, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_COHD_paired_concept_freq(self, query_graph: QueryGraph, COHD_method_percentile: float, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id} by using paired concept frequency")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -355,7 +355,7 @@ class COHDQuerier:
 
             return final_kg, edge_to_nodes_map
 
-    def _answer_query_using_COHD_observed_expected_ratio(self, query_graph: QueryGraph, COHD_method_percentile: float, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_COHD_observed_expected_ratio(self, query_graph: QueryGraph, COHD_method_percentile: float, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id} by using natural logarithm of observed expected ratio")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
@@ -620,7 +620,7 @@ class COHDQuerier:
                 log.info(f"The average threshold based on {COHD_method_percentile}th percentile of natural logarithm of observed expected ratio is {threshold/count}")
             return final_kg, edge_to_nodes_map
 
-    def _answer_query_using_COHD_chi_square(self, query_graph: QueryGraph, COHD_method_percentile: float, log: Response) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_COHD_chi_square(self, query_graph: QueryGraph, COHD_method_percentile: float, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {query_graph.edges[0].id} by using chi square pvalue")
         final_kg = DictKnowledgeGraph()
         edge_to_nodes_map = dict()
