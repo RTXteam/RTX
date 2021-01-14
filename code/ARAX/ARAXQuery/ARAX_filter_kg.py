@@ -51,7 +51,7 @@ class ARAXFilterKG:
         }
         self.edge_property_info = {
             "is_required": True,
-            "examples": ['source_id', 'provided_by', 'is_defined_by'],
+            "examples": ['subject', 'provided_by', 'is_defined_by'],
             "type": "string",
             "description": "The name of the edge property to filter on."
         }
@@ -214,7 +214,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
 Use cases include:
                 
 * removing all edges that were provided by a certain knowledge provider (KP) via `edge_property=provided, property_value=Pharos` to remove all edges provided by the KP Pharos.
-* removing all edges that connect to a certain node via `edge_property=source_id, property_value=DOID:8398`
+* removing all edges that connect to a certain node via `edge_property=subject, property_value=DOID:8398`
 * removing all edges with a certain relation via `edge_property=relation, property_value=upregulates`
 * removing all edges provided by another ARA via `edge_property=is_defined_by, property_value=ARAX/RTX`
 * etc. etc.
