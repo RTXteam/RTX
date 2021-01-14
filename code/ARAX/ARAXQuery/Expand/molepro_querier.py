@@ -11,9 +11,9 @@ from Expand.expand_utilities import DictKnowledgeGraph
 from ARAX_response import ARAXResponse
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.node import Node
-from swagger_server.models.edge import Edge
-from swagger_server.models.query_graph import QueryGraph
+from openapi_server.models.node import Node
+from openapi_server.models.edge import Edge
+from openapi_server.models.query_graph import QueryGraph
 
 
 class MoleProQuerier:
