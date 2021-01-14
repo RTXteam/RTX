@@ -18,18 +18,18 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.message import Message
-from swagger_server.models.knowledge_graph import KnowledgeGraph
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.q_node import QNode
-from swagger_server.models.q_edge import QEdge
+from openapi_server.models.message import Message
+from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.q_node import QNode
+from openapi_server.models.q_edge import QEdge
 
 
 class ARAXQueryGraphInterpreter:
 
     #### Constructor
     def __init__(self):
-        self.response = ARAXResponse()
+        self.response = None
         self.message = None
         self.parameters = None
 
@@ -40,15 +40,15 @@ class ARAXQueryGraphInterpreter:
 
 
     # #### Create a fresh Message object and fill with defaults
-    def translate_to_araxi(self, message, describe=False):
+    def translate_to_araxi(self, response, describe=False):
         """
         Translate an input query_graph into ARAXi
         :return: ARAXResponse object with execution information and the DSL command set
         :rtype: ARAXResponse
         """
 
-        #### Get a default response
-        response = self.response
+        #### Extract the message from the response
+        message = response.envelope.message
         debug = False
 
         #### Ensure that query_graph_templates is ready
@@ -87,8 +87,8 @@ class ARAXQueryGraphInterpreter:
             if component['component_type'] == 'node':
 
                 # Go through the list of possible things it could be and those or lesser possible next steps
-                if component['has_curie'] and component['has_type'] and component['type_value']:
-                    possible_next_steps.append( { 'content': f"curie,type={component['type_value']}", 'score': 10000 } )
+                if component['has_curie'] and component['has_category'] and component['category_value']:
+                    possible_next_steps.append( { 'content': f"curie,category={component['category_value']}", 'score': 10000 } )
                     possible_next_steps.append( { 'content': 'curie', 'score': 1000 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
@@ -96,13 +96,13 @@ class ARAXQueryGraphInterpreter:
                     possible_next_steps.append( { 'content': 'curie', 'score': 1000 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_type'] and component['type_value']:
-                    possible_next_steps.append( { 'content': f"type={component['type_value']}", 'score': 100 } )
-                    possible_next_steps.append( { 'content': 'type', 'score': 10 } )
+                elif component['has_category'] and component['category_value']:
+                    possible_next_steps.append( { 'content': f"category={component['category_value']}", 'score': 100 } )
+                    possible_next_steps.append( { 'content': 'category', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_type']:
-                    possible_next_steps.append( { 'content': 'type', 'score': 10 } )
+                elif component['has_category']:
+                    possible_next_steps.append( { 'content': 'category', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
                 else:
@@ -111,13 +111,13 @@ class ARAXQueryGraphInterpreter:
             # Else it's an edge. Don't do anything with those currently
             else:
                 # Go through the list of possible things it could be and those or lesser possible next steps
-                if component['has_type'] and component['type_value']:
-                    possible_next_steps.append( { 'content': f"type={component['type_value']}", 'score': 90 } )
-                    possible_next_steps.append( { 'content': 'type', 'score': 10 } )
+                if component['has_predicate'] and component['predicate_value']:
+                    possible_next_steps.append( { 'content': f"predicate={component['predicate_value']}", 'score': 90 } )
+                    possible_next_steps.append( { 'content': 'predicate', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_type']:
-                    possible_next_steps.append( { 'content': 'type', 'score': 10 } )
+                elif component['has_predicate']:
+                    possible_next_steps.append( { 'content': 'predicate', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
                 else:
@@ -187,7 +187,7 @@ class ARAXQueryGraphInterpreter:
     def read_query_graph_templates(self):
         """
         Read the YAML file containing the current QueryGraph templates
-        :rtype: None
+        :rcategory: None
         """
 
         # The template file is stored right next to this code
@@ -216,7 +216,7 @@ class ARAXQueryGraphInterpreter:
             self.query_graph_templates = None
             return self.response
 
-        # We will create dict lookup table of all the template string [e.g. 'n00(curie)-e00()-n01(type)' -> template_name]
+        # We will create dict lookup table of all the template string [e.g. 'n00(curie)-e00()-n01(category)' -> template_name]
         self.query_graph_templates['template_strings'] = {}
 
         # We will also create dict tree of all templates organized by the number of nodes and then by each component
@@ -278,12 +278,12 @@ def QGI_test1():
 
     #### Some qnode examples
     test_query_graphs = [
-        [ { 'id': 'n10', 'curie': 'DOID:9281', 'type': 'disease'}, { 'id': 'n11', 'type': 'chemical_substance'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11', 'type': 'treats'} ],
-        [ { 'id': 'n10', 'curie': 'DOID:9281'}, { 'id': 'n11', 'type': 'protein'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11'} ],
-        [ { 'id': 'n10', 'curie': 'DOID:9281'}, { 'id': 'n11', 'type': 'protein'}, { 'id': 'n12', 'type': 'chemical_substance'},
+        [ { 'id': 'n10', 'curie': 'DOID:9281', 'category': 'disease'}, { 'id': 'n11', 'category': 'chemical_substance'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11', 'category': 'treats'} ],
+        [ { 'id': 'n10', 'curie': 'DOID:9281'}, { 'id': 'n11', 'category': 'protein'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11'} ],
+        [ { 'id': 'n10', 'curie': 'DOID:9281'}, { 'id': 'n11', 'category': 'protein'}, { 'id': 'n12', 'category': 'chemical_substance'},
             { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11'}, { 'id': 'e11', 'source_id': 'n11', 'target_id': 'n12'} ],
-        [ { 'id': 'n10', 'curie': 'DOID:9281'}, { 'id': 'n11', 'type': 'chemical_substance'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11'} ],
-        [ { 'id': 'n10', 'curie': 'DOID:9281', 'type': 'disease'}, { 'id': 'n11', 'type': 'chemical_substance'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11'} ],
+        [ { 'id': 'n10', 'curie': 'DOID:9281'}, { 'id': 'n11', 'category': 'chemical_substance'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11'} ],
+        [ { 'id': 'n10', 'curie': 'DOID:9281', 'category': 'disease'}, { 'id': 'n11', 'category': 'chemical_substance'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11'} ],
     ]
 
     #interpreter = ARAXQueryGraphInterpreter()
@@ -297,32 +297,28 @@ def QGI_test1():
 
         #### Create a template Message
         messenger = ARAXMessenger()
-        result = messenger.create_message()
-        response.merge(result)
-        message = messenger.message
+        messenger.create_envelope(response)
+        message = response.envelope.message
 
         for parameters in test_query_graph:
             if 'n' in parameters['id']:
-                result = messenger.add_qnode(message, parameters)
-                response.merge(result)
-                if result.status != 'OK':
+                messenger.add_qnode(response, parameters)
+                if response.status != 'OK':
                     print(response.show(level=ARAXResponse.DEBUG))
                     return response
             elif 'e' in parameters['id']:
                 #print(f"++ Adding qedge with {parameters}")
-                result = messenger.add_qedge(message, parameters)
-                response.merge(result)
-                if result.status != 'OK':
+                messenger.add_qedge(response, parameters)
+                if response.status != 'OK':
                     print(response.show(level=ARAXResponse.DEBUG))
                     return response
             else:
-                response.error(f"Unrecognized type {parameters['id']}")
+                response.error(f"Unrecognized component {parameters['id']}")
                 return response
 
         interpreter = ARAXQueryGraphInterpreter()
-        result = interpreter.translate_to_araxi(message)
-        response.merge(result)
-        if result.status != 'OK':
+        interpreter.translate_to_araxi(response)
+        if response.status != 'OK':
             print(response.show(level=ARAXResponse.DEBUG))
             return response
 
@@ -341,20 +337,28 @@ def QGI_test1():
 def QGI_test2():
 
     #### Set example query_graph
-    input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "type": "biolink:Drug" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "type": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
+    # TRAPI 0.9.2
+    input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "category": "biolink:Drug" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "predicate": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
+    # TRAPI 1.0.0
+    input_query_graph = { "message": { "query_graph": { 
+        "nodes": { "n1": { "category": "biolink:Drug" }, "n2": { "id": "UMLS:C0002395" } },
+        "edges": { "e1": { "predicate": "clinically_tested_approved_unknown_phase", "subject": "n1", "object": "n2" } }
+        } } }
 
     #### Create a template Message
     response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
     message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message = message
 
     interpreter = ARAXQueryGraphInterpreter()
-    result = interpreter.translate_to_araxi(message)
-    response.merge(result)
-    if result.status != 'OK':
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
         print(response.show(level=ARAXResponse.DEBUG))
         return response
 
-    araxi_commands = result.data['araxi_commands']
+    araxi_commands = response.data['araxi_commands']
     print(araxi_commands)
 
     #### Show the final result
