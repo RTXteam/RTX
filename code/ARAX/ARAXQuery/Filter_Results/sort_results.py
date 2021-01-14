@@ -8,7 +8,7 @@ import math
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from openapi_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute as EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
