@@ -277,18 +277,18 @@ This action interacts particularly well with overlay() as overlay() frequently a
             "remove_nodes_by_type": {
                 "dsl_command": "filter_kg(action=remove_nodes_by_type)",
                 "description": """
-`remove_node_by_type` removes nodes from the knowledge graph (KG) based on a given node type.
+`remove_node_by_type` removes nodes from the knowledge graph (KG) based on a given node category.
 Use cases include:
-* removing all nodes that have `node_type=protein`.
-* removing all nodes that have `node_type=chemical_substance`.
+* removing all nodes that have `node_category=protein`.
+* removing all nodes that have `node_category=chemical_substance`.
 * etc.
-This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+This can be applied to an arbitrary knowledge graph as possible node categories are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
-remove_node_by_type removes nodes from the knowledge graph (KG) based on a given node type.
+remove_node_by_type removes nodes from the knowledge graph (KG) based on a given node category.
                     """,
                 "parameters": {
-                    "node_type": self.node_type_required_info
+                    "node_category": self.node_type_required_info
                 }
             },
             "remove_nodes_by_property": {
@@ -315,16 +315,16 @@ remove_nodes_by_property removes nodes from the knowledge graph (KG) based on a 
                 "dsl_command": "filter_kg(action=remove_orphaned_nodes)",
                 "description": """
 `remove_orphaned_nodes` removes nodes from the knowledge graph (KG) that are not connected via any edges.
-Specifying a `node_type` will restrict this to only remove orphaned nodes of a certain type.
-This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+Specifying a `node_category` will restrict this to only remove orphaned nodes of a certain category.
+This can be applied to an arbitrary knowledge graph as possible node categories are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
 remove_orphaned_nodes removes nodes from the knowledge graph (KG) that are not connected via any edges.
-Specifying a 'node_type' will restrict this to only remove orphaned nodes of a certain type.
-This can be applied to an arbitrary knowledge graph as possible node types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+Specifying a 'node_category' will restrict this to only remove orphaned nodes of a certain category.
+This can be applied to an arbitrary knowledge graph as possible node categories are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 "parameters": {
-                    "node_type": self.node_type_info
+                    "node_category": self.node_type_info
                 }
             }
         }
@@ -808,7 +808,7 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
     def __remove_nodes_by_type(self, describe=False):
         """
         Removes nodes from the KG.
-        Allowable parameters: {'node_type': str, 
+        Allowable parameters: {'node_category': str, 
                                 'node_property': str,
                                 'direction': {'above', 'below'}}
         :return:
@@ -818,11 +818,11 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'remove_nodes_by_type'},
-                                    'node_type': set([t for x in self.message.knowledge_graph.nodes for t in x.category])
+                                    'node_category': set([t for x in self.message.knowledge_graph.nodes for t in x.category])
                                    }
         else:
             allowable_parameters = {'action': {'remove_nodes_by_type'}, 
-                                'node_type': {'a node type'}}
+                                'node_category': {'a node category'}}
 
         # A little function to describe what this thing does
         if describe:
@@ -847,7 +847,7 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
     def __remove_nodes_by_property(self, describe=False):
         """
         Removes nodes from the KG.
-        Allowable parameters: {'node_type': str, 
+        Allowable parameters: {'node_category': str, 
                                 'node_property': str,
                                 'direction': {'above', 'below'}}
         :return:
@@ -913,7 +913,7 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
     def __remove_orphaned_nodes(self, describe=False):
         """
         Removes orphaned nodes from the KG nodes from the KG.
-        Allowable parameters: {'node_type': str,
+        Allowable parameters: {'node_category': str,
                                 'node_property': str,}
         :return:
         """
@@ -922,12 +922,12 @@ This can be applied to an arbitrary knowledge graph as possible node types are c
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'remove_orphaned_nodes'},
-                                    'node_type': set(
+                                    'node_category': set(
                                         [t for x in self.message.knowledge_graph.nodes for t in x.category])
                                     }
         else:
             allowable_parameters = {'action': {'remove_orphaned_nodes'},
-                                    'node_type': {'a node type (optional)'}}
+                                    'node_category': {'a node category (optional)'}}
 
         # A little function to describe what this thing does
         if describe:
@@ -969,7 +969,7 @@ def main():
     actions_list = [
         #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=false)",
         #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=something)",
-        #"filter(action=remove_nodes_by_type, node_type=protein)",
+        #"filter(action=remove_nodes_by_type, node_category=protein)",
         #"overlay(action=compute_ngd)",
         #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.63, direction=below, remove_connected_nodes=t)",
         #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.6, remove_connected_nodes=False)",

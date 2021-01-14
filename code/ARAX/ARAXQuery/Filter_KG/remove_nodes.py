@@ -28,7 +28,7 @@ class RemoveNodes:
             node_ids_to_remove = set()
             # iterate over the edges find the edges to remove
             for node in self.message.knowledge_graph.nodes:
-                if self.node_parameters['node_type'] in node.category:
+                if self.node_parameters['node_category'] in node.category:
                     nodes_to_remove.add(i)
                     node_ids_to_remove.add(node.id)
                 i += 1
@@ -117,7 +117,7 @@ class RemoveNodes:
             node_indexes_to_remove = set()
             i = 0  # counter to keep track of where this node is in the message.knowledge_graph.nodes list
             for node in self.message.knowledge_graph.nodes:
-                if 'node_type' in node_parameters and node_parameters['node_type'] in node.category:
+                if 'node_category' in node_parameters and node_parameters['node_category'] in node.category:
                     if node.id not in connected_node_ids:
                         node_indexes_to_remove.add(i)
                 else:

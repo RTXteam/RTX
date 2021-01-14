@@ -130,7 +130,7 @@ Node attributes are a list of additional attributes for an node.
                     """,
                 "parameters": {
                     "node_attribute": self.node_attribute_info,
-                    "node_type": self.node_type_info,
+                    "node_category": self.node_type_info,
                     "direction": self.direction_info,
                     "max_results": self.max_results_info,
                     "prune_kg": self.prune_kg_info
@@ -425,15 +425,15 @@ sort_by_node_count sorts the results by the number of nodes in the results.
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_node_attribute'},
                                     'node_attribute': known_attributes,
-                                    'node_type': set([t for x in self.message.knowledge_graph.nodes for t in x.category]),
+                                    'node_category': set([t for x in self.message.knowledge_graph.nodes for t in x.category]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()},
                                     'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_node_attribute'},
-                                    'node_attribute': {'an node attribute'},
-                                    'node_type': {'an node type'},
+                                    'node_attribute': {'a node attribute'},
+                                    'node_category': {'a node category'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {'the maximum number of results to return'},
                                     'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
