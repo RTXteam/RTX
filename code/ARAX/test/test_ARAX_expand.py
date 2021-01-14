@@ -16,9 +16,9 @@ from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
 import Expand.expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.edge import Edge
-from swagger_server.models.node import Node
-from swagger_server.models.query_graph import QueryGraph
+from openapi_server.models.edge import Edge
+from openapi_server.models.node import Node
+from openapi_server.models.query_graph import QueryGraph
 
 
 def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_incomplete=False, debug=False,
