@@ -132,9 +132,9 @@ class ARAXMessenger:
         command_definition = {
             'dsl_command': 'add_qnode()',
             'description': """The `add_qnode` method adds an additional QNode to the QueryGraph in the Message object. Currently
-                when a curie or name is specified, this method will only return success if a matching node is found in the KG1/KG2 KGNodeIndex.""",
+                when a id or name is specified, this method will only return success if a matching node is found in the KG1/KG2 KGNodeIndex.""",
             'parameters': {
-                'id': { 
+                'key': { 
                     'is_required': False,
                     'examples': [ 'n00', 'n01' ],
                     'default': '',
@@ -142,7 +142,7 @@ class ARAXMessenger:
                     'description': """Any string that is unique among all QNode id fields, with recommended format n00, n01, n02, etc.
                         If no value is provided, autoincrementing values beginning for n00 are used.""",
                     },
-                'curie': {
+                'id': {
                     'is_required': False,
                     'examples': [ 'DOID:9281', '[UniProtKB:P12345,UniProtKB:Q54321]' ],
                     'type': 'string',
@@ -189,8 +189,8 @@ class ARAXMessenger:
 
         #### Define a complete set of allowed parameters and their defaults
         parameters = {
+            'key': None,
             'id': None,
-            'curie': None,
             'name': None,
             'category': None,
             'is_set': None,
@@ -236,8 +236,8 @@ class ARAXMessenger:
 
         # Create the QNode and set the id
         qnode = QNode()
-        if parameters['id'] is not None:
-            key = parameters['id']
+        if parameters['key'] is not None:
+            key = parameters['key']
         else:
             key = self.__get_next_free_node_id()
 
@@ -248,56 +248,56 @@ class ARAXMessenger:
         if parameters['is_set'] is not None:
             qnode.is_set = ( parameters['is_set'].lower() == 'true' or parameters['is_set'].lower() == 't' )
 
-        #### If the CURIE is specified, try to find that
-        if parameters['curie'] is not None:
+        #### If the id is specified, try to find that
+        if parameters['id'] is not None:
 
-            # If the curie is a scalar then treat it here as a list of one
-            if isinstance(parameters['curie'], str):
-                curie_list = [ parameters['curie'] ]
-                is_curie_a_list = False
+            # If the id is a scalar then treat it here as a list of one
+            if isinstance(parameters['id'], str):
+                id_list = [ parameters['id'] ]
+                is_id_a_list = False
                 if parameters['is_set'] is not None and qnode.is_set is True:
-                    response.error(f"Specified CURIE '{parameters['curie']}' is a scalar, but is_set=true, which doesn't make sense", error_code="CurieScalarButIsSetTrue")
+                    response.error(f"Specified id '{parameters['id']}' is a scalar, but is_set=true, which doesn't make sense", error_code="IdScalarButIsSetTrue")
                     return response
 
             # Or else set it up as a list
-            elif isinstance(parameters['curie'], list):
-                curie_list = parameters['curie']
-                is_curie_a_list = True
+            elif isinstance(parameters['id'], list):
+                id_list = parameters['id']
+                is_id_a_list = True
                 qnode.id = []
                 if parameters['is_set'] is None:
-                    response.warning(f"Specified CURIE '{parameters['curie']}' is a list, but is_set was not set to true. It must be true in this context, so automatically setting to true. Avoid this warning by explictly setting to true.")
+                    response.warning(f"Specified id '{parameters['id']}' is a list, but is_set was not set to true. It must be true in this context, so automatically setting to true. Avoid this warning by explictly setting to true.")
                     qnode.is_set = True
                 else:
                     if qnode.is_set == False:
-                        response.warning(f"Specified CURIE '{parameters['curie']}' is a list, but is_set=false, which doesn't make sense, so automatically setting to true. Avoid this warning by explictly setting to true.")
+                        response.warning(f"Specified id '{parameters['id']}' is a list, but is_set=false, which doesn't make sense, so automatically setting to true. Avoid this warning by explictly setting to true.")
                         qnode.is_set = True
 
             # Or if it's neither a list or a string, then error out. This cannot be handled at present
             else:
-                response.error(f"Specified CURIE '{parameters['curie']}' is neither a string nor a list. This cannot to handled", error_code="CurieNotListOrScalar")
+                response.error(f"Specified id '{parameters['id']}' is neither a string nor a list. This cannot to handled", error_code="IdNotListOrScalar")
                 return response
 
-            # Loop over the available curies and create the list
-            for curie in curie_list:
-                response.debug(f"Looking up CURIE {curie} in NodeSynonymizer")
-                synonymizer_results = synonymizer.get_canonical_curies(curies=[curie])
+            # Loop over the available ids and create the list
+            for id in id_list:
+                response.debug(f"Looking up id {id} in NodeSynonymizer")
+                synonymizer_results = synonymizer.get_canonical_curies(curies=[id])
 
-                # If nothing was found, we won't bail out, but rather just issue a warning that this curie is suspect
-                if synonymizer_results[curie] is None:
-                    response.warning(f"A node with CURIE {curie} is not in our knowledge graph KG2, but will continue with it")
-                    if is_curie_a_list:
-                        qnode.id.append(curie)
+                # If nothing was found, we won't bail out, but rather just issue a warning that this id is suspect
+                if synonymizer_results[id] is None:
+                    response.warning(f"A node with id {id} is not in our knowledge graph KG2, but will continue with it")
+                    if is_id_a_list:
+                        qnode.id.append(id)
                     else:
-                        qnode.id = curie
+                        qnode.id = id
 
-                # And if it is found, keep the same curie but report the preferred curie
+                # And if it is found, keep the same id but report the preferred id
                 else:
 
-                    response.info(f"CURIE {curie} is found. Adding it to the qnode")
-                    if is_curie_a_list:
-                        qnode.id.append(curie)
+                    response.info(f"id {id} is found. Adding it to the qnode")
+                    if is_id_a_list:
+                        qnode.id.append(id)
                     else:
-                        qnode.id = curie
+                        qnode.id = id
 
                 if 'category' in parameters and parameters['category'] is not None:
                     if isinstance(parameters['category'], str):
@@ -311,7 +311,7 @@ class ARAXMessenger:
         #### If the name is specified, try to find that
         if parameters['name'] is not None:
             name = parameters['name']
-            response.debug(f"Looking up CURIE for name '{name}' in NodeSynonymizer")
+            response.debug(f"Looking up id for name '{name}' in NodeSynonymizer")
             synonymizer_results = synonymizer.get_canonical_curies(curies=[name], names=[name])
 
             if synonymizer_results[name] is None:
@@ -319,7 +319,7 @@ class ARAXMessenger:
                 return response
  
             qnode.id = synonymizer_results[name]['preferred_curie']
-            response.info(f"Creating QueryNode with curie '{qnode.id}' for name '{name}'")
+            response.info(f"Creating QueryNode with id '{qnode.id}' for name '{name}'")
             if parameters['category'] is not None:
                 qnode.category = parameters['category']
             message.query_graph.nodes[key] = qnode
@@ -440,6 +440,8 @@ class ARAXMessenger:
             'subject': None,
             'object': None,
             'predicate': None,
+            'option_group_id': None,
+            'exclude': None,
         }
 
         #### Loop through the input_parameters and override the defaults and make sure they are allowed
@@ -753,10 +755,10 @@ class ARAXMessenger:
         #if message.query_graph is not None and message.query_graph.nodes is not None:
         #    for qnode_key,qnode in message.query_graph.nodes.items():
         #        print(qnode.__class__)
-                #if qnode.curie is not None and isinstance(qnode.curie,str):
-                #    if qnode.curie[0:2] == "['":
+                #if qnode.id is not None and isinstance(qnode.id,str):
+                #    if qnode.id[0:2] == "['":
                 #        try:
-                #            qnode.curie = ast.literal_eval(qnode.curie)
+                #            qnode.id = ast.literal_eval(qnode.id)
                 #        except:
                 #            pass
 
@@ -813,14 +815,14 @@ def main():
 
     #### Some qnode examples
     parameters_sets = [
-        { 'curie': 'DOID:9281'},
-        { 'curie': 'Orphanet:673'},
+        { 'id': 'DOID:9281'},
+        { 'id': 'Orphanet:673'},
         { 'name': 'acetaminophen', 'category': 'biolink:ChemicalSubstance' },
-        { 'curie': 'NCIT:C198'},
-        { 'curie': 'UMLS:C4710278'},
-        { 'category': 'biolink:Protein', 'id': 'n10'},
-        { 'curie': ['UniProtKB:P14136','UniProtKB:P35579'] },
-        { 'curie': ['UniProtKB:P14136','UniProtKB:P35579'], 'is_set': 'false' },
+        { 'id': 'NCIT:C198'},
+        { 'id': 'UMLS:C4710278'},
+        { 'category': 'biolink:Protein', 'key': 'n10'},
+        { 'id': ['UniProtKB:P14136','UniProtKB:P35579'] },
+        { 'id': ['UniProtKB:P14136','UniProtKB:P35579'], 'is_set': 'false' },
     ]
 
     for parameter in parameters_sets:
