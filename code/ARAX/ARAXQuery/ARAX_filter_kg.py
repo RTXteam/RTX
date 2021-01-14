@@ -18,11 +18,11 @@ class ARAXFilterKG:
         self.message = None
         self.parameters = None
         self.allowable_actions = {
-            'remove_edges_by_type',
+            'remove_edges_by_predicate',
             'remove_edges_by_attribute',
             'remove_edges_by_stats',
             'remove_edges_by_property',
-            'remove_nodes_by_type',
+            'remove_nodes_by_category',
             'remove_nodes_by_property',
             'remove_orphaned_nodes',
         }
@@ -33,7 +33,7 @@ class ARAXFilterKG:
             "is_required": True,
             "examples": ["contraindicated_for", "affects", "expressed_in"],
             "type": "ARAXedge",
-            "description": "The name of the edge type to filter by."
+            "description": "The name of the edge predicate to filter by."
         }
         self.remove_connected_nodes_info = {
             "is_required": False,
@@ -127,13 +127,13 @@ class ARAXFilterKG:
             "is_required": True,
             "examples": ["chemical_substance", "disease"],
             "type": "ARAXnode",
-            "description": "The name of the node type to filter by."
+            "description": "The name of the node category to filter by."
         }
         self.node_type_info = {
             "is_required": False,
             "examples": ["chemical_substance", "disease"],
             "type": "ARAXnode",
-            "description": "The name of the node type to filter by. If no value provided node type will not be considered."
+            "description": "The name of the node category to filter by. If no value provided node category will not be considered."
         }
         self.node_property_info = {
             "is_required": True,
@@ -152,26 +152,26 @@ class ARAXFilterKG:
 
         #command descriptions
         self.command_definitions = {
-            "remove_edges_by_type": {
-                "dsl_command": "filter_kg(action=remove_edges_by_type)",
+            "remove_edges_by_predicate": {
+                "dsl_command": "filter_kg(action=remove_edges_by_predicate)",
                 "description": """
-`remove_edges_by_type` removes edges from the knowledge graph (KG) based on a given edge type.
+`remove_edges_by_predicate` removes edges from the knowledge graph (KG) based on a given edge predicate.
 Use cases include:
              
-* removing all edges that have `edge_type=contraindicated_for`. 
+* removing all edges that have `edge_predicate=contraindicated_for`. 
 * if virtual edges have been introduced with `overlay()` DSL commands, this action can remove all of them.
 * etc.
             
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
 else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
             
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+This can be applied to an arbitrary knowledge graph as possible edge predicates are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
-remove_edges_by_type removes edges from the knowledge graph (KG) based on a given edge type.
+remove_edges_by_predicate removes edges from the knowledge graph (KG) based on a given edge predicate.
                     """,
                 "parameters": {
-                    "edge_type": self.edge_type_info,
+                    "edge_predicate": self.edge_type_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_id": self.qnode_id_info
                 }
@@ -274,10 +274,10 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "qnode_id": self.qnode_id_info
                 }
             },
-            "remove_nodes_by_type": {
-                "dsl_command": "filter_kg(action=remove_nodes_by_type)",
+            "remove_nodes_by_category": {
+                "dsl_command": "filter_kg(action=remove_nodes_by_category)",
                 "description": """
-`remove_node_by_type` removes nodes from the knowledge graph (KG) based on a given node category.
+`remove_node_by_category` removes nodes from the knowledge graph (KG) based on a given node category.
 Use cases include:
 * removing all nodes that have `node_category=protein`.
 * removing all nodes that have `node_category=chemical_substance`.
@@ -285,7 +285,7 @@ Use cases include:
 This can be applied to an arbitrary knowledge graph as possible node categories are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
-remove_node_by_type removes nodes from the knowledge graph (KG) based on a given node category.
+remove_node_by_category removes nodes from the knowledge graph (KG) based on a given node category.
                     """,
                 "parameters": {
                     "node_category": self.node_type_required_info
@@ -432,10 +432,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             response = self.report_response_stats(response)
         return response
 
-    def __remove_edges_by_type(self, describe=False):
+    def __remove_edges_by_predicate(self, describe=False):
         """
         Removes edges from the KG.
-        Allowable parameters: {'edge_type': str, 
+        Allowable parameters: {'edge_predicate': str, 
                                 'edge_property': str,
                                 'direction': {'above', 'below'}}
         :return:
@@ -444,21 +444,21 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            allowable_parameters = {'action': {'remove_edges_by_type'},
-                                    'edge_type': set([x.predicate for x in self.message.knowledge_graph.edges]),
+            allowable_parameters = {'action': {'remove_edges_by_predicate'},
+                                    'edge_predicate': set([x.predicate for x in self.message.knowledge_graph.edges]),
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id': set([t for x in self.message.knowledge_graph.nodes if x.qnode_ids is not None for t in x.qnode_ids])
                                 }
         else:
-            allowable_parameters = {'action': {'remove_edges_by_type'},
-                                    'edge_type': {'an edge type'},
+            allowable_parameters = {'action': {'remove_edges_by_predicate'},
+                                    'edge_predicate': {'an edge predicate'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_id':{'a specific query node id to remove'}
                                 }
 
         # A little function to describe what this thing does
         if describe:
-            allowable_parameters['brief_description'] = self.command_definitions['remove_edges_by_type']
+            allowable_parameters['brief_description'] = self.command_definitions['remove_edges_by_predicate']
             return allowable_parameters
 
         # Make sure only allowable parameters and values have been passed
@@ -483,13 +483,13 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         # now do the call out to NGD
         from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
-        response = RE.remove_edges_by_type()
+        response = RE.remove_edges_by_predicate()
         return response
 
     def __remove_edges_by_property(self, describe=False):
         """
         Removes edges from the KG.
-        Allowable parameters: {'edge_type': str, 
+        Allowable parameters: {'edge_predicate': str, 
                                 'edge_property': str,
                                 'direction': {'above', 'below'}}
         :return:
@@ -574,7 +574,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
     def __remove_edges_by_attribute(self, describe=False):
         """
         Removes edges from the KG.
-        Allowable parameters: {'edge_type': str, 
+        Allowable parameters: {'edge_predicate': str, 
                                 'edge_attribute': str,
                                 'direction': {'above', 'below'}}
         :return:
@@ -664,7 +664,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
     def __remove_edges_by_stats(self, describe=False):
         """
         Removes edges from the KG.
-        Allowable parameters: {'edge_type': str, 
+        Allowable parameters: {'edge_predicate': str, 
                                 'edge_attribute': str,
                                 'direction': {'above', 'below'}}
         :return:
@@ -805,7 +805,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         response = RE.remove_edges_by_stats()
         return response
 
-    def __remove_nodes_by_type(self, describe=False):
+    def __remove_nodes_by_category(self, describe=False):
         """
         Removes nodes from the KG.
         Allowable parameters: {'node_category': str, 
@@ -817,16 +817,16 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
-            allowable_parameters = {'action': {'remove_nodes_by_type'},
+            allowable_parameters = {'action': {'remove_nodes_by_category'},
                                     'node_category': set([t for x in self.message.knowledge_graph.nodes for t in x.category])
                                    }
         else:
-            allowable_parameters = {'action': {'remove_nodes_by_type'}, 
+            allowable_parameters = {'action': {'remove_nodes_by_category'}, 
                                 'node_category': {'a node category'}}
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = self.command_definitions['remove_nodes_by_type']
+            brief_description = self.command_definitions['remove_nodes_by_category']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -841,7 +841,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         # now do the call out to NGD
         from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
-        response = RN.remove_nodes_by_type()
+        response = RN.remove_nodes_by_category()
         return response
 
     def __remove_nodes_by_property(self, describe=False):
@@ -967,9 +967,9 @@ def main():
     # ]
 
     actions_list = [
-        #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=false)",
-        #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=something)",
-        #"filter(action=remove_nodes_by_type, node_category=protein)",
+        #"filter_kg(action=remove_edges_by_predicate, edge_predicate=physically_interacts_with, remove_connected_nodes=false)",
+        #"filter_kg(action=remove_edges_by_predicate, edge_predicate=physically_interacts_with, remove_connected_nodes=something)",
+        #"filter(action=remove_nodes_by_category, node_category=protein)",
         #"overlay(action=compute_ngd)",
         #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.63, direction=below, remove_connected_nodes=t)",
         #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.6, remove_connected_nodes=False)",

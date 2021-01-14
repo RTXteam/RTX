@@ -14,13 +14,13 @@ class RemoveNodes:
         self.message = message
         self.node_parameters = params
 
-    def remove_nodes_by_type(self):
+    def remove_nodes_by_category(self):
         """
         Iterate over all the edges in the knowledge graph, remove any edges matching the discription provided.
         :return: response
         """
         self.response.debug(f"Removing Nodes")
-        self.response.info(f"Removing nodes from the knowledge graph matching the specified type")
+        self.response.info(f"Removing nodes from the knowledge graph matching the specified category")
 
         try:
             i = 0

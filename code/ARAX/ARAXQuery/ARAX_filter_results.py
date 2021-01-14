@@ -73,8 +73,8 @@ class ARAXFilterResults:
             "is_required": False,
             "examples": ["chemical_substance", "disease"],
             "type": "ARAXnode",
-            "description": "The name of the node type to only filter on nodes of the matching type. " +\
-            "If not provided the node type will not be considered when filtering."
+            "description": "The name of the node category to only filter on nodes of the matching category. " +\
+            "If not provided the node category will not be considered when filtering."
         }
         self.prune_kg_info = {
             "is_required": False,
@@ -96,7 +96,7 @@ Use cases include:
 * sorting the results by the value of the jaccard index and take the top ten `filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=10)`
 * etc. etc.
                 
-You have the option to specify the edge type (e.g. via `edge_relation=<an edge relation>`)
+You have the option to specify the edge relation (e.g. via `edge_relation=<an edge relation>`)
 Also, you have the option of limiting the number of results returned (e.g. via `max_results=<a non-negative integer>`
                     """,
                 'brief_description': """
@@ -121,7 +121,7 @@ Use cases include:
 * Sorting the results by the number of pubmed ids and returning the top 20. `"filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=d, max_results=20)"`
 * etc. etc.
                 
-You have the option to specify the node type. (e.g. via `node_type=<an node type>`)
+You have the option to specify the node category. (e.g. via `node_category=<a node category>`)
 Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
                     """,
                 'brief_description': """
@@ -776,9 +776,9 @@ def main():
     # ]
 
     actions_list = [
-        #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=false)",
-        #"filter_kg(action=remove_edges_by_type, edge_type=physically_interacts_with, remove_connected_nodes=something)",
-        #"filter(action=remove_nodes_by_type, node_type=protein)",
+        #"filter_kg(action=remove_edges_by_predicate, edge_predicate=physically_interacts_with, remove_connected_nodes=false)",
+        #"filter_kg(action=remove_edges_by_predicate, edge_predicate=physically_interacts_with, remove_connected_nodes=something)",
+        #"filter(action=remove_nodes_by_category, node_category=protein)",
         #"overlay(action=compute_ngd)",
         #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.63, direction=below, remove_connected_nodes=t)",
         #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.6, remove_connected_nodes=False)",
