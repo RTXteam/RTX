@@ -9,12 +9,15 @@ import os
 import traceback
 import numpy as np
 from datetime import datetime
+import random
+import time
+random.seed(time.time())
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
-from swagger_server.models.edge import Edge
-from swagger_server.models.q_edge import QEdge
+from openapi_server.models.edge import Edge
+from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 
@@ -97,24 +100,44 @@ class ComputeJaccard:
             # now actually add the virtual edges in
             for end_node_id, value in end_node_to_jaccard.items():
                 edge_attribute = EdgeAttribute(type=attribute_type, name=name, value=value, url=url)
-                id = f"J{j_iter}"
+                # try to ensure a unique edge id
+                id = f"J{j_iter}.{random.randint(10**(9-1), (10**9)-1)}"
+                # if by chance you get the same id then loop until a unique one is generated
+                # probably a btter way of doing this but need to check how ids are generated in expand first
+                while id in message.knowledge_graph.edges:
+                    id = f"J{j_iter}.{random.randint(10**(9-1), (10**9)-1)}"
                 j_iter += 1
                 target_id = end_node_id
-                edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id, target_id=target_id,
-                            is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
-                            confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
-                # need to fix this for TRAPI 1.0
-                message.knowledge_graph.edges.append(edge)
+                # likely will need to fix this for TRAPI 1.0 after being able to test
+                edge_attribute_list = [
+                    edge_attribute,
+                    EdgeAttribute(name="is_defined_by", value=is_defined_by),
+                    EdgeAttribute(name="defined_datetime", value=defined_datetime),
+                    EdgeAttribute(name="provided_by", value=provided_by),
+                    EdgeAttribute(name="confidence", value=confidence),
+                    EdgeAttribute(name="weight", value=weight),
+                    EdgeAttribute(name="qedge_ids", value=qedge_ids)
+                ]
+                # edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id, target_id=target_id,
+                #             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
+                #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
+                edge = Edge(predicate=edge_type, source_id=source_id, target_id=target_id,
+                            attributes=edge_attribute_list)
+                message.knowledge_graph.edges[id] = edge
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             source_qnode_id = parameters['start_node_id']
             target_qnode_id = parameters['end_node_id']
             option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
                                                                       self.message.query_graph, self.response)
-            q_edge = QEdge(id=relation, type=edge_type, relation=relation, source_id=source_qnode_id,
-                           target_id=target_qnode_id, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
+            # q_edge = QEdge(id=relation, type=edge_type, relation=relation, source_id=source_qnode_id,
+            #                target_id=target_qnode_id, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
+            
+            # Does not look to be a way to add option group ids to the new QEdge in TRAPI 1.0? Will error as written now
+            q_edge = QEdge(predicate=edge_type, relation=relation, subject=source_qnode_id,
+                           object=target_qnode_id, option_group_id=option_group_id)
             # Need to fix this for TRAPI 1.0
-            self.message.query_graph.edges.append(q_edge)
+            self.message.query_graph.edges[relation] = q_edge
 
             return self.response
         except:
