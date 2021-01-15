@@ -236,7 +236,7 @@ class KGQuerier:
         swagger_node.uri = neo4j_node.get('iri')
         swagger_node.node_attributes = []
         node_category = neo4j_node.get('category_label')
-        swagger_node.type = eu.convert_string_or_list_to_list(node_category)
+        swagger_node.category = eu.convert_string_or_list_to_list(node_category)
         # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
         if swagger_node.symbol is None and swagger_node.id.lower().startswith("uniprot"):
             swagger_node.symbol = neo4j_node.get('name')
@@ -252,7 +252,7 @@ class KGQuerier:
         swagger_node = Node()
         swagger_node.id = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
-        swagger_node.type = neo4j_node.get('types')
+        swagger_node.category = neo4j_node.get('types')
         swagger_node.uri = neo4j_node.get('iri')
         swagger_node.description = neo4j_node.get('description')
         # Add all additional properties on KG2c nodes as swagger NodeAttribute objects
@@ -272,7 +272,7 @@ class KGQuerier:
         swagger_node.uri = neo4j_node.get('uri')
         swagger_node.node_attributes = []
         node_category = neo4j_node.get('category')
-        swagger_node.type = eu.convert_string_or_list_to_list(node_category)
+        swagger_node.category = eu.convert_string_or_list_to_list(node_category)
         return swagger_node
 
     def _convert_neo4j_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str],

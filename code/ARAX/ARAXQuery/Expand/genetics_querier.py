@@ -26,9 +26,9 @@ class GeneticsQuerier:
         self.kp_api_url = "https://translator.broadinstitute.org/genetics_data_provider/query"
         self.kp_name = "GeneticsKP"
         # TODO: Eventually validate queries better based on info in future TRAPI knowledge_map endpoint
-        self.accepted_node_types = {"gene", "pathway", "phenotypic_feature", "disease"}
+        self.accepted_node_categories = {"gene", "pathway", "phenotypic_feature", "disease"}
         self.accepted_edge_types = {"associated"}
-        self.node_type_overrides_for_kp = {"protein": "gene"}
+        self.node_category_overrides_for_kp = {"protein": "gene"}
         self.kp_preferred_prefixes = {"gene": "NCBIGene", "pathway": "GO", "phenotypic_feature": "EFO", "disease": "EFO"}
         self.magma_score_name = "MAGMA-pvalue"
         self.score_type_lookup = {self.magma_score_name: "EDAM:data_1669",
@@ -114,10 +114,10 @@ class GeneticsQuerier:
     def _pre_process_query_graph(self, query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:
         for qnode_key, qnode in query_graph.nodes.items():
             # Convert node types to preferred format and verify we can do this query
-            formatted_qnode_categories = {self.node_type_overrides_for_kp.get(qnode_category, qnode_category) for qnode_category in eu.convert_string_or_list_to_list(qnode.category)}
-            accepted_qnode_categories = formatted_qnode_categories.intersection(self.accepted_node_types)
+            formatted_qnode_categories = {self.node_category_overrides_for_kp.get(qnode_category, qnode_category) for qnode_category in eu.convert_string_or_list_to_list(qnode.category)}
+            accepted_qnode_categories = formatted_qnode_categories.intersection(self.accepted_node_categories)
             if not accepted_qnode_categories:
-                log.error(f"{self.kp_name} can only be used for queries involving {self.accepted_node_types} "
+                log.error(f"{self.kp_name} can only be used for queries involving {self.accepted_node_categories} "
                           f"and QNode {qnode_key} has type '{qnode.category}'", error_code="UnsupportedQueryForKP")
                 return query_graph
             else:

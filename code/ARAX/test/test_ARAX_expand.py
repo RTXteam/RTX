@@ -47,7 +47,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_format(nodes_by_qg_id, edges_by_qg_id)
-    _check_node_types(message.knowledge_graph.nodes, message.query_graph)
+    _check_node_categories(message.knowledge_graph.nodes, message.query_graph)
     _check_counts_of_curie_qnodes(nodes_by_qg_id, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
@@ -67,7 +67,7 @@ def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
 def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
-            print(f"{qnode_key}: {node.type}, {node.id}, {node.name}, {node.qnode_keys}")
+            print(f"{qnode_key}: {node.category}, {node.id}, {node.name}, {node.qnode_keys}")
 
 
 def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -107,7 +107,7 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
             assert node.id and isinstance(node.id, str)
             assert isinstance(node.name, str) or node.name is None
             assert node.qnode_keys and isinstance(node.qnode_keys, list)
-            assert node.type and isinstance(node.type, list)
+            assert node.category and isinstance(node.category, list)
     for qedge_id, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             assert edge.id and isinstance(edge.id, str)
@@ -119,12 +119,12 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
             assert edge.is_defined_by and isinstance(edge.is_defined_by, str)
 
 
-def _check_node_types(nodes: List[Node], query_graph: QueryGraph):
+def _check_node_categories(nodes: List[Node], query_graph: QueryGraph):
     for node in nodes:
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
             if qnode.category:
-                assert qnode.category in node.type  # Could have additional types if it has multiple qnode keys
+                assert qnode.category in node.category  # Could have additional categories if it has multiple qnode keys
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
@@ -513,7 +513,7 @@ def test_873_consider_both_gene_and_protein():
     assert set(nodes_by_qg_id_protein['n01']) == set(nodes_by_qg_id_gene['n01'])
 
 
-def test_987_override_node_types():
+def test_987_override_node_categories():
     actions_list = [
         "add_qnode(name=DOID:8398, id=n00)",
         "add_qnode(type=phenotypic_feature, id=n01)",
@@ -522,7 +522,7 @@ def test_987_override_node_types():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all('phenotypic_feature' in node.type for node in nodes_by_qg_id['n01'].values())
+    assert all('phenotypic_feature' in node.category for node in nodes_by_qg_id['n01'].values())
 
 
 @pytest.mark.slow

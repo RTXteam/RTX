@@ -123,7 +123,7 @@ class BTEQuerier:
                 swagger_node = Node()
                 bte_node_id = node.get('id')
                 swagger_node.name = node.get('name')
-                swagger_node.type = eu.convert_string_or_list_to_list(eu.convert_string_to_snake_case(node.get('type')))
+                swagger_node.category = eu.convert_string_or_list_to_list(eu.convert_string_to_snake_case(node.get('type')))
 
                 # Map the returned BTE qg_ids back to the original qnode_keys in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['nodes'].get(bte_node_id)
@@ -142,7 +142,7 @@ class BTEQuerier:
                     else:
                         equivalent_curies = [f"{prefix}:{eu.get_curie_local_id(local_id)}" for prefix, local_ids in
                                              node.get('equivalent_identifiers').items() for local_id in local_ids]
-                        swagger_node.id = self._get_best_equivalent_bte_curie(equivalent_curies, swagger_node.type[0])
+                        swagger_node.id = self._get_best_equivalent_bte_curie(equivalent_curies, swagger_node.category[0])
                         remapped_node_ids[bte_node_id] = swagger_node.id
                 else:
                     swagger_node.id = bte_node_id
@@ -202,18 +202,18 @@ class BTEQuerier:
             return "", ""
 
         # Process qnode types (convert to preferred format, make sure allowed)
-        input_qnode.category = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(input_qnode.category)]
-        output_qnode.category = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(output_qnode.category)]
+        input_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(input_qnode.category)]
+        output_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(output_qnode.category)]
         qnodes_missing_type = [qnode_key for qnode_key in [input_qnode_key, output_qnode_key] if not query_graph[qnode_key].type]
         if qnodes_missing_type:
             log.error(f"BTE requires every query node to have a type. QNode(s) missing a type: "
                       f"{', '.join(qnodes_missing_type)}", error_code="InvalidInput")
             return "", ""
-        invalid_qnode_categories = [node_type for qnode in [input_qnode, output_qnode] for node_type in qnode.category
-                               if node_type not in valid_bte_inputs_dict['node_types']]
+        invalid_qnode_categories = [node_category for qnode in [input_qnode, output_qnode] for node_category in qnode.category
+                               if node_category not in valid_bte_inputs_dict['node_categories']]
         if invalid_qnode_categories:
             log.error(f"BTE does not accept QNode type(s): {', '.join(invalid_qnode_categories)}. Valid options are "
-                      f"{valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
+                      f"{valid_bte_inputs_dict['node_categories']}", error_code="InvalidInput")
             return "", ""
 
         # Sub in curie synonyms as appropriate
@@ -267,7 +267,7 @@ class BTEQuerier:
     @staticmethod
     def _get_valid_bte_inputs_dict() -> Dict[str, Set[str]]:
         # TODO: Load these using the soon to be built method in ARAX/KnowledgeSources (then will be regularly updated)
-        node_types = {'ChemicalSubstance', 'Transcript', 'AnatomicalEntity', 'Disease', 'GenomicEntity', 'Gene',
+        node_categories = {'ChemicalSubstance', 'Transcript', 'AnatomicalEntity', 'Disease', 'GenomicEntity', 'Gene',
                       'BiologicalProcess', 'Cell', 'SequenceVariant', 'MolecularActivity', 'PhenotypicFeature',
                       'Protein', 'CellularComponent', 'Pathway'}
         curie_prefixes = {'ENSEMBL', 'CHEBI', 'HP', 'DRUGBANK', 'MOP', 'MONDO', 'GO', 'HGNC', 'CL', 'DOID', 'MESH',
@@ -281,7 +281,7 @@ class BTEQuerier:
                       'gene_to_transcript_relationship', 'predisposes', 'affects', 'metabolize', 'has_gene_product',
                       'produced_by', 'derives_info', 'related_to', 'causes', 'contraindicated_by', 'part_of',
                       'metabolic_processing_affected_by', 'positively_regulates', 'manifestation_of'}
-        return {'node_types': node_types, 'curie_prefixes': curie_prefixes, 'predicates': predicates}
+        return {'node_categories': node_categories, 'curie_prefixes': curie_prefixes, 'predicates': predicates}
 
     @staticmethod
     def _build_kg_to_qg_id_dict(results: Dict[str, any]) -> Dict[str, Dict[str, List[str]]]:
@@ -298,7 +298,7 @@ class BTEQuerier:
         return kg_to_qg_ids
 
     @staticmethod
-    def _get_best_equivalent_bte_curie(equivalent_curies: List[str], node_type: str) -> str:
+    def _get_best_equivalent_bte_curie(equivalent_curies: List[str], node_category: str) -> str:
         # Curie prefixes in order of preference for different node types (not all-inclusive)
         preferred_node_prefixes_dict = {'chemical_substance': ['CHEMBL.COMPOUND', 'CHEBI'],
                                         'protein': ['UNIPROTKB', 'PR'],
@@ -309,7 +309,7 @@ class BTEQuerier:
                                         'pathway': ['REACTOME'],
                                         'biological_process': ['GO'],
                                         'cellular_component': ['GO']}
-        prefixes_in_order_of_preference = preferred_node_prefixes_dict.get(eu.convert_string_to_snake_case(node_type), [])
+        prefixes_in_order_of_preference = preferred_node_prefixes_dict.get(eu.convert_string_to_snake_case(node_category), [])
         equivalent_curies.sort()
 
         # Pick the curie that uses the (relatively) most preferred prefix

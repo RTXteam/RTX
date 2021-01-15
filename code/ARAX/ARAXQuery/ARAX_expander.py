@@ -511,20 +511,20 @@ class ARAXExpander:
                 if canonicalized_node:
                     preferred_curie = canonicalized_node.get('preferred_curie', node_id)
                     preferred_name = canonicalized_node.get('preferred_name', node.name)
-                    preferred_type = eu.convert_string_or_list_to_list(canonicalized_node.get('preferred_type', node.type))
+                    preferred_category = eu.convert_string_or_list_to_list(canonicalized_node.get('preferred_type', node.category))
                     curie_mappings[node_id] = preferred_curie
                 else:
                     # Means the NodeSynonymizer didn't recognize this curie
                     preferred_curie = node_id
                     preferred_name = node.name
-                    preferred_type = node.type
+                    preferred_category = node.category
                     curie_mappings[node_id] = preferred_curie
 
-                # Add this node into our deduplicated KG as necessary # TODO: merge certain fields, like uri?
+                # Add this node into our deduplicated KG as necessary
                 if preferred_curie not in deduplicated_kg.nodes_by_qg_id[qnode_key]:
                     node.id = preferred_curie
                     node.name = preferred_name
-                    node.type = preferred_type
+                    node.category = preferred_category
                     deduplicated_kg.add_node(node, qnode_key)
 
         # Then update the edges to reflect changes made to the nodes
@@ -844,13 +844,13 @@ class ARAXExpander:
         return kg
 
     @staticmethod
-    def _override_node_types(kg: KnowledgeGraph, qg: QueryGraph):
+    def _override_node_categories(kg: KnowledgeGraph, qg: QueryGraph):
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
         for node in kg.nodes:
             corresponding_qnode_categories = {qg.nodes[qnode_key].type for qnode_key in node.qnode_keys}
             non_none_categories = [qnode_category for qnode_category in corresponding_qnode_categories if qnode_category]
             if non_none_categories:
-                node.type = non_none_categories
+                node.category = non_none_categories
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):

@@ -138,7 +138,7 @@ class NGDQuerier:
         ngd_node = Node()
         ngd_node.id = kg2_node.id
         ngd_node.name = kg2_node.name
-        ngd_node.type = kg2_node.type
+        ngd_node.category = kg2_node.category
         return ngd_node
 
     @staticmethod
