@@ -87,13 +87,13 @@ class ARAXQueryGraphInterpreter:
             if component['component_type'] == 'node':
 
                 # Go through the list of possible things it could be and those or lesser possible next steps
-                if component['has_curie'] and component['has_category'] and component['category_value']:
-                    possible_next_steps.append( { 'content': f"curie,category={component['category_value']}", 'score': 10000 } )
-                    possible_next_steps.append( { 'content': 'curie', 'score': 1000 } )
+                if component['has_id'] and component['has_category'] and component['category_value']:
+                    possible_next_steps.append( { 'content': f"id,category={component['category_value']}", 'score': 10000 } )
+                    possible_next_steps.append( { 'content': 'id', 'score': 1000 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_curie']:
-                    possible_next_steps.append( { 'content': 'curie', 'score': 1000 } )
+                elif component['has_id']:
+                    possible_next_steps.append( { 'content': 'id', 'score': 1000 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
                 elif component['has_category'] and component['category_value']:
@@ -126,7 +126,12 @@ class ARAXQueryGraphInterpreter:
             # For each of the current tree pointers
             new_tree_pointers = []
             for tree_pointer in tree_pointers:
-                if debug: print(f"    - pointer={tree_pointer}")
+                if debug:
+                    #print(f"    - pointer={tree_pointer}")
+                    #print(f"    - pointer...")
+                    #for tp_key,tp_pointer in tree_pointer['pointer'].items():
+                    #    print(f"        - {tp_key} = {tp_pointer}")
+                    pass
 
                 # Consider each of the new possibilities
                 for possible_next_step in possible_next_steps:
@@ -164,13 +169,13 @@ class ARAXQueryGraphInterpreter:
                 new_command = command
                 for node in query_graph_info.node_order:
                     template_id = f"n{node_index:02}"
-                    new_command = re.sub(template_id,node['id'],new_command)
+                    new_command = re.sub(template_id,node['key'],new_command)
                     node_index += 1
 
                 edge_index = 0
                 for edge in query_graph_info.edge_order:
                     template_id = f"e{edge_index:02}"
-                    new_command = re.sub(template_id,edge['id'],new_command)
+                    new_command = re.sub(template_id,edge['key'],new_command)
                     edge_index += 1
 
                 new_araxi_commands.append(new_command)
@@ -216,7 +221,7 @@ class ARAXQueryGraphInterpreter:
             self.query_graph_templates = None
             return self.response
 
-        # We will create dict lookup table of all the template string [e.g. 'n00(curie)-e00()-n01(category)' -> template_name]
+        # We will create dict lookup table of all the template string [e.g. 'n00(id)-e00()-n01(category)' -> template_name]
         self.query_graph_templates['template_strings'] = {}
 
         # We will also create dict tree of all templates organized by the number of nodes and then by each component
@@ -322,8 +327,9 @@ def QGI_test1():
             print(response.show(level=ARAXResponse.DEBUG))
             return response
 
-        araxi_commands = result.data['araxi_commands']
-        print(araxi_commands)
+        araxi_commands = response.data['araxi_commands']
+        for cmd in araxi_commands:
+            print(f"  - {cmd}")
 
         #### Show the final result
         #print('-------------------------')
@@ -338,10 +344,10 @@ def QGI_test2():
 
     #### Set example query_graph
     # TRAPI 0.9.2
-    input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "category": "biolink:Drug" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "predicate": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
+    input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "category": "chemical_substance" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "predicate": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
     # TRAPI 1.0.0
     input_query_graph = { "message": { "query_graph": { 
-        "nodes": { "n1": { "category": "biolink:Drug" }, "n2": { "id": "UMLS:C0002395" } },
+        "nodes": { "n1": { "category": "biolink:ChemicalSubstance" }, "n2": { "id": "UMLS:C0002395" } },
         "edges": { "e1": { "predicate": "clinically_tested_approved_unknown_phase", "subject": "n1", "object": "n2" } }
         } } }
 
@@ -350,7 +356,7 @@ def QGI_test2():
     messenger = ARAXMessenger()
     messenger.create_envelope(response)
     message = ARAXMessenger().from_dict(input_query_graph['message'])
-    response.envelope.message = message
+    response.envelope.message.query_graph = message.query_graph
 
     interpreter = ARAXQueryGraphInterpreter()
     interpreter.translate_to_araxi(response)
@@ -359,7 +365,8 @@ def QGI_test2():
         return response
 
     araxi_commands = response.data['araxi_commands']
-    print(araxi_commands)
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
 
     #### Show the final result
     print('-------------------------')
@@ -379,7 +386,7 @@ def main():
     argparser.add_argument('test_number', type=str, nargs='*', help='Optional test to run')
     params = argparser.parse_args()
 
-    print(params.test_number)
+    #print(params.test_number)
     if params.test_number[0] == '2':
         QGI_test2()
     else:
