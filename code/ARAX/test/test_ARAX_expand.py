@@ -123,8 +123,8 @@ def _check_node_types(nodes: List[Node], query_graph: QueryGraph):
     for node in nodes:
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
-            if qnode.type:
-                assert qnode.type in node.type  # Could have additional types if it has multiple qnode keys
+            if qnode.category:
+                assert qnode.category in node.type  # Could have additional types if it has multiple qnode keys
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):

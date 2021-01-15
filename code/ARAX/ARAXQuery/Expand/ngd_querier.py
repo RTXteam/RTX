@@ -64,10 +64,10 @@ class NGDQuerier:
                                                         self._get_dsl_qedge_type_str(qedge)])))
         source_params_str = ", ".join(list(filter(None, [f"id={source_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(source_qnode),
-                                                         self._get_dsl_qnode_type_str(source_qnode)])))
+                                                         self._get_dsl_qnode_category_str(source_qnode)])))
         target_params_str = ", ".join(list(filter(None, [f"id={target_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(target_qnode),
-                                                         self._get_dsl_qnode_type_str(target_qnode)])))
+                                                         self._get_dsl_qnode_category_str(target_qnode)])))
         actions_list = [
             f"add_qnode({source_params_str})",
             f"add_qnode({target_params_str})",
@@ -155,10 +155,10 @@ class NGDQuerier:
         return f"curie={curie_str}" if qnode.id else ""
 
     @staticmethod
-    def _get_dsl_qnode_type_str(qnode: QNode) -> str:
+    def _get_dsl_qnode_category_str(qnode: QNode) -> str:
         # Use only the first type if there are multiple (which ARAXExpander adds for cases like "gene"/"protein")
-        type_str = qnode.type[0] if isinstance(qnode.type, list) else qnode.type
-        return f"type={type_str}" if qnode.type else ""
+        type_str = qnode.category[0] if isinstance(qnode.category, list) else qnode.category
+        return f"type={type_str}" if qnode.category else ""
 
     @staticmethod
     def _get_dsl_qedge_type_str(qedge: QEdge) -> str:

@@ -405,8 +405,8 @@ class ARAXExpander:
         copy_of_qnode = eu.copy_qnode(qnode)
 
         # Consider both gene and protein when one is given
-        if copy_of_qnode.type in ["protein", "gene"]:
-            copy_of_qnode.type = ["protein", "gene"]
+        if copy_of_qnode.category in ["protein", "gene"]:
+            copy_of_qnode.category = ["protein", "gene"]
         log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
 
         # Answer the query using the proper KP
@@ -470,8 +470,8 @@ class ARAXExpander:
 
         # Consider both protein and gene if qnode's type is one of those (since KPs handle these differently)
         for qnode in edge_qg.nodes.values():
-            if qnode.type in {'protein', 'gene'}:
-                qnode.type = ['protein', 'gene']
+            if qnode.category in {'protein', 'gene'}:
+                qnode.category = ['protein', 'gene']
 
         # Display a summary of what the modified query graph for this edge looks like
         qnodes_with_curies = [qnode_key for qnode_key, qnode in edge_qg.nodes.items() if qnode.id]
@@ -482,8 +482,8 @@ class ARAXExpander:
         output_qnode = edge_qg[output_qnode_key]
         input_curie_summary = self._get_qnode_curie_summary(input_qnode)
         output_curie_summary = self._get_qnode_curie_summary(output_qnode)
-        log.debug(f"Modified QG for this qedge is ({input_qnode_key}:{input_qnode.type}{input_curie_summary})-"
-                  f"{qedge.type if qedge.type else ''}-({output_qnode_key}:{output_qnode.type}{output_curie_summary})")
+        log.debug(f"Modified QG for this qedge is ({input_qnode_key}:{input_qnode.category}{input_curie_summary})-"
+                  f"{qedge.type if qedge.type else ''}-({output_qnode_key}:{output_qnode.category}{output_curie_summary})")
         return edge_qg
 
     @staticmethod
@@ -847,10 +847,10 @@ class ARAXExpander:
     def _override_node_types(kg: KnowledgeGraph, qg: QueryGraph):
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
         for node in kg.nodes:
-            corresponding_qnode_types = {qg.nodes[qnode_key].type for qnode_key in node.qnode_keys}
-            non_none_types = [node_type for node_type in corresponding_qnode_types if node_type]
-            if non_none_types:
-                node.type = non_none_types
+            corresponding_qnode_categories = {qg.nodes[qnode_key].type for qnode_key in node.qnode_keys}
+            non_none_categories = [qnode_category for qnode_category in corresponding_qnode_categories if qnode_category]
+            if non_none_categories:
+                node.type = non_none_categories
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):

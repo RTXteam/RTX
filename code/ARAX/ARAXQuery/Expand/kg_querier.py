@@ -73,7 +73,7 @@ class KGQuerier:
                 qnode.id = eu.get_curie_synonyms(qnode.id, log)
             elif kg_name == "KG2c":
                 qnode.id = eu.get_canonical_curies_list(qnode.id, log)
-            qnode.type = None  # Important to clear this, otherwise results are limited (#889)
+            qnode.category = None  # Important to clear this, otherwise results are limited (#889)
 
         # Run the actual query and process results
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kg_name, log)
@@ -100,10 +100,10 @@ class KGQuerier:
         if qnode.id:
             if use_synonyms and kg_name == "KG1":
                 qnode.id = eu.get_curie_synonyms(qnode.id, log)
-                qnode.type = None  # Important to clear this, otherwise results are limited (#889)
+                qnode.category = None  # Important to clear this, otherwise results are limited (#889)
             elif kg_name == "KG2c":
                 qnode.id = eu.get_canonical_curies_list(qnode.id, log)
-                qnode.type = None  # Important to clear this to avoid discrepancies in types for particular concepts
+                qnode.category = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
@@ -138,19 +138,19 @@ class KGQuerier:
                 qnode = query_graph.nodes[qnode_key]
                 if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
                     where_fragments.append(f"{qnode_key}.id in {qnode.id}")
-                if qnode.type:
+                if qnode.category:
                     if kg_name == "KG2c":
-                        qnode_types = eu.convert_string_or_list_to_list(qnode.type)
-                        type_fragments = [f"'{qnode_type}' in {qnode_key}.types" for qnode_type in qnode_types]
-                        joined_type_fragments = " OR ".join(type_fragments)
-                        type_where_clause = joined_type_fragments if len(type_fragments) < 2 else f"({joined_type_fragments})"
-                        where_fragments.append(type_where_clause)
-                    elif isinstance(qnode.type, list):
+                        qnode_categories = eu.convert_string_or_list_to_list(qnode.category)
+                        category_fragments = [f"'{qnode_category}' in {qnode_key}.types" for qnode_category in qnode_categories]
+                        joined_category_fragments = " OR ".join(category_fragments)
+                        category_where_clause = joined_category_fragments if len(category_fragments) < 2 else f"({joined_category_fragments})"
+                        where_fragments.append(category_where_clause)
+                    elif isinstance(qnode.category, list):
                         if kg_name == "KG2":
-                            node_type_property = "category_label"
+                            node_category_property = "category_label"
                         else:
-                            node_type_property = "category"
-                        where_fragments.append(f"{qnode_key}.{node_type_property} in {qnode.type}")
+                            node_category_property = "category"
+                        where_fragments.append(f"{qnode_key}.{node_category_property} in {qnode.category}")
 
             if where_fragments:
                 where_clause = f"WHERE {' AND '.join(where_fragments)}"
@@ -389,7 +389,7 @@ class KGQuerier:
     @staticmethod
     def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph, kg_name: str) -> str:
         qnode = qg.nodes[qnode_key]
-        type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) and kg_name != "KG2c" else ""
+        type_cypher = f":{qnode.category}" if qnode.category and isinstance(qnode.category, str) and kg_name != "KG2c" else ""
         if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
             curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
             curie_cypher = f" {{id:'{curie}'}}"

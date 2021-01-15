@@ -87,18 +87,18 @@ class BTEQuerier:
         # Send this single-edge query to BTE, input curie by input curie (adding findings to our answer KG as we go)
         for curie in input_qnode.id:
             # Consider all different combinations of qnode types (can be multiple if gene/protein)
-            for input_qnode_type, output_qnode_type in itertools.product(input_qnode.type, output_qnode.type):
+            for input_qnode_category, output_qnode_category in itertools.product(input_qnode.category, output_qnode.category):
                 if eu.get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
                     accepted_curies.add(curie)
                     try:
                         loop = asyncio.new_event_loop()
-                        seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode_type,
-                                                         output_cls=output_qnode_type,
+                        seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode_category,
+                                                         output_cls=output_qnode_category,
                                                          pred=qedge.type,
                                                          input_id=eu.get_curie_prefix(curie),
                                                          values=eu.get_curie_local_id(curie),
                                                          loop=loop)
-                        log.debug(f"Sending query to BTE: {curie}-{qedge.type if qedge.type else ''}->{output_qnode_type}")
+                        log.debug(f"Sending query to BTE: {curie}-{qedge.type if qedge.type else ''}->{output_qnode_category}")
                         seqd.query()
                         reasoner_std_response = seqd.to_reasoner_std()
                     except Exception:
@@ -202,17 +202,17 @@ class BTEQuerier:
             return "", ""
 
         # Process qnode types (convert to preferred format, make sure allowed)
-        input_qnode.type = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(input_qnode.type)]
-        output_qnode.type = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(output_qnode.type)]
+        input_qnode.category = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(input_qnode.category)]
+        output_qnode.category = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(output_qnode.category)]
         qnodes_missing_type = [qnode_key for qnode_key in [input_qnode_key, output_qnode_key] if not query_graph[qnode_key].type]
         if qnodes_missing_type:
             log.error(f"BTE requires every query node to have a type. QNode(s) missing a type: "
                       f"{', '.join(qnodes_missing_type)}", error_code="InvalidInput")
             return "", ""
-        invalid_qnode_types = [node_type for qnode in [input_qnode, output_qnode] for node_type in qnode.type
+        invalid_qnode_categories = [node_type for qnode in [input_qnode, output_qnode] for node_type in qnode.category
                                if node_type not in valid_bte_inputs_dict['node_types']]
-        if invalid_qnode_types:
-            log.error(f"BTE does not accept QNode type(s): {', '.join(invalid_qnode_types)}. Valid options are "
+        if invalid_qnode_categories:
+            log.error(f"BTE does not accept QNode type(s): {', '.join(invalid_qnode_categories)}. Valid options are "
                       f"{valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
             return "", ""
 
