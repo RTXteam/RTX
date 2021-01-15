@@ -23,25 +23,25 @@ class RemoveNodes:
         self.response.info(f"Removing nodes from the knowledge graph matching the specified category")
 
         try:
-            i = 0
             nodes_to_remove = set()
-            node_ids_to_remove = set()
+            #node_ids_to_remove = set()
             # iterate over the edges find the edges to remove
-            for node in self.message.knowledge_graph.nodes:
+            for key, node in self.message.knowledge_graph.nodes.items():
                 if self.node_parameters['node_category'] in node.category:
-                    nodes_to_remove.add(i)
-                    node_ids_to_remove.add(node.id)
-                i += 1
-            self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
-            i = 0
+                    nodes_to_remove.add(key)
+                    #node_ids_to_remove.add(node.id)
+            #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
+            for key in nodes_to_remove:
+                del self.message.knowledge_graph.nodes[key]
             edges_to_remove = set()
             # iterate over edges find edges connected to the nodes
-            for edge in self.message.knowledge_graph.edges:
-                if edge.subject in node_ids_to_remove or edge.object in node_ids_to_remove:
-                    edges_to_remove.add(i)
-                i += 1
+            for key, edge in self.message.knowledge_graph.edges.items():
+                if edge.subject in nodes_to_remove or edge.object in nodes_to_remove:
+                    edges_to_remove.add(key)
             # remove edges
-            self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+            #self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+            for key in edges_to_remove:
+                del self.message.knowledge_graph.edges[key]
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -61,32 +61,32 @@ class RemoveNodes:
         self.response.info(f"Removing nodes from the knowledge graph matching the specified property")
         node_params = self.node_parameters
         try:
-            i = 0
             nodes_to_remove = set()
-            node_ids_to_remove = set()
+            #node_ids_to_remove = set()
             # iterate over the nodes find the nodes to remove
-            for node in self.message.knowledge_graph.nodes:
+            for key, node in self.message.knowledge_graph.nodes.items():
                 node_dict = node.to_dict()
                 if node_params['node_property'] in node_dict:
                     if isinstance(node_dict[node_params['node_property']], list):
                         if node_params['property_value'] in node_dict[node_params['node_property']]:
-                            nodes_to_remove.add(i)
+                            nodes_to_remove.add(key)
                         elif node_dict[node_params['node_property']] == node_params['property_value']:
-                            nodes_to_remove.add(i)
+                            nodes_to_remove.add(key)
                     else:
                         if node_dict[node_params['node_property']] == node_params['property_value']:
-                            nodes_to_remove.add(i)
-                i += 1
-            self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
-            i = 0
+                            nodes_to_remove.add(key)
+            #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
+            for key in nodes_to_remove:
+                del self.message.knowledge_graph.nodes[key]
             edges_to_remove = set()
             # iterate over edges find edges connected to the nodes
-            for edge in self.message.knowledge_graph.edges:
-                if edge.subject in node_ids_to_remove or edge.object in node_ids_to_remove:
-                    edges_to_remove.add(i)
-                i += 1
+            for key, edge in self.message.knowledge_graph.edges.items():
+                if edge.subject in nodes_to_remove or edge.object in nodes_to_remove:
+                    edges_to_remove.add(key)
             # remove edges
-            self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+            #self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+            for key in edges_to_remove:
+                del self.message.knowledge_graph.edges[key]
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -109,24 +109,24 @@ class RemoveNodes:
         try:
             # iterate over edges in KG to find all id's that connect the edges
             connected_node_ids = set()
-            for edge in self.message.knowledge_graph.edges:
+            for edge in self.message.knowledge_graph.edges.values():
                 connected_node_ids.add(edge.subject)
                 connected_node_ids.add(edge.object)
 
             # iterate over all nodes in KG
-            node_indexes_to_remove = set()
-            i = 0  # counter to keep track of where this node is in the message.knowledge_graph.nodes list
-            for node in self.message.knowledge_graph.nodes:
+            nodes_to_remove = set()
+            for key, node in self.message.knowledge_graph.nodes.items():
                 if 'node_category' in node_parameters and node_parameters['node_category'] in node.category:
                     if node.id not in connected_node_ids:
-                        node_indexes_to_remove.add(i)
+                        nodes_to_remove.add(key)
                 else:
                     if node.id not in connected_node_ids:
-                        node_indexes_to_remove.add(i)
-                i += 1
+                        nodes_to_remove.add(key)
 
             # remove the orphaned nodes
-            self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in node_indexes_to_remove]
+            #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in node_indexes_to_remove]
+            for key in nodes_to_remove:
+                del self.message.knowledge_graph.nodes[key]
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
