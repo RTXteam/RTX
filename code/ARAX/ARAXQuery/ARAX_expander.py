@@ -22,8 +22,6 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXExpander:
 
     def __init__(self):
-        self.response = None
-        self.message = None
         self.default_kp = "ARAX/KG2"
         self.edge_id_parameter_info = {
             "is_required": False,
@@ -195,25 +193,22 @@ class ARAXExpander:
         """
         return list(self.command_definitions.values())
 
-    def apply(self, input_message, input_parameters, response=None):
-
-        if response is None:
-            response = ARAXResponse()
-        self.response = response
-        self.message = input_message
+    def apply(self, input_parameters, response=None):
+        message = response.envelope.message
+        log = response
         # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
-        required_portion_of_qg = eu.get_required_portion_of_qg(self.message.query_graph)
+        required_portion_of_qg = eu.get_required_portion_of_qg(message.query_graph)
         if required_portion_of_qg.edges and eu.qg_is_disconnected(required_portion_of_qg):
-            self.response.error(f"Required portion of QG is disconnected. This is not allowed.", error_code="InvalidQG")
+            log.error(f"Required portion of QG is disconnected. This is not allowed.", error_code="InvalidQG")
             return response
 
         # Create global slots to store some info that needs to persist between expand() calls
-        if not hasattr(self.message, "encountered_kryptonite_edges_info"):
-            self.message.encountered_kryptonite_edges_info = dict()
-        encountered_kryptonite_edges_info = self.message.encountered_kryptonite_edges_info
-        if not hasattr(self.message, "node_usages_by_edges_map"):
-            self.message.node_usages_by_edges_map = dict()
-        node_usages_by_edges_map = self.message.node_usages_by_edges_map
+        if not hasattr(message, "encountered_kryptonite_edges_info"):
+            message.encountered_kryptonite_edges_info = dict()
+        encountered_kryptonite_edges_info = message.encountered_kryptonite_edges_info
+        if not hasattr(message, "node_usages_by_edges_map"):
+            message.node_usages_by_edges_map = dict()
+        node_usages_by_edges_map = message.node_usages_by_edges_map
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -250,8 +245,8 @@ class ARAXExpander:
 
         # Default to expanding the entire query graph if the user didn't specify what to expand
         if not parameters['edge_id'] and not parameters['node_id']:
-            parameters['edge_id'] = [edge.id for edge in self.message.query_graph.edges]
-            parameters['node_id'] = self._get_orphan_query_node_ids(self.message.query_graph)
+            parameters['edge_id'] = [edge.id for edge in message.query_graph.edges]
+            parameters['node_id'] = self._get_orphan_query_node_ids(message.query_graph)
 
         if response.status != 'OK':
             return response
@@ -266,11 +261,10 @@ class ARAXExpander:
         kp_to_use = self.parameters['kp']
         continue_if_no_results = self.parameters['continue_if_no_results']
         use_synonyms = self.parameters['use_synonyms']
-        query_graph = self.message.query_graph
-        log = self.response
+        query_graph = message.query_graph
 
         # Convert message knowledge graph to dictionary format, for faster processing
-        dict_kg = eu.convert_standard_kg_to_dict_kg(self.message.knowledge_graph)
+        dict_kg = eu.convert_standard_kg_to_dict_kg(message.knowledge_graph)
 
         # Expand any specified edges
         if input_qedge_ids:
@@ -315,19 +309,19 @@ class ARAXExpander:
                     return response
 
         # Convert message knowledge graph back to API standard format
-        self.message.knowledge_graph = eu.convert_dict_kg_to_standard_kg(dict_kg)
+        message.knowledge_graph = eu.convert_dict_kg_to_standard_kg(dict_kg)
 
         # Override node types so that they match what was asked for in the query graph (where applicable) #987
-        self._override_node_types(self.message.knowledge_graph, self.message.query_graph)
+        self._override_node_types(message.knowledge_graph, message.query_graph)
         
         # Make sure we don't have any orphan edges
-        node_ids = {node.id for node in self.message.knowledge_graph.nodes}
-        for edge in self.message.knowledge_graph.edges:
+        node_ids = {node.id for node in message.knowledge_graph.nodes}
+        for edge in message.knowledge_graph.edges:
             if edge.source_id not in node_ids or edge.target_id not in node_ids:
-                self.message.knowledge_graph.edges.remove(edge)
+                message.knowledge_graph.edges.remove(edge)
 
         # Return the response and done
-        kg = self.message.knowledge_graph
+        kg = message.knowledge_graph
         only_kryptonite_qedges_expanded = all([eu.get_query_edge(query_graph, qedge_id).exclude for qedge_id in input_qedge_ids])
         if not kg.nodes and not continue_if_no_results and not only_kryptonite_qedges_expanded:
             log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
@@ -439,17 +433,17 @@ class ARAXExpander:
                       f"{', '.join(valid_kps_for_single_node_queries)}", error_code="InvalidKP")
             return answer_kg
 
-    def _get_query_graph_for_edge(self, qedge: QEdge, query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
+    def _get_query_graph_for_edge(self, qedge: QEdge, full_qg: QueryGraph, dict_kg: DictKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
-        edge_query_graph = QueryGraph(nodes=[], edges=[])
-        qnodes = [eu.get_query_node(query_graph, qedge.source_id),
-                  eu.get_query_node(query_graph, qedge.target_id)]
+        edge_qg = QueryGraph(nodes=[], edges=[])
+        qnodes = [eu.get_query_node(full_qg, qedge.source_id),
+                  eu.get_query_node(full_qg, qedge.target_id)]
 
         # Add (a copy of) this qedge to our edge query graph
-        edge_query_graph.edges.append(eu.copy_qedge(qedge))
+        edge_qg.edges.append(eu.copy_qedge(qedge))
 
         # Update this qedge's qnodes as appropriate and add (copies of) them to the edge query graph
-        required_qedge_ids = {qedge.id for qedge in query_graph.edges if not qedge.option_group_id}
+        required_qedge_ids = {qedge.id for qedge in full_qg.edges if not qedge.option_group_id}
         expanded_qedge_ids = set(dict_kg.edges_by_qg_id)
         qedge_has_already_been_expanded = qedge.id in expanded_qedge_ids
         qedge_is_required = qedge.id in required_qedge_ids
@@ -461,32 +455,32 @@ class ARAXExpander:
                 existing_curies_for_this_qnode_id = list(dict_kg.nodes_by_qg_id[qnode_copy.id])
                 if qedge_has_already_been_expanded:
                     # Feed in curies only for 'input' qnodes if we're re-expanding this edge (i.e., with another KP)
-                    if self._is_input_qnode(qnode_copy, qedge):
+                    if self._is_input_qnode(qnode_copy, qedge, full_qg):
                         qnode_copy.curie = existing_curies_for_this_qnode_id
                 elif qedge_is_required:
                     # Only feed in curies to required qnodes if it was expansion of a REQUIRED qedge that grabbed them
-                    qedge_ids_connected_to_qnode = {qedge.id for qedge in query_graph.edges if qnode.id in {qedge.source_id, qedge.target_id}}
+                    qedge_ids_connected_to_qnode = {qedge.id for qedge in full_qg.edges if qnode.id in {qedge.source_id, qedge.target_id}}
                     was_populated_by_required_edge = qedge_ids_connected_to_qnode.intersection(required_qedge_ids, expanded_qedge_ids)
                     if was_populated_by_required_edge:
                         qnode_copy.curie = existing_curies_for_this_qnode_id
                 else:
                     qnode_copy.curie = existing_curies_for_this_qnode_id
-            edge_query_graph.nodes.append(qnode_copy)
+            edge_qg.nodes.append(qnode_copy)
 
         # Consider both protein and gene if qnode's type is one of those (since KPs handle these differently)
-        for qnode in edge_query_graph.nodes:
+        for qnode in edge_qg.nodes:
             if qnode.type in ['protein', 'gene']:
                 qnode.type = ['protein', 'gene']
 
         # Display a summary of what the modified query graph for this edge looks like
-        qnodes_with_curies = [qnode for qnode in edge_query_graph.nodes if qnode.curie]
-        input_qnode = qnodes_with_curies[0] if qnodes_with_curies else edge_query_graph.nodes[0]
-        output_qnode = next(qnode for qnode in edge_query_graph.nodes if qnode.id != input_qnode.id)
+        qnodes_with_curies = [qnode for qnode in edge_qg.nodes if qnode.curie]
+        input_qnode = qnodes_with_curies[0] if qnodes_with_curies else edge_qg.nodes[0]
+        output_qnode = next(qnode for qnode in edge_qg.nodes if qnode.id != input_qnode.id)
         input_curie_summary = self._get_qnode_curie_summary(input_qnode)
         output_curie_summary = self._get_qnode_curie_summary(output_qnode)
         log.debug(f"Modified QG for this qedge is ({input_qnode.id}:{input_qnode.type}{input_curie_summary})-"
                   f"{qedge.type if qedge.type else ''}-({output_qnode.id}:{output_qnode.type}{output_curie_summary})")
-        return edge_query_graph
+        return edge_qg
 
     @staticmethod
     def _deduplicate_nodes(dict_kg: DictKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]],
@@ -759,7 +753,7 @@ class ARAXExpander:
 
         log.debug(f"After pruning, KG counts are: {eu.get_printable_counts_by_qg_id(dict_kg)}")
 
-    def _get_order_to_expand_qedges_in(self, query_graph: QueryGraph) -> List[QEdge]:
+    def _get_order_to_expand_qedges_in(self, query_graph: QueryGraph, log: ARAXResponse) -> List[QEdge]:
         """
         This function determines what order to expand the edges in a query graph in; it aims to start with a required,
         non-kryptonite qedge that has a qnode with a curie specified. It then looks for a qedge connected to that
@@ -790,7 +784,7 @@ class ARAXExpander:
                     ordered_qedges.append(connected_qedge)
                     qedges_remaining.pop(qedges_remaining.index(connected_qedge))
                 else:
-                    self.response.error(f"Query graph is disconnected (has more than one component)", error_code="UnsupportedQG")
+                    log.error(f"Query graph is disconnected (has more than one component)", error_code="UnsupportedQG")
                     return []
         return ordered_qedges
 
@@ -813,8 +807,8 @@ class ARAXExpander:
         else:
             return None
 
-    def _is_input_qnode(self, qnode: QNode, qedge: QEdge) -> bool:
-        all_ordered_qedges = self._get_order_to_expand_qedges_in(self.message.query_graph)
+    def _is_input_qnode(self, qnode: QNode, qedge: QEdge, qg: QueryGraph) -> bool:
+        all_ordered_qedges = self._get_order_to_expand_qedges_in(qg)
         current_qedge_index = all_ordered_qedges.index(qedge)
         previous_qedge = all_ordered_qedges[current_qedge_index - 1] if current_qedge_index > 0 else None
         if previous_qedge and qnode.id in {previous_qedge.source_id, previous_qedge.target_id}:
