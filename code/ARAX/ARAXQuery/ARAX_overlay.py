@@ -375,11 +375,11 @@ This information is included in edge attributes with the name 'icees_p-value'.
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
                 # This works for KG1 and KG2
-                response.debug(f"Number of nodes in KG by type is {Counter([x.type[0] for x in message.knowledge_graph.nodes])}")  # type is a list, just get the first one
+                response.debug(f"Number of nodes in KG by type is {Counter([x.category[0] for x in message.knowledge_graph.nodes])}")  # type is a list, just get the first one
                 # don't really need to worry about this now
-                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.type for x in message.knowledge_graph.nodes])}")
+                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes])}")
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
-                response.debug(f"Number of edges in KG by type is {Counter([x.type for x in message.knowledge_graph.edges])}")
+                response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges])}")
                 response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges if x.edge_attributes])}")
                 # Collect attribute names, could do this with list comprehension, but this is so much more readable
                 attribute_names = []
@@ -735,9 +735,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             qg_nodes = message.query_graph.nodes
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
-                                    #'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
+                                    #'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.category == "chemical_substance"]),
                                     'subject_key': set([node_key for node_key in qg_nodes]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
-                                    #'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
+                                    #'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.category == "disease" or x.category == "phenotypic_feature")])
                                     'object_key': set([node_key for node_key in qg_nodes])  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     }
         else:
