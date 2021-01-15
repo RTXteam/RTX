@@ -16,9 +16,3 @@
 
 # config.json
 **/config.json
-
-*.sqlite
-*.db
-*.tsv
-*.json
-*.pkl
