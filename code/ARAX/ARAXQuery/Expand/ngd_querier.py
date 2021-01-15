@@ -39,7 +39,7 @@ class NGDQuerier:
         :return: A tuple containing:
             1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
            results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_ids for each edge. Example:
+            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
@@ -54,16 +54,18 @@ class NGDQuerier:
         # Find potential answers using KG2
         log.debug(f"Finding potential answers using KG2")
         qedge = query_graph.edges[0]
-        source_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.source_id)
-        target_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.target_id)
+        source_qnode_key = qedge.source_id
+        target_qnode_key = qedge.target_id
+        source_qnode = query_graph.nodes[source_qnode_key]
+        target_qnode = query_graph.nodes[target_qnode_key]
         qedge_params_str = ", ".join(list(filter(None, [f"id={qedge.id}",
-                                                        f"source_id={source_qnode.id}",
-                                                        f"target_id={target_qnode.id}",
+                                                        f"source_id={source_qnode_key}",
+                                                        f"target_id={target_qnode_key}",
                                                         self._get_dsl_qedge_type_str(qedge)])))
-        source_params_str = ", ".join(list(filter(None, [f"id={source_qnode.id}",
+        source_params_str = ", ".join(list(filter(None, [f"id={source_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(source_qnode),
                                                          self._get_dsl_qnode_type_str(source_qnode)])))
-        target_params_str = ", ".join(list(filter(None, [f"id={target_qnode.id}",
+        target_params_str = ", ".join(list(filter(None, [f"id={target_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(target_qnode),
                                                          self._get_dsl_qnode_type_str(target_qnode)])))
         actions_list = [
@@ -89,7 +91,7 @@ class NGDQuerier:
             kg2_node_1 = kg2_nodes_map.get(kg2_edge.source_id)  # These are already canonicalized (default behavior)
             kg2_node_2 = kg2_nodes_map.get(kg2_edge.target_id)
             # Figure out which node corresponds to source qnode (don't necessarily match b/c query was bidirectional)
-            if source_qnode.id in kg2_node_1.qnode_ids and target_qnode.id in kg2_node_2.qnode_ids:
+            if source_qnode_key in kg2_node_1.qnode_keys and target_qnode_key in kg2_node_2.qnode_keys:
                 ngd_source_id = kg2_node_1.id
                 ngd_target_id = kg2_node_2.id
             else:
@@ -110,10 +112,10 @@ class NGDQuerier:
                 ngd_source_node = self._create_ngd_node(kg2_nodes_map.get(ngd_edge.source_id))
                 ngd_target_node = self._create_ngd_node(kg2_nodes_map.get(ngd_edge.target_id))
                 final_kg.add_edge(ngd_edge, qedge.id)
-                final_kg.add_node(ngd_source_node, source_qnode.id)
-                final_kg.add_node(ngd_target_node, target_qnode.id)
-                edge_to_nodes_map[ngd_edge.id] = {source_qnode.id: ngd_source_node.id,
-                                                  target_qnode.id: ngd_target_node.id}
+                final_kg.add_node(ngd_source_node, source_qnode_key)
+                final_kg.add_node(ngd_target_node, target_qnode_key)
+                edge_to_nodes_map[ngd_edge.id] = {source_qnode_key: ngd_source_node.id,
+                                                  target_qnode_key: ngd_target_node.id}
 
         return final_kg, edge_to_nodes_map
 

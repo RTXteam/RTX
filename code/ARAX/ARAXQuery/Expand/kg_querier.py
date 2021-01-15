@@ -45,7 +45,7 @@ class KGQuerier:
         :return: A tuple containing:
             1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
            results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_ids for each edge. Example:
+            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
@@ -67,16 +67,13 @@ class KGQuerier:
         qedge = query_graph.edges[0]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        if use_synonyms and kg_name == "KG1":
-            qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
-            for qnode in qnodes_with_curies:
+        qnodes_with_curies = [qnode for qnode in query_graph.nodes.values() if qnode.curie]
+        for qnode in qnodes_with_curies:
+            if use_synonyms and kg_name == "KG1":
                 qnode.curie = eu.get_curie_synonyms(qnode.curie, log)
-                qnode.type = None  # Important to clear this, otherwise results are limited (#889)
-        elif kg_name == "KG2c":
-            qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
-            for qnode in qnodes_with_curies:
+            elif kg_name == "KG2c":
                 qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
-                qnode.type = None  # Important to clear this to avoid discrepancies in types for particular concepts
+            qnode.type = None  # Important to clear this, otherwise results are limited (#889)
 
         # Run the actual query and process results
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kg_name, log)
@@ -91,11 +88,13 @@ class KGQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def answer_single_node_query(self, qnode: QNode) -> DictKnowledgeGraph:
+    def answer_single_node_query(self, single_node_qg: QueryGraph) -> DictKnowledgeGraph:
         kg_name = self.kg_name
         use_synonyms = self.use_synonyms
         log = self.response
         final_kg = DictKnowledgeGraph()
+        qnode_key = next(qnode_key for qnode_key in single_node_qg.nodes)
+        qnode = single_node_qg[qnode_key]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
         if qnode.curie:
@@ -107,16 +106,16 @@ class KGQuerier:
                 qnode.type = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         # Build and run a cypher query to get this node/nodes
-        where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
-        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode, kg_name)} WHERE {where_clause} RETURN {qnode.id}"
-        log.info(f"Sending cypher query for node {qnode.id} to {kg_name} neo4j")
+        where_clause = f"{qnode_key}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode_key}.id in {qnode.curie}"
+        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode, single_node_qg, kg_name)} WHERE {where_clause} RETURN {qnode_key}"
+        log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
 
         # Load the results into swagger object model and add to our answer knowledge graph
         for result in results:
-            neo4j_node = result.get(qnode.id)
+            neo4j_node = result.get(qnode_key)
             swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-            final_kg.add_node(swagger_node, qnode.id)
+            final_kg.add_node(swagger_node, qnode_key)
 
         return final_kg
 
@@ -126,22 +125,23 @@ class KGQuerier:
         try:
             # Build the match clause
             qedge = query_graph.edges[0]
-            source_qnode = eu.get_query_node(query_graph, qedge.source_id)
-            target_qnode = eu.get_query_node(query_graph, qedge.target_id)
+            source_qnode_key = qedge.source_id
+            target_qnode_key = qedge.target_id
             qedge_cypher = self._get_cypher_for_query_edge(qedge, enforce_directionality)
-            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode, kg_name)
-            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode, kg_name)
+            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode_key, query_graph, kg_name)
+            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode_key, query_graph, kg_name)
             match_clause = f"MATCH {source_qnode_cypher}{qedge_cypher}{target_qnode_cypher}"
 
             # Build the where clause
             where_fragments = []
-            for qnode in [source_qnode, target_qnode]:
+            for qnode_key in [source_qnode_key, target_qnode_key]:
+                qnode = query_graph.nodes[qnode_key]
                 if qnode.curie and isinstance(qnode.curie, list) and len(qnode.curie) > 1:
-                    where_fragments.append(f"{qnode.id}.id in {qnode.curie}")
+                    where_fragments.append(f"{qnode_key}.id in {qnode.curie}")
                 if qnode.type:
                     if kg_name == "KG2c":
                         qnode_types = eu.convert_string_or_list_to_list(qnode.type)
-                        type_fragments = [f"'{qnode_type}' in {qnode.id}.types" for qnode_type in qnode_types]
+                        type_fragments = [f"'{qnode_type}' in {qnode_key}.types" for qnode_type in qnode_types]
                         joined_type_fragments = " OR ".join(type_fragments)
                         type_where_clause = joined_type_fragments if len(type_fragments) < 2 else f"({joined_type_fragments})"
                         where_fragments.append(type_where_clause)
@@ -150,7 +150,7 @@ class KGQuerier:
                             node_type_property = "category_label"
                         else:
                             node_type_property = "category"
-                        where_fragments.append(f"{qnode.id}.{node_type_property} in {qnode.type}")
+                        where_fragments.append(f"{qnode_key}.{node_type_property} in {qnode.type}")
 
             if where_fragments:
                 where_clause = f"WHERE {' AND '.join(where_fragments)}"
@@ -158,13 +158,13 @@ class KGQuerier:
                 where_clause = ""
 
             # Build the with clause
-            source_qnode_col_name = f"nodes_{source_qnode.id}"
-            target_qnode_col_name = f"nodes_{target_qnode.id}"
+            source_qnode_col_name = f"nodes_{source_qnode_key}"
+            target_qnode_col_name = f"nodes_{target_qnode_key}"
             qedge_col_name = f"edges_{qedge.id}"
             # This line grabs the edge's ID and a record of which of its nodes correspond to which qnode ID
-            extra_edge_properties = "{.*, " + f"id:ID({qedge.id}), {source_qnode.id}:{source_qnode.id}.id, {target_qnode.id}:{target_qnode.id}.id" + "}"
-            with_clause = f"WITH collect(distinct {source_qnode.id}) as {source_qnode_col_name}, " \
-                          f"collect(distinct {target_qnode.id}) as {target_qnode_col_name}, " \
+            extra_edge_properties = "{.*, " + f"id:ID({qedge.id}), {source_qnode_key}:{source_qnode_key}.id, {target_qnode_key}:{target_qnode_key}.id" + "}"
+            with_clause = f"WITH collect(distinct {source_qnode_key}) as {source_qnode_col_name}, " \
+                          f"collect(distinct {target_qnode_key}) as {target_qnode_col_name}, " \
                           f"collect(distinct {qedge.id}{extra_edge_properties}) as {qedge_col_name}"
 
             # Build the return clause
@@ -199,21 +199,21 @@ class KGQuerier:
         for column_name in column_names:
             # Load answer nodes into our knowledge graph
             if column_name.startswith('nodes'):  # Example column name: 'nodes_n00'
-                column_qnode_id = column_name.replace("nodes_", "", 1)
+                column_qnode_key = column_name.replace("nodes_", "", 1)
                 for neo4j_node in results_table.get(column_name):
                     swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-                    final_kg.add_node(swagger_node, column_qnode_id)
+                    final_kg.add_node(swagger_node, column_qnode_key)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_id = column_name.replace("edges_", "", 1)
                 for neo4j_edge in results_table.get(column_name):
                     swagger_edge = self._convert_neo4j_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict, kg_name)
 
-                    # Record which of this edge's nodes correspond to which qnode_id
+                    # Record which of this edge's nodes correspond to which qnode_key
                     if swagger_edge.id not in edge_to_nodes_map:
                         edge_to_nodes_map[swagger_edge.id] = dict()
-                    for qnode in query_graph.nodes:
-                        edge_to_nodes_map[swagger_edge.id][qnode.id] = neo4j_edge.get(qnode.id)
+                    for qnode_key in query_graph.nodes:
+                        edge_to_nodes_map[swagger_edge.id][qnode_key] = neo4j_edge.get(qnode_key)
 
                     # Finally add the current edge to our answer knowledge graph
                     final_kg.add_edge(swagger_edge, column_qedge_id)
@@ -387,14 +387,15 @@ class KGQuerier:
         return edge
 
     @staticmethod
-    def _get_cypher_for_query_node(qnode: QNode, kg_name: str) -> str:
+    def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph, kg_name: str) -> str:
+        qnode = qg.nodes[qnode_key]
         type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) and kg_name != "KG2c" else ""
         if qnode.curie and (isinstance(qnode.curie, str) or len(qnode.curie) == 1):
             curie = qnode.curie if isinstance(qnode.curie, str) else qnode.curie[0]
             curie_cypher = f" {{id:'{curie}'}}"
         else:
             curie_cypher = ""
-        qnode_cypher = f"({qnode.id}{type_cypher}{curie_cypher})"
+        qnode_cypher = f"({qnode_key}{type_cypher}{curie_cypher})"
         return qnode_cypher
 
     @staticmethod

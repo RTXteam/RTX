@@ -41,7 +41,7 @@ class GeneticsQuerier:
         :return: A tuple containing:
             1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
            results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_ids for each edge. Example:
+            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
@@ -57,8 +57,8 @@ class GeneticsQuerier:
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         qedge = modified_query_graph.edges[0]
-        source_qnode_id = qedge.source_id
-        target_qnode_id = qedge.target_id
+        source_qnode_key = qedge.source_id
+        target_qnode_key = qedge.target_id
 
         # Answer the query using the KP and load its answers into our Swagger model
         json_response = self._send_query_to_kp(modified_query_graph, log)
@@ -84,15 +84,15 @@ class GeneticsQuerier:
                         for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
                             swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
                             final_kg.add_edge(swagger_edge, qedge_id)
-                        edge_to_nodes_map[swagger_edge.id] = {source_qnode_id: swagger_edge.source_id,
-                                                              target_qnode_id: swagger_edge.target_id}
+                        edge_to_nodes_map[swagger_edge.id] = {source_qnode_key: swagger_edge.source_id,
+                                                              target_qnode_key: swagger_edge.target_id}
             log.warning(f"Encountered unknown score(s) from {self.kp_name}: {unknown_scores_encountered}. "
                         f"Not sure what data type to assign these.")
             for returned_node in returned_kg['nodes']:
                 if returned_node['id']:  # Skip any nodes with 'None' for their ID (see discussion in #1154)
                     swagger_node = self._create_swagger_node_from_kp_node(returned_node)
-                    for qnode_id in qg_id_mappings['nodes'][swagger_node.id]:
-                        final_kg.add_node(swagger_node, qnode_id)
+                    for qnode_key in qg_id_mappings['nodes'][swagger_node.id]:
+                        final_kg.add_node(swagger_node, qnode_key)
                 else:
                     log.warning(f"Node returned from {self.kp_name} is lacking an ID: {returned_node}."
                                 f" Will skip adding this node to the KG.")
@@ -112,13 +112,13 @@ class GeneticsQuerier:
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
 
     def _pre_process_query_graph(self, query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:
-        for qnode in query_graph.nodes:
+        for qnode_key, qnode in query_graph.nodes.items():
             # Convert node types to preferred format and verify we can do this query
             formatted_qnode_types = {self.node_type_overrides_for_kp.get(qnode_type, qnode_type) for qnode_type in eu.convert_string_or_list_to_list(qnode.type)}
             accepted_qnode_types = formatted_qnode_types.intersection(self.accepted_node_types)
             if not accepted_qnode_types:
                 log.error(f"{self.kp_name} can only be used for queries involving {self.accepted_node_types} "
-                          f"and QNode {qnode.id} has type '{qnode.type}'", error_code="UnsupportedQueryForKP")
+                          f"and QNode {qnode_key} has type '{qnode.type}'", error_code="UnsupportedQueryForKP")
                 return query_graph
             else:
                 qnode.type = list(accepted_qnode_types)[0]
@@ -128,23 +128,23 @@ class GeneticsQuerier:
                 desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{self.kp_preferred_prefixes[qnode.type]}:")]
                 if desired_curies:
                     qnode.curie = desired_curies if len(desired_curies) > 1 else desired_curies[0]
-                    log.debug(f"Converted qnode {qnode.id} curie to {qnode.curie}")
+                    log.debug(f"Converted qnode {qnode_key} curie to {qnode.curie}")
                 else:
-                    log.warning(f"Could not convert qnode {qnode.id} curie(s) to preferred prefix ({self.kp_preferred_prefixes[qnode.type]})")
+                    log.warning(f"Could not convert qnode {qnode_key} curie(s) to preferred prefix ({self.kp_preferred_prefixes[qnode.type]})")
         return query_graph
 
     @staticmethod
     def _get_qg_id_mappings_from_results(results: [any]) -> Dict[str, Dict[str, Set[str]]]:
-        qnode_id_mappings = dict()
+        qnode_key_mappings = dict()
         qedge_id_mappings = dict()
         for result in results:
             for node_binding in result['node_bindings']:
                 qg_id = node_binding['qg_id']
                 kg_id = node_binding['kg_id']
-                if kg_id in qnode_id_mappings:
-                    qnode_id_mappings[kg_id].add(qg_id)
+                if kg_id in qnode_key_mappings:
+                    qnode_key_mappings[kg_id].add(qg_id)
                 else:
-                    qnode_id_mappings[kg_id] = {qg_id}
+                    qnode_key_mappings[kg_id] = {qg_id}
             for edge_binding in result['edge_bindings']:
                 qg_id = edge_binding['qg_id']
                 kg_id = edge_binding['kg_id']
@@ -152,22 +152,22 @@ class GeneticsQuerier:
                     qedge_id_mappings[kg_id].add(qg_id)
                 else:
                     qedge_id_mappings[kg_id] = {qg_id}
-        return {"nodes": qnode_id_mappings, "edges": qedge_id_mappings}
+        return {"nodes": qnode_key_mappings, "edges": qedge_id_mappings}
 
     def _send_query_to_kp(self, query_graph: QueryGraph, log: ARAXResponse) -> Dict[str, any]:
         # Send query to their API (stripping down qnode/qedges to only the properties they like)
-        stripped_qnodes = []
-        for qnode in query_graph.nodes:
-            stripped_qnode = {'id': qnode.id, 'type': qnode.type}
+        stripped_qnodes = dict()
+        for qnode_key, qnode in query_graph.nodes.items():
+            stripped_qnode = {'type': qnode.type}
             if qnode.curie:
                 stripped_qnode['curie'] = qnode.curie
-            stripped_qnodes.append(stripped_qnode)
-        qedge = query_graph.edges[0]  # Our query graph is single-edge
+            stripped_qnodes[qnode_key] = stripped_qnode
+        qedge = next(qedge for qedge in query_graph.edges.values())  # Our query graph is single-edge
         stripped_qedge = {'id': qedge.id,
                           'source_id': qedge.source_id,
                           'target_id': qedge.target_id,
                           'type': list(self.accepted_edge_types)[0]}
-        source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].source_id)
+        source_stripped_qnode = stripped_qnodes[qedge.source_id]
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie

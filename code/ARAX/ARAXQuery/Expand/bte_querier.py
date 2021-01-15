@@ -33,7 +33,7 @@ class BTEQuerier:
         :return: A tuple containing:
             1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
            results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_ids for each edge. Example:
+            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
@@ -44,18 +44,20 @@ class BTEQuerier:
         valid_bte_inputs_dict = self._get_valid_bte_inputs_dict()
 
         # Validate our input to make sure it will work with BTE
-        qedge, input_qnode, output_qnode = self._validate_and_pre_process_input(query_graph=query_graph,
-                                                                                valid_bte_inputs_dict=valid_bte_inputs_dict,
-                                                                                enforce_directionality=enforce_directionality,
-                                                                                use_synonyms=use_synonyms,
-                                                                                log=log)
+        input_qnode_key, output_qnode_key = self._validate_and_pre_process_input(query_graph=query_graph,
+                                                                                 valid_bte_inputs_dict=valid_bte_inputs_dict,
+                                                                                 enforce_directionality=enforce_directionality,
+                                                                                 use_synonyms=use_synonyms,
+                                                                                 log=log)
         if log.status != 'OK':
             return answer_kg, edge_to_nodes_map
+        input_qnode = query_graph.nodes[input_qnode_key]
+        output_qnode = query_graph.nodes[output_qnode_key]
 
         # Use BTE to answer the query
-        answer_kg, accepted_curies = self._answer_query_using_bte(input_qnode=input_qnode,
-                                                                  output_qnode=output_qnode,
-                                                                  qedge=qedge,
+        answer_kg, accepted_curies = self._answer_query_using_bte(input_qnode_key=input_qnode_key,
+                                                                  output_qnode_key=output_qnode_key,
+                                                                  qg=query_graph,
                                                                   answer_kg=answer_kg,
                                                                   valid_bte_inputs_dict=valid_bte_inputs_dict,
                                                                   log=log)
@@ -64,21 +66,24 @@ class BTEQuerier:
 
         # Hack to achieve a curie-to-curie query, if necessary
         if eu.qg_is_fulfilled(query_graph, answer_kg) and input_qnode.curie and output_qnode.curie:
-            answer_kg = self._prune_answers_to_achieve_curie_to_curie_query(answer_kg, output_qnode, qedge)
+            answer_kg = self._prune_answers_to_achieve_curie_to_curie_query(answer_kg, output_qnode_key, query_graph)
 
         # Report our findings
         if eu.qg_is_fulfilled(query_graph, answer_kg):
             answer_kg = eu.switch_kg_to_arax_curie_format(answer_kg)
-            edge_to_nodes_map = self._create_edge_to_nodes_map(answer_kg, input_qnode.id, output_qnode.id)
+            edge_to_nodes_map = self._create_edge_to_nodes_map(answer_kg, input_qnode.key, output_qnode.key)
         elif not accepted_curies:
             log.warning(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
                         f"{valid_bte_inputs_dict['curie_prefixes']}")
         return answer_kg, edge_to_nodes_map
 
-    def _answer_query_using_bte(self, input_qnode: QNode, output_qnode: QNode, qedge: QEdge,
+    def _answer_query_using_bte(self, input_qnode_key: str, output_qnode_key: str, qg: QueryGraph,
                                 answer_kg: DictKnowledgeGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
                                 log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Set[str]]:
         accepted_curies = set()
+        qedge = next(qedge for qedge in qg.edges.values())
+        input_qnode = qg.nodes[input_qnode_key]
+        output_qnode = qg.nodes[output_qnode_key]
         # Send this single-edge query to BTE, input curie by input curie (adding findings to our answer KG as we go)
         for curie in input_qnode.curie:
             # Consider all different combinations of qnode types (can be multiple if gene/protein)
@@ -103,11 +108,11 @@ class BTEQuerier:
                                   error_code=error_type.__name__)
                         return answer_kg, accepted_curies
                     else:
-                        answer_kg = self._add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode.id, output_qnode.id, qedge.id, log)
+                        answer_kg = self._add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode_key, output_qnode_key, qedge.id, log)
         return answer_kg, accepted_curies
 
     def _add_answers_to_kg(self, answer_kg: DictKnowledgeGraph, reasoner_std_response: Dict[str, any],
-                           input_qnode_id: str, output_qnode_id: str, qedge_id: str, log: ARAXResponse) -> DictKnowledgeGraph:
+                           input_qnode_key: str, output_qnode_key: str, qedge_id: str, log: ARAXResponse) -> DictKnowledgeGraph:
         kg_to_qg_ids_dict = self._build_kg_to_qg_id_dict(reasoner_std_response['results'])
         if reasoner_std_response['knowledge_graph']['edges']:
             remapped_node_ids = dict()
@@ -120,18 +125,18 @@ class BTEQuerier:
                 swagger_node.name = node.get('name')
                 swagger_node.type = eu.convert_string_or_list_to_list(eu.convert_string_to_snake_case(node.get('type')))
 
-                # Map the returned BTE qg_ids back to the original qnode_ids in our query graph
+                # Map the returned BTE qg_ids back to the original qnode_keys in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['nodes'].get(bte_node_id)
                 if bte_qg_id == "n0":
-                    qnode_id = input_qnode_id
+                    qnode_key = input_qnode_key
                 elif bte_qg_id == "n1":
-                    qnode_id = output_qnode_id
+                    qnode_key = output_qnode_key
                 else:
-                    log.error("Could not map BTE qg_id to ARAX qnode_id", error_code="UnknownQGID")
+                    log.error("Could not map BTE qg_id to ARAX qnode_key", error_code="UnknownQGID")
                     return answer_kg
 
                 # Find and use the preferred equivalent identifier for this node (if it's an output node)
-                if qnode_id == output_qnode_id:
+                if qnode_key == output_qnode_key:
                     if bte_node_id in remapped_node_ids:
                         swagger_node.id = remapped_node_ids.get(bte_node_id)
                     else:
@@ -142,7 +147,7 @@ class BTEQuerier:
                 else:
                     swagger_node.id = bte_node_id
 
-                answer_kg.add_node(swagger_node, qnode_id)
+                answer_kg.add_node(swagger_node, qnode_key)
 
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
@@ -163,51 +168,53 @@ class BTEQuerier:
 
     @staticmethod
     def _validate_and_pre_process_input(query_graph: QueryGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
-                                        enforce_directionality: bool, use_synonyms: bool, log: ARAXResponse) -> Tuple[QEdge, QNode, QNode]:
+                                        enforce_directionality: bool, use_synonyms: bool, log: ARAXResponse) -> Tuple[str, str]:
         # Make sure we have a valid one-hop query graph
         if len(query_graph.edges) != 1 or len(query_graph.nodes) != 2:
             log.error(f"BTE can only accept one-hop query graphs (your QG has {len(query_graph.nodes)} nodes and "
                       f"{len(query_graph.edges)} edges)", error_code="InvalidQueryGraph")
-            return None, None, None
+            return "", ""
         qedge = query_graph.edges[0]
 
         # Make sure at least one of our qnodes has a curie
-        qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
+        qnodes_with_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.curie]
         if not qnodes_with_curies:
             log.error(f"Neither qnode for qedge {qedge.id} has a curie specified. BTE requires that at least one of "
                       f"them has a curie. Your query graph is: {query_graph.to_dict()}", error_code="UnsupportedQueryForKP")
-            return None, None, None
+            return "", ""
 
         # Figure out which query node is input vs. output
         if enforce_directionality:
-            input_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.source_id)
-            output_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.target_id)
+            input_qnode_key = qedge.source_id
+            output_qnode_key = qedge.target_id
         else:
-            input_qnode = next(qnode for qnode in query_graph.nodes if qnode.curie)
-            output_qnode = next(qnode for qnode in query_graph.nodes if qnode.id != input_qnode.id)
+            input_qnode_key = next(qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.curie)
+            output_qnode_key = set(query_graph.nodes).difference({input_qnode_key})
             log.warning(f"BTE cannot do bidirectional queries; the query for this edge will be directed, going: "
-                        f"{input_qnode.id}-->{output_qnode.id}")
+                        f"{input_qnode_key}-->{output_qnode_key}")
+        input_qnode = query_graph.nodes[input_qnode_key]
+        output_qnode = query_graph.nodes[output_qnode_key]
 
         # Make sure predicate is allowed
         if qedge.type not in valid_bte_inputs_dict['predicates'] and qedge.type is not None:
             log.error(f"BTE does not accept predicate '{qedge.type}'. Valid options are "
                       f"{valid_bte_inputs_dict['predicates']}", error_code="InvalidInput")
-            return None, None, None
+            return "", ""
 
         # Process qnode types (convert to preferred format, make sure allowed)
         input_qnode.type = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(input_qnode.type)]
         output_qnode.type = [eu.convert_string_to_pascal_case(node_type) for node_type in eu.convert_string_or_list_to_list(output_qnode.type)]
-        qnodes_missing_type = [qnode.id for qnode in [input_qnode, output_qnode] if not qnode.type]
+        qnodes_missing_type = [qnode_key for qnode_key in [input_qnode_key, output_qnode_key] if not query_graph[qnode_key].type]
         if qnodes_missing_type:
             log.error(f"BTE requires every query node to have a type. QNode(s) missing a type: "
                       f"{', '.join(qnodes_missing_type)}", error_code="InvalidInput")
-            return None, None, None
+            return "", ""
         invalid_qnode_types = [node_type for qnode in [input_qnode, output_qnode] for node_type in qnode.type
                                if node_type not in valid_bte_inputs_dict['node_types']]
         if invalid_qnode_types:
             log.error(f"BTE does not accept QNode type(s): {', '.join(invalid_qnode_types)}. Valid options are "
                       f"{valid_bte_inputs_dict['node_types']}", error_code="InvalidInput")
-            return None, None, None
+            return "", ""
 
         # Sub in curie synonyms as appropriate
         if use_synonyms:
@@ -220,21 +227,23 @@ class BTEQuerier:
         input_curie_list = eu.convert_string_or_list_to_list(input_qnode.curie)
         input_qnode.curie = [eu.convert_curie_to_bte_format(curie) for curie in input_curie_list]
 
-        return qedge, input_qnode, output_qnode
+        return input_qnode_key, output_qnode_key
 
     @staticmethod
-    def _prune_answers_to_achieve_curie_to_curie_query(kg: DictKnowledgeGraph, output_qnode: QNode, qedge: QEdge) -> DictKnowledgeGraph:
+    def _prune_answers_to_achieve_curie_to_curie_query(kg: DictKnowledgeGraph, output_qnode_key: str, qg: QueryGraph) -> DictKnowledgeGraph:
         """
         This is a way of hacking around BTE's limitation where it can only do (node with curie)-->(non-specific node)
         kinds of queries. We do the non-specific query, and then use this function to remove all of the answer nodes
         that do not correspond to the curie we wanted for the 'output' node.
         """
         # Remove 'output' nodes in the KG that aren't actually the ones we were looking for
+        output_qnode = qg.nodes[output_qnode_key]
+        qedge = next(qedge for qedge in qg.edges.values())
         desired_output_curies = set(eu.convert_string_or_list_to_list(output_qnode.curie))
-        all_output_node_ids = set(kg.nodes_by_qg_id[output_qnode.id])
+        all_output_node_ids = set(kg.nodes_by_qg_id[output_qnode_key])
         output_node_ids_to_remove = all_output_node_ids.difference(desired_output_curies)
         for node_id in output_node_ids_to_remove:
-            kg.nodes_by_qg_id[output_qnode.id].pop(node_id)
+            kg.nodes_by_qg_id[output_qnode_key].pop(node_id)
 
         # And remove any edges that used them
         edge_ids_to_remove = set()
@@ -247,12 +256,12 @@ class BTEQuerier:
         return kg
 
     @staticmethod
-    def _create_edge_to_nodes_map(kg: DictKnowledgeGraph, input_qnode_id: str, output_qnode_id: str) -> Dict[str, Dict[str, str]]:
+    def _create_edge_to_nodes_map(kg: DictKnowledgeGraph, input_qnode_key: str, output_qnode_key: str) -> Dict[str, Dict[str, str]]:
         edge_to_nodes_map = dict()
         for qedge_id, edges in kg.edges_by_qg_id.items():
             for edge_key, edge in edges.items():
                 # BTE single-edge queries are always directed (meaning, edge.source_id == input qnode ID)
-                edge_to_nodes_map[edge.id] = {input_qnode_id: edge.source_id, output_qnode_id: edge.target_id}
+                edge_to_nodes_map[edge.id] = {input_qnode_key: edge.source_id, output_qnode_key: edge.target_id}
         return edge_to_nodes_map
 
     @staticmethod
@@ -279,8 +288,8 @@ class BTEQuerier:
         kg_to_qg_ids = {'nodes': dict(), 'edges': dict()}
         for node_binding in results['node_bindings']:
             node_id = node_binding['kg_id']
-            qnode_id = node_binding['qg_id']
-            kg_to_qg_ids['nodes'][node_id] = qnode_id
+            qnode_key = node_binding['qg_id']
+            kg_to_qg_ids['nodes'][node_id] = qnode_key
         for edge_binding in results['edge_bindings']:
             edge_ids = eu.convert_string_or_list_to_list(edge_binding['kg_id'])
             qedge_ids = edge_binding['qg_id']

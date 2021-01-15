@@ -56,8 +56,8 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
 def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     print(f"KG counts:")
     if nodes_by_qg_id or edges_by_qg_id:
-        for qnode_id, corresponding_nodes in sorted(nodes_by_qg_id.items()):
-            print(f"  {qnode_id}: {len(corresponding_nodes)}")
+        for qnode_key, corresponding_nodes in sorted(nodes_by_qg_id.items()):
+            print(f"  {qnode_key}: {len(corresponding_nodes)}")
         for qedge_id, corresponding_edges in sorted(edges_by_qg_id.items()):
             print(f"  {qedge_id}: {len(corresponding_edges)}")
     else:
@@ -65,9 +65,9 @@ def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
 
 
 def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
-    for qnode_id, nodes in sorted(nodes_by_qg_id.items()):
+    for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
-            print(f"{qnode_id}: {node.type}, {node.id}, {node.name}, {node.qnode_ids}")
+            print(f"{qnode_key}: {node.type}, {node.id}, {node.name}, {node.qnode_keys}")
 
 
 def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -78,7 +78,7 @@ def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
 
 def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     node_counts_by_prefix = dict()
-    for qnode_id, nodes in nodes_by_qg_id.items():
+    for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             prefix = node.id.split(':')[0]
             if prefix in node_counts_by_prefix.keys():
@@ -91,7 +91,7 @@ def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
 def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     node_ids = set()
     node_ids_used_by_edges = set()
-    for qnode_id, nodes in nodes_by_qg_id.items():
+    for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             node_ids.add(node_key)
     for qedge_id, edges in edges_by_qg_id.items():
@@ -102,11 +102,11 @@ def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_i
 
 
 def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
-    for qnode_id, nodes in nodes_by_qg_id.items():
+    for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             assert node.id and isinstance(node.id, str)
             assert isinstance(node.name, str) or node.name is None
-            assert node.qnode_ids and isinstance(node.qnode_ids, list)
+            assert node.qnode_keys and isinstance(node.qnode_keys, list)
             assert node.type and isinstance(node.type, list)
     for qedge_id, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
@@ -120,23 +120,23 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
 
 
 def _check_node_types(nodes: List[Node], query_graph: QueryGraph):
-    qnode_id_to_type_map = {qnode.id: qnode.type for qnode in query_graph.nodes}
     for node in nodes:
-        for qnode_id in node.qnode_ids:
-            corresponding_qnode_type = qnode_id_to_type_map.get(qnode_id)
-            if corresponding_qnode_type:
-                assert corresponding_qnode_type in node.type  # Could have additional types if it has multiple qnode ids
+        for qnode_key in node.qnode_keys:
+            qnode = query_graph.nodes[qnode_key]
+            if qnode.type:
+                assert qnode.type in node.type  # Could have additional types if it has multiple qnode keys
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
-    qnodes_with_single_curie = [qnode for qnode in query_graph.nodes if qnode.curie and isinstance(qnode.curie, str)]
-    for qnode in qnodes_with_single_curie:
-        if qnode.id in nodes_by_qg_id:
-            assert len(nodes_by_qg_id[qnode.id]) == 1
-    qnodes_with_curie_list = [qnode for qnode in query_graph.nodes if qnode.curie and isinstance(qnode.curie, list)]
-    for qnode in qnodes_with_curie_list:
-        if qnode.id in nodes_by_qg_id:
-            assert 1 <= len(nodes_by_qg_id[qnode.id]) <= len(qnode.curie)
+    qnodes_with_single_curie = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.curie and isinstance(qnode.curie, str)]
+    for qnode_key in qnodes_with_single_curie:
+        if qnode_key in nodes_by_qg_id:
+            assert len(nodes_by_qg_id[qnode_key]) == 1
+    qnodes_with_multiple_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.curie and isinstance(qnode.curie, list)]
+    for qnode_key in qnodes_with_multiple_curies:
+        qnode = query_graph.nodes[qnode_key]
+        if qnode_key in nodes_by_qg_id:
+            assert 1 <= len(nodes_by_qg_id[qnode_key]) <= len(qnode.curie)
 
 
 def test_erics_first_kg1_synonym_test_without_synonyms():
@@ -177,7 +177,7 @@ def test_acetaminophen_example_enforcing_directionality():
 
 
 @pytest.mark.slow
-def test_720_ambitious_query_causing_multiple_qnode_ids_error():
+def test_720_ambitious_query_causing_multiple_qnode_keys_error():
     actions_list = [
         "add_qnode(curie=DOID:14330, id=n00)",
         "add_qnode(type=protein, is_set=true, id=n01)",
@@ -206,7 +206,7 @@ def test_720_multiple_qg_ids_in_different_results():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert set(nodes_by_qg_id['n01']).intersection(set(nodes_by_qg_id['n03']))
-    assert any(set(node.qnode_ids) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
+    assert any(set(node.qnode_keys) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
 
 
 @pytest.mark.slow
