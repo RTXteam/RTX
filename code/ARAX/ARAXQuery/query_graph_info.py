@@ -68,9 +68,9 @@ class QueryGraphInfo:
         node_info = {}
         self.node_category_map = {}
         for key,qnode in nodes.items():
-            node_info[key] = { 'key': key, 'node_object': qnode, 'has_curie': False, 'category': qnode.category, 'has_category': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
+            node_info[key] = { 'key': key, 'node_object': qnode, 'has_id': False, 'category': qnode.category, 'has_category': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
             if qnode.id is not None:
-                node_info[key]['has_curie'] = True
+                node_info[key]['has_id'] = True
 
                 #### If the user did not specify a category, but there is a curie, try to figure out the category
                 if node_info[key]['category'] is None:
@@ -172,7 +172,7 @@ class QueryGraphInfo:
         #### If this doesn't produce any singletons, then try curie based selection
         if len(singletons) == 0:
             for node_id,node_data in node_info.items():
-                if node_data['has_curie']:
+                if node_data['has_id']:
                     singletons.append(node_data)
 
         #### If this doesn't produce any singletons, then we don't know how to continue
@@ -190,9 +190,9 @@ class QueryGraphInfo:
         elif len(singletons) > 2:
             response.warning("QueryGraph appears to have a fork in it. This might cause trouble")
         else:
-            if singletons[0]['has_curie'] is True and singletons[1]['has_curie'] is False:
+            if singletons[0]['has_id'] is True and singletons[1]['has_id'] is False:
                 start_node = singletons[0]
-            elif singletons[0]['has_curie'] is False and singletons[1]['has_curie'] is True:
+            elif singletons[0]['has_id'] is False and singletons[1]['has_id'] is True:
                 start_node = singletons[1]
             else:
                 start_node = singletons[0]
@@ -220,9 +220,9 @@ class QueryGraphInfo:
                 return response
             edge_order.append(edges[0])
             previous_node = current_node
-            if edges[0]['subject'] == current_node['id']:
+            if edges[0]['subject'] == current_node['key']:
                 current_node = node_info[edges[0]['object']]
-            elif edges[0]['object'] == current_node['id']:
+            elif edges[0]['object'] == current_node['key']:
                 current_node = node_info[edges[0]['subject']]
             else:
                 response.error("Help, edge error A584. Don't know what to do", error_code="InteralErrorA584")
@@ -236,7 +236,8 @@ class QueryGraphInfo:
 
             edges = current_node['edges']
             new_edges = []
-            for key,edge in edges.items():
+            for edge in edges:
+                key = edge['key']
                 if key not in previous_node['edge_dict']:
                     new_edges.append(edge)
             edges = new_edges
@@ -259,11 +260,11 @@ class QueryGraphInfo:
         for node in node_order:
             component_id = f"n{node_index:02}"
             content = ''
-            component = { 'component_type': 'node', 'component_id': component_id, 'has_curie': node['has_curie'], 'has_category': node['has_category'], 'category_value': None }
+            component = { 'component_type': 'node', 'component_id': component_id, 'has_id': node['has_id'], 'has_category': node['has_category'], 'category_value': None }
             self.query_graph_templates['detailed']['components'].append(component)
-            if node['has_curie']:
-                content = 'curie'
-            if node['has_category'] and node['node_object'].category is not None:
+            if node['has_id']:
+                content = 'id'
+            elif node['has_category'] and node['node_object'].category is not None:
                 content = f"category={node['node_object'].category}"
                 component['category_value'] = node['node_object'].category
             elif node['has_category']:
@@ -289,21 +290,21 @@ class QueryGraphInfo:
             if node_index < self.n_nodes:
                 #print(json.dumps(ast.literal_eval(repr(node)),sort_keys=True,indent=2))
 
-                #### Extract the has_category and category_value from the edges of the node
+                #### Extract the has_predicate and predicate_value from the edges of the node
                 #### This could fail if there are two edges coming out of the node FIXME
-                has_category = False
-                category_value = None
+                has_predicate = False
+                predicate_value = None
                 if 'edges' in node:
                     for related_edge in node['edges']:
                         if related_edge['subject'] == node['key']:
-                            has_category = related_edge['has_category']
-                            if has_category is True and 'category' in related_edge:
-                                category_value = related_edge['category']
+                            has_predicate = related_edge['has_predicate']
+                            if has_predicate is True and 'predicate' in related_edge:
+                                predicate_value = related_edge['predicate']
 
                 component_id = f"e{edge_index:02}"
                 template_part = f"-{component_id}()-"
                 self.query_graph_templates['simple'] += template_part
-                component = { 'component_type': 'edge', 'component_id': component_id, 'has_curie': False, 'has_category': has_category, 'category_value': category_value }
+                component = { 'component_type': 'edge', 'component_id': component_id, 'has_id': False, 'has_predicate': has_predicate, 'predicate_value': predicate_value }
                 self.query_graph_templates['detailed']['components'].append(component)
                 edge_index += 1
 
@@ -320,11 +321,12 @@ class QueryGraphInfo:
 
     ##########################################################################################
     #### Remap node categorys from the new TRAPI 1.0 style to the older TRAPI 0.9.x style
+    #### No longer needed. FIXME
     def remap_node_category(self, node_category):
-        match = re.match(r'biolink:(.+)', node_category)
-        if match:
-            node_category = match.group(1)
-            node_category = re.sub(r'(?<!^)(?=[A-Z])', '_', node_category).lower()
+        #match = re.match(r'biolink:(.+)', node_category)
+        #if match:
+        #    node_category = match.group(1)
+        #    node_category = re.sub(r'(?<!^)(?=[A-Z])', '_', node_category).lower()
         return node_category
 
 
