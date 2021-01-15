@@ -83,13 +83,11 @@ class NGDQuerier:
         log.debug(f"Calculating NGD between each potential node pair")
         kg2_answer_kg = kg2_message.knowledge_graph
         cngd = ComputeNGD(log, kg2_message, None)
-        kg2_edges_map = {edge.id: edge for edge in kg2_answer_kg.edges}
-        kg2_nodes_map = {node.id: node for node in kg2_answer_kg.nodes}
-        cngd.load_curie_to_pmids_data(kg2_nodes_map)
+        cngd.load_curie_to_pmids_data(kg2_answer_kg.nodes)
         kg2_edge_ngd_map = dict()
-        for kg2_edge in kg2_edges_map.values():
-            kg2_node_1 = kg2_nodes_map.get(kg2_edge.source_id)  # These are already canonicalized (default behavior)
-            kg2_node_2 = kg2_nodes_map.get(kg2_edge.target_id)
+        for kg2_edge in kg2_answer_kg.edges.values():
+            kg2_node_1 = kg2_answer_kg.nodes.get(kg2_edge.source_id)  # These are already canonicalized (default behavior)
+            kg2_node_2 = kg2_answer_kg.nodes.get(kg2_edge.target_id)
             # Figure out which node corresponds to source qnode (don't necessarily match b/c query was bidirectional)
             if source_qnode_key in kg2_node_1.qnode_keys and target_qnode_key in kg2_node_2.qnode_keys:
                 ngd_source_id = kg2_node_1.id
@@ -109,13 +107,13 @@ class NGDQuerier:
                 source_id = ngd_info_dict["source_id"]
                 target_id = ngd_info_dict["target_id"]
                 ngd_edge = self._create_ngd_edge(ngd_value, source_id, target_id)
-                ngd_source_node = self._create_ngd_node(kg2_nodes_map.get(ngd_edge.source_id))
-                ngd_target_node = self._create_ngd_node(kg2_nodes_map.get(ngd_edge.target_id))
+                ngd_source_node_key, ngd_source_node = self._create_ngd_node(ngd_edge.source_id, kg2_answer_kg.nodes.get(ngd_edge.source_id))
+                ngd_target_node_key, ngd_target_node = self._create_ngd_node(ngd_edge.target_id, kg2_answer_kg.nodes.get(ngd_edge.target_id))
                 final_kg.add_edge(ngd_edge, qedge.id)
                 final_kg.add_node(ngd_source_node, source_qnode_key)
                 final_kg.add_node(ngd_target_node, target_qnode_key)
-                edge_to_nodes_map[ngd_edge.id] = {source_qnode_key: ngd_source_node.id,
-                                                  target_qnode_key: ngd_target_node.id}
+                edge_to_nodes_map[ngd_edge.id] = {source_qnode_key: ngd_source_node_key,
+                                                  target_qnode_key: ngd_target_node_key}
 
         return final_kg, edge_to_nodes_map
 
@@ -134,12 +132,12 @@ class NGDQuerier:
         return ngd_edge
 
     @staticmethod
-    def _create_ngd_node(kg2_node: Node) -> Node:
+    def _create_ngd_node(kg2_node_key: str, kg2_node: Node) -> Tuple[str, Node]:
         ngd_node = Node()
-        ngd_node.id = kg2_node.id
+        ngd_node_key = kg2_node_key
         ngd_node.name = kg2_node.name
         ngd_node.category = kg2_node.category
-        return ngd_node
+        return ngd_node_key, ngd_node
 
     @staticmethod
     def _run_arax_query(actions_list: List[str], log: ARAXResponse) -> Tuple[ARAXResponse, Message]:

@@ -114,8 +114,8 @@ class KGQuerier:
         # Load the results into swagger object model and add to our answer knowledge graph
         for result in results:
             neo4j_node = result.get(qnode_key)
-            swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-            final_kg.add_node(swagger_node, qnode_key)
+            swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
+            final_kg.add_node(swagger_node_key, swagger_node, qnode_key)
 
         return final_kg
 
@@ -201,8 +201,8 @@ class KGQuerier:
             if column_name.startswith('nodes'):  # Example column name: 'nodes_n00'
                 column_qnode_key = column_name.replace("nodes_", "", 1)
                 for neo4j_node in results_table.get(column_name):
-                    swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-                    final_kg.add_node(swagger_node, column_qnode_key)
+                    swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
+                    final_kg.add_node(swagger_node_key, swagger_node, column_qnode_key)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_id = column_name.replace("edges_", "", 1)
@@ -220,7 +220,7 @@ class KGQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def _convert_neo4j_node_to_swagger_node(self, neo4j_node: Dict[str, any], kp: str) -> Node:
+    def _convert_neo4j_node_to_swagger_node(self, neo4j_node: Dict[str, any], kp: str) -> Tuple[str, Node]:
         if kp == "KG2":
             return self._convert_kg2_node_to_swagger_node(neo4j_node)
         elif kp == "KG2c":
@@ -228,9 +228,9 @@ class KGQuerier:
         else:
             return self._convert_kg1_node_to_swagger_node(neo4j_node)
 
-    def _convert_kg2_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Node:
+    def _convert_kg2_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         swagger_node = Node()
-        swagger_node.id = neo4j_node.get('id')
+        swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.description = neo4j_node.get('description')
         swagger_node.uri = neo4j_node.get('iri')
@@ -238,7 +238,7 @@ class KGQuerier:
         node_category = neo4j_node.get('category_label')
         swagger_node.category = eu.convert_string_or_list_to_list(node_category)
         # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
-        if swagger_node.symbol is None and swagger_node.id.lower().startswith("uniprot"):
+        if swagger_node.symbol is None and swagger_node_key.lower().startswith("uniprot"):
             swagger_node.symbol = neo4j_node.get('name')
             swagger_node.name = neo4j_node.get('full_name')
         # Add all additional properties on KG2 nodes as swagger NodeAttribute objects
@@ -246,11 +246,11 @@ class KGQuerier:
                                           'update_date']
         node_attributes = self._create_swagger_attributes("node", additional_kg2_node_properties, neo4j_node)
         swagger_node.node_attributes += node_attributes
-        return swagger_node
+        return swagger_node_key, swagger_node
 
-    def _convert_kg2c_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Node:
+    def _convert_kg2c_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         swagger_node = Node()
-        swagger_node.id = neo4j_node.get('id')
+        swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.category = neo4j_node.get('types')
         swagger_node.uri = neo4j_node.get('iri')
@@ -260,12 +260,12 @@ class KGQuerier:
         additional_kg2c_node_properties = ['equivalent_curies', 'publications', 'all_names']
         node_attributes = self._create_swagger_attributes("node", additional_kg2c_node_properties, neo4j_node)
         swagger_node.node_attributes += node_attributes
-        return swagger_node
+        return swagger_node_key, swagger_node
 
     @staticmethod
-    def _convert_kg1_node_to_swagger_node(neo4j_node: Dict[str, any]) -> Node:
+    def _convert_kg1_node_to_swagger_node(neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         swagger_node = Node()
-        swagger_node.id = neo4j_node.get('id')
+        swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.symbol = neo4j_node.get('symbol')
         swagger_node.description = neo4j_node.get('description')
@@ -273,7 +273,7 @@ class KGQuerier:
         swagger_node.node_attributes = []
         node_category = neo4j_node.get('category')
         swagger_node.category = eu.convert_string_or_list_to_list(node_category)
-        return swagger_node
+        return swagger_node_key, swagger_node
 
     def _convert_neo4j_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str],
                                             kg_name: str) -> Edge:

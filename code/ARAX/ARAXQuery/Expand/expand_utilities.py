@@ -26,22 +26,22 @@ class QGOrganizedKnowledgeGraph:
     def __str__(self):
         return f"nodes_by_qg_id:\n{self.nodes_by_qg_id}\nedges_by_qg_id:\n{self.edges_by_qg_id}"
 
-    def add_node(self, node: Node, qnode_key: str):
+    def add_node(self, node_key: str, node: Node, qnode_key: str):
         if qnode_key not in self.nodes_by_qg_id:
             self.nodes_by_qg_id[qnode_key] = dict()
-        self.nodes_by_qg_id[qnode_key][node.id] = node
+        self.nodes_by_qg_id[qnode_key][node_key] = node
 
     def add_edge(self, edge: Edge, qedge_id: str):
         if qedge_id not in self.edges_by_qg_id:
             self.edges_by_qg_id[qedge_id] = dict()
         self.edges_by_qg_id[qedge_id][edge.id] = edge
 
-    def get_all_node_ids_used_by_edges(self) -> Set[str]:
-        return {node_id for edges in self.edges_by_qg_id.values() for edge in edges.values()
-                for node_id in [edge.source_id, edge.target_id]}
+    def get_all_node_keys_used_by_edges(self) -> Set[str]:
+        return {node_key for edges in self.edges_by_qg_id.values() for edge in edges.values()
+                for node_key in [edge.source_id, edge.target_id]}
 
-    def get_all_node_ids(self) -> Set[str]:
-        return {node.id for nodes in self.nodes_by_qg_id.values() for node in nodes.values()}
+    def get_all_node_keys(self) -> Set[str]:
+        return {node_key for nodes in self.nodes_by_qg_id.values() for node_key in nodes}
 
     def is_empty(self) -> bool:
         return True if not self.nodes_by_qg_id.values() else False
@@ -112,8 +112,8 @@ def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]) -> Lis
         return []
 
 
-def get_node_ids_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
-    return {node_id for edge in edges_dict.values() for node_id in [edge.source_id, edge.target_id]}
+def get_node_keys_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
+    return {node_key for edge in edges_dict.values() for node_key in [edge.source_id, edge.target_id]}
 
 
 def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
@@ -143,13 +143,14 @@ def get_qg_without_kryptonite_portion(query_graph: QueryGraph) -> QueryGraph:
     qnode_keys_used_by_kryptonite_qedges = {qnode_key for qedge in kryptonite_qedges for qnode_key in [qedge.source_id, qedge.target_id]}
     qnode_keys_used_by_normal_qedges = {qnode_key for qedge in normal_qedges for qnode_key in [qedge.source_id, qedge.target_id]}
     qnode_keys_used_only_by_kryptonite_qedges = qnode_keys_used_by_kryptonite_qedges.difference(qnode_keys_used_by_normal_qedges)
-    return QueryGraph(nodes=[qnode for qnode in query_graph.nodes if qnode.id not in qnode_keys_used_only_by_kryptonite_qedges],
-                      edges=[qedge for qedge in query_graph.edges if qedge.id in normal_qedge_ids])
+    normal_qnode_keys = set(query_graph.nodes).difference(qnode_keys_used_only_by_kryptonite_qedges)
+    return QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in query_graph.nodes.items() if qnode_key in normal_qnode_keys},
+                      edges={qedge_key: qedge for qedge_key, qedge in query_graph.edges.items() if qedge_key in normal_qedge_ids})
 
 
 def get_required_portion_of_qg(query_graph: QueryGraph) -> QueryGraph:
-    return QueryGraph(nodes=[qnode for qnode in query_graph.nodes if not qnode.option_group_id],
-                      edges=[qedge for qedge in query_graph.edges if not qedge.option_group_id])
+    return QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in query_graph.nodes.items() if not qnode.option_group_id},
+                      edges={qedge_key: qedge for qedge_key, qedge in query_graph.edges.items() if not qedge.option_group_id})
 
 
 def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -> Union[QEdge, Edge]:
@@ -332,9 +333,9 @@ def switch_kg_to_arax_curie_format(dict_kg: QGOrganizedKnowledgeGraph) -> QGOrga
     converted_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in dict_kg.nodes_by_qg_id},
                                              edges={qedge_id: dict() for qedge_id in dict_kg.edges_by_qg_id})
     for qnode_key, nodes in dict_kg.nodes_by_qg_id.items():
-        for node_id, node in nodes.items():
-            node.id = convert_curie_to_arax_format(node.id)
-            converted_kg.add_node(node, qnode_key)
+        for node_key, node in nodes.items():
+            node_key = convert_curie_to_arax_format(node_key)
+            converted_kg.add_node(node_key, node, qnode_key)
     for qedge_id, edges in dict_kg.edges_by_qg_id.items():
         for edge_id, edge in edges.items():
             edge.source_id = convert_curie_to_arax_format(edge.source_id)

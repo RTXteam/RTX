@@ -78,9 +78,9 @@ class MoleProQuerier:
             for returned_node in returned_kg['nodes']:
                 # Adjust curie prefixes as needed (i.e., convert ChEMBL -> CHEMBL.COMPOUND)
                 returned_node['id'] = self._fix_prefix(returned_node['id'])
-                swagger_node = self._create_swagger_node_from_kp_node(returned_node)
-                for qnode_key in qg_id_mappings['nodes'][swagger_node.id]:
-                    final_kg.add_node(swagger_node, qnode_key)
+                swagger_node_key, swagger_node = self._create_swagger_node_from_kp_node(returned_node)
+                for qnode_key in qg_id_mappings['nodes'][swagger_node_key]:
+                    final_kg.add_node(swagger_node_key, swagger_node, qnode_key)
 
         return final_kg, edge_to_nodes_map
 
@@ -186,10 +186,9 @@ class MoleProQuerier:
         return swagger_edge
 
     @staticmethod
-    def _create_swagger_node_from_kp_node(kp_node: Dict[str, any]) -> Node:
-        return Node(id=kp_node['id'],
-                    type=kp_node['type'],
-                    name=kp_node.get('name'))
+    def _create_swagger_node_from_kp_node(kp_node: Dict[str, any]) -> Tuple[str, Node]:
+        return kp_node['id'], Node(category=kp_node['type'],
+                                   name=kp_node.get('name'))
 
     def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
         return f"{self.kp_name}:{swagger_edge.source_id}-{swagger_edge.type}-{swagger_edge.target_id}"

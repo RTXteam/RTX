@@ -115,18 +115,18 @@ class BTEQuerier:
                            input_qnode_key: str, output_qnode_key: str, qedge_id: str, log: ARAXResponse) -> DictKnowledgeGraph:
         kg_to_qg_ids_dict = self._build_kg_to_qg_id_dict(reasoner_std_response['results'])
         if reasoner_std_response['knowledge_graph']['edges']:
-            remapped_node_ids = dict()
+            remapped_node_keys = dict()
             log.debug(f"Got results back from BTE for this query "
                       f"({len(reasoner_std_response['knowledge_graph']['edges'])} edges)")
 
             for node in reasoner_std_response['knowledge_graph']['nodes']:
                 swagger_node = Node()
-                bte_node_id = node.get('id')
+                bte_node_key = node.get('id')
                 swagger_node.name = node.get('name')
                 swagger_node.category = eu.convert_string_or_list_to_list(eu.convert_string_to_snake_case(node.get('type')))
 
                 # Map the returned BTE qg_ids back to the original qnode_keys in our query graph
-                bte_qg_id = kg_to_qg_ids_dict['nodes'].get(bte_node_id)
+                bte_qg_id = kg_to_qg_ids_dict['nodes'].get(bte_node_key)
                 if bte_qg_id == "n0":
                     qnode_key = input_qnode_key
                 elif bte_qg_id == "n1":
@@ -137,24 +137,24 @@ class BTEQuerier:
 
                 # Find and use the preferred equivalent identifier for this node (if it's an output node)
                 if qnode_key == output_qnode_key:
-                    if bte_node_id in remapped_node_ids:
-                        swagger_node.id = remapped_node_ids.get(bte_node_id)
+                    if bte_node_key in remapped_node_keys:
+                        swagger_node_key = remapped_node_keys.get(bte_node_key)
                     else:
                         equivalent_curies = [f"{prefix}:{eu.get_curie_local_id(local_id)}" for prefix, local_ids in
                                              node.get('equivalent_identifiers').items() for local_id in local_ids]
-                        swagger_node.id = self._get_best_equivalent_bte_curie(equivalent_curies, swagger_node.category[0])
-                        remapped_node_ids[bte_node_id] = swagger_node.id
+                        swagger_node_key = self._get_best_equivalent_bte_curie(equivalent_curies, swagger_node.category[0])
+                        remapped_node_keys[bte_node_key] = swagger_node_key
                 else:
-                    swagger_node.id = bte_node_id
+                    swagger_node_key = bte_node_key
 
-                answer_kg.add_node(swagger_node, qnode_key)
+                answer_kg.add_node(swagger_node_key, swagger_node, qnode_key)
 
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
                 swagger_edge.id = edge.get("id")
                 swagger_edge.type = edge.get('type')
-                swagger_edge.source_id = remapped_node_ids.get(edge.get('source_id'), edge.get('source_id'))
-                swagger_edge.target_id = remapped_node_ids.get(edge.get('target_id'), edge.get('target_id'))
+                swagger_edge.source_id = remapped_node_keys.get(edge.get('source_id'), edge.get('source_id'))
+                swagger_edge.target_id = remapped_node_keys.get(edge.get('target_id'), edge.get('target_id'))
                 swagger_edge.is_defined_by = "BTE"
                 swagger_edge.provided_by = edge.get('edge_source')
                 # Map the returned BTE qg_id back to the original qedge_id in our query graph
@@ -206,13 +206,13 @@ class BTEQuerier:
         output_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(output_qnode.category)]
         qnodes_missing_type = [qnode_key for qnode_key in [input_qnode_key, output_qnode_key] if not query_graph[qnode_key].type]
         if qnodes_missing_type:
-            log.error(f"BTE requires every query node to have a type. QNode(s) missing a type: "
+            log.error(f"BTE requires every query node to have a category. QNode(s) missing a category: "
                       f"{', '.join(qnodes_missing_type)}", error_code="InvalidInput")
             return "", ""
         invalid_qnode_categories = [node_category for qnode in [input_qnode, output_qnode] for node_category in qnode.category
                                if node_category not in valid_bte_inputs_dict['node_categories']]
         if invalid_qnode_categories:
-            log.error(f"BTE does not accept QNode type(s): {', '.join(invalid_qnode_categories)}. Valid options are "
+            log.error(f"BTE does not accept QNode category(s): {', '.join(invalid_qnode_categories)}. Valid options are "
                       f"{valid_bte_inputs_dict['node_categories']}", error_code="InvalidInput")
             return "", ""
 
@@ -240,15 +240,15 @@ class BTEQuerier:
         output_qnode = qg.nodes[output_qnode_key]
         qedge = next(qedge for qedge in qg.edges.values())
         desired_output_curies = set(eu.convert_string_or_list_to_list(output_qnode.id))
-        all_output_node_ids = set(kg.nodes_by_qg_id[output_qnode_key])
-        output_node_ids_to_remove = all_output_node_ids.difference(desired_output_curies)
-        for node_id in output_node_ids_to_remove:
-            kg.nodes_by_qg_id[output_qnode_key].pop(node_id)
+        all_output_node_keys = set(kg.nodes_by_qg_id[output_qnode_key])
+        output_node_keys_to_remove = all_output_node_keys.difference(desired_output_curies)
+        for node_key in output_node_keys_to_remove:
+            kg.nodes_by_qg_id[output_qnode_key].pop(node_key)
 
         # And remove any edges that used them
         edge_ids_to_remove = set()
         for edge_id, edge in kg.edges_by_qg_id[qedge.id].items():
-            if edge.target_id in output_node_ids_to_remove:  # Edge target_id always contains output node ID for BTE
+            if edge.target_id in output_node_keys_to_remove:  # Edge target_id always contains output node ID for BTE
                 edge_ids_to_remove.add(edge_id)
         for edge_id in edge_ids_to_remove:
             kg.edges_by_qg_id[qedge.id].pop(edge_id)
@@ -287,9 +287,9 @@ class BTEQuerier:
     def _build_kg_to_qg_id_dict(results: Dict[str, any]) -> Dict[str, Dict[str, List[str]]]:
         kg_to_qg_ids = {'nodes': dict(), 'edges': dict()}
         for node_binding in results['node_bindings']:
-            node_id = node_binding['kg_id']
+            node_key = node_binding['kg_id']
             qnode_key = node_binding['qg_id']
-            kg_to_qg_ids['nodes'][node_id] = qnode_key
+            kg_to_qg_ids['nodes'][node_key] = qnode_key
         for edge_binding in results['edge_bindings']:
             edge_ids = eu.convert_string_or_list_to_list(edge_binding['kg_id'])
             qedge_ids = edge_binding['qg_id']

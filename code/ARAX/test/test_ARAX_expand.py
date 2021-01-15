@@ -67,7 +67,7 @@ def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
 def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
-            print(f"{qnode_key}: {node.category}, {node.id}, {node.name}, {node.qnode_keys}")
+            print(f"{qnode_key}: {node.category}, {node_key}, {node.name}, {node.qnode_keys}")
 
 
 def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -80,7 +80,7 @@ def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     node_counts_by_prefix = dict()
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
-            prefix = node.id.split(':')[0]
+            prefix = node_key.split(':')[0]
             if prefix in node_counts_by_prefix.keys():
                 node_counts_by_prefix[prefix] += 1
             else:
@@ -89,22 +89,22 @@ def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
 
 
 def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
-    node_ids = set()
-    node_ids_used_by_edges = set()
+    node_keys = set()
+    node_keys_used_by_edges = set()
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
-            node_ids.add(node_key)
+            node_keys.add(node_key)
     for qedge_id, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
-            node_ids_used_by_edges.add(edge.source_id)
-            node_ids_used_by_edges.add(edge.target_id)
-    assert node_ids == node_ids_used_by_edges or len(node_ids_used_by_edges) == 0
+            node_keys_used_by_edges.add(edge.source_id)
+            node_keys_used_by_edges.add(edge.target_id)
+    assert node_keys == node_keys_used_by_edges or len(node_keys_used_by_edges) == 0
 
 
 def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
-            assert node.id and isinstance(node.id, str)
+            assert node_key and isinstance(node_key, str)
             assert isinstance(node.name, str) or node.name is None
             assert node.qnode_keys and isinstance(node.qnode_keys, list)
             assert node.category and isinstance(node.category, list)
@@ -467,10 +467,10 @@ def test_deduplication_and_self_edges():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     # Check that deduplication worked appropriately
-    all_node_ids = {node.id for nodes in nodes_by_qg_id.values() for node in nodes.values()}
+    all_node_keys = {node_key for nodes in nodes_by_qg_id.values() for node_key in nodes}
     babesia_curies = {"UMLS:C0004572", "CHV:0000001647", "LNC:LP19999-9", "MEDDRA:10003963", "MESH:D001403",
                       "NCIT:C122040", "NCI_CDISC:C122040", "SNOMEDCT:35029001"}
-    babesia_curies_in_answer = all_node_ids.intersection(babesia_curies)
+    babesia_curies_in_answer = all_node_keys.intersection(babesia_curies)
     assert len(babesia_curies_in_answer) <= 1
     # Check that we don't have any self-edges
     self_edges = [edge for edge in edges_by_qg_id['e00'].values() if edge.source_id == edge.target_id]
@@ -671,8 +671,8 @@ def test_exclude_edge_parallel():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    node_ids_used_by_contraindicated_edge = eu.get_node_ids_used_by_edges(edges_by_qg_id["e01"])
-    n01_nodes_contraindicated = set(nodes_by_qg_id["n01"]).intersection(node_ids_used_by_contraindicated_edge)
+    nodes_used_by_contraindicated_edge = eu.get_node_keys_used_by_edges(edges_by_qg_id["e01"])
+    n01_nodes_contraindicated = set(nodes_by_qg_id["n01"]).intersection(nodes_used_by_contraindicated_edge)
     assert n01_nodes_contraindicated
 
     # Then exclude the contraindicated edge and make sure the appropriate nodes are blown away
@@ -705,8 +705,8 @@ def test_exclude_edge_perpendicular():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    node_ids_used_by_kryptonite_edge = eu.get_node_ids_used_by_edges(edges_by_qg_id["e02"])
-    n01_nodes_to_blow_away = set(nodes_by_qg_id["n01"]).intersection(node_ids_used_by_kryptonite_edge)
+    nodes_used_by_kryptonite_edge = eu.get_node_keys_used_by_edges(edges_by_qg_id["e02"])
+    n01_nodes_to_blow_away = set(nodes_by_qg_id["n01"]).intersection(nodes_used_by_kryptonite_edge)
     assert n01_nodes_to_blow_away
 
     # Then use a kryptonite edge and make sure the appropriate nodes are blown away

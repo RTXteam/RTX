@@ -90,9 +90,9 @@ class GeneticsQuerier:
                         f"Not sure what data type to assign these.")
             for returned_node in returned_kg['nodes']:
                 if returned_node['id']:  # Skip any nodes with 'None' for their ID (see discussion in #1154)
-                    swagger_node = self._create_swagger_node_from_kp_node(returned_node)
-                    for qnode_key in qg_id_mappings['nodes'][swagger_node.id]:
-                        final_kg.add_node(swagger_node, qnode_key)
+                    swagger_node_key, swagger_node = self._create_swagger_node_from_kp_node(returned_node)
+                    for qnode_key in qg_id_mappings['nodes'][swagger_node_key]:
+                        final_kg.add_node(swagger_node_key, swagger_node, qnode_key)
                 else:
                     log.warning(f"Node returned from {self.kp_name} is lacking an ID: {returned_node}."
                                 f" Will skip adding this node to the KG.")
@@ -205,10 +205,9 @@ class GeneticsQuerier:
         return swagger_edge
 
     @staticmethod
-    def _create_swagger_node_from_kp_node(kp_node: Dict[str, any]) -> Node:
-        return Node(id=kp_node['id'],
-                    type=kp_node['type'],
-                    name=kp_node.get('name'))
+    def _create_swagger_node_from_kp_node(kp_node: Dict[str, any]) -> Tuple[str, Node]:
+        return kp_node['id'], Node(category=kp_node['type'],
+                                   name=kp_node.get('name'))
 
     def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
         kind_of_edge = swagger_edge.edge_attributes[0].name if swagger_edge.edge_attributes else swagger_edge.type
