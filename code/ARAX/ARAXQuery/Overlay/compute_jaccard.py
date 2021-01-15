@@ -12,7 +12,7 @@ from datetime import datetime
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute as EdgeAttribute
 from swagger_server.models.edge import Edge
 from swagger_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -48,13 +48,13 @@ class ComputeJaccard:
                     end_node_to_intermediate_node_set[node.id] = set()
 
             # now iterate over the edges to look for the ones we need to add  # TODO: Here, I won't care which direction the edges are pointing
-            for edge in message.knowledge_graph.edges:
-                if edge.source_id in intermediate_nodes:  # if source is intermediate
-                    if edge.target_id in end_node_to_intermediate_node_set:
-                        end_node_to_intermediate_node_set[edge.target_id].add((edge.source_id, edge.type))  # add source
-                elif edge.target_id in intermediate_nodes:  # if target is intermediate
-                    if edge.source_id in end_node_to_intermediate_node_set:
-                        end_node_to_intermediate_node_set[edge.source_id].add((edge.target_id, edge.type))  # add target
+            for edge in message.knowledge_graph.edges.values():
+                if edge.subject in intermediate_nodes:  # if source is intermediate
+                    if edge.object in end_node_to_intermediate_node_set:
+                        end_node_to_intermediate_node_set[edge.object].add((edge.subject, edge.predicate))  # add source
+                elif edge.object in intermediate_nodes:  # if target is intermediate
+                    if edge.subject in end_node_to_intermediate_node_set:
+                        end_node_to_intermediate_node_set[edge.subject].add((edge.object, edge.predicate))  # add target
 
             # now compute the actual jaccard indexes
             denom = len(intermediate_nodes)
@@ -103,6 +103,7 @@ class ComputeJaccard:
                 edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id, target_id=target_id,
                             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
                             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
+                # need to fix this for TRAPI 1.0
                 message.knowledge_graph.edges.append(edge)
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
@@ -112,6 +113,7 @@ class ComputeJaccard:
                                                                       self.message.query_graph, self.response)
             q_edge = QEdge(id=relation, type=edge_type, relation=relation, source_id=source_qnode_id,
                            target_id=target_qnode_id, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
+            # Need to fix this for TRAPI 1.0
             self.message.query_graph.edges.append(q_edge)
 
             return self.response
