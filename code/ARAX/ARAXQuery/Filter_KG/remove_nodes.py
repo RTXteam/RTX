@@ -37,7 +37,7 @@ class RemoveNodes:
             edges_to_remove = set()
             # iterate over edges find edges connected to the nodes
             for edge in self.message.knowledge_graph.edges:
-                if edge.subject in node_ids_to_remove or edge.target_id in node_ids_to_remove:
+                if edge.subject in node_ids_to_remove or edge.object in node_ids_to_remove:
                     edges_to_remove.add(i)
                 i += 1
             # remove edges
@@ -82,7 +82,7 @@ class RemoveNodes:
             edges_to_remove = set()
             # iterate over edges find edges connected to the nodes
             for edge in self.message.knowledge_graph.edges:
-                if edge.subject in node_ids_to_remove or edge.target_id in node_ids_to_remove:
+                if edge.subject in node_ids_to_remove or edge.object in node_ids_to_remove:
                     edges_to_remove.add(i)
                 i += 1
             # remove edges
@@ -111,7 +111,7 @@ class RemoveNodes:
             connected_node_ids = set()
             for edge in self.message.knowledge_graph.edges:
                 connected_node_ids.add(edge.subject)
-                connected_node_ids.add(edge.target_id)
+                connected_node_ids.add(edge.object)
 
             # iterate over all nodes in KG
             node_indexes_to_remove = set()
