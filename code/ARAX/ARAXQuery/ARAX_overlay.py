@@ -788,9 +788,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
-            allowable_source_qnode_id = list(set(itertools.chain.from_iterable([node.qnode_ids for node in message.knowledge_graph.nodes])))  # flatten these as they are lists of lists now
-            allowable_target_qnode_id = list(set(itertools.chain.from_iterable([node.qnode_ids for node in message.knowledge_graph.nodes])))  # flatten these as they are lists of lists now
-            allowwable_rel_edge_id = list(set(itertools.chain.from_iterable([edge.qedge_ids for edge in message.knowledge_graph.edges])))  # flatten these as they are lists of lists now
+            allowable_source_qnode_id = list(set([node.id for node in message.query_graph.nodes]))  # flatten these as they are lists of lists now
+            allowable_target_qnode_id = list(set([node.id for node in message.query_graph.nodes]))  # flatten these as they are lists of lists now
+            allowwable_rel_edge_id = list(set([edge.id for edge in message.query_graph.edges]))  # flatten these as they are lists of lists now
             allowwable_rel_edge_id.append(None)
             # # FIXME: need to generate this from some source as per #780
             # allowable_target_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
