@@ -41,14 +41,14 @@ class ComputeJaccard:
         try:
             intermediate_nodes = set()
             end_node_to_intermediate_node_set = dict()  # keys will be end node curies, values will be tuples the (intermediate curie ids, edge_type)
-            for node in message.knowledge_graph.nodes:
+            for key, node in message.knowledge_graph.nodes.items():
                 if parameters['intermediate_node_id'] in node.qnode_ids:
-                    intermediate_nodes.add(node.id)  # add the intermediate node by it's identifier
+                    intermediate_nodes.add(key)  # add the intermediate node by it's identifier
                 # also look for the source node id
                 if parameters['start_node_id'] in node.qnode_ids:
-                    source_node_id = node.id
+                    source_node_id = key
                 if parameters['end_node_id'] in node.qnode_ids:
-                    end_node_to_intermediate_node_set[node.id] = set()
+                    end_node_to_intermediate_node_set[key] = set()
 
             # now iterate over the edges to look for the ones we need to add  # TODO: Here, I won't care which direction the edges are pointing
             for edge in message.knowledge_graph.edges.values():
