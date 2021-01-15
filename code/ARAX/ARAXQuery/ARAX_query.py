@@ -27,19 +27,19 @@ from ARAX_messenger import ARAXMessenger
 from ARAX_ranker import ARAXRanker
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.message import Message
-from swagger_server.models.knowledge_graph import KnowledgeGraph
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.q_node import QNode
-from swagger_server.models.q_edge import QEdge
-from swagger_server.models.previous_message_processing_plan import PreviousMessageProcessingPlan
+from openapi_server.models.message import Message
+from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.q_node import QNode
+from openapi_server.models.q_edge import QEdge
+from openapi_server.models.previous_message_processing_plan import PreviousMessageProcessingPlan
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
 
-from swagger_server.models.message import Message
-from swagger_server.models.q_node import QNode
-from swagger_server.models.q_edge import QEdge
+from openapi_server.models.message import Message
+from openapi_server.models.q_node import QNode
+from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
 from ParseQuestion import ParseQuestion
@@ -348,23 +348,17 @@ class ARAXQuery:
         response.info(f"Validating the input query graph")
 
         # Define allowed qnode and qedge attributes to check later
-        allowed_qnode_attributes = { 'id': 1, 'type':1, 'curie': 1, 'is_set': 1 }
-        allowed_qedge_attributes = { 'id': 1, 'type':1, 'source_id': 1, 'target_id': 1 }
+        allowed_qnode_attributes = { 'id': 1, 'category':1, 'is_set': 1 }
+        allowed_qedge_attributes = { 'predicate':1, 'subject': 1, 'object': 1 }
 
         #### Loop through nodes checking the attributes
-        for qnode in message['query_graph']['nodes']:
-            id = '??'
-            if 'id' in qnode:
-                id = qnode['id']
+        for id,qnode in message['query_graph']['nodes'].items():
             for attr in qnode:
                 if attr not in allowed_qnode_attributes:
                     response.warning(f"Query graph node '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
 
         #### Loop through edges checking the attributes
-        for qedge in message['query_graph']['edges']:
-            id = '??'
-            if 'id' in qedge:
-                id = qedge['id']
+        for id,qedge in message['query_graph']['edges'].items():
             for attr in qedge:
                 if attr not in allowed_qedge_attributes:
                     response.warning(f"Query graph edge '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
@@ -382,6 +376,7 @@ class ARAXQuery:
 
 
 
+    ############################################################################################
     #### Given an input query with a processing plan, execute that processing plan on the input
     def executeProcessingPlan(self,inputEnvelope):
         response = self.response
@@ -433,7 +428,7 @@ class ARAXQuery:
             response.debug(f"Received previous_messages")
             for uploadedMessage in envelope.previous_messages:
                 response.debug(f"uploadedMessage is a "+str(uploadedMessage.__class__))
-                if str(uploadedMessage.__class__) == "<class 'swagger_server.models.message.Message'>":
+                if str(uploadedMessage.__class__) == "<class 'openapi_server.models.message.Message'>":
                     uploadedMessage = ARAXMessenger().from_dict(uploadedMessage)
                     messages.append(uploadedMessage)
 
@@ -513,40 +508,34 @@ class ARAXQuery:
                 # Catch a crash
                 try:
                     if action['command'] == 'create_message':
-                        result = messenger.create_message()
-                        message = result.data['message']
-                        self.message = message
+                        messenger.create_envelope(response)
 
                     elif action['command'] == 'fetch_message':
-                        result = messenger.apply_fetch_message(message,action['parameters'])
-                        message = messenger.message
-                        self.message = message
+                        messenger.apply_fetch_message(response,action['parameters'])
 
                     elif action['command'] == 'add_qnode':
-                        result = messenger.add_qnode(message,action['parameters'])
+                        messenger.add_qnode(response,action['parameters'])
 
                     elif action['command'] == 'add_qedge':
-                        result = messenger.add_qedge(message,action['parameters'])
+                        messenger.add_qedge(response,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        result = expander.apply(message,action['parameters'], response=response)
-                        skip_merge = True
+                        expander.apply(response,action['parameters'])
 
                     elif action['command'] == 'filter':
-                        result = filter.apply(message,action['parameters'])
+                        filter.apply(response,action['parameters'])
 
                     elif action['command'] == 'resultify':
-                        result = resultifier.apply(message, action['parameters'])
+                        resultifier.apply(response, action['parameters'])
 
                     elif action['command'] == 'overlay':  # recognize the overlay command
-                        result = overlay.apply(message, action['parameters'], response=response)
-                        skip_merge = True
+                        overlay.apply(response, action['parameters'])
 
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
-                        result = filter_kg.apply(message, action['parameters'])
+                        filter_kg.apply(response, action['parameters'])
 
                     elif action['command'] == 'filter_results':  # recognize the filter_kg command
-                        result = filter_results.apply(message, action['parameters'])
+                        filter_results.apply(response, action['parameters'])
 
                     elif action['command'] == 'query_graph_reasoner':
                         response.info(f"Sending current query_graph to the QueryGraphReasoner")
@@ -564,7 +553,7 @@ class ARAXQuery:
                         try:
                             ranker = ARAXRanker()
                             #ranker.aggregate_scores(message, response=response)
-                            ranker.aggregate_scores_dmk(message, response=response)
+                            ranker.aggregate_scores_dmk(response)
                         except Exception as error:
                             exception_type, exception_value, exception_traceback = sys.exc_info()
                             response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
@@ -579,15 +568,12 @@ class ARAXQuery:
                     response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
                     return response
 
-                #### Merge down this result and end if we're in an error state
-                if nonstandard_result is False:
-                    if not skip_merge:
-                        response.merge(result)
-                    if result.status != 'OK':
-                        message.message_code = response.error_code
-                        message.code_description = response.message
-                        message.log = response.messages
-                        return response
+                #### If we're in an error state
+                if response.status != 'OK':
+                    #message.message_code = response.error_code
+                    #message.code_description = response.message
+                    #message.log = response.messages
+                    return response
 
                 #### Immediately after resultify, run the experimental ranker
                 if action['command'] == 'resultify':
@@ -595,7 +581,7 @@ class ARAXQuery:
                     try:
                         ranker = ARAXRanker()
                         #ranker.aggregate_scores(message, response=response)
-                        ranker.aggregate_scores_dmk(message, response=response)
+                        ranker.aggregate_scores_dmk(response)
                     except Exception as error:
                         exception_type, exception_value, exception_traceback = sys.exc_info()
                         response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
@@ -612,9 +598,9 @@ class ARAXQuery:
                     return_action['parameters']['message'] == 'false'
 
             # Fill out the message with data
-            message.message_code = response.error_code
-            message.code_description = response.message
-            message.log = response.messages
+            #message.message_code = response.error_code
+            #message.code_description = response.message
+            #message.log = response.messages
             if message.query_options is None:
                 message.query_options = {}
             message.query_options['processing_actions'] = envelope.processing_actions
@@ -622,19 +608,19 @@ class ARAXQuery:
             # If store=true, then put the message in the database
             if return_action['parameters']['store'] == 'true':
                 response.debug(f"Storing resulting Message")
-                message_id = rtxFeedback.addNewMessage(message, query)
+                response_id = response_store.add_new_response(response, query)
                 
             #### If asking for the full message back
-            if return_action['parameters']['message'] == 'true':
+            if return_action['parameters']['response'] == 'true':
                 response.info(f"Processing is complete. Transmitting resulting Message back to client.")
                 return response
 
             #### Else just the id is returned
             else:
-                if message_id is None:
-                    message_id = 0
-                response.info(f"Processing is complete. Resulting Message id is {message_id} and is available to fetch via /message endpoint.")
-                return( { "status": 200, "message_id": str(message_id), "n_results": message.n_results, "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(message_id) }, 200)
+                if response_id is None:
+                    response_id = 0
+                response.info(f"Processing is complete. Resulting Message id is {response_id} and is available to fetch via /response endpoint.")
+                return( { "status": 200, "response_id": str(response_id), "n_results": message.n_results, "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(response_id) }, 200)
 
 
 
