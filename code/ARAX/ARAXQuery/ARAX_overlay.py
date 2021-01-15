@@ -733,16 +733,17 @@ This information is included in edge attributes with the name 'icees_p-value'.
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            qg_nodes = message.query_graph.nodes
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
                                     #'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
-                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    'subject_key': set([node_key for node_key in qg_nodes]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     #'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
-                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    'object_key': set([node_key for node_key in qg_nodes])  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     }
         else:
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'source_qnode_id': {'optional: a specific source query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'target_qnode_id': {'optional: a specific target query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
+                                    'subject_key': {'optional: a specific source query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+                                    'object_key': {'optional: a specific target query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
                                     }
 
         # A little function to describe what this thing does
@@ -771,12 +772,12 @@ This information is included in edge attributes with the name 'icees_p-value'.
     def __fisher_exact_test(self, describe=False):
 
         """
-        Computes the the Fisher's Exact Test p-value of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in message knowledge graph.
+        Computes the the Fisher's Exact Test p-value of the connection between a list of given nodes with specified query key (subject_key eg. 'n01') to their adjacent nodes with specified query key (e.g. object_key 'n02') in message knowledge graph.
         Allowable parameters:
-            :param source_qnode_id: (required) a specific QNode id (you used in add_qnode() in DSL) of source nodes in message KG eg. "n00"
+            :param subject_key: (required) a specific QNode key (you used in add_qnode() in DSL) of subject nodes in message KG eg. "n00"
             :param virtual_relation_label: (required) any string to label the relation and query edge id of virtual edge with fisher's exact test p-value eg. 'FET'
-            :param target_qnode_id: (required) a specific QNode id (you used in add_qnode() in DSL) of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
-            :param rel_edge_id: (optional) a specific QEdge id (you used in add_qedge() in DSL) of edges connected to both source nodes and target nodes in message KG. eg. "e01"
+            :param object_key: (required) a specific QNode key (you used in add_qnode() in DSL) of object nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
+            :param rel_edge_key: (optional) a specific QEdge key (you used in add_qedge() in DSL) of edges connected to both source nodes and target nodes in message KG. eg. "e01"
             :param top_n: (optional) an int indicating the top number of the most significant adjacent nodes to return (otherwise all results returned) eg. 10
             :param cutoff: (optional) a float indicating the p-value cutoff to return the results (otherwise all results returned) eg. 0.05
         :return: response
@@ -788,10 +789,12 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
-            allowable_source_qnode_id = list(set(itertools.chain.from_iterable([node.qnode_ids for node in message.knowledge_graph.nodes])))  # flatten these as they are lists of lists now
-            allowable_target_qnode_id = list(set(itertools.chain.from_iterable([node.qnode_ids for node in message.knowledge_graph.nodes])))  # flatten these as they are lists of lists now
-            allowwable_rel_edge_id = list(set(itertools.chain.from_iterable([edge.qedge_ids for edge in message.knowledge_graph.edges])))  # flatten these as they are lists of lists now
-            allowwable_rel_edge_id.append(None)
+            qg_nodes = message.query_graph.nodes
+            qg_edges = message.query_graph.edges
+            allowable_subject_key = list(set([node_key for node_key in qg_nodes]))  # flatten these as they are lists of lists now
+            allowable_object_key = list(set([node_key for node_key in qg_nodes]))  # flatten these as they are lists of lists now
+            allowwable_rel_edge_key = list(set([edge_key for edge_key in qg_edges]))  # flatten these as they are lists of lists now
+            allowwable_rel_edge_key.append(None)
             # # FIXME: need to generate this from some source as per #780
             # allowable_target_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
             #                      'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
@@ -800,10 +803,10 @@ This information is included in edge attributes with the name 'icees_p-value'.
             #                      'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
 
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'source_qnode_id': allowable_source_qnode_id,
+                                    'subject_key': allowable_subject_key,
                                     'virtual_relation_label': str(),
-                                    'target_qnode_id': allowable_target_qnode_id,
-                                    'rel_edge_id': allowwable_rel_edge_id,
+                                    'object_key': allowable_object_key,
+                                    'rel_edge_id': allowwable_rel_edge_key,
                                     'top_n': [None,int()],
                                     'cutoff': [None,float()],
                                     'filter_type': {'cutoff', 'top_n'},
@@ -811,10 +814,10 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'source_qnode_id': {"a specific QNode id of source nodes in message KG (required), eg. 'n00'"},
+                                    'subject_key': {"a specific QNode key of source nodes in message KG (required), eg. 'n00'"},
                                     'virtual_relation_label': {"any string to label the relation and query edge id of virtual edge with fisher's exact test p-value (required) eg. 'FET'"},
-                                    'target_qnode_id': {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
-                                    'rel_edge_id': {"a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"},
+                                    'object_key': {"a specific QNode key of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
+                                    'rel_edge_key': {"a specific QEdge key of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"},
                                     'top_n': {"an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10"},
                                     'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"},
                                     'filter_type': {'cutoff', 'top_n'},
