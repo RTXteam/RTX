@@ -123,12 +123,12 @@ class GeneticsQuerier:
             else:
                 qnode.type = list(accepted_qnode_types)[0]
             # Convert curies to equivalent curies accepted by the KP (depending on qnode type)
-            if qnode.curie:
-                equivalent_curies = eu.get_curie_synonyms(qnode.curie, log)
+            if qnode.id:
+                equivalent_curies = eu.get_curie_synonyms(qnode.id, log)
                 desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{self.kp_preferred_prefixes[qnode.type]}:")]
                 if desired_curies:
-                    qnode.curie = desired_curies if len(desired_curies) > 1 else desired_curies[0]
-                    log.debug(f"Converted qnode {qnode_key} curie to {qnode.curie}")
+                    qnode.id = desired_curies if len(desired_curies) > 1 else desired_curies[0]
+                    log.debug(f"Converted qnode {qnode_key} curie to {qnode.id}")
                 else:
                     log.warning(f"Could not convert qnode {qnode_key} curie(s) to preferred prefix ({self.kp_preferred_prefixes[qnode.type]})")
         return query_graph
@@ -159,8 +159,8 @@ class GeneticsQuerier:
         stripped_qnodes = dict()
         for qnode_key, qnode in query_graph.nodes.items():
             stripped_qnode = {'type': qnode.type}
-            if qnode.curie:
-                stripped_qnode['curie'] = qnode.curie
+            if qnode.id:
+                stripped_qnode['curie'] = qnode.id
             stripped_qnodes[qnode_key] = stripped_qnode
         qedge = next(qedge for qedge in query_graph.edges.values())  # Our query graph is single-edge
         stripped_qedge = {'id': qedge.id,

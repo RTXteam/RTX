@@ -65,7 +65,7 @@ class BTEQuerier:
             return answer_kg, edge_to_nodes_map
 
         # Hack to achieve a curie-to-curie query, if necessary
-        if eu.qg_is_fulfilled(query_graph, answer_kg) and input_qnode.curie and output_qnode.curie:
+        if eu.qg_is_fulfilled(query_graph, answer_kg) and input_qnode.id and output_qnode.id:
             answer_kg = self._prune_answers_to_achieve_curie_to_curie_query(answer_kg, output_qnode_key, query_graph)
 
         # Report our findings
@@ -85,7 +85,7 @@ class BTEQuerier:
         input_qnode = qg.nodes[input_qnode_key]
         output_qnode = qg.nodes[output_qnode_key]
         # Send this single-edge query to BTE, input curie by input curie (adding findings to our answer KG as we go)
-        for curie in input_qnode.curie:
+        for curie in input_qnode.id:
             # Consider all different combinations of qnode types (can be multiple if gene/protein)
             for input_qnode_type, output_qnode_type in itertools.product(input_qnode.type, output_qnode.type):
                 if eu.get_curie_prefix(curie) in valid_bte_inputs_dict['curie_prefixes']:
@@ -177,7 +177,7 @@ class BTEQuerier:
         qedge = query_graph.edges[0]
 
         # Make sure at least one of our qnodes has a curie
-        qnodes_with_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.curie]
+        qnodes_with_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id]
         if not qnodes_with_curies:
             log.error(f"Neither qnode for qedge {qedge.id} has a curie specified. BTE requires that at least one of "
                       f"them has a curie. Your query graph is: {query_graph.to_dict()}", error_code="UnsupportedQueryForKP")
@@ -188,7 +188,7 @@ class BTEQuerier:
             input_qnode_key = qedge.source_id
             output_qnode_key = qedge.target_id
         else:
-            input_qnode_key = next(qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.curie)
+            input_qnode_key = next(qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id)
             output_qnode_key = set(query_graph.nodes).difference({input_qnode_key})
             log.warning(f"BTE cannot do bidirectional queries; the query for this edge will be directed, going: "
                         f"{input_qnode_key}-->{output_qnode_key}")
@@ -218,14 +218,14 @@ class BTEQuerier:
 
         # Sub in curie synonyms as appropriate
         if use_synonyms:
-            qnodes_with_curies = [qnode for qnode in [input_qnode, output_qnode] if qnode.curie]
+            qnodes_with_curies = [qnode for qnode in [input_qnode, output_qnode] if qnode.id]
             for qnode in qnodes_with_curies:
-                synonymized_curies = eu.get_curie_synonyms(qnode.curie, log)
-                qnode.curie = synonymized_curies
+                synonymized_curies = eu.get_curie_synonyms(qnode.id, log)
+                qnode.id = synonymized_curies
 
         # Make sure our input node curies are in list form and use prefixes BTE prefers
-        input_curie_list = eu.convert_string_or_list_to_list(input_qnode.curie)
-        input_qnode.curie = [eu.convert_curie_to_bte_format(curie) for curie in input_curie_list]
+        input_curie_list = eu.convert_string_or_list_to_list(input_qnode.id)
+        input_qnode.id = [eu.convert_curie_to_bte_format(curie) for curie in input_curie_list]
 
         return input_qnode_key, output_qnode_key
 
@@ -239,7 +239,7 @@ class BTEQuerier:
         # Remove 'output' nodes in the KG that aren't actually the ones we were looking for
         output_qnode = qg.nodes[output_qnode_key]
         qedge = next(qedge for qedge in qg.edges.values())
-        desired_output_curies = set(eu.convert_string_or_list_to_list(output_qnode.curie))
+        desired_output_curies = set(eu.convert_string_or_list_to_list(output_qnode.id))
         all_output_node_ids = set(kg.nodes_by_qg_id[output_qnode_key])
         output_node_ids_to_remove = all_output_node_ids.difference(desired_output_curies)
         for node_id in output_node_ids_to_remove:

@@ -341,7 +341,7 @@ class ARAXExpander:
         edge_query_graph = self._get_query_graph_for_edge(qedge, query_graph, dict_kg, log)
         if log.status != 'OK':
             return answer_kg, edge_to_nodes_map
-        if not any(qnode for qnode in edge_query_graph.nodes.values() if qnode.curie):
+        if not any(qnode for qnode in edge_query_graph.nodes.values() if qnode.id):
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
@@ -399,7 +399,7 @@ class ARAXExpander:
         answer_kg = DictKnowledgeGraph()
         if log.status != 'OK':
             return answer_kg
-        if not qnode.curie:
+        if not qnode.id:
             log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
         copy_of_qnode = eu.copy_qnode(qnode)
@@ -474,7 +474,7 @@ class ARAXExpander:
                 qnode.type = ['protein', 'gene']
 
         # Display a summary of what the modified query graph for this edge looks like
-        qnodes_with_curies = [qnode_key for qnode_key, qnode in edge_qg.nodes.items() if qnode.curie]
+        qnodes_with_curies = [qnode_key for qnode_key, qnode in edge_qg.nodes.items() if qnode.id]
         qnodes_without_curies = [qnode_key for qnode_key in edge_qg if qnode_key not in qnodes_with_curies]
         input_qnode_key = qnodes_with_curies[0] if qnodes_with_curies else qnodes_without_curies[0]
         output_qnode_key = set(edge_qg.nodes).difference({input_qnode_key})
@@ -888,9 +888,9 @@ class ARAXExpander:
 
     @staticmethod
     def _get_number_of_curies(qnode: QNode) -> int:
-        if qnode.curie and isinstance(qnode.curie, list):
-            return len(qnode.curie)
-        elif qnode.curie and isinstance(qnode.curie, str):
+        if qnode.id and isinstance(qnode.id, list):
+            return len(qnode.id)
+        elif qnode.id and isinstance(qnode.id, str):
             return 1
         else:
             return 0
@@ -898,7 +898,7 @@ class ARAXExpander:
     def _get_qnode_curie_summary(self, qnode: QNode) -> str:
         num_curies = self._get_number_of_curies(qnode)
         if num_curies == 1:
-            return f" {qnode.curie if isinstance(qnode.curie, str) else qnode.curie[0]}"
+            return f" {qnode.id if isinstance(qnode.id, str) else qnode.id[0]}"
         elif num_curies > 1:
             return f" [{num_curies} curies]"
         else:

@@ -67,12 +67,12 @@ class KGQuerier:
         qedge = query_graph.edges[0]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        qnodes_with_curies = [qnode for qnode in query_graph.nodes.values() if qnode.curie]
+        qnodes_with_curies = [qnode for qnode in query_graph.nodes.values() if qnode.id]
         for qnode in qnodes_with_curies:
             if use_synonyms and kg_name == "KG1":
-                qnode.curie = eu.get_curie_synonyms(qnode.curie, log)
+                qnode.id = eu.get_curie_synonyms(qnode.id, log)
             elif kg_name == "KG2c":
-                qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
+                qnode.id = eu.get_canonical_curies_list(qnode.id, log)
             qnode.type = None  # Important to clear this, otherwise results are limited (#889)
 
         # Run the actual query and process results
@@ -97,16 +97,16 @@ class KGQuerier:
         qnode = single_node_qg[qnode_key]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        if qnode.curie:
+        if qnode.id:
             if use_synonyms and kg_name == "KG1":
-                qnode.curie = eu.get_curie_synonyms(qnode.curie, log)
+                qnode.id = eu.get_curie_synonyms(qnode.id, log)
                 qnode.type = None  # Important to clear this, otherwise results are limited (#889)
             elif kg_name == "KG2c":
-                qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
+                qnode.id = eu.get_canonical_curies_list(qnode.id, log)
                 qnode.type = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         # Build and run a cypher query to get this node/nodes
-        where_clause = f"{qnode_key}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode_key}.id in {qnode.curie}"
+        where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
         cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode, single_node_qg, kg_name)} WHERE {where_clause} RETURN {qnode_key}"
         log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
@@ -136,8 +136,8 @@ class KGQuerier:
             where_fragments = []
             for qnode_key in [source_qnode_key, target_qnode_key]:
                 qnode = query_graph.nodes[qnode_key]
-                if qnode.curie and isinstance(qnode.curie, list) and len(qnode.curie) > 1:
-                    where_fragments.append(f"{qnode_key}.id in {qnode.curie}")
+                if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
+                    where_fragments.append(f"{qnode_key}.id in {qnode.id}")
                 if qnode.type:
                     if kg_name == "KG2c":
                         qnode_types = eu.convert_string_or_list_to_list(qnode.type)
@@ -390,8 +390,8 @@ class KGQuerier:
     def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph, kg_name: str) -> str:
         qnode = qg.nodes[qnode_key]
         type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) and kg_name != "KG2c" else ""
-        if qnode.curie and (isinstance(qnode.curie, str) or len(qnode.curie) == 1):
-            curie = qnode.curie if isinstance(qnode.curie, str) else qnode.curie[0]
+        if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
+            curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
             curie_cypher = f" {{id:'{curie}'}}"
         else:
             curie_cypher = ""

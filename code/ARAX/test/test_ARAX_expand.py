@@ -128,15 +128,15 @@ def _check_node_types(nodes: List[Node], query_graph: QueryGraph):
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
-    qnodes_with_single_curie = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.curie and isinstance(qnode.curie, str)]
+    qnodes_with_single_curie = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id and isinstance(qnode.id, str)]
     for qnode_key in qnodes_with_single_curie:
         if qnode_key in nodes_by_qg_id:
             assert len(nodes_by_qg_id[qnode_key]) == 1
-    qnodes_with_multiple_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.curie and isinstance(qnode.curie, list)]
+    qnodes_with_multiple_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id and isinstance(qnode.id, list)]
     for qnode_key in qnodes_with_multiple_curies:
         qnode = query_graph.nodes[qnode_key]
         if qnode_key in nodes_by_qg_id:
-            assert 1 <= len(nodes_by_qg_id[qnode_key]) <= len(qnode.curie)
+            assert 1 <= len(nodes_by_qg_id[qnode_key]) <= len(qnode.id)
 
 
 def test_erics_first_kg1_synonym_test_without_synonyms():

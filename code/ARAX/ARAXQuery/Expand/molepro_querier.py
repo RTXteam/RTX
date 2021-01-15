@@ -108,13 +108,13 @@ class MoleProQuerier:
             else:
                 qnode.type = list(accepted_qnode_types)[0]
             # Convert curies to equivalent curies accepted by the KP (depending on qnode type)
-            if qnode.curie:
-                equivalent_curies = eu.get_curie_synonyms(qnode.curie, log)
+            if qnode.id:
+                equivalent_curies = eu.get_curie_synonyms(qnode.id, log)
                 desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{self.kp_preferred_prefixes[qnode.type]}:")]
                 if desired_curies:
                     formatted_curies = [self._convert_prefix_to_kp_version(curie) for curie in desired_curies]
-                    qnode.curie = formatted_curies if len(formatted_curies) > 1 else formatted_curies[0]
-                    log.debug(f"Converted qnode {qnode_key} curie to {qnode.curie}")
+                    qnode.id = formatted_curies if len(formatted_curies) > 1 else formatted_curies[0]
+                    log.debug(f"Converted qnode {qnode_key} curie to {qnode.id}")
                 else:
                     log.warning(f"Could not convert qnode {qnode_key} curie(s) to preferred prefix ({self.kp_preferred_prefixes[qnode.type]})")
         return query_graph
@@ -144,8 +144,8 @@ class MoleProQuerier:
         stripped_qnodes = dict()
         for qnode_key, qnode in query_graph.nodes.items():
             stripped_qnode = {'type': qnode.type}
-            if qnode.curie:
-                stripped_qnode['curie'] = qnode.curie
+            if qnode.id:
+                stripped_qnode['curie'] = qnode.id
             stripped_qnodes[qnode_key] = stripped_qnode
         qedge = query_graph.edges[0]  # Our query graph is single-edge
         stripped_qedge = {'id': qedge.id,
