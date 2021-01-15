@@ -264,7 +264,7 @@ class ARAXExpander:
         query_graph = message.query_graph
 
         # Convert message knowledge graph to dictionary format, for faster processing
-        dict_kg = eu.convert_standard_kg_to_dict_kg(message.knowledge_graph)
+        dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
 
         # Expand any specified edges
         if input_qedge_ids:
@@ -309,7 +309,7 @@ class ARAXExpander:
                     return response
 
         # Convert message knowledge graph back to API standard format
-        message.knowledge_graph = eu.convert_dict_kg_to_standard_kg(dict_kg)
+        message.knowledge_graph = eu.convert_qg_organized_kg_to_standard_kg(dict_kg)
 
         # Override node types so that they match what was asked for in the query graph (where applicable) #987
         self._override_node_types(message.knowledge_graph, message.query_graph)

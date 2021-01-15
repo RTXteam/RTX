@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymiz
 from node_synonymizer import NodeSynonymizer
 
 
-class DictKnowledgeGraph:
+class QGOrganizedKnowledgeGraph:
     def __init__(self, nodes: Dict[str, Dict[str, Node]] = None, edges: Dict[str, Dict[str, Edge]] = None):
         self.nodes_by_qg_id = nodes if nodes else dict()
         self.edges_by_qg_id = edges if edges else dict()
@@ -116,7 +116,7 @@ def get_node_ids_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
     return {node_id for edge in edges_dict.values() for node_id in [edge.source_id, edge.target_id]}
 
 
-def get_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> Dict[str, int]:
+def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
     counts_by_qg_id = dict()
     for qnode_key, nodes_dict in dict_kg.nodes_by_qg_id.items():
         counts_by_qg_id[qnode_key] = len(nodes_dict)
@@ -125,7 +125,7 @@ def get_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> Dict[str, int]:
     return counts_by_qg_id
 
 
-def get_printable_counts_by_qg_id(dict_kg: DictKnowledgeGraph) -> str:
+def get_printable_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> str:
     counts_by_qg_id = get_counts_by_qg_id(dict_kg)
     counts_string = ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
     return counts_string if counts_string else "none found"
@@ -156,40 +156,39 @@ def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -
     return {edge_a.source_id, edge_a.target_id} == {edge_b.source_id, edge_b.target_id}
 
 
-def convert_standard_kg_to_dict_kg(knowledge_graph: KnowledgeGraph) -> DictKnowledgeGraph:
-    dict_kg = DictKnowledgeGraph()
-    if knowledge_graph.nodes:
-        for node in knowledge_graph.nodes:
+def convert_standard_kg_to_qg_organized_kg(standard_kg: KnowledgeGraph) -> QGOrganizedKnowledgeGraph:
+    organized_kg = QGOrganizedKnowledgeGraph()
+    if standard_kg.nodes:
+        for node_key, node in standard_kg.nodes.items():
             for qnode_key in node.qnode_keys:
-                if qnode_key not in dict_kg.nodes_by_qg_id:
-                    dict_kg.nodes_by_qg_id[qnode_key] = dict()
-                dict_kg.nodes_by_qg_id[qnode_key][node.id] = node
-    if knowledge_graph.edges:
-        for edge in knowledge_graph.edges:
-            for qedge_id in edge.qedge_ids:
-                if qedge_id not in dict_kg.edges_by_qg_id:
-                    dict_kg.edges_by_qg_id[qedge_id] = dict()
-                dict_kg.edges_by_qg_id[qedge_id][edge.id] = edge
-    return dict_kg
+                if qnode_key not in organized_kg.nodes_by_qg_id:
+                    organized_kg.nodes_by_qg_id[qnode_key] = dict()
+                organized_kg.nodes_by_qg_id[qnode_key][node_key] = node
+    if standard_kg.edges:
+        for edge_key, edge in standard_kg.edges.items():
+            for qedge_key in edge.qedge_keys:
+                if qedge_key not in organized_kg.edges_by_qg_id:
+                    organized_kg.edges_by_qg_id[qedge_key] = dict()
+                organized_kg.edges_by_qg_id[qedge_key][edge_key] = edge
+    return organized_kg
 
 
-def convert_dict_kg_to_standard_kg(dict_kg: DictKnowledgeGraph) -> KnowledgeGraph:
-    almost_standard_kg = KnowledgeGraph(nodes=dict(), edges=dict())
-    for qnode_key, nodes_for_this_qnode_key in dict_kg.nodes_by_qg_id.items():
+def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGraph) -> KnowledgeGraph:
+    standard_kg = KnowledgeGraph(nodes=dict(), edges=dict())
+    for qnode_key, nodes_for_this_qnode_key in organized_kg.nodes_by_qg_id.items():
         for node_key, node in nodes_for_this_qnode_key.items():
-            if node_key in almost_standard_kg.nodes:
-                almost_standard_kg.nodes[node_key].qnode_keys.append(qnode_key)
+            if node_key in standard_kg.nodes:
+                standard_kg.nodes[node_key].qnode_keys.append(qnode_key)
             else:
                 node.qnode_keys = [qnode_key]
-                almost_standard_kg.nodes[node_key] = node
-    for qedge_id, edges_for_this_qedge_id in dict_kg.edges_by_qg_id.items():
-        for edge_key, edge in edges_for_this_qedge_id.items():
-            if edge_key in almost_standard_kg.edges:
-                almost_standard_kg.edges[edge_key].qedge_ids.append(qedge_id)
+                standard_kg.nodes[node_key] = node
+    for qedge_key, edges_for_this_qedge_key in organized_kg.edges_by_qg_id.items():
+        for edge_key, edge in edges_for_this_qedge_key.items():
+            if edge_key in standard_kg.edges:
+                standard_kg.edges[edge_key].qedge_keys.append(qedge_key)
             else:
-                edge.qedge_ids = [qedge_id]
-                almost_standard_kg.edges[edge_key] = edge
-    standard_kg = KnowledgeGraph(nodes=list(almost_standard_kg.nodes.values()), edges=list(almost_standard_kg.edges.values()))
+                edge.qedge_keys = [qedge_key]
+                standard_kg.edges[edge_key] = edge
     return standard_kg
 
 
@@ -287,7 +286,7 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
             return []
 
 
-def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: DictKnowledgeGraph, enforce_required_only=False) -> bool:
+def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False) -> bool:
     if enforce_required_only:
         qg_without_kryptonite_portion = get_qg_without_kryptonite_portion(query_graph)
         query_graph = get_required_portion_of_qg(qg_without_kryptonite_portion)
@@ -329,9 +328,9 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
     return "", set()
 
 
-def switch_kg_to_arax_curie_format(dict_kg: DictKnowledgeGraph) -> DictKnowledgeGraph:
-    converted_kg = DictKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in dict_kg.nodes_by_qg_id},
-                                      edges={qedge_id: dict() for qedge_id in dict_kg.edges_by_qg_id})
+def switch_kg_to_arax_curie_format(dict_kg: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
+    converted_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in dict_kg.nodes_by_qg_id},
+                                             edges={qedge_id: dict() for qedge_id in dict_kg.edges_by_qg_id})
     for qnode_key, nodes in dict_kg.nodes_by_qg_id.items():
         for node_id, node in nodes.items():
             node.id = convert_curie_to_arax_format(node.id)

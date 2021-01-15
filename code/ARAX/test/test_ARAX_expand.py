@@ -32,7 +32,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     assert response.status == 'OK' or should_throw_error
 
     # Convert output knowledge graph to a dictionary format for faster processing (organized by QG IDs)
-    dict_kg = eu.convert_standard_kg_to_dict_kg(message.knowledge_graph)
+    dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
     nodes_by_qg_id = dict_kg.nodes_by_qg_id
     edges_by_qg_id = dict_kg.edges_by_qg_id
 
