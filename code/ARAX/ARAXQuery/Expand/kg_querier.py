@@ -17,8 +17,7 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
-from openapi_server.models.node_attribute import NodeAttribute
-from openapi_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
@@ -45,7 +44,7 @@ class KGQuerier:
         :return: A tuple containing:
             1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
            results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_ids for each edge. Example:
+            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
@@ -67,16 +66,13 @@ class KGQuerier:
         qedge = query_graph.edges[0]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        if use_synonyms and kg_name == "KG1":
-            qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
-            for qnode in qnodes_with_curies:
-                qnode.curie = eu.get_curie_synonyms(qnode.curie, log)
-                qnode.type = None  # Important to clear this, otherwise results are limited (#889)
-        elif kg_name == "KG2c":
-            qnodes_with_curies = [qnode for qnode in query_graph.nodes if qnode.curie]
-            for qnode in qnodes_with_curies:
-                qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
-                qnode.type = None  # Important to clear this to avoid discrepancies in types for particular concepts
+        qnodes_with_curies = [qnode for qnode in query_graph.nodes.values() if qnode.id]
+        for qnode in qnodes_with_curies:
+            if use_synonyms and kg_name == "KG1":
+                qnode.id = eu.get_curie_synonyms(qnode.id, log)
+            elif kg_name == "KG2c":
+                qnode.id = eu.get_canonical_curies_list(qnode.id, log)
+            qnode.category = None  # Important to clear this, otherwise results are limited (#889)
 
         # Run the actual query and process results
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kg_name, log)
@@ -91,32 +87,34 @@ class KGQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def answer_single_node_query(self, qnode: QNode) -> DictKnowledgeGraph:
+    def answer_single_node_query(self, single_node_qg: QueryGraph) -> DictKnowledgeGraph:
         kg_name = self.kg_name
         use_synonyms = self.use_synonyms
         log = self.response
         final_kg = DictKnowledgeGraph()
+        qnode_key = next(qnode_key for qnode_key in single_node_qg.nodes)
+        qnode = single_node_qg[qnode_key]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        if qnode.curie:
+        if qnode.id:
             if use_synonyms and kg_name == "KG1":
-                qnode.curie = eu.get_curie_synonyms(qnode.curie, log)
-                qnode.type = None  # Important to clear this, otherwise results are limited (#889)
+                qnode.id = eu.get_curie_synonyms(qnode.id, log)
+                qnode.category = None  # Important to clear this, otherwise results are limited (#889)
             elif kg_name == "KG2c":
-                qnode.curie = eu.get_canonical_curies_list(qnode.curie, log)
-                qnode.type = None  # Important to clear this to avoid discrepancies in types for particular concepts
+                qnode.id = eu.get_canonical_curies_list(qnode.id, log)
+                qnode.category = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         # Build and run a cypher query to get this node/nodes
-        where_clause = f"{qnode.id}.id='{qnode.curie}'" if type(qnode.curie) is str else f"{qnode.id}.id in {qnode.curie}"
-        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode, kg_name)} WHERE {where_clause} RETURN {qnode.id}"
-        log.info(f"Sending cypher query for node {qnode.id} to {kg_name} neo4j")
+        where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
+        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode, single_node_qg, kg_name)} WHERE {where_clause} RETURN {qnode_key}"
+        log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
 
         # Load the results into swagger object model and add to our answer knowledge graph
         for result in results:
-            neo4j_node = result.get(qnode.id)
-            swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-            final_kg.add_node(swagger_node, qnode.id)
+            neo4j_node = result.get(qnode_key)
+            swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
+            final_kg.add_node(swagger_node_key, swagger_node, qnode_key)
 
         return final_kg
 
@@ -126,31 +124,32 @@ class KGQuerier:
         try:
             # Build the match clause
             qedge = query_graph.edges[0]
-            source_qnode = eu.get_query_node(query_graph, qedge.source_id)
-            target_qnode = eu.get_query_node(query_graph, qedge.target_id)
+            source_qnode_key = qedge.source_id
+            target_qnode_key = qedge.target_id
             qedge_cypher = self._get_cypher_for_query_edge(qedge, enforce_directionality)
-            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode, kg_name)
-            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode, kg_name)
+            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode_key, query_graph, kg_name)
+            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode_key, query_graph, kg_name)
             match_clause = f"MATCH {source_qnode_cypher}{qedge_cypher}{target_qnode_cypher}"
 
             # Build the where clause
             where_fragments = []
-            for qnode in [source_qnode, target_qnode]:
-                if qnode.curie and isinstance(qnode.curie, list) and len(qnode.curie) > 1:
-                    where_fragments.append(f"{qnode.id}.id in {qnode.curie}")
-                if qnode.type:
+            for qnode_key in [source_qnode_key, target_qnode_key]:
+                qnode = query_graph.nodes[qnode_key]
+                if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
+                    where_fragments.append(f"{qnode_key}.id in {qnode.id}")
+                if qnode.category:
                     if kg_name == "KG2c":
-                        qnode_types = eu.convert_string_or_list_to_list(qnode.type)
-                        type_fragments = [f"'{qnode_type}' in {qnode.id}.types" for qnode_type in qnode_types]
-                        joined_type_fragments = " OR ".join(type_fragments)
-                        type_where_clause = joined_type_fragments if len(type_fragments) < 2 else f"({joined_type_fragments})"
-                        where_fragments.append(type_where_clause)
-                    elif isinstance(qnode.type, list):
+                        qnode_categories = eu.convert_string_or_list_to_list(qnode.category)
+                        category_fragments = [f"'{qnode_category}' in {qnode_key}.types" for qnode_category in qnode_categories]
+                        joined_category_fragments = " OR ".join(category_fragments)
+                        category_where_clause = joined_category_fragments if len(category_fragments) < 2 else f"({joined_category_fragments})"
+                        where_fragments.append(category_where_clause)
+                    elif isinstance(qnode.category, list):
                         if kg_name == "KG2":
-                            node_type_property = "category_label"
+                            node_category_property = "category_label"
                         else:
-                            node_type_property = "category"
-                        where_fragments.append(f"{qnode.id}.{node_type_property} in {qnode.type}")
+                            node_category_property = "category"
+                        where_fragments.append(f"{qnode_key}.{node_category_property} in {qnode.category}")
 
             if where_fragments:
                 where_clause = f"WHERE {' AND '.join(where_fragments)}"
@@ -158,13 +157,13 @@ class KGQuerier:
                 where_clause = ""
 
             # Build the with clause
-            source_qnode_col_name = f"nodes_{source_qnode.id}"
-            target_qnode_col_name = f"nodes_{target_qnode.id}"
+            source_qnode_col_name = f"nodes_{source_qnode_key}"
+            target_qnode_col_name = f"nodes_{target_qnode_key}"
             qedge_col_name = f"edges_{qedge.id}"
             # This line grabs the edge's ID and a record of which of its nodes correspond to which qnode ID
-            extra_edge_properties = "{.*, " + f"id:ID({qedge.id}), {source_qnode.id}:{source_qnode.id}.id, {target_qnode.id}:{target_qnode.id}.id" + "}"
-            with_clause = f"WITH collect(distinct {source_qnode.id}) as {source_qnode_col_name}, " \
-                          f"collect(distinct {target_qnode.id}) as {target_qnode_col_name}, " \
+            extra_edge_properties = "{.*, " + f"id:ID({qedge.id}), {source_qnode_key}:{source_qnode_key}.id, {target_qnode_key}:{target_qnode_key}.id" + "}"
+            with_clause = f"WITH collect(distinct {source_qnode_key}) as {source_qnode_col_name}, " \
+                          f"collect(distinct {target_qnode_key}) as {target_qnode_col_name}, " \
                           f"collect(distinct {qedge.id}{extra_edge_properties}) as {qedge_col_name}"
 
             # Build the return clause
@@ -199,28 +198,28 @@ class KGQuerier:
         for column_name in column_names:
             # Load answer nodes into our knowledge graph
             if column_name.startswith('nodes'):  # Example column name: 'nodes_n00'
-                column_qnode_id = column_name.replace("nodes_", "", 1)
+                column_qnode_key = column_name.replace("nodes_", "", 1)
                 for neo4j_node in results_table.get(column_name):
-                    swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-                    final_kg.add_node(swagger_node, column_qnode_id)
+                    swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
+                    final_kg.add_node(swagger_node_key, swagger_node, column_qnode_key)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_id = column_name.replace("edges_", "", 1)
                 for neo4j_edge in results_table.get(column_name):
                     swagger_edge = self._convert_neo4j_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict, kg_name)
 
-                    # Record which of this edge's nodes correspond to which qnode_id
+                    # Record which of this edge's nodes correspond to which qnode_key
                     if swagger_edge.id not in edge_to_nodes_map:
                         edge_to_nodes_map[swagger_edge.id] = dict()
-                    for qnode in query_graph.nodes:
-                        edge_to_nodes_map[swagger_edge.id][qnode.id] = neo4j_edge.get(qnode.id)
+                    for qnode_key in query_graph.nodes:
+                        edge_to_nodes_map[swagger_edge.id][qnode_key] = neo4j_edge.get(qnode_key)
 
                     # Finally add the current edge to our answer knowledge graph
                     final_kg.add_edge(swagger_edge, column_qedge_id)
 
         return final_kg, edge_to_nodes_map
 
-    def _convert_neo4j_node_to_swagger_node(self, neo4j_node: Dict[str, any], kp: str) -> Node:
+    def _convert_neo4j_node_to_swagger_node(self, neo4j_node: Dict[str, any], kp: str) -> Tuple[str, Node]:
         if kp == "KG2":
             return self._convert_kg2_node_to_swagger_node(neo4j_node)
         elif kp == "KG2c":
@@ -228,52 +227,52 @@ class KGQuerier:
         else:
             return self._convert_kg1_node_to_swagger_node(neo4j_node)
 
-    def _convert_kg2_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Node:
+    def _convert_kg2_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         swagger_node = Node()
-        swagger_node.id = neo4j_node.get('id')
+        swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.description = neo4j_node.get('description')
         swagger_node.uri = neo4j_node.get('iri')
-        swagger_node.node_attributes = []
+        swagger_node.attributes = []
         node_category = neo4j_node.get('category_label')
-        swagger_node.type = eu.convert_string_or_list_to_list(node_category)
+        swagger_node.category = eu.convert_string_or_list_to_list(node_category)
         # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
-        if swagger_node.symbol is None and swagger_node.id.lower().startswith("uniprot"):
+        if swagger_node.symbol is None and swagger_node_key.lower().startswith("uniprot"):
             swagger_node.symbol = neo4j_node.get('name')
             swagger_node.name = neo4j_node.get('full_name')
-        # Add all additional properties on KG2 nodes as swagger NodeAttribute objects
+        # Add all additional properties on KG2 nodes as swagger Attribute objects
         additional_kg2_node_properties = ['publications', 'synonym', 'category', 'provided_by', 'deprecated',
                                           'update_date']
         node_attributes = self._create_swagger_attributes("node", additional_kg2_node_properties, neo4j_node)
-        swagger_node.node_attributes += node_attributes
-        return swagger_node
+        swagger_node.attributes += node_attributes
+        return swagger_node_key, swagger_node
 
-    def _convert_kg2c_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Node:
+    def _convert_kg2c_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         swagger_node = Node()
-        swagger_node.id = neo4j_node.get('id')
+        swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
-        swagger_node.type = neo4j_node.get('types')
+        swagger_node.category = neo4j_node.get('types')
         swagger_node.uri = neo4j_node.get('iri')
         swagger_node.description = neo4j_node.get('description')
-        # Add all additional properties on KG2c nodes as swagger NodeAttribute objects
-        swagger_node.node_attributes = []
+        # Add all additional properties on KG2c nodes as swagger Attribute objects
+        swagger_node.attributes = []
         additional_kg2c_node_properties = ['equivalent_curies', 'publications', 'all_names']
         node_attributes = self._create_swagger_attributes("node", additional_kg2c_node_properties, neo4j_node)
-        swagger_node.node_attributes += node_attributes
-        return swagger_node
+        swagger_node.attributes += node_attributes
+        return swagger_node_key, swagger_node
 
     @staticmethod
-    def _convert_kg1_node_to_swagger_node(neo4j_node: Dict[str, any]) -> Node:
+    def _convert_kg1_node_to_swagger_node(neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         swagger_node = Node()
-        swagger_node.id = neo4j_node.get('id')
+        swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.symbol = neo4j_node.get('symbol')
         swagger_node.description = neo4j_node.get('description')
         swagger_node.uri = neo4j_node.get('uri')
-        swagger_node.node_attributes = []
+        swagger_node.attributes = []
         node_category = neo4j_node.get('category')
-        swagger_node.type = eu.convert_string_or_list_to_list(node_category)
-        return swagger_node
+        swagger_node.category = eu.convert_string_or_list_to_list(node_category)
+        return swagger_node_key, swagger_node
 
     def _convert_neo4j_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str],
                                             kg_name: str) -> Edge:
@@ -295,11 +294,11 @@ class KGQuerier:
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.negated = ast.literal_eval(neo4j_edge.get("negated"))
         swagger_edge.is_defined_by = "ARAX/KG2"
-        # Add additional properties on KG2 edges as swagger EdgeAttribute objects
+        # Add additional properties on KG2 edges as swagger Attribute objects
         # TODO: fix issues coming from strange characters in 'publications_info'! (EOF error)
         additional_kg2_edge_properties = ["relation_curie", "simplified_relation_curie", "simplified_relation",
                                           "edge_label"]
-        swagger_edge.edge_attributes = self._create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
+        swagger_edge.attributes = self._create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
         return swagger_edge
 
     @staticmethod
@@ -324,7 +323,7 @@ class KGQuerier:
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.is_defined_by = "ARAX/KG1"
         if neo4j_edge.get("probability"):
-            swagger_edge.edge_attributes = self._create_swagger_attributes("edge", ["probability"], neo4j_edge)
+            swagger_edge.attributes = self._create_swagger_attributes("edge", ["probability"], neo4j_edge)
         return swagger_edge
 
     @staticmethod
@@ -341,7 +340,7 @@ class KGQuerier:
 
             # Create an Attribute for all non-empty values
             if property_value is not None and property_value != {} and property_value != []:
-                swagger_attribute = NodeAttribute() if object_type == "node" else EdgeAttribute()
+                swagger_attribute = Attribute()
                 swagger_attribute.name = property_name
                 # Figure out whether this is a url and store it appropriately
                 if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
@@ -387,14 +386,15 @@ class KGQuerier:
         return edge
 
     @staticmethod
-    def _get_cypher_for_query_node(qnode: QNode, kg_name: str) -> str:
-        type_cypher = f":{qnode.type}" if qnode.type and isinstance(qnode.type, str) and kg_name != "KG2c" else ""
-        if qnode.curie and (isinstance(qnode.curie, str) or len(qnode.curie) == 1):
-            curie = qnode.curie if isinstance(qnode.curie, str) else qnode.curie[0]
+    def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph, kg_name: str) -> str:
+        qnode = qg.nodes[qnode_key]
+        type_cypher = f":{qnode.category}" if qnode.category and isinstance(qnode.category, str) and kg_name != "KG2c" else ""
+        if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
+            curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
             curie_cypher = f" {{id:'{curie}'}}"
         else:
             curie_cypher = ""
-        qnode_cypher = f"({qnode.id}{type_cypher}{curie_cypher})"
+        qnode_cypher = f"({qnode_key}{type_cypher}{curie_cypher})"
         return qnode_cypher
 
     @staticmethod

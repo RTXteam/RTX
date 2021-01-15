@@ -43,48 +43,48 @@ class ComputeFTEST:
         self.response.info(f"Performing Fisher's Exact Test to add p-value to edge attribute of virtual edge")
 
         # check the input parameters
-        if 'source_qnode_id' not in self.parameters:
-            self.response.error(f"The argument 'source_qnode_id' is required for fisher_exact_test function")
+        if 'subject_key' not in self.parameters:
+            self.response.error(f"The argument 'subject_key' is required for fisher_exact_test function")
             return self.response
         else:
-            source_qnode_id = self.parameters['source_qnode_id']
+            subject_key = self.parameters['subject_key']
         if 'virtual_relation_label' not in self.parameters:
             self.response.error(f"The argument 'virtual_relation_label' is required for fisher_exact_test function")
             return self.response
         else:
             virtual_relation_label = str(self.parameters['virtual_relation_label'])
-        if 'target_qnode_id' not in self.parameters:
-            self.response.error(f"The argument 'target_qnode_id' is required for fisher_exact_test function")
+        if 'object_key' not in self.parameters:
+            self.response.error(f"The argument 'object_key' is required for fisher_exact_test function")
             return self.response
         else:
-            target_qnode_id = self.parameters['target_qnode_id']
-        rel_edge_id = self.parameters['rel_edge_id'] if 'rel_edge_id' in self.parameters else None
+            object_key = self.parameters['object_key']
+        rel_edge_key = self.parameters['rel_edge_key'] if 'rel_edge_key' in self.parameters else None
         top_n = int(self.parameters['top_n']) if 'top_n' in self.parameters else None
         cutoff = float(self.parameters['cutoff']) if 'cutoff' in self.parameters else None
 
         # initialize some variables
         nodes_info = {}
         edge_expand_kp = []
-        source_node_list = []
-        target_node_dict = {}
-        size_of_target = {}
-        source_node_exist = False
-        target_node_exist = False
-        query_edge_id = set()
-        rel_edge_type = set()
-        source_node_type = None
-        target_node_type = None
+        subject_node_list = []
+        object_node_dict = {}
+        size_of_object = {}
+        subject_node_exist = False
+        object_node_exist = False
+        query_edge_key = set()
+        rel_edge_predicate = set()
+        subject_node_category = None
+        object_node_category= None
 
-        ## Check if source_qnode_id and target_qnode_id are in the Query Graph
+        ## Check if subject_key and object_key are in the Query Graph
         try:
             if len(self.message.query_graph.nodes) != 0:
-                for node in self.message.query_graph.nodes:
-                    if node.id == source_qnode_id:
-                        source_node_exist = True
-                        source_node_type = node.type
-                    elif node.id == target_qnode_id:
-                        target_node_exist = True
-                        target_node_type = node.type
+                for node_key in self.message.query_graph.nodes:
+                    if node_key == subject_key:
+                        subject_node_exist = True
+                        subject_node_category = self.message.query_graph.nodes[node_key].category
+                    elif node_key == object_key:
+                        object_node_exist = True
+                        object_node_category = self.message.query_graph.nodes[node_key].category
                     else:
                         pass
             else:
@@ -97,24 +97,24 @@ class ComputeFTEST:
             self.response.error(f"Something went wrong with retrieving nodes in message QG")
             return self.response
 
-        if source_node_exist:
-            if target_node_exist:
+        if subject_node_exist:
+            if object_node_exist:
                 pass
             else:
-                self.response.error(f"No query node with target qnode id {target_qnode_id} detected in QG for Fisher's Exact Test")
+                self.response.error(f"No query node with object qnode id {object_key} detected in QG for Fisher's Exact Test")
                 return self.response
         else:
-            self.response.error(f"No query node with source qnode id {source_qnode_id} detected in QG for Fisher's Exact Test")
+            self.response.error(f"No query node with subject qnode key {subject_key} detected in QG for Fisher's Exact Test")
             return self.response
 
-        ## Check if there is a query edge connected to both source_qnode_id and target_qnode_id in the Query Graph
+        ## Check if there is a query edge connected to both subject_key and object_key in the Query Graph
         try:
             if len(self.message.query_graph.edges) != 0:
-                for edge in self.message.query_graph.edges:
-                    if edge.source_id == source_qnode_id and edge.target_id == target_qnode_id and edge.relation == None:
-                        query_edge_id.update([edge.id]) # only actual query edge is added
-                    elif edge.source_id == target_qnode_id and edge.target_id == source_qnode_id and edge.relation == None:
-                        query_edge_id.update([edge.id]) # only actual query edge is added
+                for edge_key in self.message.query_graph.edges:
+                    if self.message.query_graph.edges[edge_key].subject == subject_key and self.message.query_graph.edges[edge_key].object == object_key and self.message.query_graph.edges[edge_key].relation == None:
+                        query_edge_key.update([edge_key]) # only actual query edge is added
+                    elif self.message.query_graph.edges[edge_key].subject == object_key and self.message.query_graph.edges[edge_key].object == subject_key and self.message.query_graph.edges[edge_key].relation == None:
+                        query_edge_key.update([edge_key]) # only actual query edge is added
                     else:
                         continue
             else:
@@ -127,25 +127,25 @@ class ComputeFTEST:
             self.response.error(f"Something went wrong with retrieving edges in message QG")
             return self.response
 
-        if len(query_edge_id)!=0:
-            if rel_edge_id:
-                if rel_edge_id in query_edge_id:
+        if len(query_edge_key)!=0:
+            if rel_edge_key:
+                if rel_edge_key in query_edge_key:
                     pass
                 else:
-                    self.response.error(f"No query edge with qedge id {rel_edge_id} connected to both source node with qnode id {source_qnode_id} and target node with qnode id {target_qnode_id} detected in QG for Fisher's Exact Test")
+                    self.response.error(f"No query edge with qedge key {rel_edge_key} connected to both subject node with qnode key {subject_key} and object node with qnode key {object_key} detected in QG for Fisher's Exact Test")
                     return self.response
             else:
                 pass
         else:
             self.response.error(
-                f"No query edge connected to both source node with qnode id {source_qnode_id} and target node with qnode id {target_qnode_id} detected in QG for Fisher's Exact Test")
+                f"No query edge connected to both subject node with qnode key {subject_key} and object node with qnode key {object_key} detected in QG for Fisher's Exact Test")
             return self.response
 
         ## loop over all nodes in KG and collect their node information
         try:
             count = 0
-            for node in self.message.knowledge_graph.nodes:
-                nodes_info[node.id] = {'count': count, 'qnode_ids': node.qnode_ids, 'type': node.type[0], 'edge_index': []}
+            for node_key in self.message.knowledge_graph.nodes:
+                nodes_info[node_key] = {'count': count, 'qnode_keys': self.message.knowledge_graph.nodes[node_key].qnode_keys, 'category': self.message.knowledge_graph.nodes[node_key].category[0], 'edge_index': []}
                 count = count + 1
         except:
             tb = traceback.format_exc()
@@ -154,55 +154,55 @@ class ComputeFTEST:
             self.response.error(f"Something went wrong with retrieving nodes in message KG")
             return self.response
 
-        ## loop over all edges in KG and create source node list and target node dict based on source_qnode_id, target_qnode_id as well as rel_edge_id (optional, otherwise all edges are considered)
+        ## loop over all edges in KG and create subject node list and target node dict based on subject_key, object_key as well as rel_edge_id (optional, otherwise all edges are considered)
         try:
             count = 0
-            for edge in self.message.knowledge_graph.edges:
-                if edge.provided_by != "ARAX":
+            for edge_key in self.message.knowledge_graph.edges:
+                if self.message.knowledge_graph.edges[edge_key].provided_by != "ARAX":
 
-                    nodes_info[edge.source_id]['edge_index'].append(count)
-                    nodes_info[edge.target_id]['edge_index'].append(count)
+                    nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['edge_index'].append(count)
+                    nodes_info[self.message.knowledge_graph.edges[edge_key].object]['edge_index'].append(count)
 
-                    if rel_edge_id:
-                        if rel_edge_id in edge.qedge_ids:
-                            if source_qnode_id in nodes_info[edge.source_id]['qnode_ids']:
-                                edge_expand_kp.append(edge.is_defined_by)
-                                rel_edge_type.update([edge.type])
-                                source_node_list.append(edge.source_id)
-                                if edge.target_id not in target_node_dict.keys():
-                                    target_node_dict[edge.target_id] = {edge.source_id}
+                    if rel_edge_key:
+                        if rel_edge_key in self.message.knowledge_graph.edges[edge_key].qedge_keys:
+                            if subject_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
+                                edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                rel_edge_predicate.update([self.message.knowledge_graph.edges[edge_key].predicate])
+                                subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
+                                if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
+                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].object] = {self.message.knowledge_graph.edges[edge_key].subject}
                                 else:
-                                    target_node_dict[edge.target_id].update([edge.source_id])
+                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
                             else:
-                                edge_expand_kp.append(edge.is_defined_by)
-                                rel_edge_type.update([edge.type])
-                                source_node_list.append(edge.target_id)
-                                if edge.source_id not in target_node_dict.keys():
-                                    target_node_dict[edge.source_id] = {edge.target_id}
+                                edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                rel_edge_predicate.update([self.message.knowledge_graph.edges[edge_key].predicate])
+                                subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
+                                if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
+                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
                                 else:
-                                    target_node_dict[edge.source_id].update([edge.target_id])
+                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].subject].update([self.message.knowledge_graph.edges[edge_key].object])
                         else:
                             pass
                     else:
-                        if source_qnode_id in nodes_info[edge.source_id]['qnode_ids']:
-                            if target_qnode_id in nodes_info[edge.target_id]['qnode_ids']:
-                                edge_expand_kp.append(edge.is_defined_by)
-                                source_node_list.append(edge.source_id)
-                                if edge.target_id not in target_node_dict.keys():
-                                    target_node_dict[edge.target_id] = {edge.source_id}
+                        if subject_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
+                            if object_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
+                                edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
+                                if self.message.knowledge_graph.edges[edge_key].target_id not in object_node_dict.keys():
+                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].object] = {self.message.knowledge_graph.edges[edge_key].subject}
                                 else:
-                                    target_node_dict[edge.target_id].update([edge.source_id])
+                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
 
                             else:
                                 pass
-                        elif target_qnode_id in nodes_info[edge.source_id]['qnode_ids']:
-                            if source_qnode_id in nodes_info[edge.target_id]['qnode_ids']:
-                                edge_expand_kp.append(edge.is_defined_by)
-                                source_node_list.append(edge.target_id)
-                                if edge.source_id not in target_node_dict.keys():
-                                    target_node_dict[edge.source_id] = {edge.target_id}
+                        elif object_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
+                            if subject_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
+                                edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
+                                if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
+                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
                                 else:
-                                    target_node_dict[edge.source_id].update([edge.target_id])
+                                    object_node_dict[self.message.knowledge_graph.edges[edge_key.subject].update([self.message.knowledge_graph.edges[edge_key.object])
 
                             else:
                                 pass
@@ -221,33 +221,33 @@ class ComputeFTEST:
             self.response.error(f"Something went wrong with retrieving edges in message KG")
             return self.response
 
-        source_node_list = list(set(source_node_list)) ## remove the duplicate source node id
+        subject_node_list = list(set(subject_node_list)) ## remove the duplicate subject node key
 
-        ## check if there is no source node in message KG
-        if len(source_node_list) == 0:
-            self.response.error(f"No source node found in message KG for Fisher's Exact Test")
+        ## check if there is no subject node in message KG
+        if len(subject_node_list) == 0:
+            self.response.error(f"No subject node found in message KG for Fisher's Exact Test")
             return self.response
 
-        ## check if there is no target node in message KG
-        if len(target_node_dict) == 0:
-            self.response.error(f"No target node found in message KG for Fisher's Exact Test")
+        ## check if there is no object node in message KG
+        if len(object_node_dict) == 0:
+            self.response.error(f"No object node found in message KG for Fisher's Exact Test")
             return self.response
 
-        ## check if source node has more than one type. If so, throw an error
-        if source_node_type is None:
-            self.response.error(f"Source node with qnode id {source_qnode_id} was set to None in Query Graph. Please specify the node type")
-            return self.response
-        else:
-            pass
-
-        ## check if target node has more than one type. If so, throw an error
-        if target_node_type is None:
-            self.response.error(f"Target node with qnode id {target_qnode_id} was set to None in Query Graph. Please specify the node type")
+        ## check if subject node has more than one type. If so, throw an error
+        if subject_node_category is None:
+            self.response.error(f"Subject node with qnode key {subject_key} was set to None in Query Graph. Please specify the node type")
             return self.response
         else:
             pass
 
-        ##check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both source nodes and target nodes was used
+        ## check if object node has more than one type. If so, throw an error
+        if object_node_category is None:
+            self.response.error(f"Object node with qnode key {object_key} was set to None in Query Graph. Please specify the node type")
+            return self.response
+        else:
+            pass
+
+        ##check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both subject nodes and object nodes was used
         if len(collections.Counter(edge_expand_kp))==1:
             kp = edge_expand_kp[0]
         else:
@@ -255,69 +255,69 @@ class ComputeFTEST:
             max_index = max([(value, index) for index, value in enumerate(occurrences.values())])[1] # if there are more than one kp having the maximum number of edges, then the last one based on alphabetical order will be chosen.
             kp = list(occurrences.keys())[max_index]
             self.response.debug(f"{occurrences}")
-            self.response.warning(f"More than one knowledge provider was detected to be used for expanding the edges connected to both source node with qnode id {source_qnode_id} and target node with qnode id {target_qnode_id}")
-            self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges both source node with qnode id {source_qnode_id} and target node with qnode id {target_qnode_id}")
+            self.response.warning(f"More than one knowledge provider was detected to be used for expanding the edges connected to both subject node with qnode key {subject_key} and object node with qnode key {object_key}")
+            self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges both subject node with qnode key {subject_key} and object node with qnode key {object_key}")
 
         ## Print out some information used to calculate FET
-        if len(source_node_list) == 1:
-            self.response.debug(f"{len(source_node_list)} source node with qnode id {source_qnode_id} and node type {source_node_type} was found in message KG and used to calculate Fisher's Exact Test")
+        if len(subject_node_list) == 1:
+            self.response.debug(f"{len(subject_node_list)} subject node with qnode key {subject_key} and node type {subject_node_category} was found in message KG and used to calculate Fisher's Exact Test")
         else:
-            self.response.debug(f"{len(source_node_list)} source nodes with qnode id {source_qnode_id} and node type {source_node_type} was found in message KG and used to calculate Fisher's Exact Test")
-        if len(target_node_dict) == 1:
-            self.response.debug(f"{len(target_node_dict)} target node with qnode id {target_qnode_id} and node type {target_node_type} was found in message KG and used to calculate Fisher's Exact Test")
+            self.response.debug(f"{len(subject_node_list)} subject nodes with qnode key {subject_key} and node type {subject_node_category} was found in message KG and used to calculate Fisher's Exact Test")
+        if len(object_node_dict) == 1:
+            self.response.debug(f"{len(object_node_dict)} object node with qnode key {object_key} and node type {object_node_category} was found in message KG and used to calculate Fisher's Exact Test")
         else:
-            self.response.debug(f"{len(target_node_dict)} target nodes with qnode id {target_qnode_id} and node type {target_node_type} was found in message KG and used to calculate Fisher's Exact Test")
+            self.response.debug(f"{len(object_node_dict)} object nodes with qnode key {object_key} and node type {object_node_category} was found in message KG and used to calculate Fisher's Exact Test")
 
 
-        # find all nodes with the same type of 'source_qnode_id' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
+        # find all nodes with the same type of 'subject_key' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
         use_parallel = False
 
         if not use_parallel:
             # query adjacent node in one DSL command by providing a list of query nodes to add_qnode()
-            if rel_edge_id:
-                if len(rel_edge_type) == 1:  # if the edge with rel_edge_id has only type, we use this rel_edge_type to find all source nodes in KP
-                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), source_type=target_node_type, adjacent_type=source_node_type, kp = kp, rel_type=list(rel_edge_type)[0], use_cypher_command=False)
-                else:  # if the edge with rel_edge_id has more than one type, we ignore the edge type and use all types to find all source nodes in KP
-                    self.response.warning(f"The edges with specified qedge id {rel_edge_id} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
-                    self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), source_type=target_node_type, adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=False)
-            else:  # if no rel_edge_id is specified, we ignore the edge type and use all types to find all source nodes in KP
-                self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                result = self.query_size_of_adjacent_nodes(node_curie=list(target_node_dict.keys()), source_type=target_node_type, adjacent_type=source_node_type, kp=kp, rel_type=None, use_cypher_command=False)
+            if rel_edge_key:
+                if len(rel_edge_predicate) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
+                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_predicate)[0]} were used to calculate total object nodes in Fisher's Exact Test")
+                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category, adjacent_type=subject_node_category, kp = kp, rel_type=list(rel_edge_predicate)[0], use_cypher_command=False)
+                else:  # if the edge with rel_edge_key has more than one type, we ignore the edge predicate and use all categories to find all subject nodes in KP
+                    self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
+                    self.response.debug(f"{kp} was used to calculate total object nodes in Fisher's Exact Test")
+                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category, adjacent_type=subject_node_category, kp=kp, rel_type=None, use_cypher_command=False)
+            else:  # if no rel_edge_key is specified, we ignore the edge predicate and use all categories to find all subject nodes in KP
+                self.response.debug(f"{kp} was used to calculate total object nodes in Fisher's Exact Test")
+                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category, adjacent_type=subject_node_category, kp=kp, rel_type=None, use_cypher_command=False)
 
             if result is None:
                 return self.response ## Something wrong happened for querying the adjacent nodes
             else:
                 res, removed_nodes = result
                 if len(removed_nodes)==0:
-                    size_of_target = res
+                    size_of_object = res
                 else:
                     if len(removed_nodes) == 1:
-                        self.response.warning(f"One adjacent node which is {removed_nodes[0]} can't find its neighbors. This node will be ignored for FET calculation.")
+                        self.response.warning(f"One object node which is {removed_nodes[0]} can't find its neighbors. This node will be ignored for FET calculation.")
                     else:
-                        self.response.warning(f"{len(removed_nodes)} adjacent nodes which are {removed_nodes} can't find its neighbors. These nodes will be ignored for FET calculation.")
+                        self.response.warning(f"{len(removed_nodes)} object nodes which are {removed_nodes} can't find its neighbors. These nodes will be ignored for FET calculation.")
                     for node in removed_nodes:
-                        del target_node_dict[node]
-                    size_of_target = res
+                        del object_node_dict[node]
+                    size_of_object = res
         else:
             # query adjacent node for query nodes one by one in parallel
-            if rel_edge_id:
-                if len(rel_edge_type) == 1:  # if the edge with rel_edge_id has only type, we use this rel_edge_type to find all source nodes in KP
-                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parameter_list = [(node, target_node_type, source_node_type, kp, list(rel_edge_type)[0]) for node in list(target_node_dict.keys())]
-                else:  # if the edge with rel_edge_id has more than one type, we ignore the edge type and use all types to find all source nodes in KP
-                    self.response.warning(f"The edges with specified qedge id {rel_edge_id} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
+            if rel_edge_key:
+                if len(rel_edge_predicate) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
+                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_predicate)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
+                    parameter_list = [(node, object_node_category, subject_node_category, kp, list(rel_edge_predicate)[0]) for node in list(object_node_dict.keys())]
+                else:  # if the edge with rel_edge_key has more than one type, we ignore the edge type and use all types to find all source nodes in KP
+                    self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
                     self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parameter_list = [(node, target_node_type, source_node_type, kp, None) for node in list(target_node_dict.keys())]
-            else:  # if no rel_edge_id is specified, we ignore the edge type and use all types to find all source nodes in KP
+                    parameter_list = [(node, object_node_category, subject_node_category, kp, None) for node in list(object_node_dict.keys())]
+            else:  # if no rel_edge_key is specified, we ignore the edge type and use all types to find all source nodes in KP
                 self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                parameter_list = [(node, target_node_type, source_node_type, kp, None) for node in list(target_node_dict.keys())]
+                parameter_list = [(node, object_node_category, subject_node_category, kp, None) for node in list(object_node_dict.keys())]
 
-            ## get the count of all nodes with the type of 'source_qnode_id' nodes in KP for each target node in parallel
+            ## get the count of all nodes with the type of 'subject_key' nodes in KP for each target node in parallel
             try:
                 with multiprocessing.Pool() as executor:
-                    target_count_res = [elem for elem in executor.map(self._query_size_of_adjacent_nodes_parallel, parameter_list)]
+                    object_count_res = [elem for elem in executor.map(self._query_size_of_adjacent_nodes_parallel, parameter_list)]
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
@@ -325,60 +325,60 @@ class ComputeFTEST:
                 self.response.error(f"Something went wrong with querying adjacent nodes in parallel")
                 return self.response
 
-            if any([type(elem) is list for elem in target_count_res]):
-                for msg in [elem2 for elem1 in target_count_res if type(elem1) is list for elem2 in elem1]:
+            if any([type(elem) is list for elem in object_count_res]):
+                for msg in [elem2 for elem1 in object_count_res if type(elem1) is list for elem2 in elem1]:
                     if type(msg) is tuple:
                         self.response.error(msg[0], error_code=msg[1])
                     else:
                         self.response.error(msg)
                 return self.response  ## Something wrong happened for querying the adjacent nodes
             else:
-                for index in range(len(target_node_dict)):
-                    node = list(target_node_dict.keys())[index]
-                    size_of_target[node] = target_count_res[index]
+                for index in range(len(object_node_dict)):
+                    node = list(object_node_dict.keys())[index]
+                    size_of_object[node] = object_count_res[index]
 
-        if len(target_node_dict) != 0:
+        if len(object_node_dict) != 0:
             ## Based on KP detected in message KG, find the total number of node with the same type of source node
             if kp=='ARAX/KG1':
-                size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG1')
+                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category, use_cypher_command=False, kg='KG1')
                 if size_of_total != 0:
                     self.response.debug(f"ARAX/KG1 and cypher query were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                    self.response.debug(f"Total {size_of_total} unique concepts with node type {source_node_type} was found in ARAX/KG1")
+                    self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category} was found in ARAX/KG1")
                 else:
-                    size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG2') ## If cypher query fails, then try kgNodeIndex
+                    size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category, use_cypher_command=False, kg='KG2') ## If cypher query fails, then try kgNodeIndex
                     if size_of_total==0:
-                        self.response.error(f"Both KG1 and KG2 have 0 node with the same type of source node with qnode id {source_qnode_id}")
+                        self.response.error(f"Both KG1 and KG2 have 0 node with the same type of subject node with qnode key {subject_key}")
                         return self.response
                     else:
-                        self.response.debug(f"Since KG1 can't find the any nodes with node type {source_node_type}, ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                        self.response.debug(f"Total {size_of_total} unique concepts with node type {source_node_type} was found in ARAX/KG2C")
+                        self.response.debug(f"Since KG1 can't find the any nodes with node category {subject_node_category}, ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
+                        self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category} was found in ARAX/KG2C")
 
             elif kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
                 ## check KG1 first as KG2 might have many duplicates. If KG1 is 0, then check KG2
-                size_of_total = self.size_of_given_type_in_KP(node_type=source_node_type, use_cypher_command=False, kg='KG2') ## Try cypher query first
+                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category, use_cypher_command=False, kg='KG2') ## Try cypher query first
                 self.response.debug(f"ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                self.response.debug(f"Total {size_of_total} unique concepts with node type {source_node_type} was found in ARAX/KG2C")
+                self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category} was found in ARAX/KG2C")
 
             else:
                 self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
                 return self.response
 
-            size_of_query_sample = len(source_node_list)
+            size_of_query_sample = len(subject_node_list)
 
             self.response.debug(f"Computing Fisher's Exact Test P-value")
             # calculate FET p-value for each target node in parallel
             del_list = []
             parameter_list = []
-            for node in target_node_dict:
-                if size_of_target[node]-len(target_node_dict[node]) < 0:
+            for node in object_node_dict:
+                if size_of_target[node]-len(object_node_dict[node]) < 0:
                     del_list.append(node)
                     self.response.warning(f"Skipping node {node} to calculate FET p-value due to issue897 (which causes negative value).")
                     continue
                 else:
-                    parameter_list += [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node])))]
+                    parameter_list += [(node, len(object_node_dict[node]), size_of_object[node]-len(object_node_dict[node]), size_of_query_sample - len(object_node_dict[node]), (size_of_total - size_of_object[node]) - (size_of_query_sample - len(object_node_dict[node])))]
 
             for del_node in del_list:
-                del target_node_dict[del_node]
+                del object_node_dict[del_node]
             # parameter_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
 
             try:
@@ -416,17 +416,17 @@ class ComputeFTEST:
             self.response.debug(f"Adding virtual edge with FET result to message KG")
 
             virtual_edge_list = [Edge(id=f"{value[0]}_{index}",
-                                      type='has_fisher_exact_test_p-value_with',
+                                      predicate='has_fisher_exact_test_p-value_with',
                                       relation=value[0],
-                                      source_id=value[2],
-                                      target_id=value[3],
+                                      subject=value[2],
+                                      object=value[3],
                                       is_defined_by="ARAX",
                                       defined_datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                       provided_by="ARAX",
                                       confidence=None,
                                       weight=None,
                                       edge_attributes=[EdgeAttribute(type="EDAM:data_1669", name="fisher_exact_test_p-value", value=str(value[1]), url=None)],
-                                      qedge_ids=[value[0]]) for index, value in enumerate([(virtual_relation_label, output[adj], node, adj) for adj in target_node_dict if adj in output.keys() for node in target_node_dict[adj]], 1)]
+                                      qedge_ids=[value[0]]) for index, value in enumerate([(virtual_relation_label, output[adj], node, adj) for adj in object_node_dict if adj in output.keys() for node in object_node_dict[adj]], 1)]
 
             self.message.knowledge_graph.edges.extend(virtual_edge_list)
 
@@ -438,10 +438,10 @@ class ComputeFTEST:
             if count > 0:
                 self.response.debug(f"Adding virtual edge to message QG")
                 edge_type = "has_fisher_exact_test_p-value_with"
-                option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+                option_group_id = ou.determine_virtual_qedge_option_group(subject_key, object_key,
                                                                           self.message.query_graph, self.response)
-                q_edge = QEdge(id=virtual_relation_label, type=edge_type, relation=virtual_relation_label,
-                               source_id=source_qnode_id, target_id=target_qnode_id,
+                q_edge = QEdge(id=virtual_relation_label, predicate=edge_type, relation=virtual_relation_label,
+                               subject=subject_key, object=object_key,
                                option_group_id=option_group_id)
                 self.message.query_graph.edges.append(q_edge)
                 self.response.debug(f"One virtual edge was added to message QG")
@@ -558,20 +558,20 @@ class ComputeFTEST:
             if rel_type:
                 query = {"previous_message_processing_plan": {"processing_actions": [
                     "create_message",
-                    f"add_qnode(curie={query_node_curie}, type={source_type}, id=FET_n00)",
-                    f"add_qnode(type={adjacent_type}, id=FET_n01)",
-                    f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00, type={rel_type})",
-                    f"expand(edge_id=FET_e00,kp={kp})",
+                    f"add_qnode(id={query_node_curie}, category={source_type}, key=FET_n00)",
+                    f"add_qnode(category={adjacent_type}, key=FET_n01)",
+                    f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicate={rel_type})",
+                    f"expand(edge_key=FET_e00,kp={kp})",
                     #"resultify()",
                     "return(message=true, store=false)"
                 ]}}
             else:
                 query = {"previous_message_processing_plan": {"processing_actions": [
                     "create_message",
-                    f"add_qnode(curie={query_node_curie}, type={source_type}, id=FET_n00)",
-                    f"add_qnode(type={adjacent_type}, id=FET_n01)",
-                    f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00)",
-                    f"expand(edge_id=FET_e00,kp={kp})",
+                    f"add_qnode(id={query_node_curie}, category={source_type}, key=FET_n00)",
+                    f"add_qnode(category={adjacent_type}, key=FET_n01)",
+                    f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00)",
+                    f"expand(edge_key=FET_e00,kp={kp})",
                     #"resultify()",
                     "return(message=true, store=false)"
                 ]}}
@@ -585,7 +585,7 @@ class ComputeFTEST:
                     res_dict = dict()
                     message = araxq.message
                     if type(node_curie) is str:
-                        tmplist = set([edge.id for edge in message.knowledge_graph.edges if edge.source_id == node_curie or edge.target_id == node_curie])  ## edge has no direction
+                        tmplist = set([edge_key for edge_key in message.knowledge_graph.edges if message.knowledge_graph.edges[edge_key].subject == node_curie or message.knowledge_graph.edges[edge_key].object == node_curie])  ## edge has no direction
                         if len(tmplist) == 0:
                             self.response.warning(f"Fail to query adjacent nodes from {kp} for {node_curie} in FET probably because expander ignores node type. For more details, please see issue897.")
                             return (res_dict,[node_curie])
@@ -595,7 +595,7 @@ class ComputeFTEST:
                         check_empty = False
                         failure_node = list()
                         for node in node_curie:
-                            tmplist = set([edge.id for edge in message.knowledge_graph.edges if edge.source_id == node or edge.target_id == node])  ## edge has no direction
+                            tmplist = set([edge_key for edge_key in message.knowledge_graph.edges if message.knowledge_graph.edges[edge_key].subject == node or message.knowledge_graph.edges[edge_key].object == node])  ## edge has no direction
                             if len(tmplist) == 0:
                                 self.response.warning(f"Fail to query adjacent nodes from {kp} for {node} in FET probably because expander ignores node type. For more details, please see issue897.")
                                 failure_node.append(node)
@@ -661,20 +661,20 @@ class ComputeFTEST:
         if rel_type:
             query = {"previous_message_processing_plan": {"processing_actions": [
                 "create_message",
-                f"add_qnode(curie={node_curie}, tyep={source_type}, id=FET_n00)",
-                f"add_qnode(type={adjacent_type}, id=FET_n01)",
-                f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00, type={rel_type})",
-                f"expand(edge_id=FET_e00,kp={kp})",
+                f"add_qnode(id={node_curie}, category={source_type}, key=FET_n00)",
+                f"add_qnode(category={adjacent_type}, key=FET_n01)",
+                f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicate={rel_type})",
+                f"expand(edge_key=FET_e00,kp={kp})",
                 #"resultify()",
                 "return(message=true, store=false)"
             ]}}
         else:
             query = {"previous_message_processing_plan": {"processing_actions": [
                 "create_message",
-                f"add_qnode(curie={node_curie}, tyep={source_type}, id=FET_n00)",
-                f"add_qnode(type={adjacent_type}, id=FET_n01)",
-                f"add_qedge(source_id=FET_n00, target_id=FET_n01, id=FET_e00)",
-                f"expand(edge_id=FET_e00,kp={kp})",
+                f"add_qnode(id={node_curie}, category={source_type}, key=FET_n00)",
+                f"add_qnode(category={adjacent_type}, key=FET_n01)",
+                f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00)",
+                f"expand(edge_key=FET_e00,kp={kp})",
                 #"resultify()",
                 "return(message=true, store=false)"
             ]}}
@@ -686,7 +686,7 @@ class ComputeFTEST:
                 return error_message
             else:
                 message = araxq.message
-                tmplist = set([edge.id for edge in message.knowledge_graph.edges if edge.source_id == node_curie or edge.target_id == node_curie]) ## edge has no direction
+                tmplist = set([edge_key for edge_key in message.knowledge_graph.edges if message.knowledge_graph[edge_key].subject == node_curie or message.knowledge_graph[edge_key].object == node_curie]) ## edge has no direction
                 if len(tmplist) == 0:
                     error_message.append(f"Fail to query adjacent nodes from {kp} for {node_curie}")
                     return error_message

@@ -61,13 +61,13 @@ class SortResults:
         try:
             edge_values = {}
             # iterate over the edges find the attribute values
-            for edge in self.message.knowledge_graph.edges:  # iterate over the edges
-                edge_values[str(edge.id)] = {'value': None, 'relation': edge.relation}
+            for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
+                edge_values[key] = {'value': None, 'relation': edge.relation}
                 if hasattr(edge, 'edge_attributes'):  # check if they have attributes
                     if edge.edge_attributes:  # if there are any edge attributes
                         for attribute in edge.edge_attributes:  # for each attribute
                             if attribute.name == params['edge_attribute']:  # check if it's the desired one
-                                edge_values[str(edge.id)] = {'value': attribute.value, 'relation': edge.relation}
+                                edge_values[key] = {'value': attribute.value, 'relation': edge.relation}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
@@ -76,6 +76,7 @@ class SortResults:
             type_flag = 'edge_relation' in params
             for result in self.message.results:
                 for binding in result.edge_bindings:
+                    # need to test this for TRAPI 1.0 after expand (and resultify?)is updated to see if binding.kg_id matches edge_key
                     if edge_values[binding.kg_id]['value'] is not None:
                         if not type_flag or (type_flag and params['edge_relation'] == edge_values[binding.kg_id]['relation']):
                             if abs(value_list[i]) == math.inf:
@@ -149,16 +150,16 @@ class SortResults:
         try:
             node_values = {}
             # iterate over the nodes find the attribute values
-            for node in self.message.knowledge_graph.nodes:  # iterate over the nodes
-                node_values[str(node.id)] = {'value': None, 'category': node.category}
+            for key, node in self.message.knowledge_graph.nodes.items():  # iterate over the nodes
+                node_values[key] = {'value': None, 'category': node.category}
                 if hasattr(node, 'node_attributes'):  # check if they have attributes
                     if node.node_attributes:  # if there are any node attributes
                         for attribute in node.node_attributes:  # for each attribute
                             if attribute.name == params['node_attribute']:  # check if it's the desired one
                                 if attribute.name == 'pubmed_ids':
-                                    node_values[str(node.id)] = {'value': attribute.value.count("PMID"), 'category': node.category}
+                                    node_values[key] = {'value': attribute.value.count("PMID"), 'category': node.category}
                                 else:
-                                    node_values[str(node.id)] = {'value': attribute.value, 'category': node.category}
+                                    node_values[key] = {'value': attribute.value, 'category': node.category}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
@@ -245,23 +246,23 @@ class SortResults:
                     node_ids.add(node_binding.kg_id)
                 for edge_binding in result.edge_bindings:
                     edge_ids.add(edge_binding.kg_id)
-            node_ids_to_remove = set()
-            i = 0
-            for node in self.message.knowledge_graph.nodes:
-                if node.id not in node_ids:
-                    nodes_to_remove.add(i)
-                    node_ids_to_remove.add(node.id)
-                i += 1
-            self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
-            i = 0
+            #node_ids_to_remove = set()
+            for key, node in self.message.knowledge_graph.nodes:
+                if key not in node_ids:
+                    nodes_to_remove.add(key)
+                    #node_ids_to_remove.add(node.id)
+            #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
+            for key in nodes_to_remove:
+                del self.message.knowledge_graph.nodes[key]
             edges_to_remove = set()
             # iterate over edges find edges connected to the nodes
-            for edge in self.message.knowledge_graph.edges:
-                if edge.id not in edge_ids or edge.source_id in node_ids_to_remove or edge.target_id in node_ids_to_remove:
-                    edges_to_remove.add(i)
-                i += 1
+            for key, edge in self.message.knowledge_graph.edges:
+                if key not in edge_ids or edge.subject in nodes_to_remove or edge.object in nodes_to_remove:
+                    edges_to_remove.add(key)
             # remove edges
-            self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+            #self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+            for key in edges_to_remove:
+                del self.message.knowledge_graph.edges[key]
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()

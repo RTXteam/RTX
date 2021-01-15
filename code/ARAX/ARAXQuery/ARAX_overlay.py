@@ -375,15 +375,15 @@ This information is included in edge attributes with the name 'icees_p-value'.
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
                 # This works for KG1 and KG2
-                response.debug(f"Number of nodes in KG by type is {Counter([x.type[0] for x in message.knowledge_graph.nodes])}")  # type is a list, just get the first one
+                response.debug(f"Number of nodes in KG by type is {Counter([x.category[0] for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
                 # don't really need to worry about this now
-                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.type for x in message.knowledge_graph.nodes])}")
+                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
-                response.debug(f"Number of edges in KG by type is {Counter([x.type for x in message.knowledge_graph.edges])}")
-                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges if x.edge_attributes])}")
+                response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges.values()])}")
+                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges.values() if x.edge_attributes])}")
                 # Collect attribute names, could do this with list comprehension, but this is so much more readable
                 attribute_names = []
-                for x in message.knowledge_graph.edges:
+                for x in message.knowledge_graph.edges.values():
                     if x.edge_attributes:
                         for attr in x.edge_attributes:
                             attribute_names.append(attr.name)
@@ -501,8 +501,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
         #allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
-                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
-                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
+                                    'source_qnode_id': set([key for key in self.message.query_graph.nodes.keys()]),
+                                    'target_qnode_id': set([key for key in self.message.query_graph.nodes.keys()])
                                     }
         else:
             allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
@@ -561,8 +561,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
                                     'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
-                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),
-                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])
+                                    'source_qnode_id': set([key for key in self.message.query_graph.nodes.keys()]),
+                                    'target_qnode_id': set([key for key in self.message.query_graph.nodes.keys()])
                                     }
         else:
             allowable_parameters = {'action': {'overlay_clinical_info'},
@@ -689,9 +689,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # TODO: the start_node_id CANNOT be a set
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'compute_jaccard'},
-                                'start_node_id': set([x.id for x in self.message.query_graph.nodes]),
-                                'intermediate_node_id': set([x.id for x in self.message.query_graph.nodes]),
-                                'end_node_id': set([x.id for x in self.message.query_graph.nodes]),
+                                'start_node_id': set([key for key in self.message.query_graph.nodes.keys()]),
+                                'intermediate_node_id': set([key for key in self.message.query_graph.nodes.keys()]),
+                                'end_node_id': set([key for key in self.message.query_graph.nodes.keys()]),
                                 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else "any_string"}
                                 }
         else:
@@ -733,16 +733,17 @@ This information is included in edge attributes with the name 'icees_p-value'.
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            qg_nodes = message.query_graph.nodes.values()
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
-                                    #'source_qnode_id': set([x.id for x in self.message.query_graph.nodes if x.type == "chemical_substance"]),
-                                    'source_qnode_id': set([x.id for x in self.message.query_graph.nodes]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
-                                    #'target_qnode_id': set([x.id for x in self.message.query_graph.nodes if (x.type == "disease" or x.type == "phenotypic_feature")])
-                                    'target_qnode_id': set([x.id for x in self.message.query_graph.nodes])  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    #'source_qnode_id': set([k for k, x in self.message.query_graph.nodes.items() if x.category == "chemical_substance"]),
+                                    'subject_key': set([node_key for node_key in qg_nodes]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    #'target_qnode_id': set([k for k, x in self.message.query_graph.nodes.items() if (x.category == "disease" or x.category == "phenotypic_feature")])
+                                    'object_key': set([node_key for node_key in qg_nodes])  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     }
         else:
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'source_qnode_id': {'optional: a specific source query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'target_qnode_id': {'optional: a specific target query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
+                                    'subject_key': {'optional: a specific source query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+                                    'object_key': {'optional: a specific target query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
                                     }
 
         # A little function to describe what this thing does
@@ -771,12 +772,12 @@ This information is included in edge attributes with the name 'icees_p-value'.
     def __fisher_exact_test(self, describe=False):
 
         """
-        Computes the the Fisher's Exact Test p-value of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in message knowledge graph.
+        Computes the the Fisher's Exact Test p-value of the connection between a list of given nodes with specified query key (subject_key eg. 'n01') to their adjacent nodes with specified query key (e.g. object_key 'n02') in message knowledge graph.
         Allowable parameters:
-            :param source_qnode_id: (required) a specific QNode id (you used in add_qnode() in DSL) of source nodes in message KG eg. "n00"
+            :param subject_key: (required) a specific QNode key (you used in add_qnode() in DSL) of subject nodes in message KG eg. "n00"
             :param virtual_relation_label: (required) any string to label the relation and query edge id of virtual edge with fisher's exact test p-value eg. 'FET'
-            :param target_qnode_id: (required) a specific QNode id (you used in add_qnode() in DSL) of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
-            :param rel_edge_id: (optional) a specific QEdge id (you used in add_qedge() in DSL) of edges connected to both source nodes and target nodes in message KG. eg. "e01"
+            :param object_key: (required) a specific QNode key (you used in add_qnode() in DSL) of object nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
+            :param rel_edge_key: (optional) a specific QEdge key (you used in add_qedge() in DSL) of edges connected to both source nodes and target nodes in message KG. eg. "e01"
             :param top_n: (optional) an int indicating the top number of the most significant adjacent nodes to return (otherwise all results returned) eg. 10
             :param cutoff: (optional) a float indicating the p-value cutoff to return the results (otherwise all results returned) eg. 0.05
         :return: response
@@ -788,10 +789,12 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
-            allowable_source_qnode_id = list(set(itertools.chain.from_iterable([node.qnode_ids for node in message.knowledge_graph.nodes])))  # flatten these as they are lists of lists now
-            allowable_target_qnode_id = list(set(itertools.chain.from_iterable([node.qnode_ids for node in message.knowledge_graph.nodes])))  # flatten these as they are lists of lists now
-            allowwable_rel_edge_id = list(set(itertools.chain.from_iterable([edge.qedge_ids for edge in message.knowledge_graph.edges])))  # flatten these as they are lists of lists now
-            allowwable_rel_edge_id.append(None)
+            qg_nodes = message.query_graph.nodes.values()
+            qg_edges = message.query_graph.edges.values()
+            allowable_subject_key = list(set([node_key for node_key in qg_nodes]))  # flatten these as they are lists of lists now
+            allowable_object_key = list(set([node_key for node_key in qg_nodes]))  # flatten these as they are lists of lists now
+            allowwable_rel_edge_key = list(set([edge_key for edge_key in qg_edges]))  # flatten these as they are lists of lists now
+            allowwable_rel_edge_key.append(None)
             # # FIXME: need to generate this from some source as per #780
             # allowable_target_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
             #                      'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
@@ -800,10 +803,10 @@ This information is included in edge attributes with the name 'icees_p-value'.
             #                      'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
 
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'source_qnode_id': allowable_source_qnode_id,
+                                    'subject_key': allowable_subject_key,
                                     'virtual_relation_label': str(),
-                                    'target_qnode_id': allowable_target_qnode_id,
-                                    'rel_edge_id': allowwable_rel_edge_id,
+                                    'object_key': allowable_object_key,
+                                    'rel_edge_id': allowwable_rel_edge_key,
                                     'top_n': [None,int()],
                                     'cutoff': [None,float()],
                                     'filter_type': {'cutoff', 'top_n'},
@@ -811,10 +814,10 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'source_qnode_id': {"a specific QNode id of source nodes in message KG (required), eg. 'n00'"},
+                                    'subject_key': {"a specific QNode key of source nodes in message KG (required), eg. 'n00'"},
                                     'virtual_relation_label': {"any string to label the relation and query edge id of virtual edge with fisher's exact test p-value (required) eg. 'FET'"},
-                                    'target_qnode_id': {"a specific QNode id of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
-                                    'rel_edge_id': {"a specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"},
+                                    'object_key': {"a specific QNode key of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
+                                    'rel_edge_key': {"a specific QEdge key of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"},
                                     'top_n': {"an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10"},
                                     'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"},
                                     'filter_type': {'cutoff', 'top_n'},
@@ -866,8 +869,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'overlay_exposures_data'},
                                     'virtual_relation_label': {self.parameters.get('virtual_relation_label')},
-                                    'source_qnode_id': {x.id for x in self.message.query_graph.nodes},
-                                    'target_qnode_id': {x.id for x in self.message.query_graph.nodes}}
+                                    'source_qnode_id': {key for key in self.message.query_graph.nodes.keys()},
+                                    'target_qnode_id': {key for key in self.message.query_graph.nodes.keys()}}
         else:
             allowable_parameters = {'action': {'overlay_exposures_data'},
                                     'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'},
@@ -979,19 +982,19 @@ def main():
     #print("Still executed")
 
     # look at the edges
-    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
-    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())),sort_keys=True,indent=2))
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes.values())), sort_keys=True, indent=2))
     #print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
     #print(response.show(level=ARAXResponse.DEBUG))
 
     # just print off the values
-    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    #for edge in message.knowledge_graph.edges:
+    #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
+    #for edge in message.knowledge_graph.edges.values():
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
     #print(f"Message: {json.dumps(message.to_dict(), sort_keys=True, indent=2)}")
     #print(message)
-    print(f"KG edges: {json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2)}")
+    print(f"KG edges: {json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2)}")
     #print(response.show(level=ARAXResponse.DEBUG))
     print("Yet you still got here")
     #print(actions_parser.parse(actions_list))

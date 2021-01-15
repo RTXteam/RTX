@@ -16,7 +16,7 @@ from Overlay.compute_ngd import ComputeNGD
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
-from openapi_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
@@ -39,7 +39,7 @@ class NGDQuerier:
         :return: A tuple containing:
             1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
            results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_ids for each edge. Example:
+            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
@@ -54,18 +54,20 @@ class NGDQuerier:
         # Find potential answers using KG2
         log.debug(f"Finding potential answers using KG2")
         qedge = query_graph.edges[0]
-        source_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.source_id)
-        target_qnode = next(qnode for qnode in query_graph.nodes if qnode.id == qedge.target_id)
+        source_qnode_key = qedge.source_id
+        target_qnode_key = qedge.target_id
+        source_qnode = query_graph.nodes[source_qnode_key]
+        target_qnode = query_graph.nodes[target_qnode_key]
         qedge_params_str = ", ".join(list(filter(None, [f"id={qedge.id}",
-                                                        f"source_id={source_qnode.id}",
-                                                        f"target_id={target_qnode.id}",
+                                                        f"source_id={source_qnode_key}",
+                                                        f"target_id={target_qnode_key}",
                                                         self._get_dsl_qedge_type_str(qedge)])))
-        source_params_str = ", ".join(list(filter(None, [f"id={source_qnode.id}",
+        source_params_str = ", ".join(list(filter(None, [f"id={source_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(source_qnode),
-                                                         self._get_dsl_qnode_type_str(source_qnode)])))
-        target_params_str = ", ".join(list(filter(None, [f"id={target_qnode.id}",
+                                                         self._get_dsl_qnode_category_str(source_qnode)])))
+        target_params_str = ", ".join(list(filter(None, [f"id={target_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(target_qnode),
-                                                         self._get_dsl_qnode_type_str(target_qnode)])))
+                                                         self._get_dsl_qnode_category_str(target_qnode)])))
         actions_list = [
             f"add_qnode({source_params_str})",
             f"add_qnode({target_params_str})",
@@ -81,15 +83,13 @@ class NGDQuerier:
         log.debug(f"Calculating NGD between each potential node pair")
         kg2_answer_kg = kg2_message.knowledge_graph
         cngd = ComputeNGD(log, kg2_message, None)
-        kg2_edges_map = {edge.id: edge for edge in kg2_answer_kg.edges}
-        kg2_nodes_map = {node.id: node for node in kg2_answer_kg.nodes}
-        cngd.load_curie_to_pmids_data(kg2_nodes_map)
+        cngd.load_curie_to_pmids_data(kg2_answer_kg.nodes)
         kg2_edge_ngd_map = dict()
-        for kg2_edge in kg2_edges_map.values():
-            kg2_node_1 = kg2_nodes_map.get(kg2_edge.source_id)  # These are already canonicalized (default behavior)
-            kg2_node_2 = kg2_nodes_map.get(kg2_edge.target_id)
+        for kg2_edge in kg2_answer_kg.edges.values():
+            kg2_node_1 = kg2_answer_kg.nodes.get(kg2_edge.source_id)  # These are already canonicalized (default behavior)
+            kg2_node_2 = kg2_answer_kg.nodes.get(kg2_edge.target_id)
             # Figure out which node corresponds to source qnode (don't necessarily match b/c query was bidirectional)
-            if source_qnode.id in kg2_node_1.qnode_ids and target_qnode.id in kg2_node_2.qnode_ids:
+            if source_qnode_key in kg2_node_1.qnode_keys and target_qnode_key in kg2_node_2.qnode_keys:
                 ngd_source_id = kg2_node_1.id
                 ngd_target_id = kg2_node_2.id
             else:
@@ -107,13 +107,13 @@ class NGDQuerier:
                 source_id = ngd_info_dict["source_id"]
                 target_id = ngd_info_dict["target_id"]
                 ngd_edge = self._create_ngd_edge(ngd_value, source_id, target_id)
-                ngd_source_node = self._create_ngd_node(kg2_nodes_map.get(ngd_edge.source_id))
-                ngd_target_node = self._create_ngd_node(kg2_nodes_map.get(ngd_edge.target_id))
+                ngd_source_node_key, ngd_source_node = self._create_ngd_node(ngd_edge.source_id, kg2_answer_kg.nodes.get(ngd_edge.source_id))
+                ngd_target_node_key, ngd_target_node = self._create_ngd_node(ngd_edge.target_id, kg2_answer_kg.nodes.get(ngd_edge.target_id))
                 final_kg.add_edge(ngd_edge, qedge.id)
-                final_kg.add_node(ngd_source_node, source_qnode.id)
-                final_kg.add_node(ngd_target_node, target_qnode.id)
-                edge_to_nodes_map[ngd_edge.id] = {source_qnode.id: ngd_source_node.id,
-                                                  target_qnode.id: ngd_target_node.id}
+                final_kg.add_node(ngd_source_node, source_qnode_key)
+                final_kg.add_node(ngd_target_node, target_qnode_key)
+                edge_to_nodes_map[ngd_edge.id] = {source_qnode_key: ngd_source_node_key,
+                                                  target_qnode_key: ngd_target_node_key}
 
         return final_kg, edge_to_nodes_map
 
@@ -125,19 +125,19 @@ class NGDQuerier:
         ngd_edge.id = f"NGD:{source_id}--{ngd_edge.type}--{target_id}"
         ngd_edge.provided_by = "ARAX"
         ngd_edge.is_defined_by = "ARAX"
-        ngd_edge.edge_attributes = [EdgeAttribute(name=self.ngd_edge_attribute_name,
-                                                  type=self.ngd_edge_attribute_type,
-                                                  value=ngd_value,
-                                                  url=self.ngd_edge_attribute_url)]
+        ngd_edge.attributes = [Attribute(name=self.ngd_edge_attribute_name,
+                                         type=self.ngd_edge_attribute_type,
+                                         value=ngd_value,
+                                         url=self.ngd_edge_attribute_url)]
         return ngd_edge
 
     @staticmethod
-    def _create_ngd_node(kg2_node: Node) -> Node:
+    def _create_ngd_node(kg2_node_key: str, kg2_node: Node) -> Tuple[str, Node]:
         ngd_node = Node()
-        ngd_node.id = kg2_node.id
+        ngd_node_key = kg2_node_key
         ngd_node.name = kg2_node.name
-        ngd_node.type = kg2_node.type
-        return ngd_node
+        ngd_node.category = kg2_node.category
+        return ngd_node_key, ngd_node
 
     @staticmethod
     def _run_arax_query(actions_list: List[str], log: ARAXResponse) -> Tuple[ARAXResponse, Message]:
@@ -149,14 +149,14 @@ class NGDQuerier:
 
     @staticmethod
     def _get_dsl_qnode_curie_str(qnode: QNode) -> str:
-        curie_str = f"[{', '.join(qnode.curie)}]" if isinstance(qnode.curie, list) else qnode.curie
-        return f"curie={curie_str}" if qnode.curie else ""
+        curie_str = f"[{', '.join(qnode.id)}]" if isinstance(qnode.id, list) else qnode.id
+        return f"curie={curie_str}" if qnode.id else ""
 
     @staticmethod
-    def _get_dsl_qnode_type_str(qnode: QNode) -> str:
+    def _get_dsl_qnode_category_str(qnode: QNode) -> str:
         # Use only the first type if there are multiple (which ARAXExpander adds for cases like "gene"/"protein")
-        type_str = qnode.type[0] if isinstance(qnode.type, list) else qnode.type
-        return f"type={type_str}" if qnode.type else ""
+        type_str = qnode.category[0] if isinstance(qnode.category, list) else qnode.category
+        return f"type={type_str}" if qnode.category else ""
 
     @staticmethod
     def _get_dsl_qedge_type_str(qedge: QEdge) -> str:

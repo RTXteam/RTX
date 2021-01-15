@@ -32,7 +32,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     assert response.status == 'OK' or should_throw_error
 
     # Convert output knowledge graph to a dictionary format for faster processing (organized by QG IDs)
-    dict_kg = eu.convert_standard_kg_to_dict_kg(message.knowledge_graph)
+    dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
     nodes_by_qg_id = dict_kg.nodes_by_qg_id
     edges_by_qg_id = dict_kg.edges_by_qg_id
 
@@ -47,7 +47,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_format(nodes_by_qg_id, edges_by_qg_id)
-    _check_node_types(message.knowledge_graph.nodes, message.query_graph)
+    _check_node_categories(message.knowledge_graph.nodes, message.query_graph)
     _check_counts_of_curie_qnodes(nodes_by_qg_id, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
@@ -56,8 +56,8 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
 def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     print(f"KG counts:")
     if nodes_by_qg_id or edges_by_qg_id:
-        for qnode_id, corresponding_nodes in sorted(nodes_by_qg_id.items()):
-            print(f"  {qnode_id}: {len(corresponding_nodes)}")
+        for qnode_key, corresponding_nodes in sorted(nodes_by_qg_id.items()):
+            print(f"  {qnode_key}: {len(corresponding_nodes)}")
         for qedge_id, corresponding_edges in sorted(edges_by_qg_id.items()):
             print(f"  {qedge_id}: {len(corresponding_edges)}")
     else:
@@ -65,9 +65,9 @@ def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
 
 
 def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
-    for qnode_id, nodes in sorted(nodes_by_qg_id.items()):
+    for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
-            print(f"{qnode_id}: {node.type}, {node.id}, {node.name}, {node.qnode_ids}")
+            print(f"{qnode_key}: {node.category}, {node_key}, {node.name}, {node.qnode_keys}")
 
 
 def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -78,9 +78,9 @@ def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
 
 def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     node_counts_by_prefix = dict()
-    for qnode_id, nodes in nodes_by_qg_id.items():
+    for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
-            prefix = node.id.split(':')[0]
+            prefix = node_key.split(':')[0]
             if prefix in node_counts_by_prefix.keys():
                 node_counts_by_prefix[prefix] += 1
             else:
@@ -89,25 +89,25 @@ def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
 
 
 def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
-    node_ids = set()
-    node_ids_used_by_edges = set()
-    for qnode_id, nodes in nodes_by_qg_id.items():
+    node_keys = set()
+    node_keys_used_by_edges = set()
+    for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
-            node_ids.add(node_key)
+            node_keys.add(node_key)
     for qedge_id, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
-            node_ids_used_by_edges.add(edge.source_id)
-            node_ids_used_by_edges.add(edge.target_id)
-    assert node_ids == node_ids_used_by_edges or len(node_ids_used_by_edges) == 0
+            node_keys_used_by_edges.add(edge.source_id)
+            node_keys_used_by_edges.add(edge.target_id)
+    assert node_keys == node_keys_used_by_edges or len(node_keys_used_by_edges) == 0
 
 
 def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
-    for qnode_id, nodes in nodes_by_qg_id.items():
+    for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
-            assert node.id and isinstance(node.id, str)
+            assert node_key and isinstance(node_key, str)
             assert isinstance(node.name, str) or node.name is None
-            assert node.qnode_ids and isinstance(node.qnode_ids, list)
-            assert node.type and isinstance(node.type, list)
+            assert node.qnode_keys and isinstance(node.qnode_keys, list)
+            assert node.category and isinstance(node.category, list)
     for qedge_id, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             assert edge.id and isinstance(edge.id, str)
@@ -119,24 +119,24 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
             assert edge.is_defined_by and isinstance(edge.is_defined_by, str)
 
 
-def _check_node_types(nodes: List[Node], query_graph: QueryGraph):
-    qnode_id_to_type_map = {qnode.id: qnode.type for qnode in query_graph.nodes}
+def _check_node_categories(nodes: List[Node], query_graph: QueryGraph):
     for node in nodes:
-        for qnode_id in node.qnode_ids:
-            corresponding_qnode_type = qnode_id_to_type_map.get(qnode_id)
-            if corresponding_qnode_type:
-                assert corresponding_qnode_type in node.type  # Could have additional types if it has multiple qnode ids
+        for qnode_key in node.qnode_keys:
+            qnode = query_graph.nodes[qnode_key]
+            if qnode.category:
+                assert qnode.category in node.category  # Could have additional categories if it has multiple qnode keys
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
-    qnodes_with_single_curie = [qnode for qnode in query_graph.nodes if qnode.curie and isinstance(qnode.curie, str)]
-    for qnode in qnodes_with_single_curie:
-        if qnode.id in nodes_by_qg_id:
-            assert len(nodes_by_qg_id[qnode.id]) == 1
-    qnodes_with_curie_list = [qnode for qnode in query_graph.nodes if qnode.curie and isinstance(qnode.curie, list)]
-    for qnode in qnodes_with_curie_list:
-        if qnode.id in nodes_by_qg_id:
-            assert 1 <= len(nodes_by_qg_id[qnode.id]) <= len(qnode.curie)
+    qnodes_with_single_curie = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id and isinstance(qnode.id, str)]
+    for qnode_key in qnodes_with_single_curie:
+        if qnode_key in nodes_by_qg_id:
+            assert len(nodes_by_qg_id[qnode_key]) == 1
+    qnodes_with_multiple_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id and isinstance(qnode.id, list)]
+    for qnode_key in qnodes_with_multiple_curies:
+        qnode = query_graph.nodes[qnode_key]
+        if qnode_key in nodes_by_qg_id:
+            assert 1 <= len(nodes_by_qg_id[qnode_key]) <= len(qnode.id)
 
 
 def test_erics_first_kg1_synonym_test_without_synonyms():
@@ -177,7 +177,7 @@ def test_acetaminophen_example_enforcing_directionality():
 
 
 @pytest.mark.slow
-def test_720_ambitious_query_causing_multiple_qnode_ids_error():
+def test_720_ambitious_query_causing_multiple_qnode_keys_error():
     actions_list = [
         "add_qnode(curie=DOID:14330, id=n00)",
         "add_qnode(type=protein, is_set=true, id=n01)",
@@ -206,7 +206,7 @@ def test_720_multiple_qg_ids_in_different_results():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert set(nodes_by_qg_id['n01']).intersection(set(nodes_by_qg_id['n03']))
-    assert any(set(node.qnode_ids) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
+    assert any(set(node.qnode_keys) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
 
 
 @pytest.mark.slow
@@ -467,10 +467,10 @@ def test_deduplication_and_self_edges():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     # Check that deduplication worked appropriately
-    all_node_ids = {node.id for nodes in nodes_by_qg_id.values() for node in nodes.values()}
+    all_node_keys = {node_key for nodes in nodes_by_qg_id.values() for node_key in nodes}
     babesia_curies = {"UMLS:C0004572", "CHV:0000001647", "LNC:LP19999-9", "MEDDRA:10003963", "MESH:D001403",
                       "NCIT:C122040", "NCI_CDISC:C122040", "SNOMEDCT:35029001"}
-    babesia_curies_in_answer = all_node_ids.intersection(babesia_curies)
+    babesia_curies_in_answer = all_node_keys.intersection(babesia_curies)
     assert len(babesia_curies_in_answer) <= 1
     # Check that we don't have any self-edges
     self_edges = [edge for edge in edges_by_qg_id['e00'].values() if edge.source_id == edge.target_id]
@@ -513,7 +513,7 @@ def test_873_consider_both_gene_and_protein():
     assert set(nodes_by_qg_id_protein['n01']) == set(nodes_by_qg_id_gene['n01'])
 
 
-def test_987_override_node_types():
+def test_987_override_node_categories():
     actions_list = [
         "add_qnode(name=DOID:8398, id=n00)",
         "add_qnode(type=phenotypic_feature, id=n01)",
@@ -522,7 +522,7 @@ def test_987_override_node_types():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all('phenotypic_feature' in node.type for node in nodes_by_qg_id['n01'].values())
+    assert all('phenotypic_feature' in node.category for node in nodes_by_qg_id['n01'].values())
 
 
 @pytest.mark.slow
@@ -536,9 +536,9 @@ def test_COHD_expand_paired_concept_freq():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all([edges_by_qg_id[qedge_id][edge_id].type == "has_paired_concept_frequency_with" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].name == "paired_concept_frequency" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].attributes[0].name == "paired_concept_frequency" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
 
 
 @pytest.mark.slow
@@ -552,9 +552,9 @@ def test_COHD_expand_observed_expected_ratio():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all([edges_by_qg_id[qedge_id][edge_id].type == "has_ln_observed_expected_ratio_with" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].name == "ln_observed_expected_ratio" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].attributes[0].name == "ln_observed_expected_ratio" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
 
 
 def test_COHD_expand_chi_square():
@@ -567,9 +567,9 @@ def test_COHD_expand_chi_square():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all([edges_by_qg_id[qedge_id][edge_id].type == "has_chi_square_pvalue_with" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].name == "chi_square_pvalue" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
-    assert all([edges_by_qg_id[qedge_id][edge_id].edge_attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].attributes[0].name == "chi_square_pvalue" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].attributes[0].type == "EDAM:data_0951" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
+    assert all([edges_by_qg_id[qedge_id][edge_id].attributes[0].url == "http://cohd.smart-api.info/" for qedge_id in edges_by_qg_id for edge_id in edges_by_qg_id[qedge_id]])
 
 
 def test_ngd_expand():
@@ -671,8 +671,8 @@ def test_exclude_edge_parallel():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    node_ids_used_by_contraindicated_edge = eu.get_node_ids_used_by_edges(edges_by_qg_id["e01"])
-    n01_nodes_contraindicated = set(nodes_by_qg_id["n01"]).intersection(node_ids_used_by_contraindicated_edge)
+    nodes_used_by_contraindicated_edge = eu.get_node_keys_used_by_edges(edges_by_qg_id["e01"])
+    n01_nodes_contraindicated = set(nodes_by_qg_id["n01"]).intersection(nodes_used_by_contraindicated_edge)
     assert n01_nodes_contraindicated
 
     # Then exclude the contraindicated edge and make sure the appropriate nodes are blown away
@@ -705,8 +705,8 @@ def test_exclude_edge_perpendicular():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    node_ids_used_by_kryptonite_edge = eu.get_node_ids_used_by_edges(edges_by_qg_id["e02"])
-    n01_nodes_to_blow_away = set(nodes_by_qg_id["n01"]).intersection(node_ids_used_by_kryptonite_edge)
+    nodes_used_by_kryptonite_edge = eu.get_node_keys_used_by_edges(edges_by_qg_id["e02"])
+    n01_nodes_to_blow_away = set(nodes_by_qg_id["n01"]).intersection(nodes_used_by_kryptonite_edge)
     assert n01_nodes_to_blow_away
 
     # Then use a kryptonite edge and make sure the appropriate nodes are blown away

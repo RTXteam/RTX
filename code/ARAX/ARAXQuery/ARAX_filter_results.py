@@ -216,14 +216,14 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                 response.debug(f"Query graph is {message.query_graph}")
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
-                response.debug(f"Number of nodes in KG by type is {Counter([x.category[0] for x in message.knowledge_graph.nodes])}")  # type is a list, just get the first one
-                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes])}")  # don't really need to worry about this now
+                response.debug(f"Number of nodes in KG by type is {Counter([x.category[0] for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
+                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")  # don't really need to worry about this now
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
-                response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges])}")
-                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges if x.edge_attributes])}")
+                response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges.values()])}")
+                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges.values() if x.edge_attributes])}")
                 # Collect attribute names, could do this with list comprehension, but this is so much more readable
                 attribute_names = []
-                for x in message.knowledge_graph.edges:
+                for x in message.knowledge_graph.edges.values():
                     if x.edge_attributes:
                         for attr in x.edge_attributes:
                             attribute_names.append(attr.name)
@@ -317,7 +317,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
             known_attributes = set()
-            for edge in message.knowledge_graph.edges:
+            for edge in message.knowledge_graph.edges.values():
                 if hasattr(edge, 'edge_attributes'):
                     if edge.edge_attributes:
                         for attribute in edge.edge_attributes:
@@ -325,7 +325,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': known_attributes,
-                                    'edge_relation': set([x.relation for x in self.message.knowledge_graph.edges]),
+                                    'edge_relation': set([x.relation for x in self.message.knowledge_graph.edges.values()]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()},
                                     'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
@@ -417,7 +417,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'nodes'):
             known_attributes = set()
-            for node in message.knowledge_graph.nodes:
+            for node in message.knowledge_graph.nodes.values():
                 if hasattr(node, 'node_attributes'):
                     if node.node_attributes:
                         for attribute in node.node_attributes:
@@ -425,7 +425,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_node_attribute'},
                                     'node_attribute': known_attributes,
-                                    'node_category': set([t for x in self.message.knowledge_graph.nodes for t in x.category]),
+                                    'node_category': set([t for x in self.message.knowledge_graph.nodes.values() for t in x.category]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()},
                                     'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
@@ -850,23 +850,23 @@ def main():
     # print("Still executed")
 
     # look at the edges
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)),sort_keys=True,indent=2))
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes)), sort_keys=True, indent=2))
+    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())),sort_keys=True,indent=2))
+    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes.values())), sort_keys=True, indent=2))
     # print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
     # print(response.show(level=ARAXResponse.DEBUG))
 
     # just print off the values
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
-    # for edge in message.knowledge_graph.edges:
+    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
+    # for edge in message.knowledge_graph.edges.values():
     #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
     #        print(edge.edge_attributes.pop().value)
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
     print(response.show(level=ARAXResponse.DEBUG))
     vals = []
-    for node in message.knowledge_graph.nodes:
-        print(node.id)
+    for key, node in message.knowledge_graph.nodes.items():
+        print(key)
     print(len(message.knowledge_graph.nodes))
-    for edge in message.knowledge_graph.edges:
+    for edge in message.knowledge_graph.edges.values():
         if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
             vals.append(edge.edge_attributes.pop().value)
     print(sorted(vals))

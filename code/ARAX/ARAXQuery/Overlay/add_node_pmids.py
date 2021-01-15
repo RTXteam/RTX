@@ -7,7 +7,7 @@ import numpy as np
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.node_attribute import NodeAttribute
+from openapi_server.models.attribute import Attribute as NodeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
@@ -35,12 +35,12 @@ class AddNodePMIDS:
 
         # iterate over KG edges, add the information
         try:
-            for node in self.message.knowledge_graph.nodes:
+            for key, node in self.message.knowledge_graph.nodes.items():
                 # Make sure the edge_attributes are not None
                 if not node.node_attributes:
                     node.node_attributes = []  # should be an array, but why not a list?
                 # now go and actually get the NGD
-                node_curie = node.id
+                node_curie = key
                 node_name = node.name
                 pmids = NGD.get_pmids_for_all([node_curie], [node_name])[0]  # since the function was designed for multiple inputs, but I only want the first
 
