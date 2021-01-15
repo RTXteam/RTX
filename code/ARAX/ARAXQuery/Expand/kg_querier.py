@@ -17,8 +17,7 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
-from openapi_server.models.node_attribute import NodeAttribute
-from openapi_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
@@ -234,18 +233,18 @@ class KGQuerier:
         swagger_node.name = neo4j_node.get('name')
         swagger_node.description = neo4j_node.get('description')
         swagger_node.uri = neo4j_node.get('iri')
-        swagger_node.node_attributes = []
+        swagger_node.attributes = []
         node_category = neo4j_node.get('category_label')
         swagger_node.category = eu.convert_string_or_list_to_list(node_category)
         # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
         if swagger_node.symbol is None and swagger_node_key.lower().startswith("uniprot"):
             swagger_node.symbol = neo4j_node.get('name')
             swagger_node.name = neo4j_node.get('full_name')
-        # Add all additional properties on KG2 nodes as swagger NodeAttribute objects
+        # Add all additional properties on KG2 nodes as swagger Attribute objects
         additional_kg2_node_properties = ['publications', 'synonym', 'category', 'provided_by', 'deprecated',
                                           'update_date']
         node_attributes = self._create_swagger_attributes("node", additional_kg2_node_properties, neo4j_node)
-        swagger_node.node_attributes += node_attributes
+        swagger_node.attributes += node_attributes
         return swagger_node_key, swagger_node
 
     def _convert_kg2c_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
@@ -255,11 +254,11 @@ class KGQuerier:
         swagger_node.category = neo4j_node.get('types')
         swagger_node.uri = neo4j_node.get('iri')
         swagger_node.description = neo4j_node.get('description')
-        # Add all additional properties on KG2c nodes as swagger NodeAttribute objects
-        swagger_node.node_attributes = []
+        # Add all additional properties on KG2c nodes as swagger Attribute objects
+        swagger_node.attributes = []
         additional_kg2c_node_properties = ['equivalent_curies', 'publications', 'all_names']
         node_attributes = self._create_swagger_attributes("node", additional_kg2c_node_properties, neo4j_node)
-        swagger_node.node_attributes += node_attributes
+        swagger_node.attributes += node_attributes
         return swagger_node_key, swagger_node
 
     @staticmethod
@@ -270,7 +269,7 @@ class KGQuerier:
         swagger_node.symbol = neo4j_node.get('symbol')
         swagger_node.description = neo4j_node.get('description')
         swagger_node.uri = neo4j_node.get('uri')
-        swagger_node.node_attributes = []
+        swagger_node.attributes = []
         node_category = neo4j_node.get('category')
         swagger_node.category = eu.convert_string_or_list_to_list(node_category)
         return swagger_node_key, swagger_node
@@ -295,11 +294,11 @@ class KGQuerier:
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.negated = ast.literal_eval(neo4j_edge.get("negated"))
         swagger_edge.is_defined_by = "ARAX/KG2"
-        # Add additional properties on KG2 edges as swagger EdgeAttribute objects
+        # Add additional properties on KG2 edges as swagger Attribute objects
         # TODO: fix issues coming from strange characters in 'publications_info'! (EOF error)
         additional_kg2_edge_properties = ["relation_curie", "simplified_relation_curie", "simplified_relation",
                                           "edge_label"]
-        swagger_edge.edge_attributes = self._create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
+        swagger_edge.attributes = self._create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
         return swagger_edge
 
     @staticmethod
@@ -324,7 +323,7 @@ class KGQuerier:
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.is_defined_by = "ARAX/KG1"
         if neo4j_edge.get("probability"):
-            swagger_edge.edge_attributes = self._create_swagger_attributes("edge", ["probability"], neo4j_edge)
+            swagger_edge.attributes = self._create_swagger_attributes("edge", ["probability"], neo4j_edge)
         return swagger_edge
 
     @staticmethod
@@ -341,7 +340,7 @@ class KGQuerier:
 
             # Create an Attribute for all non-empty values
             if property_value is not None and property_value != {} and property_value != []:
-                swagger_attribute = NodeAttribute() if object_type == "node" else EdgeAttribute()
+                swagger_attribute = Attribute()
                 swagger_attribute.name = property_name
                 # Figure out whether this is a url and store it appropriately
                 if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):

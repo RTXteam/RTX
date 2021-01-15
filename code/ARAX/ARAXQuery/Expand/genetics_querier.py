@@ -15,7 +15,7 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
-from openapi_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 
 
@@ -199,9 +199,9 @@ class GeneticsQuerier:
         score_name = kp_edge['score_name']
         score_value = kp_edge.get('score')
         if score_value:  # Some returned edges are missing a score value for whatever reason
-            swagger_edge.edge_attributes = [EdgeAttribute(name=score_name,
-                                                          type=self.score_type_lookup.get(score_name),
-                                                          value=score_value)]
+            swagger_edge.attributes = [Attribute(name=score_name,
+                                                 type=self.score_type_lookup.get(score_name),
+                                                 value=score_value)]
         return swagger_edge
 
     @staticmethod
@@ -210,5 +210,5 @@ class GeneticsQuerier:
                                    name=kp_node.get('name'))
 
     def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
-        kind_of_edge = swagger_edge.edge_attributes[0].name if swagger_edge.edge_attributes else swagger_edge.type
+        kind_of_edge = swagger_edge.attributes[0].name if swagger_edge.attributes else swagger_edge.type
         return f"{self.kp_name}:{swagger_edge.source_id}-{kind_of_edge}-{swagger_edge.target_id}"

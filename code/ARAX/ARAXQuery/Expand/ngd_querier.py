@@ -16,7 +16,7 @@ from Overlay.compute_ngd import ComputeNGD
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
-from openapi_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
@@ -125,10 +125,10 @@ class NGDQuerier:
         ngd_edge.id = f"NGD:{source_id}--{ngd_edge.type}--{target_id}"
         ngd_edge.provided_by = "ARAX"
         ngd_edge.is_defined_by = "ARAX"
-        ngd_edge.edge_attributes = [EdgeAttribute(name=self.ngd_edge_attribute_name,
-                                                  type=self.ngd_edge_attribute_type,
-                                                  value=ngd_value,
-                                                  url=self.ngd_edge_attribute_url)]
+        ngd_edge.attributes = [Attribute(name=self.ngd_edge_attribute_name,
+                                         type=self.ngd_edge_attribute_type,
+                                         value=ngd_value,
+                                         url=self.ngd_edge_attribute_url)]
         return ngd_edge
 
     @staticmethod
