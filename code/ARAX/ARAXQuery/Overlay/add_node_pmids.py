@@ -7,7 +7,7 @@ import numpy as np
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.attribute import Attribute as NodeAttribute
+from openapi_server.models.attribute import Attribute as NodeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
