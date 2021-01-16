@@ -152,7 +152,7 @@ class MoleProQuerier:
         stripped_qedge = {'id': qedge_key,
                           'subject': qedge.subject,
                           'object': qedge.object,
-                          'type': qedge.type if qedge.type else list(self.accepted_edge_types)[0]}
+                          'type': qedge.predicate if qedge.predicate else list(self.accepted_edge_types)[0]}
         if stripped_qedge['type'] not in self.accepted_edge_types:
             log.warning(f"{self.kp_name} only accepts the following edge types: {self.accepted_edge_types}")
         source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].subject)
@@ -192,7 +192,7 @@ class MoleProQuerier:
                                    name=kp_node.get('name'))
 
     def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
-        return f"{self.kp_name}:{swagger_edge.subject}-{swagger_edge.type}-{swagger_edge.object}"
+        return f"{self.kp_name}:{swagger_edge.subject}-{swagger_edge.predicate}-{swagger_edge.object}"
 
     def _fix_prefix(self, curie: str) -> str:
         curie_prefix = curie.split(':')[0]

@@ -486,7 +486,7 @@ class ARAXExpander:
         input_curie_summary = self._get_qnode_curie_summary(input_qnode)
         output_curie_summary = self._get_qnode_curie_summary(output_qnode)
         log.debug(f"Modified QG for this qedge is ({input_qnode_key}:{input_qnode.category}{input_curie_summary})-"
-                  f"{qedge.type if qedge.type else ''}-({output_qnode_key}:{output_qnode.category}{output_curie_summary})")
+                  f"{qedge.predicate if qedge.predicate else ''}-({output_qnode_key}:{output_qnode.category}{output_curie_summary})")
         return edge_qg
 
     @staticmethod
