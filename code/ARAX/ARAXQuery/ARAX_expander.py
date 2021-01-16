@@ -283,7 +283,7 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
                 elif qedge.exclude and not answer_kg.is_empty():
-                    self._store_kryptonite_edge_info(edge_node_usage_map, qedge, encountered_kryptonite_edges_info, log)
+                    self._store_kryptonite_edge_info(edge_node_usage_map, qedge_key, query_graph, encountered_kryptonite_edges_info, log)
                 else:
                     # Update our map of which qnodes each of an edge's nodes fulfill (differs from source vs. target)
                     if qedge_key not in node_usages_by_edges_map:

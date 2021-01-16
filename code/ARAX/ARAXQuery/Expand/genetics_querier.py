@@ -56,7 +56,7 @@ class GeneticsQuerier:
         modified_query_graph = self._pre_process_query_graph(query_graph, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        qedge = modified_query_graph.edges[0]
+        qedge = next(qedge for qedge in modified_query_graph.edges.values())
         source_qnode_key = qedge.subject
         target_qnode_key = qedge.object
 
@@ -72,7 +72,7 @@ class GeneticsQuerier:
             # Populate our final KG with nodes and edges
             for returned_edge in returned_kg['edges']:
                 # Skip edges missing a source and/or target ID (have encountered these before)
-                if not returned_edge['subject'] or not returned_edge['object']:
+                if not returned_edge['source_id'] or not returned_edge['target_id']:
                     log.warning(f"Edge returned from GeneticsKP is lacking a subject and/or object: {returned_edge}."
                                 f" Will skip adding this edge to the KG.")
                 else:
@@ -156,19 +156,20 @@ class GeneticsQuerier:
 
     def _send_query_to_kp(self, query_graph: QueryGraph, log: ARAXResponse) -> Dict[str, any]:
         # Send query to their API (stripping down qnode/qedges to only the properties they like)
-        stripped_qnodes = dict()
+        stripped_qnodes = []
         for qnode_key, qnode in query_graph.nodes.items():
-            stripped_qnode = {'type': qnode.category}
+            stripped_qnode = {'id': qnode_key,
+                              'type': qnode.category}
             if qnode.id:
                 stripped_qnode['curie'] = qnode.id
-            stripped_qnodes[qnode_key] = stripped_qnode
+            stripped_qnodes.append(stripped_qnode)
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)  # Our query graph is single-edge
         qedge = query_graph.edges[qedge_key]
         stripped_qedge = {'id': qedge_key,
-                          'subject': qedge.subject,
-                          'object': qedge.object,
+                          'source_id': qedge.subject,
+                          'target_id': qedge.object,
                           'type': list(self.accepted_edge_types)[0]}
-        source_stripped_qnode = stripped_qnodes[qedge.subject]
+        source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == qedge.subject)
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
@@ -193,7 +194,7 @@ class GeneticsQuerier:
     def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Tuple[str, Edge]:
         swagger_edge = Edge(subject=kp_edge['source_id'],
                             object=kp_edge['target_id'],
-                            category=kp_edge['type'],
+                            predicate=kp_edge['type'],
                             provided_by=self.kp_name,
                             is_defined_by='ARAX')
         score_name = kp_edge['score_name']

@@ -71,7 +71,7 @@ class BTEQuerier:
         # Report our findings
         if eu.qg_is_fulfilled(query_graph, answer_kg):
             answer_kg = eu.switch_kg_to_arax_curie_format(answer_kg)
-            edge_to_nodes_map = self._create_edge_to_nodes_map(answer_kg, input_qnode.key, output_qnode.key)
+            edge_to_nodes_map = self._create_edge_to_nodes_map(answer_kg, input_qnode_key, output_qnode_key)
         elif not accepted_curies:
             log.warning(f"BTE could not accept any of the input curies. Valid curie prefixes for BTE are: "
                         f"{valid_bte_inputs_dict['curie_prefixes']}")
@@ -206,13 +206,13 @@ class BTEQuerier:
         # Process qnode types (convert to preferred format, make sure allowed)
         input_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(input_qnode.category)]
         output_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(output_qnode.category)]
-        qnodes_missing_type = [qnode_key for qnode_key in [input_qnode_key, output_qnode_key] if not qg.nodes[qnode_key].type]
+        qnodes_missing_type = [qnode_key for qnode_key in [input_qnode_key, output_qnode_key] if not qg.nodes[qnode_key].category]
         if qnodes_missing_type:
             log.error(f"BTE requires every query node to have a category. QNode(s) missing a category: "
                       f"{', '.join(qnodes_missing_type)}", error_code="InvalidInput")
             return "", ""
         invalid_qnode_categories = [node_category for qnode in [input_qnode, output_qnode] for node_category in qnode.category
-                               if node_category not in valid_bte_inputs_dict['node_categories']]
+                                    if node_category not in valid_bte_inputs_dict['node_categories']]
         if invalid_qnode_categories:
             log.error(f"BTE does not accept QNode category(s): {', '.join(invalid_qnode_categories)}. Valid options are "
                       f"{valid_bte_inputs_dict['node_categories']}", error_code="InvalidInput")

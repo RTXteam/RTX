@@ -517,7 +517,7 @@ def test_987_override_node_categories():
     actions_list = [
         "add_qnode(name=DOID:8398, key=n00)",
         "add_qnode(category=phenotypic_feature, key=n01)",
-        "add_qedge(subject=n00, object=n01, category=has_phenotype, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicate=has_phenotype, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
         "return(message=true, store=false)"
     ]
