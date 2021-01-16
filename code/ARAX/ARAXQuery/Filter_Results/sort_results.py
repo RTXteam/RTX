@@ -237,27 +237,27 @@ class SortResults:
         :return: response
         """
         try:
-            node_ids = set()
-            edge_ids = set()
+            node_keys = set()
+            edge_keys = set()
             nodes_to_remove = set()
             edges_to_remove = set()
             for result in self.message.results:
                 for node_binding in result.node_bindings:
-                    node_ids.add(node_binding.kg_id)
+                    node_keys.add(node_binding.kg_id)
                 for edge_binding in result.edge_bindings:
-                    edge_ids.add(edge_binding.kg_id)
-            #node_ids_to_remove = set()
+                    edge_keys.add(edge_binding.kg_id)
+            #node_keys_to_remove = set()
             for key, node in self.message.knowledge_graph.nodes:
-                if key not in node_ids:
+                if key not in node_keys:
                     nodes_to_remove.add(key)
-                    #node_ids_to_remove.add(node.id)
+                    #node_keys_to_remove.add(node.id)
             #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
             for key in nodes_to_remove:
                 del self.message.knowledge_graph.nodes[key]
             edges_to_remove = set()
             # iterate over edges find edges connected to the nodes
             for key, edge in self.message.knowledge_graph.edges:
-                if key not in edge_ids or edge.subject in nodes_to_remove or edge.object in nodes_to_remove:
+                if key not in edge_keys or edge.subject in nodes_to_remove or edge.object in nodes_to_remove:
                     edges_to_remove.add(key)
             # remove edges
             #self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]

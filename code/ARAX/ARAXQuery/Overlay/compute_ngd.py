@@ -52,7 +52,7 @@ class ComputeNGD:
             return self.response
         parameters = self.parameters
         self.response.debug(f"Computing NGD")
-        self.response.info(f"Computing the normalized Google distance: weighting edges based on source/target node "
+        self.response.info(f"Computing the normalized Google distance: weighting edges based on subject/object node "
                            f"co-occurrence frequency in PubMed abstracts")
         name = "normalized_google_distance"
         type = "EDAM:data_2526"
@@ -61,7 +61,7 @@ class ComputeNGD:
         qg = self.message.query_graph
         kg = self.message.knowledge_graph
 
-        # if you want to add virtual edges, identify the source/targets, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
+        # if you want to add virtual edges, identify the subject/objects, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
         if 'virtual_relation_label' in parameters:
             # Figure out which node pairs to compute NGD between
             subject_qnode_key = parameters['subject_qnode_key']
@@ -74,11 +74,11 @@ class ComputeNGD:
             added_flag = False  # check to see if any edges where added
             self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
-            for (source_curie, target_curie) in node_pairs_to_evaluate:
+            for (subject_curie, object_curie) in node_pairs_to_evaluate:
                 # create the edge attribute if it can be
-                canonical_source_curie = canonicalized_curie_lookup.get(source_curie, source_curie)
-                canonical_target_curie = canonicalized_curie_lookup.get(target_curie, target_curie)
-                ngd_value = self.calculate_ngd_fast(canonical_source_curie, canonical_target_curie)
+                canonical_subject_curie = canonicalized_curie_lookup.get(subject_curie, subject_curie)
+                canonical_object_curie = canonicalized_curie_lookup.get(object_curie, object_curie)
+                ngd_value = self.calculate_ngd_fast(canonical_subject_curie, canonical_object_curie)
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
@@ -96,8 +96,8 @@ class ComputeNGD:
                     provided_by = "ARAX"
                     confidence = None
                     weight = None  # TODO: could make the actual value of the attribute
-                    source_id = source_curie
-                    target_id = target_curie
+                    subject_key = subject_curie
+                    object_key = object_curie
 
                     # now actually add the virtual edges in
                     id = f"{relation}_{self.global_iter}"
@@ -115,12 +115,12 @@ class ComputeNGD:
                         EdgeAttribute(name="weight", value=weight),
                         #EdgeAttribute(name="qedge_keys", value=qedge_keys)
                     ]
-                    # edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
-                    #             target_id=target_id,
+                    # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key,
+                    #             object_key=object_key,
                     #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                     #             provided_by=provided_by,
                     #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
-                    edge = Edge(predicate=edge_type, subject=source_id, object=target_id,
+                    edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list)
                     edge.qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
@@ -132,7 +132,7 @@ class ComputeNGD:
                 relation = parameters['virtual_relation_label']
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, qg, self.response)
                 # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
-                #                source_id=subject_qnode_key, target_id=object_qnode_key,
+                #                subject_key=subject_qnode_key, object_key=object_qnode_key,
                 #                option_group_id=option_group_id)
                 q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
@@ -151,11 +151,11 @@ class ComputeNGD:
                     if not edge.edge_attributes:
                         edge.edge_attributes = []  # should be an array, but why not a list?
                     # now go and actually get the NGD
-                    source_curie = edge.subject
-                    target_curie = edge.object
-                    canonical_source_curie = canonicalized_curie_map.get(source_curie, source_curie)
-                    canonical_target_curie = canonicalized_curie_map.get(target_curie, target_curie)
-                    ngd_value = self.calculate_ngd_fast(canonical_source_curie, canonical_target_curie)
+                    subject_curie = edge.subject
+                    object_curie = edge.object
+                    canonical_subject_curie = canonicalized_curie_map.get(subject_curie, subject_curie)
+                    canonical_object_curie = canonicalized_curie_map.get(object_curie, object_curie)
+                    ngd_value = self.calculate_ngd_fast(canonical_subject_curie, canonical_object_curie)
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
                     ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
@@ -187,10 +187,10 @@ class ComputeNGD:
             start_index += chunk_size
             stop_index += chunk_size
 
-    def calculate_ngd_fast(self, source_curie, target_curie):
-        if source_curie in self.curie_to_pmids_map and target_curie in self.curie_to_pmids_map:
-            pubmed_ids_for_curies = [self.curie_to_pmids_map.get(source_curie),
-                                     self.curie_to_pmids_map.get(target_curie)]
+    def calculate_ngd_fast(self, subject_curie, object_curie):
+        if subject_curie in self.curie_to_pmids_map and object_curie in self.curie_to_pmids_map:
+            pubmed_ids_for_curies = [self.curie_to_pmids_map.get(subject_curie),
+                                     self.curie_to_pmids_map.get(object_curie)]
             counts_res = self._compute_marginal_and_joint_counts(pubmed_ids_for_curies)
             return self._compute_multiway_ngd_from_counts(*counts_res)
         else:

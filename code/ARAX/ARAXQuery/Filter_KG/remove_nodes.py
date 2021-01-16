@@ -24,12 +24,12 @@ class RemoveNodes:
 
         try:
             nodes_to_remove = set()
-            #node_ids_to_remove = set()
+            #node_keys_to_remove = set()
             # iterate over the edges find the edges to remove
             for key, node in self.message.knowledge_graph.nodes.items():
                 if self.node_parameters['node_category'] in node.category:
                     nodes_to_remove.add(key)
-                    #node_ids_to_remove.add(node.id)
+                    #node_keys_to_remove.add(node.id)
             #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
             for key in nodes_to_remove:
                 del self.message.knowledge_graph.nodes[key]
@@ -62,7 +62,7 @@ class RemoveNodes:
         node_params = self.node_parameters
         try:
             nodes_to_remove = set()
-            #node_ids_to_remove = set()
+            #node_keys_to_remove = set()
             # iterate over the nodes find the nodes to remove
             for key, node in self.message.knowledge_graph.nodes.items():
                 node_dict = node.to_dict()
@@ -108,19 +108,19 @@ class RemoveNodes:
 
         try:
             # iterate over edges in KG to find all id's that connect the edges
-            connected_node_ids = set()
+            connected_node_keys = set()
             for edge in self.message.knowledge_graph.edges.values():
-                connected_node_ids.add(edge.subject)
-                connected_node_ids.add(edge.object)
+                connected_node_keys.add(edge.subject)
+                connected_node_keys.add(edge.object)
 
             # iterate over all nodes in KG
             nodes_to_remove = set()
             for key, node in self.message.knowledge_graph.nodes.items():
                 if 'node_category' in node_parameters and node_parameters['node_category'] in node.category:
-                    if node.id not in connected_node_ids:
+                    if node.id not in connected_node_keys:
                         nodes_to_remove.add(key)
                 else:
-                    if node.id not in connected_node_ids:
+                    if node.id not in connected_node_keys:
                         nodes_to_remove.add(key)
 
             # remove the orphaned nodes

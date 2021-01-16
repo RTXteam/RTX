@@ -48,13 +48,13 @@ class ARAXOverlay:
                     'is_required': False,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
-                    'description': 'A specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
+                    'description': 'A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
                 }
         self.object_qnode_key_info = {
                     'is_required': False,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
-                    'description': 'A specific target query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
+                    'description': 'A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
                 }
         self.paired_concept_frequency_info = {
                     'is_required': False,
@@ -90,19 +90,19 @@ class ARAXOverlay:
                     'description': "The maximum number of values to return. Enter 'all' to return everything",
                     'default': 100
                 }
-        self.start_node_id_info = {
+        self.start_node_key_info = {
                     'is_required': True,
                     'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'],
                     'type': 'string',
                     'description': "A curie id specifying the starting node"
                 }
-        self.intermediate_node_id_info = {
+        self.intermediate_node_key_info = {
                     'is_required': True,
                     'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'],
                     'type': 'string',
                     'description': "A curie id specifying the intermediate node"
                 }
-        self.end_node_id_info = {
+        self.end_node_key_info = {
                     'is_required': True,
                     'examples': ['DOID:1872', 'CHEBI:7476', 'UMLS:C1764836'],
                     'type': 'string',
@@ -118,19 +118,19 @@ class ARAXOverlay:
                     'is_required': True,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
-                    'description': 'A specific source query node id (required)'
+                    'description': 'A specific subject query node id (required)'
                 }
         self.object_qnode_key_required_info = {
                     'is_required': True,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
-                    'description': 'A specific target query node id (required)'
+                    'description': 'A specific object query node id (required)'
                 }
-        self.rel_edge_id_info = {
+        self.rel_edge_key_info = {
                     'is_required': False,
                     'examples': ['e00', 'e01'],
                     'type': 'string',
-                    'description': "A specific QEdge id of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"
+                    'description': "A specific QEdge id of edges connected to both subject nodes and object nodes in message KG (optional, otherwise all edges connected to both subject nodes and object nodes in message KG are considered), eg. 'e01'"
                 }
         self.COHD_method_info = {
                     "is_required": False,
@@ -162,9 +162,9 @@ class ARAXOverlay:
             "compute_ngd": {
                 "dsl_command": "overlay(action=compute_ngd)",
                 "description": """
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
 This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
 
 Use cases include:
 
@@ -174,9 +174,9 @@ Use cases include:
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
-compute_ngd computes a metric (called the normalized Google distance) based on edge soure/target node co-occurrence in abstracts of all PubMed articles.
+compute_ngd computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
 This information is then included as an edge attribute with the name normalized_google_distance.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the type specified by virtual_relation_label.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by virtual_relation_label.
                     """,
                 "parameters": {
                     'default_value': self.default_value_info,
@@ -193,7 +193,7 @@ This KP has a number of different functionalities, such as `paired_concept_frequ
 All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
 This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
 This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
 These virtual edges have the following types:
 
 * `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
@@ -202,9 +202,9 @@ These virtual edges have the following types:
 
 Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
 
-* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge source and target nodes and adds these values as edge attributes.
-* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge source and target nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
-* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge source/target nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge subject and object nodes and adds these values as edge attributes.
+* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge subject and object nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
+* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge subject/object nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
 * `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
@@ -232,22 +232,22 @@ This information is then included as an edge attribute.
                 "dsl_command": "overlay(action=compute_jaccard)",
                 "description":  """
 `compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
-The jaccard similarity measures how many `intermediate_node_id`'s are shared in common between each `start_node_id` and `target_node_id`.
-This is used for purposes such as "find me all drugs (`start_node_id`) that have many proteins (`intermediate_node_id`) in common with this disease (`end_node_id`)."
+The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
+This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
 This can be used for downstream filtering to concentrate on relevant bioentities.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
 compute_jaccard creates virtual edges and adds an edge attribute (with the property name 'jaccard_index') containing the following information:
-The jaccard similarity measures how many 'intermediate_node_id's are shared in common between each 'start_node_id' and 'target_node_id'.
-This is used for purposes such as "find me all drugs ('start_node_id') that have many proteins ('intermediate_node_id') in common with this disease ('end_node_id')."
+The jaccard similarity measures how many 'intermediate_node_key's are shared in common between each 'start_node_key' and 'object_node_key'.
+This is used for purposes such as "find me all drugs ('start_node_key') that have many proteins ('intermediate_node_key') in common with this disease ('end_node_key')."
 This can be used for downstream filtering to concentrate on relevant bioentities.
                     """,
                 "parameters": {
-                    'start_node_id': self.start_node_id_info,
-                    'intermediate_node_id': self.intermediate_node_id_info,
-                    'end_node_id': self.end_node_id_info,
+                    'start_node_key': self.start_node_key_info,
+                    'intermediate_node_key': self.intermediate_node_key_info,
+                    'end_node_key': self.end_node_key_info,
                     'virtual_relation_label': self.virtual_relation_label_required_info
                 }
             },
@@ -275,7 +275,7 @@ either labeling in the metadata or has the MeSH term occurring in the abstract o
 `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
 For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
 The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
 If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
 Use cases include:
 
@@ -289,7 +289,7 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 predict_drug_treats_disease utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
 For more information about how this model was trained and how it performs, please see this publication (https://doi.org/10.1101/765305).
 The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name 'probability_treats').
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified source/target qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
                     """,
                 "parameters": {
                     'virtual_relation_label': self.virtual_relation_label_info,
@@ -337,7 +337,7 @@ It can also allow you to filter out the user-defined insignificance of connectio
                     'subject_qnode_key': self.subject_qnode_key_required_info,
                     'virtual_relation_label': self.virtual_relation_label_required_info,
                     'object_qnode_key': self.object_qnode_key_required_info,
-                    'rel_edge_id': self.rel_edge_id_info,
+                    'rel_edge_key': self.rel_edge_key_info,
                     'filter_type': self.filter_type_info,
                     'value': self.fet_value_info
                 }
@@ -347,7 +347,7 @@ It can also allow you to filter out the user-defined insignificance of connectio
                 "description": """
 `overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
 This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified source/target qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
 
 This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
                     """,
@@ -506,8 +506,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     }
         else:
             allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
-                                    'subject_qnode_key': {'a specific source query node id (optional, otherwise applied to all edges)'},
-                                    'object_qnode_key': {'a specific target query node id (optional, otherwise applied to all edges)'}
+                                    'subject_qnode_key': {'a specific subject query node id (optional, otherwise applied to all edges)'},
+                                    'object_qnode_key': {'a specific object query node id (optional, otherwise applied to all edges)'}
                                     }
 
         # A little function to describe what this thing does
@@ -571,8 +571,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
                                     'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'},
-                                    'subject_qnode_key': {'a specific source query node id (optional, otherwise applied to all edges)'},
-                                    'object_qnode_key': {'a specific target query node id (optional, otherwise applied to all edges)'}
+                                    'subject_qnode_key': {'a specific subject query node id (optional, otherwise applied to all edges)'},
+                                    'object_qnode_key': {'a specific object query node id (optional, otherwise applied to all edges)'}
                                     }
 
         # A little function to describe what this thing does
@@ -679,26 +679,26 @@ This information is included in edge attributes with the name 'icees_p-value'.
         Computes the jaccard distance: starting_node -> {set of intermediate nodes} -> {set of end nodes}.
         for each end node x, looks at (number of intermediate nodes connected to x) / (total number of intermediate nodes).
         Basically, which of the end nodes is connected to many of the intermediate nodes. Adds an edge to the KG with the
-        jaccard value, source, and target info as an edge attribute .
+        jaccard value, subject, and object info as an edge attribute .
         Allowable parameters:
         :return:
         """
         message = self.message
         parameters = self.parameters
         # need two different ones of these since the allowable parameters will depend on the id's that they used
-        # TODO: the start_node_id CANNOT be a set
+        # TODO: the start_node_key CANNOT be a set
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'compute_jaccard'},
-                                'start_node_id': set([key for key in self.message.query_graph.nodes.keys()]),
-                                'intermediate_node_id': set([key for key in self.message.query_graph.nodes.keys()]),
-                                'end_node_id': set([key for key in self.message.query_graph.nodes.keys()]),
+                                'start_node_key': set([key for key in self.message.query_graph.nodes.keys()]),
+                                'intermediate_node_key': set([key for key in self.message.query_graph.nodes.keys()]),
+                                'end_node_key': set([key for key in self.message.query_graph.nodes.keys()]),
                                 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else "any_string"}
                                 }
         else:
             allowable_parameters = {'action': {'compute_jaccard'},
-                                    'start_node_id': {"a node id (required)"},
-                                    'intermediate_node_id': {"a query node id (required)"},
-                                    'end_node_id': {"a query node id (required)"},
+                                    'start_node_key': {"a node id (required)"},
+                                    'intermediate_node_key': {"a query node id (required)"},
+                                    'end_node_key': {"a query node id (required)"},
                                     'virtual_relation_label': {"any string label (required) that will be used to identify the virtual edge added"}
                                     }
         # print(allowable_parameters)
@@ -742,8 +742,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     }
         else:
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'subject_key': {'optional: a specific source query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'object_key': {'optional: a specific target query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
+                                    'subject_key': {'optional: a specific subject query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+                                    'object_key': {'optional: a specific object query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
                                     }
 
         # A little function to describe what this thing does
@@ -777,7 +777,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
             :param subject_key: (required) a specific QNode key (you used in add_qnode() in DSL) of subject nodes in message KG eg. "n00"
             :param virtual_relation_label: (required) any string to label the relation and query edge id of virtual edge with fisher's exact test p-value eg. 'FET'
             :param object_key: (required) a specific QNode key (you used in add_qnode() in DSL) of object nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
-            :param rel_edge_key: (optional) a specific QEdge key (you used in add_qedge() in DSL) of edges connected to both source nodes and target nodes in message KG. eg. "e01"
+            :param rel_edge_key: (optional) a specific QEdge key (you used in add_qedge() in DSL) of edges connected to both subject nodes and object nodes in message KG. eg. "e01"
             :param top_n: (optional) an int indicating the top number of the most significant adjacent nodes to return (otherwise all results returned) eg. 10
             :param cutoff: (optional) a float indicating the p-value cutoff to return the results (otherwise all results returned) eg. 0.05
         :return: response
@@ -795,10 +795,10 @@ This information is included in edge attributes with the name 'icees_p-value'.
             allowable_object_key = list(set([node_key for node_key in qg_nodes]))  # flatten these as they are lists of lists now
             allowwable_rel_edge_key = list(set([edge_key for edge_key in qg_edges]))  # flatten these as they are lists of lists now
             allowwable_rel_edge_key.append(None)
-            # # FIXME: need to generate this from some source as per #780
-            # allowable_target_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
+            # # FIXME: need to generate this from some subject as per #780
+            # allowable_object_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',
             #                      'anatomical_entity','pathway','cellular_component','phenotypic_feature','disease','molecular_function']
-            # allowable_target_edge_type = [None,'physically_interacts_with','subclass_of','involved_in','affects','capable_of',
+            # allowable_object_edge_type = [None,'physically_interacts_with','subclass_of','involved_in','affects','capable_of',
             #                      'contraindicated_for','indicated_for','regulates','expressed_in','gene_associated_with_condition',
             #                      'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
 
@@ -806,7 +806,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     'subject_key': allowable_subject_key,
                                     'virtual_relation_label': str(),
                                     'object_key': allowable_object_key,
-                                    'rel_edge_id': allowwable_rel_edge_key,
+                                    'rel_edge_key': allowwable_rel_edge_key,
                                     'top_n': [None,int()],
                                     'cutoff': [None,float()],
                                     'filter_type': {'cutoff', 'top_n'},
@@ -814,10 +814,10 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'subject_key': {"a specific QNode key of source nodes in message KG (required), eg. 'n00'"},
+                                    'subject_key': {"a specific QNode key of subject nodes in message KG (required), eg. 'n00'"},
                                     'virtual_relation_label': {"any string to label the relation and query edge id of virtual edge with fisher's exact test p-value (required) eg. 'FET'"},
-                                    'object_key': {"a specific QNode key of target nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
-                                    'rel_edge_key': {"a specific QEdge key of edges connected to both source nodes and target nodes in message KG (optional, otherwise all edges connected to both source nodes and target nodes in message KG are considered), eg. 'e01'"},
+                                    'object_key': {"a specific QNode key of object nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
+                                    'rel_edge_key': {"a specific QEdge key of edges connected to both subject nodes and object nodes in message KG (optional, otherwise all edges connected to both subject nodes and object nodes in message KG are considered), eg. 'e01'"},
                                     'top_n': {"an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10"},
                                     'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"},
                                     'filter_type': {'cutoff', 'top_n'},
@@ -874,8 +874,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
         else:
             allowable_parameters = {'action': {'overlay_exposures_data'},
                                     'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'},
-                                    'subject_qnode_key': {'a specific source query node id (optional, otherwise applied to all edges)'},
-                                    'object_qnode_key': {'a specific target query node id (optional, otherwise applied to all edges)'}}
+                                    'subject_qnode_key': {'a specific subject query node id (optional, otherwise applied to all edges)'},
+                                    'object_qnode_key': {'a specific object query node id (optional, otherwise applied to all edges)'}}
 
         # A little function to describe what this thing does
         if describe:
@@ -916,7 +916,7 @@ def main():
         #"overlay(action=compute_ngd, virtual_edge_type=NGD1, subject_qnode_key=n00, object_qnode_key=n01)",
         #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         # "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, subject_qnode_key=n00, object_qnode_key=n01)",
-        #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
+        #"overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
         #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         #"overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, subject_qnode_key=n00, object_qnode_key=n01)",

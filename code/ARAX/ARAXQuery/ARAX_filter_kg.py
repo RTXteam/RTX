@@ -42,12 +42,12 @@ class ARAXFilterKG:
             "description": "Indicates whether or not to remove the nodes connected to the edge.",
             "default": 'false'
         }
-        self.qnode_id_info = {
+        self.qnode_key_info = {
             "is_required": False,
             "examples": ['n01', 'n02'],
             "type": "string",
-            "description": "If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_id to be removed." +\
-            "If not provided the qnode_id will not be considered when filtering."
+            "description": "If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed." +\
+            "If not provided the qnode_key will not be considered when filtering."
         }
         self.edge_property_info = {
             "is_required": True,
@@ -163,7 +163,7 @@ Use cases include:
 * etc.
             
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
-else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
             
 This can be applied to an arbitrary knowledge graph as possible edge predicates are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
@@ -173,7 +173,7 @@ remove_edges_by_predicate removes edges from the knowledge graph (KG) based on a
                 "parameters": {
                     "edge_predicate": self.edge_type_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_id": self.qnode_id_info
+                    "qnode_key": self.qnode_key_info
                 }
             },
             "remove_edges_by_attribute": {
@@ -190,7 +190,7 @@ Use cases include:
 * etc. etc.
                 
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
-else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
                 
 This can be applied to an arbitrary knowledge graph as possible edge attributes are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
@@ -204,7 +204,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "direction": self.direction_info,
                     "threshold": self.threshold_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_id": self.qnode_id_info
+                    "qnode_key": self.qnode_key_info
                 }
             },
             "remove_edges_by_property": {
@@ -220,7 +220,7 @@ Use cases include:
 * etc. etc.
                 
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
-else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
                 
 This can be applied to an arbitrary knowledge graph as possible edge properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
@@ -231,7 +231,7 @@ remove_edges_by_property removes edges from the knowledge graph (KG) based on a 
                     "edge_property": self.edge_property_info,
                     "property_value": self.edge_property_value_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_id": self.qnode_id_info
+                    "qnode_key": self.qnode_key_info
                 }
             },
             "remove_edges_by_stats": {
@@ -250,7 +250,7 @@ Use cases include:
 * etc. etc.
                 
 You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
-else, only remove a single source/target node based on a query node id (via `remove_connected_nodes=t, qnode_id=<a query node id.>`
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
 
 You also have the option of specifying the direction to remove and location of the split by using the options 
 * `direction` with options `above`,`below`
@@ -271,7 +271,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "threshold": self.threshold_stats_info,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_id": self.qnode_id_info
+                    "qnode_key": self.qnode_key_info
                 }
             },
             "remove_nodes_by_category": {
@@ -447,13 +447,13 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             allowable_parameters = {'action': {'remove_edges_by_predicate'},
                                     'edge_predicate': set([x.predicate for x in self.message.knowledge_graph.edges.values()]),
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_ids is not None for t in x.qnode_ids])
+                                    'qnode_key': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_predicate'},
                                     'edge_predicate': {'an edge predicate'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':{'a specific query node id to remove'}
+                                    'qnode_key':{'a specific query node id to remove'}
                                 }
 
         # A little function to describe what this thing does
@@ -519,14 +519,14 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'edge_property': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]),
                                     'property_value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_ids is not None for t in x.qnode_ids])
+                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_property'},
                                     'edge_property': {'an edge property'},
                                     'property_value':{'a value for the edge property'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':{'a specific query node id to remove'}
+                                    'qnode_key':{'a specific query node id to remove'}
                                 }
 
         # A little function to describe what this thing does
@@ -595,7 +595,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'direction': {'above', 'below'},
                                     'threshold': {float()},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_ids is not None for t in x.qnode_ids])
+                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_attribute'},
@@ -603,7 +603,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'direction': {'above', 'below'},
                                     'threshold': {'a floating point number'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':{'a specific query node id to remove'}
+                                    'qnode_key':{'a specific query node id to remove'}
                                     }
 
         # A little function to describe what this thing does
@@ -687,7 +687,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'threshold': {float()},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_ids is not None for t in x.qnode_ids])
+                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_stats'},
@@ -697,7 +697,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'threshold': {'a floating point number'},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_id':{'a specific query node id to remove'}
+                                    'qnode_key':{'a specific query node id to remove'}
                                     }
 
         # A little function to describe what this thing does

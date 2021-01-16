@@ -17,10 +17,10 @@ from ARAX_response import ARAXResponse
 def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, query_graph: QueryGraph,
                               knowledge_graph: KnowledgeGraph, log: ARAXResponse) -> Set[Tuple[str, str]]:
     """
-    This function determines which combinations of source/target nodes in the KG need to be overlayed (e.g., have a
-    virtual edge added between). It makes use of Resultify to determine what combinations of source and target nodes
+    This function determines which combinations of subject/object nodes in the KG need to be overlayed (e.g., have a
+    virtual edge added between). It makes use of Resultify to determine what combinations of subject and object nodes
     may actually appear together in the same Results. (See issue #1069.) If it fails to narrow the node pairs for
-    whatever reason, it defaults to returning all possible combinations of source/target nodes.
+    whatever reason, it defaults to returning all possible combinations of subject/object nodes.
     """
     log.debug(f"Narrowing down {subject_qnode_key}--{object_qnode_key} node pairs to overlay")
     kg_nodes_by_qg_id = get_node_ids_by_qg_id(knowledge_graph)
@@ -41,16 +41,16 @@ def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, que
     if resultify_response.status == 'OK':
         node_pairs = set()
         for result in sub_message.results:
-            source_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if
+            subject_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if
                                             node_binding.qg_id == subject_qnode_key}
-            target_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if
+            object_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if
                                             node_binding.qg_id == object_qnode_key}
-            pairs_in_this_result = set(itertools.product(source_curies_in_this_result, target_curies_in_this_result))
+            pairs_in_this_result = set(itertools.product(subject_curies_in_this_result, object_curies_in_this_result))
             node_pairs = node_pairs.union(pairs_in_this_result)
         log.debug(f"Identified {len(node_pairs)} node pairs to overlay (with help of resultify)")
         if node_pairs:
             return node_pairs
-    # Back up to using the old (O(n^2)) method of all combinations of source/target nodes in the KG
+    # Back up to using the old (O(n^2)) method of all combinations of subject/object nodes in the KG
     log.warning(f"Failed to narrow down node pairs to overlay; defaulting to all possible combinations")
     return set(itertools.product(kg_nodes_by_qg_id[subject_qnode_key], kg_nodes_by_qg_id[object_qnode_key]))
 

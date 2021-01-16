@@ -25,8 +25,8 @@ class RemoveEdges:
         for key, node in self.message.query_graph.nodes.items():
             qids[key] = 0
         for key, node in self.message.knowledge_graph.nodes.items():
-            if node.qnode_ids is not None:
-                for qid in node.qnode_ids:
+            if node.qnode_keys is not None:
+                for qid in node.qnode_keys:
                     qids[qid] += 1
         for k, v in qids.items():
             if v == 0:
@@ -46,21 +46,21 @@ class RemoveEdges:
             node_ids_to_remove = {}
             edge_qid_dict = {}
             for q_edge in self.message.query_graph.edges:
-                edge_qid_dict[q_edge.id] = {'source':q_edge.subject, 'target':q_edge.object}
+                edge_qid_dict[q_edge.id] = {'subject':q_edge.subject, 'object':q_edge.object}
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():
                 if edge.predicate == edge_params['edge_predicate']:
                     edges_to_remove.add(key)
                     if edge_params['remove_connected_nodes']:
-                        for qedge_id in edge.qedge_ids:
+                        for qedge_key in edge.qedge_keys:
                             if edge.subject not in node_ids_to_remove:
-                                node_ids_to_remove[edge.subject] = {edge_qid_dict[qedge_id]['source']}
+                                node_ids_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
                             else:
-                                node_ids_to_remove[edge.subject].add(edge_qid_dict[qedge_id]['source'])
+                                node_ids_to_remove[edge.subject].add(edge_qid_dict[qedge_key]['subject'])
                             if edge.object not in node_ids_to_remove:
-                                node_ids_to_remove[edge.object] = {edge_qid_dict[qedge_id]['target']}
+                                node_ids_to_remove[edge.object] = {edge_qid_dict[qedge_key]['object']}
                             else:
-                                node_ids_to_remove[edge.object].add(edge_qid_dict[qedge_id]['target'])
+                                node_ids_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
             if edge_params['remove_connected_nodes']:
                 self.response.debug(f"Removing Nodes")
                 self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
@@ -69,24 +69,24 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_ids_to_remove:
-                        if 'qnode_id' in edge_params:
-                            if node.qnode_ids is not None:
-                                if edge_params['qnode_id'] in node.qnode_ids:
-                                    if len(node.qnode_ids) == 1:
+                        if 'qnode_key' in edge_params:
+                            if node.qnode_keys is not None:
+                                if edge_params['qnode_key'] in node.qnode_keys:
+                                    if len(node.qnode_keys) == 1:
                                         nodes_to_remove.add(key)
                                     else:
-                                        node.qnode_ids.remove(edge_params['qnode_id'])
+                                        node.qnode_keys.remove(edge_params['qnode_key'])
                                 else:
                                     del node_ids_to_remove[key]
                             else:
                                 del node_ids_to_remove[key]
                         else:
-                            if len(node.qnode_ids) == 1:
+                            if len(node.qnode_keys) == 1:
                                 nodes_to_remove.add(key)
                             else:
                                 for node_id in node_ids_to_remove[key]:
-                                    node.qnode_ids.remove(node_id)
-                                if len(node.qnode_ids) == 0:
+                                    node.qnode_keys.remove(node_id)
+                                if len(node.qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 # remove connected nodes
                 #self.message.knowledge_graph.nodes = [val for idx,val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
@@ -124,7 +124,7 @@ class RemoveEdges:
             node_ids_to_remove = {}
             edge_qid_dict = {}
             for kwy, q_edge in self.message.query_graph.edges.items():
-                edge_qid_dict[key] = {'source':q_edge.subject, 'target':q_edge.object}
+                edge_qid_dict[key] = {'subject':q_edge.subject, 'object':q_edge.object}
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():
                 edge_dict = edge.to_dict()
@@ -132,28 +132,28 @@ class RemoveEdges:
                     if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
                         edges_to_remove.add(key)
                         if edge_params['remove_connected_nodes']:
-                            for qedge_id in edge.qedge_ids:
+                            for qedge_key in edge.qedge_keys:
                                 if edge.subject not in node_ids_to_remove:
-                                    node_ids_to_remove[edge.subject] = {edge_qid_dict[qedge_id]['source']}
+                                    node_ids_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
                                 else:
-                                    node_ids_to_remove[edge.subject].add(edge_qid_dict[qedge_id]['source'])
+                                    node_ids_to_remove[edge.subject].add(edge_qid_dict[qedge_key]['subject'])
                                 if edge.object not in node_ids_to_remove:
-                                    node_ids_to_remove[edge.object] = {edge_qid_dict[qedge_id]['target']}
+                                    node_ids_to_remove[edge.object] = {edge_qid_dict[qedge_key]['object']}
                                 else:
-                                    node_ids_to_remove[edge.object].add(edge_qid_dict[qedge_id]['target'])
+                                    node_ids_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
                 else:
                     if edge_dict[edge_params['edge_property']] == edge_params['property_value']:
                         edges_to_remove.add(key)
                         if edge_params['remove_connected_nodes']:
-                            for qedge_id in edge.qedge_ids:
+                            for qedge_key in edge.qedge_keys:
                                 if edge.subject not in node_ids_to_remove:
-                                    node_ids_to_remove[edge.subject] = {edge_qid_dict[qedge_id]['source']}
+                                    node_ids_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
                                 else:
-                                    node_ids_to_remove[edge.subject].add(edge_qid_dict[qedge_id]['source'])
+                                    node_ids_to_remove[edge.subject].add(edge_qid_dict[qedge_key]['subject'])
                                 if edge.object not in node_ids_to_remove:
-                                    node_ids_to_remove[edge.object] = {edge_qid_dict[qedge_id]['target']}
+                                    node_ids_to_remove[edge.object] = {edge_qid_dict[qedge_key]['object']}
                                 else:
-                                    node_ids_to_remove[edge.object].add(edge_qid_dict[qedge_id]['target'])
+                                    node_ids_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
             if edge_params['remove_connected_nodes']:
                 self.response.debug(f"Removing Nodes")
                 self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
@@ -161,24 +161,24 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_ids_to_remove:
-                        if 'qnode_id' in edge_params:
-                            if node.qnode_ids is not None:
-                                if edge_params['qnode_id'] in node.qnode_ids:
-                                    if len(node.qnode_ids) == 1:
+                        if 'qnode_key' in edge_params:
+                            if node.qnode_keys is not None:
+                                if edge_params['qnode_key'] in node.qnode_keys:
+                                    if len(node.qnode_keys) == 1:
                                         nodes_to_remove.add(key)
                                     else:
-                                        node.qnode_ids.remove(edge_params['qnode_id'])
+                                        node.qnode_keys.remove(edge_params['qnode_key'])
                                 else:
                                     del node_ids_to_remove[key]
                             else:
                                 del node_ids_to_remove[key]
                         else:
-                            if len(node.qnode_ids) == 1:
+                            if len(node.qnode_keys) == 1:
                                 nodes_to_remove.add(key)
                             else:
                                 for node_id in node_ids_to_remove[key]:
-                                    node.qnode_ids.remove(node_id)
-                                if len(node.qnode_ids) == 0:
+                                    node.qnode_keys.remove(node_id)
+                                if len(node.qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 # remove connected nodes
                 #self.message.knowledge_graph.nodes = [val for idx,val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
@@ -223,7 +223,7 @@ class RemoveEdges:
             node_ids_to_remove = {}
             edge_qid_dict = {}
             for key, q_edge in self.message.query_graph.edges.items():
-                edge_qid_dict[key] = {'source':q_edge.subject, 'target':q_edge.object}
+                edge_qid_dict[key] = {'subject':q_edge.subject, 'object':q_edge.object}
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
                 if hasattr(edge, 'edge_attributes'):  # check if they have attributes
@@ -233,15 +233,15 @@ class RemoveEdges:
                                 if compare(float(attribute.value), edge_params['threshold']):  # check if it's above/below the threshold
                                     edges_to_remove.add(key)  # mark it to be removed
                                     if edge_params['remove_connected_nodes']:  # if you want to remove the connected nodes, mark those too
-                                        for qedge_id in edge.qedge_ids:
+                                        for qedge_key in edge.qedge_keys:
                                             if edge.subject not in node_ids_to_remove:
-                                                node_ids_to_remove[edge.subject] = {edge_qid_dict[qedge_id]['source']}
+                                                node_ids_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
                                             else:
-                                                node_ids_to_remove[edge.subject].add(edge_qid_dict[qedge_id]['source'])
+                                                node_ids_to_remove[edge.subject].add(edge_qid_dict[qedge_key]['subject'])
                                             if edge.object not in node_ids_to_remove:
-                                                node_ids_to_remove[edge.object] = {edge_qid_dict[qedge_id]['target']}
+                                                node_ids_to_remove[edge.object] = {edge_qid_dict[qedge_key]['object']}
                                             else:
-                                                node_ids_to_remove[edge.object].add(edge_qid_dict[qedge_id]['target'])
+                                                node_ids_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
             if edge_params['remove_connected_nodes']:
                 self.response.debug(f"Removing Nodes")
                 self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
@@ -249,24 +249,24 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_ids_to_remove:
-                        if 'qnode_id' in edge_params:
-                            if node.qnode_ids is not None:
-                                if edge_params['qnode_id'] in node.qnode_ids:
-                                    if len(node.qnode_ids) == 1:
+                        if 'qnode_key' in edge_params:
+                            if node.qnode_keys is not None:
+                                if edge_params['qnode_key'] in node.qnode_keys:
+                                    if len(node.qnode_keys) == 1:
                                         nodes_to_remove.add(key)
                                     else:
-                                        node.qnode_ids.remove(edge_params['qnode_id'])
+                                        node.qnode_keys.remove(edge_params['qnode_key'])
                                 else:
                                     del node_ids_to_remove[key]
                             else:
                                 del node_ids_to_remove[key]
                         else:
-                            if len(node.qnode_ids) == 1:
+                            if len(node.qnode_keys) == 1:
                                 nodes_to_remove.add(key)
                             else:
                                 for node_id in node_ids_to_remove[key]:
-                                    node.qnode_ids.remove(node_id)
-                                if len(node.qnode_ids) == 0:
+                                    node.qnode_keys.remove(node_id)
+                                if len(node.qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 # remove connected nodes
                 #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
@@ -309,7 +309,7 @@ class RemoveEdges:
             node_ids_to_remove = {}
             edge_qid_dict = {}
             for key, q_edge in self.message.query_graph.edges.items():
-                edge_qid_dict[key] = {'source':q_edge.subject, 'target':q_edge.object}
+                edge_qid_dict[key] = {'subject':q_edge.subject, 'object':q_edge.object}
             values = []
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
@@ -356,18 +356,18 @@ class RemoveEdges:
                     elif edge_params['direction'] == 'below':
                         values = [x for x in values if x[1]<val]
 
-            for edge in values: # here edge = (edge index, value, source id, target id)
+            for edge in values: # here edge = (edge index, value, subject id, object id)
                 edges_to_remove.add(edge[0])  # mark it to be removed
                 if edge_params['remove_connected_nodes']:  # if you want to remove the connected nodes, mark those too
-                    for qedge_id in edge.qedge_ids:
+                    for qedge_key in edge.qedge_keys:
                         if edge.subject not in node_ids_to_remove:
-                            node_ids_to_remove[edge[2]] = {edge_qid_dict[qedge_id]['source']}
+                            node_ids_to_remove[edge[2]] = {edge_qid_dict[qedge_key]['subject']}
                         else:
-                            node_ids_to_remove[edge[2]].add(edge_qid_dict[qedge_id]['source'])
+                            node_ids_to_remove[edge[2]].add(edge_qid_dict[qedge_key]['subject'])
                         if edge.object not in node_ids_to_remove:
-                            node_ids_to_remove[edge[3]] = {edge_qid_dict[qedge_id]['target']}
+                            node_ids_to_remove[edge[3]] = {edge_qid_dict[qedge_key]['object']}
                         else:
-                            node_ids_to_remove[edge[3]].add(edge_qid_dict[qedge_id]['target'])
+                            node_ids_to_remove[edge[3]].add(edge_qid_dict[qedge_key]['object'])
 
             if edge_params['remove_connected_nodes']:
                 self.response.debug(f"Removing Nodes")
@@ -376,24 +376,24 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_ids_to_remove:
-                        if 'qnode_id' in edge_params:
-                            if node.qnode_ids is not None:
-                                if edge_params['qnode_id'] in node.qnode_ids:
-                                    if len(node.qnode_ids) == 1:
+                        if 'qnode_key' in edge_params:
+                            if node.qnode_keys is not None:
+                                if edge_params['qnode_key'] in node.qnode_keys:
+                                    if len(node.qnode_keys) == 1:
                                         nodes_to_remove.add(key)
                                     else:
-                                        node.qnode_ids.remove(edge_params['qnode_id'])
+                                        node.qnode_keys.remove(edge_params['qnode_key'])
                                 else:
                                     del node_ids_to_remove[key]
                             else:
                                 del node_ids_to_remove[key]
                         else:
-                            if len(node.qnode_ids) == 1:
+                            if len(node.qnode_keys) == 1:
                                 nodes_to_remove.add(key)
                             else:
                                 for node_id in node_ids_to_remove[key]:
-                                    node.qnode_ids.remove(node_id)
-                                if len(node.qnode_ids) == 0:
+                                    node.qnode_keys.remove(node_id)
+                                if len(node.qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 # remove connected nodes
                 #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
