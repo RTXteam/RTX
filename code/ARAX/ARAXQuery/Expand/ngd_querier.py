@@ -120,10 +120,10 @@ class NGDQuerier:
 
     def _create_ngd_edge(self, ngd_value: float, subject: str, object: str) -> Tuple[str, Edge]:
         ngd_edge = Edge()
-        ngd_edge.type = self.ngd_edge_type
+        ngd_edge.predicate = self.ngd_edge_type
         ngd_edge.subject = subject
         ngd_edge.object = object
-        ngd_edge_key = f"NGD:{subject}--{ngd_edge.type}--{object}"
+        ngd_edge_key = f"NGD:{subject}--{ngd_edge.predicate}--{object}"
         ngd_edge.provided_by = "ARAX"
         ngd_edge.is_defined_by = "ARAX"
         ngd_edge.attributes = [Attribute(name=self.ngd_edge_attribute_name,
@@ -161,7 +161,7 @@ class NGDQuerier:
 
     @staticmethod
     def _get_dsl_qedge_type_str(qedge: QEdge) -> str:
-        return f"type={qedge.type}" if qedge.type else ""
+        return f"type={qedge.predicate}" if qedge.predicate else ""
 
     @staticmethod
     def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):

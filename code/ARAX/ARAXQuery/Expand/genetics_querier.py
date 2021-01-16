@@ -211,5 +211,5 @@ class GeneticsQuerier:
                                    name=kp_node.get('name'))
 
     def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
-        kind_of_edge = swagger_edge.attributes[0].name if swagger_edge.attributes else swagger_edge.type
+        kind_of_edge = swagger_edge.attributes[0].name if swagger_edge.attributes else swagger_edge.predicate
         return f"{self.kp_name}:{swagger_edge.subject}-{kind_of_edge}-{swagger_edge.object}"

@@ -288,7 +288,7 @@ class KGQuerier:
     def _convert_kg2_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge()
         swagger_edge.id = f"KG2:{neo4j_edge.get('id')}"
-        swagger_edge.type = neo4j_edge.get("simplified_edge_label")
+        swagger_edge.predicate = neo4j_edge.get("simplified_edge_label")
         swagger_edge.subject = neo4j_edge.get("subject")
         swagger_edge.object = neo4j_edge.get("object")
         swagger_edge.relation = neo4j_edge.get("relation")
@@ -306,7 +306,7 @@ class KGQuerier:
     @staticmethod
     def _convert_kg2c_edge_to_swagger_edge(neo4j_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge()
-        swagger_edge.type = neo4j_edge.get("simplified_edge_label")
+        swagger_edge.predicate = neo4j_edge.get("simplified_edge_label")
         swagger_edge.subject = neo4j_edge.get("subject")
         swagger_edge.object = neo4j_edge.get("object")
         swagger_edge.id = f"KG2c:{neo4j_edge.get('id')}"
@@ -317,7 +317,7 @@ class KGQuerier:
 
     def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Edge:
         swagger_edge = Edge()
-        swagger_edge.type = neo4j_edge.get("predicate")
+        swagger_edge.predicate = neo4j_edge.get("predicate")
         swagger_edge.subject = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
         swagger_edge.object = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
         swagger_edge.id = f"KG1:{neo4j_edge.get('id')}"
@@ -402,7 +402,7 @@ class KGQuerier:
     @staticmethod
     def _get_cypher_for_query_edge(qedge_key: str, qg: QueryGraph, enforce_directionality: bool) -> str:
         qedge = qg.edges[qedge_key]
-        qedge_type_cypher = f":{qedge.type}" if qedge.type else ""
+        qedge_type_cypher = f":{qedge.predicate}" if qedge.predicate else ""
         full_qedge_cypher = f"-[{qedge_key}{qedge_type_cypher}]-"
         if enforce_directionality:
             full_qedge_cypher += ">"

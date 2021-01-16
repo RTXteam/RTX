@@ -95,11 +95,11 @@ class BTEQuerier:
                         loop = asyncio.new_event_loop()
                         seqd = SingleEdgeQueryDispatcher(input_cls=input_qnode_category,
                                                          output_cls=output_qnode_category,
-                                                         pred=qedge.type,
+                                                         pred=qedge.predicate,
                                                          input_id=eu.get_curie_prefix(curie),
                                                          values=eu.get_curie_local_id(curie),
                                                          loop=loop)
-                        log.debug(f"Sending query to BTE: {curie}-{qedge.type if qedge.type else ''}->{output_qnode_category}")
+                        log.debug(f"Sending query to BTE: {curie}-{qedge.predicate if qedge.predicate else ''}->{output_qnode_category}")
                         seqd.query()
                         reasoner_std_response = seqd.to_reasoner_std()
                     except Exception:
@@ -153,7 +153,7 @@ class BTEQuerier:
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
                 swagger_edge.id = edge.get("id")
-                swagger_edge.type = edge.get('type')
+                swagger_edge.predicate = edge.get('type')
                 swagger_edge.subject = remapped_node_keys.get(edge.get('source_id'), edge.get('source_id'))
                 swagger_edge.object = remapped_node_keys.get(edge.get('target_id'), edge.get('target_id'))
                 swagger_edge.is_defined_by = "BTE"
@@ -198,8 +198,8 @@ class BTEQuerier:
         output_qnode = qg.nodes[output_qnode_key]
 
         # Make sure predicate is allowed
-        if qedge.type not in valid_bte_inputs_dict['predicates'] and qedge.type is not None:
-            log.error(f"BTE does not accept predicate '{qedge.type}'. Valid options are "
+        if qedge.predicate not in valid_bte_inputs_dict['predicates'] and qedge.predicate is not None:
+            log.error(f"BTE does not accept predicate '{qedge.predicate}'. Valid options are "
                       f"{valid_bte_inputs_dict['predicates']}", error_code="InvalidInput")
             return "", ""
 
