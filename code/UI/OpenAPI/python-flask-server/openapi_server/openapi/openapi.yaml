@@ -14,7 +14,7 @@ externalDocs:
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
 - description: ARAX Translator Reasoner API
-  url: https://arax.ncats.io/devED/api/arax/v1
+  url: https://arax.ncats.io/api/arax/v1
 tags:
 - description: Get supported relationships by source and target
   externalDocs:
@@ -291,7 +291,7 @@ components:
         - Robokop
         previous_message_processing_plan:
         - previous_message_uris:
-          - https://rtx.ncats.io/devED/api/rtx/v1/message/300
+          - https://rtx.ncats.io/api/rtx/v1/message/300
           previous_messages:
           - knowledge_graph: ""
             results:
@@ -314,7 +314,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/api/rtx/v1/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -339,7 +339,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/api/rtx/v1/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -367,7 +367,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/api/rtx/v1/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -392,7 +392,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/api/rtx/v1/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -405,7 +405,7 @@ components:
           - mod45filter
           - redirect2RTX
         - previous_message_uris:
-          - https://rtx.ncats.io/devED/api/rtx/v1/message/300
+          - https://rtx.ncats.io/api/rtx/v1/message/300
           previous_messages:
           - knowledge_graph: ""
             results:
@@ -428,7 +428,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/api/rtx/v1/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -453,7 +453,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/api/rtx/v1/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -481,7 +481,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/api/rtx/v1/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -506,7 +506,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/api/rtx/v1/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -598,7 +598,7 @@ components:
           key: '{}'
         context: https://rtx.ncats.io/ns/translator.jsonld
         reasoner_id: reasoner
-        id: https://arax.ncats.io/devED/api/rtx/v1/response/123
+        id: https://arax.ncats.io/api/rtx/v1/response/123
         logs:
         - code: code
           level: ERROR
@@ -712,7 +712,7 @@ components:
           type: string
         id:
           description: URI for this response
-          example: https://arax.ncats.io/devED/api/rtx/v1/response/123
+          example: https://arax.ncats.io/api/rtx/v1/response/123
           type: string
       required:
       - message
@@ -748,7 +748,7 @@ components:
             - id: ""
             - id: ""
           reasoner_id: RTX
-          id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+          id: https://arax.ncats.io/api/rtx/v1/result/234
           row_data:
           - ibuprofen
           - CHEMBL:CHEMBL521
@@ -773,7 +773,7 @@ components:
             - id: ""
             - id: ""
           reasoner_id: RTX
-          id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+          id: https://arax.ncats.io/api/rtx/v1/result/234
           row_data:
           - ibuprofen
           - CHEMBL:CHEMBL521
@@ -867,7 +867,7 @@ components:
           - id: ""
           - id: ""
         reasoner_id: RTX
-        id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+        id: https://arax.ncats.io/api/rtx/v1/result/234
         row_data:
         - ibuprofen
         - CHEMBL:CHEMBL521
@@ -900,7 +900,7 @@ components:
           type: object
         id:
           description: URI for this result
-          example: https://arax.ncats.io/devED/api/rtx/v1/result/234
+          example: https://arax.ncats.io/api/rtx/v1/result/234
           type: string
         description:
           description: A free text description of this result answer from the reasoner
@@ -1086,6 +1086,11 @@ components:
             QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=True,
             each n1 must be connected to at least one n2.
           type: boolean
+        option_group_id:
+          description: 'Optional string acting as a label on a set of nodes and/or
+            edges indicating that they belong to a group that are to be evaluated
+            as a group. '
+          type: string
       type: object
     QEdge:
       additionalProperties: true
@@ -1124,11 +1129,12 @@ components:
           type: string
         exclude:
           description: If set to true, then all subgraphs containing this edge are
-            excluded from the final results.
+            excluded from the final results. (optional)
           type: boolean
         option_group_id:
-          description: 'Any string acting as a label on two or more edges indicating
-            that they belong to a group that are to be evaluated as alternative '
+          description: 'Optional string acting as a label on a set of nodes and/or
+            edges indicating that they belong to a group that are to be evaluated
+            as a group. '
           type: string
       required:
       - object
@@ -1270,7 +1276,7 @@ components:
       additionalProperties: true
       example:
         previous_message_uris:
-        - https://rtx.ncats.io/devED/api/rtx/v1/message/300
+        - https://rtx.ncats.io/api/rtx/v1/message/300
         previous_messages:
         - knowledge_graph: ""
           results:
@@ -1293,7 +1299,7 @@ components:
               - id: ""
               - id: ""
             reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+            id: https://arax.ncats.io/api/rtx/v1/result/234
             row_data:
             - ibuprofen
             - CHEMBL:CHEMBL521
@@ -1318,7 +1324,7 @@ components:
               - id: ""
               - id: ""
             reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+            id: https://arax.ncats.io/api/rtx/v1/result/234
             row_data:
             - ibuprofen
             - CHEMBL:CHEMBL521
@@ -1346,7 +1352,7 @@ components:
               - id: ""
               - id: ""
             reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+            id: https://arax.ncats.io/api/rtx/v1/result/234
             row_data:
             - ibuprofen
             - CHEMBL:CHEMBL521
@@ -1371,7 +1377,7 @@ components:
               - id: ""
               - id: ""
             reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+            id: https://arax.ncats.io/api/rtx/v1/result/234
             row_data:
             - ibuprofen
             - CHEMBL:CHEMBL521
@@ -1387,7 +1393,7 @@ components:
         previous_message_uris:
           description: List of URIs for Message objects to fetch and process
           example:
-          - https://rtx.ncats.io/devED/api/rtx/v1/message/300
+          - https://rtx.ncats.io/api/rtx/v1/message/300
           items:
             type: string
           type: array
