@@ -154,8 +154,8 @@ class BTEQuerier:
                 swagger_edge = Edge()
                 swagger_edge.id = edge.get("id")
                 swagger_edge.type = edge.get('type')
-                swagger_edge.source_id = remapped_node_keys.get(edge.get('source_id'), edge.get('source_id'))
-                swagger_edge.target_id = remapped_node_keys.get(edge.get('target_id'), edge.get('target_id'))
+                swagger_edge.subject = remapped_node_keys.get(edge.get('source_id'), edge.get('source_id'))
+                swagger_edge.object = remapped_node_keys.get(edge.get('target_id'), edge.get('target_id'))
                 swagger_edge.is_defined_by = "BTE"
                 swagger_edge.provided_by = edge.get('edge_source')
                 # Map the returned BTE qg_id back to the original qedge_key in our query graph
@@ -187,8 +187,8 @@ class BTEQuerier:
 
         # Figure out which query node is input vs. output
         if enforce_directionality:
-            input_qnode_key = qedge.source_id
-            output_qnode_key = qedge.target_id
+            input_qnode_key = qedge.subject
+            output_qnode_key = qedge.object
         else:
             input_qnode_key = next(qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.id)
             output_qnode_key = set(qg.nodes).difference({input_qnode_key})
@@ -251,7 +251,7 @@ class BTEQuerier:
         # And remove any edges that used them
         edge_ids_to_remove = set()
         for edge_id, edge in kg.edges_by_qg_id[qedge_key].items():
-            if edge.target_id in output_node_keys_to_remove:  # Edge target_id always contains output node ID for BTE
+            if edge.object in output_node_keys_to_remove:  # Edge object always contains output node ID for BTE
                 edge_ids_to_remove.add(edge_id)
         for edge_id in edge_ids_to_remove:
             kg.edges_by_qg_id[qedge_key].pop(edge_id)
@@ -263,8 +263,8 @@ class BTEQuerier:
         edge_to_nodes_map = dict()
         for qedge_key, edges in kg.edges_by_qg_id.items():
             for edge_key, edge in edges.items():
-                # BTE single-edge queries are always directed (meaning, edge.source_id == input qnode ID)
-                edge_to_nodes_map[edge.id] = {input_qnode_key: edge.source_id, output_qnode_key: edge.target_id}
+                # BTE single-edge queries are always directed (meaning, edge.subject == input qnode ID)
+                edge_to_nodes_map[edge.id] = {input_qnode_key: edge.subject, output_qnode_key: edge.object}
         return edge_to_nodes_map
 
     @staticmethod

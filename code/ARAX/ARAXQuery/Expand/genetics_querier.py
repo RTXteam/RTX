@@ -57,8 +57,8 @@ class GeneticsQuerier:
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         qedge = modified_query_graph.edges[0]
-        source_qnode_key = qedge.source_id
-        target_qnode_key = qedge.target_id
+        source_qnode_key = qedge.subject
+        target_qnode_key = qedge.object
 
         # Answer the query using the KP and load its answers into our Swagger model
         json_response = self._send_query_to_kp(modified_query_graph, log)
@@ -72,8 +72,8 @@ class GeneticsQuerier:
             # Populate our final KG with nodes and edges
             for returned_edge in returned_kg['edges']:
                 # Skip edges missing a source and/or target ID (have encountered these before)
-                if not returned_edge['source_id'] or not returned_edge['target_id']:
-                    log.warning(f"Edge returned from GeneticsKP is lacking a source_id and/or target_id: {returned_edge}."
+                if not returned_edge['subject'] or not returned_edge['object']:
+                    log.warning(f"Edge returned from GeneticsKP is lacking a subject and/or object: {returned_edge}."
                                 f" Will skip adding this edge to the KG.")
                 else:
                     if returned_edge['score_name'] not in self.score_type_lookup:
@@ -84,8 +84,8 @@ class GeneticsQuerier:
                         for qedge_key in qg_id_mappings['edges'][swagger_edge.id]:
                             swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
                             final_kg.add_edge(swagger_edge, qedge_key)
-                        edge_to_nodes_map[swagger_edge.id] = {source_qnode_key: swagger_edge.source_id,
-                                                              target_qnode_key: swagger_edge.target_id}
+                        edge_to_nodes_map[swagger_edge.id] = {source_qnode_key: swagger_edge.subject,
+                                                              target_qnode_key: swagger_edge.object}
             log.warning(f"Encountered unknown score(s) from {self.kp_name}: {unknown_scores_encountered}. "
                         f"Not sure what data type to assign these.")
             for returned_node in returned_kg['nodes']:
@@ -165,10 +165,10 @@ class GeneticsQuerier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)  # Our query graph is single-edge
         qedge = query_graph.edges[qedge_key]
         stripped_qedge = {'id': qedge_key,
-                          'source_id': qedge.source_id,
-                          'target_id': qedge.target_id,
+                          'subject': qedge.subject,
+                          'object': qedge.object,
                           'type': list(self.accepted_edge_types)[0]}
-        source_stripped_qnode = stripped_qnodes[qedge.source_id]
+        source_stripped_qnode = stripped_qnodes[qedge.subject]
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
@@ -192,8 +192,8 @@ class GeneticsQuerier:
 
     def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge(id=kp_edge['id'],
-                            source_id=kp_edge['source_id'],
-                            target_id=kp_edge['target_id'],
+                            subject=kp_edge['source_id'],
+                            object=kp_edge['target_id'],
                             type=kp_edge['type'],
                             provided_by=self.kp_name,
                             is_defined_by='ARAX')
@@ -212,4 +212,4 @@ class GeneticsQuerier:
 
     def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
         kind_of_edge = swagger_edge.attributes[0].name if swagger_edge.attributes else swagger_edge.type
-        return f"{self.kp_name}:{swagger_edge.source_id}-{kind_of_edge}-{swagger_edge.target_id}"
+        return f"{self.kp_name}:{swagger_edge.subject}-{kind_of_edge}-{swagger_edge.object}"

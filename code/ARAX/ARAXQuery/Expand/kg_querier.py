@@ -126,8 +126,8 @@ class KGQuerier:
         log.debug(f"Generating cypher for edge {qedge_key} query graph")
         try:
             # Build the match clause
-            source_qnode_key = qedge.source_id
-            target_qnode_key = qedge.target_id
+            source_qnode_key = qedge.subject
+            target_qnode_key = qedge.object
             qedge_cypher = self._get_cypher_for_query_edge(qedge_key, qg, enforce_directionality)
             source_qnode_cypher = self._get_cypher_for_query_node(source_qnode_key, qg, kg_name)
             target_qnode_cypher = self._get_cypher_for_query_node(target_qnode_key, qg, kg_name)
@@ -289,8 +289,8 @@ class KGQuerier:
         swagger_edge = Edge()
         swagger_edge.id = f"KG2:{neo4j_edge.get('id')}"
         swagger_edge.type = neo4j_edge.get("simplified_edge_label")
-        swagger_edge.source_id = neo4j_edge.get("subject")
-        swagger_edge.target_id = neo4j_edge.get("object")
+        swagger_edge.subject = neo4j_edge.get("subject")
+        swagger_edge.object = neo4j_edge.get("object")
         swagger_edge.relation = neo4j_edge.get("relation")
         swagger_edge.publications = neo4j_edge.get("publications")
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
@@ -307,8 +307,8 @@ class KGQuerier:
     def _convert_kg2c_edge_to_swagger_edge(neo4j_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge()
         swagger_edge.type = neo4j_edge.get("simplified_edge_label")
-        swagger_edge.source_id = neo4j_edge.get("subject")
-        swagger_edge.target_id = neo4j_edge.get("object")
+        swagger_edge.subject = neo4j_edge.get("subject")
+        swagger_edge.object = neo4j_edge.get("object")
         swagger_edge.id = f"KG2c:{neo4j_edge.get('id')}"
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.is_defined_by = "ARAX/KG2c"
@@ -318,8 +318,8 @@ class KGQuerier:
     def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Edge:
         swagger_edge = Edge()
         swagger_edge.type = neo4j_edge.get("predicate")
-        swagger_edge.source_id = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
-        swagger_edge.target_id = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
+        swagger_edge.subject = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
+        swagger_edge.object = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
         swagger_edge.id = f"KG1:{neo4j_edge.get('id')}"
         swagger_edge.relation = neo4j_edge.get("relation")
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
@@ -381,10 +381,10 @@ class KGQuerier:
 
     @staticmethod
     def _remap_edge(edge: Edge, new_curie: str, old_curie: str) -> Edge:
-        if edge.source_id == new_curie:
-            edge.source_id = old_curie
-        if edge.target_id == new_curie:
-            edge.target_id = old_curie
+        if edge.subject == new_curie:
+            edge.subject = old_curie
+        if edge.object == new_curie:
+            edge.object = old_curie
         return edge
 
     @staticmethod

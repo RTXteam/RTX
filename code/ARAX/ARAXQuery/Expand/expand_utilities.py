@@ -38,7 +38,7 @@ class QGOrganizedKnowledgeGraph:
 
     def get_all_node_keys_used_by_edges(self) -> Set[str]:
         return {node_key for edges in self.edges_by_qg_id.values() for edge in edges.values()
-                for node_key in [edge.source_id, edge.target_id]}
+                for node_key in [edge.subject, edge.object]}
 
     def get_all_node_keys(self) -> Set[str]:
         return {node_key for nodes in self.nodes_by_qg_id.values() for node_key in nodes}
@@ -113,7 +113,7 @@ def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]) -> Lis
 
 
 def get_node_keys_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
-    return {node_key for edge in edges_dict.values() for node_key in [edge.source_id, edge.target_id]}
+    return {node_key for edge in edges_dict.values() for node_key in [edge.subject, edge.object]}
 
 
 def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
@@ -135,9 +135,9 @@ def get_qg_without_kryptonite_portion(qg: QueryGraph) -> QueryGraph:
     kryptonite_qedge_keys = [qedge_key for qedge_key, qedge in qg.edges.items() if qedge.exclude]
     normal_qedge_keys = set(qg.edges).difference(kryptonite_qedge_keys)
     qnode_keys_used_by_kryptonite_qedges = {qnode_key for qedge_key in kryptonite_qedge_keys for qnode_key in
-                                            {qg.edges[qedge_key].source_id, qg.edges[qedge_key].target_id}}
+                                            {qg.edges[qedge_key].subject, qg.edges[qedge_key].object}}
     qnode_keys_used_by_normal_qedges = {qnode_key for qedge_key in normal_qedge_keys for qnode_key in
-                                        {qg.edges[qedge_key].source_id, qg.edges[qedge_key].target_id}}
+                                        {qg.edges[qedge_key].subject, qg.edges[qedge_key].object}}
     qnode_keys_used_only_by_kryptonite_qedges = qnode_keys_used_by_kryptonite_qedges.difference(qnode_keys_used_by_normal_qedges)
     normal_qnode_keys = set(qg.nodes).difference(qnode_keys_used_only_by_kryptonite_qedges)
     return QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items() if qnode_key in normal_qnode_keys},
@@ -150,7 +150,7 @@ def get_required_portion_of_qg(query_graph: QueryGraph) -> QueryGraph:
 
 
 def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -> Union[QEdge, Edge]:
-    return {edge_a.source_id, edge_a.target_id} == {edge_b.source_id, edge_b.target_id}
+    return {edge_a.subject, edge_a.object} == {edge_b.subject, edge_b.object}
 
 
 def convert_standard_kg_to_qg_organized_kg(standard_kg: KnowledgeGraph) -> QGOrganizedKnowledgeGraph:
@@ -318,7 +318,7 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
     for qnode_key_option in qnode_keys_to_choose_from:
         all_qedge_keys_using_qnode = get_connected_qedge_keys(qnode_key_option, qg)
         all_connected_qnode_keys = {qnode_key for qedge_key in all_qedge_keys_using_qnode for qnode_key in
-                                    {qg.edges[qedge_key].source_id, qg.edges[qedge_key].target_id}}.difference({qnode_key_option})
+                                    {qg.edges[qedge_key].subject, qg.edges[qedge_key].object}}.difference({qnode_key_option})
         subgraph_connections = qnode_keys_to_connect_to.intersection(all_connected_qnode_keys)
         if subgraph_connections:
             return qnode_key_option, subgraph_connections
@@ -334,11 +334,11 @@ def switch_kg_to_arax_curie_format(dict_kg: QGOrganizedKnowledgeGraph) -> QGOrga
             converted_kg.add_node(node_key, node, qnode_key)
     for qedge_key, edges in dict_kg.edges_by_qg_id.items():
         for edge_id, edge in edges.items():
-            edge.source_id = convert_curie_to_arax_format(edge.source_id)
-            edge.target_id = convert_curie_to_arax_format(edge.target_id)
+            edge.subject = convert_curie_to_arax_format(edge.subject)
+            edge.object = convert_curie_to_arax_format(edge.object)
             converted_kg.add_edge(edge, qedge_key)
     return converted_kg
 
 
 def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
-    return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.source_id, qedge.target_id}}
+    return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
