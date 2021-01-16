@@ -74,8 +74,8 @@ class OverlayExposuresData:
                     #               source_id=source_synonym,
                     #               target_id=target_synonym)
                     qedge = QEdge(id=f"icees_{source_synonym}--{target_synonym}",
-                                  source_id=source_synonym,
-                                  target_id=target_synonym)
+                                  subject=source_synonym,
+                                  object=target_synonym)
                     log.debug(f"Sending query to ICEES+ for {source_synonym}--{target_synonym}")
                     p_value = self._get_icees_p_value_for_edge(qedge, log)
                     if p_value is not None:
@@ -122,14 +122,14 @@ class OverlayExposuresData:
         num_edges_obtained_icees_data_for = 0
         edges_by_node_pair = self._get_edges_by_node_pair(knowledge_graph)  # Don't duplicate effort for parallel edges
         for node_pair_key, node_pair_edges in edges_by_node_pair.items():
-            source_id = node_pair_edges[0].source_id
-            target_id = node_pair_edges[0].target_id
+            source_id = node_pair_edges[0].subject
+            target_id = node_pair_edges[0].object
             accepted_source_synonyms = self._get_accepted_synonyms(source_id)
             accepted_target_synonyms = self._get_accepted_synonyms(target_id)
             if accepted_source_synonyms and accepted_target_synonyms:
                 # Query ICEES for each possible combination of accepted source/target synonyms
                 for source_curie_to_try, target_curie_to_try in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
-                    qedge = QEdge(id=f"icees_e00", source_id=source_curie_to_try, target_id=target_curie_to_try)
+                    qedge = QEdge(id=f"icees_e00", subject=source_curie_to_try, object=target_curie_to_try)
                     log.debug(f"Sending query to ICEES+ for {source_curie_to_try}--{target_curie_to_try}")
                     p_value = self._get_icees_p_value_for_edge(qedge, log)
                     if p_value is not None:
@@ -180,7 +180,7 @@ class OverlayExposuresData:
                     source_id = edge.get("subject")
                     target_id = edge.get("object")
                     # Skip any self-edges and reverse edges in ICEES response
-                    if source_id == qedge.source_id and target_id == qedge.target_id:
+                    if source_id == qedge.subject and target_id == qedge.object:
                         p_values += [attribute["p_value"] for attribute in edge.get("edge_attributes", []) if attribute.get("p_value") is not None]
                 if p_values:
                     average_p_value = sum(p_values) / len(p_values)
@@ -208,21 +208,22 @@ class OverlayExposuresData:
             self._create_icees_edge_attribute(p_value),
             EdgeAttribute(name="is_defined_by", value="ARAX"),
             EdgeAttribute(name="provided_by", value="ICEES+"),
-            EdgeAttribute(name="qedge_ids", value=[self.virtual_relation_label])
+            #EdgeAttribute(name="qedge_ids", value=[self.virtual_relation_label])
         ]
         edge = Edge(predicate=self.icees_edge_type, subject=source_curie, object=target_curie,
                         relation=self.virtual_relation_label, attributes=edge_attribute_list)
+        edge.qedge_keys=[self.virtual_relation_label]
         return id, edge
 
     @staticmethod
     def _get_nodes_by_qg_id(knowledge_graph):
-        nodes_by_qg_id = dict()
+        nodes_by_qg_key = dict()
         for key, node in knowledge_graph.nodes.items():
-            for qnode_id in node.qnode_ids:
-                if qnode_id not in nodes_by_qg_id:
-                    nodes_by_qg_id[qnode_id] = dict()
-                nodes_by_qg_id[qnode_id][node.id] = node
-        return nodes_by_qg_id
+            for qnode_key in node.qnode_keys:
+                if qnode_key not in nodes_by_qg_key:
+                    nodes_by_qg_key[qnode_key] = dict()
+                nodes_by_qg_key[qnode_key][key] = node
+        return nodes_by_qg_key
 
     @staticmethod
     def _get_node_synonyms(knowledge_graph):
