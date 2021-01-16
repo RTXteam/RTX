@@ -3,17 +3,22 @@ import pickle
 import requests
 import os
 import multiprocessing
+import argparse
 
 # import internal modules
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 fpath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
 
-with open(fpath + "/preferred_synonyms_kg2_3_4_with_concepts.pkl", "rb") as file:
-    temp = pickle.load(file)
+parser = argparse.ArgumentParser(description="Map the curie to concept in parallel", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('--PKLfile', type=str, help="The path of .pkl file", default='~/RTX/code/ARAX/KnowledgeSources/COHD_local/data/preferred_synonyms_kg2_5_0_with_concepts.pkl')
+parser.add_argument('--Batchsize', type=int, help="Batch size", default=200000)
+parser.add_argument('--Process', type=int, help="The number of processes", default=200)
+parser.add_argument('--OutFile', type=str, help="The path of new .pkl file", default='~/RTX/code/ARAX/KnowledgeSources/COHD_local/data/preferred_synonyms_kg2_5_0_with_concepts.pkl')
+args = parser.parse_args()
 
-with open(fpath + "/preferred_synonyms_kg2_3_4_with_concepts_new.pkl", "rb") as file:
-    synonyms_kg2 = pickle.load(file)
+with open(args.PKLfile, "rb") as file:
+    synonyms_file = pickle.load(file)
 
 concept_table = pd.read_csv(fpath + "/Athena_tables/ALL_CONCEPT_filtered.txt", sep='\t', index_col=None)
 concepts_table_select = concept_table.loc[:, ['concept_id', 'vocabulary_id', 'concept_code']]
@@ -52,7 +57,7 @@ def change_format(synonym):
 def get_OMOP(key):
 
     print(key, flush=True)
-    temp = [concepts_table_select.loc[concepts_table_select['curie_name'] == change_format(synonym), 'concept_id'] for synonym in synonyms_kg2[key]['synonyms']]
+    temp = [concepts_table_select.loc[concepts_table_select['curie_name'] == change_format(synonym), 'concept_id'] for synonym in synonyms_file[key]['synonyms']]
     concept_ids = [int(item) for item in temp if len(item)!=0]
 
     return concept_ids
@@ -61,7 +66,7 @@ def get_OMOP(key):
 def get_omop_id(key):
 
     print(key, flush=True)
-    synonyms = [change_format(synonym) for synonym in synonyms_kg2[key]['synonyms'] if synonym.split(":")[0] != "OMIM" and synonym.split(":")[0] != "Orphanet" and synonym.split(":")[0] != "CHEMBL.COMPOUND"]
+    synonyms = [change_format(synonym) for synonym in synonyms_file[key]['synonyms'] if synonym.split(":")[0] != "OMIM" and synonym.split(":")[0] != "Orphanet" and synonym.split(":")[0] != "CHEMBL.COMPOUND"]
     # synonym = key
     # if synonym.split(":")[0] != "OMIM" and synonym.split(":")[0] != "Orphanet" and synonym.split(":")[0] != "CHEMBL.COMPOUND":
     #     synonyms = [change_format(synonym)]
@@ -108,43 +113,39 @@ def get_omop_id(key):
         return (key, [])
 
 
-# query_key = list(synonyms_kg2.keys())
-# print(f'Total curies: {len(synonyms_kg2)}', flush=True)
+query_key = list(synonyms_file.keys())
+print(f'Total curies: {len(synonyms_file)}', flush=True)
 
-# batch = list(range(0, len(query_key), 200000))
-# batch.append(len(query_key))
-# print(f'Total batches: {len(batch)-1}', flush=True)
+batch = list(range(0, len(query_key), args.Batchsize))
+batch.append(len(query_key))
+print(f'Total batches: {len(batch)-1}', flush=True)
 
-# for i in range(len(batch)):
-#     if (i + 1) < len(batch):
-#         print(f'Here is batch{i + 1}', flush=True)
-#         start = batch[i]
-#         end = batch[i + 1]
-#         sub_query_key = query_key[start:end]
-#         with multiprocessing.Pool(processes=200) as executor:
-#             query_res = [elem for elem in executor.map(get_OMOP, sub_query_key)]
+for i in range(len(batch)):
+    if (i + 1) < len(batch):
+        print(f'Here is batch{i + 1}', flush=True)
+        start = batch[i]
+        end = batch[i + 1]
+        sub_query_key = query_key[start:end]
+        with multiprocessing.Pool(processes=args.Process) as executor:
+            query_res = [elem for elem in executor.map(get_OMOP, sub_query_key)]
 
-#         for key_item in zip(sub_query_key, query_res):
-#             key, concept_ids = key_item
-#             if len(concept_ids) != 0:
-#                 synonyms_kg2[key]['concept_ids'] = concept_ids
-#             else:
-#                 synonyms_kg2[key]['concept_ids'] = []
+        for key_item in zip(sub_query_key, query_res):
+            key, concept_ids = key_item
+            if len(concept_ids) != 0:
+                synonyms_file[key]['concept_ids'] = concept_ids
+            else:
+                synonyms_file[key]['concept_ids'] = []
+        with open(fpath + "/intermediate_synonyms_concepts.pkl", "wb") as file:
+            pickle.dump(synonyms_file, file)
 
-#         with open(fpath + "/preferred_synonyms_kg2_3_4_with_concepts.pkl", "wb") as file:
-#             pickle.dump(synonyms_kg2, file)
+print("########### call API for the curies with no concept id when directly mapping the name to concept ############", flush=True)
+total_curies = len([key for key in synonyms_file if len(synonyms_file[key]['concept_ids']) == 0])
+print(f"Total curies with no concept id : {total_curies}", flush=True)
+total_curies = len([key for key in synonyms_file if len(synonyms_file[key]['concept_ids']) == 0])
 
+query_key = [key for key in synonyms_file if len(synonyms_file[key]['concept_ids']) == 0]
 
-# total_curies = len([key for key in synonyms_kg2 if len(synonyms_kg2[key]['concept_ids']) == 0])
-# print(f"Total curies: {total_curies}", flush=True)
-total_curies = len([key for key in temp if len(temp[key]['concept_ids']) == 0])
-print(f"Total curies: {total_curies}", flush=True)
-
-# query_key = [key for key in synonyms_kg2 if len(synonyms_kg2[key]['concept_ids']) == 0]
-query_key = [key for key in temp if len(temp[key]['concept_ids']) == 0]
-del temp
-
-batch = list(range(0, len(query_key), 200000))
+batch = list(range(0, len(query_key), args.Batchsize))
 batch.append(len(query_key))
 print(f'Total batches: {len(batch)-1}', flush=True)
 
@@ -161,7 +162,7 @@ for i in range(2, len(batch)):
         for key_item in query_res:
             key, concept_ids = key_item
             if len(concept_ids) != 0:
-                synonyms_kg2[key]['concept_ids'] = concept_ids
+                synonyms_file[key]['concept_ids'] = concept_ids
 
-        with open(fpath + "/preferred_synonyms_kg2_3_4_with_concepts_new.pkl", "wb") as file:
-            pickle.dump(synonyms_kg2, file)
+        with open(args.OutFile, "wb") as file:
+            pickle.dump(synonyms_file, file)
