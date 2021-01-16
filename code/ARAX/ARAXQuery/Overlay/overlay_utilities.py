@@ -57,26 +57,26 @@ def get_node_pairs_to_overlay(source_qnode_id: str, target_qnode_id: str, query_
 
 def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
     # Returns all node IDs in the KG organized like so: {"n00": {"DOID:12"}, "n01": {"UniProtKB:1", "UniProtKB:2", ...}}
-    node_ids_by_qg_id = dict()
+    node_keys_by_qg_key = dict()
     if knowledge_graph.nodes:
         for key, node in knowledge_graph.nodes.items():
-            for qnode_id in node.qnode_ids:
-                if qnode_id not in node_ids_by_qg_id:
-                    node_ids_by_qg_id[qnode_id] = set()
-                node_ids_by_qg_id[qnode_id].add(key)
-    return node_ids_by_qg_id
+            for qnode_key in node.qnode_keys:
+                if qnode_key not in node_keys_by_qg_key:
+                    node_keys_by_qg_key[qnode_key] = set()
+                node_keys_by_qg_key[qnode_key].add(key)
+    return node_keys_by_qg_key
 
 
 def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
     # Returns all edge IDs in the KG organized like so: {"e00": {"KG2:123", ...}, "e01": {"KG2:224", "KG2:225", ...}}
-    edge_ids_by_qg_id = dict()
+    edge_keys_by_qg_key = dict()
     if knowledge_graph.edges:
         for key, edge in knowledge_graph.edges.items():
-            for qedge_id in edge.qedge_ids:
-                if qedge_id not in edge_ids_by_qg_id:
-                    edge_ids_by_qg_id[qedge_id] = set()
-                edge_ids_by_qg_id[qedge_id].add(key)
-    return edge_ids_by_qg_id
+            for qedge_key in edge.qedge_keys:
+                if qedge_key not in edge_keys_by_qg_key:
+                    edge_keys_by_qg_key[qedge_key] = set()
+                edge_keys_by_qg_key[qedge_key].add(key)
+    return edge_keys_by_qg_key
 
 
 def determine_virtual_qedge_option_group(source_qnode_id: str, target_qnode_id: str, query_graph: QueryGraph, log: Response) -> Optional[str]:
