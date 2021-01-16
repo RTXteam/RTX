@@ -42,12 +42,12 @@ class ComputeJaccard:
             intermediate_nodes = set()
             end_node_to_intermediate_node_set = dict()  # keys will be end node curies, values will be tuples the (intermediate curie ids, edge_type)
             for key, node in message.knowledge_graph.nodes.items():
-                if parameters['intermediate_node_id'] in node.qnode_ids:
+                if parameters['intermediate_node_id'] in node.qnode_keys:
                     intermediate_nodes.add(key)  # add the intermediate node by it's identifier
                 # also look for the source node id
-                if parameters['start_node_id'] in node.qnode_ids:
+                if parameters['start_node_id'] in node.qnode_keys:
                     source_node_id = key
-                if parameters['end_node_id'] in node.qnode_ids:
+                if parameters['end_node_id'] in node.qnode_keys:
                     end_node_to_intermediate_node_set[key] = set()
 
             # now iterate over the edges to look for the ones we need to add  # TODO: Here, I won't care which direction the edges are pointing
@@ -75,7 +75,7 @@ class ComputeJaccard:
             now = datetime.now()
             #edge_type = parameters['virtual_edge_type']
             edge_type = 'has_jaccard_index_with'
-            qedge_ids = [parameters['virtual_relation_label']]
+            qedge_keys = [parameters['virtual_relation_label']]
             relation = parameters['virtual_relation_label']
             is_defined_by = "ARAX"
             defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -117,13 +117,14 @@ class ComputeJaccard:
                     EdgeAttribute(name="provided_by", value=provided_by),
                     EdgeAttribute(name="confidence", value=confidence),
                     EdgeAttribute(name="weight", value=weight),
-                    EdgeAttribute(name="qedge_ids", value=qedge_ids)
+                    #EdgeAttribute(name="qedge_ids", value=qedge_ids)
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id, target_id=target_id,
                 #             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
                 #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
                 edge = Edge(predicate=edge_type, subject=source_id, object=target_id,
                             attributes=edge_attribute_list)
+                edge.qedge_keys = qedge_keys
                 message.knowledge_graph.edges[id] = edge
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG

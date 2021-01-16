@@ -281,7 +281,7 @@ Use cases include:
 
 * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
 * For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
-* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
+* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
@@ -915,7 +915,7 @@ def main():
         #"overlay(action=compute_ngd)",
         #"overlay(action=compute_ngd, virtual_edge_type=NGD1, subject_qnode_key=n00, object_qnode_key=n01)",
         #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
-        # "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, subject_qnode_key=n00, target_qnode_id=n01)",
+        # "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, subject_qnode_key=n00, object_qnode_key=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
         #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",

@@ -89,7 +89,7 @@ class ComputeNGD:
                     # edge properties
                     now = datetime.now()
                     edge_type = "has_normalized_google_distance_with"
-                    qedge_ids = [parameters['virtual_relation_label']]
+                    qedge_keys = [parameters['virtual_relation_label']]
                     relation = parameters['virtual_relation_label']
                     is_defined_by = "ARAX"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -113,7 +113,7 @@ class ComputeNGD:
                         EdgeAttribute(name="provided_by", value=provided_by),
                         EdgeAttribute(name="confidence", value=confidence),
                         EdgeAttribute(name="weight", value=weight),
-                        EdgeAttribute(name="qedge_ids", value=qedge_ids)
+                        #EdgeAttribute(name="qedge_keys", value=qedge_keys)
                     ]
                     # edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
                     #             target_id=target_id,
@@ -122,6 +122,7 @@ class ComputeNGD:
                     #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
                     edge = Edge(predicate=edge_type, subject=source_id, object=target_id,
                                 attributes=edge_attribute_list)
+                    edge.qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
