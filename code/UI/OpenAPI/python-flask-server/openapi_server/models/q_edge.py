@@ -168,7 +168,7 @@ class QEdge(Model):
     def exclude(self):
         """Gets the exclude of this QEdge.
 
-        If set to true, then all subgraphs containing this edge are excluded from the final results.  # noqa: E501
+        If set to true, then all subgraphs containing this edge are excluded from the final results. (optional)  # noqa: E501
 
         :return: The exclude of this QEdge.
         :rtype: bool
@@ -179,7 +179,7 @@ class QEdge(Model):
     def exclude(self, exclude):
         """Sets the exclude of this QEdge.
 
-        If set to true, then all subgraphs containing this edge are excluded from the final results.  # noqa: E501
+        If set to true, then all subgraphs containing this edge are excluded from the final results. (optional)  # noqa: E501
 
         :param exclude: The exclude of this QEdge.
         :type exclude: bool
@@ -191,7 +191,7 @@ class QEdge(Model):
     def option_group_id(self):
         """Gets the option_group_id of this QEdge.
 
-        Any string acting as a label on two or more edges indicating that they belong to a group that are to be evaluated as alternative   # noqa: E501
+        Optional string acting as a label on a set of nodes and/or edges indicating that they belong to a group that are to be evaluated as a group.   # noqa: E501
 
         :return: The option_group_id of this QEdge.
         :rtype: str
@@ -202,7 +202,7 @@ class QEdge(Model):
     def option_group_id(self, option_group_id):
         """Sets the option_group_id of this QEdge.
 
-        Any string acting as a label on two or more edges indicating that they belong to a group that are to be evaluated as alternative   # noqa: E501
+        Optional string acting as a label on a set of nodes and/or edges indicating that they belong to a group that are to be evaluated as a group.   # noqa: E501
 
         :param option_group_id: The option_group_id of this QEdge.
         :type option_group_id: str
