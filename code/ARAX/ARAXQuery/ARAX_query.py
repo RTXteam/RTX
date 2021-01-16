@@ -475,12 +475,12 @@ class ARAXQuery:
                 return response
 
             #### Import the individual ARAX processing modules and process DSL commands
-            #from ARAX_expander import ARAXExpander
+            from ARAX_expander import ARAXExpander
             from ARAX_overlay import ARAXOverlay
             from ARAX_filter_kg import ARAXFilterKG
             from ARAX_resultify import ARAXResultify
             from ARAX_filter_results import ARAXFilterResults
-            #expander = ARAXExpander()
+            expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
             filter_kg = ARAXFilterKG()
