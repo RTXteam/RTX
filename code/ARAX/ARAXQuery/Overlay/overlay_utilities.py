@@ -6,9 +6,9 @@ import sys
 from typing import Dict, Optional, Set, Tuple
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.knowledge_graph import KnowledgeGraph
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.message import Message
+from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.message import Message
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_resultify import ARAXResultify
 from ARAX_response import ARAXResponse
@@ -26,8 +26,8 @@ def get_node_pairs_to_overlay(source_qnode_id: str, target_qnode_id: str, query_
     kg_nodes_by_qg_id = get_node_ids_by_qg_id(knowledge_graph)
     kg_edges_by_qg_id = get_edge_ids_by_qg_id(knowledge_graph)
     # Grab the portion of the QG already 'expanded' (aka, present in the KG)
-    sub_query_graph = QueryGraph(nodes=[qnode for qnode in query_graph.nodes if qnode.id in set(kg_nodes_by_qg_id)],
-                                 edges=[qedge for qedge in query_graph.edges if qedge.id in set(kg_edges_by_qg_id)])
+    sub_query_graph = QueryGraph(nodes={key:qnode for key, qnode in query_graph.nodes.items() if key in set(kg_nodes_by_qg_id)},
+                                 edges={key:qedge for key, qedge in query_graph.edges.items() if key in set(kg_edges_by_qg_id)})
 
     # Compute results using Resultify so we can see which nodes appear in the same results
     sub_message = Message()
@@ -59,11 +59,11 @@ def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]
     # Returns all node IDs in the KG organized like so: {"n00": {"DOID:12"}, "n01": {"UniProtKB:1", "UniProtKB:2", ...}}
     node_ids_by_qg_id = dict()
     if knowledge_graph.nodes:
-        for node in knowledge_graph.nodes:
+        for key, node in knowledge_graph.nodes.items():
             for qnode_id in node.qnode_ids:
                 if qnode_id not in node_ids_by_qg_id:
                     node_ids_by_qg_id[qnode_id] = set()
-                node_ids_by_qg_id[qnode_id].add(node.id)
+                node_ids_by_qg_id[qnode_id].add(key)
     return node_ids_by_qg_id
 
 
@@ -71,17 +71,17 @@ def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]
     # Returns all edge IDs in the KG organized like so: {"e00": {"KG2:123", ...}, "e01": {"KG2:224", "KG2:225", ...}}
     edge_ids_by_qg_id = dict()
     if knowledge_graph.edges:
-        for edge in knowledge_graph.edges:
+        for key, edge in knowledge_graph.edges.items():
             for qedge_id in edge.qedge_ids:
                 if qedge_id not in edge_ids_by_qg_id:
                     edge_ids_by_qg_id[qedge_id] = set()
-                edge_ids_by_qg_id[qedge_id].add(edge.id)
+                edge_ids_by_qg_id[qedge_id].add(key)
     return edge_ids_by_qg_id
 
 
 def determine_virtual_qedge_option_group(source_qnode_id: str, target_qnode_id: str, query_graph: QueryGraph, log: Response) -> Optional[str]:
     # Determines what option group ID a virtual qedge between the two input qnodes should have
-    qnodes = [qnode for qnode in query_graph.nodes if qnode.id in {source_qnode_id, target_qnode_id}]
+    qnodes = [qnode for key, qnode in query_graph.nodes.items() if key in {source_qnode_id, target_qnode_id}]
     qnode_option_group_ids = {qnode.option_group_id for qnode in qnodes if qnode.option_group_id}
     if len(qnode_option_group_ids) == 1:
         return list(qnode_option_group_ids)[0]
