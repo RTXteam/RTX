@@ -771,6 +771,12 @@ components:
             with is_set=True is connected to a QNode (n2) with is_set=True,
             each n1 must be connected to at least one n2.
           default: false
+        option_group_id:
+          type: string
+          description: >-
+            Optional string acting as a label on a set of nodes and/or edges
+            indicating that they belong to a group that are to be
+            evaluated as a group. 
       additionalProperties: true
     QEdge:
       type: object
@@ -818,13 +824,13 @@ components:
           type: boolean
           description: >-
             If set to true, then all subgraphs containing this edge
-            are excluded from the final results.
+            are excluded from the final results. (optional)
         option_group_id:
           type: string
           description: >-
-            Any string acting as a label on two or more edges
+            Optional string acting as a label on a set of nodes and/or edges
             indicating that they belong to a group that are to be
-            evaluated as alternative 
+            evaluated as a group. 
       additionalProperties: true
       required:
         - subject
