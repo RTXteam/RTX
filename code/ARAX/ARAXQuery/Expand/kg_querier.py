@@ -217,7 +217,7 @@ class KGQuerier:
                         edge_to_nodes_map[swagger_edge_key][qnode_key] = neo4j_edge.get(qnode_key)
 
                     # Finally add the current edge to our answer knowledge graph
-                    final_kg.add_edge(swagger_edge, column_qedge_key)
+                    final_kg.add_edge(swagger_edge_key, swagger_edge, column_qedge_key)
 
         return final_kg, edge_to_nodes_map
 

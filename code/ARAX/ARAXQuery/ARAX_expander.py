@@ -323,7 +323,7 @@ class ARAXExpander:
                 kg.edges.remove(edge_key)
 
         # Return the response and done
-        only_kryptonite_qedges_expanded = all([eu.get_query_edge(query_graph, qedge_key).exclude for qedge_key in input_qedge_keys])
+        only_kryptonite_qedges_expanded = all([query_graph[qedge_key].exclude for qedge_key in input_qedge_keys])
         if not kg.nodes and not continue_if_no_results and not only_kryptonite_qedges_expanded:
             log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
         else:
@@ -375,20 +375,20 @@ class ARAXExpander:
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
                 return answer_kg, edge_to_nodes_map
-            log.debug(f"Query for edge {qedge_key.id} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+            log.debug(f"Query for edge {qedge_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
                 answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
             if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
-                answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge_key.id, set(edge_query_graph.nodes), log)
+                answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge_key, set(edge_query_graph.nodes), log)
 
             # Make sure our query has been fulfilled (unless we're continuing if no results)
-            if not eu.qg_is_fulfilled(edge_query_graph, answer_kg) and not qedge_key.exclude and not qedge_key.option_group_id:
+            if not eu.qg_is_fulfilled(edge_query_graph, answer_kg) and not qedge.exclude and not qedge.option_group_id:
                 if continue_if_no_results:
-                    log.warning(f"No paths were found in {kp_to_use} satisfying qedge {qedge_key.id}")
+                    log.warning(f"No paths were found in {kp_to_use} satisfying qedge {qedge_key}")
                 else:
-                    log.error(f"No paths were found in {kp_to_use} satisfying qedge {qedge_key.id}", error_code="NoResults")
+                    log.error(f"No paths were found in {kp_to_use} satisfying qedge {qedge_key}", error_code="NoResults")
 
             return answer_kg, edge_to_nodes_map
 
@@ -919,9 +919,9 @@ def main():
     actions_parser = ActionsParser()
     actions_list = [
         "create_message",
-        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
-        "add_qnode(id=n01, type=protein, is_set=true)",
-        "add_qedge(id=e00, subject=n00, object=n01)",
+        "add_qnode(key=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
+        "add_qnode(key=n01, category=protein, is_set=true)",
+        "add_qedge(key=e00, subject=n00, object=n01)",
         "expand(edge_key=e00, kp=BTE)",
         "return(message=true, store=false)",
     ]
