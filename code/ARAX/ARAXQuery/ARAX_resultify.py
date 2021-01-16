@@ -260,7 +260,7 @@ def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
     else:
         adj_map: Dict[str, Set[str]] = {node_key: set() for node_key in graph.nodes}
     try:
-        for edge in graph.edges:
+        for edge in graph.edges.values():
             if droploops and edge.target_id == edge.source_id:
                 continue
             if directed:
@@ -378,14 +378,15 @@ def _get_qg_without_kryptonite_portions(qg: QueryGraph) -> QueryGraph:
     (that aren't otherwised used) have been removed. Resultify should work off of such a version of the QG (effectively
     ignoring kryptonite portions) because handling of kryptonite qedges is done upstream in Expand (see #1119).
     """
-    kryptonite_qedges = [qedge for qedge in qg.edges if qedge.exclude]
-    normal_qedges = [qedge for qedge in qg.edges if not qedge.exclude]
-    normal_qedge_ids = {qedge.id for qedge in normal_qedges}
-    qnode_keys_used_by_kryptonite_qedges = {qnode_key for qedge in kryptonite_qedges for qnode_key in [qedge.source_id, qedge.target_id]}
-    qnode_keys_used_by_normal_qedges = {qnode_key for qedge in normal_qedges for qnode_key in [qedge.source_id, qedge.target_id]}
+    kryptonite_qedge_keys = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.exclude}
+    normal_qedge_keys = set(qg.edges).difference(kryptonite_qedge_keys)
+    qnode_keys_used_by_kryptonite_qedges = {qnode_key for qedge_key in kryptonite_qedge_keys for qnode_key in
+                                            [qg.edges[qedge_key].source_id, qg.edges[qedge_key].target_id]}
+    qnode_keys_used_by_normal_qedges = {qnode_key for qedge_key in normal_qedge_keys for qnode_key in
+                                        [qg.edges[qedge_key].source_id, qg.edges[qedge_key].target_id]}
     qnode_keys_used_only_by_kryptonite_qedges = qnode_keys_used_by_kryptonite_qedges.difference(qnode_keys_used_by_normal_qedges)
     return QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items() if qnode_key not in qnode_keys_used_only_by_kryptonite_qedges},
-                      edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items() if qedge_key in normal_qedge_ids})
+                      edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items() if qedge_key in normal_qedge_keys})
 
 
 def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must* have qnode_key specified
@@ -402,9 +403,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if len(kg_node_keys_without_qnode_key) > 0:
         raise ValueError("these node IDs do not have qnode_keys set: " + str(kg_node_keys_without_qnode_key))
 
-    kg_edge_ids_without_qedge_id = [edge_key for edge_key, edge in kg.edges.items() if not edge.qedge_ids]
-    if len(kg_edge_ids_without_qedge_id) > 0:
-        raise ValueError("these edges do not have qedge_ids set: " + str(kg_edge_ids_without_qedge_id))
+    kg_edge_ids_without_qedge_key = [edge_key for edge_key, edge in kg.edges.items() if not edge.qedge_keys]
+    if len(kg_edge_ids_without_qedge_key) > 0:
+        raise ValueError("these edges do not have qedge_keys set: " + str(kg_edge_ids_without_qedge_key))
 
     kg_edge_ids_by_qg_id = _get_kg_edge_ids_by_qg_id(kg)
     kg_node_keys_by_qg_id = _get_kg_node_keys_by_qg_id(kg)
@@ -417,9 +418,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     # --------------------- checking for validity of the EdgeBindings list --------------
     # we require that every query graph edge ID in the "values" slot of the edge_bindings_map corresponds to an actual edge in the QG
-    qedge_ids_mapped_that_are_not_in_qg = [qedge_id for qedge_id in kg_edge_ids_by_qg_id if qedge_id not in qg.edges]
-    if len(qedge_ids_mapped_that_are_not_in_qg) > 0:
-        raise ValueError("An edge in the KG has a qedge_id that does not exist in the QueryGraph: " + str(qedge_ids_mapped_that_are_not_in_qg))
+    qedge_keys_mapped_that_are_not_in_qg = [qedge_key for qedge_key in kg_edge_ids_by_qg_id if qedge_key not in qg.edges]
+    if len(qedge_keys_mapped_that_are_not_in_qg) > 0:
+        raise ValueError("An edge in the KG has a qedge_key that does not exist in the QueryGraph: " + str(qedge_keys_mapped_that_are_not_in_qg))
 
     # --------------------- checking that the source ID and target ID of every edge in KG is a valid KG node ---------------------
     node_keys_for_edges_that_are_not_valid_nodes = [edge.source_id for edge in cast(Iterable[Edge], kg.edges) if not
@@ -431,7 +432,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     # --------------------- checking that the source ID and target ID of every edge in QG is a valid QG node ---------------------
     invalid_qnode_keys_used_by_qedges = [edge.source_id for edge in cast(Iterable[QEdge], qg.edges) if not
-                                        qg_nodes_map.get(edge.source_id)] + \
+                                        qg.nodes.get(edge.source_id)] + \
                                        [edge.target_id for edge in cast(Iterable[QEdge], qg.edges) if not
                                         qg.nodes.get(edge.target_id)]
     if len(invalid_qnode_keys_used_by_qedges) > 0:
@@ -440,11 +441,11 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     # --------------------- checking for consistency of edge-to-node relationships, for all edge bindings -----------
     # check that for each bound KG edge, the QG mappings of the KG edges source and target nodes are also the
     # source and target nodes of the QG edge that corresponds to the bound KG edge
-    for qedge_id, kg_edge_ids_for_this_qedge_id in kg_edge_ids_by_qg_id.items():
-        qg_edge = next(qedge for qedge in qg.edges if qedge.id == qedge_id)
+    for qedge_key, kg_edge_ids_for_this_qedge_key in kg_edge_ids_by_qg_id.items():
+        qg_edge = qg.edges[qedge_key]
         qg_source_node_key = qg_edge.source_id
         qg_target_node_key = qg_edge.target_id
-        for edge_id in kg_edge_ids_for_this_qedge_id:
+        for edge_id in kg_edge_ids_for_this_qedge_key:
             kg_edge = kg.edges.get(edge_id)
             kg_source_node_key = kg_edge.source_id
             kg_target_node_key = kg_edge.target_id
@@ -457,7 +458,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                 if not edge_is_valid:
                     kg_source_node = kg.nodes.get(kg_source_node_key)
                     kg_target_node = kg.nodes.get(kg_target_node_key)
-                    raise ValueError(f"Edge {kg_edge.id} (fulfilling {qg_edge.id}) has node(s) that do not fulfill the "
+                    raise ValueError(f"Edge {edge_id} (fulfilling {qedge_key}) has node(s) that do not fulfill the "
                                      f"expected qnodes ({qg_source_node_key} and {qg_target_node_key}). Edge's nodes are "
                                      f"{kg_source_node_key} (qnode_keys: {kg_source_node.qnode_keys}) and "
                                      f"{kg_target_node_key} (qnode_keys: {kg_target_node.qnode_keys}).")
@@ -465,12 +466,12 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     # ------------------- checking to make sure option groups in QG are valid ---------------------
     # Qedges with an optional qnode must themselves be labeled optional
     optional_qnode_keys = {qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.option_group_id}
-    optional_qedge_ids = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.option_group_id}
-    qedge_ids_with_optional_qnode = {qedge.id for qedge in qg.edges if {qedge.source_id, qedge.target_id}.intersection(optional_qnode_keys)}
-    qedge_ids_missing_optional_label = qedge_ids_with_optional_qnode.difference(optional_qedge_ids)
-    if qedge_ids_missing_optional_label:
+    optional_qedge_keys = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.option_group_id}
+    qedge_keys_with_optional_qnode = {qedge_key for qedge_key, qedge in qg.edges.items() if {qedge.source_id, qedge.target_id}.intersection(optional_qnode_keys)}
+    qedge_keys_missing_optional_label = qedge_keys_with_optional_qnode.difference(optional_qedge_keys)
+    if qedge_keys_missing_optional_label:
         raise ValueError(f"These qedges need to be labeled optional because they link to an optional qnode: "
-                         f"{qedge_ids_missing_optional_label}")
+                         f"{qedge_keys_missing_optional_label}")
 
     # ============= save until SAR can discuss with {EWD,DMK} whether there can be unmapped nodes in the KG =============
     # # if any node in the KG is not bound to a node in the QG, drop the KG node; redefine "kg" as the filtered KG
@@ -492,8 +493,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     # Return empty result list if the KG doesn't fulfill the QG
     unfulfilled_qnode_keys = set(qg.nodes).difference(kg_node_keys_by_qg_id)
-    unfulfilled_qedge_ids = set(qg.edges).difference(kg_edge_ids_by_qg_id)
-    if unfulfilled_qnode_keys or unfulfilled_qedge_ids or not kg.nodes:
+    unfulfilled_qedge_keys = set(qg.edges).difference(kg_edge_ids_by_qg_id)
+    if unfulfilled_qnode_keys or unfulfilled_qedge_keys or not kg.nodes:
         return results
 
     # Create results off the "required" portion of the QG (excluding any qnodes/qedges belong to an "option group")
@@ -506,7 +507,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     result_graphs_required = _create_result_graphs(kg, required_qg, ignore_edge_direction)
 
     # Then create results for each of the "option groups" in the QG (including the required portion of the QG with each)
-    option_groups_in_qg = {qedge.option_group_id for qedge in qg.edges if qedge.option_group_id}
+    option_groups_in_qg = {qedge.option_group_id for qedge in qg.edges.values() if qedge.option_group_id}
     option_group_results_dict = dict()
     for option_group_id in option_groups_in_qg:
         # Include qnodes/qedges that are either required or belong to this option group in our QG for this run
@@ -546,9 +547,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             for node_key in node_keys:
                 node_bindings.append(NodeBinding(qg_id=qnode_key, kg_id=node_key))
         edge_bindings = []
-        for qedge_id, edge_ids in result_graph['edges'].items():
+        for qedge_key, edge_ids in result_graph['edges'].items():
             for edge_id in edge_ids:
-                edge_bindings.append(EdgeBinding(qg_id=qedge_id, kg_id=edge_id))
+                edge_bindings.append(EdgeBinding(qg_id=qedge_key, kg_id=edge_id))
         result = Result(node_bindings=node_bindings, edge_bindings=edge_bindings)
 
         # Fill out the essence for the result
@@ -603,9 +604,9 @@ def _merge_two_result_graphs(optional_result_graph: Dict[str, Dict[str, Set[str]
     for qnode_key, kg_node_keys in optional_result_graph["nodes"].items():
         if qnode_key not in required_result_graph["nodes"]:
             merged_result_graph["nodes"][qnode_key] = kg_node_keys
-    for qedge_id, kg_edge_ids in optional_result_graph["edges"].items():
-        if qedge_id not in required_result_graph["edges"]:
-            merged_result_graph["edges"][qedge_id] = kg_edge_ids
+    for qedge_key, kg_edge_ids in optional_result_graph["edges"].items():
+        if qedge_key not in required_result_graph["edges"]:
+            merged_result_graph["edges"][qedge_key] = kg_edge_ids
     return merged_result_graph
 
 
@@ -616,7 +617,7 @@ def _get_result_graph_key(result_graph: Dict[str, Dict[str, Set[str]]], non_set_
 
 
 def _get_connected_qnode(qnode_key: str, qnode_keys_to_choose_from: [str], query_graph: QueryGraph) -> Optional[str]:
-    for qedge in query_graph.edges:
+    for qedge in query_graph.edges.values():
         if qedge.source_id == qnode_key and qedge.target_id in qnode_keys_to_choose_from:
             return qedge.target_id
         elif qedge.target_id == qnode_key and qedge.source_id in qnode_keys_to_choose_from:
@@ -637,18 +638,18 @@ def _get_kg_node_keys_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set
 
 def _get_kg_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
     edge_ids_by_qg_id = dict()
-    for edge in knowledge_graph.edges:
-        if edge.qedge_ids:
-            for qedge_id in edge.qedge_ids:
-                if qedge_id not in edge_ids_by_qg_id:
-                    edge_ids_by_qg_id[qedge_id] = set()
-                edge_ids_by_qg_id[qedge_id].add(edge.id)
+    for edge_key, edge in knowledge_graph.edges:
+        if edge.qedge_keys:
+            for qedge_key in edge.qedge_keys:
+                if qedge_key not in edge_ids_by_qg_id:
+                    edge_ids_by_qg_id[qedge_key] = set()
+                edge_ids_by_qg_id[qedge_key].add(edge_key)
     return edge_ids_by_qg_id
 
 
 def _get_connected_qnode_keys(qnode_key: str, query_graph: QueryGraph) -> Set[str]:
     qnode_keys_used_on_same_qedges = set()
-    for qedge in query_graph.edges:
+    for qedge in query_graph.edges.values():
         qnode_keys_used_on_same_qedges.add(qedge.source_id)
         qnode_keys_used_on_same_qedges.add(qedge.target_id)
     return qnode_keys_used_on_same_qedges.difference({qnode_key})
@@ -662,7 +663,7 @@ def _create_new_empty_result_graph(query_graph: QueryGraph) -> Dict[str, Dict[st
 
 def _copy_result_graph(result_graph: Dict[str, Dict[str, Set[str]]]) -> Dict[str, Dict[str, Set[str]]]:
     result_graph_copy = {'nodes': {qnode_key: node_keys for qnode_key, node_keys in result_graph['nodes'].items()},
-                         'edges': {qedge_id: edge_ids for qedge_id, edge_ids in result_graph['edges'].items()}}
+                         'edges': {qedge_key: edge_ids for qedge_key, edge_ids in result_graph['edges'].items()}}
     return result_graph_copy
 
 
@@ -670,10 +671,10 @@ def _get_edge_node_pair_key(edge: Edge) -> str:
     return "--".join(sorted([edge.source_id, edge.target_id]))
 
 
-def _get_parallel_qedge_ids(input_qedge: QEdge, query_graph: QueryGraph) -> Set[str]:
+def _get_parallel_qedge_keys(input_qedge: QEdge, query_graph: QueryGraph) -> Set[str]:
     input_qedge_node_keys = {input_qedge.source_id, input_qedge.target_id}
-    parallel_qedge_ids = {qedge.id for qedge in query_graph.edges if {qedge.source_id, qedge.target_id} == input_qedge_node_keys}
-    return parallel_qedge_ids
+    parallel_qedge_keys = {qedge_key for qedge_key, qedge in query_graph.edges.items() if {qedge.source_id, qedge.target_id} == input_qedge_node_keys}
+    return parallel_qedge_keys
 
 
 def _get_kg_node_adj_map_by_qg_id(kg_node_keys_by_qg_id: Dict[str, Set[str]], knowledge_graph: KnowledgeGraph, query_graph: QueryGraph) -> Dict[str, Dict[str, Dict[str, Set[str]]]]:
@@ -687,23 +688,22 @@ def _get_kg_node_adj_map_by_qg_id(kg_node_keys_by_qg_id: Dict[str, Set[str]], kn
             kg_node_to_node_map[qnode_key][node_key] = {connected_qnode_key: set() for connected_qnode_key in connected_qnode_keys}
 
     # Create a record of which qedge IDs are fulfilled between which node pairs
-    node_pair_to_qedge_id_map = dict()
-    for edge in knowledge_graph.edges:
+    node_pair_to_qedge_key_map = dict()
+    for edge in knowledge_graph.edges.values():
         node_pair_key = _get_edge_node_pair_key(edge)
-        if node_pair_key not in node_pair_to_qedge_id_map:
-            node_pair_to_qedge_id_map[node_pair_key] = set()
-        node_pair_to_qedge_id_map[node_pair_key] = node_pair_to_qedge_id_map[node_pair_key].union(set(edge.qedge_ids))
+        if node_pair_key not in node_pair_to_qedge_key_map:
+            node_pair_to_qedge_key_map[node_pair_key] = set()
+        node_pair_to_qedge_key_map[node_pair_key] = node_pair_to_qedge_key_map[node_pair_key].union(set(edge.qedge_keys))
 
     # Fill out which KG nodes are connected to which
-    all_qedge_ids = {qedge.id for qedge in query_graph.edges}
-    for edge in knowledge_graph.edges:
-        for qedge_id in edge.qedge_ids:
+    for edge in knowledge_graph.edges.values():
+        for qedge_key in edge.qedge_keys:
             # Note: KG may contain some qedge IDs not in this version of the QG due to option group handling
-            if qedge_id in all_qedge_ids:
-                qedge = query_graph.edges[qedge_id]
+            if qedge_key in query_graph.edges:
+                qedge = query_graph.edges[qedge_key]
                 # Make sure ALL qedges between these two nodes have been fulfilled before marking them as 'connected'
-                parallel_qedge_ids = _get_parallel_qedge_ids(qedge, query_graph)
-                if parallel_qedge_ids.issubset(node_pair_to_qedge_id_map[_get_edge_node_pair_key(edge)]):
+                parallel_qedge_keys = _get_parallel_qedge_keys(qedge, query_graph)
+                if parallel_qedge_keys.issubset(node_pair_to_qedge_key_map[_get_edge_node_pair_key(edge)]):
                     qnode_key_1 = qedge.source_id
                     qnode_key_2 = qedge.target_id
                     if edge.source_id in kg_node_keys_by_qg_id[qnode_key_1] and edge.target_id in kg_node_keys_by_qg_id[qnode_key_2]:
@@ -741,7 +741,7 @@ def _find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_ke
     of the connection points (all qnode ID(s) in qnode_keys_to_connect_to that the chosen node connects to).
     """
     for qnode_key_option in qnode_keys_to_choose_from:
-        all_qedges_using_qnode = [qedge for qedge in qg.edges if qnode_key_option in {qedge.source_id, qedge.target_id}]
+        all_qedges_using_qnode = [qedge for qedge in qg.edges.values() if qnode_key_option in {qedge.source_id, qedge.target_id}]
         all_connected_qnode_keys = {qnode_key for qedge in all_qedges_using_qnode
                                    for qnode_key in {qedge.source_id, qedge.target_id}}.difference({qnode_key_option})
         subgraph_connections = qnode_keys_to_connect_to.intersection(all_connected_qnode_keys)
@@ -756,9 +756,9 @@ def _get_qg_adj_map_undirected(qg) -> Dict[str, Set[str]]:
     """
     qg_adj_map = dict()
     for qnode_key in qg.nodes:
-        connected_qedges = [qedge for qedge in qg.edges if qnode_key in {qedge.source_id, qedge.target_id}]
-        connected_qnode_keys = {qnode_key for qedge in connected_qedges
-                               for qnode_key in {qedge.source_id, qedge.target_id}}.difference({qnode_key})
+        connected_qedges = [qedge for qedge in qg.edges.values() if qnode_key in {qedge.source_id, qedge.target_id}]
+        connected_qnode_keys = {qnode_key for qedge in connected_qedges for qnode_key in
+                                {qedge.source_id, qedge.target_id}}.difference({qnode_key})
         qg_adj_map[qnode_key] = connected_qnode_keys
     return qg_adj_map
 
@@ -878,24 +878,24 @@ def _create_result_graphs(kg: KnowledgeGraph,
         qnode_keys_already_handled.add(current_qnode_key)
 
     # Then add edges to our result graphs as appropriate
-    edges_by_node_pairs = {qedge.id: dict() for qedge in qg.edges}
-    for edge in kg.edges:
-        if edge.qedge_ids:
-            for qedge_id in edge.qedge_ids:
+    edges_by_node_pairs = {qedge_key: dict() for qedge_key in qg.edges}
+    for edge_key, edge in kg.edges.items():
+        if edge.qedge_keys:
+            for qedge_key in edge.qedge_keys:
                 # Note: KG may contain some qedges not in this version of the QG due to option group handling
-                if qedge_id in set(qg.edges):
+                if qedge_key in set(qg.edges):
                     edge_node_pair = f"{edge.source_id}--{edge.target_id}"
-                    if edge_node_pair not in edges_by_node_pairs[qedge_id]:
-                        edges_by_node_pairs[qedge_id][edge_node_pair] = set()
-                    edges_by_node_pairs[qedge_id][edge_node_pair].add(edge.id)
+                    if edge_node_pair not in edges_by_node_pairs[qedge_key]:
+                        edges_by_node_pairs[qedge_key][edge_node_pair] = set()
+                    edges_by_node_pairs[qedge_key][edge_node_pair].add(edge_key)
                     if ignore_edge_direction:
                         node_pair_in_other_direction = f"{edge.target_id}--{edge.source_id}"
-                        if node_pair_in_other_direction not in edges_by_node_pairs[qedge_id]:
-                            edges_by_node_pairs[qedge_id][node_pair_in_other_direction] = set()
-                        edges_by_node_pairs[qedge_id][node_pair_in_other_direction].add(edge.id)
+                        if node_pair_in_other_direction not in edges_by_node_pairs[qedge_key]:
+                            edges_by_node_pairs[qedge_key][node_pair_in_other_direction] = set()
+                        edges_by_node_pairs[qedge_key][node_pair_in_other_direction].add(edge_key)
     for result_graph in result_graphs:
-        for qedge_id in result_graph['edges']:
-            qedge = qg.edges[qedge_id]
+        for qedge_key in result_graph['edges']:
+            qedge = qg.edges[qedge_key]
             potential_nodes_1 = result_graph['nodes'][qedge.source_id]
             potential_nodes_2 = result_graph['nodes'][qedge.target_id]
             possible_node_pairs = set()
@@ -904,8 +904,8 @@ def _create_result_graphs(kg: KnowledgeGraph,
                     node_pair_key = f"{node_1}--{node_2}"
                     possible_node_pairs.add(node_pair_key)
             for node_pair in possible_node_pairs:
-                ids_of_matching_edges = edges_by_node_pairs[qedge_id].get(node_pair, set())
-                result_graph['edges'][qedge_id] = result_graph['edges'][qedge_id].union(ids_of_matching_edges)
+                ids_of_matching_edges = edges_by_node_pairs[qedge_key].get(node_pair, set())
+                result_graph['edges'][qedge_key] = result_graph['edges'][qedge_key].union(ids_of_matching_edges)
 
     final_result_graphs = [result_graph for result_graph in result_graphs if _result_graph_is_fulfilled(result_graph, qg)]
     return final_result_graphs
