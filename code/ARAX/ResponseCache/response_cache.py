@@ -168,7 +168,7 @@ class ResponseCache:
 
         #### Instead of storing the large response object in the MySQL database as a blob
         #### now store it as a JSON file on the filesystem
-        response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../data/responses_1_0'
+        response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
         if not os.path.exists(response_dir):
             try:
                 os.mkdir(response_dir)
@@ -180,7 +180,7 @@ class ResponseCache:
             response_path = f"{response_dir}/{response_filename}"
             try:
                 with open(response_path, 'w') as outfile:
-                    json.dump(response.to_dict(), outfile, sort_keys=True)
+                    json.dump(envelope.to_dict(), outfile, sort_keys=True)
             except:
                 eprint(f"ERROR: Unable to write response to file {response_path}")
 
@@ -198,7 +198,7 @@ class ResponseCache:
         #### Find the response
         stored_response = session.query(Response).filter(Response.response_id==response_id).first()
         if stored_response is not None:
-            response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../data/responses_1_0'
+            response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
             response_filename = f"{stored_response.response_id}.json"
             response_path = f"{response_dir}/{response_filename}"
             try:
@@ -237,6 +237,13 @@ def stringify_dict(inputDict):
 #### If this class is run from the command line, perform a short little test to see if it is working correctly
 def main():
 
+    #### Parse command line options
+    import argparse
+    argparser = argparse.ArgumentParser(description='CLI testing of the ResponseCache class')
+    argparser.add_argument('--verbose', action='count', help='If set, print more information about ongoing processing' )
+    argparser.add_argument('response_id', type=int, nargs='*', help='Integer number of a response to read and display')
+    params = argparser.parse_args()
+
     #### Create a new ResponseStore object
     response_cache = ResponseCache()
 
@@ -244,10 +251,15 @@ def main():
     session = response_cache.session
 
     #### Query and print some rows from the reference tables
-    print("Querying database")
-    for response in session.query(Response).all():
-        print(response)
-        print(f"response_id={response.response_id}  response_datetime={response.response_datetime}")
+    if len(params.response_id) == 0:
+        print("Listing of all responses")
+        for response in session.query(Response).all():
+            print(f"response_id={response.response_id}  response_datetime={response.response_datetime}")
+
+    else:
+        print(f"Content of response_id {params.response_id[0]}:")
+        envelope = response_cache.get_response(params.response_id[0])
+        print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
 
 
 if __name__ == "__main__": main()
