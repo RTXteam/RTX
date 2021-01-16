@@ -81,9 +81,9 @@ class GeneticsQuerier:
                     # Always include edges for integrated scores, but only include magma edges if that flag is set
                     if include_all_scores or returned_edge['score_name'] == self.magma_score_name:
                         swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
-                        for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
+                        for qedge_key in qg_id_mappings['edges'][swagger_edge.id]:
                             swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
-                            final_kg.add_edge(swagger_edge, qedge_id)
+                            final_kg.add_edge(swagger_edge, qedge_key)
                         edge_to_nodes_map[swagger_edge.id] = {source_qnode_key: swagger_edge.source_id,
                                                               target_qnode_key: swagger_edge.target_id}
             log.warning(f"Encountered unknown score(s) from {self.kp_name}: {unknown_scores_encountered}. "
@@ -136,7 +136,7 @@ class GeneticsQuerier:
     @staticmethod
     def _get_qg_id_mappings_from_results(results: [any]) -> Dict[str, Dict[str, Set[str]]]:
         qnode_key_mappings = dict()
-        qedge_id_mappings = dict()
+        qedge_key_mappings = dict()
         for result in results:
             for node_binding in result['node_bindings']:
                 qg_id = node_binding['qg_id']
@@ -148,11 +148,11 @@ class GeneticsQuerier:
             for edge_binding in result['edge_bindings']:
                 qg_id = edge_binding['qg_id']
                 kg_id = edge_binding['kg_id']
-                if kg_id in qedge_id_mappings:
-                    qedge_id_mappings[kg_id].add(qg_id)
+                if kg_id in qedge_key_mappings:
+                    qedge_key_mappings[kg_id].add(qg_id)
                 else:
-                    qedge_id_mappings[kg_id] = {qg_id}
-        return {"nodes": qnode_key_mappings, "edges": qedge_id_mappings}
+                    qedge_key_mappings[kg_id] = {qg_id}
+        return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}
 
     def _send_query_to_kp(self, query_graph: QueryGraph, log: ARAXResponse) -> Dict[str, any]:
         # Send query to their API (stripping down qnode/qedges to only the properties they like)
@@ -162,8 +162,9 @@ class GeneticsQuerier:
             if qnode.id:
                 stripped_qnode['curie'] = qnode.id
             stripped_qnodes[qnode_key] = stripped_qnode
-        qedge = next(qedge for qedge in query_graph.edges.values())  # Our query graph is single-edge
-        stripped_qedge = {'id': qedge.id,
+        qedge_key = next(qedge_key for qedge_key in query_graph.edges)  # Our query graph is single-edge
+        qedge = query_graph.edges[qedge_key]
+        stripped_qedge = {'id': qedge_key,
                           'source_id': qedge.source_id,
                           'target_id': qedge.target_id,
                           'type': list(self.accepted_edge_types)[0]}
@@ -171,7 +172,7 @@ class GeneticsQuerier:
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
-            log.debug(f"Sending {qedge.id} query to {self.kp_name} for {input_curie}")
+            log.debug(f"Sending {qedge_key} query to {self.kp_name} for {input_curie}")
             source_stripped_qnode['curie'] = input_curie
             kp_response = requests.post(self.kp_api_url,
                                         json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': [stripped_qedge]}}},

@@ -53,12 +53,13 @@ class NGDQuerier:
 
         # Find potential answers using KG2
         log.debug(f"Finding potential answers using KG2")
-        qedge = query_graph.edges[0]
+        qedge_key = next(qedge_key for qedge_key in query_graph.edges)
+        qedge = query_graph.edges[qedge_key]
         source_qnode_key = qedge.source_id
         target_qnode_key = qedge.target_id
         source_qnode = query_graph.nodes[source_qnode_key]
         target_qnode = query_graph.nodes[target_qnode_key]
-        qedge_params_str = ", ".join(list(filter(None, [f"id={qedge.id}",
+        qedge_params_str = ", ".join(list(filter(None, [f"id={qedge_key}",
                                                         f"source_id={source_qnode_key}",
                                                         f"target_id={target_qnode_key}",
                                                         self._get_dsl_qedge_type_str(qedge)])))
@@ -106,30 +107,30 @@ class NGDQuerier:
             if ngd_value is not None and ngd_value < threshold:  # TODO: Make determination of the threshold much more sophisticated
                 source_id = ngd_info_dict["source_id"]
                 target_id = ngd_info_dict["target_id"]
-                ngd_edge = self._create_ngd_edge(ngd_value, source_id, target_id)
+                ngd_edge_key, ngd_edge = self._create_ngd_edge(ngd_value, source_id, target_id)
                 ngd_source_node_key, ngd_source_node = self._create_ngd_node(ngd_edge.source_id, kg2_answer_kg.nodes.get(ngd_edge.source_id))
                 ngd_target_node_key, ngd_target_node = self._create_ngd_node(ngd_edge.target_id, kg2_answer_kg.nodes.get(ngd_edge.target_id))
-                final_kg.add_edge(ngd_edge, qedge.id)
-                final_kg.add_node(ngd_source_node, source_qnode_key)
-                final_kg.add_node(ngd_target_node, target_qnode_key)
+                final_kg.add_edge(ngd_edge_key, ngd_edge, qedge_key)
+                final_kg.add_node(ngd_source_node_key, ngd_source_node, source_qnode_key)
+                final_kg.add_node(ngd_target_node_key, ngd_target_node, target_qnode_key)
                 edge_to_nodes_map[ngd_edge.id] = {source_qnode_key: ngd_source_node_key,
                                                   target_qnode_key: ngd_target_node_key}
 
         return final_kg, edge_to_nodes_map
 
-    def _create_ngd_edge(self, ngd_value: float, source_id: str, target_id: str) -> Edge:
+    def _create_ngd_edge(self, ngd_value: float, source_id: str, target_id: str) -> Tuple[str, Edge]:
         ngd_edge = Edge()
         ngd_edge.type = self.ngd_edge_type
         ngd_edge.source_id = source_id
         ngd_edge.target_id = target_id
-        ngd_edge.id = f"NGD:{source_id}--{ngd_edge.type}--{target_id}"
+        ngd_edge_key = f"NGD:{source_id}--{ngd_edge.type}--{target_id}"
         ngd_edge.provided_by = "ARAX"
         ngd_edge.is_defined_by = "ARAX"
         ngd_edge.attributes = [Attribute(name=self.ngd_edge_attribute_name,
                                          type=self.ngd_edge_attribute_type,
                                          value=ngd_value,
                                          url=self.ngd_edge_attribute_url)]
-        return ngd_edge
+        return ngd_edge_key, ngd_edge
 
     @staticmethod
     def _create_ngd_node(kg2_node_key: str, kg2_node: Node) -> Tuple[str, Node]:
