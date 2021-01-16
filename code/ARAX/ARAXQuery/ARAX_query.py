@@ -368,7 +368,7 @@ class ARAXQuery:
 
     ############################################################################################
     #### Given an input query with a processing plan, execute that processing plan on the input
-    def executeProcessingPlan(self,inputEnvelope):
+    def executeProcessingPlan(self,input_processing_plan_dict):
 
         response = self.response
         response.debug(f"Entering executeProcessingPlan")
@@ -376,14 +376,12 @@ class ARAXQuery:
         message = None
 
         # If there is already a message (perhaps with a query_graph) already in the query, preserve it
-        if 'message' in inputEnvelope and inputEnvelope['message'] is not None:
-            message = inputEnvelope['message']
+        if 'message' in input_processing_plan_dict and input_processing_plan_dict['message'] is not None:
+            message = input_processing_plan_dict['message']    # FIXME is a dict not an object??
             messages = [ message ]
 
-        message_id = None
-        query = None
-        #### Pull out the main processing plan envelope
-        envelope = PreviousMessageProcessingPlan.from_dict(inputEnvelope["previous_message_processing_plan"])
+        #### Pull out the main processing plan
+        processing_plan = PreviousMessageProcessingPlan.from_dict(input_processing_plan_dict["previous_message_processing_plan"])
 
         #### Connect to the message store just once, even if we won't use it
         response_cache = ResponseCache()
@@ -393,9 +391,9 @@ class ARAXQuery:
         messenger = ARAXMessenger()
 
         #### If there are URIs provided, try to load them
-        if envelope.previous_message_uris is not None:
+        if processing_plan.previous_message_uris is not None:
             response.debug(f"Found previous_message_uris")
-            for uri in envelope.previous_message_uris:
+            for uri in processing_plan.previous_message_uris:
                 response.debug(f"    messageURI={uri}")
                 matchResult = re.match( r'http[s]://arax.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
                 if matchResult:
@@ -415,9 +413,9 @@ class ARAXQuery:
                         return response
 
         #### If there are one or more previous_messages embedded in the POST, process them
-        if envelope.previous_messages is not None:
+        if processing_plan.previous_messages is not None:
             response.debug(f"Received previous_messages")
-            for uploadedMessage in envelope.previous_messages:
+            for uploadedMessage in processing_plan.previous_messages:
                 response.debug(f"uploadedMessage is a "+str(uploadedMessage.__class__))
                 if str(uploadedMessage.__class__) == "<class 'openapi_server.models.message.Message'>":
                     uploadedMessage = ARAXMessenger().from_dict(uploadedMessage)
@@ -445,31 +443,43 @@ class ARAXQuery:
 
         #### Take different actions based on the number of messages we now have in hand
         n_messages = len(messages)
+
+        #### If there's no input message, then create one
         if n_messages == 0:
             response.debug(f"No starting messages were referenced. Will start with a blank template Message")
             messenger.create_envelope(response)
+
+            #### Put our input processing actions into the envelope
+            if response.envelope.query_options is None:
+                response.envelope.query_options = {}
+            response.envelope.query_options['processing_actions'] = processing_plan.processing_actions
+
             message = response.envelope.message
+
+        #### If there's on message, we will run with that
         elif n_messages == 1:
             response.debug(f"A single Message is ready and in hand")
             message = messages[0]
+
+        #### Multiple messages unsupported
         else:
             response.debug(f"Multiple Messages were uploaded or imported by reference. However, proper merging code has not been implmented yet! Will use just the first Message for now.")
             message = messages[0]
 
         #### Examine the options that were provided and act accordingly
         optionsDict = {}
-        if envelope.options:
+        if processing_plan.options:
             response.debug(f"Processing options were provided, but these are not implemented at the moment and will be ignored")
-            for option in envelope.options:
+            for option in processing_plan.options:
                 response.debug(f"   option="+option)
                 optionsDict[option] = 1
 
 
         #### If there are processing_actions, then fulfill those
-        if envelope.processing_actions:
+        if processing_plan.processing_actions:
             response.debug(f"Found processing_actions")
             actions_parser = ActionsParser()
-            result = actions_parser.parse(envelope.processing_actions)
+            result = actions_parser.parse(processing_plan.processing_actions)
             response.merge(result)
             if result.error_code != 'OK':
                 return response
@@ -500,6 +510,10 @@ class ARAXQuery:
                 try:
                     if action['command'] == 'create_message':
                         messenger.create_envelope(response)
+                        #### Put our input processing actions into the envelope
+                        if response.envelope.query_options is None:
+                            response.envelope.query_options = {}
+                        response.envelope.query_options['processing_actions'] = processing_plan.processing_actions
 
                     elif action['command'] == 'fetch_message':
                         messenger.apply_fetch_message(response,action['parameters'])
@@ -559,11 +573,10 @@ class ARAXQuery:
                     response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
                     return response
 
-                #### If we're in an error state
+                #### If we're in an error state return now
                 if response.status != 'OK':
-                    #message.message_code = response.error_code
-                    #message.code_description = response.message
-                    #message.log = response.messages
+                    response.envelope.status = response.error_code
+                    response.envelope.description = response.message
                     return response
 
                 #### Immediately after resultify, run the experimental ranker
@@ -591,12 +604,11 @@ class ARAXQuery:
             #print(json.dumps(ast.literal_eval(repr(response.__dict__)), sort_keys=True, indent=2))
 
             # Fill out the message with data
-            #message.message_code = response.error_code
-            #message.code_description = response.message
-            #message.log = response.messages
+            response.envelope.status = response.error_code
+            response.envelope.description = response.message
             if response.envelope.query_options is None:
                 response.envelope.query_options = {}
-            response.envelope.query_options['processing_actions'] = envelope.processing_actions
+            response.envelope.query_options['processing_actions'] = processing_plan.processing_actions
 
             # If store=true, then put the message in the database
             response_id = None
@@ -657,6 +669,7 @@ def main():
             "add_qnode(name=acetaminophen, key=n0)",
             "add_qnode(category=biolink:Protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
+            "expand(edge_key=e1)",
             "return(message=true, store=true)",
         ]}}
 
@@ -1389,13 +1402,16 @@ def main():
     response = araxq.response
 
     #### If the result was an error, just end here
-    if response.status != 'OK':
-        print(response.show(level=ARAXResponse.DEBUG))
-        return response
+    #if response.status != 'OK':
+    #    print(response.show(level=ARAXResponse.DEBUG))
+    #    return response
 
     #### Retrieve the TRAPI Response (envelope) and TRAPI Message from the result
     envelope = response.envelope
     message = envelope.message
+    envelope.status = response.error_code
+    envelope.description = response.message
+
 
     #### Print out the logging stream
     print(response.show(level=ARAXResponse.DEBUG))
