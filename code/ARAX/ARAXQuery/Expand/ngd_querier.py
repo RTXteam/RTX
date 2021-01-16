@@ -104,7 +104,7 @@ class NGDQuerier:
         # Create edges for those from KG2 found to have a low enough ngd value
         threshold = 0.5
         log.debug(f"Creating edges between node pairs with NGD below the threshold ({threshold})")
-        for kg2_edge_id, ngd_info_dict in kg2_edge_ngd_map.items():
+        for kg2_edge_key, ngd_info_dict in kg2_edge_ngd_map.items():
             ngd_value = ngd_info_dict['ngd_value']
             if ngd_value is not None and ngd_value < threshold:  # TODO: Make determination of the threshold much more sophisticated
                 subject = ngd_info_dict["subject"]

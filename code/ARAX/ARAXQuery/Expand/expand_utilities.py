@@ -333,10 +333,10 @@ def switch_kg_to_arax_curie_format(dict_kg: QGOrganizedKnowledgeGraph) -> QGOrga
             node_key = convert_curie_to_arax_format(node_key)
             converted_kg.add_node(node_key, node, qnode_key)
     for qedge_key, edges in dict_kg.edges_by_qg_id.items():
-        for edge_id, edge in edges.items():
+        for edge_key, edge in edges.items():
             edge.subject = convert_curie_to_arax_format(edge.subject)
             edge.object = convert_curie_to_arax_format(edge.object)
-            converted_kg.add_edge(edge, qedge_key)
+            converted_kg.add_edge(edge_key, edge, qedge_key)
     return converted_kg
 
 

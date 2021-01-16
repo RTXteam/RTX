@@ -249,12 +249,12 @@ class BTEQuerier:
             kg.nodes_by_qg_id[output_qnode_key].pop(node_key)
 
         # And remove any edges that used them
-        edge_ids_to_remove = set()
-        for edge_id, edge in kg.edges_by_qg_id[qedge_key].items():
+        edge_keys_to_remove = set()
+        for edge_key, edge in kg.edges_by_qg_id[qedge_key].items():
             if edge.object in output_node_keys_to_remove:  # Edge object always contains output node ID for BTE
-                edge_ids_to_remove.add(edge_id)
-        for edge_id in edge_ids_to_remove:
-            kg.edges_by_qg_id[qedge_key].pop(edge_id)
+                edge_keys_to_remove.add(edge_key)
+        for edge_key in edge_keys_to_remove:
+            kg.edges_by_qg_id[qedge_key].pop(edge_key)
 
         return kg
 
@@ -294,9 +294,9 @@ class BTEQuerier:
             qnode_key = node_binding['qg_id']
             kg_to_qg_ids['nodes'][node_key] = qnode_key
         for edge_binding in results['edge_bindings']:
-            edge_ids = eu.convert_string_or_list_to_list(edge_binding['kg_id'])
+            edge_keys = eu.convert_string_or_list_to_list(edge_binding['kg_id'])
             qedge_keys = edge_binding['qg_id']
-            for kg_id in edge_ids:
+            for kg_id in edge_keys:
                 kg_to_qg_ids['edges'][kg_id] = qedge_keys
         return kg_to_qg_ids
 

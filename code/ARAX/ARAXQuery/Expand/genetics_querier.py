@@ -81,7 +81,7 @@ class GeneticsQuerier:
                     # Always include edges for integrated scores, but only include magma edges if that flag is set
                     if include_all_scores or returned_edge['score_name'] == self.magma_score_name:
                         kp_edge_key, swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
-                        swagger_edge_key = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
+                        swagger_edge_key = self._create_unique_edge_key(swagger_edge)  # Convert to an ID that's unique for us
                         for qedge_key in qg_id_mappings['edges'][kp_edge_key]:
                             final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
                         edge_to_nodes_map[swagger_edge_key] = {source_qnode_key: swagger_edge.subject,
@@ -209,6 +209,6 @@ class GeneticsQuerier:
         return kp_node['id'], Node(category=kp_node['type'],
                                    name=kp_node.get('name'))
 
-    def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
+    def _create_unique_edge_key(self, swagger_edge: Edge) -> str:
         kind_of_edge = swagger_edge.attributes[0].name if swagger_edge.attributes else swagger_edge.predicate
         return f"{self.kp_name}:{swagger_edge.subject}-{kind_of_edge}-{swagger_edge.object}"
