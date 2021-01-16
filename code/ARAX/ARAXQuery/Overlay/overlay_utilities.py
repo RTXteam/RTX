@@ -14,7 +14,7 @@ from ARAX_resultify import ARAXResultify
 from ARAX_response import ARAXResponse
 
 
-def get_node_pairs_to_overlay(source_qnode_id: str, target_qnode_id: str, query_graph: QueryGraph,
+def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, query_graph: QueryGraph,
                               knowledge_graph: KnowledgeGraph, log: ARAXResponse) -> Set[Tuple[str, str]]:
     """
     This function determines which combinations of source/target nodes in the KG need to be overlayed (e.g., have a
@@ -22,7 +22,7 @@ def get_node_pairs_to_overlay(source_qnode_id: str, target_qnode_id: str, query_
     may actually appear together in the same Results. (See issue #1069.) If it fails to narrow the node pairs for
     whatever reason, it defaults to returning all possible combinations of source/target nodes.
     """
-    log.debug(f"Narrowing down {source_qnode_id}--{target_qnode_id} node pairs to overlay")
+    log.debug(f"Narrowing down {subject_qnode_key}--{object_qnode_key} node pairs to overlay")
     kg_nodes_by_qg_id = get_node_ids_by_qg_id(knowledge_graph)
     kg_edges_by_qg_id = get_edge_ids_by_qg_id(knowledge_graph)
     # Grab the portion of the QG already 'expanded' (aka, present in the KG)
@@ -42,9 +42,9 @@ def get_node_pairs_to_overlay(source_qnode_id: str, target_qnode_id: str, query_
         node_pairs = set()
         for result in sub_message.results:
             source_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if
-                                            node_binding.qg_id == source_qnode_id}
+                                            node_binding.qg_id == subject_qnode_key}
             target_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if
-                                            node_binding.qg_id == target_qnode_id}
+                                            node_binding.qg_id == object_qnode_key}
             pairs_in_this_result = set(itertools.product(source_curies_in_this_result, target_curies_in_this_result))
             node_pairs = node_pairs.union(pairs_in_this_result)
         log.debug(f"Identified {len(node_pairs)} node pairs to overlay (with help of resultify)")
@@ -52,7 +52,7 @@ def get_node_pairs_to_overlay(source_qnode_id: str, target_qnode_id: str, query_
             return node_pairs
     # Back up to using the old (O(n^2)) method of all combinations of source/target nodes in the KG
     log.warning(f"Failed to narrow down node pairs to overlay; defaulting to all possible combinations")
-    return set(itertools.product(kg_nodes_by_qg_id[source_qnode_id], kg_nodes_by_qg_id[target_qnode_id]))
+    return set(itertools.product(kg_nodes_by_qg_id[subject_qnode_key], kg_nodes_by_qg_id[object_qnode_key]))
 
 
 def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
@@ -79,9 +79,9 @@ def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]
     return edge_keys_by_qg_key
 
 
-def determine_virtual_qedge_option_group(source_qnode_id: str, target_qnode_id: str, query_graph: QueryGraph, log: Response) -> Optional[str]:
+def determine_virtual_qedge_option_group(subject_qnode_key: str, object_qnode_key: str, query_graph: QueryGraph, log: Response) -> Optional[str]:
     # Determines what option group ID a virtual qedge between the two input qnodes should have
-    qnodes = [qnode for key, qnode in query_graph.nodes.items() if key in {source_qnode_id, target_qnode_id}]
+    qnodes = [qnode for key, qnode in query_graph.nodes.items() if key in {subject_qnode_key, object_qnode_key}]
     qnode_option_group_ids = {qnode.option_group_id for qnode in qnodes if qnode.option_group_id}
     if len(qnode_option_group_ids) == 1:
         return list(qnode_option_group_ids)[0]

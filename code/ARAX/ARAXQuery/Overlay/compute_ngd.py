@@ -64,9 +64,9 @@ class ComputeNGD:
         # if you want to add virtual edges, identify the source/targets, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
         if 'virtual_relation_label' in parameters:
             # Figure out which node pairs to compute NGD between
-            source_qnode_id = parameters['source_qnode_id']
-            target_qnode_id = parameters['target_qnode_id']
-            node_pairs_to_evaluate = ou.get_node_pairs_to_overlay(source_qnode_id, target_qnode_id, qg, kg, self.response)
+            subject_qnode_key = parameters['subject_qnode_key']
+            object_qnode_key = parameters['object_qnode_key']
+            node_pairs_to_evaluate = ou.get_node_pairs_to_overlay(subject_qnode_key, object_qnode_key, qg, kg, self.response)
             # Grab PMID lists for all involved nodes
             involved_curies = {curie for node_pair in node_pairs_to_evaluate for curie in node_pair}
             canonicalized_curie_lookup = self._get_canonical_curies_map(list(involved_curies))
@@ -129,12 +129,12 @@ class ComputeNGD:
                 #edge_type = parameters['virtual_edge_type']
                 edge_type = "has_normalized_google_distance_with"
                 relation = parameters['virtual_relation_label']
-                option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id, qg, self.response)
+                option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, qg, self.response)
                 # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
-                #                source_id=source_qnode_id, target_id=target_qnode_id,
+                #                source_id=subject_qnode_key, target_id=object_qnode_key,
                 #                option_group_id=option_group_id)
-                q_edge = QEdge(predicate=edge_type, relation=relation, subject=source_qnode_id,
-                           object=target_qnode_id, option_group_id=option_group_id)
+                q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key,
+                           object=object_qnode_key, option_group_id=option_group_id)
                 self.message.query_graph.edges[relation]=q_edge
 
             self.response.info(f"NGD values successfully added to edges")

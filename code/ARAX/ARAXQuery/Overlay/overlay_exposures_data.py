@@ -1,7 +1,7 @@
 #!/bin/env python3
 """
 This class overlays the knowledge graph with clinical exposures data from ICEES+. It adds the data (p-values) either in
-virtual edges (if the virtual_relation_label, source_qnode_id, and target_qnode_id are provided) or as EdgeAttributes
+virtual edges (if the virtual_relation_label, subject_qnode_key, and object_qnode_key are provided) or as EdgeAttributes
 tacked onto existing edges in the knowledge graph (applied to all edges).
 """
 import itertools
@@ -41,30 +41,30 @@ class OverlayExposuresData:
         self.virtual_relation_label = self.parameters.get('virtual_relation_label')
 
     def overlay_exposures_data(self):
-        source_qnode_id = self.parameters.get('source_qnode_id')
-        target_qnode_id = self.parameters.get('target_qnode_id')
-        if self.virtual_relation_label and source_qnode_id and target_qnode_id:
+        subject_qnode_key = self.parameters.get('subject_qnode_key')
+        object_qnode_key = self.parameters.get('object_qnode_key')
+        if self.virtual_relation_label and subject_qnode_key and object_qnode_key:
             self.response.debug(f"Overlaying exposures data using virtual edge method "
-                                f"({source_qnode_id}--{self.virtual_relation_label}--{target_qnode_id})")
-            self._add_virtual_edges(source_qnode_id, target_qnode_id)
+                                f"({subject_qnode_key}--{self.virtual_relation_label}--{object_qnode_key})")
+            self._add_virtual_edges(subject_qnode_key, object_qnode_key)
         else:
             self.response.debug(f"Overlaying exposures data using attribute method")
             self._decorate_existing_edges()
 
-    def _add_virtual_edges(self, source_qnode_id, target_qnode_id):
+    def _add_virtual_edges(self, subject_qnode_key, object_qnode_key):
         # This function adds ICEES exposures data as virtual edges between nodes with the specified qnode IDs
         knowledge_graph = self.message.knowledge_graph
         query_graph = self.message.query_graph
         log = self.response
         nodes_by_qg_id = self._get_nodes_by_qg_id(knowledge_graph)
-        source_curies = set(nodes_by_qg_id.get(source_qnode_id))
-        target_curies = set(nodes_by_qg_id.get(target_qnode_id))
+        source_curies = set(nodes_by_qg_id.get(subject_qnode_key))
+        target_curies = set(nodes_by_qg_id.get(object_qnode_key))
         # Determine which curies ICEES 'knows' about
         known_source_curies = {curie for curie in source_curies if self._get_accepted_synonyms(curie)}
         known_target_curies = {curie for curie in target_curies if self._get_accepted_synonyms(curie)}
 
         num_node_pairs_recognized = 0
-        for source_curie, target_curie in ou.get_node_pairs_to_overlay(source_qnode_id, target_qnode_id, query_graph, knowledge_graph, log):
+        for source_curie, target_curie in ou.get_node_pairs_to_overlay(subject_qnode_key, object_qnode_key, query_graph, knowledge_graph, log):
             # Query ICEES only for synonyms it 'knows' about
             if source_curie in known_source_curies and target_curie in known_target_curies:
                 accepted_source_synonyms = self._get_accepted_synonyms(source_curie)
@@ -95,23 +95,23 @@ class OverlayExposuresData:
 
         # Add a qedge to the query graph that corresponds to our new virtual edges
         # new_qedge = QEdge(id=self.virtual_relation_label,
-        #                   source_id=source_qnode_id,
-        #                   target_id=target_qnode_id,
+        #                   source_id=subject_qnode_key,
+        #                   target_id=object_qnode_key,
         #                   type=self.icees_edge_type,
-        #                   option_group_id=ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+        #                   option_group_id=ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
         #                                                                           query_graph, log))
         # Likely need to change this for TRAPI 1.0
-        new_qedge = QEdge(subject=source_qnode_id,
-                          object=target_qnode_id,
+        new_qedge = QEdge(subject=subject_qnode_key,
+                          object=object_qnode_key,
                           predicate=self.icees_edge_type,
-                          option_group_id=ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+                          option_group_id=ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                                   query_graph, log))
         query_graph.edges[self.virtual_relation_label] = new_qedge
 
         if num_node_pairs_recognized:
             log.info(f"ICEES+ returned data for {num_node_pairs_recognized} node pairs")
         else:
-            log.warning(f"Could not find ICEES+ exposures data for any {source_qnode_id}--{target_qnode_id} node pairs")
+            log.warning(f"Could not find ICEES+ exposures data for any {subject_qnode_key}--{object_qnode_key} node pairs")
 
     def _decorate_existing_edges(self):
         # This function decorates all existing edges in the knowledge graph with ICEES data, stored in EdgeAttributes

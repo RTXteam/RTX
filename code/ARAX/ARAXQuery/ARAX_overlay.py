@@ -44,13 +44,13 @@ class ARAXOverlay:
                     'type': 'string',
                     'description': 'Any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'
                 }
-        self.source_qnode_id_info = {
+        self.subject_qnode_key_info = {
                     'is_required': False,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
                     'description': 'A specific source query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)'
                 }
-        self.target_qnode_id_info = {
+        self.object_qnode_key_info = {
                     'is_required': False,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
@@ -114,13 +114,13 @@ class ARAXOverlay:
                     'type': 'string',
                     'description': "An optional label to help identify the virtual edge in the relation field."
                 }
-        self.source_qnode_id_required_info = {
+        self.subject_qnode_key_required_info = {
                     'is_required': True,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
                     'description': 'A specific source query node id (required)'
                 }
-        self.target_qnode_id_required_info = {
+        self.object_qnode_key_required_info = {
                     'is_required': True,
                     'examples': ['n00', 'n01'],
                     'type': 'string',
@@ -181,8 +181,8 @@ You have the choice of applying this to all edges in the knowledge graph, or onl
                 "parameters": {
                     'default_value': self.default_value_info,
                     'virtual_relation_label': self.virtual_relation_label_info,
-                    'source_qnode_id': self.source_qnode_id_info,
-                    'target_qnode_id': self.target_qnode_id_info
+                    'subject_qnode_key': self.subject_qnode_key_info,
+                    'object_qnode_key': self.object_qnode_key_info
                 }
             },
             "overlay_clinical_info": {
@@ -224,8 +224,8 @@ This information is then included as an edge attribute.
                 "parameters": {
                     'COHD_method': self.COHD_method_info,
                     'virtual_relation_label' : self.virtual_relation_label_info,
-                    'source_qnode_id': self.source_qnode_id_info,
-                    'target_qnode_id': self.target_qnode_id_info
+                    'subject_qnode_key': self.subject_qnode_key_info,
+                    'object_qnode_key': self.object_qnode_key_info
                 }
             },
             "compute_jaccard": {
@@ -280,7 +280,7 @@ If the later, virtual edges are added with the relation specified by `virtual_ed
 Use cases include:
 
 * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
 * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_id=n02)`
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
@@ -293,14 +293,14 @@ You have the choice of applying this to all appropriate edges in the knowledge g
                     """,
                 "parameters": {
                     'virtual_relation_label': self.virtual_relation_label_info,
-                    'source_qnode_id': self.source_qnode_id_info,
-                    'target_qnode_id': self.target_qnode_id_info
+                    'subject_qnode_key': self.subject_qnode_key_info,
+                    'object_qnode_key': self.object_qnode_key_info
                 }
             },
             "fisher_exact_test": {
                 "dsl_command": "overlay(action=fisher_exact_test)",
                 "description": """
-`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
+`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
 This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
 It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
 
@@ -329,14 +329,14 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 ```
                     """,
                 'brief_description': """
-fisher_exact_test computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (source_qnode_id eg. 'n01') to their adjacent nodes with specified query id (e.g. target_qnode_id 'n02') in the message knowledge graph. 
+fisher_exact_test computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
 This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
 It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
                     """,
                 "parameters": {
-                    'source_qnode_id': self.source_qnode_id_required_info,
+                    'subject_qnode_key': self.subject_qnode_key_required_info,
                     'virtual_relation_label': self.virtual_relation_label_required_info,
-                    'target_qnode_id': self.target_qnode_id_required_info,
+                    'object_qnode_key': self.object_qnode_key_required_info,
                     'rel_edge_id': self.rel_edge_id_info,
                     'filter_type': self.filter_type_info,
                     'value': self.fet_value_info
@@ -357,8 +357,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
                     """,
                 "parameters": {
                     'virtual_relation_label': self.virtual_relation_label_info,
-                    'source_qnode_id': self.source_qnode_id_info,
-                    'target_qnode_id': self.target_qnode_id_info
+                    'subject_qnode_key': self.subject_qnode_key_info,
+                    'object_qnode_key': self.object_qnode_key_info
                 }
             }
         }
@@ -428,13 +428,13 @@ This information is included in edge attributes with the name 'icees_p-value'.
     # helper function to check if all virtual edge parameters have been properly provided
     def check_virtual_edge_params(self, allowable_parameters):
         parameters = self.parameters
-        if any([x in ['virtual_relation_label', 'source_qnode_id', 'target_qnode_id'] for x in parameters.keys()]):
-            if not all([x in parameters.keys() for x in ['virtual_relation_label', 'source_qnode_id', 'target_qnode_id']]):
-                self.response.error(f"If any of of the following parameters are provided ['virtual_relation_label', 'source_qnode_id', 'target_qnode_id'], all must be provided. Allowable parameters include: {allowable_parameters}")
-            elif parameters['source_qnode_id'] not in allowable_parameters['source_qnode_id']:
-                self.response.error(f"source_qnode_id value is not valid. Valid values are: {allowable_parameters['source_qnode_id']}")
-            elif parameters['target_qnode_id'] not in allowable_parameters['target_qnode_id']:
-                self.response.error(f"target_qnode_id value is not valid. Valid values are: {allowable_parameters['target_qnode_id']}")
+        if any([x in ['virtual_relation_label', 'subject_qnode_key', 'object_qnode_key'] for x in parameters.keys()]):
+            if not all([x in parameters.keys() for x in ['virtual_relation_label', 'subject_qnode_key', 'object_qnode_key']]):
+                self.response.error(f"If any of of the following parameters are provided ['virtual_relation_label', 'subject_qnode_key', 'object_qnode_key'], all must be provided. Allowable parameters include: {allowable_parameters}")
+            elif parameters['subject_qnode_key'] not in allowable_parameters['subject_qnode_key']:
+                self.response.error(f"subject_qnode_key value is not valid. Valid values are: {allowable_parameters['subject_qnode_key']}")
+            elif parameters['object_qnode_key'] not in allowable_parameters['object_qnode_key']:
+                self.response.error(f"object_qnode_key value is not valid. Valid values are: {allowable_parameters['object_qnode_key']}")
 
 
     #### Top level decision maker for applying filters
@@ -501,13 +501,13 @@ This information is included in edge attributes with the name 'icees_p-value'.
         #allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}}
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
-                                    'source_qnode_id': set([key for key in self.message.query_graph.nodes.keys()]),
-                                    'target_qnode_id': set([key for key in self.message.query_graph.nodes.keys()])
+                                    'subject_qnode_key': set([key for key in self.message.query_graph.nodes.keys()]),
+                                    'object_qnode_key': set([key for key in self.message.query_graph.nodes.keys()])
                                     }
         else:
             allowable_parameters = {'action': {'compute_ngd'}, 'default_value': {'0', 'inf'}, 'virtual_relation_label': {'any string label identifying the virtual edge label (optional, otherwise applied to all existing edges in the KG)'},
-                                    'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
-                                    'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
+                                    'subject_qnode_key': {'a specific source query node id (optional, otherwise applied to all edges)'},
+                                    'object_qnode_key': {'a specific target query node id (optional, otherwise applied to all edges)'}
                                     }
 
         # A little function to describe what this thing does
@@ -561,8 +561,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
                                     'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
-                                    'source_qnode_id': set([key for key in self.message.query_graph.nodes.keys()]),
-                                    'target_qnode_id': set([key for key in self.message.query_graph.nodes.keys()])
+                                    'subject_qnode_key': set([key for key in self.message.query_graph.nodes.keys()]),
+                                    'object_qnode_key': set([key for key in self.message.query_graph.nodes.keys()])
                                     }
         else:
             allowable_parameters = {'action': {'overlay_clinical_info'},
@@ -571,8 +571,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     'observed_expected_ratio': {'true', 'false'},
                                     'chi_square': {'true', 'false'},
                                     'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'},
-                                    'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
-                                    'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}
+                                    'subject_qnode_key': {'a specific source query node id (optional, otherwise applied to all edges)'},
+                                    'object_qnode_key': {'a specific target query node id (optional, otherwise applied to all edges)'}
                                     }
 
         # A little function to describe what this thing does
@@ -735,9 +735,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             qg_nodes = message.query_graph.nodes.values()
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
-                                    #'source_qnode_id': set([k for k, x in self.message.query_graph.nodes.items() if x.category == "chemical_substance"]),
+                                    #'subject_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if x.category == "chemical_substance"]),
                                     'subject_key': set([node_key for node_key in qg_nodes]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
-                                    #'target_qnode_id': set([k for k, x in self.message.query_graph.nodes.items() if (x.category == "disease" or x.category == "phenotypic_feature")])
+                                    #'object_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if (x.category == "disease" or x.category == "phenotypic_feature")])
                                     'object_key': set([node_key for node_key in qg_nodes])  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     }
         else:
@@ -857,7 +857,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
     def __overlay_exposures_data(self, describe=False):
         """
         This function applies the action overlay_exposures_data. It adds ICEES+ p-values either as virtual edges (if
-        the virtual_relation_label, source_qnode_id, and target_qnode_id are provided) or as EdgeAttributes tacked onto
+        the virtual_relation_label, subject_qnode_key, and object_qnode_key are provided) or as EdgeAttributes tacked onto
         existing edges in the knowledge graph (applied to all edges).
         return: ARAXResponse
         """
@@ -869,13 +869,13 @@ This information is included in edge attributes with the name 'icees_p-value'.
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'overlay_exposures_data'},
                                     'virtual_relation_label': {self.parameters.get('virtual_relation_label')},
-                                    'source_qnode_id': {key for key in self.message.query_graph.nodes.keys()},
-                                    'target_qnode_id': {key for key in self.message.query_graph.nodes.keys()}}
+                                    'subject_qnode_key': {key for key in self.message.query_graph.nodes.keys()},
+                                    'object_qnode_key': {key for key in self.message.query_graph.nodes.keys()}}
         else:
             allowable_parameters = {'action': {'overlay_exposures_data'},
                                     'virtual_relation_label': {'any string label used to identify the virtual edge (optional, otherwise information is added as an attribute to all existing edges in the KG)'},
-                                    'source_qnode_id': {'a specific source query node id (optional, otherwise applied to all edges)'},
-                                    'target_qnode_id': {'a specific target query node id (optional, otherwise applied to all edges)'}}
+                                    'subject_qnode_key': {'a specific source query node id (optional, otherwise applied to all edges)'},
+                                    'object_qnode_key': {'a specific target query node id (optional, otherwise applied to all edges)'}}
 
         # A little function to describe what this thing does
         if describe:
@@ -913,14 +913,14 @@ def main():
 
     actions_list = [
         #"overlay(action=compute_ngd)",
-        #"overlay(action=compute_ngd, virtual_edge_type=NGD1, source_qnode_id=n00, target_qnode_id=n01)",
+        #"overlay(action=compute_ngd, virtual_edge_type=NGD1, subject_qnode_key=n00, object_qnode_key=n01)",
         #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
-        # "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
+        # "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, subject_qnode_key=n00, target_qnode_id=n01)",
         #"overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_edge_type=J1)",
         #"overlay(action=add_node_pmids)",
         #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-        #"overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, source_qnode_id=n00, target_qnode_id=n01)",
-        "overlay(action=predict_drug_treats_disease, source_qnode_id=n01, target_qnode_id=n00, virtual_edge_type=P1)",
+        #"overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, subject_qnode_key=n00, object_qnode_key=n01)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n01, object_qnode_key=n00, virtual_edge_type=P1)",
         "return(message=true,store=false)"
     ]
 

@@ -127,16 +127,16 @@ class ComputeJaccard:
                 message.knowledge_graph.edges[id] = edge
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
-            source_qnode_id = parameters['start_node_id']
-            target_qnode_id = parameters['end_node_id']
-            option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+            subject_qnode_key = parameters['start_node_id']
+            object_qnode_key = parameters['end_node_id']
+            option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                       self.message.query_graph, self.response)
-            # q_edge = QEdge(id=relation, type=edge_type, relation=relation, source_id=source_qnode_id,
-            #                target_id=target_qnode_id, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
+            # q_edge = QEdge(id=relation, type=edge_type, relation=relation, source_id=subject_qnode_key,
+            #                target_id=object_qnode_key, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
             
             # Does not look to be a way to add option group ids to the new QEdge in TRAPI 1.0? Will error as written now
-            q_edge = QEdge(predicate=edge_type, relation=relation, subject=source_qnode_id,
-                           object=target_qnode_id, option_group_id=option_group_id)
+            q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key,
+                           object=object_qnode_key, option_group_id=option_group_id)
             # Need to fix this for TRAPI 1.0
             self.message.query_graph.edges[relation] = q_edge
 

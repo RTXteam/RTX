@@ -263,11 +263,11 @@ class OverlayClinicalInfo:
         curies_to_names = dict()  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         # identify the nodes that we should be adding virtual edges for
         for key, node in self.message.knowledge_graph.nodes.items():
-            if hasattr(node, 'qnode_ids'):
-                if parameters['source_qnode_id'] in node.qnode_ids:
+            if hasattr(node, 'qnode_keys'):
+                if parameters['subject_qnode_key'] in node.qnode_keys:
                     source_curies_to_decorate.add(key)
                     curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
-                if parameters['target_qnode_id'] in node.qnode_ids:
+                if parameters['object_qnode_key'] in node.qnode_keys:
                     target_curies_to_decorate.add(key)
                     curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         added_flag = False  # check to see if any edges where added
@@ -286,7 +286,7 @@ class OverlayClinicalInfo:
                 # edge properties
                 now = datetime.now()
                 edge_type = f"has_{name}_with"
-                qedge_ids = [parameters['virtual_relation_label']]
+                qedge_keys = [parameters['virtual_relation_label']]
                 relation = parameters['virtual_relation_label']
                 is_defined_by = "ARAX"
                 defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -310,7 +310,7 @@ class OverlayClinicalInfo:
                     EdgeAttribute(name="provided_by", value=provided_by),
                     EdgeAttribute(name="confidence", value=confidence),
                     EdgeAttribute(name="weight", value=weight),
-                    EdgeAttribute(name="qedge_ids", value=qedge_ids)
+                    #EdgeAttribute(name="qedge_ids", value=qedge_ids)
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
                 #             target_id=target_id,
@@ -319,22 +319,23 @@ class OverlayClinicalInfo:
                 #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
                 edge = Edge(predicate=edge_type, subject=source_id, object=target_id,
                                 attributes=edge_attribute_list)
+                edge.qedge_keys = qedge_keys
                 self.message.knowledge_graph.edges[id] = edge
 
         # Now add a q_edge the query_graph since I've added an extra edge to the KG
         if added_flag:
             edge_type = f"has_{name}_with"
             relation = parameters['virtual_relation_label']
-            qedge_ids = [parameters['virtual_relation_label']]
-            source_qnode_id = parameters['source_qnode_id']
-            target_qnode_id = parameters['target_qnode_id']
-            option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+            qedge_keys = [parameters['virtual_relation_label']]
+            subject_qnode_key = parameters['subject_qnode_key']
+            object_qnode_key = parameters['object_qnode_key']
+            option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                       self.message.query_graph, self.response)
             # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
-            #                source_id=source_qnode_id, target_id=target_qnode_id,
+            #                source_id=subject_qnode_key, target_id=object_qnode_key,
             #                option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
-            q_edge = QEdge(predicate=edge_type, relation=relation, subject=source_qnode_id,
-                           object=target_qnode_id, option_group_id=option_group_id)
+            q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key,
+                           object=object_qnode_key, option_group_id=option_group_id)
             self.message.query_graph.edges[relation]=q_edge
 
     def add_all_edges(self, name="", default=0.):
