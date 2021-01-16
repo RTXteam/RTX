@@ -193,7 +193,7 @@ class ARAXExpander:
         """
         return list(self.command_definitions.values())
 
-    def apply(self, input_parameters, response=None):
+    def apply(self, response, input_parameters):
         message = response.envelope.message
         log = response
         # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
