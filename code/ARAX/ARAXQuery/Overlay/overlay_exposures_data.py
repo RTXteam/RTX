@@ -11,10 +11,15 @@ import os
 import requests
 import yaml
 
+
+import random
+import time
+random.seed(time.time())
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.q_edge import QEdge
-from swagger_server.models.edge import Edge
-from swagger_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute as EdgeAttribute
+from openapi_server.models.edge import Edge
+from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -65,6 +70,9 @@ class OverlayExposuresData:
                 accepted_source_synonyms = self._get_accepted_synonyms(source_curie)
                 accepted_target_synonyms = self._get_accepted_synonyms(target_curie)
                 for source_synonym, target_synonym in itertools.product(accepted_source_synonyms, accepted_target_synonyms):
+                    # qedge = QEdge(id=f"icees_{source_synonym}--{target_synonym}",
+                    #               source_id=source_synonym,
+                    #               target_id=target_synonym)
                     qedge = QEdge(id=f"icees_{source_synonym}--{target_synonym}",
                                   source_id=source_synonym,
                                   target_id=target_synonym)
@@ -73,21 +81,32 @@ class OverlayExposuresData:
                     if p_value is not None:
                         num_node_pairs_recognized += 1
                         # Add a new virtual edge with this data
-                        virtual_edge = self._create_icees_virtual_edge(source_curie, target_curie, p_value)
-                        knowledge_graph.edges.append(virtual_edge)
+                        id, virtual_edge = self._create_icees_virtual_edge(source_curie, target_curie, p_value)
+                        old_id = id
+                        while id in knowledge_graph.edges:
+                            id = old_id+f".{random.randint(10**(9-1), (10**9)-1)}"
+                        knowledge_graph.edges[id] = virtual_edge
                         break  # Don't worry about checking remaining synonym combos if we got results
             # Add an 'empty' virtual edge (p-value of None) if we couldn't find any results for this node pair #1009
-            empty_virtual_edge = self._create_icees_virtual_edge(source_curie, target_curie, None)
-            knowledge_graph.edges.append(empty_virtual_edge)
+            id, empty_virtual_edge = self._create_icees_virtual_edge(source_curie, target_curie, None)
+            while id in knowledge_graph.edges:
+                id = old_id+f".{random.randint(10**(9-1), (10**9)-1)}"
+            knowledge_graph.edges[id] = empty_virtual_edge
 
         # Add a qedge to the query graph that corresponds to our new virtual edges
-        new_qedge = QEdge(id=self.virtual_relation_label,
-                          source_id=source_qnode_id,
-                          target_id=target_qnode_id,
-                          type=self.icees_edge_type,
+        # new_qedge = QEdge(id=self.virtual_relation_label,
+        #                   source_id=source_qnode_id,
+        #                   target_id=target_qnode_id,
+        #                   type=self.icees_edge_type,
+        #                   option_group_id=ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
+        #                                                                           query_graph, log))
+        # Likely need to change this for TRAPI 1.0
+        new_qedge = QEdge(subject=source_qnode_id,
+                          object=target_qnode_id,
+                          predicate=self.icees_edge_type,
                           option_group_id=ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
                                                                                   query_graph, log))
-        query_graph.edges.append(new_qedge)
+        query_graph.edges[self.virtual_relation_label] = new_qedge
 
         if num_node_pairs_recognized:
             log.info(f"ICEES+ returned data for {num_node_pairs_recognized} node pairs")
@@ -144,7 +163,7 @@ class OverlayExposuresData:
     def _get_icees_p_value_for_edge(self, qedge, log):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
         qedges = [qedge.to_dict()]
-        qnodes = [{"node_id": curie, "curie": curie} for curie in [qedge.source_id, qedge.target_id]]
+        qnodes = [{"node_id": curie, "curie": curie} for curie in [qedge.subject, qedge.object]]
         icees_compatible_query = {"message": {"knowledge_graph": {"edges": qedges,
                                                                   "nodes": qnodes}}}
         icees_response = requests.post(self.icees_knowledge_graph_overlay_url,
@@ -157,9 +176,9 @@ class OverlayExposuresData:
             returned_knowledge_graph = icees_response.json()["return value"].get("knowledge_graph")
             if returned_knowledge_graph:
                 p_values = []
-                for edge in returned_knowledge_graph.get("edges", []):
-                    source_id = edge.get("source_id")
-                    target_id = edge.get("target_id")
+                for edge in returned_knowledge_graph.get("edges", dict()).values():
+                    source_id = edge.get("subject")
+                    target_id = edge.get("object")
                     # Skip any self-edges and reverse edges in ICEES response
                     if source_id == qedge.source_id and target_id == qedge.target_id:
                         p_values += [attribute["p_value"] for attribute in edge.get("edge_attributes", []) if attribute.get("p_value") is not None]
@@ -175,20 +194,30 @@ class OverlayExposuresData:
                              type=self.icees_attribute_type)
 
     def _create_icees_virtual_edge(self, source_curie, target_curie, p_value):
-        return Edge(id=f"ICEES:{source_curie}--{target_curie}",
-                    type=self.icees_edge_type,
-                    source_id=source_curie,
-                    target_id=target_curie,
-                    is_defined_by="ARAX",
-                    provided_by="ICEES+",
-                    relation=self.virtual_relation_label,
-                    qedge_ids=[self.virtual_relation_label],
-                    edge_attributes=[self._create_icees_edge_attribute(p_value)])
+        id = f"ICEES:{source_curie}--{target_curie}"
+        # edge = Edge(id=f"ICEES:{source_curie}--{target_curie}",
+        #             type=self.icees_edge_type,
+        #             source_id=source_curie,
+        #             target_id=target_curie,
+        #             is_defined_by="ARAX",
+        #             provided_by="ICEES+",
+        #             relation=self.virtual_relation_label,
+        #             qedge_ids=[self.virtual_relation_label],
+        #             edge_attributes=[self._create_icees_edge_attribute(p_value)])
+        edge_attribute_list = [
+            self._create_icees_edge_attribute(p_value),
+            EdgeAttribute(name="is_defined_by", value="ARAX"),
+            EdgeAttribute(name="provided_by", value="ICEES+"),
+            EdgeAttribute(name="qedge_ids", value=[self.virtual_relation_label])
+        ]
+        edge = Edge(predicate=self.icees_edge_type, subject=source_curie, object=target_curie,
+                        relation=self.virtual_relation_label, attributes=edge_attribute_list)
+        return id, edge
 
     @staticmethod
     def _get_nodes_by_qg_id(knowledge_graph):
         nodes_by_qg_id = dict()
-        for node in knowledge_graph.nodes:
+        for key, node in knowledge_graph.nodes.items():
             for qnode_id in node.qnode_ids:
                 if qnode_id not in nodes_by_qg_id:
                     nodes_by_qg_id[qnode_id] = dict()
@@ -198,15 +227,15 @@ class OverlayExposuresData:
     @staticmethod
     def _get_node_synonyms(knowledge_graph):
         synonymizer = NodeSynonymizer()
-        node_ids = {node.id for node in knowledge_graph.nodes}
+        node_ids = {key for key in knowledge_graph.nodes.keys()}
         equivalent_curie_info = synonymizer.get_equivalent_nodes(node_ids, kg_name='KG2')
         return {node_id: set(equivalent_curies_dict) for node_id, equivalent_curies_dict in equivalent_curie_info.items()}
 
     @staticmethod
     def _get_edges_by_node_pair(knowledge_graph):
         edges_by_node_pair = dict()
-        for edge in knowledge_graph.edges:
-            node_pair_key = f"{edge.source_id}--{edge.target_id}"
+        for edge in knowledge_graph.edges.values():
+            node_pair_key = f"{edge.subject}--{edge.object}"
             if node_pair_key not in edges_by_node_pair:
                 edges_by_node_pair[node_pair_key] = []
             edges_by_node_pair[node_pair_key].append(edge)
