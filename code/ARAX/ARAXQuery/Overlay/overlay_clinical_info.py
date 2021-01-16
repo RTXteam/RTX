@@ -8,9 +8,9 @@ import itertools
 from datetime import datetime
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.edge_attribute import EdgeAttribute
-from swagger_server.models.edge import Edge
-from swagger_server.models.q_edge import QEdge
+from openapi_server.models.attribute import Attribute as EdgeAttribute
+from openapi_server.models.edge import Edge
+from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from QueryCOHD import QueryCOHD as COHD
 # FIXME:^ this should be pulled from a YAML file pointing to the parser
@@ -49,8 +49,8 @@ class OverlayClinicalInfo:
         # First, make a dictionary between node curie and type to make sure we're only looking at edges we can handle
         self.response.info("Converting CURIE identifiers to human readable names")
         try:
-            for node in self.message.knowledge_graph.nodes:
-                self.node_curie_to_type[node.id] = node.type  # WARNING: this is a list
+            for key, node in self.message.knowledge_graph.nodes.items():
+                self.node_curie_to_type[key] = node.category  # WARNING: this is a list
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -257,14 +257,14 @@ class OverlayClinicalInfo:
         target_curies_to_decorate = set()
         curies_to_names = dict()  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         # identify the nodes that we should be adding virtual edges for
-        for node in self.message.knowledge_graph.nodes:
+        for key, node in self.message.knowledge_graph.nodes.items():
             if hasattr(node, 'qnode_ids'):
                 if parameters['source_qnode_id'] in node.qnode_ids:
-                    source_curies_to_decorate.add(node.id)
-                    curies_to_names[node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+                    source_curies_to_decorate.add(key)
+                    curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
                 if parameters['target_qnode_id'] in node.qnode_ids:
-                    target_curies_to_decorate.add(node.id)
-                    curies_to_names[node.id] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+                    target_curies_to_decorate.add(key)
+                    curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         added_flag = False  # check to see if any edges where added
         # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
         for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
@@ -293,13 +293,28 @@ class OverlayClinicalInfo:
 
                 # now actually add the virtual edges in
                 id = f"{relation}_{self.global_iter}"
+                # ensure the id is unique
+                # might need to change after expand is implemented for TRAPI 1.0
+                while id in message.knowledge_graph.edges:
+                    id = f"{relation}_{self.global_iter}.{random.randint(10**(9-1), (10**9)-1)}"
                 self.global_iter += 1
-                edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
-                            target_id=target_id,
-                            is_defined_by=is_defined_by, defined_datetime=defined_datetime,
-                            provided_by=provided_by,
-                            confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
-                self.message.knowledge_graph.edges.append(edge)
+                edge_attribute_list = [
+                    edge_attribute,
+                    EdgeAttribute(name="is_defined_by", value=is_defined_by),
+                    EdgeAttribute(name="defined_datetime", value=defined_datetime),
+                    EdgeAttribute(name="provided_by", value=provided_by),
+                    EdgeAttribute(name="confidence", value=confidence),
+                    EdgeAttribute(name="weight", value=weight),
+                    EdgeAttribute(name="qedge_ids", value=qedge_ids)
+                ]
+                # edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
+                #             target_id=target_id,
+                #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
+                #             provided_by=provided_by,
+                #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
+                edge = Edge(predicate=edge_type, subject=source_id, object=target_id,
+                                attributes=edge_attribute_list)
+                self.message.knowledge_graph.edges[id] = edge
 
         # Now add a q_edge the query_graph since I've added an extra edge to the KG
         if added_flag:
@@ -310,20 +325,22 @@ class OverlayClinicalInfo:
             target_qnode_id = parameters['target_qnode_id']
             option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id,
                                                                       self.message.query_graph, self.response)
-            q_edge = QEdge(id=relation, type=edge_type, relation=relation,
-                           source_id=source_qnode_id, target_id=target_qnode_id,
-                           option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
-            self.message.query_graph.edges.append(q_edge)
+            # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
+            #                source_id=source_qnode_id, target_id=target_qnode_id,
+            #                option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
+            q_edge = QEdge(predicate=edge_type, relation=relation, subject=source_qnode_id,
+                           object=target_qnode_id, option_group_id=option_group_id)
+            self.message.query_graph.edges[relation]=q_edge
 
     def add_all_edges(self, name="", default=0.):
         curies_to_names = dict()
-        for node in self.message.knowledge_graph.nodes:
-            curies_to_names[node.id] = node.name
-        for edge in self.message.knowledge_graph.edges:
+        for key, node in self.message.knowledge_graph.nodes.items():
+            curies_to_names[key] = node.name
+        for edge in self.message.knowledge_graph.edges.values():
             if not edge.edge_attributes:  # populate if not already there
                 edge.edge_attributes = []
-            source_curie = edge.source_id
-            target_curie = edge.target_id
+            source_curie = edge.subject
+            target_curie = edge.object
             edge_attribute = self.make_edge_attribute_from_curies(source_curie, target_curie,
                                                                   source_name=curies_to_names[source_curie],
                                                                   target_name=curies_to_names[target_curie],
