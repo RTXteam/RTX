@@ -6,6 +6,11 @@ import traceback
 import numpy as np
 import itertools
 from datetime import datetime
+
+import random
+import time
+random.seed(time.time())
+
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
