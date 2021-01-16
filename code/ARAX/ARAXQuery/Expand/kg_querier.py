@@ -94,7 +94,7 @@ class KGQuerier:
         log = self.response
         final_kg = QGOrganizedKnowledgeGraph()
         qnode_key = next(qnode_key for qnode_key in single_node_qg.nodes)
-        qnode = single_node_qg[qnode_key]
+        qnode = single_node_qg.nodes[qnode_key]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
         if qnode.id:
@@ -107,7 +107,7 @@ class KGQuerier:
 
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
-        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode, single_node_qg, kg_name)} WHERE {where_clause} RETURN {qnode_key}"
+        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, single_node_qg, kg_name)} WHERE {where_clause} RETURN {qnode_key}"
         log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
 

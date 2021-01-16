@@ -191,7 +191,7 @@ class BTEQuerier:
             output_qnode_key = qedge.object
         else:
             input_qnode_key = next(qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.id)
-            output_qnode_key = set(qg.nodes).difference({input_qnode_key})
+            output_qnode_key = list(set(qg.nodes).difference({input_qnode_key}))[0]
             log.warning(f"BTE cannot do bidirectional queries; the query for this edge will be directed, going: "
                         f"{input_qnode_key}-->{output_qnode_key}")
         input_qnode = qg.nodes[input_qnode_key]
@@ -206,7 +206,7 @@ class BTEQuerier:
         # Process qnode types (convert to preferred format, make sure allowed)
         input_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(input_qnode.category)]
         output_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(output_qnode.category)]
-        qnodes_missing_type = [qnode_key for qnode_key in [input_qnode_key, output_qnode_key] if not qg[qnode_key].type]
+        qnodes_missing_type = [qnode_key for qnode_key in [input_qnode_key, output_qnode_key] if not qg.nodes[qnode_key].type]
         if qnodes_missing_type:
             log.error(f"BTE requires every query node to have a category. QNode(s) missing a category: "
                       f"{', '.join(qnodes_missing_type)}", error_code="InvalidInput")

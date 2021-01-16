@@ -119,8 +119,8 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
             assert edge.is_defined_by and isinstance(edge.is_defined_by, str)
 
 
-def _check_node_categories(nodes: List[Node], query_graph: QueryGraph):
-    for node in nodes:
+def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
+    for node in nodes.values():
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
             if qnode.category:

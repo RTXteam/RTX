@@ -323,7 +323,7 @@ class ARAXExpander:
                 kg.edges.remove(edge_key)
 
         # Return the response and done
-        only_kryptonite_qedges_expanded = all([query_graph[qedge_key].exclude for qedge_key in input_qedge_keys])
+        only_kryptonite_qedges_expanded = all([query_graph.edges[qedge_key].exclude for qedge_key in input_qedge_keys])
         if not kg.nodes and not continue_if_no_results and not only_kryptonite_qedges_expanded:
             log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
         else:
@@ -443,7 +443,7 @@ class ARAXExpander:
         qnode_keys = [qedge.subject, qedge.object]
 
         # Add (a copy of) this qedge to our edge query graph
-        edge_qg.edges[qedge_key] = eu.copy_qedge(qedge_key)
+        edge_qg.edges[qedge_key] = eu.copy_qedge(qedge)
 
         # Update this qedge's qnodes as appropriate and add (copies of) them to the edge query graph
         required_qedge_keys = {qe_key for qe_key, qe in full_qg.edges.items() if not qe.option_group_id}
@@ -478,11 +478,11 @@ class ARAXExpander:
 
         # Display a summary of what the modified query graph for this edge looks like
         qnodes_with_curies = [qnode_key for qnode_key, qnode in edge_qg.nodes.items() if qnode.id]
-        qnodes_without_curies = [qnode_key for qnode_key in edge_qg if qnode_key not in qnodes_with_curies]
+        qnodes_without_curies = [qnode_key for qnode_key in edge_qg.nodes if qnode_key not in qnodes_with_curies]
         input_qnode_key = qnodes_with_curies[0] if qnodes_with_curies else qnodes_without_curies[0]
-        output_qnode_key = set(edge_qg.nodes).difference({input_qnode_key})
-        input_qnode = edge_qg[input_qnode_key]
-        output_qnode = edge_qg[output_qnode_key]
+        output_qnode_key = list(set(edge_qg.nodes).difference({input_qnode_key}))[0]
+        input_qnode = edge_qg.nodes[input_qnode_key]
+        output_qnode = edge_qg.nodes[output_qnode_key]
         input_curie_summary = self._get_qnode_curie_summary(input_qnode)
         output_curie_summary = self._get_qnode_curie_summary(output_qnode)
         log.debug(f"Modified QG for this qedge is ({input_qnode_key}:{input_qnode.category}{input_curie_summary})-"
@@ -538,7 +538,7 @@ class ARAXExpander:
                 if not edge.subject or not edge.object:
                     log.error(f"Could not find preferred curie mappings for edge {edge_key}'s node(s)")
                     return deduplicated_kg, updated_edge_to_nodes_map
-                deduplicated_kg.add_edge(edge, qedge_key)
+                deduplicated_kg.add_edge(edge_key, edge, qedge_key)
 
                 # Update the edge-to-node map for this edge (used down the line for pruning)
                 for qnode_key, corresponding_node_key in edge_to_nodes_map[edge_key].items():
@@ -575,7 +575,7 @@ class ARAXExpander:
             if qedge_key not in sub_query_graph.edges:
                 sub_query_graph.edges[qedge_key] = qedge_copy
             for qnode_key in [qedge_copy.subject, qedge_copy.object]:
-                qnode_copy = eu.copy_qnode(query_graph[qnode_key])
+                qnode_copy = eu.copy_qnode(query_graph.nodes[qnode_key])
                 if qnode_key not in sub_query_graph.nodes:
                     sub_query_graph.nodes[qnode_key] = qnode_copy
 
@@ -587,10 +587,10 @@ class ARAXExpander:
         log.debug("Merging answer into Message.KnowledgeGraph")
         for qnode_key, nodes in answer_dict_kg.nodes_by_qg_id.items():
             for node_key, node in nodes.items():
-                dict_kg.add_node(node, qnode_key)
+                dict_kg.add_node(node_key, node, qnode_key)
         for qedge_key, edges_dict in answer_dict_kg.edges_by_qg_id.items():
             for edge_key, edge in edges_dict.items():
-                dict_kg.add_edge(edge, qedge_key)
+                dict_kg.add_edge(edge_key, edge, qedge_key)
 
     @staticmethod
     def _store_kryptonite_edge_info(edge_node_usage_map: Dict[str, Dict[str, str]], kryptonite_qedge_key: str, qg: QueryGraph,
@@ -853,8 +853,8 @@ class ARAXExpander:
     @staticmethod
     def _override_node_categories(kg: KnowledgeGraph, qg: QueryGraph):
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
-        for node in kg.nodes:
-            corresponding_qnode_categories = {qg.nodes[qnode_key].type for qnode_key in node.qnode_keys}
+        for node in kg.nodes.values():
+            corresponding_qnode_categories = {qg.nodes[qnode_key].category for qnode_key in node.qnode_keys}
             non_none_categories = [qnode_category for qnode_category in corresponding_qnode_categories if qnode_category]
             if non_none_categories:
                 node.category = non_none_categories
@@ -868,7 +868,7 @@ class ARAXExpander:
     @staticmethod
     def _get_qedges_with_curie_qnode(query_graph: QueryGraph) -> List[str]:
         return [qedge_key for qedge_key, qedge in query_graph.edges.items()
-                if query_graph.nodes[qedge.subject].curie or query_graph.nodes[qedge.object].curie]
+                if query_graph.nodes[qedge.subject].id or query_graph.nodes[qedge.object].id]
 
     @staticmethod
     def _find_connected_qedge(qedge_choices: List[QEdge], qedge: QEdge) -> QEdge:
