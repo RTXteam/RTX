@@ -9,7 +9,7 @@ from neo4j import GraphDatabase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
-from expand_utilities import DictKnowledgeGraph
+from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
@@ -37,7 +37,7 @@ class KGQuerier:
         else:
             self.kg_name = "KG1"
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
         This function answers a one-hop (single-edge) query using either KG1 or KG2.
         :param query_graph: A Reasoner API standard query graph.
@@ -51,7 +51,7 @@ class KGQuerier:
         enforce_directionality = self.enforce_directionality
         use_synonyms = self.use_synonyms
         kg_name = self.kg_name
-        final_kg = DictKnowledgeGraph()
+        final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph
@@ -88,11 +88,11 @@ class KGQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def answer_single_node_query(self, single_node_qg: QueryGraph) -> DictKnowledgeGraph:
+    def answer_single_node_query(self, single_node_qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
         kg_name = self.kg_name
         use_synonyms = self.use_synonyms
         log = self.response
-        final_kg = DictKnowledgeGraph()
+        final_kg = QGOrganizedKnowledgeGraph()
         qnode_key = next(qnode_key for qnode_key in single_node_qg.nodes)
         qnode = single_node_qg[qnode_key]
 
@@ -189,9 +189,9 @@ class KGQuerier:
         return results_from_neo4j
 
     def _load_answers_into_kg(self, neo4j_results: List[Dict[str, List[Dict[str, any]]]], kg_name: str,
-                              qg: QueryGraph, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+                              qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Processing query results for edge {next(qedge_key for qedge_key in qg.edges)}")
-        final_kg = DictKnowledgeGraph()
+        final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
         node_uuid_to_curie_dict = self._build_node_uuid_to_curie_dict(neo4j_results[0]) if kg_name == "KG1" else dict()
 
@@ -208,13 +208,13 @@ class KGQuerier:
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_key = column_name.replace("edges_", "", 1)
                 for neo4j_edge in results_table.get(column_name):
-                    swagger_edge = self._convert_neo4j_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict, kg_name)
+                    swagger_edge_key, swagger_edge = self._convert_neo4j_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict, kg_name)
 
                     # Record which of this edge's nodes correspond to which qnode_key
-                    if swagger_edge.id not in edge_to_nodes_map:
-                        edge_to_nodes_map[swagger_edge.id] = dict()
+                    if swagger_edge_key not in edge_to_nodes_map:
+                        edge_to_nodes_map[swagger_edge_key] = dict()
                     for qnode_key in qg.nodes:
-                        edge_to_nodes_map[swagger_edge.id][qnode_key] = neo4j_edge.get(qnode_key)
+                        edge_to_nodes_map[swagger_edge_key][qnode_key] = neo4j_edge.get(qnode_key)
 
                     # Finally add the current edge to our answer knowledge graph
                     final_kg.add_edge(swagger_edge, column_qedge_key)
@@ -277,7 +277,7 @@ class KGQuerier:
         return swagger_node_key, swagger_node
 
     def _convert_neo4j_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str],
-                                            kg_name: str) -> Edge:
+                                            kg_name: str) -> Tuple[str, Edge]:
         if kg_name == "KG2":
             return self._convert_kg2_edge_to_swagger_edge(neo4j_edge)
         elif kg_name == "KG2c":
@@ -287,7 +287,7 @@ class KGQuerier:
 
     def _convert_kg2_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge()
-        swagger_edge.id = f"KG2:{neo4j_edge.get('id')}"
+        swagger_edge_key = f"KG2:{neo4j_edge.get('id')}"
         swagger_edge.predicate = neo4j_edge.get("simplified_edge_label")
         swagger_edge.subject = neo4j_edge.get("subject")
         swagger_edge.object = neo4j_edge.get("object")
@@ -301,32 +301,32 @@ class KGQuerier:
         additional_kg2_edge_properties = ["relation_curie", "simplified_relation_curie", "simplified_relation",
                                           "edge_label"]
         swagger_edge.attributes = self._create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
-        return swagger_edge
+        return swagger_edge_key, swagger_edge
 
     @staticmethod
-    def _convert_kg2c_edge_to_swagger_edge(neo4j_edge: Dict[str, any]) -> Edge:
+    def _convert_kg2c_edge_to_swagger_edge(neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
         swagger_edge = Edge()
         swagger_edge.predicate = neo4j_edge.get("simplified_edge_label")
         swagger_edge.subject = neo4j_edge.get("subject")
         swagger_edge.object = neo4j_edge.get("object")
-        swagger_edge.id = f"KG2c:{neo4j_edge.get('id')}"
+        swagger_edge_key = f"KG2c:{neo4j_edge.get('id')}"
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.is_defined_by = "ARAX/KG2c"
         swagger_edge.publications = neo4j_edge.get("publications")
-        return swagger_edge
+        return swagger_edge_key, swagger_edge
 
-    def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Edge:
+    def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Tuple[str, Edge]:
         swagger_edge = Edge()
         swagger_edge.predicate = neo4j_edge.get("predicate")
         swagger_edge.subject = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
         swagger_edge.object = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
-        swagger_edge.id = f"KG1:{neo4j_edge.get('id')}"
+        swagger_edge_key = f"KG1:{neo4j_edge.get('id')}"
         swagger_edge.relation = neo4j_edge.get("relation")
         swagger_edge.provided_by = neo4j_edge.get("provided_by")
         swagger_edge.is_defined_by = "ARAX/KG1"
         if neo4j_edge.get("probability"):
             swagger_edge.attributes = self._create_swagger_attributes("edge", ["probability"], neo4j_edge)
-        return swagger_edge
+        return swagger_edge_key, swagger_edge
 
     @staticmethod
     def _create_swagger_attributes(object_type: str, property_names: List[str], neo4j_object: Dict[str, any]):

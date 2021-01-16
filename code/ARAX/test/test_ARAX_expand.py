@@ -73,7 +73,7 @@ def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
 def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     for qedge_key, edges in sorted(edges_by_qg_id.items()):
         for edge_key, edge in sorted(edges.items()):
-            print(f"{qedge_key}: {edge.id}, {edge.subject}--{edge.predicate}->{edge.object}, {edge.qedge_keys}")
+            print(f"{qedge_key}: {edge_key}, {edge.subject}--{edge.predicate}->{edge.object}, {edge.qedge_keys}")
 
 
 def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
@@ -110,7 +110,7 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
             assert node.category and isinstance(node.category, list)
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
-            assert edge.id and isinstance(edge.id, str)
+            assert edge_key and isinstance(edge_key, str)
             assert edge.qedge_keys and isinstance(edge.qedge_keys, list)
             assert edge.predicate and isinstance(edge.predicate, str)
             assert edge.subject and isinstance(edge.subject, str)

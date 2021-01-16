@@ -10,7 +10,7 @@ from biothings_explorer.user_query_dispatcher import SingleEdgeQueryDispatcher
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
-from expand_utilities import DictKnowledgeGraph
+from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -26,7 +26,7 @@ class BTEQuerier:
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
         This function answers a one-hop (single-edge) query using BTE.
         :param query_graph: A Reasoner API standard query graph.
@@ -39,7 +39,7 @@ class BTEQuerier:
         enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
         use_synonyms = self.response.data['parameters'].get('use_synonyms')
         log = self.response
-        answer_kg = DictKnowledgeGraph()
+        answer_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
         valid_bte_inputs_dict = self._get_valid_bte_inputs_dict()
 
@@ -78,8 +78,8 @@ class BTEQuerier:
         return answer_kg, edge_to_nodes_map
 
     def _answer_query_using_bte(self, input_qnode_key: str, output_qnode_key: str, qg: QueryGraph,
-                                answer_kg: DictKnowledgeGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
-                                log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Set[str]]:
+                                answer_kg: QGOrganizedKnowledgeGraph, valid_bte_inputs_dict: Dict[str, Set[str]],
+                                log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Set[str]]:
         accepted_curies = set()
         qedge_key = next(qedge_key for qedge_key in qg.edges)
         qedge = qg.edges[qedge_key]
@@ -112,8 +112,8 @@ class BTEQuerier:
                         answer_kg = self._add_answers_to_kg(answer_kg, reasoner_std_response, input_qnode_key, output_qnode_key, qedge_key, log)
         return answer_kg, accepted_curies
 
-    def _add_answers_to_kg(self, answer_kg: DictKnowledgeGraph, reasoner_std_response: Dict[str, any],
-                           input_qnode_key: str, output_qnode_key: str, qedge_key: str, log: ARAXResponse) -> DictKnowledgeGraph:
+    def _add_answers_to_kg(self, answer_kg: QGOrganizedKnowledgeGraph, reasoner_std_response: Dict[str, any],
+                           input_qnode_key: str, output_qnode_key: str, qedge_key: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         kg_to_qg_ids_dict = self._build_kg_to_qg_id_dict(reasoner_std_response['results'])
         if reasoner_std_response['knowledge_graph']['edges']:
             remapped_node_keys = dict()
@@ -152,18 +152,18 @@ class BTEQuerier:
 
             for edge in reasoner_std_response['knowledge_graph']['edges']:
                 swagger_edge = Edge()
-                swagger_edge.id = edge.get("id")
+                swagger_edge_key = edge.get("id")
                 swagger_edge.predicate = edge.get('type')
                 swagger_edge.subject = remapped_node_keys.get(edge.get('source_id'), edge.get('source_id'))
                 swagger_edge.object = remapped_node_keys.get(edge.get('target_id'), edge.get('target_id'))
                 swagger_edge.is_defined_by = "BTE"
                 swagger_edge.provided_by = edge.get('edge_source')
                 # Map the returned BTE qg_id back to the original qedge_key in our query graph
-                bte_qg_id = kg_to_qg_ids_dict['edges'].get(swagger_edge.id)
+                bte_qg_id = kg_to_qg_ids_dict['edges'].get(swagger_edge_key)
                 if bte_qg_id != "e1":
                     log.error("Could not map BTE qg_id to ARAX qedge_key", error_code="UnknownQGID")
                     return answer_kg
-                answer_kg.add_edge(swagger_edge, qedge_key)
+                answer_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
 
         return answer_kg
 
@@ -232,7 +232,7 @@ class BTEQuerier:
         return input_qnode_key, output_qnode_key
 
     @staticmethod
-    def _prune_answers_to_achieve_curie_to_curie_query(kg: DictKnowledgeGraph, output_qnode_key: str, qg: QueryGraph) -> DictKnowledgeGraph:
+    def _prune_answers_to_achieve_curie_to_curie_query(kg: QGOrganizedKnowledgeGraph, output_qnode_key: str, qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
         This is a way of hacking around BTE's limitation where it can only do (node with curie)-->(non-specific node)
         kinds of queries. We do the non-specific query, and then use this function to remove all of the answer nodes
@@ -259,12 +259,12 @@ class BTEQuerier:
         return kg
 
     @staticmethod
-    def _create_edge_to_nodes_map(kg: DictKnowledgeGraph, input_qnode_key: str, output_qnode_key: str) -> Dict[str, Dict[str, str]]:
+    def _create_edge_to_nodes_map(kg: QGOrganizedKnowledgeGraph, input_qnode_key: str, output_qnode_key: str) -> Dict[str, Dict[str, str]]:
         edge_to_nodes_map = dict()
         for qedge_key, edges in kg.edges_by_qg_id.items():
             for edge_key, edge in edges.items():
                 # BTE single-edge queries are always directed (meaning, edge.subject == input qnode ID)
-                edge_to_nodes_map[edge.id] = {input_qnode_key: edge.subject, output_qnode_key: edge.object}
+                edge_to_nodes_map[edge_key] = {input_qnode_key: edge.subject, output_qnode_key: edge.object}
         return edge_to_nodes_map
 
     @staticmethod

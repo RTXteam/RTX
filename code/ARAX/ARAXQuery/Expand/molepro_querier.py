@@ -7,7 +7,7 @@ from typing import List, Dict, Tuple, Set
 
 import Expand.expand_utilities as eu
 import requests
-from Expand.expand_utilities import DictKnowledgeGraph
+from Expand.expand_utilities import QGOrganizedKnowledgeGraph
 from ARAX_response import ARAXResponse
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -31,7 +31,7 @@ class MoleProQuerier:
         self.prefix_overrides_for_kp = {"CHEMBL.COMPOUND": "ChEMBL", "PUBCHEM.COMPOUND": "CID"}
         self.prefix_overrides_for_arax = {"ChEMBL": "CHEMBL.COMPOUND", "CID": "PUBCHEM.COMPOUND"}
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
         This function answers a one-hop (single-edge) query using the Molecular Provider.
         :param query_graph: A Reasoner API standard query graph.
@@ -42,7 +42,7 @@ class MoleProQuerier:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
-        final_kg = DictKnowledgeGraph()
+        final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph and tweak its contents as needed for this KP
@@ -69,12 +69,12 @@ class MoleProQuerier:
                 # Adjust curie prefixes as needed (i.e., convert ChEMBL -> CHEMBL.COMPOUND)
                 returned_edge['subject'] = self._fix_prefix(returned_edge['subject'])
                 returned_edge['object'] = self._fix_prefix(returned_edge['object'])
-                swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
-                for qedge_key in qg_id_mappings['edges'][swagger_edge.id]:
-                    swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
-                    final_kg.add_edge(swagger_edge, qedge_key)
-                edge_to_nodes_map[swagger_edge.id] = {source_qnode_key: swagger_edge.subject,
-                                                      target_qnode_key: swagger_edge.object}
+                kp_edge_key, swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
+                swagger_edge_key = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
+                for qedge_key in qg_id_mappings['edges'][kp_edge_key]:
+                    final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                edge_to_nodes_map[swagger_edge_key] = {source_qnode_key: swagger_edge.subject,
+                                                       target_qnode_key: swagger_edge.object}
             for returned_node in returned_kg['nodes']:
                 # Adjust curie prefixes as needed (i.e., convert ChEMBL -> CHEMBL.COMPOUND)
                 returned_node['id'] = self._fix_prefix(returned_node['id'])
@@ -178,13 +178,12 @@ class MoleProQuerier:
         return combined_response
 
     def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Edge:
-        swagger_edge = Edge(id=kp_edge['id'],
-                            subject=kp_edge['source_id'],
+        swagger_edge = Edge(subject=kp_edge['source_id'],
                             object=kp_edge['target_id'],
                             type=kp_edge['type'],
                             provided_by=self.kp_name,
                             is_defined_by='ARAX')
-        return swagger_edge
+        return kp_edge['id'], swagger_edge
 
     @staticmethod
     def _create_swagger_node_from_kp_node(kp_node: Dict[str, any]) -> Tuple[str, Node]:

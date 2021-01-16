@@ -7,7 +7,7 @@ from typing import List, Dict, Tuple
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
-from expand_utilities import DictKnowledgeGraph
+from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
@@ -32,7 +32,7 @@ class NGDQuerier:
         self.ngd_edge_attribute_type = "EDAM:data_2526"
         self.ngd_edge_attribute_url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
         This function answers a one-hop (single-edge) query using NGD (with the assistance of KG2).
         :param query_graph: A Reasoner API standard query graph.
@@ -43,7 +43,7 @@ class NGDQuerier:
               {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
         """
         log = self.response
-        final_kg = DictKnowledgeGraph()
+        final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph
@@ -86,18 +86,20 @@ class NGDQuerier:
         cngd = ComputeNGD(log, kg2_message, None)
         cngd.load_curie_to_pmids_data(kg2_answer_kg.nodes)
         kg2_edge_ngd_map = dict()
-        for kg2_edge in kg2_answer_kg.edges.values():
-            kg2_node_1 = kg2_answer_kg.nodes.get(kg2_edge.subject)  # These are already canonicalized (default behavior)
-            kg2_node_2 = kg2_answer_kg.nodes.get(kg2_edge.object)
+        for kg2_edge_key, kg2_edge in kg2_answer_kg.edges.items():
+            kg2_node_1_key = kg2_edge.subject
+            kg2_node_2_key = kg2_edge.object
+            kg2_node_1 = kg2_answer_kg.nodes.get(kg2_node_1_key)  # These are already canonicalized (default behavior)
+            kg2_node_2 = kg2_answer_kg.nodes.get(kg2_node_2_key)
             # Figure out which node corresponds to source qnode (don't necessarily match b/c query was bidirectional)
             if source_qnode_key in kg2_node_1.qnode_keys and target_qnode_key in kg2_node_2.qnode_keys:
-                ngd_subject = kg2_node_1.id
-                ngd_object = kg2_node_2.id
+                ngd_subject = kg2_node_1_key
+                ngd_object = kg2_node_2_key
             else:
-                ngd_subject = kg2_node_2.id
-                ngd_object = kg2_node_1.id
+                ngd_subject = kg2_node_2_key
+                ngd_object = kg2_node_1_key
             ngd_value = cngd.calculate_ngd_fast(ngd_subject, ngd_object)
-            kg2_edge_ngd_map[kg2_edge.id] = {"ngd_value": ngd_value, "subject": ngd_subject, "object": ngd_object}
+            kg2_edge_ngd_map[kg2_edge_key] = {"ngd_value": ngd_value, "subject": ngd_subject, "object": ngd_object}
 
         # Create edges for those from KG2 found to have a low enough ngd value
         threshold = 0.5
@@ -113,8 +115,8 @@ class NGDQuerier:
                 final_kg.add_edge(ngd_edge_key, ngd_edge, qedge_key)
                 final_kg.add_node(ngd_source_node_key, ngd_source_node, source_qnode_key)
                 final_kg.add_node(ngd_target_node_key, ngd_target_node, target_qnode_key)
-                edge_to_nodes_map[ngd_edge.id] = {source_qnode_key: ngd_source_node_key,
-                                                  target_qnode_key: ngd_target_node_key}
+                edge_to_nodes_map[ngd_edge_key] = {source_qnode_key: ngd_source_node_key,
+                                                   target_qnode_key: ngd_target_node_key}
 
         return final_kg, edge_to_nodes_map
 

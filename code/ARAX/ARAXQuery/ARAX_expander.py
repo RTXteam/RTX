@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directo
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
-from expand_utilities import DictKnowledgeGraph
+from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
@@ -23,7 +23,7 @@ class ARAXExpander:
 
     def __init__(self):
         self.default_kp = "ARAX/KG2"
-        self.edge_id_parameter_info = {
+        self.edge_key_parameter_info = {
             "is_required": False,
             "examples": ["e00", "[e00, e01]"],
             "type": "string",
@@ -65,7 +65,7 @@ class ARAXExpander:
                 "description": "This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths "
                                "that satisfy the query graph.",
                 "parameters": {
-                    "edge_id": self.edge_id_parameter_info,
+                    "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "enforce_directionality": self.enforce_directionality_parameter_info,
@@ -78,7 +78,7 @@ class ARAXExpander:
                                "that satisfy the query graph. If use_synonyms=true, it uses the KG2canonicalized "
                                "('KG2c') Neo4j instance; otherwise, the regular KG2 Neo4j instance is used.",
                 "parameters": {
-                    "edge_id": self.edge_id_parameter_info,
+                    "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "enforce_directionality": self.enforce_directionality_parameter_info,
@@ -94,7 +94,7 @@ class ARAXExpander:
                                "query node for a query edge will be the 'input' qnode, but BTE itself returns only "
                                "answers matching the input edge direction).",
                 "parameters": {
-                    "edge_id": self.edge_id_parameter_info,
+                    "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "enforce_directionality": self.enforce_directionality_parameter_info,
@@ -106,7 +106,7 @@ class ARAXExpander:
                 "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
                                " satisfy the query graph.",
                 "parameters": {
-                    "edge_id": self.edge_id_parameter_info,
+                    "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "use_synonyms": self.use_synonyms_parameter_info,
@@ -141,7 +141,7 @@ class ARAXExpander:
                                "but setting 'include_all_scores=true' will return all edges/scores the GeneticsKP "
                                "returns, including genetics-quantile scores.",
                 "parameters": {
-                    "edge_id": self.edge_id_parameter_info,
+                    "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "use_synonyms": self.use_synonyms_parameter_info,
@@ -165,7 +165,7 @@ class ARAXExpander:
                                "MolePro queries (Expand uses 'correlated_with' by default behind the scenes, which is "
                                "the primary edge type of interest for ARAX in MolePro).",
                 "parameters": {
-                    "edge_id": self.edge_id_parameter_info,
+                    "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "use_synonyms": self.use_synonyms_parameter_info,
@@ -178,7 +178,7 @@ class ARAXExpander:
                                "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
                                "configurable/smarter in the future.",
                 "parameters": {
-                    "edge_id": self.edge_id_parameter_info,
+                    "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "use_synonyms": self.use_synonyms_parameter_info
@@ -244,8 +244,8 @@ class ARAXExpander:
                 parameters['use_synonyms'] = True
 
         # Default to expanding the entire query graph if the user didn't specify what to expand
-        if not parameters['edge_id'] and not parameters['node_key']:
-            parameters['edge_id'] = [edge.id for edge in message.query_graph.edges]
+        if not parameters['edge_key'] and not parameters['node_key']:
+            parameters['edge_key'] = list(message.query_graph.edges)
             parameters['node_key'] = self._get_orphan_qnode_keys(message.query_graph)
 
         if response.status != 'OK':
@@ -256,7 +256,7 @@ class ARAXExpander:
 
         # Do the actual expansion
         response.debug(f"Applying Expand to Message with parameters {parameters}")
-        input_qedge_keys = eu.convert_string_or_list_to_list(parameters['edge_id'])
+        input_qedge_keys = eu.convert_string_or_list_to_list(parameters['edge_key'])
         input_qnode_keys = eu.convert_string_or_list_to_list(parameters['node_key'])
         kp_to_use = self.parameters['kp']
         continue_if_no_results = self.parameters['continue_if_no_results']
@@ -331,11 +331,11 @@ class ARAXExpander:
                      f"({eu.get_printable_counts_by_qg_id(dict_kg)})")
         return response
 
-    def _expand_edge(self, qedge_key: str, kp_to_use: str, dict_kg: DictKnowledgeGraph, continue_if_no_results: bool,
-                     query_graph: QueryGraph, use_synonyms: bool, log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _expand_edge(self, qedge_key: str, kp_to_use: str, dict_kg: QGOrganizedKnowledgeGraph, continue_if_no_results: bool,
+                     query_graph: QueryGraph, use_synonyms: bool, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
-        answer_kg = DictKnowledgeGraph()
+        answer_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
         qedge = query_graph.edges[qedge_key]
 
@@ -393,12 +393,12 @@ class ARAXExpander:
             return answer_kg, edge_to_nodes_map
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
-                     use_synonyms: bool, log: ARAXResponse) -> DictKnowledgeGraph:
+                     use_synonyms: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
         single_node_qg = QueryGraph(nodes={qnode_key: qnode}, edges=dict())
-        answer_kg = DictKnowledgeGraph()
+        answer_kg = QGOrganizedKnowledgeGraph()
         if log.status != 'OK':
             return answer_kg
         if not qnode.id:
@@ -436,7 +436,7 @@ class ARAXExpander:
                       f"{', '.join(valid_kps_for_single_node_queries)}", error_code="InvalidKP")
             return answer_kg
 
-    def _get_query_graph_for_edge(self, qedge_key: str, full_qg: QueryGraph, dict_kg: DictKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
+    def _get_query_graph_for_edge(self, qedge_key: str, full_qg: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
         edge_qg = QueryGraph(nodes=dict(), edges=dict())
         qedge = full_qg.edges[qedge_key]
@@ -490,12 +490,12 @@ class ARAXExpander:
         return edge_qg
 
     @staticmethod
-    def _deduplicate_nodes(dict_kg: DictKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]],
-                           log: ARAXResponse) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _deduplicate_nodes(dict_kg: QGOrganizedKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]],
+                           log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         log.debug(f"Deduplicating nodes")
-        deduplicated_kg = DictKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in dict_kg.nodes_by_qg_id},
-                                             edges={qedge_key: dict() for qedge_key in dict_kg.edges_by_qg_id})
-        updated_edge_to_nodes_map = {edge_id: dict() for edge_id in edge_to_nodes_map}
+        deduplicated_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in dict_kg.nodes_by_qg_id},
+                                                    edges={qedge_key: dict() for qedge_key in dict_kg.edges_by_qg_id})
+        updated_edge_to_nodes_map = {edge_key: dict() for edge_key in edge_to_nodes_map}
         curie_mappings = dict()
 
         # First deduplicate the nodes
@@ -532,17 +532,17 @@ class ARAXExpander:
 
         # Then update the edges to reflect changes made to the nodes
         for qedge_key, edges in dict_kg.edges_by_qg_id.items():
-            for edge_id, edge in edges.items():
+            for edge_key, edge in edges.items():
                 edge.subject = curie_mappings.get(edge.subject)
                 edge.object = curie_mappings.get(edge.object)
                 if not edge.subject or not edge.object:
-                    log.error(f"Could not find preferred curie mappings for edge {edge_id}'s node(s)")
+                    log.error(f"Could not find preferred curie mappings for edge {edge_key}'s node(s)")
                     return deduplicated_kg, updated_edge_to_nodes_map
                 deduplicated_kg.add_edge(edge, qedge_key)
 
                 # Update the edge-to-node map for this edge (used down the line for pruning)
-                for qnode_key, corresponding_node_key in edge_to_nodes_map[edge_id].items():
-                    updated_edge_to_nodes_map[edge_id][qnode_key] = curie_mappings.get(corresponding_node_key)
+                for qnode_key, corresponding_node_key in edge_to_nodes_map[edge_key].items():
+                    updated_edge_to_nodes_map[edge_key][qnode_key] = curie_mappings.get(corresponding_node_key)
 
         log.debug(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg, updated_edge_to_nodes_map
@@ -582,7 +582,7 @@ class ARAXExpander:
         return sub_query_graph
 
     @staticmethod
-    def _merge_answer_into_message_kg(answer_dict_kg: DictKnowledgeGraph, dict_kg: DictKnowledgeGraph, log: ARAXResponse):
+    def _merge_answer_into_message_kg(answer_dict_kg: QGOrganizedKnowledgeGraph, dict_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
         for qnode_key, nodes in answer_dict_kg.nodes_by_qg_id.items():
@@ -620,7 +620,7 @@ class ARAXExpander:
                   f"{len(node_keys_fulfilling_qnode_b)} {qnode_b_key} nodes from {kryptonite_qedge_key} kryptonite edges")
 
     @staticmethod
-    def _apply_any_kryptonite_edges(dict_kg: DictKnowledgeGraph, full_query_graph: QueryGraph,
+    def _apply_any_kryptonite_edges(dict_kg: QGOrganizedKnowledgeGraph, full_query_graph: QueryGraph,
                                     node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]],
                                     encountered_kryptonite_edges_info: Dict[str, Dict[str, Set[str]]], log):
         """
@@ -640,7 +640,7 @@ class ARAXExpander:
             linked_kryptonite_qedge_keys_to_apply = [qe_key for qe_key in linked_kryptonite_qedge_keys if
                                                      full_query_graph.edges[qe_key].option_group_id == current_qedge.option_group_id or
                                                      full_query_graph.edges[qe_key].option_group_id is None]
-            edge_ids_to_remove = set()
+            edge_keys_to_remove = set()
             # Look for paths to blow away based on each (already expanded) kryptonite qedge in the same group
             for kryptonite_qedge_key in linked_kryptonite_qedge_keys_to_apply:
                 kryptonite_qedge = full_query_graph.edges[kryptonite_qedge_key]
@@ -648,22 +648,22 @@ class ARAXExpander:
                     # Mark edges for destruction if they match the kryptonite edge for all qnodes they have in common
                     kryptonite_qedge_qnode_keys = {kryptonite_qedge.subject, kryptonite_qedge.object}
                     qnode_keys_in_common = list(current_qedge_qnode_keys.intersection(kryptonite_qedge_qnode_keys))
-                    for edge_id, node_usages in edge_node_usage_map.items():
+                    for edge_key, node_usages in edge_node_usage_map.items():
                         identical_nodes = [node_usages[qnode_key] for qnode_key in qnode_keys_in_common if node_usages[qnode_key]
                                            in encountered_kryptonite_edges_info[kryptonite_qedge_key][qnode_key]]
                         if len(identical_nodes) == len(qnode_keys_in_common):
-                            edge_ids_to_remove.add(edge_id)
+                            edge_keys_to_remove.add(edge_key)
 
             # Actually remove the edges we've marked for destruction
-            if edge_ids_to_remove:
-                log.debug(f"Blowing away {len(edge_ids_to_remove)} {qedge_key} edges because they lie on a path with a "
+            if edge_keys_to_remove:
+                log.debug(f"Blowing away {len(edge_keys_to_remove)} {qedge_key} edges because they lie on a path with a "
                           f"'not' condition met (kryptonite)")
-                for edge_id in edge_ids_to_remove:
-                    node_usages_by_edges_map[qedge_key].pop(edge_id)
-                    dict_kg.edges_by_qg_id[qedge_key].pop(edge_id)
+                for edge_key in edge_keys_to_remove:
+                    node_usages_by_edges_map[qedge_key].pop(edge_key)
+                    dict_kg.edges_by_qg_id[qedge_key].pop(edge_key)
 
     @staticmethod
-    def _prune_dead_end_paths(dict_kg: DictKnowledgeGraph, qg: QueryGraph,
+    def _prune_dead_end_paths(dict_kg: QGOrganizedKnowledgeGraph, qg: QueryGraph,
                               node_usages_by_edges_map: Dict[str, Dict[str, Dict[str, str]]], qedge_expanded: QEdge,
                               log: ARAXResponse):
         # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
@@ -702,7 +702,7 @@ class ARAXExpander:
                 current_qedge = sub_qg.edges[current_qedge_key]
                 edges_to_nodes_dict = node_usages_by_edges_map[current_qedge_key]
                 current_qedges_qnode_keys = {current_qedge.subject, current_qedge.object}
-                for edge_id, node_usages_dict in edges_to_nodes_dict.items():
+                for edge_key, node_usages_dict in edges_to_nodes_dict.items():
                     for current_qnode_key in current_qedges_qnode_keys:
                         other_qnode_key = list(current_qedges_qnode_keys.difference({current_qnode_key}))[0]
                         current_node_key = node_usages_dict[current_qnode_key]
@@ -827,22 +827,22 @@ class ARAXExpander:
             return False
 
     @staticmethod
-    def _remove_self_edges(kg: DictKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]], qedge_key: QEdge,
-                           qnode_keys: Set[str], log: ARAXResponse) -> DictKnowledgeGraph:
+    def _remove_self_edges(kg: QGOrganizedKnowledgeGraph, edge_to_nodes_map: Dict[str, Dict[str, str]], qedge_key: QEdge,
+                           qnode_keys: Set[str], log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         log.debug(f"Removing any self-edges from the answer KG")
         # Remove any self-edges
         edges_to_remove = []
         for edge_key, edge in kg.edges_by_qg_id[qedge_key].items():
             if edge.subject == edge.object:
                 edges_to_remove.append(edge_key)
-        for edge_id in edges_to_remove:
-            kg.edges_by_qg_id[qedge_key].pop(edge_id)
+        for edge_key in edges_to_remove:
+            kg.edges_by_qg_id[qedge_key].pop(edge_key)
 
         # Remove any nodes that may have been orphaned as a result of removing self-edges
         for qnode_key in qnode_keys:
             node_keys_used_by_edges_for_this_qnode_key = set()
-            for edge in kg.edges_by_qg_id[qedge_key].values():
-                node_keys_used_by_edges_for_this_qnode_key.add(edge_to_nodes_map[edge.id][qnode_key])
+            for edge_key in kg.edges_by_qg_id[qedge_key]:
+                node_keys_used_by_edges_for_this_qnode_key.add(edge_to_nodes_map[edge_key][qnode_key])
             orphan_node_keys_for_this_qnode_key = set(kg.nodes_by_qg_id[qnode_key]).difference(node_keys_used_by_edges_for_this_qnode_key)
             for node_key in orphan_node_keys_for_this_qnode_key:
                 kg.nodes_by_qg_id[qnode_key].pop(node_key)
@@ -922,7 +922,7 @@ def main():
         "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
         "add_qnode(id=n01, type=protein, is_set=true)",
         "add_qedge(id=e00, subject=n00, object=n01)",
-        "expand(edge_id=e00, kp=BTE)",
+        "expand(edge_key=e00, kp=BTE)",
         "return(message=true, store=false)",
     ]
 

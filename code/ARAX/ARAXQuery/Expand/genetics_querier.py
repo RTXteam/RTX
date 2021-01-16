@@ -9,7 +9,7 @@ import requests
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
-from expand_utilities import DictKnowledgeGraph
+from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -34,7 +34,7 @@ class GeneticsQuerier:
         self.score_type_lookup = {self.magma_score_name: "EDAM:data_1669",
                                   "Genetics-quantile": "SIO:001414"}
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[DictKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
         This function answers a one-hop (single-edge) query using the Genetics Provider.
         :param query_graph: A Reasoner API standard query graph.
@@ -46,7 +46,7 @@ class GeneticsQuerier:
         """
         log = self.response
         include_all_scores = self.response.data['parameters']['include_all_scores']
-        final_kg = DictKnowledgeGraph()
+        final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph and tweak its contents as needed for this KP
@@ -80,12 +80,12 @@ class GeneticsQuerier:
                         unknown_scores_encountered.add(returned_edge['score_name'])
                     # Always include edges for integrated scores, but only include magma edges if that flag is set
                     if include_all_scores or returned_edge['score_name'] == self.magma_score_name:
-                        swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
-                        for qedge_key in qg_id_mappings['edges'][swagger_edge.id]:
-                            swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
-                            final_kg.add_edge(swagger_edge, qedge_key)
-                        edge_to_nodes_map[swagger_edge.id] = {source_qnode_key: swagger_edge.subject,
-                                                              target_qnode_key: swagger_edge.object}
+                        kp_edge_key, swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
+                        swagger_edge_key = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
+                        for qedge_key in qg_id_mappings['edges'][kp_edge_key]:
+                            final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                        edge_to_nodes_map[swagger_edge_key] = {source_qnode_key: swagger_edge.subject,
+                                                               target_qnode_key: swagger_edge.object}
             log.warning(f"Encountered unknown score(s) from {self.kp_name}: {unknown_scores_encountered}. "
                         f"Not sure what data type to assign these.")
             for returned_node in returned_kg['nodes']:
@@ -190,11 +190,10 @@ class GeneticsQuerier:
                         combined_response['results'] += kp_response_json['results']
         return combined_response
 
-    def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Edge:
-        swagger_edge = Edge(id=kp_edge['id'],
-                            subject=kp_edge['source_id'],
+    def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Tuple[str, Edge]:
+        swagger_edge = Edge(subject=kp_edge['source_id'],
                             object=kp_edge['target_id'],
-                            type=kp_edge['type'],
+                            category=kp_edge['type'],
                             provided_by=self.kp_name,
                             is_defined_by='ARAX')
         score_name = kp_edge['score_name']
@@ -203,7 +202,7 @@ class GeneticsQuerier:
             swagger_edge.attributes = [Attribute(name=score_name,
                                                  type=self.score_type_lookup.get(score_name),
                                                  value=score_value)]
-        return swagger_edge
+        return kp_edge['id'], swagger_edge
 
     @staticmethod
     def _create_swagger_node_from_kp_node(kp_node: Dict[str, any]) -> Tuple[str, Node]:
