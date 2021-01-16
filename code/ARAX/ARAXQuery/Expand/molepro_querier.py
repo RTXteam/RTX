@@ -52,7 +52,7 @@ class MoleProQuerier:
         modified_query_graph = self._pre_process_query_graph(query_graph, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        qedge = modified_query_graph.edges[0]
+        qedge = next(qedge for qedge in modified_query_graph.edges.values())
         source_qnode_key = qedge.subject
         target_qnode_key = qedge.object
 
@@ -67,8 +67,8 @@ class MoleProQuerier:
             # Populate our final KG with nodes and edges
             for returned_edge in returned_kg['edges']:
                 # Adjust curie prefixes as needed (i.e., convert ChEMBL -> CHEMBL.COMPOUND)
-                returned_edge['subject'] = self._fix_prefix(returned_edge['subject'])
-                returned_edge['object'] = self._fix_prefix(returned_edge['object'])
+                returned_edge['source_id'] = self._fix_prefix(returned_edge['source_id'])
+                returned_edge['target_id'] = self._fix_prefix(returned_edge['target_id'])
                 kp_edge_key, swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
                 swagger_edge_key = self._create_unique_edge_key(swagger_edge)  # Convert to an ID that's unique for us
                 for qedge_key in qg_id_mappings['edges'][kp_edge_key]:
@@ -141,21 +141,22 @@ class MoleProQuerier:
 
     def _send_query_to_kp(self, query_graph: QueryGraph, log: ARAXResponse) -> Dict[str, any]:
         # Send query to their API (stripping down qnode/qedges to only the properties they like)
-        stripped_qnodes = dict()
+        stripped_qnodes = []
         for qnode_key, qnode in query_graph.nodes.items():
-            stripped_qnode = {'type': qnode.category}
+            stripped_qnode = {'id': qnode_key,
+                              'type': qnode.category}
             if qnode.id:
                 stripped_qnode['curie'] = qnode.id
-            stripped_qnodes[qnode_key] = stripped_qnode
+            stripped_qnodes.append(stripped_qnode)
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)  # Our query graph is single-edge
         qedge = query_graph.edges[qedge_key]
         stripped_qedge = {'id': qedge_key,
-                          'subject': qedge.subject,
-                          'object': qedge.object,
+                          'source_id': qedge.subject,
+                          'target_id': qedge.object,
                           'type': qedge.predicate if qedge.predicate else list(self.accepted_edge_types)[0]}
         if stripped_qedge['type'] not in self.accepted_edge_types:
             log.warning(f"{self.kp_name} only accepts the following edge types: {self.accepted_edge_types}")
-        source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].subject)
+        source_stripped_qnode = next(stripped_qnode for stripped_qnode in stripped_qnodes if stripped_qnode['id'] == qedge.subject)
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
@@ -180,7 +181,7 @@ class MoleProQuerier:
     def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge(subject=kp_edge['source_id'],
                             object=kp_edge['target_id'],
-                            type=kp_edge['type'],
+                            predicate=kp_edge['type'],
                             provided_by=self.kp_name,
                             is_defined_by='ARAX')
         return kp_edge['id'], swagger_edge
