@@ -101,7 +101,7 @@ class ComputeJaccard:
             for end_node_id, value in end_node_to_jaccard.items():
                 edge_attribute = EdgeAttribute(type=attribute_type, name=name, value=value, url=url)
                 # try to ensure a unique edge id
-                id = f"J{j_iter}.{random.randint(10**(9-1), (10**9)-1)}"
+                id = f"J{j_iter}"
                 # if by chance you get the same id then loop until a unique one is generated
                 # probably a btter way of doing this but need to check how ids are generated in expand first
                 while id in message.knowledge_graph.edges:
@@ -109,6 +109,7 @@ class ComputeJaccard:
                 j_iter += 1
                 target_id = end_node_id
                 # likely will need to fix this for TRAPI 1.0 after being able to test
+                # Do these need a attribute type and url?
                 edge_attribute_list = [
                     edge_attribute,
                     EdgeAttribute(name="is_defined_by", value=is_defined_by),

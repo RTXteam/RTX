@@ -12,13 +12,17 @@ import numpy as np
 from datetime import datetime
 from typing import List
 
+import random
+import time
+random.seed(time.time())
+
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.edge_attribute import EdgeAttribute
-from swagger_server.models.edge import Edge
-from swagger_server.models.q_edge import QEdge
+from openapi_server.models.attribute import Attribute as EdgeAttribute
+from openapi_server.models.edge import Edge
+from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
@@ -97,13 +101,28 @@ class ComputeNGD:
 
                     # now actually add the virtual edges in
                     id = f"{relation}_{self.global_iter}"
+                    # ensure the id is unique
+                    # might need to change after expand is implemented for TRAPI 1.0
+                    while id in message.knowledge_graph.edges:
+                        id = f"{relation}_{self.global_iter}.{random.randint(10**(9-1), (10**9)-1)}"
                     self.global_iter += 1
-                    edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
-                                target_id=target_id,
-                                is_defined_by=is_defined_by, defined_datetime=defined_datetime,
-                                provided_by=provided_by,
-                                confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
-                    self.message.knowledge_graph.edges.append(edge)
+                    edge_attribute_list = [
+                        edge_attribute,
+                        EdgeAttribute(name="is_defined_by", value=is_defined_by),
+                        EdgeAttribute(name="defined_datetime", value=defined_datetime),
+                        EdgeAttribute(name="provided_by", value=provided_by),
+                        EdgeAttribute(name="confidence", value=confidence),
+                        EdgeAttribute(name="weight", value=weight),
+                        EdgeAttribute(name="qedge_ids", value=qedge_ids)
+                    ]
+                    # edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id,
+                    #             target_id=target_id,
+                    #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
+                    #             provided_by=provided_by,
+                    #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
+                    edge = Edge(predicate=edge_type, subject=source_id, object=target_id,
+                                attributes=edge_attribute_list)
+                    self.message.knowledge_graph.edges[id] = edge
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             if added_flag:
@@ -111,10 +130,12 @@ class ComputeNGD:
                 edge_type = "has_normalized_google_distance_with"
                 relation = parameters['virtual_relation_label']
                 option_group_id = ou.determine_virtual_qedge_option_group(source_qnode_id, target_qnode_id, qg, self.response)
-                q_edge = QEdge(id=relation, type=edge_type, relation=relation,
-                               source_id=source_qnode_id, target_id=target_qnode_id,
-                               option_group_id=option_group_id)
-                self.message.query_graph.edges.append(q_edge)
+                # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
+                #                source_id=source_qnode_id, target_id=target_qnode_id,
+                #                option_group_id=option_group_id)
+                q_edge = QEdge(predicate=edge_type, relation=relation, subject=source_qnode_id,
+                           object=target_qnode_id, option_group_id=option_group_id)
+                self.message.query_graph.edges[relation]=q_edge
 
             self.response.info(f"NGD values successfully added to edges")
         else:  # you want to add it for each edge in the KG
@@ -124,13 +145,13 @@ class ComputeNGD:
                 canonicalized_curie_map = self._get_canonical_curies_map([node.id for node in self.message.knowledge_graph.nodes])
                 self.load_curie_to_pmids_data(canonicalized_curie_map.values())
                 self.response.debug(f"Looping through edges and calculating NGD values")
-                for edge in self.message.knowledge_graph.edges:
+                for edge in self.message.knowledge_graph.edges.values():
                     # Make sure the edge_attributes are not None
                     if not edge.edge_attributes:
                         edge.edge_attributes = []  # should be an array, but why not a list?
                     # now go and actually get the NGD
-                    source_curie = edge.source_id
-                    target_curie = edge.target_id
+                    source_curie = edge.subject
+                    target_curie = edge.object
                     canonical_source_curie = canonicalized_curie_map.get(source_curie, source_curie)
                     canonical_target_curie = canonicalized_curie_map.get(target_curie, target_curie)
                     ngd_value = self.calculate_ngd_fast(canonical_source_curie, canonical_target_curie)
