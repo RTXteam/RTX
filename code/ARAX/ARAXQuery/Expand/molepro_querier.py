@@ -53,8 +53,8 @@ class MoleProQuerier:
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         qedge = modified_query_graph.edges[0]
-        source_qnode_key = qedge.source_id
-        target_qnode_key = qedge.target_id
+        source_qnode_key = qedge.subject
+        target_qnode_key = qedge.object
 
         # Answer the query using the KP and load its answers into our Swagger model
         json_response = self._send_query_to_kp(modified_query_graph, log)
@@ -67,14 +67,14 @@ class MoleProQuerier:
             # Populate our final KG with nodes and edges
             for returned_edge in returned_kg['edges']:
                 # Adjust curie prefixes as needed (i.e., convert ChEMBL -> CHEMBL.COMPOUND)
-                returned_edge['source_id'] = self._fix_prefix(returned_edge['source_id'])
-                returned_edge['target_id'] = self._fix_prefix(returned_edge['target_id'])
+                returned_edge['subject'] = self._fix_prefix(returned_edge['subject'])
+                returned_edge['object'] = self._fix_prefix(returned_edge['object'])
                 swagger_edge = self._create_swagger_edge_from_kp_edge(returned_edge)
-                for qedge_id in qg_id_mappings['edges'][swagger_edge.id]:
+                for qedge_key in qg_id_mappings['edges'][swagger_edge.id]:
                     swagger_edge.id = self._create_unique_edge_id(swagger_edge)  # Convert to an ID that's unique for us
-                    final_kg.add_edge(swagger_edge, qedge_id)
-                edge_to_nodes_map[swagger_edge.id] = {source_qnode_key: swagger_edge.source_id,
-                                                      target_qnode_key: swagger_edge.target_id}
+                    final_kg.add_edge(swagger_edge, qedge_key)
+                edge_to_nodes_map[swagger_edge.id] = {source_qnode_key: swagger_edge.subject,
+                                                      target_qnode_key: swagger_edge.object}
             for returned_node in returned_kg['nodes']:
                 # Adjust curie prefixes as needed (i.e., convert ChEMBL -> CHEMBL.COMPOUND)
                 returned_node['id'] = self._fix_prefix(returned_node['id'])
@@ -121,7 +121,7 @@ class MoleProQuerier:
 
     def _get_qg_id_mappings_from_results(self, results: [any]) -> Dict[str, Dict[str, Set[str]]]:
         qnode_key_mappings = dict()
-        qedge_id_mappings = dict()
+        qedge_key_mappings = dict()
         for result in results:
             for node_binding in result['node_bindings']:
                 qg_id = node_binding['qg_id']
@@ -133,11 +133,11 @@ class MoleProQuerier:
             for edge_binding in result['edge_bindings']:
                 qg_id = edge_binding['qg_id']
                 kg_id = edge_binding['kg_id']
-                if kg_id in qedge_id_mappings:
-                    qedge_id_mappings[kg_id].add(qg_id)
+                if kg_id in qedge_key_mappings:
+                    qedge_key_mappings[kg_id].add(qg_id)
                 else:
-                    qedge_id_mappings[kg_id] = {qg_id}
-        return {"nodes": qnode_key_mappings, "edges": qedge_id_mappings}
+                    qedge_key_mappings[kg_id] = {qg_id}
+        return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}
 
     def _send_query_to_kp(self, query_graph: QueryGraph, log: ARAXResponse) -> Dict[str, any]:
         # Send query to their API (stripping down qnode/qedges to only the properties they like)
@@ -147,18 +147,19 @@ class MoleProQuerier:
             if qnode.id:
                 stripped_qnode['curie'] = qnode.id
             stripped_qnodes[qnode_key] = stripped_qnode
-        qedge = query_graph.edges[0]  # Our query graph is single-edge
-        stripped_qedge = {'id': qedge.id,
-                          'source_id': qedge.source_id,
-                          'target_id': qedge.target_id,
+        qedge_key = next(qedge_key for qedge_key in query_graph.edges)  # Our query graph is single-edge
+        qedge = query_graph.edges[qedge_key]
+        stripped_qedge = {'id': qedge_key,
+                          'subject': qedge.subject,
+                          'object': qedge.object,
                           'type': qedge.type if qedge.type else list(self.accepted_edge_types)[0]}
         if stripped_qedge['type'] not in self.accepted_edge_types:
             log.warning(f"{self.kp_name} only accepts the following edge types: {self.accepted_edge_types}")
-        source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].source_id)
+        source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == query_graph.edges[0].subject)
         input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
-            log.debug(f"Sending {qedge.id} query to {self.kp_name} for {input_curie}")
+            log.debug(f"Sending {qedge_key} query to {self.kp_name} for {input_curie}")
             source_stripped_qnode['curie'] = input_curie
             kp_response = requests.post(self.kp_api_url,
                                         json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': [stripped_qedge]}}},
@@ -178,8 +179,8 @@ class MoleProQuerier:
 
     def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge(id=kp_edge['id'],
-                            source_id=kp_edge['source_id'],
-                            target_id=kp_edge['target_id'],
+                            subject=kp_edge['source_id'],
+                            object=kp_edge['target_id'],
                             type=kp_edge['type'],
                             provided_by=self.kp_name,
                             is_defined_by='ARAX')
@@ -191,7 +192,7 @@ class MoleProQuerier:
                                    name=kp_node.get('name'))
 
     def _create_unique_edge_id(self, swagger_edge: Edge) -> str:
-        return f"{self.kp_name}:{swagger_edge.source_id}-{swagger_edge.type}-{swagger_edge.target_id}"
+        return f"{self.kp_name}:{swagger_edge.subject}-{swagger_edge.type}-{swagger_edge.object}"
 
     def _fix_prefix(self, curie: str) -> str:
         curie_prefix = curie.split(':')[0]
