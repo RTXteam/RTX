@@ -122,7 +122,7 @@ class ComputeJaccard:
                 # edge = Edge(id=id, type=edge_type, relation=relation, source_id=source_id, target_id=target_id,
                 #             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
                 #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
-                edge = Edge(predicate=edge_type, source_id=source_id, target_id=target_id,
+                edge = Edge(predicate=edge_type, subject=source_id, object=target_id,
                             attributes=edge_attribute_list)
                 message.knowledge_graph.edges[id] = edge
 
