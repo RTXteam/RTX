@@ -212,26 +212,6 @@ class ResponseCache:
 
 
 
-############################################ General functions ###############################################
-
-#### Turn a row into a dict
-def object_as_dict(obj):
-    return {c.key: getattr(obj, c.key)
-        for c in inspect(obj).mapper.column_attrs}
-
-
-#### convert a dict into a string in guaranteed repeatable order i.e. sorted
-def stringify_dict(inputDict):
-    outString = "{"
-    for key,value in sorted(inputDict.items(), key=lambda t: t[0]):
-        if outString != "{":
-            outString += ","
-        outString += "'"+str(key)+"':'"+str(value)+"'"
-    outString += "}"
-    return(outString)
-
-
-
 ############################################ Main ############################################################
 
 #### If this class is run from the command line, perform a short little test to see if it is working correctly
