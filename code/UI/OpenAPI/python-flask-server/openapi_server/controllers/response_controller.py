@@ -4,7 +4,10 @@ import six
 from openapi_server.models.response import Response  # noqa: E501
 from openapi_server import util
 
-from RTXFeedback import RTXFeedback
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/ResponseCache")
+from response_cache import ResponseCache
 
 
 def get_response(response_id):  # noqa: E501
@@ -18,6 +21,7 @@ def get_response(response_id):  # noqa: E501
     :rtype: Response
     """
 
-    rtxFeedback = RTXFeedback()
-    return rtxFeedback.getMessage(message_id)
+    response_cache = ResponseCache()
+    envelope = response_cache.get_response(response_id)
+    return envelope
 

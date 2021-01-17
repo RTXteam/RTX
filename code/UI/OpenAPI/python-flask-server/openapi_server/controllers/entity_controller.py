@@ -3,7 +3,10 @@ import six
 
 from openapi_server import util
 
-from KGNodeIndex import KGNodeIndex
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/NodeSynonymizer")
+from node_synonymizer import NodeSynonymizer
 
 
 def get_entity_by_string(search_string):  # noqa: E501
@@ -16,5 +19,10 @@ def get_entity_by_string(search_string):  # noqa: E501
 
     :rtype: List[object]
     """
-    kGNodeIndex = KGNodeIndex()
-    return kGNodeIndex.get_curies_and_types(search_string)
+    synonymizer = NodeSynonymizer()
+    result = synonymizer.get_canonical_curies(curies=search_string,names=search_string)
+    response = {}
+    if result[search_string] is not None:
+        response = { 'curie': result[search_string]['preferred_curie'], 'name': result[search_string]['preferred_name'], 'type': result[search_string]['preferred_type'] }
+    return response
+
