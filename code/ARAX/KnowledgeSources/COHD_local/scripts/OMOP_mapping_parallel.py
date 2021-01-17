@@ -150,7 +150,7 @@ batch.append(len(query_key))
 print(f'Total batches: {len(batch)-1}', flush=True)
 
 # for i in range(len(batch)):
-for i in range(2, len(batch)):
+for i in range(len(batch)):
     if (i + 1) < len(batch):
         print(f'Here is batch{i + 1}', flush=True)
         start = batch[i]
