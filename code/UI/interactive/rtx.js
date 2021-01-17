@@ -243,7 +243,7 @@ function postQuery(qtype) {
     sesame('openmax',statusdiv);
 
     add_to_dev_info("Posted to QUERY",queryObj);
-    fetch(baseAPI + "api/rtx/v1/query", {
+    fetch(baseAPI + "api/arax/v1/query", {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -411,7 +411,7 @@ function sendQuestion(e) {
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
-    xhr.open("post", baseAPI + "api/rtx/v1/translate", true);
+    xhr.open("post", baseAPI + "api/arax/v1/translate", true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
     // send the collected data as JSON
@@ -427,7 +427,7 @@ function sendQuestion(e) {
 
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post",  baseAPI + "api/rtx/v1/query", true);
+		xhr2.open("post",  baseAPI + "api/arax/v1/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
                 var queryObj = { "message" : jsonObj };
@@ -488,7 +488,7 @@ function retrieve_message() {
     sesame('openmax',statusdiv);
 
     var xhr = new XMLHttpRequest();
-    xhr.open("get",  baseAPI + "api/rtx/v1/message/" + message_id, true);
+    xhr.open("get",  baseAPI + "api/arax/v1/message/" + message_id, true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr.send(null);
     xhr.onloadend = function() {
@@ -1912,7 +1912,7 @@ function abort_dsl() {
 
 
 function get_example_questions() {
-    fetch(baseAPI + "api/rtx/v1/exampleQuestions")
+    fetch(baseAPI + "api/arax/v1/exampleQuestions")
         .then(response => response.json())
         .then(data => {
 	    add_to_dev_info("EXAMPLE Qs",data);
@@ -1942,7 +1942,7 @@ function load_nodes_and_predicates() {
     var allnodes_node = document.getElementById("allnodetypes");
     allnodes_node.innerHTML = '';
 
-    fetch(baseAPI + "api/rtx/v1/predicates")
+    fetch(baseAPI + "api/arax/v1/predicates")
 	.then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong');
@@ -2207,7 +2207,7 @@ function check_entities() {
     for (let entity in entities) {
 	if (entities[entity].checkHTML != '--') continue;
 
-	fetch(baseAPI + "api/rtx/v1/entity/" + entity)
+	fetch(baseAPI + "api/arax/v1/entity/" + entity)
 	    .then(response => response.json())
 	    .then(data => {
                 add_to_dev_info("ENTITIES:"+entity,data);
@@ -2272,7 +2272,7 @@ async function check_entity(term) {
 	data = entities[term];
     }
     else {
-	var response = await fetch(baseAPI + "api/rtx/v1/entity/" + term);
+	var response = await fetch(baseAPI + "api/arax/v1/entity/" + term);
 	data = await response.json();
 
 	add_to_dev_info("ENTITY:"+term,data);
