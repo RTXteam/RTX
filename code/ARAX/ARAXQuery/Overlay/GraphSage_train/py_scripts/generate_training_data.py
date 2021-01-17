@@ -21,14 +21,15 @@ from QueryMyChem import QueryMyChem
 class DataGeneration:
 
     #### Constructor
-    def __init__(self, graph_bolt_uri):
+    def __init__(self):
         ## Connect to neo4j database
         rtxc = RTXConfiguration()
-        self.driver = GraphDatabase.driver(graph_bolt_uri, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
+        rtxc.live = 'KG2C'
+        self.driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 
     def get_drug_curies_from_graph(self):
         ## Pulls a dataframe of all of the graph drug-associated nodes
-        query = f"match (n:chemical_substance) with distinct n.id as id, n.name as name return id, name union match (n:drug) with distinct n.id as id, n.name as name return id, name"
+        query = f"match (n:`biolink:ChemicalSubstance`) with distinct n.id as id, n.name as name return id, name union match (n:`biolink:Drug`) with distinct n.id as id, n.name as name return id, name"
         session = self.driver.session()
         res = session.run(query)
         drugs = pd.DataFrame(res.data())
@@ -360,10 +361,10 @@ class DataGeneration:
 
 
 if __name__ == "__main__":
-    dataGenerator = DataGeneration(graph_bolt_uri="bolt://kg2canonicalized2.rtx.ai:7687")
+    dataGenerator = DataGeneration()
     drugs = dataGenerator.get_drug_curies_from_graph()
-    drugs.to_csv('~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data/drugs.txt',sep='\t',index=False)
-    dataGenerator.generate_MyChemData(drugs=drugs, output_path='~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data',dist=2)
+    drugs.to_csv('/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_5_0/raw_training_data/drugs.txt',sep='\t',index=False)
+    dataGenerator.generate_MyChemData(drugs=drugs, output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_5_0/raw_training_data/',dist=2)
     ## For semmedVER43_2020_R_PREDICATION.sql.gz, you might dowload from /data/orangeboard/databases/KG2.3.4/semmedVER43_2020_R_PREDICATION.sql.gz on arax.ncats.io server or directly download the latest one from semmedb website
-    dataGenerator.generate_SemmedData(mysqldump_path='~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data/semmedVER43_2020_R_PREDICATION.sql.gz', output_path='~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data')
+    dataGenerator.generate_SemmedData(mysqldump_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/semmedVER43_2020_R_PREDICATION.sql.gz', output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_5_0/raw_training_data/')
     
