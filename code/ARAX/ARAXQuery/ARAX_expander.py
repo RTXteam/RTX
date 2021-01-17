@@ -263,6 +263,19 @@ class ARAXExpander:
         use_synonyms = self.parameters['use_synonyms']
         query_graph = message.query_graph
 
+        # Temporarily convert all qnode types to 'protein' format and all qedge types to 'has_phenotype' format
+        # TODO: remove this patch (or refine it for particular KPs) once we switch to KG2.5.0!
+        query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in query_graph.nodes.items()},
+                                 edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in query_graph.edges.items()})
+        for qnode in query_graph.nodes.values():
+            if qnode.category:
+                prefixless_category = qnode.category.replace("biolink:", "")
+                qnode.category = eu.convert_string_to_snake_case(prefixless_category)
+        for qedge in query_graph.edges.values():
+            if qedge.predicate:
+                prefixless_predicate = qedge.predicate.replace("biolink:", "")
+                qedge.predicate = prefixless_predicate
+
         # Convert message knowledge graph to dictionary format, for faster processing
         dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
 
