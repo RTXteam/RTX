@@ -667,9 +667,11 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
-            "add_qnode(category=biolink:Protein, key=n1)",
+            "add_qnode(category=protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
-            "expand(edge_key=e1)",
+            "expand(edge_key=e0)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=10)",
             "return(message=true, store=true)",
         ]}}
 
@@ -690,7 +692,7 @@ def main():
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
-            "add_qnode(category=biolink:Protein, id=n1)",
+            "add_qnode(category=biolink:Protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
             "expand(edge_key=e0)",
             "resultify(ignore_edge_direction=true)",
