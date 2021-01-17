@@ -61,7 +61,7 @@ def _create_edges(kg_edge_info: Iterable[Dict[str, any]]) -> Dict[str, Edge]:
 
 
 def _create_qnodes(qg_node_info: Iterable[Dict[str, any]]) -> Dict[str, QNode]:
-    return {qnode_info["node_key"]: QNode(category=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[qnode_info['category']],
+    return {qnode_info["node_key"]: QNode(category=qnode_info['category'],
                                           is_set=qnode_info['is_set']) for qnode_info in qg_node_info}
 
 
@@ -97,8 +97,9 @@ def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[ARAXResponse, 
     araxq = ARAXQuery()
     response = araxq.query(query)
     message = araxq.message
-    if response.status != 'OK' or debug:
-        _print_results_for_debug(message.results)
+    if response.status != 'OK':
+        if debug:
+            _print_results_for_debug(message.results)
         print(response.show(level=response.DEBUG))
     return response, message
 
@@ -131,8 +132,9 @@ def _run_resultify_directly(query_graph: QueryGraph,
     parameters = actions[0]['parameters']
     parameters['debug'] = 'true'
     resultifier.apply(response, parameters)
-    if response.status != 'OK' or debug:
-        _print_results_for_debug(message.results)
+    if response.status != 'OK':
+        if debug:
+            _print_results_for_debug(message.results)
         print(response.show(level=response.DEBUG))
     return response, message
 

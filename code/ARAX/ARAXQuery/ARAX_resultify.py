@@ -43,25 +43,7 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.node_binding import NodeBinding
 from openapi_server.models.edge_binding import EdgeBinding
-from swagger_server.models.biolink_entity import BiolinkEntity
 from openapi_server.models.result import Result
-from openapi_server.models.message import Message
-
-
-# define a string-parameterized BiolinkEntity class
-class BiolinkEntityStr(BiolinkEntity):
-    def __init__(self, category_label: str):
-        super().__init__()
-        self.category_label = category_label
-
-    def __str__(self):
-        return super().__str__() + ":" + self.category_label
-
-
-# define a map between category_label and BiolinkEntity object
-BIOLINK_CATEGORY_LABELS = {'protein', 'disease', 'phenotypic_feature', 'gene', 'chemical_substance'}
-BIOLINK_ENTITY_TYPE_OBJECTS = {category_label: BiolinkEntityStr(category_label) for
-                               category_label in BIOLINK_CATEGORY_LABELS}
 
 
 class ARAXResultify:
