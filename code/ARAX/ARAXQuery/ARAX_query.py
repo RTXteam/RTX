@@ -395,7 +395,7 @@ class ARAXQuery:
             response.debug(f"Found previous_message_uris")
             for uri in processing_plan.previous_message_uris:
                 response.debug(f"    messageURI={uri}")
-                matchResult = re.match( r'http[s]://arax.ncats.io/.*api/rtx/.+/message/(\d+)',uri,re.M|re.I )
+                matchResult = re.match( r'http[s]://arax.ncats.io/.*api/arax/.+/message/(\d+)',uri,re.M|re.I )
                 if matchResult:
                     referenced_message_id = matchResult.group(1)
                     response.debug(f"Found local RTX identifier corresponding to respond_id {referenced_message_id}")
@@ -627,7 +627,7 @@ class ARAXQuery:
                     response_id = 0
                 n_results = len(message.results)
                 response.info(f"Processing is complete. Resulting Message id is {response_id} and is available to fetch via /response endpoint.")
-                return( { "status": 200, "response_id": str(response_id), "n_results": n_results, "url": "https://arax.ncats.io/api/rtx/v1/message/"+str(response_id) }, 200)
+                return( { "status": 200, "response_id": str(response_id), "n_results": n_results, "url": "https://arax.ncats.io/api/arax/v1/message/"+str(response_id) }, 200)
 
 
 
@@ -670,8 +670,8 @@ def main():
             "add_qnode(category=protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
             "expand(edge_key=e0)",
-            "resultify(ignore_edge_direction=true)",
-            "filter_results(action=limit_number_of_results, max_results=10)",
+            #"resultify(ignore_edge_direction=true)",
+            #"filter_results(action=limit_number_of_results, max_results=10)",
             "return(message=true, store=true)",
         ]}}
 

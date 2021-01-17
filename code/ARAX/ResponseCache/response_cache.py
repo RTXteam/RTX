@@ -164,7 +164,7 @@ class ResponseCache:
         session.add(stored_response)
         session.flush()
         session.commit()
-        envelope.id = "https://arax.ncats.io/api/rtx/v1/response/"+str(stored_response.response_id)
+        envelope.id = "https://arax.ncats.io/api/arax/v1/response/"+str(stored_response.response_id)
 
         #### Instead of storing the large response object in the MySQL database as a blob
         #### now store it as a JSON file on the filesystem
