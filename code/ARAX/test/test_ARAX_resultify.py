@@ -74,10 +74,14 @@ def _print_results_for_debug(results: List[Result]):
     print()
     for result in results:
         print(result.essence)
-        for node_binding in result.node_bindings:
-            print(f"  {node_binding.qg_id}: {node_binding.kg_id}")
-        for edge_binding in result.edge_bindings:
-            print(f"  {edge_binding.qg_id}: {edge_binding.kg_id}")
+        for qnode_key, node_bindings_list in result.node_bindings.items():
+            print(f" {qnode_key}:")
+            for node_binding in node_bindings_list:
+                print(f"  {node_binding.id}")
+        for qedge_key, edge_bindings_list in result.edge_bindings.items():
+            print(f" {qedge_key}:")
+            for edge_binding in edge_bindings_list:
+                print(f"  {edge_binding.id}")
 
 
 def _get_result_node_keys_by_qg_key(result: Result) -> Dict[str, Set[str]]:
@@ -908,7 +912,7 @@ def test_issue731b():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     for result in message.results:
-        found_e01 = any(edge_binding.qg_id == 'e1' for edge_binding in result.edge_bindings)
+        found_e01 = result.edge_bindings.get('e1')
         assert found_e01
 
 
@@ -1042,8 +1046,8 @@ def test_issue720_3():
     found_result_where_syna_is_n01_and_not_n03 = False
     found_result_where_syna_is_n03_and_not_n01 = False
     for result in message.results:
-        syna_as_n01 = any(node_binding for node_binding in result.node_bindings if node_binding.kg_id == snca_id and node_binding.qg_id == 'n01')
-        syna_as_n03 = any(node_binding for node_binding in result.node_bindings if node_binding.kg_id == snca_id and node_binding.qg_id == 'n03')
+        syna_as_n01 = any(node_binding for node_binding in result.node_bindings["n01"] if node_binding.id == snca_id)
+        syna_as_n03 = any(node_binding for node_binding in result.node_bindings["n03"] if node_binding.id == snca_id)
         if syna_as_n01 and not syna_as_n03:
             found_result_where_syna_is_n01_and_not_n03 = True
         elif syna_as_n03 and not syna_as_n01:
@@ -1072,9 +1076,9 @@ def test_issue833_extraneous_intermediate_nodes():
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
     for result in message.results:
-        result_n01_nodes = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
-        result_e01_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"}
-        result_e00_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00"}
+        result_n01_nodes = {node_binding.id for node_binding in result.node_bindings["n01"]}
+        result_e01_edges = {edge_binding.id for edge_binding in result.edge_bindings["e01"]}
+        result_e00_edges = {edge_binding.id for edge_binding in result.edge_bindings["e00"]}
         for n01_node_key in result_n01_nodes:
             kg_edges_using_this_node = _get_kg_edge_keys_using_node(n01_node_key, message.knowledge_graph)
             assert result_e01_edges.intersection(kg_edges_using_this_node)
@@ -1163,8 +1167,7 @@ def test_issue1119_a():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert message.results
-    n01_nodes_contraindicated = {node_binding.kg_id for result in message.results
-                                 for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+    n01_nodes_contraindicated = {node_binding.id for result in message.results for node_binding in result.node_bindings["n01"]}
 
     # Verify those chemical substances aren't returned when we make the contraindicated_for edge kryptonite
     actions = [
@@ -1178,8 +1181,7 @@ def test_issue1119_a():
     kryptonite_response, kryptonite_message = _do_arax_query(actions)
     assert kryptonite_response.status == 'OK'
     assert kryptonite_message.results
-    n01_nodes_kryptonite_query = {node_binding.kg_id for result in kryptonite_message.results
-                                  for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+    n01_nodes_kryptonite_query = {node_binding.kg_id for result in kryptonite_message.results for node_binding in result.node_bindings["n01"]}
     assert not n01_nodes_contraindicated.intersection(n01_nodes_kryptonite_query)
 
 
@@ -1201,8 +1203,8 @@ def test_issue1119_b():
     assert response.status == 'OK'
     assert message.results
     # Make sure the kryptonite edge and its leaf qnode don't appear in any results
-    assert not any(node_binding.qg_id == "n03" for result in message.results for node_binding in result.node_bindings)
-    assert not any(edge_binding.qg_id == "e02" for result in message.results for edge_binding in result.edge_bindings)
+    assert not any(result.node_bindings.get("n03") for result in message.results)
+    assert not any(result.edge_bindings.get("e02") for result in message.results)
 
 
 @pytest.mark.slow
@@ -1212,17 +1214,16 @@ def test_issue1119_c():
         "add_qnode(key=n00, id=DOID:3312)",
         "add_qnode(key=n01, category=chemical_substance)",
         "add_qedge(key=e00, subject=n00, object=n01, predicate=positively_regulates)",
-        "add_qedge(key=e01, subject=n00, object=n01, predicate=correlated_with, option_group_key=1)",
+        "add_qedge(key=e01, subject=n00, object=n01, predicate=correlated_with, option_group_id=1)",
         "expand(kp=ARAX/KG2)",
         "resultify(debug=true)",
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert message.results
-    for result in message.results:
-        assert any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00")
+    assert all(result.edge_bindings.get("e00") for result in message.results)
     # Make sure at least one of our results has the "optional" group 1 edge
-    results_with_optional_edge = [result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01")]
+    results_with_optional_edge = [result for result in message.results if result.edge_bindings.get("e01")]
     assert results_with_optional_edge
 
     # Make sure the number of results is the same as if we asked only for the required portion
@@ -1258,8 +1259,8 @@ def test_issue1119_d():
         "add_qnode(key=n00, id=DOID:3312)",
         "add_qnode(key=n01, category=chemical_substance)",
         "add_qedge(key=e00, subject=n00, object=n01, predicate=positively_regulates)",
-        "add_qedge(key=e01, subject=n00, object=n01, predicate=correlated_with, option_group_key=1)",
-        "add_qedge(key=e02, subject=n00, object=n01, predicate=affects, option_group_key=2)",
+        "add_qedge(key=e01, subject=n00, object=n01, predicate=correlated_with, option_group_id=1)",
+        "add_qedge(key=e02, subject=n00, object=n01, predicate=affects, option_group_id=2)",
         "add_qedge(key=e03, subject=n00, object=n01, exclude=True, predicate=contraindicated_for)",
         "expand(kp=ARAX/KG2)",
         "resultify(debug=true)",
@@ -1268,12 +1269,11 @@ def test_issue1119_d():
     assert response.status == 'OK'
     assert message.results
     # Make sure every result has a required edge
-    for result in message.results:
-        assert any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00")
-        assert not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e03")
+    assert all(result.edge_bindings.get("e00") for result in message.results)
+    assert not any(result.edge_bindings.get("e03") for result in message.results)
     # Make sure our "optional" edges appear in one or more results
-    assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"))
-    assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e02"))
+    assert any(result for result in message.results if result.edge_bindings.get("e01"))
+    assert any(result for result in message.results if result.edge_bindings.get("e02"))
     # Verify there are some results without any optional portion (happens to be true for this query)
     assert any(result for result in message.results if not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id in {"e01", "e02"}))
 
@@ -1284,29 +1284,29 @@ def test_issue1119_e():
     actions = [
         "add_qnode(key=n00, id=DOID:3312)",
         "add_qnode(key=n01, id=CHEBI:48607)",
-        "add_qnode(key=n02, category=protein, option_group_key=1, is_set=true)",
+        "add_qnode(key=n02, category=protein, option_group_id=1, is_set=true)",
         "add_qedge(key=e00, subject=n00, object=n01, predicate=related_to)",
-        "add_qedge(key=e01, subject=n00, object=n02, option_group_key=1, predicate=predisposes)",
-        "add_qedge(key=e02, subject=n02, object=n01, option_group_key=1, predicate=physically_interacts_with)",
+        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=predisposes)",
+        "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicate=physically_interacts_with)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert len(message.results) == 1
-    intermediate_proteins_in_result = {node_binding.kg_id for node_binding in message.results[0].node_bindings if node_binding.qg_id == "n02"}
+    intermediate_proteins_in_result = {node_binding.id for node_binding in message.results[0].node_bindings["n02"]}
     assert len(intermediate_proteins_in_result) > 1
 
     # Then make sure when we introduce a not edge on our option group, we see a reduction in the proteins in the result
     actions = [
         "add_qnode(key=n0, id=DOID:3312)",
         "add_qnode(key=n1, id=CHEBI:48607)",
-        "add_qnode(key=group1_n1, category=protein, option_group_key=1, is_set=true)",
-        "add_qnode(key=group1_n2, id=UMLS:C0023692, option_group_key=1)",
+        "add_qnode(key=group1_n1, category=protein, option_group_id=1, is_set=true)",
+        "add_qnode(key=group1_n2, id=UMLS:C0023692, option_group_id=1)",
         "add_qedge(key=e0, subject=n0, object=n1, predicate=related_to)",
-        "add_qedge(key=group1_e1, subject=n0, object=group1_n1, option_group_key=1, predicate=predisposes)",
-        "add_qedge(key=group1_e2, subject=group1_n1, object=n1, option_group_key=1, predicate=physically_interacts_with)",
-        "add_qedge(key=group1_ex, subject=group1_n2, object=group1_n1, option_group_key=1, exclude=True)",
+        "add_qedge(key=group1_e1, subject=n0, object=group1_n1, option_group_id=1, predicate=predisposes)",
+        "add_qedge(key=group1_e2, subject=group1_n1, object=n1, option_group_id=1, predicate=physically_interacts_with)",
+        "add_qedge(key=group1_ex, subject=group1_n2, object=group1_n1, option_group_id=1, exclude=True)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
@@ -1314,7 +1314,7 @@ def test_issue1119_e():
     response_x, message_x = _do_arax_query(actions)
     assert response_x.status == 'OK'
     assert len(message_x.results) == 1
-    intermediate_proteins_in_result_x = {node_binding.kg_id for node_binding in message_x.results[0].node_bindings if node_binding.qg_id == "group1_n1"}
+    intermediate_proteins_in_result_x = {node_binding.id for node_binding in message_x.results[0].node_bindings["group1_n1"]}
     assert len(intermediate_proteins_in_result) > len(intermediate_proteins_in_result_x)
 
 
@@ -1324,12 +1324,12 @@ def test_issue1119_f():
     actions = [
         "add_qnode(key=n00, id=DOID:3312)",
         "add_qnode(key=n01, id=CHEBI:48607)",
-        "add_qnode(key=n02, category=protein, option_group_key=1, is_set=true)",
-        "add_qnode(key=n03, category=pathway, option_group_key=1, is_set=true)",
+        "add_qnode(key=n02, category=protein, option_group_id=1, is_set=true)",
+        "add_qnode(key=n03, category=pathway, option_group_id=1, is_set=true)",
         "add_qedge(key=e00, subject=n00, object=n01, predicate=related_to)",
-        "add_qedge(key=e01, subject=n00, object=n02, option_group_key=1, predicate=predisposes)",
-        "add_qedge(key=e02, subject=n02, object=n03, option_group_key=1, predicate=affects)",
-        "add_qedge(key=e03, subject=n03, object=n01, option_group_key=1, predicate=disrupts)",
+        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=predisposes)",
+        "add_qedge(key=e02, subject=n02, object=n03, option_group_id=1, predicate=affects)",
+        "add_qedge(key=e03, subject=n03, object=n01, option_group_id=1, predicate=disrupts)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
@@ -1337,19 +1337,19 @@ def test_issue1119_f():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert len(message.results) == 1
-    n02_proteins = {node_binding.kg_id for node_binding in message.results[0].node_bindings if node_binding.qg_id == "n02"}
+    n02_proteins = {node_binding.id for node_binding in message.results[0].node_bindings["n02"]}
 
     # Then introduce a not edge going from the option group to the required (start) node
     actions = [
         "add_qnode(key=n00, id=DOID:3312)",
         "add_qnode(key=n01, id=CHEBI:48607)",
-        "add_qnode(key=n02, category=protein, option_group_key=1, is_set=true)",
-        "add_qnode(key=n03, category=pathway, option_group_key=1, is_set=true)",
+        "add_qnode(key=n02, category=protein, option_group_id=1, is_set=true)",
+        "add_qnode(key=n03, category=pathway, option_group_id=1, is_set=true)",
         "add_qedge(key=e00, subject=n00, object=n01, predicate=related_to)",
-        "add_qedge(key=e01, subject=n00, object=n02, option_group_key=1, predicate=predisposes)",
-        "add_qedge(key=e02, subject=n02, object=n03, option_group_key=1, predicate=affects)",
-        "add_qedge(key=e03, subject=n03, object=n01, option_group_key=1, predicate=disrupts)",
-        "add_qedge(key=e0x, subject=n02, object=n00, option_group_key=1, predicate=prevents, exclude=True)",
+        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=predisposes)",
+        "add_qedge(key=e02, subject=n02, object=n03, option_group_id=1, predicate=affects)",
+        "add_qedge(key=e03, subject=n03, object=n01, option_group_id=1, predicate=disrupts)",
+        "add_qedge(key=e0x, subject=n02, object=n00, option_group_id=1, predicate=prevents, exclude=True)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
@@ -1358,7 +1358,7 @@ def test_issue1119_f():
     assert response_x.status == 'OK'
     assert len(message_x.results) == 1
     # Make sure this time we have fewer proteins included in our option group
-    n02_proteins_x = {node_binding.kg_id for node_binding in message_x.results[0].node_bindings if node_binding.qg_id == "n02"}
+    n02_proteins_x = {node_binding.id for node_binding in message_x.results[0].node_bindings["n02"]}
     assert len(n02_proteins_x) < len(n02_proteins)
 
 
@@ -1379,9 +1379,9 @@ def test_issue1146_a():
     assert len(message.results) == 4
     # Make sure every n1 node is connected to an e1 and e0 edge
     for result in message.results:
-        result_n1_nodes = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == "n1"}
-        result_e1_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e1"}
-        result_e0_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e0"}
+        result_n1_nodes = {node_binding.id for node_binding in result.node_bindings["n1"]}
+        result_e1_edges = {edge_binding.id for edge_binding in result.edge_bindings["e1"]}
+        result_e0_edges = {edge_binding.id for edge_binding in result.edge_bindings["e0"]}
         for n1_node in result_n1_nodes:
             kg_edges_using_this_node = _get_kg_edge_keys_using_node(n1_node, message.knowledge_graph)
             assert result_e1_edges.intersection(kg_edges_using_this_node)
