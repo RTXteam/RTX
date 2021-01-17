@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
 from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.attribute import Attribute
 
 
 class MoleProQuerier:
@@ -181,9 +182,9 @@ class MoleProQuerier:
     def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge(subject=kp_edge['source_id'],
                             object=kp_edge['target_id'],
-                            predicate=kp_edge['type'],
-                            provided_by=self.kp_name,
-                            is_defined_by='ARAX')
+                            predicate=kp_edge['type'])
+        swagger_edge.attributes = [Attribute(name="provided_by", value=self.kp_name),
+                                   Attribute(name="is_defined_by", value="ARAX")]
         return kp_edge['id'], swagger_edge
 
     @staticmethod

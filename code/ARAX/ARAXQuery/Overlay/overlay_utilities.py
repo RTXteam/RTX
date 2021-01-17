@@ -79,7 +79,7 @@ def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]
     return edge_keys_by_qg_key
 
 
-def determine_virtual_qedge_option_group(subject_qnode_key: str, object_qnode_key: str, query_graph: QueryGraph, log: Response) -> Optional[str]:
+def determine_virtual_qedge_option_group(subject_qnode_key: str, object_qnode_key: str, query_graph: QueryGraph, log: ARAXResponse) -> Optional[str]:
     # Determines what option group ID a virtual qedge between the two input qnodes should have
     qnodes = [qnode for key, qnode in query_graph.nodes.items() if key in {subject_qnode_key, object_qnode_key}]
     qnode_option_group_ids = {qnode.option_group_id for qnode in qnodes if qnode.option_group_id}

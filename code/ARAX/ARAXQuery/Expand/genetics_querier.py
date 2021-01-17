@@ -194,15 +194,15 @@ class GeneticsQuerier:
     def _create_swagger_edge_from_kp_edge(self, kp_edge: Dict[str, any]) -> Tuple[str, Edge]:
         swagger_edge = Edge(subject=kp_edge['source_id'],
                             object=kp_edge['target_id'],
-                            predicate=kp_edge['type'],
-                            provided_by=self.kp_name,
-                            is_defined_by='ARAX')
+                            predicate=kp_edge['type'])
+        swagger_edge.attributes = [Attribute(name="provided_by", value=self.kp_name),
+                                   Attribute(name="is_defined_by", value="ARAX")]
         score_name = kp_edge['score_name']
         score_value = kp_edge.get('score')
         if score_value:  # Some returned edges are missing a score value for whatever reason
-            swagger_edge.attributes = [Attribute(name=score_name,
-                                                 type=self.score_type_lookup.get(score_name),
-                                                 value=score_value)]
+            swagger_edge.attributes.append(Attribute(name=score_name,
+                                                     type=self.score_type_lookup.get(score_name),
+                                                     value=score_value))
         return kp_edge['id'], swagger_edge
 
     @staticmethod

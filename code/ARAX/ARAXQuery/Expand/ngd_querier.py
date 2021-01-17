@@ -59,14 +59,14 @@ class NGDQuerier:
         target_qnode_key = qedge.object
         source_qnode = query_graph.nodes[source_qnode_key]
         target_qnode = query_graph.nodes[target_qnode_key]
-        qedge_params_str = ", ".join(list(filter(None, [f"id={qedge_key}",
+        qedge_params_str = ", ".join(list(filter(None, [f"key={qedge_key}",
                                                         f"subject={source_qnode_key}",
                                                         f"object={target_qnode_key}",
                                                         self._get_dsl_qedge_type_str(qedge)])))
-        source_params_str = ", ".join(list(filter(None, [f"id={source_qnode_key}",
+        source_params_str = ", ".join(list(filter(None, [f"key={source_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(source_qnode),
                                                          self._get_dsl_qnode_category_str(source_qnode)])))
-        target_params_str = ", ".join(list(filter(None, [f"id={target_qnode_key}",
+        target_params_str = ", ".join(list(filter(None, [f"key={target_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(target_qnode),
                                                          self._get_dsl_qnode_category_str(target_qnode)])))
         actions_list = [
@@ -126,12 +126,12 @@ class NGDQuerier:
         ngd_edge.subject = subject
         ngd_edge.object = object
         ngd_edge_key = f"NGD:{subject}--{ngd_edge.predicate}--{object}"
-        ngd_edge.provided_by = "ARAX"
-        ngd_edge.is_defined_by = "ARAX"
         ngd_edge.attributes = [Attribute(name=self.ngd_edge_attribute_name,
                                          type=self.ngd_edge_attribute_type,
                                          value=ngd_value,
                                          url=self.ngd_edge_attribute_url)]
+        ngd_edge.attributes += [Attribute(name="provided_by", value="ARAX"),
+                                Attribute(name="is_defined_by", value="ARAX")]
         return ngd_edge_key, ngd_edge
 
     @staticmethod
@@ -153,17 +153,17 @@ class NGDQuerier:
     @staticmethod
     def _get_dsl_qnode_curie_str(qnode: QNode) -> str:
         curie_str = f"[{', '.join(qnode.id)}]" if isinstance(qnode.id, list) else qnode.id
-        return f"curie={curie_str}" if qnode.id else ""
+        return f"id={curie_str}" if qnode.id else ""
 
     @staticmethod
     def _get_dsl_qnode_category_str(qnode: QNode) -> str:
         # Use only the first type if there are multiple (which ARAXExpander adds for cases like "gene"/"protein")
         type_str = qnode.category[0] if isinstance(qnode.category, list) else qnode.category
-        return f"type={type_str}" if qnode.category else ""
+        return f"category={type_str}" if qnode.category else ""
 
     @staticmethod
     def _get_dsl_qedge_type_str(qedge: QEdge) -> str:
-        return f"type={qedge.predicate}" if qedge.predicate else ""
+        return f"predicate={qedge.predicate}" if qedge.predicate else ""
 
     @staticmethod
     def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):

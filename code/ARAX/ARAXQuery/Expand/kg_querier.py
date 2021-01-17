@@ -233,20 +233,12 @@ class KGQuerier:
         swagger_node = Node()
         swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
-        swagger_node.description = neo4j_node.get('description')
-        swagger_node.uri = neo4j_node.get('iri')
-        swagger_node.attributes = []
         node_category = neo4j_node.get('category_label')
         swagger_node.category = eu.convert_string_or_list_to_list(node_category)
-        # Fill out the 'symbol' property (only really relevant for nodes from UniProtKB)
-        if swagger_node.symbol is None and swagger_node_key.lower().startswith("uniprot"):
-            swagger_node.symbol = neo4j_node.get('name')
-            swagger_node.name = neo4j_node.get('full_name')
         # Add all additional properties on KG2 nodes as swagger Attribute objects
-        additional_kg2_node_properties = ['publications', 'synonym', 'category', 'provided_by', 'deprecated',
-                                          'update_date']
-        node_attributes = self._create_swagger_attributes("node", additional_kg2_node_properties, neo4j_node)
-        swagger_node.attributes += node_attributes
+        other_properties = ["full_name", "description", "uri", "publications", "synonym", "category", "provided_by",
+                            "deprecated", "update_date"]
+        swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
         return swagger_node_key, swagger_node
 
     def _convert_kg2c_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
@@ -254,26 +246,19 @@ class KGQuerier:
         swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         swagger_node.category = neo4j_node.get('types')
-        swagger_node.uri = neo4j_node.get('iri')
-        swagger_node.description = neo4j_node.get('description')
         # Add all additional properties on KG2c nodes as swagger Attribute objects
-        swagger_node.attributes = []
-        additional_kg2c_node_properties = ['equivalent_curies', 'publications', 'all_names']
-        node_attributes = self._create_swagger_attributes("node", additional_kg2c_node_properties, neo4j_node)
-        swagger_node.attributes += node_attributes
+        other_properties = ["description", "uri", "equivalent_curies", "publications", "all_names"]
+        swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
         return swagger_node_key, swagger_node
 
-    @staticmethod
-    def _convert_kg1_node_to_swagger_node(neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
+    def _convert_kg1_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         swagger_node = Node()
         swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
-        swagger_node.symbol = neo4j_node.get('symbol')
-        swagger_node.description = neo4j_node.get('description')
-        swagger_node.uri = neo4j_node.get('uri')
-        swagger_node.attributes = []
         node_category = neo4j_node.get('category')
         swagger_node.category = eu.convert_string_or_list_to_list(node_category)
+        other_properties = ["symbol", "description", "uri"]
+        swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
         return swagger_node_key, swagger_node
 
     def _convert_neo4j_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str],
@@ -292,44 +277,41 @@ class KGQuerier:
         swagger_edge.subject = neo4j_edge.get("subject")
         swagger_edge.object = neo4j_edge.get("object")
         swagger_edge.relation = neo4j_edge.get("relation")
-        swagger_edge.publications = neo4j_edge.get("publications")
-        swagger_edge.provided_by = neo4j_edge.get("provided_by")
-        swagger_edge.negated = ast.literal_eval(neo4j_edge.get("negated"))
-        swagger_edge.is_defined_by = "ARAX/KG2"
         # Add additional properties on KG2 edges as swagger Attribute objects
-        # TODO: fix issues coming from strange characters in 'publications_info'! (EOF error)
-        additional_kg2_edge_properties = ["relation_curie", "simplified_relation_curie", "simplified_relation",
-                                          "edge_label"]
-        swagger_edge.attributes = self._create_swagger_attributes("edge", additional_kg2_edge_properties, neo4j_edge)
+        other_properties = ["provided_by", "publications", "negated", "relation_curie", "simplified_relation_curie",
+                            "simplified_relation", "edge_label"]
+        swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
+        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2")
+        swagger_edge.attributes.append(is_defined_by_attribute)
         return swagger_edge_key, swagger_edge
 
-    @staticmethod
-    def _convert_kg2c_edge_to_swagger_edge(neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
+    def _convert_kg2c_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
         swagger_edge = Edge()
+        swagger_edge_key = f"KG2c:{neo4j_edge.get('id')}"
         swagger_edge.predicate = neo4j_edge.get("simplified_edge_label")
         swagger_edge.subject = neo4j_edge.get("subject")
         swagger_edge.object = neo4j_edge.get("object")
-        swagger_edge_key = f"KG2c:{neo4j_edge.get('id')}"
-        swagger_edge.provided_by = neo4j_edge.get("provided_by")
-        swagger_edge.is_defined_by = "ARAX/KG2c"
-        swagger_edge.publications = neo4j_edge.get("publications")
+        other_properties = ["provided_by", "publications"]
+        swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
+        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2c")
+        swagger_edge.attributes.append(is_defined_by_attribute)
         return swagger_edge_key, swagger_edge
 
     def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Tuple[str, Edge]:
         swagger_edge = Edge()
+        swagger_edge_key = f"KG1:{neo4j_edge.get('id')}"
         swagger_edge.predicate = neo4j_edge.get("predicate")
         swagger_edge.subject = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
         swagger_edge.object = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
-        swagger_edge_key = f"KG1:{neo4j_edge.get('id')}"
         swagger_edge.relation = neo4j_edge.get("relation")
-        swagger_edge.provided_by = neo4j_edge.get("provided_by")
-        swagger_edge.is_defined_by = "ARAX/KG1"
-        if neo4j_edge.get("probability"):
-            swagger_edge.attributes = self._create_swagger_attributes("edge", ["probability"], neo4j_edge)
+        other_properties = ["provided_by", "probability"]
+        swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
+        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG1")
+        swagger_edge.attributes.append(is_defined_by_attribute)
         return swagger_edge_key, swagger_edge
 
     @staticmethod
-    def _create_swagger_attributes(object_type: str, property_names: List[str], neo4j_object: Dict[str, any]):
+    def _create_swagger_attributes(property_names: List[str], neo4j_object: Dict[str, any]) -> List[Attribute]:
         new_attributes = []
         for property_name in property_names:
             property_value = neo4j_object.get(property_name)

@@ -16,9 +16,8 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
-from openapi_server.models.q_node import QNode
-from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.attribute import Attribute
 
 
 class BTEQuerier:
@@ -156,8 +155,8 @@ class BTEQuerier:
                 swagger_edge.predicate = edge.get('type')
                 swagger_edge.subject = remapped_node_keys.get(edge.get('source_id'), edge.get('source_id'))
                 swagger_edge.object = remapped_node_keys.get(edge.get('target_id'), edge.get('target_id'))
-                swagger_edge.is_defined_by = "BTE"
-                swagger_edge.provided_by = edge.get('edge_source')
+                swagger_edge.attributes = [Attribute(name="provided_by", value=edge.get('edge_source')),
+                                           Attribute(name="is_defined_by", value="BTE")]
                 # Map the returned BTE qg_id back to the original qedge_key in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['edges'].get(swagger_edge_key)
                 if bte_qg_id != "e1":
