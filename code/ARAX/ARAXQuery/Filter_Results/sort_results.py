@@ -75,15 +75,15 @@ class SortResults:
             i = 0
             type_flag = 'edge_relation' in params
             for result in self.message.results:
-                for binding in result.edge_bindings:
-                    # need to test this for TRAPI 1.0 after expand (and resultify?)is updated to see if binding.kg_id matches edge_key
-                    if edge_values[binding.kg_id]['value'] is not None:
-                        if not type_flag or (type_flag and params['edge_relation'] == edge_values[binding.kg_id]['relation']):
+                for binding in result.edge_bindings.values():
+                    # need to test this for TRAPI 1.0 after expand (and resultify?)is updated to see if binding.id matches edge_key
+                    if edge_values[binding.id]['value'] is not None:
+                        if not type_flag or (type_flag and params['edge_relation'] == edge_values[binding.id]['relation']):
                             if abs(value_list[i]) == math.inf:
-                                value_list[i] = edge_values[binding.kg_id]['value']
+                                value_list[i] = edge_values[binding.id]['value']
                             else:
                                 # this will take the sum off all edges with the attribute if we want to change to max edit this line
-                                value_list[i] += edge_values[binding.kg_id]['value']
+                                value_list[i] += edge_values[binding.id]['value']
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -167,14 +167,14 @@ class SortResults:
             i = 0
             type_flag = 'node_category' in params
             for result in self.message.results:
-                for binding in result.node_bindings:
-                    if node_values[binding.kg_id]['value'] is not None:
-                        if not type_flag or (type_flag and params['node_category'] == node_values[binding.kg_id]['category']):
+                for binding in result.node_bindings.values():
+                    if node_values[binding.id]['value'] is not None:
+                        if not type_flag or (type_flag and params['node_category'] == node_values[binding.id]['category']):
                             if abs(value_list[i]) == math.inf:
-                                value_list[i] = node_values[binding.kg_id]['value']
+                                value_list[i] = node_values[binding.id]['value']
                             else:
                                 # this will take the sum off all nodes with the attribute if we want to change to max edit this line
-                                value_list[i] += node_values[binding.kg_id]['value']
+                                value_list[i] += node_values[binding.id]['value']
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -242,10 +242,10 @@ class SortResults:
             nodes_to_remove = set()
             edges_to_remove = set()
             for result in self.message.results:
-                for node_binding in result.node_bindings:
-                    node_keys.add(node_binding.kg_id)
-                for edge_binding in result.edge_bindings:
-                    edge_keys.add(edge_binding.kg_id)
+                for node_binding in result.node_bindings.values():
+                    node_keys.add(node_binding.id)
+                for edge_binding in result.edge_bindings.values():
+                    edge_keys.add(edge_binding.id)
             #node_keys_to_remove = set()
             for key, node in self.message.knowledge_graph.nodes:
                 if key not in node_keys:
