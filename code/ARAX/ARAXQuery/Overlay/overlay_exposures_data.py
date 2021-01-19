@@ -137,9 +137,9 @@ class OverlayExposuresData:
                         new_edge_attribute = self._create_icees_edge_attribute(p_value)
                         # Add the data as new EdgeAttributes on the existing edges with this subject/object ID
                         for edge in node_pair_edges:
-                            if not edge.edge_attributes:
-                                edge.edge_attributes = []
-                            edge.edge_attributes.append(new_edge_attribute)
+                            if not edge.attributes:
+                                edge.attributes = []
+                            edge.attributes.append(new_edge_attribute)
                         # Don't worry about checking remaining synonym combos if we got results
                         break
 
@@ -181,7 +181,7 @@ class OverlayExposuresData:
                     object_key = edge.get("object")
                     # Skip any self-edges and reverse edges in ICEES response
                     if subject_key == qedge.subject and object_key == qedge.object:
-                        p_values += [attribute["p_value"] for attribute in edge.get("edge_attributes", []) if attribute.get("p_value") is not None]
+                        p_values += [attribute["p_value"] for attribute in edge.get("attributes", []) if attribute.get("p_value") is not None]
                 if p_values:
                     average_p_value = sum(p_values) / len(p_values)
                     log.debug(f"Average returned p-value is {average_p_value}")
@@ -203,7 +203,7 @@ class OverlayExposuresData:
         #             provided_by="ICEES+",
         #             relation=self.virtual_relation_label,
         #             qedge_ids=[self.virtual_relation_label],
-        #             edge_attributes=[self._create_icees_edge_attribute(p_value)])
+        #             attributes=[self._create_icees_edge_attribute(p_value)])
         edge_attribute_list = [
             self._create_icees_edge_attribute(p_value),
             EdgeAttribute(name="is_defined_by", value="ARAX"),

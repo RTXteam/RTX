@@ -345,12 +345,12 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")  # don't really need to worry about this now
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
                 response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges.values()])}")
-                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges.values() if x.edge_attributes])}")
+                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges.values() if x.attributes])}")
                 # Collect attribute names, could do this with list comprehension, but this is so much more readable
                 attribute_names = []
                 for x in message.knowledge_graph.edges.values():
-                    if x.edge_attributes:
-                        for attr in x.edge_attributes:
+                    if x.attributes:
+                        for attr in x.attributes:
                             attribute_names.append(attr.name)
                 response.debug(f"Number of edges in KG by attribute {Counter(attribute_names)}")
         return response
@@ -585,9 +585,9 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         if message and parameters and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
             known_attributes = set()
             for edge in message.knowledge_graph.edges.values():
-                if hasattr(edge, 'edge_attributes'):
-                    if edge.edge_attributes:
-                        for attribute in edge.edge_attributes:
+                if hasattr(edge, 'attributes'):
+                    if edge.attributes:
+                        for attribute in edge.attributes:
                             known_attributes.add(attribute.name)
             # print(known_attributes)
             allowable_parameters = {'action': {'remove_edges_by_attribute'},
@@ -675,9 +675,9 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         if message and parameters and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
             known_attributes = set()
             for edge in message.knowledge_graph.edges.values():
-                if hasattr(edge, 'edge_attributes'):
-                    if edge.edge_attributes:
-                        for attribute in edge.edge_attributes:
+                if hasattr(edge, 'attributes'):
+                    if edge.attributes:
+                        for attribute in edge.attributes:
                             known_attributes.add(attribute.name)
             # print(known_attributes)
             allowable_parameters = {'action': {'remove_edges_by_stats'},
@@ -1049,8 +1049,8 @@ def main():
     # just print off the values
     # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
     # for edge in message.knowledge_graph.edges.values():
-    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-    #        print(edge.edge_attributes.pop().value)
+    #    if hasattr(edge, 'attributes') and edge.attributes and len(edge.attributes) >= 1:
+    #        print(edge.attributes.pop().value)
     print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
     print(response.show(level=ARAXResponse.DEBUG))
     vals = []
@@ -1058,8 +1058,8 @@ def main():
         print(key)
     print(len(message.knowledge_graph.nodes))
     for edge in message.knowledge_graph.edges.values():
-        if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-            vals.append(edge.edge_attributes.pop().value)
+        if hasattr(edge, 'attributes') and edge.attributes and len(edge.attributes) >= 1:
+            vals.append(edge.attributes.pop().value)
     print(sorted(vals))
 
 

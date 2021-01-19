@@ -121,7 +121,7 @@ class ComputeJaccard:
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key, object_key=object_key,
                 #             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
-                #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
+                #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
                 edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                             attributes=edge_attribute_list)
                 edge.qedge_keys = qedge_keys

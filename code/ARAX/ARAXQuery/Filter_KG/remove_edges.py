@@ -226,9 +226,9 @@ class RemoveEdges:
                 edge_qid_dict[key] = {'subject':q_edge.subject, 'object':q_edge.object}
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
-                if hasattr(edge, 'edge_attributes'):  # check if they have attributes
-                    if edge.edge_attributes:  # if there are any edge attributes
-                        for attribute in edge.edge_attributes:  # for each attribute
+                if hasattr(edge, 'attributes'):  # check if they have attributes
+                    if edge.attributes:  # if there are any edge attributes
+                        for attribute in edge.attributes:  # for each attribute
                             if attribute.name == edge_params['edge_attribute']:  # check if it's the desired one
                                 if compare(float(attribute.value), edge_params['threshold']):  # check if it's above/below the threshold
                                     edges_to_remove.add(key)  # mark it to be removed
@@ -313,9 +313,9 @@ class RemoveEdges:
             values = []
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
-                if hasattr(edge, 'edge_attributes'):  # check if they have attributes
-                    if edge.edge_attributes:  # if there are any edge attributes
-                        for attribute in edge.edge_attributes:  # for each attribute
+                if hasattr(edge, 'attributes'):  # check if they have attributes
+                    if edge.attributes:  # if there are any edge attributes
+                        for attribute in edge.attributes:  # for each attribute
                             if attribute.name == edge_params['edge_attribute']:  # check if it's the desired one
                                 values.append((key,float(attribute.value), edge.subject, edge.object))
             if len(values) > 0:

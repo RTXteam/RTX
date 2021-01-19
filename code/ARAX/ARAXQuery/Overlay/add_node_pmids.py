@@ -36,9 +36,9 @@ class AddNodePMIDS:
         # iterate over KG edges, add the information
         try:
             for key, node in self.message.knowledge_graph.nodes.items():
-                # Make sure the edge_attributes are not None
-                if not node.node_attributes:
-                    node.node_attributes = []  # should be an array, but why not a list?
+                # Make sure the attributes are not None
+                if not node.attributes:
+                    node.attributes = []  # should be an array, but why not a list?
                 # now go and actually get the NGD
                 node_curie = key
                 node_name = node.name
@@ -48,7 +48,7 @@ class AddNodePMIDS:
                     pmids = pmids[0:self.parameters['max_num']]
                 value = pmids
                 ngd_edge_attribute = NodeAttribute(type=type, name=name, value=value, url=url)  # populate the NGD edge attribute
-                node.node_attributes.append(ngd_edge_attribute)  # append it to the list of attributes
+                node.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()

@@ -316,7 +316,7 @@ class OverlayClinicalInfo:
                 #             object_key=object_key,
                 #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                 #             provided_by=provided_by,
-                #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
+                #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
                 edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list)
                 edge.qedge_keys = qedge_keys
@@ -343,8 +343,8 @@ class OverlayClinicalInfo:
         for key, node in self.message.knowledge_graph.nodes.items():
             curies_to_names[key] = node.name
         for edge in self.message.knowledge_graph.edges.values():
-            if not edge.edge_attributes:  # populate if not already there
-                edge.edge_attributes = []
+            if not edge.attributes:  # populate if not already there
+                edge.attributes = []
             subject_curie = edge.subject
             object_curie = edge.object
             edge_attribute = self.make_edge_attribute_from_curies(subject_curie, object_curie,
@@ -353,7 +353,7 @@ class OverlayClinicalInfo:
                                                                   default=default,
                                                                   name=name)  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
             if edge_attribute:  # make sure an edge attribute was actually created
-                edge.edge_attributes.append(edge_attribute)
+                edge.attributes.append(edge_attribute)
 
     def paired_concept_frequency(self, default=0):
         """

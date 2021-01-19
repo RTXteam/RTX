@@ -63,9 +63,9 @@ class SortResults:
             # iterate over the edges find the attribute values
             for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
                 edge_values[key] = {'value': None, 'relation': edge.relation}
-                if hasattr(edge, 'edge_attributes'):  # check if they have attributes
-                    if edge.edge_attributes:  # if there are any edge attributes
-                        for attribute in edge.edge_attributes:  # for each attribute
+                if hasattr(edge, 'attributes'):  # check if they have attributes
+                    if edge.attributes:  # if there are any edge attributes
+                        for attribute in edge.attributes:  # for each attribute
                             if attribute.name == params['edge_attribute']:  # check if it's the desired one
                                 edge_values[key] = {'value': attribute.value, 'relation': edge.relation}
             if params['descending']:
@@ -152,9 +152,9 @@ class SortResults:
             # iterate over the nodes find the attribute values
             for key, node in self.message.knowledge_graph.nodes.items():  # iterate over the nodes
                 node_values[key] = {'value': None, 'category': node.category}
-                if hasattr(node, 'node_attributes'):  # check if they have attributes
-                    if node.node_attributes:  # if there are any node attributes
-                        for attribute in node.node_attributes:  # for each attribute
+                if hasattr(node, 'attributes'):  # check if they have attributes
+                    if node.attributes:  # if there are any node attributes
+                        for attribute in node.attributes:  # for each attribute
                             if attribute.name == params['node_attribute']:  # check if it's the desired one
                                 if attribute.name == 'pubmed_ids':
                                     node_values[key] = {'value': attribute.value.count("PMID"), 'category': node.category}

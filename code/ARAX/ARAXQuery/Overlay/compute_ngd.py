@@ -43,7 +43,7 @@ class ComputeNGD:
     def compute_ngd(self):
         """
         Iterate over all the edges in the knowledge graph, compute the normalized google distance and stick that info
-        on the edge_attributes
+        on the attributes
         :default: The default value to set for NGD if it returns a nan
         :return: response
         """
@@ -119,7 +119,7 @@ class ComputeNGD:
                     #             object_key=object_key,
                     #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                     #             provided_by=provided_by,
-                    #             confidence=confidence, weight=weight, edge_attributes=[edge_attribute], qedge_ids=qedge_ids)
+                    #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list)
                     edge.qedge_keys = qedge_keys
@@ -147,9 +147,9 @@ class ComputeNGD:
                 self.load_curie_to_pmids_data(canonicalized_curie_map.values())
                 self.response.debug(f"Looping through edges and calculating NGD values")
                 for edge in self.message.knowledge_graph.edges.values():
-                    # Make sure the edge_attributes are not None
-                    if not edge.edge_attributes:
-                        edge.edge_attributes = []  # should be an array, but why not a list?
+                    # Make sure the attributes are not None
+                    if not edge.attributes:
+                        edge.attributes = []  # should be an array, but why not a list?
                     # now go and actually get the NGD
                     subject_curie = edge.subject
                     object_curie = edge.object
@@ -159,7 +159,7 @@ class ComputeNGD:
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
                     ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
-                    edge.edge_attributes.append(ngd_edge_attribute)  # append it to the list of attributes
+                    edge.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()

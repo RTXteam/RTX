@@ -380,12 +380,12 @@ This information is included in edge attributes with the name 'icees_p-value'.
                 #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
                 response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges.values()])}")
-                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges.values() if x.edge_attributes])}")
+                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges.values() if x.attributes])}")
                 # Collect attribute names, could do this with list comprehension, but this is so much more readable
                 attribute_names = []
                 for x in message.knowledge_graph.edges.values():
-                    if x.edge_attributes:
-                        for attr in x.edge_attributes:
+                    if x.attributes:
+                        for attr in x.attributes:
                             attribute_names.append(attr.name)
                 response.debug(f"Number of edges in KG by attribute {Counter(attribute_names)}")
         return response
@@ -990,8 +990,8 @@ def main():
     # just print off the values
     #print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
     #for edge in message.knowledge_graph.edges.values():
-    #    if hasattr(edge, 'edge_attributes') and edge.edge_attributes and len(edge.edge_attributes) >= 1:
-    #        print(edge.edge_attributes.pop().value)
+    #    if hasattr(edge, 'attributes') and edge.attributes and len(edge.attributes) >= 1:
+    #        print(edge.attributes.pop().value)
     #print(f"Message: {json.dumps(message.to_dict(), sort_keys=True, indent=2)}")
     #print(message)
     print(f"KG edges: {json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2)}")
