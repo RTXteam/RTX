@@ -670,8 +670,8 @@ def main():
             "add_qnode(category=protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
             "expand(edge_key=e0)",
-            #"resultify(ignore_edge_direction=true)",
-            #"filter_results(action=limit_number_of_results, max_results=10)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=limit_number_of_results, max_results=5)",
             "return(message=true, store=true)",
         ]}}
 
