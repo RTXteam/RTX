@@ -13,7 +13,7 @@ import json
 import ast
 from typing import List, Union
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
+sys.path.append(os.getcwd()+"/../ARAXQuery")
 #sys.path.append(os.getcwd()+"/../ARAXQuery")
 from ARAX_filter_results import ARAXFilterResults
 from ARAX_query import ARAXQuery
@@ -39,7 +39,8 @@ def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
     response = araxq.query(query)
     if response.status != 'OK':
         print(response.show(level=response.DEBUG))
-    return [response, araxq.message]
+    #return [response, araxq.message]
+    return [response, response.envelope.message]
 
 def test_command_definitions():
     fr = ARAXFilterResults()
@@ -48,10 +49,10 @@ def test_command_definitions():
 def test_n_results():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:1227, id=n00)",
-            "add_qnode(type=chemical_substance, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00, kp=ARAX/KG1)",
+            "add_qnode(name=DOID:1227, key=n00)",
+            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
