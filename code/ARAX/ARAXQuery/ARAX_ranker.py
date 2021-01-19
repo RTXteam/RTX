@@ -42,15 +42,16 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
                                                                             nx.MultiGraph]:
     res_graph = qg_nx.copy()
     qg_edge_tuples = tuple(qg_nx.edges(keys=True, data=True))
-    qg_edge_id_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
-    for key,id in result.edge_bindings.items():
+    qg_edge_key_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
+    for key, edge_binding_list in result.edge_bindings.items():
         # FIXME: EWD: there's a problem here, but I'm baffled by what this is supposed to be doing
-        kg_edge = kg_edge_id_to_edge[id]
-        kg_edge_conf = kg_edge.confidence
-        qedge_ids = kg_edge.qedge_ids
-        for qedge_id in qedge_ids:
-            qedge_tuple = qg_edge_id_to_edge_tuple[qedge_id]
-            res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_id]['weight'] = kg_edge_conf
+        for edge_binding in edge_binding_list:
+            kg_edge = kg_edge_id_to_edge[edge_binding.id]
+            kg_edge_conf = kg_edge.confidence
+            qedge_keys = kg_edge.qedge_keys
+            for qedge_key in qedge_keys:
+                qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
+                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] = kg_edge_conf
     return res_graph
 
 
