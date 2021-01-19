@@ -93,7 +93,7 @@ def test_default_std_dev():
         "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
-    all_vals = [float(y.value) for x in message.knowledge_graph.edges if x.edge_attributes is not None for y in x.edge_attributes if y.name == 'jaccard_index']
+    all_vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
     comp_val = np.mean(all_vals) + np.std(all_vals)
     comp_len = len([x for x in all_vals if x > comp_val])
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -111,7 +111,7 @@ def test_default_std_dev():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    vals = [float(y.value) for x in message.knowledge_graph.edges if x.edge_attributes is not None for y in x.edge_attributes if y.name == 'jaccard_index']
+    vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
     assert len(vals) == comp_len
     assert np.min(vals) > comp_val
 
@@ -131,7 +131,7 @@ def test_std_dev():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    all_vals = [float(y.value) for x in message.knowledge_graph.edges if x.edge_attributes is not None for y in x.edge_attributes if y.name == 'jaccard_index']
+    all_vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
     comp_val = np.mean(all_vals) - 0.25*np.std(all_vals)
     comp_len = len([x for x in all_vals if x < comp_val])
     query = {"previous_message_processing_plan": {"processing_actions": [
@@ -149,7 +149,7 @@ def test_std_dev():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    vals = [float(y.value) for x in message.knowledge_graph.edges if x.edge_attributes is not None for y in x.edge_attributes if y.name == 'jaccard_index']
+    vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
     assert len(vals) == comp_len
     assert len([x for x in vals if x == 1]) == 0
     assert np.max(vals) < comp_val
@@ -170,7 +170,7 @@ def test_default_top_n():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    vals = [float(y.value) for x in message.knowledge_graph.edges if x.edge_attributes is not None for y in x.edge_attributes if y.name == 'jaccard_index']
+    vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
     assert len(vals) == 50
     assert sum([x == 1 for x in vals]) == 8
 
