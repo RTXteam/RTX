@@ -438,13 +438,13 @@ This information is included in edge attributes with the name 'icees_p-value'.
 
 
     #### Top level decision maker for applying filters
-    def apply(self, input_message, input_parameters, response=None):
+    def apply(self, response, input_parameters):
 
         #### Define a default response
         if response is None:
             response = ARAXResponse()
         self.response = response
-        self.message = input_message
+        self.message = response.envelope.message
 
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):

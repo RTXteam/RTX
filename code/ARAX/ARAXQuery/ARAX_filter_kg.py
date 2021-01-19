@@ -388,30 +388,30 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                     return -1
 
     #### Top level decision maker for applying filters
-    def apply(self, input_message, input_parameters):
+    def apply(self, input_response, input_parameters):
 
         #### Define a default response
-        response = ARAXResponse()
-        self.response = response
-        self.message = input_message
+        #response = ARAXResponse()
+        self.response = input_response
+        self.message = input_response.envelope.message
 
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
-            response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
-            return response
+            self.response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
+            return self.response
 
         # list of actions that have so far been created for ARAX_overlay
         allowable_actions = self.allowable_actions
 
         # check to see if an action is actually provided
         if 'action' not in input_parameters:
-            response.error(f"Must supply an action. Allowable actions are: action={allowable_actions}", error_code="MissingAction")
+            self.response.error(f"Must supply an action. Allowable actions are: action={allowable_actions}", error_code="MissingAction")
         elif input_parameters['action'] not in allowable_actions:
-            response.error(f"Supplied action {input_parameters['action']} is not permitted. Allowable actions are: {allowable_actions}", error_code="UnknownAction")
+            self.response.error(f"Supplied action {input_parameters['action']} is not permitted. Allowable actions are: {allowable_actions}", error_code="UnknownAction")
 
         #### Return if any of the parameters generated an error (showing not just the first one)
-        if response.status != 'OK':
-            return response
+        if self.response.status != 'OK':
+            return self.response
 
         # populate the parameters dict
         parameters = dict()
@@ -419,18 +419,18 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             parameters[key] = value
 
         #### Store these final parameters for convenience
-        response.data['parameters'] = parameters
+        self.response.data['parameters'] = parameters
         self.parameters = parameters
 
         # convert the action string to a function call (so I don't need a ton of if statements
         getattr(self, '_' + self.__class__.__name__ + '__' + parameters['action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
 
-        response.debug(f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
+        self.response.debug(f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
 
         #### Return the response and done
         if self.report_stats:  # helper to report information in debug if class self.report_stats = True
-            response = self.report_response_stats(response)
-        return response
+            self.response = self.report_response_stats(self.response)
+        return self.response
 
     def __remove_edges_by_predicate(self, describe=False):
         """
