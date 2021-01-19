@@ -45,8 +45,8 @@ class RemoveEdges:
             edges_to_remove = set()
             node_keys_to_remove = {}
             edge_qid_dict = {}
-            for q_edge in self.message.query_graph.edges:
-                edge_qid_dict[q_edge.id] = {'subject':q_edge.subject, 'object':q_edge.object}
+            for key, q_edge in self.message.query_graph.edges.items():
+                edge_qid_dict[key] = {'subject':q_edge.subject, 'object':q_edge.object}
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():
                 if edge.predicate == edge_params['edge_predicate']:
@@ -93,7 +93,7 @@ class RemoveEdges:
                 for key in nodes_to_remove:
                     del self.message.knowledge_graph.nodes[key]
                 # iterate over edges find edges connected to the nodes
-                for key, edge in self.message.knowledge_graph.edges:
+                for key, edge in self.message.knowledge_graph.edges.items():
                     if edge.subject in node_keys_to_remove or edge.object in node_keys_to_remove:
                         edges_to_remove.add(key)
                 self.check_kg_nodes()
