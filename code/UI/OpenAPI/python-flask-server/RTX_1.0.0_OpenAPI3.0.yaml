@@ -1,8 +1,8 @@
 openapi: 3.0.1
 info:
-  description: OpenAPI for NCATS Biomedical Translator Reasoners
+  description: OpenAPI endpoint for the NCATS Biomedical Translator Reasoner called ARAX
   version: 1.0.0
-  title: OpenAPI for NCATS Biomedical Translator Reasoners
+  title: ARAX Translator Reasoner
   contact:
     email: edeutsch@systemsbiology.org
   license:
@@ -14,7 +14,7 @@ externalDocs:
     Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-  - url: https://arax.ncats.io/api/arax/v1
+  - url: https://arax.ncats.io/api/arax/v1.0
     description: ARAX Translator Reasoner API
 tags:
   - name: predicates
@@ -60,6 +60,7 @@ paths:
       tags:
         - predicates
       summary: Get supported relationships by source and target
+      operationId: predicates
       responses:
         '200':
           description: Predicates by source and target
@@ -81,7 +82,7 @@ paths:
                     'biolink:Gene':
                       - biolink:directly_interacts_with
                       - biolink:decreases_activity_of
-      x-swagger-router-controller: openapi_server.controllers.predicates_controller
+      x-openapi-router-controller: openapi_server.controllers.predicates_controller
   /query:
     post:
       tags:
@@ -137,7 +138,7 @@ paths:
             application/json:
               schema:
                 type: string
-      x-swagger-router-controller: openapi_server.controllers.query_controller
+      x-openapi-router-controller: openapi_server.controllers.query_controller
   /response/{response_id}:
     get:
       tags:
@@ -161,7 +162,7 @@ paths:
                 $ref: '#/components/schemas/Response'
         '404':
           description: response_id not found
-      x-swagger-router-controller: \
+      x-openapi-router-controller: \
         openapi_server.controllers.response_controller
   /translate:
     post:
@@ -188,7 +189,7 @@ paths:
                   $ref: '#/components/schemas/Query'
         '400':
           description: Invalid status value
-      x-swagger-router-controller: openapi_server.controllers.translate_controller
+      x-openapi-router-controller: openapi_server.controllers.translate_controller
   /entity/{search_string}:
     get:
       tags:
@@ -214,7 +215,7 @@ paths:
                   type: object
         '404':
           description: "Entity not found"
-      x-swagger-router-controller: "openapi_server.controllers.entity_controller"
+      x-openapi-router-controller: "openapi_server.controllers.entity_controller"
   /exampleQuestions:
     get:
       tags:
@@ -231,7 +232,7 @@ paths:
                 type: array
                 items:
                   type: object
-      x-swagger-router-controller: "openapi_server.controllers.example_questions_controller"
+      x-openapi-router-controller: "openapi_server.controllers.example_questions_controller"
   '/PubmedMeshNgd/{term1}/{term2}':
     get:
       tags:
@@ -261,7 +262,7 @@ paths:
                 $ref: '#/components/schemas/MeshNgdResponse'
         '400':
           description: "Invalid terms"
-      x-swagger-router-controller: "openapi_server.controllers.pubmed_mesh_ngd_controller"
+      x-openapi-router-controller: "openapi_server.controllers.pubmed_mesh_ngd_controller"
 components:
   schemas:
     Query:
@@ -451,7 +452,7 @@ components:
           description: Entity type of this response
         id:
           type: string
-          example: 'https://arax.ncats.io/api/rtx/v1/response/123'
+          example: 'https://arax.ncats.io/api/rtx/v1.0/response/123'
           description: URI for this response
       additionalProperties: true
       required:
@@ -567,7 +568,7 @@ components:
               $ref: '#/components/schemas/EdgeBinding'
         id:
           type: string
-          example: https://arax.ncats.io/api/rtx/v1/result/234
+          example: https://arax.ncats.io/api/rtx/v1.0/result/234
           description: URI for this result
         description:
           type: string
@@ -989,7 +990,7 @@ components:
         previous_message_uris:
           type: array
           example:
-            - 'https://rtx.ncats.io/api/rtx/v1/message/300'
+            - 'https://rtx.ncats.io/api/rtx/v1.0/message/300'
           description: List of URIs for Message objects to fetch and process
           items:
             type: string
