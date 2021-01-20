@@ -733,12 +733,12 @@ This information is included in edge attributes with the name 'icees_p-value'.
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            qg_nodes = message.query_graph.nodes.values()
+            qg_nodes = message.query_graph.nodes
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
                                     #'subject_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if x.category == "chemical_substance"]),
-                                    'subject_key': set([node_key for node_key in qg_nodes]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    'subject_key': set([node_key for node_key in qg_nodes.keys()]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     #'object_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if (x.category == "disease" or x.category == "phenotypic_feature")])
-                                    'object_key': set([node_key for node_key in qg_nodes])  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    'object_key': set([node_key for node_key in qg_nodes.keys()])  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     }
         else:
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
@@ -789,11 +789,11 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # allowable_parameters = {'action': {'fisher_exact_test'}, 'query_node_label': {...}, 'compare_node_label':{...}}
 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
-            qg_nodes = message.query_graph.nodes.values()
-            qg_edges = message.query_graph.edges.values()
-            allowable_subject_key = list(set([node_key for node_key in qg_nodes]))  # flatten these as they are lists of lists now
-            allowable_object_key = list(set([node_key for node_key in qg_nodes]))  # flatten these as they are lists of lists now
-            allowwable_rel_edge_key = list(set([edge_key for edge_key in qg_edges]))  # flatten these as they are lists of lists now
+            qg_nodes = message.query_graph.nodes
+            qg_edges = message.query_graph.edges
+            allowable_subject_key = list(set([node_key for node_key in qg_nodes.keys()]))  # flatten these as they are lists of lists now
+            allowable_object_key = list(set([node_key for node_key in qg_nodes.keys()]))  # flatten these as they are lists of lists now
+            allowwable_rel_edge_key = list(set([edge_key for edge_key in qg_edges.keys()]))  # flatten these as they are lists of lists now
             allowwable_rel_edge_key.append(None)
             # # FIXME: need to generate this from some subject as per #780
             # allowable_object_node_type = [None,'metabolite','biological_process','chemical_substance','microRNA','protein',

@@ -6,6 +6,7 @@ import sys
 from typing import Dict, Optional, Set, Tuple
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.response import Response
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.message import Message
@@ -30,21 +31,25 @@ def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, que
                                  edges={key:qedge for key, qedge in query_graph.edges.items() if key in set(kg_edges_by_qg_id)})
 
     # Compute results using Resultify so we can see which nodes appear in the same results
-    sub_message = Message()
+    resultifier = ARAXResultify()
+    sub_response = ARAXResponse()
+    sub_response.envelope = Response()
+    sub_response.envelope.message = Message()
+    sub_message = sub_response.envelope.message
     sub_message.query_graph = sub_query_graph
     sub_message.knowledge_graph = KnowledgeGraph(nodes=knowledge_graph.nodes.copy(),
                                                  edges=knowledge_graph.edges.copy())
-    resultifier = ARAXResultify()
-    resultify_response = resultifier.apply(sub_message, {})
+    #sub_response.envelope.message = sub_message
+    resultify_response = resultifier.apply(sub_response, {})
 
     # Figure out which node pairs appear together in one or more results
     if resultify_response.status == 'OK':
         node_pairs = set()
         for result in sub_message.results:
-            subject_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if
-                                            node_binding.qg_id == subject_qnode_key}
-            object_curies_in_this_result = {node_binding.kg_id for node_binding in result.node_bindings if
-                                            node_binding.qg_id == object_qnode_key}
+            subject_curies_in_this_result = {node_binding.id for key, node_binding_list in result.node_bindings.items() for node_binding in node_binding_list if
+                                            key == subject_qnode_key}
+            object_curies_in_this_result = {node_binding.id for key, node_binding_list in result.node_bindings.items() for node_binding in node_binding_list if
+                                            key == object_qnode_key}
             pairs_in_this_result = set(itertools.product(subject_curies_in_this_result, object_curies_in_this_result))
             node_pairs = node_pairs.union(pairs_in_this_result)
         log.debug(f"Identified {len(node_pairs)} node pairs to overlay (with help of resultify)")
