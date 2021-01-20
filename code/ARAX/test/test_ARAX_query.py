@@ -38,8 +38,8 @@ def test_query_by_query_graph_2():
 
     assert response.status == 'OK'
     message = response.envelope.message
-    assert message.n_results >= 32
-    assert message.schema_version == '1.0.0'
+    assert len(message.results) >= 32
+    assert envelope.schema_version == '1.0.0'
 
 
 if __name__ == "__main__": pytest.main(['-v'])
