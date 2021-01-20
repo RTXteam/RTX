@@ -143,7 +143,7 @@ class ComputeNGD:
             # iterate over KG edges, add the information
             try:
                 # Map all nodes to their canonicalized curies in one batch (need canonical IDs for the local NGD system)
-                canonicalized_curie_map = self._get_canonical_curies_map([node.id for node in self.message.knowledge_graph.nodes])
+                canonicalized_curie_map = self._get_canonical_curies_map([key for key in self.message.knowledge_graph.nodes.keys()])
                 self.load_curie_to_pmids_data(canonicalized_curie_map.values())
                 self.response.debug(f"Looping through edges and calculating NGD values")
                 for edge in self.message.knowledge_graph.edges.values():
