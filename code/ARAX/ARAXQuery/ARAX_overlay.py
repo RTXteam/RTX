@@ -736,14 +736,14 @@ This information is included in edge attributes with the name 'icees_p-value'.
             qg_nodes = message.query_graph.nodes
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
                                     #'subject_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if x.category == "chemical_substance"]),
-                                    'subject_key': set([node_key for node_key in qg_nodes.keys()]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    'subject_qnode_key': set([node_key for node_key in qg_nodes.keys()]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     #'object_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if (x.category == "disease" or x.category == "phenotypic_feature")])
-                                    'object_key': set([node_key for node_key in qg_nodes.keys()])  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    'object_qnode_key': set([node_key for node_key in qg_nodes.keys()])  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     }
         else:
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'subject_key': {'optional: a specific subject query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'object_key': {'optional: a specific object query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
+                                    'subject_qnode_key': {'optional: a specific subject query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+                                    'object_qnode_key': {'optional: a specific object query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
                                     }
 
         # A little function to describe what this thing does
@@ -772,11 +772,11 @@ This information is included in edge attributes with the name 'icees_p-value'.
     def __fisher_exact_test(self, describe=False):
 
         """
-        Computes the the Fisher's Exact Test p-value of the connection between a list of given nodes with specified query key (subject_key eg. 'n01') to their adjacent nodes with specified query key (e.g. object_key 'n02') in message knowledge graph.
+        Computes the the Fisher's Exact Test p-value of the connection between a list of given nodes with specified query key (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query key (e.g. object_qnode_key 'n02') in message knowledge graph.
         Allowable parameters:
-            :param subject_key: (required) a specific QNode key (you used in add_qnode() in DSL) of subject nodes in message KG eg. "n00"
+            :param subject_qnode_key: (required) a specific QNode key (you used in add_qnode() in DSL) of subject nodes in message KG eg. "n00"
             :param virtual_relation_label: (required) any string to label the relation and query edge id of virtual edge with fisher's exact test p-value eg. 'FET'
-            :param object_key: (required) a specific QNode key (you used in add_qnode() in DSL) of object nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
+            :param object_qnode_key: (required) a specific QNode key (you used in add_qnode() in DSL) of object nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test, eg. "n01"
             :param rel_edge_key: (optional) a specific QEdge key (you used in add_qedge() in DSL) of edges connected to both subject nodes and object nodes in message KG. eg. "e01"
             :param top_n: (optional) an int indicating the top number of the most significant adjacent nodes to return (otherwise all results returned) eg. 10
             :param cutoff: (optional) a float indicating the p-value cutoff to return the results (otherwise all results returned) eg. 0.05
@@ -791,8 +791,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and hasattr(message.query_graph, 'edges'):
             qg_nodes = message.query_graph.nodes
             qg_edges = message.query_graph.edges
-            allowable_subject_key = list(set([node_key for node_key in qg_nodes.keys()]))  # flatten these as they are lists of lists now
-            allowable_object_key = list(set([node_key for node_key in qg_nodes.keys()]))  # flatten these as they are lists of lists now
+            allowable_subject_qnode_key = list(set([node_key for node_key in qg_nodes.keys()]))  # flatten these as they are lists of lists now
+            allowable_object_qnode_key = list(set([node_key for node_key in qg_nodes.keys()]))  # flatten these as they are lists of lists now
             allowwable_rel_edge_key = list(set([edge_key for edge_key in qg_edges.keys()]))  # flatten these as they are lists of lists now
             allowwable_rel_edge_key.append(None)
             # # FIXME: need to generate this from some subject as per #780
@@ -803,9 +803,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
             #                      'has_phenotype','gene_mutations_contribute_to','participates_in','has_part']
 
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'subject_key': allowable_subject_key,
+                                    'subject_qnode_key': allowable_subject_qnode_key,
                                     'virtual_relation_label': str(),
-                                    'object_key': allowable_object_key,
+                                    'object_qnode_key': allowable_object_qnode_key,
                                     'rel_edge_key': allowwable_rel_edge_key,
                                     'top_n': [None,int()],
                                     'cutoff': [None,float()],
@@ -814,9 +814,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     }
         else:
             allowable_parameters = {'action': {'fisher_exact_test'},
-                                    'subject_key': {"a specific QNode key of subject nodes in message KG (required), eg. 'n00'"},
+                                    'subject_qnode_key': {"a specific QNode key of subject nodes in message KG (required), eg. 'n00'"},
                                     'virtual_relation_label': {"any string to label the relation and query edge id of virtual edge with fisher's exact test p-value (required) eg. 'FET'"},
-                                    'object_key': {"a specific QNode key of object nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
+                                    'object_qnode_key': {"a specific QNode key of object nodes in message KG. This will specify which node in KG to consider for calculating the Fisher Exact Test (required), eg. 'n01'"},
                                     'rel_edge_key': {"a specific QEdge key of edges connected to both subject nodes and object nodes in message KG (optional, otherwise all edges connected to both subject nodes and object nodes in message KG are considered), eg. 'e01'"},
                                     'top_n': {"an int indicating the top number (the smallest) of p-values to return (optional,otherwise all results returned), eg. 10"},
                                     'cutoff': {"a float indicating the p-value cutoff to return the results (optional, otherwise all results returned), eg. 0.05"},
