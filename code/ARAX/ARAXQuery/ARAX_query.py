@@ -1427,7 +1427,7 @@ def main():
     print(response.show(level=ARAXResponse.DEBUG))
 
     #### Print out the message that came back
-    #print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+    print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
 
     #### Other stuff that could be dumped
     #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
