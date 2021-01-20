@@ -136,6 +136,9 @@ class ARAXQuery:
         #### Create the skeleton of the response
         response = ARAXResponse()
         self.response = response
+        messenger = ARAXMessenger()
+        messenger.create_envelope(response)
+
         ARAXResponse.output = 'STDERR'
         response.info(f"ARAXQuery launching on incoming Query")
 
@@ -157,9 +160,10 @@ class ARAXQuery:
                 response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
                 interpreter = ARAXQueryGraphInterpreter()
                 query['message'] = ARAXMessenger().from_dict(query['message'])
-                result = interpreter.translate_to_araxi(query['message'])
-                response.merge(result)
-                if result.status != 'OK':
+                print(response.__dict__)
+                response.envelope.message.query_graph = query['message'].query_graph
+                interpreter.translate_to_araxi(response)
+                if response.status != 'OK':
                     return response
                 query['previous_message_processing_plan'] = {}
                 query['previous_message_processing_plan']['processing_actions'] = result.data['araxi_commands']
