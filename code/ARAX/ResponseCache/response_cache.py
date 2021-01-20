@@ -50,8 +50,11 @@ class ResponseCache:
 
     #### Constructor
     def __init__(self):
+        self.rtxConfig = RTXConfiguration()
         self.databaseName = "ResponseCache"
         self.engine_type = 'sqlite'
+        if self.rtxConfig.is_production_server:
+            self.engine_type = 'mysql'
         self.connect()
 
     #### Destructor
@@ -96,8 +99,8 @@ class ResponseCache:
 
         # If the engine_type is mysql then set up the MySQL database
         if self.engine_type == 'mysql':
-            rtxConfig = RTXConfiguration()
-            engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
+            engine = create_engine("mysql+pymysql://" + self.rtxConfig.mysql_feedback_username + ":" +
+                self.rtxConfig.mysql_feedback_password + "@" + self.rtxConfig.mysql_feedback_host + "/" + self.databaseName)
 
         # Else just use SQLite
         else:
@@ -117,8 +120,8 @@ class ResponseCache:
 
         # If the engine_type is mysql then connect to the MySQL database
         if self.engine_type == 'mysql':
-            rtxConfig = RTXConfiguration()
-            engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
+            engine = create_engine("mysql+pymysql://" + self.rtxConfig.mysql_feedback_username + ":" +
+                self.rtxConfig.mysql_feedback_password + "@" + self.rtxConfig.mysql_feedback_host + "/" + self.databaseName)
 
         # Else just use SQLite
         else:
@@ -129,6 +132,11 @@ class ResponseCache:
         session = DBSession()
         self.session = session
         self.engine = engine
+
+        #### If the tables don't exist, then create the database
+        if not engine.dialect.has_table(engine, Response.__tablename__):
+            print(f"WARNING: {self.engine_type} tables do not exist; creating them")
+            Base.metadata.create_all(engine)
 
 
     ##################################################################################################
@@ -157,14 +165,17 @@ class ResponseCache:
         session = self.session
         envelope = response.envelope
         message = envelope.message
-        rtxConfig = RTXConfiguration()
 
-        stored_response = Response(response_datetime=datetime.now(),tool_version=rtxConfig.version,
+        stored_response = Response(response_datetime=datetime.now(),tool_version=self.rtxConfig.version,
             response_code=envelope.status,message=envelope.description,n_results=len(envelope.message.results))
         session.add(stored_response)
         session.flush()
         session.commit()
-        envelope.id = "https://arax.ncats.io/api/arax/v1/response/"+str(stored_response.response_id)
+
+        servername = 'localhost'
+        if self.rtxConfig.is_production_server:
+            servername = 'arax.ncats.io'
+        envelope.id = f"https://{servername}/api/arax/v1.0/response/{stored_response.response_id}"
 
         #### Instead of storing the large response object in the MySQL database as a blob
         #### now store it as a JSON file on the filesystem
