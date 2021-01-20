@@ -16,19 +16,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
 
-PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
+PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
-from swagger_server.models.edge import Edge
-from swagger_server.models.node import Node
-from swagger_server.models.q_edge import QEdge
-from swagger_server.models.q_node import QNode
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.knowledge_graph import KnowledgeGraph
-from swagger_server.models.node_binding import NodeBinding
-from swagger_server.models.edge_binding import EdgeBinding
-from swagger_server.models.biolink_entity import BiolinkEntity
-from swagger_server.models.result import Result
-from swagger_server.models.message import Message
+from openapi_server.models.message import Message
 
 
 def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
@@ -36,7 +26,7 @@ def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
     response = araxq.query(query)
     if response.status != 'OK':
         print(response.show(level=response.DEBUG))
-    return [response, araxq.message]
+    return [response, response.envelope.message]
 
 
 def _attribute_tester(message, attribute_name: str, attribute_type: str, num_different_values=2):
@@ -88,11 +78,11 @@ def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_n
 def test_option_group_id():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:3312, id=n00)",
-            "add_qnode(type=chemical_substance, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, type=indicated_for, option_group_id=a, id=e00)",
-            "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, option_group_id=1, id=e01)",
-            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+            "add_qnode(name=DOID:3312, key=n00)",
+            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qedge(subject=n00, object=n01, predicate=indicated_for, option_group_key=a, id=e00)",
+            "add_qedge(subject=n00, object=n01, predicate=contraindicated_for, option_group_key=1, id=e01)",
+            "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
         ]}}
     [response, message] = _do_arax_query(query)
     for edge in message.query_graph.edges:
@@ -104,11 +94,11 @@ def test_option_group_id():
 def test_exclude():
     query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:3312, id=n00)",
-            "add_qnode(type=chemical_substance, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
-            "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
-            "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
+            "add_qnode(name=DOID:3312, key=n00)",
+            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qedge(subject=n00, object=n01, predicate=indicated_for, key=e00)",
+            "add_qedge(subject=n00, object=n01, predicate=contraindicated_for, exclude=true, key=e01)",
+            "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
@@ -122,16 +112,16 @@ def test_exclude():
 def test_example_2():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(name=DOID:14330, id=n00)",
-        "add_qnode(type=protein, is_set=true, id=n01)",
-        "add_qnode(type=chemical_substance, id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
-        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
-        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
+        "add_qnode(name=DOID:14330, key=n00)",
+        "add_qnode(category=protein, is_set=true, key=n01)",
+        "add_qnode(category=chemical_substance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=physically_interacts_with)",
+        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
         "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-        "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
         "resultify(ignore_edge_direction=true)",
         "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
         "return(message=true, store=false)",
@@ -146,17 +136,17 @@ def test_example_2():
 
 def test_example_3():
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(name=DOID:9406, id=n00)",
-        "add_qnode(type=chemical_substance, is_set=true, id=n01)",
-        "add_qnode(type=protein, id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_id=n01)",
+        "add_qnode(name=DOID:9406, key=n00)",
+        "add_qnode(category=chemical_substance, is_set=true, key=n01)",
+        "add_qnode(category=protein, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01)",
+        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_key=n01)",
         "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
-        "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n02)",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_key=n02)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)"
     ]}}
@@ -173,22 +163,22 @@ def test_example_3():
 def test_FET_example_1():
     # This a FET 3-top example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
-        "add_qnode(type=protein, is_set=true, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1, rel_edge_id=e00)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n01)",
-        "add_qnode(type=chemical_substance, is_set=true, id=n02)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
-        "expand(edge_id=e01, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2, rel_edge_id=e01)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n02)",
-        "add_qnode(type=phenotypic_feature, id=n03)",
-        "add_qedge(source_id=n02, target_id=n03, id=e02)",
-        "expand(edge_id=e02, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3, rel_edge_id=e02)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_id=n03)",
+        "add_qnode(curie=DOID:14330, key=n00, category=disease)",
+        "add_qnode(category=protein, is_set=true, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_id=e00)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_key=n01)",
+        "add_qnode(category=chemical_substance, is_set=true, key=n02)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=physically_interacts_with)",
+        "expand(edge_key=e01, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_id=e01)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_key=n02)",
+        "add_qnode(category=phenotypic_feature, key=n03)",
+        "add_qedge(subject=n02, object=n03, key=e02)",
+        "expand(edge_key=e02, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n02, object_qnode_key=n03, virtual_relation_label=FET3, rel_edge_id=e02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_key=n03)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -216,35 +206,35 @@ def test_FET_example_1():
         assert hasattr(query_exge, 'type')
         assert query_exge.type == 'has_fisher_exact_test_p-value_with'
         assert query_exge.id == query_exge.relation
-        assert query_exge.source_id in query_node_ids
-        assert query_exge.target_id in query_node_ids
+        assert query_exge.subject in query_node_ids
+        assert query_exge.object in query_node_ids
 
 
 @pytest.mark.slow
 def test_FET_example_2():
     # This a FET 4-top example: try to find the diseases connected to proteins connected to biological_process connected to protein connected to CHEMBL.COMPOUND:CHEMBL521
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(id=n00, curie=CHEMBL.COMPOUND:CHEMBL521, type=chemical_substance)",
-        "add_qnode(id=n01, is_set=true, type=protein)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01)",
-        "expand(edge_id=e00, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n01)",
-        "add_qnode(type=biological_process, is_set=true, id=n02)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand(edge_id=e01, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n02)",
-        "add_qnode(type=protein, is_set=true, id=n03)",
-        "add_qedge(source_id=n02, target_id=n03, id=e02)",
-        "expand(edge_id=e02, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n03)",
-        "add_qnode(type=disease, id=n04)",
-        "add_qedge(source_id=n03, target_id=n04, id=e03)",
-        "expand(edge_id=e03, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n03, target_qnode_id=n04, virtual_relation_label=FET4)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_id=n04)",
+        "add_qnode(key=n00, curie=CHEMBL.COMPOUND:CHEMBL521, category=chemical_substance)",
+        "add_qnode(key=n01, is_set=true, category=protein)",
+        "add_qedge(key=e00, subject=n00, object=n01)",
+        "expand(edge_key=e00, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_key=n01)",
+        "add_qnode(category=biological_process, is_set=true, key=n02)",
+        "add_qedge(subject=n01, object=n02, key=e01)",
+        "expand(edge_key=e01, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_key=n02)",
+        "add_qnode(category=protein, is_set=true, key=n03)",
+        "add_qedge(subject=n02, object=n03, key=e02)",
+        "expand(edge_key=e02, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n02, object_qnode_key=n03, virtual_relation_label=FET3)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_key=n03)",
+        "add_qnode(category=disease, key=n04)",
+        "add_qedge(subject=n03, object=n04, key=e03)",
+        "expand(edge_key=e03, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n03, object_qnode_key=n04, virtual_relation_label=FET4)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_key=n04)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -272,45 +262,45 @@ def test_FET_example_2():
         assert hasattr(query_exge, 'type')
         assert query_exge.type == 'has_fisher_exact_test_p-value_with'
         assert query_exge.id == query_exge.relation
-        assert query_exge.source_id in query_node_ids
-        assert query_exge.target_id in query_node_ids
+        assert query_exge.subject in query_node_ids
+        assert query_exge.object in query_node_ids
 
 
 @pytest.mark.skip(reason="need issue#846 to be solved")
 def test_FET_example_3():
     # This a FET 6-top example: try to find the drugs connected to proteins connected to pathways connected to proteins connected to diseases connected to phenotypes of DOID:14330
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
-        "add_qnode(type=phenotypic_feature, is_set=true, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00, type=has_phenotype)",
-        "expand(edge_id=e00, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET1, rel_edge_id=e00)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n01)",
-        "add_qnode(type=disease, is_set=true, id=n02)",
-        "add_qedge(source_id=n01,target_id=n02,id=e01,type=has_phenotype)",
-        "expand(edge_id=e01,kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n01, target_qnode_id=n02, virtual_relation_label=FET2, rel_edge_id=e01)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n02)",
-        "add_qnode(type=protein, is_set=true, id=n03)",
-        "add_qedge(source_id=n02, target_id=n03, id=e02, type=gene_mutations_contribute_to)",
-        "expand(edge_id=e02, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n02, target_qnode_id=n03, virtual_relation_label=FET3, rel_edge_id=e02)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n03)",
-        "add_qnode(type=pathway, is_set=true, id=n04)",
-        "add_qedge(source_id=n03, target_id=n04, id=e03, type=participates_in)",
-        "expand(edge_id=e03, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n03, target_qnode_id=n04, virtual_relation_label=FET4, rel_edge_id=e03)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n04)",
-        "add_qnode(type=protein, is_set=true, id=n05)",
-        "add_qedge(source_id=n04, target_id=n05, id=e04, type=participates_in)",
-        "expand(edge_id=e04, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n04, target_qnode_id=n05, virtual_relation_label=FET5, rel_edge_id=e04)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n05)",
-        "add_qnode(type=chemical_substance, id=n06)",
-        "add_qedge(source_id=n05, target_id=n06, id=e05, type=physically_interacts_with)",
-        "expand(edge_id=e05, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n05, target_qnode_id=n06, virtual_relation_label=FET6, rel_edge_id=e05)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_id=n06)",
+        "add_qnode(curie=DOID:14330, key=n00, category=disease)",
+        "add_qnode(category=phenotypic_feature, is_set=true, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicate=has_phenotype)",
+        "expand(edge_key=e00, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_id=e00)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n01)",
+        "add_qnode(category=disease, is_set=true, key=n02)",
+        "add_qedge(subject=n01,object=n02,key=e01,predicate=has_phenotype)",
+        "expand(edge_key=e01,kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_id=e01)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n02)",
+        "add_qnode(category=protein, is_set=true, key=n03)",
+        "add_qedge(subject=n02, object=n03, key=e02, predicate=gene_mutations_contribute_to)",
+        "expand(edge_key=e02, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n02, object_qnode_key=n03, virtual_relation_label=FET3, rel_edge_id=e02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n03)",
+        "add_qnode(category=pathway, is_set=true, key=n04)",
+        "add_qedge(subject=n03, object=n04, key=e03, predicate=participates_in)",
+        "expand(edge_key=e03, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n03, object_qnode_key=n04, virtual_relation_label=FET4, rel_edge_id=e03)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n04)",
+        "add_qnode(category=protein, is_set=true, key=n05)",
+        "add_qedge(subject=n04, object=n05, key=e04, predicate=participates_in)",
+        "expand(edge_key=e04, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n04, object_qnode_key=n05, virtual_relation_label=FET5, rel_edge_id=e04)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n05)",
+        "add_qnode(category=chemical_substance, key=n06)",
+        "add_qedge(subject=n05, object=n06, key=e05, predicate=physically_interacts_with)",
+        "expand(edge_key=e05, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n05, object_qnode_key=n06, virtual_relation_label=FET6, rel_edge_id=e05)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n06)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -338,24 +328,24 @@ def test_FET_example_3():
         assert hasattr(query_exge, 'type')
         assert query_exge.type == 'has_fisher_exact_test_p-value_with'
         assert query_exge.id == query_exge.relation
-        assert query_exge.source_id in query_node_ids
-        assert query_exge.target_id in query_node_ids
+        assert query_exge.subject in query_node_ids
+        assert query_exge.object in query_node_ids
 
 
 @pytest.mark.slow
 def test_FET_example_4():
     # This a FET 2-top example collecting nodes and edges from both KG1 and KG2: try to find the disease connected to proteins connected to DOID:14330
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
-        "add_qnode(type=phenotypic_feature, is_set=true, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n00, virtual_relation_label=FET1, target_qnode_id=n01,rel_edge_id=e00)",
-        "filter_kg(action=remove_edges_by_attribute,edge_attribute=fisher_exact_test_p-value,direction=above,threshold=0.001,remove_connected_nodes=t,qnode_id=n01)",
-        "add_qnode(type=disease, id=n02)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "expand(edge_id=e01, kp=ARAX/KG2)",
-        "overlay(action=fisher_exact_test, source_qnode_id=n01, virtual_relation_label=FET2, target_qnode_id=n02,rel_edge_id=e01)",
+        "add_qnode(curie=DOID:14330, key=n00, category=disease)",
+        "add_qnode(category=phenotypic_feature, is_set=true, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00, kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n00, virtual_relation_label=FET1, object_qnode_key=n01,rel_edge_id=e00)",
+        "filter_kg(action=remove_edges_by_attribute,edge_attribute=fisher_exact_test_p-value,direction=above,threshold=0.001,remove_connected_nodes=t,qnode_key=n01)",
+        "add_qnode(category=disease, key=n02)",
+        "add_qedge(subject=n01, object=n02, key=e01)",
+        "expand(edge_key=e01, kp=ARAX/KG2)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n01, virtual_relation_label=FET2, object_qnode_key=n02,rel_edge_id=e01)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -388,18 +378,18 @@ def test_FET_example_4():
         assert hasattr(query_exge, 'type')
         assert query_exge.type == 'has_fisher_exact_test_p-value_with'
         assert query_exge.id == query_exge.relation
-        assert query_exge.source_id in query_node_ids
-        assert query_exge.target_id in query_node_ids
+        assert query_exge.subject in query_node_ids
+        assert query_exge.object in query_node_ids
 
 @pytest.mark.slow
 def test_FET_ranking():
     query = {"previous_message_processing_plan": { "processing_actions": [
             "create_message",
-            "add_qnode(id=n00,curie=UniProtKB:P14136,type=protein)",
-            "add_qnode(type=biological_process, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00,kp=ARAX/KG1)",
-            "overlay(action=fisher_exact_test, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=FET)",
+            "add_qnode(key=n00,curie=UniProtKB:P14136,category=protein)",
+            "add_qnode(category=biological_process, key=n01)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "expand(edge_key=e00,kp=ARAX/KG1)",
+            "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET)",
             "resultify()",
             "return(message=true, store=false)",
     ]}}
@@ -412,23 +402,23 @@ def test_FET_ranking():
 def test_example_2_kg2():
     query = {"previous_message_processing_plan": { "processing_actions": [
             "create_message",
-            "add_qnode(name=DOID:14330, id=n00)",
-            "add_qnode(type=protein, is_set=true, id=n01)",
-            "add_qnode(type=chemical_substance, id=n02)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
-            "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
-            "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",  # seems to work just fine
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_id=n02)",
+            "add_qnode(name=DOID:14330, key=n00)",
+            "add_qnode(category=protein, is_set=true, key=n01)",
+            "add_qnode(category=chemical_substance, key=n02)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "add_qedge(subject=n01, object=n02, key=e01, predicate=molecularly_interacts_with)",
+            "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
+            "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",  # seems to work just fine
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_key=n02)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
             "return(message=true, store=false)",
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) == 15 
+    assert len(message.results) == 15
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
+    _virtual_tester(response.envelope.message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
 
 
 @pytest.mark.slow
@@ -439,20 +429,20 @@ def test_clinical_overlay_example():
     """
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(name=DOID:11830, id=n00)",
-        "add_qnode(type=protein, is_set=true, id=n01)",
-        "add_qnode(type=chemical_substance, id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01, type=molecularly_interacts_with)",
-        "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
+        "add_qnode(name=DOID:11830, key=n00)",
+        "add_qnode(category=protein, is_set=true, key=n01)",
+        "add_qnode(category=chemical_substance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=molecularly_interacts_with)",
+        "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
         # overlay a bunch of clinical info
-        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C1)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C2)",
-        "overlay(action=overlay_clinical_info, chi_square=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C3)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
+        "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C3)",
         # filter some stuff out for the fun of it
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=above, threshold=0.5, remove_connected_nodes=true, qnode_id=n02)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=above, threshold=1, remove_connected_nodes=true, qnode_id=n02)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=chi_square, direction=below, threshold=0.05, remove_connected_nodes=true, qnode_id=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=paired_concept_frequency, direction=above, threshold=0.5, remove_connected_nodes=true, qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=above, threshold=1, remove_connected_nodes=true, qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=chi_square, direction=below, threshold=0.05, remove_connected_nodes=true, qnode_key=n02)",
         # return results
         "resultify(ignore_edge_direction=true)",
         "return(message=true, store=false)",
@@ -471,10 +461,10 @@ def test_clinical_overlay_example2():
     """
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(name=DOID:11830, id=n00)",
-        "add_qnode(type=chemical_substance, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00, kp=ARAX/KG2)",
+        "add_qnode(name=DOID:11830, key=n00)",
+        "add_qnode(category=chemical_substance, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00, kp=ARAX/KG2)",
         # overlay a bunch of clinical info
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
@@ -504,18 +494,18 @@ def test_two_hop_based_on_types_1():
     for doid in doid_list:
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            f"add_qnode(name={doid}, id=n00, type=disease)",
-            "add_qnode(type=protein, is_set=true, id=n01)",
-            "add_qnode(type=chemical_substance, id=n02)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "add_qedge(source_id=n01, target_id=n02, id=e01)",
-            "expand(edge_id=e00, kp=ARAX/KG2)",
-            #"expand(edge_id=e00, kp=BTE)",
-            "expand(edge_id=e01, kp=ARAX/KG2)",
-            "overlay(action=overlay_clinical_info, paired_concept_frequency=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C1)",
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C2)",
-            "overlay(action=overlay_clinical_info, chi_square=true, source_qnode_id=n00, target_qnode_id=n02, virtual_relation_label=C3)",
-            "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+            f"add_qnode(name={doid}, key=n00, category=disease)",
+            "add_qnode(category=protein, is_set=true, key=n01)",
+            "add_qnode(category=chemical_substance, key=n02)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "add_qedge(subject=n01, object=n02, key=e01)",
+            "expand(edge_key=e00, kp=ARAX/KG2)",
+            #"expand(edge_key=e00, kp=BTE)",
+            "expand(edge_key=e01, kp=ARAX/KG2)",
+            "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
+            "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C3)",
+            "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=50)",
@@ -540,14 +530,14 @@ def test_one_hop_based_on_types_1():
     for doid in doid_list:
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            f"add_qnode(name={doid}, id=n00, type=disease)",
-            "add_qnode(type=chemical_substance, id=n01)",
-            "add_qedge(source_id=n00, target_id=n01, id=e00)",
-            "expand(edge_id=e00, kp=ARAX/KG2)",
-            "expand(edge_id=e00, kp=BTE)",
+            f"add_qnode(name={doid}, key=n00, category=disease)",
+            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "expand(edge_key=e00, kp=ARAX/KG2)",
+            "expand(edge_key=e00, kp=BTE)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             "overlay(action=predict_drug_treats_disease)",
-            "filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_id=n01)",
+            "filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)",
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=50)",
@@ -566,11 +556,11 @@ def test_one_hop_kitchen_sink_BTE_1():
     """
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:11830, id=n0, type=disease)",
-        "add_qnode(type=chemical_substance, id=n1)",
-        "add_qedge(source_id=n0, target_id=n1, id=e1)",
-        #"expand(edge_id=e00, kp=ARAX/KG2)",
-        "expand(edge_id=e1, kp=BTE)",
+        "add_qnode(curie=DOID:11830, key=n0, category=disease)",
+        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e1)",
+        #"expand(edge_key=e00, kp=ARAX/KG2)",
+        "expand(edge_key=e1, kp=BTE)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         "overlay(action=overlay_clinical_info, chi_square=true)",
@@ -595,11 +585,11 @@ def test_one_hop_kitchen_sink_BTE_2():
     """
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(curie=DOID:11830, id=n0, type=disease)",
-        "add_qnode(type=gene, id=n1)",
-        "add_qedge(source_id=n0, target_id=n1, id=e1)",
-        #"expand(edge_id=e00, kp=ARAX/KG2)",
-        "expand(edge_id=e1, kp=BTE)",
+        "add_qnode(curie=DOID:11830, key=n0, category=disease)",
+        "add_qnode(category=gene, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e1)",
+        #"expand(edge_key=e00, kp=ARAX/KG2)",
+        "expand(edge_key=e1, kp=BTE)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         "overlay(action=overlay_clinical_info, chi_square=true)",
@@ -621,16 +611,16 @@ def test_one_hop_kitchen_sink_BTE_2():
 # def test_example_3_kg2():
 #     query = {"previous_message_processing_plan": { "processing_actions": [
 #             "create_message",
-#             #"add_qnode(id=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
-#             "add_qnode(curie=DOID:9406, id=n00)",  # hypopituitarism, original demo example
-#             "add_qnode(id=n01, type=chemical_substance, is_set=true)",
-#             "add_qnode(id=n02, type=protein)",
-#             "add_qedge(id=e00, source_id=n00, target_id=n01)",
-#             "add_qedge(id=e01, source_id=n01, target_id=n02)",
-#             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
-#             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, source_qnode_id=n00, target_qnode_id=n01)",
-#             "overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n01, target_qnode_id=n02)",
-#             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_id=n01)",
+#             #"add_qnode(key=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
+#             "add_qnode(curie=DOID:9406, key=n00)",  # hypopituitarism, original demo example
+#             "add_qnode(key=n01, category=chemical_substance, is_set=true)",
+#             "add_qnode(key=n02, category=protein)",
+#             "add_qedge(key=e00, subject=n00, object=n01)",
+#             "add_qedge(key=e01, subject=n01, object=n02)",
+#             "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
+#             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
+#             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
+#             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_key=n01)",
 #             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
 #             "return(message=true, store=false)"
 #     ]}}
