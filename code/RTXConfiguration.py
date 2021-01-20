@@ -40,7 +40,8 @@ class RTXConfiguration:
         # self.live = "local"
 
         self.is_production_server = False
-        if 'HOSTNAME' in os.environ and os.environ['HOSTNAME'] == '6d6766e08a31':
+        if ( ( 'HOSTNAME' in os.environ and os.environ['HOSTNAME'] == '6d6766e08a31' ) or
+            ( 'USER' in os.environ and os.environ['USER'] == 'rt' ) ):
             self.is_production_server = True
 
 
