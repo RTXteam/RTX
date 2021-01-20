@@ -788,7 +788,7 @@ def test_issue680():
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
         "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-        "overlay(action=predict_drug_treats_disease, source_qnode_key=n02, target_qnode_key=n00, virtual_relation_label=P1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)",
     ]
@@ -982,12 +982,9 @@ def test_issue692():
 
 
 def test_issue692b():
-    message = Message(query_graph=QueryGraph(nodes=dict(), edges=dict()),
-                      knowledge_graph=KnowledgeGraph(nodes=dict(), edges=dict()))
-    response = ARAXResponse()
-    response.envelope.message = message
-    resultifier = ARAXResultify()
-    response = resultifier.apply(response, {})
+    query_graph = QueryGraph(nodes=dict(), edges=dict())
+    knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert 'no results returned; empty knowledge graph' in response.messages_list()[0]['message']
 
 
@@ -1004,7 +1001,7 @@ def test_issue720_1():
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
-    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_keys]
+    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes.values() if "n02" in node.qnode_keys]
     assert message.results and len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
 
@@ -1023,7 +1020,7 @@ def test_issue720_2():
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
-    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_keys]
+    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes.values() if "n02" in node.qnode_keys]
     assert message.results and len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
 
@@ -1183,7 +1180,7 @@ def test_issue1119_a():
     kryptonite_response, kryptonite_message = _do_arax_query(actions)
     assert kryptonite_response.status == 'OK'
     assert kryptonite_message.results
-    n01_nodes_kryptonite_query = {node_binding.kg_id for result in kryptonite_message.results for node_binding in result.node_bindings["n01"]}
+    n01_nodes_kryptonite_query = {node_binding.id for result in kryptonite_message.results for node_binding in result.node_bindings["n01"]}
     assert not n01_nodes_contraindicated.intersection(n01_nodes_kryptonite_query)
 
 
@@ -1250,7 +1247,7 @@ def test_issue1119_c():
     ]
     response, message_option_edge_only = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert len(results_with_optional_edge) == len([node for node in message_option_edge_only.knowledge_graph.nodes
+    assert len(results_with_optional_edge) == len([node for node in message_option_edge_only.knowledge_graph.nodes.values()
                                                    if "n01" in node.qnode_keys])
 
 
@@ -1277,7 +1274,7 @@ def test_issue1119_d():
     assert any(result for result in message.results if result.edge_bindings.get("e01"))
     assert any(result for result in message.results if result.edge_bindings.get("e02"))
     # Verify there are some results without any optional portion (happens to be true for this query)
-    assert any(result for result in message.results if not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id in {"e01", "e02"}))
+    assert any(result for result in message.results if not {"e01", "e02"}.issubset(set(result.edge_bindings)))
 
 
 @pytest.mark.slow
@@ -1372,7 +1369,7 @@ def test_issue1146_a():
         "add_qedge(key=e0, subject=n2, object=n1, predicate=physically_interacts_with)",
         "add_qedge(key=e1, subject=n1, object=n0)",
         "expand(kp=ARAX/KG1)",
-        "overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_key=n0, target_qnode_key=n2)",
+        "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n0, object_qnode_key=n2)",
         "resultify(debug=true)",
         "filter_results(action=limit_number_of_results, max_results=4)",
     ]
