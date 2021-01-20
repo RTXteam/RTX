@@ -484,21 +484,21 @@ class ARAXMessenger:
         #### Add the subject
         if parameters['subject'] is not None:
             if parameters['subject'] not in qnodes:
-                response.error(f"While trying to add QEdge, there is no QNode with key {parameters['subject']}", error_code="UnknownSourcekey")
+                response.error(f"While trying to add QEdge, there is no QNode with key {parameters['subject']}", error_code="UnknownSourceKey")
                 return response
             qedge.subject = parameters['subject']
         else:
-            response.error(f"While trying to add QEdge, subject is a required parameter", error_code="MissingSourcekey")
+            response.error(f"While trying to add QEdge, subject is a required parameter", error_code="MissingSourceKey")
             return response
 
         #### Add the object
         if parameters['object'] is not None:
             if parameters['object'] not in qnodes:
-                response.error(f"While trying to add QEdge, there is no QNode with key {parameters['object']}", error_code="UnknownTargetkey")
+                response.error(f"While trying to add QEdge, there is no QNode with key {parameters['object']}", error_code="UnknownTargetKey")
                 return response
             qedge.object = parameters['object']
         else:
-            response.error(f"While trying to add QEdge, object is a required parameter", error_code="MissingTargetkey")
+            response.error(f"While trying to add QEdge, object is a required parameter", error_code="MissingTargetKey")
             return response
 
         #### Add the predicate if any. Need to verify it's an allowed predicate. FIXME
