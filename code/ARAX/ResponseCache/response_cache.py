@@ -191,7 +191,7 @@ class ResponseCache:
             response_path = f"{response_dir}/{response_filename}"
             try:
                 with open(response_path, 'w') as outfile:
-                    json.dump(envelope.to_dict(), outfile, sort_keys=True)
+                    json.dump(envelope.to_dict(), outfile, sort_keys=True, indent=2)
             except:
                 eprint(f"ERROR: Unable to write response to file {response_path}")
 
@@ -207,7 +207,7 @@ class ResponseCache:
             return( { "status": 400, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 400)
 
         #### Find the response
-        stored_response = session.query(Response).filter(Response.response_id==response_id).first()
+        stored_response = session.query(Response).filter(Response.response_id==int(response_id)).first()
         if stored_response is not None:
             response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
             response_filename = f"{stored_response.response_id}.json"

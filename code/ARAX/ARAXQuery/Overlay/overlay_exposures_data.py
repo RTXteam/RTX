@@ -73,9 +73,9 @@ class OverlayExposuresData:
                     # qedge = QEdge(id=f"icees_{subject_synonym}--{object_synonym}",
                     #               subject_key=subject_synonym,
                     #               object_key=object_synonym)
-                    qedge = QEdge(id=f"icees_{subject_synonym}--{object_synonym}",
-                                  subject=subject_synonym,
+                    qedge = QEdge(subject=subject_synonym,
                                   object=object_synonym)
+                    qedge.id = f"icees_{subject_synonym}--{object_synonym}"
                     log.debug(f"Sending query to ICEES+ for {subject_synonym}--{object_synonym}")
                     p_value = self._get_icees_p_value_for_edge(qedge, log)
                     if p_value is not None:
@@ -129,7 +129,8 @@ class OverlayExposuresData:
             if accepted_subject_synonyms and accepted_object_synonyms:
                 # Query ICEES for each possible combination of accepted subject/object synonyms
                 for subject_curie_to_try, object_curie_to_try in itertools.product(accepted_subject_synonyms, accepted_object_synonyms):
-                    qedge = QEdge(id=f"icees_e00", subject=subject_curie_to_try, object=object_curie_to_try)
+                    qedge = QEdge(subject=subject_curie_to_try, object=object_curie_to_try)
+                    qedge.id=f"icees_e00"
                     log.debug(f"Sending query to ICEES+ for {subject_curie_to_try}--{object_curie_to_try}")
                     p_value = self._get_icees_p_value_for_edge(qedge, log)
                     if p_value is not None:

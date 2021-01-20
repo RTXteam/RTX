@@ -41,7 +41,7 @@ class RTXConfiguration:
 
         self.is_production_server = False
         if ( ( 'HOSTNAME' in os.environ and os.environ['HOSTNAME'] == '6d6766e08a31' ) or
-            ( 'USER' in os.environ and os.environ['USER'] == 'rt' ) ):
+            ( 'PWD' in os.environ and 'mnt/data/orangeboard' in os.environ['PWD'] ) ):
             self.is_production_server = True
 
 
