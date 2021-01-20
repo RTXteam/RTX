@@ -207,12 +207,12 @@ def test_FET_ex1():
         "add_qnode(category=protein, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01,key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
+        "overlay(action=fisher_exact_test, subject_key=n00, object_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n01)",
         "add_qnode(category=chemical_substance, is_set=true, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01, predicate=physically_interacts_with)",
         "expand(edge_key=e01, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01, filter_type=cutoff, value=0.05)",
+        "overlay(action=fisher_exact_test, subject_key=n01, object_key=n02, virtual_relation_label=FET2, rel_edge_key=e01, filter_type=cutoff, value=0.05)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -255,7 +255,7 @@ def test_FET_ex2():
         "add_qnode(category=protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n00, virtual_relation_label=FET, object_qnode_key=n01, rel_edge_key=e00, top_n=20)",
+        "overlay(action=fisher_exact_test, subject_key=n00, virtual_relation_label=FET, object_key=n01, rel_edge_key=e00, top_n=20)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
