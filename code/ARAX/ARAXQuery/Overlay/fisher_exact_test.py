@@ -158,7 +158,11 @@ class ComputeFTEST:
         try:
             count = 0
             for edge_key in self.message.knowledge_graph.edges:
-                if self.message.knowledge_graph.edges[edge_key].provided_by != "ARAX":
+                #if self.message.knowledge_graph.edges[edge_key].provided_by != "ARAX":
+                # FW: Changing this since provided_by now has to be stuffed into edge.attributes
+                edge_attribute_dict = {x.name:x.value for x in self.message.knowledge_graph.edges[edge_key].attributes}
+                print(edge_attribute_dict)
+                if edge_attribute_dict['provided_by'] == "ARAX":
 
                     nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['edge_index'].append(count)
                     nodes_info[self.message.knowledge_graph.edges[edge_key].object]['edge_index'].append(count)
@@ -166,7 +170,9 @@ class ComputeFTEST:
                     if rel_edge_key:
                         if rel_edge_key in self.message.knowledge_graph.edges[edge_key].qedge_keys:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
-                                edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                # FW: above changes effect this line
+                                #edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
                                 rel_edge_predicate.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
                                 if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
@@ -174,7 +180,9 @@ class ComputeFTEST:
                                 else:
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
                             else:
-                                edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                # FW: above changes effect this line
+                                #edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
                                 rel_edge_predicate.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
@@ -186,9 +194,11 @@ class ComputeFTEST:
                     else:
                         if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                # FW: above changes effect this line
+                                #edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
-                                if self.message.knowledge_graph.edges[edge_key].target_id not in object_node_dict.keys():
+                                if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object] = {self.message.knowledge_graph.edges[edge_key].subject}
                                 else:
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
@@ -197,12 +207,14 @@ class ComputeFTEST:
                                 pass
                         elif object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                # FW: changes effect this line
+                                #edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
+                                edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
                                 else:
-                                    object_node_dict[self.message.knowledge_graph.edges[edge_key.subject].update([self.message.knowledge_graph.edges[edge_key.object])
+                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].subject].update([self.message.knowledge_graph.edges[edge_key].object])
 
                             else:
                                 pass
