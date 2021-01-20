@@ -655,7 +655,7 @@ class ARAXMessenger:
             'parameters': {
                 'id': { 
                     'is_required': True,
-                    'examples': [ 'https://arax.ncats.io/api/arax/v1/message/3164' ],
+                    'examples': [ 'https://arax.ncats.io/api/arax/v1.0/message/1' ],
                     'default': '',
                     'type': 'string',
                     'description': """A URL/URI that identifies the Message to be fetched""",
@@ -795,7 +795,7 @@ def main():
     #### Test fetch_message()
     if False:
         messenger = ARAXMessenger()
-        result = messenger.apply_fetch_message(messenger.message, { 'uri': 'https://arax.ncats.io/api/arax/v1/message/3000'} )
+        result = messenger.apply_fetch_message(messenger.message, { 'uri': 'https://arax.ncats.io/api/arax/v1.0/message/1'} )
         response.merge(result)
         if result.status != 'OK':
             print(response.show(level=ARAXResponse.DEBUG))
