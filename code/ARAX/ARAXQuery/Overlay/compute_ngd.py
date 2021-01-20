@@ -103,7 +103,7 @@ class ComputeNGD:
                     id = f"{relation}_{self.global_iter}"
                     # ensure the id is unique
                     # might need to change after expand is implemented for TRAPI 1.0
-                    while id in message.knowledge_graph.edges:
+                    while id in self.message.knowledge_graph.edges:
                         id = f"{relation}_{self.global_iter}.{random.randint(10**(9-1), (10**9)-1)}"
                     self.global_iter += 1
                     edge_attribute_list = [
@@ -120,7 +120,7 @@ class ComputeNGD:
                     #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                     #             provided_by=provided_by,
                     #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
-                    edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
+                    edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
                                 attributes=edge_attribute_list)
                     edge.qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
