@@ -2,19 +2,19 @@ openapi: 3.0.1
 info:
   contact:
     email: edeutsch@systemsbiology.org
-  description: OpenAPI for NCATS Biomedical Translator Reasoners
+  description: TRAPI 1.0 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: INSERT-URL-HERE
-  title: OpenAPI for NCATS Biomedical Translator Reasoners
+  title: ARAX Translator Reasoner
   version: 1.0.0
 externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
 - description: ARAX Translator Reasoner API
-  url: https://arax.ncats.io/devED/api/arax/v1
+  url: https://arax.ncats.io/devED/api/arax/v1.0
 tags:
 - description: Get supported relationships by source and target
   externalDocs:
@@ -291,7 +291,7 @@ components:
         - Robokop
         previous_message_processing_plan:
         - previous_message_uris:
-          - https://rtx.ncats.io/devED/api/rtx/v1/message/300
+          - https://rtx.ncats.io/devED/api/rtx/v1.0/message/300
           previous_messages:
           - knowledge_graph: ""
             results:
@@ -314,7 +314,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -339,7 +339,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -367,7 +367,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -392,7 +392,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -405,7 +405,7 @@ components:
           - mod45filter
           - redirect2RTX
         - previous_message_uris:
-          - https://rtx.ncats.io/devED/api/rtx/v1/message/300
+          - https://rtx.ncats.io/devED/api/rtx/v1.0/message/300
           previous_messages:
           - knowledge_graph: ""
             results:
@@ -428,7 +428,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -453,7 +453,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -481,7 +481,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -506,7 +506,7 @@ components:
                 - id: ""
                 - id: ""
               reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
               row_data:
               - ibuprofen
               - CHEMBL:CHEMBL521
@@ -598,7 +598,7 @@ components:
           key: '{}'
         context: https://rtx.ncats.io/ns/translator.jsonld
         reasoner_id: reasoner
-        id: https://arax.ncats.io/devED/api/rtx/v1/response/123
+        id: https://arax.ncats.io/devED/api/rtx/v1.0/response/123
         logs:
         - code: code
           level: ERROR
@@ -712,7 +712,7 @@ components:
           type: string
         id:
           description: URI for this response
-          example: https://arax.ncats.io/devED/api/rtx/v1/response/123
+          example: https://arax.ncats.io/devED/api/rtx/v1.0/response/123
           type: string
       required:
       - message
@@ -748,7 +748,7 @@ components:
             - id: ""
             - id: ""
           reasoner_id: RTX
-          id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+          id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
           row_data:
           - ibuprofen
           - CHEMBL:CHEMBL521
@@ -773,7 +773,7 @@ components:
             - id: ""
             - id: ""
           reasoner_id: RTX
-          id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+          id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
           row_data:
           - ibuprofen
           - CHEMBL:CHEMBL521
@@ -867,7 +867,7 @@ components:
           - id: ""
           - id: ""
         reasoner_id: RTX
-        id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+        id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
         row_data:
         - ibuprofen
         - CHEMBL:CHEMBL521
@@ -900,7 +900,7 @@ components:
           type: object
         id:
           description: URI for this result
-          example: https://arax.ncats.io/devED/api/rtx/v1/result/234
+          example: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
           type: string
         description:
           description: A free text description of this result answer from the reasoner
@@ -1276,7 +1276,7 @@ components:
       additionalProperties: true
       example:
         previous_message_uris:
-        - https://rtx.ncats.io/devED/api/rtx/v1/message/300
+        - https://rtx.ncats.io/devED/api/rtx/v1.0/message/300
         previous_messages:
         - knowledge_graph: ""
           results:
@@ -1299,7 +1299,7 @@ components:
               - id: ""
               - id: ""
             reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+            id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
             row_data:
             - ibuprofen
             - CHEMBL:CHEMBL521
@@ -1324,7 +1324,7 @@ components:
               - id: ""
               - id: ""
             reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+            id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
             row_data:
             - ibuprofen
             - CHEMBL:CHEMBL521
@@ -1352,7 +1352,7 @@ components:
               - id: ""
               - id: ""
             reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+            id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
             row_data:
             - ibuprofen
             - CHEMBL:CHEMBL521
@@ -1377,7 +1377,7 @@ components:
               - id: ""
               - id: ""
             reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1/result/234
+            id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
             row_data:
             - ibuprofen
             - CHEMBL:CHEMBL521
@@ -1393,7 +1393,7 @@ components:
         previous_message_uris:
           description: List of URIs for Message objects to fetch and process
           example:
-          - https://rtx.ncats.io/devED/api/rtx/v1/message/300
+          - https://rtx.ncats.io/devED/api/rtx/v1.0/message/300
           items:
             type: string
           type: array
