@@ -532,7 +532,7 @@ def test_one_hop_based_on_types_1():
     for doid in doid_list:
         query = {"previous_message_processing_plan": {"processing_actions": [
             "create_message",
-            f"add_qnode(name={doid}, key=n00, category=disease)",
+            f"add_qnode(id={doid}, key=n00, category=disease)",
             "add_qnode(category=chemical_substance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG2)",
@@ -546,7 +546,6 @@ def test_one_hop_based_on_types_1():
             "return(message=true, store=false)",
         ]}}
         [response, message] = _do_arax_query(query)
-        print(message.id)
         assert response.status == 'OK'
         assert len(message.results) > 1
 

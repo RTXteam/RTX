@@ -400,7 +400,7 @@ def test_chi_square_attribute():
 def test_predict_drug_treats_disease_virtual():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(name=DOID:9008, key=n0, category=disease)",
+        "add_qnode(id=DOID:9008, key=n0, category=disease)",
         "add_qnode(category=chemical_substance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
@@ -417,7 +417,7 @@ def test_predict_drug_treats_disease_virtual():
 def test_predict_drug_treats_disease_attribute():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(name=DOID:9008, key=n0)",
+        "add_qnode(id=DOID:9008, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
@@ -434,7 +434,7 @@ def test_predict_drug_treats_disease_attribute():
 def test_issue_832():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(name=DOID:9008, key=n0)",
+        "add_qnode(id=DOID:9008, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
@@ -451,7 +451,7 @@ def test_issue_832():
 def test_issue_832_non_drug():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(name=UniProtKB:Q13627, key=n0)",
+        "add_qnode(id=UniProtKB:Q13627, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
@@ -543,7 +543,7 @@ def test_issue_840_non_drug():
 @pytest.mark.slow
 def test_issue_892():
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(name=DOID:11830, category=disease, key=n00)",
+        "add_qnode(id=DOID:11830, category=disease, key=n00)",
         "add_qnode(category=gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
         "add_qnode(category=chemical_substance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
