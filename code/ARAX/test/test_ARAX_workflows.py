@@ -163,21 +163,21 @@ def test_example_3():
 def test_FET_example_1():
     # This a FET 3-top example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(curie=DOID:14330, key=n00, category=disease)",
+        "add_qnode(id=DOID:14330, key=n00, category=disease)",
         "add_qnode(category=protein, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_id=e00)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_key=n01)",
         "add_qnode(category=chemical_substance, is_set=true, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01, predicate=physically_interacts_with)",
         "expand(edge_key=e01, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_id=e01)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_key=n02)",
         "add_qnode(category=phenotypic_feature, key=n03)",
         "add_qedge(subject=n02, object=n03, key=e02)",
         "expand(edge_key=e02, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n02, object_qnode_key=n03, virtual_relation_label=FET3, rel_edge_id=e02)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n02, object_qnode_key=n03, virtual_relation_label=FET3, rel_edge_key=e02)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_key=n03)",
         "resultify()",
         "return(message=true, store=false)"
@@ -187,34 +187,35 @@ def test_FET_example_1():
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
-    FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
+    FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 3
     for edge in FET_edges:
-        assert hasattr(edge, 'edge_attributes')
-        assert edge.edge_attributes
-        assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
-        assert 0 <= float(edge.edge_attributes[0].value) < 0.005
-        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
-        assert edge.is_defined_by == 'ARAX'
-        assert edge.provided_by == 'ARAX'
-    FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
+        assert hasattr(edge, 'attributes')
+        assert edge.attributes
+        edge_attributes_dict = {attr.name:attr.value for attr in edge.attributes}
+        assert edge.attributes[0].name == 'fisher_exact_test_p-value'
+        assert 0 <= float(edge.attributes[0].value) < 0.005
+        assert edge.attributes[0].type == 'EDAM:data_1669'
+        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'ARAX'
+    FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 3
-    query_node_ids = [node.id for node in message.query_graph.nodes]
-    assert len(query_node_ids) == 4
-    for query_exge in FET_query_edges:
-        assert hasattr(query_exge, 'type')
-        assert query_exge.type == 'has_fisher_exact_test_p-value_with'
-        assert query_exge.id == query_exge.relation
-        assert query_exge.subject in query_node_ids
-        assert query_exge.object in query_node_ids
+    query_node_keys = [key for key, node in message.query_graph.nodes.items()]
+    assert len(query_node_keys) == 4
+    for key, query_edge in FET_query_edges.items():
+        assert hasattr(query_edge, 'predicate')
+        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert key == query_edge.relation
+        assert query_edge.subject in query_node_keys
+        assert query_edge.object in query_node_keys
 
 
 @pytest.mark.slow
 def test_FET_example_2():
     # This a FET 4-top example: try to find the diseases connected to proteins connected to biological_process connected to protein connected to CHEMBL.COMPOUND:CHEMBL521
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(key=n00, curie=CHEMBL.COMPOUND:CHEMBL521, category=chemical_substance)",
+        "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=chemical_substance)",
         "add_qnode(key=n01, is_set=true, category=protein)",
         "add_qedge(key=e00, subject=n00, object=n01)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
@@ -243,63 +244,64 @@ def test_FET_example_2():
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
-    FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
+    FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 4
     for edge in FET_edges:
-        assert hasattr(edge, 'edge_attributes')
-        assert edge.edge_attributes
-        assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
-        assert 0 <= float(edge.edge_attributes[0].value) < 0.01
-        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
-        assert edge.is_defined_by == 'ARAX'
-        assert edge.provided_by == 'ARAX'
-    FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
+        assert hasattr(edge, 'attributes')
+        assert edge.attributes
+        edge_attributes_dict = {attr.name:attr.value for attr in edge.attributes}
+        assert edge.attributes[0].name == 'fisher_exact_test_p-value'
+        assert 0 <= float(edge.attributes[0].value) < 0.01
+        assert edge.attributes[0].type == 'EDAM:data_1669'
+        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'ARAX'
+    FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 4
-    query_node_ids = [node.id for node in message.query_graph.nodes]
-    assert len(query_node_ids) == 5
-    for query_exge in FET_query_edges:
-        assert hasattr(query_exge, 'type')
-        assert query_exge.type == 'has_fisher_exact_test_p-value_with'
-        assert query_exge.id == query_exge.relation
-        assert query_exge.subject in query_node_ids
-        assert query_exge.object in query_node_ids
+    query_node_keys = [key for key, node in message.query_graph.nodes.items()]
+    assert len(query_node_keys) == 5
+    for key, query_edge in FET_query_edges.items():
+        assert hasattr(query_edge, 'predicate')
+        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert key == query_edge.relation
+        assert query_edge.subject in query_node_keys
+        assert query_edge.object in query_node_keys
 
 
 @pytest.mark.skip(reason="need issue#846 to be solved")
 def test_FET_example_3():
     # This a FET 6-top example: try to find the drugs connected to proteins connected to pathways connected to proteins connected to diseases connected to phenotypes of DOID:14330
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(curie=DOID:14330, key=n00, category=disease)",
+        "add_qnode(id=DOID:14330, key=n00, category=disease)",
         "add_qnode(category=phenotypic_feature, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicate=has_phenotype)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_id=e00)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n01)",
         "add_qnode(category=disease, is_set=true, key=n02)",
         "add_qedge(subject=n01,object=n02,key=e01,predicate=has_phenotype)",
         "expand(edge_key=e01,kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_id=e01)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n02)",
         "add_qnode(category=protein, is_set=true, key=n03)",
         "add_qedge(subject=n02, object=n03, key=e02, predicate=gene_mutations_contribute_to)",
         "expand(edge_key=e02, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n02, object_qnode_key=n03, virtual_relation_label=FET3, rel_edge_id=e02)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n02, object_qnode_key=n03, virtual_relation_label=FET3, rel_edge_key=e02)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n03)",
         "add_qnode(category=pathway, is_set=true, key=n04)",
         "add_qedge(subject=n03, object=n04, key=e03, predicate=participates_in)",
         "expand(edge_key=e03, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n03, object_qnode_key=n04, virtual_relation_label=FET4, rel_edge_id=e03)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n03, object_qnode_key=n04, virtual_relation_label=FET4, rel_edge_key=e03)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n04)",
         "add_qnode(category=protein, is_set=true, key=n05)",
         "add_qedge(subject=n04, object=n05, key=e04, predicate=participates_in)",
         "expand(edge_key=e04, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n04, object_qnode_key=n05, virtual_relation_label=FET5, rel_edge_id=e04)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n04, object_qnode_key=n05, virtual_relation_label=FET5, rel_edge_key=e04)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n05)",
         "add_qnode(category=chemical_substance, key=n06)",
         "add_qedge(subject=n05, object=n06, key=e05, predicate=physically_interacts_with)",
         "expand(edge_key=e05, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n05, object_qnode_key=n06, virtual_relation_label=FET6, rel_edge_id=e05)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n05, object_qnode_key=n06, virtual_relation_label=FET6, rel_edge_key=e05)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n06)",
         "resultify()",
         "return(message=true, store=false)"
@@ -309,38 +311,39 @@ def test_FET_example_3():
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
-    FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
+    FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 6
     for edge in FET_edges:
-        assert hasattr(edge, 'edge_attributes')
-        assert edge.edge_attributes
-        assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
-        assert 0 <= float(edge.edge_attributes[0].value) < 0.001
-        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
-        assert edge.is_defined_by == 'ARAX'
-        assert edge.provided_by == 'ARAX'
-    FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
-    assert len(FET_query_edges) == 6
-    query_node_ids = [node.id for node in message.query_graph.nodes]
-    assert len(query_node_ids) == 7
-    for query_exge in FET_query_edges:
-        assert hasattr(query_exge, 'type')
-        assert query_exge.type == 'has_fisher_exact_test_p-value_with'
-        assert query_exge.id == query_exge.relation
-        assert query_exge.subject in query_node_ids
-        assert query_exge.object in query_node_ids
+        assert hasattr(edge, 'attributes')
+        assert edge.attributes
+        edge_attributes_dict = {attr.name:attr.value for attr in edge.attributes}
+        assert edge.attributes[0].name == 'fisher_exact_test_p-value'
+        assert 0 <= float(edge.attributes[0].value) < 0.001
+        assert edge.attributes[0].type == 'EDAM:data_1669'
+        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'ARAX'
+    FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
+    assert len(FET_query_edges) == 4
+    query_node_keys = [key for key, node in message.query_graph.nodes.items()]
+    assert len(query_node_keys) == 5
+    for key, query_edge in FET_query_edges.items():
+        assert hasattr(query_edge, 'predicate')
+        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert key == query_edge.relation
+        assert query_edge.subject in query_node_keys
+        assert query_edge.object in query_node_keys
 
 
 @pytest.mark.slow
 def test_FET_example_4():
     # This a FET 2-top example collecting nodes and edges from both KG1 and KG2: try to find the disease connected to proteins connected to DOID:14330
     query = {"previous_message_processing_plan": {"processing_actions": [
-        "add_qnode(curie=DOID:14330, key=n00, category=disease)",
+        "add_qnode(id=DOID:14330, key=n00, category=disease)",
         "add_qnode(category=phenotypic_feature, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n00, virtual_relation_label=FET1, object_qnode_key=n01,rel_edge_id=e00)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n00, virtual_relation_label=FET1, object_qnode_key=n01,rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_attribute,edge_attribute=fisher_exact_test_p-value,direction=above,threshold=0.001,remove_connected_nodes=t,qnode_key=n01)",
         "add_qnode(category=disease, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01)",
@@ -354,38 +357,37 @@ def test_FET_example_4():
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
-    kp = set([edge.is_defined_by for edge in message.knowledge_graph.edges])
-    assert len(kp) == 3
-    FET_edges = [x for x in message.knowledge_graph.edges if x.relation and x.relation.find("FET") != -1]
+    FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation and x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 2
     for edge in FET_edges:
-        assert hasattr(edge, 'edge_attributes')
-        assert edge.edge_attributes
-        assert edge.edge_attributes[0].name == 'fisher_exact_test_p-value'
+        assert hasattr(edge, 'attributes')
+        assert edge.attributes
+        edge_attributes_dict = {attr.name:attr.value for attr in edge.attributes}
+        assert edge.attributes[0].name == 'fisher_exact_test_p-value'
         if edge.relation == "FET1":
-            assert 0 <= float(edge.edge_attributes[0].value) < 0.001
+            assert 0 <= float(edge.attributes[0].value) < 0.001
         else:
-            assert float(edge.edge_attributes[0].value) >= 0
-        assert edge.edge_attributes[0].type == 'EDAM:data_1669'
-        assert edge.is_defined_by == 'ARAX'
-        assert edge.provided_by == 'ARAX'
-    FET_query_edges = [edge for edge in message.query_graph.edges if edge.id.find("FET") != -1]
+            assert float(edge.attributes[0].value) >= 0
+        assert edge.attributes[0].type == 'EDAM:data_1669'
+        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'ARAX'
+    FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 2
-    query_node_ids = [node.id for node in message.query_graph.nodes]
-    assert len(query_node_ids) == 3
-    for query_exge in FET_query_edges:
-        assert hasattr(query_exge, 'type')
-        assert query_exge.type == 'has_fisher_exact_test_p-value_with'
-        assert query_exge.id == query_exge.relation
-        assert query_exge.subject in query_node_ids
-        assert query_exge.object in query_node_ids
+    query_node_keys = [key for key, node in message.query_graph.nodes.items()]
+    assert len(query_node_keys) == 3
+    for key, query_edge in FET_query_edges.items():
+        assert hasattr(query_edge, 'predicate')
+        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert key == query_edge.relation
+        assert query_edge.subject in query_node_keys
+        assert query_edge.object in query_node_keys
 
 @pytest.mark.slow
 def test_FET_ranking():
     query = {"previous_message_processing_plan": { "processing_actions": [
             "create_message",
-            "add_qnode(key=n00,curie=UniProtKB:P14136,category=protein)",
+            "add_qnode(key=n00,id=UniProtKB:P14136,category=protein)",
             "add_qnode(category=biological_process, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00,kp=ARAX/KG1)",

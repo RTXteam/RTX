@@ -203,7 +203,7 @@ def test_compute_ngd_attribute():
 def test_FET_ex1():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(name=DOID:12889, key=n00, category=disease)",
+        "add_qnode(id=DOID:12889, key=n00, category=disease)",
         "add_qnode(category=protein, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01,key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
@@ -227,31 +227,32 @@ def test_FET_ex1():
     for edge in FET_edges:
         assert hasattr(edge, 'attributes')
         assert edge.attributes
+        edge_attributes_dict = {attr.name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].name == 'fisher_exact_test_p-value'
+        assert edge.attributes[0].type == 'EDAM:data_1669'
+        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'ARAX'
         if edge.relation == 'FET1':
             assert 0 <= float(edge.attributes[0].value) < 0.001
         else:
             assert 0 <= float(edge.attributes[0].value) < 0.05
-        assert edge.attributes[0].type == 'EDAM:data_1669'
-        assert edge.is_defined_by == 'ARAX'
-        assert edge.provided_by == 'ARAX'
-    FET_query_edges = [edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1]
+    FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 2
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
     assert len(query_node_keys) == 3
-    for key, query_exge in FET_query_edges.items():
-        assert hasattr(query_exge, 'predicate')
-        assert query_exge.predicate == 'has_fisher_exact_test_p-value_with'
-        assert key == query_exge.relation
-        assert query_exge.subject in query_node_keys
-        assert query_exge.object in query_node_keys
+    for key, query_edge in FET_query_edges.items():
+        assert hasattr(query_edge, 'predicate')
+        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert key == query_edge.relation
+        assert query_edge.subject in query_node_keys
+        assert query_edge.object in query_node_keys
 
 
 @pytest.mark.slow
 def test_FET_ex2():
     query = {"previous_message_processing_plan": {"processing_actions": [
         "create_message",
-        "add_qnode(name=DOID:12889, key=n00, category=disease)",
+        "add_qnode(id=DOID:12889, key=n00, category=disease)",
         "add_qnode(category=protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
@@ -271,20 +272,21 @@ def test_FET_ex2():
     for edge in FET_edges:
         assert hasattr(edge, 'attributes')
         assert edge.attributes
+        edge_attributes_dict = {attr.name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].type == 'EDAM:data_1669'
-        assert edge.is_defined_by == 'ARAX'
-        assert edge.provided_by == 'ARAX'
+        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'ARAX'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 1
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
     assert len(query_node_keys) == 2
-    for key, query_exge in FET_query_edges.items():
-        assert hasattr(query_exge, 'predicate')
-        assert query_exge.predicate == 'has_fisher_exact_test_p-value_with'
-        assert key == query_exge.relation
-        assert query_exge.subject in query_node_keys
-        assert query_exge.object in query_node_keys
+    for key, query_edge in FET_query_edges.items():
+        assert hasattr(query_edge, 'predicate')
+        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert key == query_edge.relation
+        assert query_edge.subject in query_node_keys
+        assert query_edge.object in query_node_keys
 
 
 @pytest.mark.slow
