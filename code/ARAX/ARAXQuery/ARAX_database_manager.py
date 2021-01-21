@@ -104,14 +104,14 @@ class ARAXDatabaseManager:
                 if database_name not in local_versions:
                     if debug:
                         print(f"{database_name} not present locally, downloading now...")
-                    if respone is not None:
+                    if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
                 elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']:
                     if debug:
                         print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
                         prinf("downloading remote version...")
-                    if respone is not None:
+                    if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
                     if os.path.exists(self.local_paths[database_name]):
@@ -122,13 +122,13 @@ class ARAXDatabaseManager:
                     else:
                         if debug:
                             print(f"Error downloading {database_name} leaving local copy.")
-                        if respone is not None:
-                            respone.warning(f"Error downloading {database_name} reverting to using local copy.")
+                        if response is not None:
+                            response.warning(f"Error downloading {database_name} reverting to using local copy.")
                         self.db_versions[database_name] = local_versions[database_name]
                 elif not os.path.exists(self.local_paths[database_name]):
                     if debug:
                         print(f"{database_name} not present locally, downloading now...")
-                    if respone is not None:
+                    if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
                 else:
@@ -141,7 +141,7 @@ class ARAXDatabaseManager:
         else:
             if debug:
                 print("No local verson json file present. Downloading all databases...")
-            if respone is not None:
+            if response is not None:
                 response.debug(f"No local verson json file present. Downloading all databases...")
             self.force_download_all(debug=debug)
             with open(versions_path,"w") as fid:
