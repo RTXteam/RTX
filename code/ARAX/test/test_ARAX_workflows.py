@@ -39,7 +39,7 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     """
     edges_of_interest = []
     values = set()
-    for edge in message.knowledge_graph.edges:
+    for key, edge in message.knowledge_graph.edges.items():
         if hasattr(edge, 'edge_attributes'):
             for attr in edge.edge_attributes:
                 if attr.name == attribute_name:
@@ -50,27 +50,27 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     assert len(values) >= num_different_values
 
 
-def _virtual_tester(message: Message, edge_type: str, relation: str, attribute_name: str, attribute_type: str, num_different_values=2):
+def _virtual_tester(message: Message, edge_predicate: str, relation: str, attribute_name: str, attribute_type: str, num_different_values=2):
     """
     Tests overlay functions that add virtual edges
     message: returned from _do_arax_query
-    edge_type: the name of the virtual edge (eg. has_jaccard_index_with)
+    edge_predicate: the name of the virtual edge (eg. has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
     attribute_type: the attribute type (eg. 'EDAM:data_1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
-    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
-    assert edge_type in edge_types_in_kg
-    edges_of_interest = [x for x in message.knowledge_graph.edges if x.relation == relation]
+    edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
+    assert edge_predicate in edge_predicates_in_kg
+    edges_of_interest = [x for x in message.knowledge_graph.edges.values() if x.relation == relation]
     values = set()
     assert len(edges_of_interest) > 0
     for edge in edges_of_interest:
-        assert hasattr(edge, 'edge_attributes')
-        assert edge.edge_attributes
-        assert edge.edge_attributes[0].name == attribute_name
-        values.add(edge.edge_attributes[0].value)
-        assert edge.edge_attributes[0].type == attribute_type
+        assert hasattr(edge, 'attributes')
+        assert edge.attributes
+        assert edge.attributes[0].name == attribute_name
+        values.add(edge.attributes[0].value)
+        assert edge.attributes[0].type == attribute_type
     # make sure two or more values were added
     assert len(values) >= num_different_values
 
@@ -85,10 +85,10 @@ def test_option_group_id():
             "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
         ]}}
     [response, message] = _do_arax_query(query)
-    for edge in message.query_graph.edges:
-        if edge.id == 'e01':
+    for key, edge in message.query_graph.edges.items():
+        if key == 'e01':
             assert edge.option_group_id == '1'
-        if edge.id == 'e00':
+        elif key == 'e00':
             assert edge.option_group_id == 'a'
 
 def test_exclude():
@@ -102,10 +102,10 @@ def test_exclude():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    for edge in message.query_graph.edges:
-        if edge.id == 'e01':
+    for key, edge in message.query_graph.edges.items():
+        if key == 'e01':
             assert edge.exclude
-        if edge.id == 'e00':
+        if key == 'e00':
             assert not edge.exclude
 
 @pytest.mark.slow
@@ -144,7 +144,7 @@ def test_example_3():
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_key=n01)",
-        "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+        "filter_kg(action=remove_orphaned_nodes, node_category=protein)",
         "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_key=n02)",
         "resultify(ignore_edge_direction=true, debug=true)",
@@ -185,8 +185,8 @@ def test_FET_example_1():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert message.n_results > 0
-    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
-    assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
+    edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
+    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 3
@@ -241,8 +241,8 @@ def test_FET_example_2():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert message.n_results > 0
-    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
-    assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
+    edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
+    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 4
@@ -307,8 +307,8 @@ def test_FET_example_3():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert message.n_results > 0
-    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
-    assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
+    edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
+    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 6
@@ -352,8 +352,8 @@ def test_FET_example_4():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert message.n_results > 0
-    edge_types_in_kg = Counter([x.type for x in message.knowledge_graph.edges])
-    assert 'has_fisher_exact_test_p-value_with' in edge_types_in_kg
+    edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
+    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     kp = set([edge.is_defined_by for edge in message.knowledge_graph.edges])
     assert len(kp) == 3
     FET_edges = [x for x in message.knowledge_graph.edges if x.relation and x.relation.find("FET") != -1]
@@ -422,7 +422,7 @@ def test_example_2_kg2():
 
 
 @pytest.mark.slow
-def test_clinical_overlay_example():
+def test_clinical_overlay_example1():
     """
     Gives an example of a KG that does not have edges that COHD can decorate, but does have pairs of nodes that COHD
     could decorate (eg here is drug and chemical_substance), so add the info in as a virtual edge.
@@ -621,7 +621,7 @@ def test_one_hop_kitchen_sink_BTE_2():
 #             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
 #             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
 #             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_key=n01)",
-#             "filter_kg(action=remove_orphaned_nodes, node_type=protein)",
+#             "filter_kg(action=remove_orphaned_nodes, node_category=protein)",
 #             "return(message=true, store=false)"
 #     ]}}
 #     [response, message] = _do_arax_query(query)
