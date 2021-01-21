@@ -17,6 +17,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
 from openapi_server.models.edge import Edge
+from openapi_server.models.attribute import Attribute
 
 
 def _get_nx_edges_by_attr(G: Union[nx.MultiDiGraph, nx.MultiGraph], key: str, val: str) -> Set[tuple]:
@@ -47,7 +48,9 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
         # FIXME: EWD: there's a problem here, but I'm baffled by what this is supposed to be doing
         for edge_binding in edge_binding_list:
             kg_edge = kg_edge_id_to_edge[edge_binding.id]
-            kg_edge_conf = kg_edge.confidence
+            kg_edge_attributes = {x.name:x.value for x in kg_edge.attributes}
+            #kg_edge_conf = kg_edge.confidence
+            kg_edge_conf = kg_edge_attributes["confidence"]
             qedge_keys = kg_edge.qedge_keys
             for qedge_key in qedge_keys:
                 qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
@@ -227,7 +230,9 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 # TODO: replace this with the more intelligent function
                 # here we are just multiplying the edge confidences
                 # --- to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
-                result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
+                #result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
+                kg_edge_attributes = {x.name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
+                result_confidence *= kg_edge_attributes["confidence"]
             result.confidence = result_confidence
         else:
             # consider each pair of nodes in the QG, then somehow combine that information
@@ -456,7 +461,6 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         populate the result.row_data and message.table_column_names
         Does everything in place (no result returned)
         """
-
         self.response = response
         message = response.envelope.message
         self.message = message
@@ -510,13 +514,15 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
         for edge_key,edge in message.knowledge_graph.edges.items():
-            if False:       # FIXME: there is no longer such an attribute. Stored as a generic attribute?
+            edge_attributes = {x.name:x.value for x in edge.attributes}
+            if edge_attributes.get("confidence", None) is not None:
+            #if False:       # FIXME: there is no longer such an attribute. Stored as a generic attribute?
             #if edge.confidence is not None:
                 # don't touch the confidence, since apparently someone already knows what the confidence should be
                 continue
             else:
                 confidence = self.edge_attribute_score_combiner(edge)
-                edge.confidence = confidence
+                edge.attributes.append(Attribute(name="confidence", value=confidence))
 
         # Now that each edge has a confidence attached to it based on it's attributes, we can now:
         # 1. consider edge types of the results

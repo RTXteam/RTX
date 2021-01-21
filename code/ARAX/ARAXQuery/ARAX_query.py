@@ -590,7 +590,7 @@ class ARAXQuery:
                     try:
                         ranker = ARAXRanker()
                         #ranker.aggregate_scores(message, response=response)
-                        #ranker.aggregate_scores_dmk(response)
+                        ranker.aggregate_scores_dmk(response)
                     except Exception as error:
                         exception_type, exception_value, exception_traceback = sys.exc_info()
                         response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
