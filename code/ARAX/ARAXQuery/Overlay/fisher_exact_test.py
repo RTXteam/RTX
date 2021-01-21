@@ -16,9 +16,9 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")
 from ARAX_query import ARAXQuery
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from swagger_server.models.edge_attribute import EdgeAttribute
-from swagger_server.models.edge import Edge
-from swagger_server.models.q_edge import QEdge
+from openapi_server.models.attribute import Attribute as EdgeAttribute
+from openapi_server.models.edge import Edge
+from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -71,7 +71,7 @@ class ComputeFTEST:
         subject_node_exist = False
         object_node_exist = False
         query_edge_key = set()
-        rel_edge_predicate = set()
+        rel_edge_type = set()
         subject_node_category = None
         object_node_category= None
 
@@ -101,7 +101,7 @@ class ComputeFTEST:
             if object_node_exist:
                 pass
             else:
-                self.response.error(f"No query node with object qnode id {object_qnode_key} detected in QG for Fisher's Exact Test")
+                self.response.error(f"No query node with object qnode key {object_qnode_key} detected in QG for Fisher's Exact Test")
                 return self.response
         else:
             self.response.error(f"No query node with subject qnode key {subject_qnode_key} detected in QG for Fisher's Exact Test")
@@ -112,9 +112,9 @@ class ComputeFTEST:
             if len(self.message.query_graph.edges) != 0:
                 for edge_key in self.message.query_graph.edges:
                     if self.message.query_graph.edges[edge_key].subject == subject_qnode_key and self.message.query_graph.edges[edge_key].object == object_qnode_key and self.message.query_graph.edges[edge_key].relation == None:
-                        query_edge_key.update([edge_key]) # only actual query edge is added
+                        query_edge_key.update([edge_key])  # only actual query edge is added
                     elif self.message.query_graph.edges[edge_key].subject == object_qnode_key and self.message.query_graph.edges[edge_key].object == subject_qnode_key and self.message.query_graph.edges[edge_key].relation == None:
-                        query_edge_key.update([edge_key]) # only actual query edge is added
+                        query_edge_key.update([edge_key])  # only actual query edge is added
                     else:
                         continue
             else:
@@ -144,8 +144,8 @@ class ComputeFTEST:
         ## loop over all nodes in KG and collect their node information
         try:
             count = 0
-            for node_key in self.message.knowledge_graph.nodes:
-                nodes_info[node_key] = {'count': count, 'qnode_keys': self.message.knowledge_graph.nodes[node_key].qnode_keys, 'category': self.message.knowledge_graph.nodes[node_key].category[0], 'edge_index': []}
+            for node_key, node in self.message.knowledge_graph.nodes.items():
+                nodes_info[node_key] = {'count': count, 'qnode_keys': node.qnode_keys, 'category': self.message.knowledge_graph.nodes[node_key].category, 'edge_index': []}
                 count = count + 1
         except:
             tb = traceback.format_exc()
@@ -157,33 +157,27 @@ class ComputeFTEST:
         ## loop over all edges in KG and create subject node list and target node dict based on subject_qnode_key, object_qnode_key as well as rel_edge_id (optional, otherwise all edges are considered)
         try:
             count = 0
-            for edge_key in self.message.knowledge_graph.edges:
-                #if self.message.knowledge_graph.edges[edge_key].provided_by != "ARAX":
-                # FW: Changing this since provided_by now has to be stuffed into edge.attributes
+            for edge_key, edge in self.message.knowledge_graph.edges.items():
+
                 edge_attribute_dict = {x.name:x.value for x in self.message.knowledge_graph.edges[edge_key].attributes}
-                print(edge_attribute_dict)
-                if edge_attribute_dict['provided_by'] == "ARAX":
+                if edge_attribute_dict['is_defined_by'] != 'ARAX':
 
                     nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['edge_index'].append(count)
                     nodes_info[self.message.knowledge_graph.edges[edge_key].object]['edge_index'].append(count)
 
                     if rel_edge_key:
-                        if rel_edge_key in self.message.knowledge_graph.edges[edge_key].qedge_keys:
+                        if rel_edge_key in edge.qedge_keys:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
-                                # FW: above changes effect this line
-                                #edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
                                 edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
-                                rel_edge_predicate.update([self.message.knowledge_graph.edges[edge_key].predicate])
+                                rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
                                 if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object] = {self.message.knowledge_graph.edges[edge_key].subject}
                                 else:
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
                             else:
-                                # FW: above changes effect this line
-                                #edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
                                 edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
-                                rel_edge_predicate.update([self.message.knowledge_graph.edges[edge_key].predicate])
+                                rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
@@ -194,8 +188,6 @@ class ComputeFTEST:
                     else:
                         if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                # FW: above changes effect this line
-                                #edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
                                 edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
                                 if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
@@ -207,8 +199,6 @@ class ComputeFTEST:
                                 pass
                         elif object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                # FW: changes effect this line
-                                #edge_expand_kp.append(self.message.knowledge_graph.edges[edge_key].is_defined_by)
                                 edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
@@ -287,9 +277,9 @@ class ComputeFTEST:
         if not use_parallel:
             # query adjacent node in one DSL command by providing a list of query nodes to add_qnode()
             if rel_edge_key:
-                if len(rel_edge_predicate) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
-                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_predicate)[0]} were used to calculate total object nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category, adjacent_type=subject_node_category, kp = kp, rel_type=list(rel_edge_predicate)[0], use_cypher_command=False)
+                if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
+                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total object nodes in Fisher's Exact Test")
+                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category, adjacent_type=subject_node_category, kp = kp, rel_type=list(rel_edge_type)[0], use_cypher_command=False)
                 else:  # if the edge with rel_edge_key has more than one type, we ignore the edge predicate and use all categories to find all subject nodes in KP
                     self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
                     self.response.debug(f"{kp} was used to calculate total object nodes in Fisher's Exact Test")
@@ -315,9 +305,9 @@ class ComputeFTEST:
         else:
             # query adjacent node for query nodes one by one in parallel
             if rel_edge_key:
-                if len(rel_edge_predicate) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
-                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_predicate)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parameter_list = [(node, object_node_category, subject_node_category, kp, list(rel_edge_predicate)[0]) for node in list(object_node_dict.keys())]
+                if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
+                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
+                    parameter_list = [(node, object_node_category, subject_node_category, kp, list(rel_edge_type)[0]) for node in list(object_node_dict.keys())]
                 else:  # if the edge with rel_edge_key has more than one type, we ignore the edge type and use all types to find all source nodes in KP
                     self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
                     self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
@@ -382,7 +372,7 @@ class ComputeFTEST:
             del_list = []
             parameter_list = []
             for node in object_node_dict:
-                if size_of_target[node]-len(object_node_dict[node]) < 0:
+                if size_of_object[node]-len(object_node_dict[node]) < 0:
                     del_list.append(node)
                     self.response.warning(f"Skipping node {node} to calculate FET p-value due to issue897 (which causes negative value).")
                     continue
@@ -426,23 +416,25 @@ class ComputeFTEST:
 
             # add the virtual edge with FET result to message KG
             self.response.debug(f"Adding virtual edge with FET result to message KG")
+            count = 0
+            for index, value in enumerate([(virtual_relation_label, output[adj], node, adj) for adj in object_node_dict if adj in output.keys() for node in object_node_dict[adj]], 1):
 
-            virtual_edge_list = [Edge(id=f"{value[0]}_{index}",
-                                      predicate='has_fisher_exact_test_p-value_with',
-                                      relation=value[0],
-                                      subject=value[2],
-                                      object=value[3],
-                                      is_defined_by="ARAX",
-                                      defined_datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                      provided_by="ARAX",
-                                      confidence=None,
-                                      weight=None,
-                                      edge_attributes=[EdgeAttribute(type="EDAM:data_1669", name="fisher_exact_test_p-value", value=str(value[1]), url=None)],
-                                      qedge_ids=[value[0]]) for index, value in enumerate([(virtual_relation_label, output[adj], node, adj) for adj in object_node_dict if adj in output.keys() for node in object_node_dict[adj]], 1)]
+                edge_attribute_list =  [
+                    EdgeAttribute(type="EDAM:data_1669", name="fisher_exact_test_p-value", value=str(value[1]), url=None),
+                    EdgeAttribute(name="is_defined_by", value="ARAX"),
+                    EdgeAttribute(name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                    EdgeAttribute(name="provided_by", value="ARAX"),
+                    EdgeAttribute(name="confidence", value=None),
+                    EdgeAttribute(name="weight", value=None)
+                ]
+                edge_id = f"{value[0]}_{index}"
+                edge = Edge(predicate='has_fisher_exact_test_p-value_with', subject=value[2], object=value[3], relation=value[0],
+                            attributes=edge_attribute_list)
+                edge.qedge_keys = [value[0]]
 
-            self.message.knowledge_graph.edges.extend(virtual_edge_list)
+                self.message.knowledge_graph.edges[edge_id] = edge
 
-            count = len(virtual_edge_list)
+                count = count + 1
 
             self.response.debug(f"{count} new virtual edges were added to message KG")
 
@@ -452,10 +444,11 @@ class ComputeFTEST:
                 edge_type = "has_fisher_exact_test_p-value_with"
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                           self.message.query_graph, self.response)
-                q_edge = QEdge(id=virtual_relation_label, predicate=edge_type, relation=virtual_relation_label,
+                qedge_id = virtual_relation_label
+                q_edge = QEdge(predicate=edge_type, relation=virtual_relation_label,
                                subject=subject_qnode_key, object=object_qnode_key,
                                option_group_id=option_group_id)
-                self.message.query_graph.edges.append(q_edge)
+                self.message.query_graph.edges[qedge_id] = q_edge
                 self.response.debug(f"One virtual edge was added to message QG")
 
         return self.response
@@ -595,7 +588,7 @@ class ComputeFTEST:
                     return res
                 else:
                     res_dict = dict()
-                    message = araxq.message
+                    message = araxq.response.envelope.message
                     if type(node_curie) is str:
                         tmplist = set([edge_key for edge_key in message.knowledge_graph.edges if message.knowledge_graph.edges[edge_key].subject == node_curie or message.knowledge_graph.edges[edge_key].object == node_curie])  ## edge has no direction
                         if len(tmplist) == 0:
@@ -697,7 +690,7 @@ class ComputeFTEST:
                 error_message.append(f"Fail to query adjacent nodes from {kp} for {node_curie}")
                 return error_message
             else:
-                message = araxq.message
+                message = araxq.response.envelope.message
                 tmplist = set([edge_key for edge_key in message.knowledge_graph.edges if message.knowledge_graph[edge_key].subject == node_curie or message.knowledge_graph[edge_key].object == node_curie]) ## edge has no direction
                 if len(tmplist) == 0:
                     error_message.append(f"Fail to query adjacent nodes from {kp} for {node_curie}")
