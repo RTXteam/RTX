@@ -123,11 +123,16 @@ class RemoveEdges:
             edges_to_remove = set()
             node_keys_to_remove = {}
             edge_qid_dict = {}
-            for kwy, q_edge in self.message.query_graph.edges.items():
+            for key, q_edge in self.message.query_graph.edges.items():
                 edge_qid_dict[key] = {'subject':q_edge.subject, 'object':q_edge.object}
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():
                 edge_dict = edge.to_dict()
+                # TRAPI1.0 hack to allow filtering by old properties that are now attributes
+                if hasattr(edge, 'attributes'):
+                    for attribute in edge.attributes:
+                        if attribute.name not in edge_dict:
+                            edge_dict[attribute.name] = attribute.value
                 if type(edge_dict[edge_params['edge_property']]) == list:
                     if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
                         edges_to_remove.add(key)

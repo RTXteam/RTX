@@ -515,8 +515,15 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                             for x in value:
                                 if type(x) == str:
                                     known_values.add(x)
+            known_attributes = set()
+            for edge in message.knowledge_graph.edges.values():
+                if hasattr(edge, 'attributes'):
+                    if edge.attributes:
+                        for attribute in edge.attributes:
+                            known_attributes.add(attribute.name)
+                            known_values.add(attribute.value)
             allowable_parameters = {'action': {'remove_edges_by_property'},
-                                    'edge_property': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]),
+                                    'edge_property': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]).union(known_attributes),
                                     'property_value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
