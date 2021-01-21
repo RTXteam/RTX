@@ -28,8 +28,8 @@ def test_query_by_query_graph_2():
                 "qg2": { "subject": "qg1", "object": "qg0", "predicate": "physically_interacts_with" }
             },
             "nodes": {
-                "qg0": { "name": "acetaminophen", "id": "CHEMBL.COMPOUND:CHEMBL112", "category": "chemical_substance" },
-                "qg1": { "name": None, "desc": "Generic protein", "id": None, "category": "protein" }
+                "qg0": { "name": "acetaminophen", "id": "CHEMBL.COMPOUND:CHEMBL112", "category": "biolink:ChemicalSubstance" },
+                "qg1": { "name": None, "desc": "Generic protein", "id": None, "category": "biolink:Protein" }
             } } } }
     araxq = ARAXQuery()
     araxq.query(query)
@@ -39,7 +39,7 @@ def test_query_by_query_graph_2():
     assert response.status == 'OK'
     message = response.envelope.message
     assert len(message.results) >= 32
-    assert envelope.schema_version == '1.0.0'
+    assert response.envelope.schema_version == '1.0.0'
 
 
 if __name__ == "__main__": pytest.main(['-v'])
