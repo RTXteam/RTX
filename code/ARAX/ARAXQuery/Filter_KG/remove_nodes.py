@@ -29,7 +29,7 @@ class RemoveNodes:
             for key, node in self.message.knowledge_graph.nodes.items():
                 if self.node_parameters['node_category'] in node.category:
                     nodes_to_remove.add(key)
-                    #node_keys_to_remove.add(node.id)
+                    #node_keys_to_remove.add(key)
             #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
             for key in nodes_to_remove:
                 del self.message.knowledge_graph.nodes[key]
@@ -117,10 +117,10 @@ class RemoveNodes:
             nodes_to_remove = set()
             for key, node in self.message.knowledge_graph.nodes.items():
                 if 'node_category' in node_parameters and node_parameters['node_category'] in node.category:
-                    if node.id not in connected_node_keys:
+                    if key not in connected_node_keys:
                         nodes_to_remove.add(key)
                 else:
-                    if node.id not in connected_node_keys:
+                    if key not in connected_node_keys:
                         nodes_to_remove.add(key)
 
             # remove the orphaned nodes
