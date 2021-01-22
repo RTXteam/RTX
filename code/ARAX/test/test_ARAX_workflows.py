@@ -76,7 +76,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
 
 
 def test_option_group_id():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:3312, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -92,7 +92,7 @@ def test_option_group_id():
             assert edge.option_group_id == 'a'
 
 def test_exclude():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:3312, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -110,7 +110,7 @@ def test_exclude():
 
 @pytest.mark.slow
 def test_example_2():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:14330, key=n00)",
         "add_qnode(category=protein, is_set=true, key=n01)",
@@ -135,7 +135,7 @@ def test_example_2():
 
 
 def test_example_3():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "add_qnode(name=DOID:9406, key=n00)",
         "add_qnode(category=chemical_substance, is_set=true, key=n01)",
         "add_qnode(category=protein, key=n02)",
@@ -162,7 +162,7 @@ def test_example_3():
 @pytest.mark.slow
 def test_FET_example_1():
     # This a FET 3-top example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "add_qnode(id=DOID:14330, key=n00, category=disease)",
         "add_qnode(category=protein, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
@@ -214,7 +214,7 @@ def test_FET_example_1():
 @pytest.mark.slow
 def test_FET_example_2():
     # This a FET 4-top example: try to find the diseases connected to proteins connected to biological_process connected to protein connected to CHEMBL.COMPOUND:CHEMBL521
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=chemical_substance)",
         "add_qnode(key=n01, is_set=true, category=protein)",
         "add_qedge(key=e00, subject=n00, object=n01)",
@@ -271,7 +271,7 @@ def test_FET_example_2():
 @pytest.mark.skip(reason="need issue#846 to be solved")
 def test_FET_example_3():
     # This a FET 6-top example: try to find the drugs connected to proteins connected to pathways connected to proteins connected to diseases connected to phenotypes of DOID:14330
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "add_qnode(id=DOID:14330, key=n00, category=disease)",
         "add_qnode(category=phenotypic_feature, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicate=has_phenotype)",
@@ -338,7 +338,7 @@ def test_FET_example_3():
 @pytest.mark.slow
 def test_FET_example_4():
     # This a FET 2-top example collecting nodes and edges from both KG1 and KG2: try to find the disease connected to proteins connected to DOID:14330
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "add_qnode(id=DOID:14330, key=n00, category=disease)",
         "add_qnode(category=phenotypic_feature, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
@@ -385,7 +385,7 @@ def test_FET_example_4():
 
 @pytest.mark.slow
 def test_FET_ranking():
-    query = {"previous_message_processing_plan": { "processing_actions": [
+    query = {"operations": { "actions": [
             "create_message",
             "add_qnode(key=n00,id=UniProtKB:P14136,category=protein)",
             "add_qnode(category=biological_process, key=n01)",
@@ -402,7 +402,7 @@ def test_FET_ranking():
 
 @pytest.mark.slow
 def test_example_2_kg2():
-    query = {"previous_message_processing_plan": { "processing_actions": [
+    query = {"operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
             "add_qnode(category=protein, is_set=true, key=n01)",
@@ -429,7 +429,7 @@ def test_clinical_overlay_example1():
     Gives an example of a KG that does not have edges that COHD can decorate, but does have pairs of nodes that COHD
     could decorate (eg here is drug and chemical_substance), so add the info in as a virtual edge.
     """
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:11830, key=n00)",
         "add_qnode(category=protein, is_set=true, key=n01)",
@@ -461,7 +461,7 @@ def test_clinical_overlay_example2():
     """
     Gives an example of overlaying (and filtering) clinical attributes when there exist edges in the KG that COHD can decorate
     """
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:11830, key=n00)",
         "add_qnode(category=chemical_substance, key=n01)",
@@ -494,7 +494,7 @@ def test_two_hop_based_on_types_1():
     #doid_list = {"DOID:11830", "DOID:5612", "DOID:2411", "DOID:8501", "DOID:174"}
     doid_list = {"DOID:11830"}
     for doid in doid_list:
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             f"add_qnode(name={doid}, key=n00, category=disease)",
             "add_qnode(category=protein, is_set=true, key=n01)",
@@ -530,7 +530,7 @@ def test_one_hop_based_on_types_1():
     #doid_list = {"DOID:11830", "DOID:5612", "DOID:2411", "DOID:8501", "DOID:174"}
     doid_list = {"DOID:11830"}
     for doid in doid_list:
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             f"add_qnode(id={doid}, key=n00, category=disease)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -555,7 +555,7 @@ def test_one_hop_kitchen_sink_BTE_1():
     """
     Example of throwing everything at a simple BTE query
     """
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(curie=DOID:11830, key=n0, category=disease)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -584,7 +584,7 @@ def test_one_hop_kitchen_sink_BTE_2():
     """
     Example of throwing everything at a simple BTE query, but with node types that aren't appropriate for some reasoning capabilities
     """
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(curie=DOID:11830, key=n0, category=disease)",
         "add_qnode(category=gene, key=n1)",
@@ -610,7 +610,7 @@ def test_one_hop_kitchen_sink_BTE_2():
 
 # Not working yet
 # def test_example_3_kg2():
-#     query = {"previous_message_processing_plan": { "processing_actions": [
+#     query = {"operations": { "actions": [
 #             "create_message",
 #             #"add_qnode(key=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
 #             "add_qnode(curie=DOID:9406, key=n00)",  # hypopituitarism, original demo example

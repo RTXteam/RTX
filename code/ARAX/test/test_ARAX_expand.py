@@ -25,7 +25,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
                                        should_throw_error=False) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
     # Run the query
     araxq = ARAXQuery()
-    response = araxq.query({"previous_message_processing_plan": {"processing_actions": actions_list}})
+    response = araxq.query({"operations": {"actions": actions_list}})
     message = araxq.message
     if response.status != 'OK':
         print(response.show(level=ARAXResponse.DEBUG))

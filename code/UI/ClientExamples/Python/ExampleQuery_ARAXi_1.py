@@ -10,7 +10,7 @@ import re
 endpoint_url = 'https://arax.ncats.io/devED/api/arax/v1.0/query'
 
 # Create a dict of the request, specifying the list of DSL commands
-request = { "previous_message_processing_plan": { "processing_actions": [
+request = { "message": {}, "operations": { "actions": [
             "add_qnode(name=acetaminophen, key=n00)",
             "add_qnode(category=biolink:Protein, key=n01)",
             "add_qedge(subject=n01, object=n00, key=e00)",

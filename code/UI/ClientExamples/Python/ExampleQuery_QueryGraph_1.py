@@ -71,3 +71,10 @@ if response_dict['id'] is not None:
     match = re.search(r'(\d+)$', response_dict['id'])
     if match:
         print(f"GUI: https://arax.ncats.io/?r={match.group(1)}")
+
+# Also print the operations actions
+print(f"Executed operations:")
+if 'operations' in response_dict and response_dict['operations'] is not None:
+    if 'actions' in response_dict['operations'] and response_dict['operations']['actions'] is not None:
+        for action in response_dict['operations']['actions']:
+            print(f"  - {action}")

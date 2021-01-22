@@ -93,7 +93,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
 
 
 def test_jaccard():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:14717, key=n00)",
         "add_qnode(category=protein, is_set=true, key=n01)",
@@ -119,7 +119,7 @@ def test_jaccard():
 
 
 def test_add_node_pmids():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:384, key=n00)",
         "add_qnode(category=chemical_substance, is_set=true, key=n01)",
@@ -151,7 +151,7 @@ def test_add_node_pmids():
 
 
 def test_compute_ngd_virtual():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:384, key=n00)",
         "add_qnode(category=chemical_substance, is_set=true, key=n01)",
@@ -176,7 +176,7 @@ def test_compute_ngd_virtual():
 
 
 def test_compute_ngd_attribute():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:384, key=n00)",
         "add_qnode(category=chemical_substance, is_set=true, key=n01)",
@@ -201,7 +201,7 @@ def test_compute_ngd_attribute():
 
 
 def test_FET_ex1():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=DOID:12889, key=n00, category=disease)",
         "add_qnode(category=protein, is_set=true, key=n01)",
@@ -250,7 +250,7 @@ def test_FET_ex1():
 
 @pytest.mark.slow
 def test_FET_ex2():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=DOID:12889, key=n00, category=disease)",
         "add_qnode(category=protein, key=n01)",
@@ -291,7 +291,7 @@ def test_FET_ex2():
 
 @pytest.mark.slow
 def test_paired_concept_frequency_virtual():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -309,7 +309,7 @@ def test_paired_concept_frequency_virtual():
 
 @pytest.mark.slow
 def test_paired_concept_frequency_attribute():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -327,7 +327,7 @@ def test_paired_concept_frequency_attribute():
 
 @pytest.mark.slow
 def test_observed_expected_ratio_virtual():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -345,7 +345,7 @@ def test_observed_expected_ratio_virtual():
 
 @pytest.mark.slow
 def test_observed_expected_ratio_attribute():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -363,7 +363,7 @@ def test_observed_expected_ratio_attribute():
 
 @pytest.mark.slow
 def test_chi_square_virtual():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -381,7 +381,7 @@ def test_chi_square_virtual():
 
 @pytest.mark.slow
 def test_chi_square_attribute():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -398,7 +398,7 @@ def test_chi_square_attribute():
 
 
 def test_predict_drug_treats_disease_virtual():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=DOID:9008, key=n0, category=disease)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -415,7 +415,7 @@ def test_predict_drug_treats_disease_virtual():
 
 
 def test_predict_drug_treats_disease_attribute():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=DOID:9008, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -432,7 +432,7 @@ def test_predict_drug_treats_disease_attribute():
 
 
 def test_issue_832():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=DOID:9008, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -449,7 +449,7 @@ def test_issue_832():
 
 
 def test_issue_832_non_drug():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=UniProtKB:Q13627, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -469,7 +469,7 @@ def test_issue_832_non_drug():
 
 @pytest.mark.slow
 def test_issue_840():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -485,7 +485,7 @@ def test_issue_840():
     _virtual_tester(message, 'has_paired_concept_frequency_with', 'V1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
     # And for the non-virtual test
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -503,7 +503,7 @@ def test_issue_840():
 
 @pytest.mark.slow
 def test_issue_840_non_drug():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=UniProtKB:Q13627, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -521,7 +521,7 @@ def test_issue_840_non_drug():
     assert 'paired_concept_frequency' not in edge_predicates_in_kg
 
     # Now for the non-virtual test
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=UniProtKB:Q13627, key=n0)",
         "add_qnode(category=chemical_substance, key=n1)",
@@ -542,7 +542,7 @@ def test_issue_840_non_drug():
 
 @pytest.mark.slow
 def test_issue_892():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "add_qnode(id=DOID:11830, category=disease, key=n00)",
         "add_qnode(category=gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
         "add_qnode(category=chemical_substance, key=n02)",
@@ -560,7 +560,7 @@ def test_issue_892():
 
 
 def test_overlay_exposures_data_virtual():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "add_qnode(name=CHEMBL.COMPOUND:CHEMBL635, key=n0)",
         "add_qnode(name=MESH:D052638, key=n1)",
         "expand(kp=ARAX/KG2)",
@@ -575,7 +575,7 @@ def test_overlay_exposures_data_virtual():
 
 
 def test_overlay_exposures_data_attribute():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "add_qnode(name=MONDO:0012607, key=n0)",
         "add_qnode(name=MONDO:0010940, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
