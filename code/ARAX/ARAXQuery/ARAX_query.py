@@ -452,11 +452,6 @@ class ARAXQuery:
             response.debug(f"No starting messages were referenced. Will start with a blank template Message")
             messenger.create_envelope(response)
 
-            #### Put our input processing actions into the envelope
-            if response.envelope.operations is None:
-                response.envelope.operations = {}
-            response.envelope.operations['actions'] = operations.actions
-
             message = response.envelope.message
 
         #### If there's on message, we will run with that
@@ -486,6 +481,12 @@ class ARAXQuery:
             response.merge(result)
             if result.error_code != 'OK':
                 return response
+
+            #### Put our input processing actions into the envelope
+            if response.envelope.operations is None:
+                response.envelope.operations = {}
+            response.envelope.operations['actions'] = operations.actions
+
 
             #### Import the individual ARAX processing modules and process DSL commands
             from ARAX_expander import ARAXExpander
