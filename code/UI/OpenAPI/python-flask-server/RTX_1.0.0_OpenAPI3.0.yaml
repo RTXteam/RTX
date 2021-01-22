@@ -85,7 +85,6 @@ paths:
                     'biolink:Gene':
                       - biolink:directly_interacts_with
                       - biolink:decreases_activity_of
-      x-openapi-router-controller: openapi_server.controllers.predicates_controller
   /query:
     post:
       tags:
@@ -141,7 +140,6 @@ paths:
             application/json:
               schema:
                 type: string
-      x-openapi-router-controller: openapi_server.controllers.query_controller
   /response/{response_id}:
     get:
       tags:
@@ -165,8 +163,6 @@ paths:
                 $ref: '#/components/schemas/Response'
         '404':
           description: response_id not found
-      x-openapi-router-controller: \
-        openapi_server.controllers.response_controller
   /translate:
     post:
       tags:
@@ -192,7 +188,6 @@ paths:
                   $ref: '#/components/schemas/Query'
         '400':
           description: Invalid status value
-      x-openapi-router-controller: openapi_server.controllers.translate_controller
   /entity/{search_string}:
     get:
       tags:
@@ -218,7 +213,6 @@ paths:
                   type: object
         '404':
           description: "Entity not found"
-      x-openapi-router-controller: "openapi_server.controllers.entity_controller"
   /exampleQuestions:
     get:
       tags:
@@ -235,7 +229,6 @@ paths:
                 type: array
                 items:
                   type: object
-      x-openapi-router-controller: "openapi_server.controllers.example_questions_controller"
   '/PubmedMeshNgd/{term1}/{term2}':
     get:
       tags:
@@ -265,7 +258,6 @@ paths:
                 $ref: '#/components/schemas/MeshNgdResponse'
         '400':
           description: "Invalid terms"
-      x-openapi-router-controller: "openapi_server.controllers.pubmed_mesh_ngd_controller"
 components:
   schemas:
     Query:
@@ -1010,7 +1002,7 @@ components:
             - expand(edge_key=e00)
             - resultify()
             - filter_results(action=limit_number_of_results, max_results=10)
-            description: >-
+          description: >-
             List of order-dependent operations to execute
           items:
             type: string
