@@ -310,10 +310,10 @@ components:
             page_size
         reasoner_ids:
           type: array
-          example:
-            - RTX
-            - Robokop
-          description: List of reasoners to consult for the query
+          description: >-
+            List of reasoners to consult for the query. By default it is
+            assumed to be the current reasoner being queried, but this
+            mechanism could be used to proxy queries to other reasoners.
           items:
             type: string
         operations:
@@ -468,7 +468,6 @@ components:
         thought graph corresponding to this message. The content of these
         properties is context-dependent to the encompassing object and
         the TRAPI operation requested.
-
       type: object
       properties:
         results:
@@ -493,6 +492,19 @@ components:
             - $ref: '#/components/schemas/KnowledgeGraph'
           nullable: true
       additionalProperties: false
+      example:
+        query_graph:
+          edges:
+            e00:
+              subject: n00
+              object: n01
+              predicate: biolink:physically_interacts_with
+          nodes:
+            n00:
+              id: CHEMBL.COMPOUND:CHEMBL112
+              category: biolink:ChemicalSubstance
+            n01:
+              category: biolink:Protein
     LogEntry:
       description: >-
         The LogEntry object contains information useful for tracing
@@ -644,10 +656,10 @@ components:
             of the result_group
         reasoner_id:
           type: string
-          example: RTX
+          example: ARAX
           description: >-
             Identifier string of the reasoner that provided this result (e.g.,
-            RTX, Robokop, Indigo, Integrator)
+            ARAX, Robokop, etc.)
       additionalProperties: true
       required:
         - node_bindings
