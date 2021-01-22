@@ -316,13 +316,13 @@ components:
           description: List of reasoners to consult for the query
           items:
             type: string
-        previous_message_processing_plan:
+        operations:
           description: >-
             Container for one or more Message objects or identifiers for one or
-            more Messages along with a processing plan for how those messages
-            should be processed and returned
+            more Messages along with a processing plan and options for how those
+            messages should be processed and returned
           allOf:
-            - $ref: '#/components/schemas/PreviousMessageProcessingPlan'
+            - $ref: '#/components/schemas/Operations'
       additionalProperties: true
       required:
         - message
@@ -978,22 +978,27 @@ components:
         URI.
       externalDocs:
         url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
-    PreviousMessageProcessingPlan:
+    Operations:
       type: object
+      description: >-
+        Container for one or more Message objects or identifiers for one or
+        more Messages along with a processing plan and options for how those
+        messages should be processed and returned
       properties:
-        previous_message_uris:
+        message_uris:
           type: array
           example:
             - 'https://arax.ncats.io/api/arax/v1.0/response/38'
-          description: List of URIs for Message objects to fetch and process
+          description: >-
+            List of URIs for Message or Response objects to fetch and process
           items:
             type: string
-        previous_messages:
+        messages:
           type: array
           description: List of Message objects to process
           items:
             $ref: '#/components/schemas/Message'
-        processing_actions:
+        actions:
           type: array
           example:
             - add_qnode(name=acetaminophen, key=n00)
@@ -1009,10 +1014,9 @@ components:
         options:
           type: object
           example:
-            lazy_loading: True
+            halt_on_warning: False
           description: >-
-            Map of options that apply during processing in an order independent
-            fashion
+            Map of order independent options that apply during processing
           additionalProperties: true
       additionalProperties: true
     Question:
