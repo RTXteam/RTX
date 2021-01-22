@@ -614,6 +614,11 @@ class ARAXQuery:
                 response.envelope.query_options = {}
             response.envelope.query_options['actions'] = operations.actions
 
+            # Update the reasoner_id to ARAX if not already present
+            for result in message.results:
+                if result.reasoner_id is None:
+                    result.reasoner_id = 'ARAX'
+
             # If store=true, then put the message in the database
             response_id = None
             if return_action['parameters']['store'] == 'true':
