@@ -32,7 +32,7 @@ from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
-from openapi_server.models.previous_message_processing_plan import PreviousMessageProcessingPlan
+from openapi_server.models.operations import Operations
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -151,7 +151,7 @@ class ARAXQuery:
 
             # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
             # and then will later execute the processing plan
-            if "have_previous_message_processing_plan" in query_attributes:
+            if "have_operations" in query_attributes:
                 query['message'] = ARAXMessenger().from_dict(query['message'])
                 pass
             else:
@@ -163,13 +163,13 @@ class ARAXQuery:
                 interpreter.translate_to_araxi(response)
                 if response.status != 'OK':
                     return response
-                query['previous_message_processing_plan'] = {}
-                query['previous_message_processing_plan']['processing_actions'] = result.data['araxi_commands']
-                query_attributes['have_previous_message_processing_plan'] = True
+                query['operations'] = {}
+                query['operations']['actions'] = result.data['araxi_commands']
+                query_attributes['have_operations'] = True
 
 
-        #### If we have a previous message processing plan, handle that
-        if "have_previous_message_processing_plan" in query_attributes:
+        #### If we have operations, handle that
+        if "have_operations" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
             result = self.executeProcessingPlan(query)
             return response
@@ -289,8 +289,8 @@ class ARAXQuery:
         #eprint(query)
 
         #### Check to see if there's a processing plan
-        if "previous_message_processing_plan" in query:
-            response.data["have_previous_message_processing_plan"] = 1
+        if "operations" in query:
+            response.data["have_operations"] = 1
 
         #### Check to see if the pre-0.9.2 query_message has come through
         if "query_message" in query:
@@ -322,9 +322,9 @@ class ARAXQuery:
                 response.error("Message contains both a query_type_id and a query_graph, which is disallowed", error_code="BothQueryTypeIdAndQueryGraph")
                 return response
 
-        #### Check to see if there is at least a message or a previous_message_processing_plan
-        if "have_message" not in response.data and "have_previous_message_processing_plan" not in response.data:
-            response.error("No message or previous_message_processing_plan present in Query", error_code="NoQueryMessageOrPreviousMessageProcessingPlan")
+        #### Check to see if there is at least a message or a operations
+        if "have_message" not in response.data and "have_operations" not in response.data:
+            response.error("No message or operations present in Query", error_code="NoQueryMessageOrOperations")
             return response
 
         # #### FIXME Need to do more validation and tidying of the incoming message here or somewhere
@@ -371,7 +371,7 @@ class ARAXQuery:
 
     ############################################################################################
     #### Given an input query with a processing plan, execute that processing plan on the input
-    def executeProcessingPlan(self,input_processing_plan_dict):
+    def executeProcessingPlan(self,input_operations_dict):
 
         response = self.response
         response.debug(f"Entering executeProcessingPlan")
@@ -379,12 +379,12 @@ class ARAXQuery:
         message = None
 
         # If there is already a message (perhaps with a query_graph) already in the query, preserve it
-        if 'message' in input_processing_plan_dict and input_processing_plan_dict['message'] is not None:
-            message = input_processing_plan_dict['message']    # FIXME is a dict not an object??
+        if 'message' in input_operations_dict and input_operations_dict['message'] is not None:
+            message = input_operations_dict['message']    # FIXME is a dict not an object??
             messages = [ message ]
 
         #### Pull out the main processing plan
-        processing_plan = PreviousMessageProcessingPlan.from_dict(input_processing_plan_dict["previous_message_processing_plan"])
+        operations = Operations.from_dict(input_operations_dict["operations"])
 
         #### Connect to the message store just once, even if we won't use it
         response_cache = ResponseCache()
@@ -394,9 +394,9 @@ class ARAXQuery:
         messenger = ARAXMessenger()
 
         #### If there are URIs provided, try to load them
-        if processing_plan.previous_message_uris is not None:
-            response.debug(f"Found previous_message_uris")
-            for uri in processing_plan.previous_message_uris:
+        if operations.message_uris is not None:
+            response.debug(f"Found message_uris")
+            for uri in operations.message_uris:
                 response.debug(f"    messageURI={uri}")
                 matchResult = re.match( r'http[s]://arax.ncats.io/.*api/arax/.+/response/(\d+)',uri,re.M|re.I )
                 if matchResult:
@@ -415,10 +415,10 @@ class ARAXQuery:
                         response.error(f"Unable to load message_id {referenced_message_id}", error_code="CannotLoadMessageById")
                         return response
 
-        #### If there are one or more previous_messages embedded in the POST, process them
-        if processing_plan.previous_messages is not None:
-            response.debug(f"Received previous_messages")
-            for uploadedMessage in processing_plan.previous_messages:
+        #### If there are one or more messages embedded in the POST, process them
+        if operations.messages is not None:
+            response.debug(f"Received messages")
+            for uploadedMessage in operations.messages:
                 response.debug(f"uploadedMessage is a "+str(uploadedMessage.__class__))
                 if str(uploadedMessage.__class__) == "<class 'openapi_server.models.message.Message'>":
                     uploadedMessage = ARAXMessenger().from_dict(uploadedMessage)
@@ -455,7 +455,7 @@ class ARAXQuery:
             #### Put our input processing actions into the envelope
             if response.envelope.query_options is None:
                 response.envelope.query_options = {}
-            response.envelope.query_options['processing_actions'] = processing_plan.processing_actions
+            response.envelope.query_options['actions'] = operations.actions
 
             message = response.envelope.message
 
@@ -471,18 +471,18 @@ class ARAXQuery:
 
         #### Examine the options that were provided and act accordingly
         optionsDict = {}
-        if processing_plan.options:
+        if operations.options:
             response.debug(f"Processing options were provided, but these are not implemented at the moment and will be ignored")
-            for option in processing_plan.options:
+            for option in operations.options:
                 response.debug(f"   option="+option)
                 optionsDict[option] = 1
 
 
-        #### If there are processing_actions, then fulfill those
-        if processing_plan.processing_actions:
-            response.debug(f"Found processing_actions")
+        #### If there are actions, then fulfill those
+        if operations.actions:
+            response.debug(f"Found actions")
             actions_parser = ActionsParser()
-            result = actions_parser.parse(processing_plan.processing_actions)
+            result = actions_parser.parse(operations.actions)
             response.merge(result)
             if result.error_code != 'OK':
                 return response
@@ -516,7 +516,7 @@ class ARAXQuery:
                         #### Put our input processing actions into the envelope
                         if response.envelope.query_options is None:
                             response.envelope.query_options = {}
-                        response.envelope.query_options['processing_actions'] = processing_plan.processing_actions
+                        response.envelope.query_options['actions'] = operations.actions
 
                     elif action['command'] == 'fetch_message':
                         messenger.apply_fetch_message(response,action['parameters'])
@@ -611,7 +611,7 @@ class ARAXQuery:
             response.envelope.description = response.message
             if response.envelope.query_options is None:
                 response.envelope.query_options = {}
-            response.envelope.query_options['processing_actions'] = processing_plan.processing_actions
+            response.envelope.query_options['actions'] = operations.actions
 
             # If store=true, then put the message in the database
             response_id = None
@@ -673,7 +673,7 @@ def main():
 
     #### Set the query based on the supplied example_number
     if params.example_number == 0:
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
             "add_qnode(category=biolink:Protein, key=n1)",
@@ -699,7 +699,7 @@ def main():
                 ] } } }
 
     elif params.example_number == 3:  # FIXME: Don't fix me, this is our planned demo example 1.
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
             "add_qnode(category=biolink:Protein, key=n1)",
@@ -710,7 +710,7 @@ def main():
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 301:  # Variant of 3 with NGD
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
             "add_qnode(category=biolink:Protein, id=n1)",
@@ -721,7 +721,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 4:
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "add_qnode(name=hypertension, key=n00)",
             "add_qnode(category=biolink:Protein, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
@@ -730,7 +730,7 @@ def main():
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 5:  # test overlay with ngd: hypertension->protein
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "add_qnode(name=hypertension, key=n00)",
             "add_qnode(category=biolink:Protein, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
@@ -740,7 +740,7 @@ def main():
             "return(message=true, store=true)",
             ] } }
     elif params.example_number == 6:  # test overlay
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "create_message",
             "add_qnode(id=DOID:12384, key=n00)",
             "add_qnode(category=biolink:PhenotypicFeature, is_set=True, key=n01)",
@@ -755,7 +755,7 @@ def main():
             "return(message=true, store=true)",
             ] } }
     elif params.example_number == 7:  # stub to test out the compute_jaccard feature
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:14330, key=n00)",  # parkinsons
             "add_qnode(category=biolink:Protein, is_set=True, key=n01)",
@@ -769,7 +769,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 8:  # to test jaccard with known result  # FIXME:  ERROR: Node DOID:8398 has been returned as an answer for multiple query graph nodes (n00, n02)
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:8398, key=n00)",  # osteoarthritis
             "add_qnode(category=biolink:PhenotypicFeature, is_set=True, key=n01)",
@@ -780,7 +780,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 9:  # to test jaccard with known result. This check's out by comparing with match p=(s:disease{id:"DOID:1588"})-[]-(r:protein)-[]-(:chemical_substance) return p and manually counting
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:1588, key=n00)",
             "add_qnode(category=biolink:Protein, is_set=True, key=n01)",
@@ -792,7 +792,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 10:  # test case of drug prediction
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:1588, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, is_set=false, key=n01)",
@@ -803,7 +803,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_frequency via COHD
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "create_message",
             "add_qnode(id=DOID:0060227, key=n00)",  # Adam's oliver
             "add_qnode(category=biolink:PhenotypicFeature, is_set=True, key=n01)",
@@ -815,7 +815,7 @@ def main():
             "return(message=true, store=true)",
             ] } }
     elif params.example_number == 12:  # dry run of example 2 # FIXME NOTE: this is our planned example 2 (so don't fix, it's just so it's highlighted in my IDE)
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
             "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
@@ -832,7 +832,7 @@ def main():
             "return(message=true, store=true)",
             ] } }
     elif params.example_number == 13:  # add pubmed id's
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
@@ -842,7 +842,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 14:  # test
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:8712, key=n00)",
             "add_qnode(category=biolink:PhenotypicFeature, is_set=true, key=n01)",
@@ -866,7 +866,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 15:  # FIXME NOTE: this is our planned example 3 (so don't fix, it's just so it's highlighted in my IDE)
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:9406, key=n00)",  # hypopituitarism
             "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",  # look for all drugs associated with this disease (29 total drugs)
@@ -883,7 +883,7 @@ def main():
             "return(message=true, store=true)"
         ]}}
     elif params.example_number == 1515:  # Exact duplicate of ARAX_Example3.ipynb
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "add_qnode(id=DOID:9406, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
             "add_qnode(category=biolink:Protein, key=n02)",
@@ -899,7 +899,7 @@ def main():
             "return(message=true, store=true)"
         ]}}
     elif params.example_number == 16:  # To test COHD
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:8398, key=n00)",
             #"add_qnode(name=DOID:1227, key=n00)",
@@ -911,7 +911,7 @@ def main():
             "return(message=true, store=true)"
         ]}}
     elif params.example_number == 17:  # Test resultify #FIXME: this returns a single result instead of a list (one for each disease/phenotype found)
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:731, key=n00, type=disease, is_set=false)",
             "add_qnode(category=biolink:PhenotypicFeature, is_set=false, key=n01)",
@@ -921,7 +921,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 18:  # test removing orphaned nodes
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:9406, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
@@ -934,7 +934,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 19:  # Let's see what happens if you ask for a node in KG2, but not in KG1 and try to expand
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=UMLS:C1452002, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
@@ -943,7 +943,7 @@ def main():
             "return(message=true, store=false)"
         ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
     elif params.example_number == 20:  # Now try with KG2 expander
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=UMLS:C1452002, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
@@ -952,7 +952,7 @@ def main():
             "return(message=true, store=false)"
         ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
     elif params.example_number == 101:  # test of filter results code
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
             "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
@@ -970,7 +970,7 @@ def main():
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 102:  # add pubmed id's
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
@@ -982,7 +982,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 103:  # add pubmed id's
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
@@ -993,7 +993,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 1212:  # dry run of example 2 with the machine learning model
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "create_message",
             "add_qnode(id=DOID:14330, key=n00)",
             "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
@@ -1010,7 +1010,7 @@ def main():
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 201:  # KG2 version of demo example 1 (acetaminophen)
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
             "add_qnode(key=n01, category=biolink:Protein, is_set=true)",
@@ -1019,7 +1019,7 @@ def main():
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 202:  # KG2 version of demo example 2 (Parkinson's)
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
             "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
@@ -1036,7 +1036,7 @@ def main():
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 203:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis)
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "create_message",
             #"add_qnode(key=n00, id=DOID:0050156)",  # idiopathic pulmonary fibrosis
             "add_qnode(id=DOID:9406, key=n00)",  # hypopituitarism, original demo example
@@ -1052,7 +1052,7 @@ def main():
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 2033:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis), with all decorations
-        query = { "previous_message_processing_plan": { "processing_actions": [
+        query = { "operations": { "actions": [
             "create_message",
             "add_qnode(key=n00, id=DOID:0050156)",  # idiopathic pulmonary fibrosis
             #"add_qnode(id=DOID:9406, key=n00)",  # hypopituitarism, original demo example
@@ -1068,7 +1068,7 @@ def main():
             "return(message=true, store=false)",
             ] } }
     elif params.example_number == 222:  # Simple BTE query
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(key=n00, id=NCBIGene:1017)",  # CDK2
             "add_qnode(key=n01, category=biolink:ChemicalSubstance, is_set=True)",
@@ -1077,7 +1077,7 @@ def main():
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 233:  # KG2 version of demo example 1 (acetaminophen)
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
             "add_qnode(key=n01, category=biolink:Protein, is_set=true)",
@@ -1087,7 +1087,7 @@ def main():
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 300:  # KG2 version of demo example 1 (acetaminophen)
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
             "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
@@ -1103,7 +1103,7 @@ def main():
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 690:  # test issue 690
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
             "add_qnode(type=not_a_real_type, is_set=true, key=n01)",
@@ -1115,7 +1115,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6231:  # chunyu testing #623, all nodes already in the KG and QG
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
             "add_qnode(key=n01, is_set=true, category=biolink:Protein)",
@@ -1128,7 +1128,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6232:  # chunyu testing #623, this should return the 10 smallest FET p-values and only add the virtual edge with top 10 FET p-values
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
             "add_qnode(key=n01, is_set=true, category=biolink:Protein)",
@@ -1141,7 +1141,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6233:  # chunyu testing #623, this DSL tests the FET module based on (source id - involved_in - target id) and only decorate/add virtual edge with pvalue<0.05
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
             "add_qnode(key=n01, is_set=true, category=biolink:Protein)",
@@ -1154,7 +1154,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6234:  # chunyu testing #623, nodes not in the KG and QG. This should throw an error initially. In the future we might want to add these nodes.
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
             "add_qnode(key=n01, category=biolink:Protein)",
@@ -1165,7 +1165,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6235:  # chunyu testing #623, this is a two-hop sample. First, find all edges between DOID:14330 and proteins and then filter out the proteins with connection having pvalue>0.001 to DOID:14330. Second, find all edges between proteins and chemical_substances and then filter out the chemical_substances with connection having pvalue>0.005 to proteins
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:14330, key=n00, type=disease)",
             "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
@@ -1181,7 +1181,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6236:  # chunyu testing #623, this is a three-hop sample: DOID:14330 - protein - (physically_interacts_with) - chemical_substance - phenotypic_feature
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:14330, key=n00, type=disease)",
             "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
@@ -1202,7 +1202,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 6237:  # chunyu testing #623, this is a four-hop sample: CHEMBL521 - protein - biological_process - protein - disease
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
             "add_qnode(key=n01, is_set=true, category=biolink:Protein)",
@@ -1228,7 +1228,7 @@ def main():
             "return(message=true, store=false)"
         ]}}
     elif params.example_number == 7680:  # issue 768 test all but jaccard, uncomment any one you want to test
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:1588, key=n0)",
             "add_qnode(category=biolink:ChemicalSubstance, id=n1)",
@@ -1248,7 +1248,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 7681:  # issue 768 with jaccard
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:14330, key=n00)",  # parkinsons
             "add_qnode(category=biolink:Protein, is_set=True, key=n01)",
@@ -1262,7 +1262,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 7200:  # issue 720, example 2
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:14330, key=n00)",
             "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
@@ -1278,7 +1278,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 885:
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:11830, key=n00)",
             "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
@@ -1295,7 +1295,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 887:
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "add_qnode(name=DOID:9406, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
             "add_qnode(category=biolink:Protein, key=n02)",
@@ -1311,7 +1311,7 @@ def main():
             "return(message=true, store=true)"
         ]}}
     elif params.example_number == 892:  # drug disease prediction with BTE
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "add_qnode(id=DOID:11830, type=disease, key=n00)",
             "add_qnode(type=gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
             "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
@@ -1323,7 +1323,7 @@ def main():
             "return(message=true, store=true)"
         ]}}
     elif params.example_number == 8922:  # drug disease prediction with BTE and KG2
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "add_qnode(id=DOID:11830, key=n0, type=disease)",
             "add_qnode(category=biolink:ChemicalSubstance, id=n1)",
             "add_qedge(subject=n0, object=n1, id=e1)",
@@ -1339,7 +1339,7 @@ def main():
             "return(message=true, store=true)"
         ]}}
     elif params.example_number == 8671:  # test_one_hop_kitchen_sink_BTE_1
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=DOID:11830, key=n0, type=disease)",
             "add_qnode(category=biolink:ChemicalSubstance, id=n1)",
@@ -1356,7 +1356,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 8672:  # test_one_hop_based_on_types_1
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:11830, key=n00, type=disease)",
             "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
@@ -1372,7 +1372,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 8673:  # test_one_hop_based_on_types_1
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(id=MONDO:0001475, key=n00, type=disease)",
             "add_qnode(category=biolink:Protein, key=n01, is_set=true)",
@@ -1394,7 +1394,7 @@ def main():
             "return(message=true, store=true)",
         ]}}
     elif params.example_number == 9999:
-        query = {"previous_message_processing_plan": {"processing_actions": [
+        query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
             "add_qnode(category=biolink:Protein, id=n1)",
