@@ -280,14 +280,22 @@ components:
       example:
         bypass_cache: "true"
         page_number: 1
-        operations: ""
         asynchronous: "false"
         max_results: 100
-        message: ""
-        reasoner_ids:
-        - RTX
-        - Robokop
-        page_size: 20
+        message:
+          query_graph:
+            edges:
+              e00:
+                subject: n00
+                object: n01
+                predicate: biolink:physically_interacts_with
+            nodes:
+              n00:
+                id: CHEMBL.COMPOUND:CHEMBL112
+                category: biolink:ChemicalSubstance
+              n01:
+                category: biolink:Protein
+        page_size: 50
       properties:
         message:
           allOf:
@@ -322,10 +330,9 @@ components:
           example: 1
           type: integer
         reasoner_ids:
-          description: List of reasoners to consult for the query
-          example:
-          - RTX
-          - Robokop
+          description: List of reasoners to consult for the query. By default it is
+            assumed to be the current reasoner being queried, but this mechanism could
+            be used to proxy queries to other reasoners.
           items:
             type: string
           type: array
@@ -501,6 +508,19 @@ components:
         lists of edges and nodes in the thought graph corresponding to this message.
         The content of these properties is context-dependent to the encompassing object
         and the TRAPI operation requested.'
+      example:
+        query_graph:
+          edges:
+            e00:
+              subject: n00
+              object: n01
+              predicate: biolink:physically_interacts_with
+          nodes:
+            n00:
+              id: CHEMBL.COMPOUND:CHEMBL112
+              category: biolink:ChemicalSubstance
+            n01:
+              category: biolink:Protein
       properties:
         results:
           description: List of all returned Result objects for the query posed
@@ -662,8 +682,8 @@ components:
           type: number
         reasoner_id:
           description: Identifier string of the reasoner that provided this result
-            (e.g., RTX, Robokop, Indigo, Integrator)
-          example: RTX
+            (e.g., ARAX, Robokop, etc.)
+          example: ARAX
           type: string
       required:
       - edge_bindings
