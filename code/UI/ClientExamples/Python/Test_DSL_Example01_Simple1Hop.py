@@ -7,15 +7,16 @@ import json
 import re
 
 # Set the base URL for the ARAX reasoner and its endpoint
-endpoint_url = 'https://arax.ncats.io/devED/api/rtx/v1/query'
+endpoint_url = 'https://arax.ncats.io/devED/api/arax/v1.0/query'
 
 # Create a dict of the request, specifying the list of DSL commands
 request = { "previous_message_processing_plan": { "processing_actions": [
-            "add_qnode(name=hypertension, id=n00)",
-            "add_qnode(type=protein, id=n01)",
-            "add_qedge(source_id=n01, target_id=n00, id=e00)",
-            "expand(edge_id=e00)",
-            "filter(maximum_results=2)",
+            "add_qnode(name=acetaminophen, key=n00)",
+            "add_qnode(category=biolink:Protein, key=n01)",
+            "add_qedge(subject=n01, object=n00, key=e00)",
+            "expand(edge_key=e00)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=10)",
             ] } }
 
 # Send the request to RTX and check the status
@@ -24,21 +25,28 @@ status_code = response_content.status_code
 if status_code != 200:
     print("ERROR returned with status "+str(status_code))
     print(response_content.json())
+    exit()
 
 # Unpack the response content into a dict
 response_dict = response_content.json()
-print(json.dumps(response_dict, indent=2, sort_keys=True))
+#print(json.dumps(response_dict, indent=2, sort_keys=True))
 
 # Display the information log
-for message in response_dict['log']:
-    if message['level'] >= 20:
-        print(message['prefix']+message['message'])
+for message in response_dict['logs']:
+    if message['level'] != 'DEBUG':
+        print(f"{message['timestamp']}: {message['level']}: {message['message']}")
 
+# Display the results
+print("Results:")
+for result in response_dict['message']['results']:
+    confidence = result['confidence']
+    if confidence is None:
+        confidence = 0.0
+    print("  -" + '{:6.3f}'.format(confidence) + f"\t{result['essence']}")
 
 # These URLs provide direct access to resulting data and GUI
 print(f"Data: {response_dict['id']}")
 if response_dict['id'] is not None:
     match = re.search(r'(\d+)$', response_dict['id'])
     if match:
-        print(f"GUI: https://arax.ncats.io/?m={match.group(1)}")
-
+        print(f"GUI: https://arax.ncats.io/?r={match.group(1)}")
