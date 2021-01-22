@@ -91,7 +91,7 @@ class ARAXQuery:
             self.response.status = re.sub('DONE,','',self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(ast.literal_eval(repr(self.message)))+"\n")
+            yield(json.dumps(self.response.envelope.to_dict())+"\n")
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
@@ -104,14 +104,18 @@ class ARAXQuery:
         if self.response is None:
             self.response = ARAXResponse()
 
-        result = self.query(query)
-        message = self.message
-        if message is None:
-            message = Message()
-            self.message = message
-        message.message_code = result.error_code
-        message.code_description = result.message
-        message.log = result.messages
+        #### Execute the query
+        self.query(query)
+
+        #### Do we still need all this cruft?
+        #result = self.query(query)
+        #message = self.message
+        #if message is None:
+        #    message = Message()
+        #    self.message = message
+        #message.message_code = result.error_code
+        #message.code_description = result.message
+        #message.log = result.messages
 
         # Insert a little flag into the response status to denote that this thread is done
         self.response.status = f"DONE,{self.response.status}"
@@ -120,15 +124,9 @@ class ARAXQuery:
 
     def query_return_message(self,query):
 
-        result = self.query(query)
-        message = self.message
-        if message is None:
-            message = Message()
-            self.message = message
-        message.message_code = result.error_code
-        message.code_description = result.message
-        message.log = result.messages
-        return message
+        self.query(query)
+        response = self.response
+        return response.envelope
 
 
     def query(self,query):
