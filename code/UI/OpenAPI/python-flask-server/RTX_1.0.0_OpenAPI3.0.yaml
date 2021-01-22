@@ -361,15 +361,22 @@ components:
           items:
             $ref: '#/components/schemas/LogEntry'
           nullable: true
+        operations:
+          description: >-
+            Container for one or more Message objects or identifiers for one or
+            more Messages along with the processing plan and options for how those
+            messages were processed and returned
+          allOf:
+            - $ref: '#/components/schemas/Operations'
         reasoner_id:
           type: string
-          example: reasoner
+          example: ARAX
           description: >-
             Identifier string of the reasoner that provided this response
             (one of ARAX, Robokop, etc.)
         tool_version:
           type: string
-          example: ARAX 0.6.1
+          example: ARAX 0.7.0
           description: Version label of the tool that generated this response
         schema_version:
           type: string
