@@ -2,7 +2,8 @@ openapi: 3.0.1
 info:
   contact:
     email: edeutsch@systemsbiology.org
-  description: TRAPI 1.0 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
+  description: TRAPI 1.0 endpoint for the NCATS Biomedical Translator Reasoner called
+    ARAX
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -91,7 +92,6 @@ paths:
         based on co-occurrence in all PubMed article annotations
       tags:
       - PubmedMeshNgd
-      x-swagger-router-controller: openapi_server.controllers.pubmed_mesh_ngd_controller
       x-openapi-router-controller: openapi_server.controllers.pubmed_mesh_ngd_controller
   /entity/{search_string}:
     get:
@@ -119,7 +119,6 @@ paths:
       summary: Obtain the CURIE and type of some entity by name
       tags:
       - entity
-      x-swagger-router-controller: openapi_server.controllers.entity_controller
       x-openapi-router-controller: openapi_server.controllers.entity_controller
   /exampleQuestions:
     get:
@@ -136,11 +135,10 @@ paths:
       summary: Request a list of example questions that ARAX can answer
       tags:
       - exampleQuestions
-      x-swagger-router-controller: openapi_server.controllers.example_questions_controller
       x-openapi-router-controller: openapi_server.controllers.example_questions_controller
   /predicates:
     get:
-      operationId: predicates_get
+      operationId: predicates
       responses:
         "200":
           content:
@@ -165,7 +163,6 @@ paths:
       summary: Get supported relationships by source and target
       tags:
       - predicates
-      x-swagger-router-controller: openapi_server.controllers.predicates_controller
       x-openapi-router-controller: openapi_server.controllers.predicates_controller
   /query:
     post:
@@ -219,7 +216,6 @@ paths:
       summary: Query reasoner via one of several inputs
       tags:
       - query
-      x-swagger-router-controller: openapi_server.controllers.query_controller
       x-openapi-router-controller: openapi_server.controllers.query_controller
   /response/{response_id}:
     get:
@@ -245,7 +241,6 @@ paths:
       summary: Request a previously stored response from the server
       tags:
       - response
-      x-swagger-router-controller: \ openapi_server.controllers.response_controller
       x-openapi-router-controller: openapi_server.controllers.response_controller
   /translate:
     post:
@@ -271,7 +266,6 @@ paths:
       summary: Translate natural language question into a standardized query
       tags:
       - translate
-      x-swagger-router-controller: openapi_server.controllers.translate_controller
       x-openapi-router-controller: openapi_server.controllers.translate_controller
 components:
   schemas:
@@ -292,235 +286,7 @@ components:
         reasoner_ids:
         - RTX
         - Robokop
-        previous_message_processing_plan:
-        - previous_message_uris:
-          - https://rtx.ncats.io/devED/api/rtx/v1.0/message/300
-          previous_messages:
-          - knowledge_graph: ""
-            results:
-            - result_type: individual query answer
-              essence: ibuprofen
-              confidence: 0.9234
-              description: The genetic condition sickle cell anemia may provide protection
-                from cerebral malaria via genetic alterations of proteins HBB (P68871)
-                and HMOX1 (P09601).
-              essence_type: drug
-              score_direction: lower_is_better
-              score: 163.233
-              edge_bindings:
-                key:
-                - id: id
-                - id: id
-              result_group: 1
-              node_bindings:
-                key:
-                - id: ""
-                - id: ""
-              reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-              row_data:
-              - ibuprofen
-              - CHEMBL:CHEMBL521
-              result_group_similarity_score: 0.95
-              score_name: Jaccard distance
-            - result_type: individual query answer
-              essence: ibuprofen
-              confidence: 0.9234
-              description: The genetic condition sickle cell anemia may provide protection
-                from cerebral malaria via genetic alterations of proteins HBB (P68871)
-                and HMOX1 (P09601).
-              essence_type: drug
-              score_direction: lower_is_better
-              score: 163.233
-              edge_bindings:
-                key:
-                - id: id
-                - id: id
-              result_group: 1
-              node_bindings:
-                key:
-                - id: ""
-                - id: ""
-              reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-              row_data:
-              - ibuprofen
-              - CHEMBL:CHEMBL521
-              result_group_similarity_score: 0.95
-              score_name: Jaccard distance
-            query_graph: ""
-          - knowledge_graph: ""
-            results:
-            - result_type: individual query answer
-              essence: ibuprofen
-              confidence: 0.9234
-              description: The genetic condition sickle cell anemia may provide protection
-                from cerebral malaria via genetic alterations of proteins HBB (P68871)
-                and HMOX1 (P09601).
-              essence_type: drug
-              score_direction: lower_is_better
-              score: 163.233
-              edge_bindings:
-                key:
-                - id: id
-                - id: id
-              result_group: 1
-              node_bindings:
-                key:
-                - id: ""
-                - id: ""
-              reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-              row_data:
-              - ibuprofen
-              - CHEMBL:CHEMBL521
-              result_group_similarity_score: 0.95
-              score_name: Jaccard distance
-            - result_type: individual query answer
-              essence: ibuprofen
-              confidence: 0.9234
-              description: The genetic condition sickle cell anemia may provide protection
-                from cerebral malaria via genetic alterations of proteins HBB (P68871)
-                and HMOX1 (P09601).
-              essence_type: drug
-              score_direction: lower_is_better
-              score: 163.233
-              edge_bindings:
-                key:
-                - id: id
-                - id: id
-              result_group: 1
-              node_bindings:
-                key:
-                - id: ""
-                - id: ""
-              reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-              row_data:
-              - ibuprofen
-              - CHEMBL:CHEMBL521
-              result_group_similarity_score: 0.95
-              score_name: Jaccard distance
-            query_graph: ""
-          options:
-            topNMostFrequent: 1
-          processing_actions:
-          - mod45filter
-          - redirect2RTX
-        - previous_message_uris:
-          - https://rtx.ncats.io/devED/api/rtx/v1.0/message/300
-          previous_messages:
-          - knowledge_graph: ""
-            results:
-            - result_type: individual query answer
-              essence: ibuprofen
-              confidence: 0.9234
-              description: The genetic condition sickle cell anemia may provide protection
-                from cerebral malaria via genetic alterations of proteins HBB (P68871)
-                and HMOX1 (P09601).
-              essence_type: drug
-              score_direction: lower_is_better
-              score: 163.233
-              edge_bindings:
-                key:
-                - id: id
-                - id: id
-              result_group: 1
-              node_bindings:
-                key:
-                - id: ""
-                - id: ""
-              reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-              row_data:
-              - ibuprofen
-              - CHEMBL:CHEMBL521
-              result_group_similarity_score: 0.95
-              score_name: Jaccard distance
-            - result_type: individual query answer
-              essence: ibuprofen
-              confidence: 0.9234
-              description: The genetic condition sickle cell anemia may provide protection
-                from cerebral malaria via genetic alterations of proteins HBB (P68871)
-                and HMOX1 (P09601).
-              essence_type: drug
-              score_direction: lower_is_better
-              score: 163.233
-              edge_bindings:
-                key:
-                - id: id
-                - id: id
-              result_group: 1
-              node_bindings:
-                key:
-                - id: ""
-                - id: ""
-              reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-              row_data:
-              - ibuprofen
-              - CHEMBL:CHEMBL521
-              result_group_similarity_score: 0.95
-              score_name: Jaccard distance
-            query_graph: ""
-          - knowledge_graph: ""
-            results:
-            - result_type: individual query answer
-              essence: ibuprofen
-              confidence: 0.9234
-              description: The genetic condition sickle cell anemia may provide protection
-                from cerebral malaria via genetic alterations of proteins HBB (P68871)
-                and HMOX1 (P09601).
-              essence_type: drug
-              score_direction: lower_is_better
-              score: 163.233
-              edge_bindings:
-                key:
-                - id: id
-                - id: id
-              result_group: 1
-              node_bindings:
-                key:
-                - id: ""
-                - id: ""
-              reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-              row_data:
-              - ibuprofen
-              - CHEMBL:CHEMBL521
-              result_group_similarity_score: 0.95
-              score_name: Jaccard distance
-            - result_type: individual query answer
-              essence: ibuprofen
-              confidence: 0.9234
-              description: The genetic condition sickle cell anemia may provide protection
-                from cerebral malaria via genetic alterations of proteins HBB (P68871)
-                and HMOX1 (P09601).
-              essence_type: drug
-              score_direction: lower_is_better
-              score: 163.233
-              edge_bindings:
-                key:
-                - id: id
-                - id: id
-              result_group: 1
-              node_bindings:
-                key:
-                - id: ""
-                - id: ""
-              reasoner_id: RTX
-              id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-              row_data:
-              - ibuprofen
-              - CHEMBL:CHEMBL521
-              result_group_similarity_score: 0.95
-              score_name: Jaccard distance
-            query_graph: ""
-          options:
-            topNMostFrequent: 1
-          processing_actions:
-          - mod45filter
-          - redirect2RTX
+        previous_message_processing_plan: ""
         page_size: 20
       properties:
         message:
@@ -564,12 +330,11 @@ components:
             type: string
           type: array
         previous_message_processing_plan:
+          allOf:
+          - $ref: '#/components/schemas/PreviousMessageProcessingPlan'
           description: Container for one or more Message objects or identifiers for
             one or more Messages along with a processing plan for how those messages
             should be processed and returned
-          items:
-            $ref: '#/components/schemas/PreviousMessageProcessingPlan'
-          type: array
       required:
       - message
       type: object
@@ -729,60 +494,6 @@ components:
         lists of edges and nodes in the thought graph corresponding to this message.
         The content of these properties is context-dependent to the encompassing object
         and the TRAPI operation requested.'
-      example:
-        knowledge_graph: ""
-        results:
-        - result_type: individual query answer
-          essence: ibuprofen
-          confidence: 0.9234
-          description: The genetic condition sickle cell anemia may provide protection
-            from cerebral malaria via genetic alterations of proteins HBB (P68871)
-            and HMOX1 (P09601).
-          essence_type: drug
-          score_direction: lower_is_better
-          score: 163.233
-          edge_bindings:
-            key:
-            - id: id
-            - id: id
-          result_group: 1
-          node_bindings:
-            key:
-            - id: ""
-            - id: ""
-          reasoner_id: RTX
-          id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-          row_data:
-          - ibuprofen
-          - CHEMBL:CHEMBL521
-          result_group_similarity_score: 0.95
-          score_name: Jaccard distance
-        - result_type: individual query answer
-          essence: ibuprofen
-          confidence: 0.9234
-          description: The genetic condition sickle cell anemia may provide protection
-            from cerebral malaria via genetic alterations of proteins HBB (P68871)
-            and HMOX1 (P09601).
-          essence_type: drug
-          score_direction: lower_is_better
-          score: 163.233
-          edge_bindings:
-            key:
-            - id: id
-            - id: id
-          result_group: 1
-          node_bindings:
-            key:
-            - id: ""
-            - id: ""
-          reasoner_id: RTX
-          id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-          row_data:
-          - ibuprofen
-          - CHEMBL:CHEMBL521
-          result_group_similarity_score: 0.95
-          score_name: Jaccard distance
-        query_graph: ""
       properties:
         results:
           description: List of all returned Result objects for the query posed
@@ -850,32 +561,6 @@ components:
         It must contain a NodeBindings object (list of query graph node to knowledge
         graph node mappings) and an EdgeBindings object (list of query graph edge
         to knowledge graph edge mappings).
-      example:
-        result_type: individual query answer
-        essence: ibuprofen
-        confidence: 0.9234
-        description: The genetic condition sickle cell anemia may provide protection
-          from cerebral malaria via genetic alterations of proteins HBB (P68871) and
-          HMOX1 (P09601).
-        essence_type: drug
-        score_direction: lower_is_better
-        score: 163.233
-        edge_bindings:
-          key:
-          - id: id
-          - id: id
-        result_group: 1
-        node_bindings:
-          key:
-          - id: ""
-          - id: ""
-        reasoner_id: RTX
-        id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-        row_data:
-        - ibuprofen
-        - CHEMBL:CHEMBL521
-        result_group_similarity_score: 0.95
-        score_name: Jaccard distance
       properties:
         node_bindings:
           additionalProperties:
@@ -979,8 +664,6 @@ components:
       type: object
     NodeBinding:
       additionalProperties: true
-      example:
-        id: ""
       properties:
         id:
           allOf:
@@ -998,8 +681,6 @@ components:
         identified by the corresponding 'id' object key identifier of the Edge within
         the Knowledge Graph. Instances of EdgeBinding may include extra annotation
         (such annotation is not yet fully standardized).
-      example:
-        id: id
       properties:
         id:
           description: The key identifier of a specific KnowledgeGraph Edge.
@@ -1277,126 +958,11 @@ components:
       type: string
     PreviousMessageProcessingPlan:
       additionalProperties: true
-      example:
-        previous_message_uris:
-        - https://rtx.ncats.io/devED/api/rtx/v1.0/message/300
-        previous_messages:
-        - knowledge_graph: ""
-          results:
-          - result_type: individual query answer
-            essence: ibuprofen
-            confidence: 0.9234
-            description: The genetic condition sickle cell anemia may provide protection
-              from cerebral malaria via genetic alterations of proteins HBB (P68871)
-              and HMOX1 (P09601).
-            essence_type: drug
-            score_direction: lower_is_better
-            score: 163.233
-            edge_bindings:
-              key:
-              - id: id
-              - id: id
-            result_group: 1
-            node_bindings:
-              key:
-              - id: ""
-              - id: ""
-            reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-            row_data:
-            - ibuprofen
-            - CHEMBL:CHEMBL521
-            result_group_similarity_score: 0.95
-            score_name: Jaccard distance
-          - result_type: individual query answer
-            essence: ibuprofen
-            confidence: 0.9234
-            description: The genetic condition sickle cell anemia may provide protection
-              from cerebral malaria via genetic alterations of proteins HBB (P68871)
-              and HMOX1 (P09601).
-            essence_type: drug
-            score_direction: lower_is_better
-            score: 163.233
-            edge_bindings:
-              key:
-              - id: id
-              - id: id
-            result_group: 1
-            node_bindings:
-              key:
-              - id: ""
-              - id: ""
-            reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-            row_data:
-            - ibuprofen
-            - CHEMBL:CHEMBL521
-            result_group_similarity_score: 0.95
-            score_name: Jaccard distance
-          query_graph: ""
-        - knowledge_graph: ""
-          results:
-          - result_type: individual query answer
-            essence: ibuprofen
-            confidence: 0.9234
-            description: The genetic condition sickle cell anemia may provide protection
-              from cerebral malaria via genetic alterations of proteins HBB (P68871)
-              and HMOX1 (P09601).
-            essence_type: drug
-            score_direction: lower_is_better
-            score: 163.233
-            edge_bindings:
-              key:
-              - id: id
-              - id: id
-            result_group: 1
-            node_bindings:
-              key:
-              - id: ""
-              - id: ""
-            reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-            row_data:
-            - ibuprofen
-            - CHEMBL:CHEMBL521
-            result_group_similarity_score: 0.95
-            score_name: Jaccard distance
-          - result_type: individual query answer
-            essence: ibuprofen
-            confidence: 0.9234
-            description: The genetic condition sickle cell anemia may provide protection
-              from cerebral malaria via genetic alterations of proteins HBB (P68871)
-              and HMOX1 (P09601).
-            essence_type: drug
-            score_direction: lower_is_better
-            score: 163.233
-            edge_bindings:
-              key:
-              - id: id
-              - id: id
-            result_group: 1
-            node_bindings:
-              key:
-              - id: ""
-              - id: ""
-            reasoner_id: RTX
-            id: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
-            row_data:
-            - ibuprofen
-            - CHEMBL:CHEMBL521
-            result_group_similarity_score: 0.95
-            score_name: Jaccard distance
-          query_graph: ""
-        options:
-          topNMostFrequent: 1
-        processing_actions:
-        - mod45filter
-        - redirect2RTX
       properties:
         previous_message_uris:
           description: List of URIs for Message objects to fetch and process
           example:
-          - https://rtx.ncats.io/devED/api/rtx/v1.0/message/300
+          - https://arax.ncats.io/devED/api/arax/v1.0/response/38
           items:
             type: string
           type: array
@@ -1406,20 +972,23 @@ components:
             $ref: '#/components/schemas/Message'
           type: array
         processing_actions:
-          description: List of order-dependent actions to guide what happens with
-            the Message object(s)
+          description: List of order-dependent operations to execute
           example:
-          - mod45filter
-          - redirect2RTX
+          - add_qnode(name=acetaminophen, key=n00)
+          - add_qnode(category=biolink:Protein, key=n01)
+          - add_qedge(subject=n01, object=n00, key=e00)
+          - expand(edge_key=e00)
+          - resultify()
+          - filter_results(action=limit_number_of_results, max_results=10)
           items:
             type: string
           type: array
         options:
           additionalProperties: true
-          description: Dict of options that apply during processing in an order independent
+          description: Map of options that apply during processing in an order independent
             fashion
           example:
-            topNMostFrequent: 1
+            lazy_loading: true
           type: object
       type: object
     Question:
