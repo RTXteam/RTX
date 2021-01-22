@@ -615,7 +615,7 @@ class ARAXQuery:
             response.envelope.query_options['actions'] = operations.actions
 
             # Update the reasoner_id to ARAX if not already present
-            for result in message.results:
+            for result in response.envelope.message.results:
                 if result.reasoner_id is None:
                     result.reasoner_id = 'ARAX'
 
