@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX
 from knowledge_source_metadata import KnowledgeSourceMetadata
 
 
-def predicates_get():  # noqa: E501
+def predicates():  # noqa: E501
     """Get supported relationships by source and target
 
      # noqa: E501
