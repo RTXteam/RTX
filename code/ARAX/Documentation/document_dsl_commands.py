@@ -58,7 +58,7 @@ for (module, cls) in zip(modules, classes):
         if 'action' in dic:  # for classes that use the `action=` paradigm
             action = dic['action'].pop()
             del dic['action']
-            to_print += '### ' + re.sub('\(\)',f'(action={action})', dsl_name) + '\n'
+            to_print += '### ' + re.sub(r'\(\)',f'(action={action})', dsl_name) + '\n'
         elif 'dsl_command' in dic:  # for classes like ARAX_messenger that have different DSL commands with different top level names as methods to the main class
             dsl_command = dic['dsl_command']
             del dic['dsl_command']
