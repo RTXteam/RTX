@@ -145,7 +145,7 @@ class NGDQuerier:
     @staticmethod
     def _run_arax_query(actions_list: List[str], log: ARAXResponse) -> Tuple[ARAXResponse, Message]:
         araxq = ARAXQuery()
-        sub_query_response = araxq.query({"previous_message_processing_plan": {"processing_actions": actions_list}})
+        sub_query_response = araxq.query({"operations": {"actions": actions_list}})
         if sub_query_response.status != 'OK':
             log.error(f"Encountered an error running ARAXQuery within Expand: {sub_query_response.show(level=sub_query_response.DEBUG)}")
         return sub_query_response, araxq.message
