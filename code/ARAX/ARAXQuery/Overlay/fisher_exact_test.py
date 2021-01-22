@@ -561,7 +561,7 @@ class ComputeFTEST:
 
             # call the method of ARAXQuery class to query adjacent node
             if rel_type:
-                query = {"previous_message_processing_plan": {"processing_actions": [
+                query = {"operations": {"actions": [
                     "create_message",
                     f"add_qnode(id={query_node_curie}, category={source_type}, key=FET_n00)",
                     f"add_qnode(category={adjacent_type}, key=FET_n01)",
@@ -571,7 +571,7 @@ class ComputeFTEST:
                     "return(message=true, store=false)"
                 ]}}
             else:
-                query = {"previous_message_processing_plan": {"processing_actions": [
+                query = {"operations": {"actions": [
                     "create_message",
                     f"add_qnode(id={query_node_curie}, category={source_type}, key=FET_n00)",
                     f"add_qnode(category={adjacent_type}, key=FET_n01)",
@@ -664,7 +664,7 @@ class ComputeFTEST:
         # call the method of ARAXQuery class to query adjacent node
 
         if rel_type:
-            query = {"previous_message_processing_plan": {"processing_actions": [
+            query = {"operations": {"actions": [
                 "create_message",
                 f"add_qnode(id={node_curie}, category={source_type}, key=FET_n00)",
                 f"add_qnode(category={adjacent_type}, key=FET_n01)",
@@ -674,7 +674,7 @@ class ComputeFTEST:
                 "return(message=true, store=false)"
             ]}}
         else:
-            query = {"previous_message_processing_plan": {"processing_actions": [
+            query = {"operations": {"actions": [
                 "create_message",
                 f"add_qnode(id={node_curie}, category={source_type}, key=FET_n00)",
                 f"add_qnode(category={adjacent_type}, key=FET_n01)",
