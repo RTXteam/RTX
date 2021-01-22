@@ -280,13 +280,13 @@ components:
       example:
         bypass_cache: "true"
         page_number: 1
+        operations: ""
         asynchronous: "false"
         max_results: 100
         message: ""
         reasoner_ids:
         - RTX
         - Robokop
-        previous_message_processing_plan: ""
         page_size: 20
       properties:
         message:
@@ -329,12 +329,12 @@ components:
           items:
             type: string
           type: array
-        previous_message_processing_plan:
+        operations:
           allOf:
-          - $ref: '#/components/schemas/PreviousMessageProcessingPlan'
+          - $ref: '#/components/schemas/Operations'
           description: Container for one or more Message objects or identifiers for
-            one or more Messages along with a processing plan for how those messages
-            should be processed and returned
+            one or more Messages along with a processing plan and options for how
+            those messages should be processed and returned
       required:
       - message
       type: object
@@ -358,14 +358,15 @@ components:
         query_type_id: Q2
         schema_version: 1.0.0
         datetime: 2021-01-09 12:34:45
+        operations: ""
         table_column_names:
         - chemical_substance.name
         - chemical_substance.id
-        tool_version: ARAX 0.6.1
+        tool_version: ARAX 0.7.0
         terms:
           key: '{}'
         context: https://rtx.ncats.io/ns/translator.jsonld
-        reasoner_id: reasoner
+        reasoner_id: ARAX
         id: https://arax.ncats.io/devED/api/rtx/v1.0/response/123
         logs:
         - code: code
@@ -401,14 +402,20 @@ components:
             $ref: '#/components/schemas/LogEntry'
           nullable: true
           type: array
+        operations:
+          allOf:
+          - $ref: '#/components/schemas/Operations'
+          description: Container for one or more Message objects or identifiers for
+            one or more Messages along with the processing plan and options for how
+            those messages were processed and returned
         reasoner_id:
           description: Identifier string of the reasoner that provided this response
             (one of ARAX, Robokop, etc.)
-          example: reasoner
+          example: ARAX
           type: string
         tool_version:
           description: Version label of the tool that generated this response
-          example: ARAX 0.6.1
+          example: ARAX 0.7.0
           type: string
         schema_version:
           description: Version label of this TRAPI schema
@@ -956,22 +963,25 @@ components:
       externalDocs:
         url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
       type: string
-    PreviousMessageProcessingPlan:
+    Operations:
       additionalProperties: true
+      description: Container for one or more Message objects or identifiers for one
+        or more Messages along with a processing plan and options for how those messages
+        should be processed and returned
       properties:
-        previous_message_uris:
-          description: List of URIs for Message objects to fetch and process
+        message_uris:
+          description: List of URIs for Message or Response objects to fetch and process
           example:
           - https://arax.ncats.io/devED/api/arax/v1.0/response/38
           items:
             type: string
           type: array
-        previous_messages:
+        messages:
           description: List of Message objects to process
           items:
             $ref: '#/components/schemas/Message'
           type: array
-        processing_actions:
+        actions:
           description: List of order-dependent operations to execute
           example:
           - add_qnode(name=acetaminophen, key=n00)
@@ -985,10 +995,9 @@ components:
           type: array
         options:
           additionalProperties: true
-          description: Map of options that apply during processing in an order independent
-            fashion
+          description: Map of order independent options that apply during processing
           example:
-            lazy_loading: true
+            halt_on_warning: false
           type: object
       type: object
     Question:
