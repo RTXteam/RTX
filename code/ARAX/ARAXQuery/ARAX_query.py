@@ -453,9 +453,9 @@ class ARAXQuery:
             messenger.create_envelope(response)
 
             #### Put our input processing actions into the envelope
-            if response.envelope.query_options is None:
-                response.envelope.query_options = {}
-            response.envelope.query_options['actions'] = operations.actions
+            if response.envelope.operations is None:
+                response.envelope.operations = {}
+            response.envelope.operations['actions'] = operations.actions
 
             message = response.envelope.message
 
