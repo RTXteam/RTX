@@ -45,7 +45,7 @@ class ARAXMessenger:
         :rtype: list
         """
         description_list = []
-        description_list.append(self.create_envelope(describe=True))
+        description_list.append(self.create_envelope(0,describe=True))
         description_list.append(self.add_qnode(0,0,describe=True))
         description_list.append(self.add_qedge(0,0,describe=True))
         return description_list
