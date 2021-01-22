@@ -23,4 +23,4 @@ def translate(request_body):  # noqa: E501
         query = questionParser.format_response(question)
         return(query)
     else:
-        return( { "status": 502, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 502 )
+        return( { "status": 400, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 400 )
