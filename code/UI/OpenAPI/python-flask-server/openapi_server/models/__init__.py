@@ -12,7 +12,7 @@ from openapi_server.models.mesh_ngd_response import MeshNgdResponse
 from openapi_server.models.message import Message
 from openapi_server.models.node import Node
 from openapi_server.models.node_binding import NodeBinding
-from openapi_server.models.previous_message_processing_plan import PreviousMessageProcessingPlan
+from openapi_server.models.operations import Operations
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.query import Query
