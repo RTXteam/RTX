@@ -22,8 +22,15 @@ def query(request_body, bypass_cache=None):  # noqa: E501
     """
     if connexion.request.is_json:
         query = connexion.request.get_json()
-        rtxq = RTXQuery()
-        message = rtxq.query(query)
-        return(ast.literal_eval(repr(message)))
+        araxq = ARAXQuery()
+
+        if "asynchronous" in query and query['asynchronous'].lower() == 'stream':
+            # Return a stream of data to let the client know what's going on
+            return Response(araxq.query_return_stream(query),mimetype='text/plain')
+        else:
+            message = araxq.query_return_message(query)
+            return message
+
+    #### If the body was not JSON, return a 400
     else:
-        return( { "status": 502, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 502 )
+        return( { "status": 400, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 400 )
