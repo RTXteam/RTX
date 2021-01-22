@@ -325,13 +325,12 @@ components:
           items:
             type: string
         previous_message_processing_plan:
-          type: object
           description: >-
             Container for one or more Message objects or identifiers for one or
             more Messages along with a processing plan for how those messages
             should be processed and returned
-          items:
-            $ref: '#/components/schemas/PreviousMessageProcessingPlan'
+          allOf:
+            - $ref: '#/components/schemas/PreviousMessageProcessingPlan'
       additionalProperties: true
       required:
         - message
@@ -993,7 +992,7 @@ components:
         previous_message_uris:
           type: array
           example:
-            - 'https://rtx.ncats.io/api/rtx/v1.0/message/300'
+            - 'https://arax.ncats.io/api/arax/v1.0/response/38'
           description: List of URIs for Message objects to fetch and process
           items:
             type: string
@@ -1005,19 +1004,22 @@ components:
         processing_actions:
           type: array
           example:
-            - mod45filter
-            - redirect2RTX
-          description: >-
-            List of order-dependent actions to guide what happens with the Message
-            object(s)
+            - add_qnode(name=acetaminophen, key=n00)
+            - add_qnode(category=biolink:Protein, key=n01)
+            - add_qedge(subject=n01, object=n00, key=e00)
+            - expand(edge_key=e00)
+            - resultify()
+            - filter_results(action=limit_number_of_results, max_results=10)
+            description: >-
+            List of order-dependent operations to execute
           items:
             type: string
         options:
           type: object
           example:
-            topNMostFrequent: 1
+            lazy_loading: True
           description: >-
-            Dict of options that apply during processing in an order independent
+            Map of options that apply during processing in an order independent
             fashion
           additionalProperties: true
       additionalProperties: true
