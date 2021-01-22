@@ -47,7 +47,7 @@ def test_command_definitions():
     assert fkg.allowable_actions == set(fkg.command_definitions.keys())
 
 def test_warning():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -64,7 +64,7 @@ def test_warning():
     assert len(message.results) == 20
 
 def test_error():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -79,7 +79,7 @@ def test_error():
     assert response.error_code == "RemovedQueryNode"
 
 def test_default_std_dev():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
         "add_qnode(category=protein, is_set=true, key=n01)",
@@ -96,7 +96,7 @@ def test_default_std_dev():
     all_vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
     comp_val = np.mean(all_vals) + np.std(all_vals)
     comp_len = len([x for x in all_vals if x > comp_val])
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
         "add_qnode(category=protein, is_set=true, key=n01)",
@@ -116,7 +116,7 @@ def test_default_std_dev():
     assert np.min(vals) > comp_val
 
 def test_std_dev():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
         "add_qnode(category=protein, is_set=true, key=n01)",
@@ -134,7 +134,7 @@ def test_std_dev():
     all_vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
     comp_val = np.mean(all_vals) - 0.25*np.std(all_vals)
     comp_len = len([x for x in all_vals if x < comp_val])
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
         "add_qnode(category=protein, is_set=true, key=n01)",
@@ -155,7 +155,7 @@ def test_std_dev():
     assert np.max(vals) < comp_val
 
 def test_default_top_n():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
         "add_qnode(category=protein, is_set=true, key=n01)",

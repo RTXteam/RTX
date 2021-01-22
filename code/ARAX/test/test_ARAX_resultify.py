@@ -93,7 +93,7 @@ def _get_result_edge_keys_by_qg_key(result: Result) -> Dict[str, Set[str]]:
 
 
 def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[ARAXResponse, Message]:
-    query = {"previous_message_processing_plan": {"processing_actions": actions_list}}
+    query = {"operations": {"actions": actions_list}}
     araxq = ARAXQuery()
     response = araxq.query(query)
     message = araxq.message

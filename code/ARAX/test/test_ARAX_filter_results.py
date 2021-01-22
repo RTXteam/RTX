@@ -47,7 +47,7 @@ def test_command_definitions():
     assert fr.allowable_actions == set(fr.command_definitions.keys())
 
 def test_n_results():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -63,7 +63,7 @@ def test_n_results():
     assert message.n_results == len(message.results)
 
 def test_no_results():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -78,7 +78,7 @@ def test_no_results():
     assert response.status == 'OK'
 
 def test_prune():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -90,7 +90,7 @@ def test_prune():
             "return(message=true, store=false)"
         ]}}
     [no_prune_response, no_prune_message] = _do_arax_query(query)
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -120,7 +120,7 @@ def test_prune():
     assert len(message.knowledge_graph.edges) < len(no_prune_message.knowledge_graph.edges)
 
 def test_warning():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
@@ -137,7 +137,7 @@ def test_warning():
     assert len(message.results) == 20
 
 def test_sort():
-    query = {"previous_message_processing_plan": {"processing_actions": [
+    query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=chemical_substance, key=n01)",
