@@ -544,10 +544,10 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                 symbol_attribute = symbol_attributes[0] if symbol_attributes else None
                 if symbol_attribute and symbol_attribute.value is not None:
                     result.essence += " (" + str(symbol_attribute.value) + ")"
-            result.essence_type = str(essence_qnode.category) if essence_qnode else None
+            result.essence_category = str(essence_qnode.category) if essence_qnode else None
         elif len(essence_kg_node_key_set) == 0:
             result.essence = cast(str, None)
-            result.essence_type = cast(str, None)
+            result.essence_category = cast(str, None)
         else:
             raise ValueError(
                 f"Result contains more than one node that is a candidate for the essence: {essence_kg_node_key_set}")
