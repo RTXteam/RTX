@@ -564,7 +564,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             result.row_data = [score, result.essence, result.essence_category]
 
         # Add table columns name
-        message.table_column_names = ['confidence', 'essence', 'essence_category']
+        response.envelope.table_column_names = ['confidence', 'essence', 'essence_category']
 
         # Re-sort the final results
         message.results.sort(key=lambda result: result.confidence, reverse=True)
