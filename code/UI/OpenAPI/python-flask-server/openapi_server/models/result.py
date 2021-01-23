@@ -19,7 +19,7 @@ class Result(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, node_bindings=None, edge_bindings=None, id=None, description=None, essence=None, essence_type=None, row_data=None, score=None, score_name=None, score_direction=None, confidence=None, result_type=None, result_group=None, result_group_similarity_score=None, reasoner_id=None):  # noqa: E501
+    def __init__(self, node_bindings=None, edge_bindings=None, id=None, description=None, essence=None, essence_category=None, row_data=None, score=None, score_name=None, score_direction=None, confidence=None, result_group=None, result_group_similarity_score=None, reasoner_id=None):  # noqa: E501
         """Result - a model defined in OpenAPI
 
         :param node_bindings: The node_bindings of this Result.  # noqa: E501
@@ -32,8 +32,8 @@ class Result(Model):
         :type description: str
         :param essence: The essence of this Result.  # noqa: E501
         :type essence: str
-        :param essence_type: The essence_type of this Result.  # noqa: E501
-        :type essence_type: str
+        :param essence_category: The essence_category of this Result.  # noqa: E501
+        :type essence_category: str
         :param row_data: The row_data of this Result.  # noqa: E501
         :type row_data: List[str]
         :param score: The score of this Result.  # noqa: E501
@@ -44,8 +44,6 @@ class Result(Model):
         :type score_direction: str
         :param confidence: The confidence of this Result.  # noqa: E501
         :type confidence: float
-        :param result_type: The result_type of this Result.  # noqa: E501
-        :type result_type: str
         :param result_group: The result_group of this Result.  # noqa: E501
         :type result_group: int
         :param result_group_similarity_score: The result_group_similarity_score of this Result.  # noqa: E501
@@ -59,13 +57,12 @@ class Result(Model):
             'id': str,
             'description': str,
             'essence': str,
-            'essence_type': str,
+            'essence_category': str,
             'row_data': List[str],
             'score': float,
             'score_name': str,
             'score_direction': str,
             'confidence': float,
-            'result_type': str,
             'result_group': int,
             'result_group_similarity_score': float,
             'reasoner_id': str
@@ -77,13 +74,12 @@ class Result(Model):
             'id': 'id',
             'description': 'description',
             'essence': 'essence',
-            'essence_type': 'essence_type',
+            'essence_category': 'essence_category',
             'row_data': 'row_data',
             'score': 'score',
             'score_name': 'score_name',
             'score_direction': 'score_direction',
             'confidence': 'confidence',
-            'result_type': 'result_type',
             'result_group': 'result_group',
             'result_group_similarity_score': 'result_group_similarity_score',
             'reasoner_id': 'reasoner_id'
@@ -94,13 +90,12 @@ class Result(Model):
         self._id = id
         self._description = description
         self._essence = essence
-        self._essence_type = essence_type
+        self._essence_category = essence_category
         self._row_data = row_data
         self._score = score
         self._score_name = score_name
         self._score_direction = score_direction
         self._confidence = confidence
-        self._result_type = result_type
         self._result_group = result_group
         self._result_group_similarity_score = result_group_similarity_score
         self._reasoner_id = reasoner_id
@@ -236,33 +231,33 @@ class Result(Model):
         self._essence = essence
 
     @property
-    def essence_type(self):
-        """Gets the essence_type of this Result.
+    def essence_category(self):
+        """Gets the essence_category of this Result.
 
-        A Translator bioentity type of the essence  # noqa: E501
+        A Translator BioLink bioentity category of the essence  # noqa: E501
 
-        :return: The essence_type of this Result.
+        :return: The essence_category of this Result.
         :rtype: str
         """
-        return self._essence_type
+        return self._essence_category
 
-    @essence_type.setter
-    def essence_type(self, essence_type):
-        """Sets the essence_type of this Result.
+    @essence_category.setter
+    def essence_category(self, essence_category):
+        """Sets the essence_category of this Result.
 
-        A Translator bioentity type of the essence  # noqa: E501
+        A Translator BioLink bioentity category of the essence  # noqa: E501
 
-        :param essence_type: The essence_type of this Result.
-        :type essence_type: str
+        :param essence_category: The essence_category of this Result.
+        :type essence_category: str
         """
 
-        self._essence_type = essence_type
+        self._essence_category = essence_category
 
     @property
     def row_data(self):
         """Gets the row_data of this Result.
 
-        An arbitrary list of values that captures the essence of the result that can be turned into a tabular result across all answers (each result is a row) for a user that wants tabular output  # noqa: E501
+        An arbitrary list of values that captures the essence of the result that can be turned into a tabular result across all answers (each result is a row) for a user that wants simplified tabular output  # noqa: E501
 
         :return: The row_data of this Result.
         :rtype: List[str]
@@ -273,7 +268,7 @@ class Result(Model):
     def row_data(self, row_data):
         """Sets the row_data of this Result.
 
-        An arbitrary list of values that captures the essence of the result that can be turned into a tabular result across all answers (each result is a row) for a user that wants tabular output  # noqa: E501
+        An arbitrary list of values that captures the essence of the result that can be turned into a tabular result across all answers (each result is a row) for a user that wants simplified tabular output  # noqa: E501
 
         :param row_data: The row_data of this Result.
         :type row_data: List[str]
@@ -374,29 +369,6 @@ class Result(Model):
         self._confidence = confidence
 
     @property
-    def result_type(self):
-        """Gets the result_type of this Result.
-
-        One of several possible result types: 'individual query answer', 'neighborhood graph', 'type summary graph'  # noqa: E501
-
-        :return: The result_type of this Result.
-        :rtype: str
-        """
-        return self._result_type
-
-    @result_type.setter
-    def result_type(self, result_type):
-        """Sets the result_type of this Result.
-
-        One of several possible result types: 'individual query answer', 'neighborhood graph', 'type summary graph'  # noqa: E501
-
-        :param result_type: The result_type of this Result.
-        :type result_type: str
-        """
-
-        self._result_type = result_type
-
-    @property
     def result_group(self):
         """Gets the result_group of this Result.
 
@@ -446,7 +418,7 @@ class Result(Model):
     def reasoner_id(self):
         """Gets the reasoner_id of this Result.
 
-        Identifier string of the reasoner that provided this result (e.g., RTX, Robokop, Indigo, Integrator)  # noqa: E501
+        Identifier string of the reasoner that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
 
         :return: The reasoner_id of this Result.
         :rtype: str
@@ -457,7 +429,7 @@ class Result(Model):
     def reasoner_id(self, reasoner_id):
         """Sets the reasoner_id of this Result.
 
-        Identifier string of the reasoner that provided this result (e.g., RTX, Robokop, Indigo, Integrator)  # noqa: E501
+        Identifier string of the reasoner that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
 
         :param reasoner_id: The reasoner_id of this Result.
         :type reasoner_id: str
