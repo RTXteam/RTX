@@ -91,7 +91,7 @@ class ARAXQuery:
             self.response.status = re.sub('DONE,','',self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(self.response.envelope.to_dict())+"\n")
+            yield(json.dumps(self.response.envelope.to_dict()))
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
