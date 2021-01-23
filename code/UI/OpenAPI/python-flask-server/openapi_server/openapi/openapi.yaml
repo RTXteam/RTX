@@ -615,7 +615,7 @@ components:
           type: object
         id:
           description: URI for this result
-          example: https://arax.ncats.io/devED/api/rtx/v1.0/result/234
+          example: result:234
           type: string
         description:
           description: A free text description of this result answer from the reasoner
@@ -628,14 +628,14 @@ components:
             for simple answers)
           example: ibuprofen
           type: string
-        essence_type:
-          description: A Translator bioentity type of the essence
-          example: drug
+        essence_category:
+          description: A Translator BioLink bioentity category of the essence
+          example: biolink:ChemicalSubstance
           type: string
         row_data:
           description: An arbitrary list of values that captures the essence of the
             result that can be turned into a tabular result across all answers (each
-            result is a row) for a user that wants tabular output
+            result is a row) for a user that wants simplified tabular output
           example:
           - ibuprofen
           - CHEMBL:CHEMBL521
@@ -663,11 +663,6 @@ components:
           example: 0.9234
           format: float
           type: number
-        result_type:
-          description: 'One of several possible result types: ''individual query answer'',
-            ''neighborhood graph'', ''type summary graph'''
-          example: individual query answer
-          type: string
         result_group:
           description: An integer group number for results for use in cases where
             several results should be grouped together. Also useful to control sorting
