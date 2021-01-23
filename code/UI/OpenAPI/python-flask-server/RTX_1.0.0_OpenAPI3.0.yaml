@@ -581,7 +581,7 @@ components:
               $ref: '#/components/schemas/EdgeBinding'
         id:
           type: string
-          example: https://arax.ncats.io/api/rtx/v1.0/result/234
+          example: result:234
           description: URI for this result
         description:
           type: string
@@ -597,10 +597,10 @@ components:
           description: >-
             A single string that is the terse essence of the result (useful for
             simple answers)
-        essence_type:
+        essence_category:
           type: string
-          example: drug
-          description: A Translator bioentity type of the essence
+          example: biolink:ChemicalSubstance
+          description: A Translator BioLink bioentity category of the essence
         row_data:
           type: array
           example:
@@ -609,7 +609,7 @@ components:
           description: >-
             An arbitrary list of values that captures the essence of the result
             that can be turned into a tabular result across all answers (each
-            result is a row) for a user that wants tabular output
+            result is a row) for a user that wants simplified tabular output
           items:
             type: string
         score:
@@ -634,12 +634,6 @@ components:
           description: >-
             Confidence metric for this result, a value between (inclusive)
              0.0 (no confidence) and 1.0 (highest confidence)
-        result_type:
-          type: string
-          example: individual query answer
-          description: >-
-            One of several possible result types: 'individual query answer',
-            'neighborhood graph', 'type summary graph'
         result_group:
           type: integer
           example: 1
