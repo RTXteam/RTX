@@ -341,8 +341,8 @@ class ARAXQuery:
         response.info(f"Validating the input query graph")
 
         # Define allowed qnode and qedge attributes to check later
-        allowed_qnode_attributes = { 'id': 1, 'category':1, 'is_set': 1 }
-        allowed_qedge_attributes = { 'predicate':1, 'subject': 1, 'object': 1 }
+        allowed_qnode_attributes = { 'id': 1, 'category':1, 'is_set': 1, 'option_group_id': 1 }
+        allowed_qedge_attributes = { 'predicate':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1 }
 
         #### Loop through nodes checking the attributes
         for id,qnode in message['query_graph']['nodes'].items():
