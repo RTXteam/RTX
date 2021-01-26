@@ -7,7 +7,7 @@ from openapi_server import util
 from ParseQuestion import ParseQuestion
 
 
-def translate(request_body):  # noqa: E501
+def translate(request_body=None):  # noqa: E501
     """Translate natural language question into a standardized query
 
      # noqa: E501
