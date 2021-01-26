@@ -86,6 +86,9 @@ class KGQuerier:
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
+        # TODO: remove this patch once we switch to KG2.5.0!
+        self._convert_node_and_edge_types_to_new_format(final_kg)
+
         return final_kg, edge_to_nodes_map
 
     def answer_single_node_query(self, single_node_qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
