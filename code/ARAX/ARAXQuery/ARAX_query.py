@@ -27,6 +27,7 @@ from ARAX_messenger import ARAXMessenger
 from ARAX_ranker import ARAXRanker
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.response import Response
 from openapi_server.models.message import Message
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
@@ -402,19 +403,19 @@ class ARAXQuery:
                 response.debug(f"    messageURI={uri}")
                 matchResult = re.match( r'http[s]://arax.ncats.io/.*api/arax/.+/response/(\d+)',uri,re.M|re.I )
                 if matchResult:
-                    referenced_message_id = matchResult.group(1)
-                    response.debug(f"Found local RTX identifier corresponding to respond_id {referenced_message_id}")
-                    response.debug(f"Loading message_id {referenced_message_id}")
-                    referenced_message = rtxFeedback.getMessage(referenced_message_id)
-                    #eprint(type(message))
-                    if not isinstance(referenced_message,tuple):
-                        referenced_message = ARAXMessenger().from_dict(referenced_message)
-                        response.debug(f"Original question was: {referenced_message.original_question}")
-                        messages.append(referenced_message)
-                        message_id = referenced_message_id
-                        query = { "query_type_id": referenced_message.query_type_id, "restated_question": referenced_message.restated_question, "terms": referenced_message.terms }
+                    referenced_response_id = matchResult.group(1)
+                    response.debug(f"Found local ARAX identifier corresponding to response_id {referenced_response_id}")
+                    response.debug(f"Loading response_id {referenced_response_id}")
+                    referenced_envelope = response_cache.get_response(referenced_response_id)
+                    eprint(type(referenced_envelope))
+                    eprint(json.dumps(referenced_envelope,indent=2))
+                    if isinstance(referenced_envelope,dict):
+                        referenced_envelope = Response().from_dict(referenced_envelope)
+                        #messages.append(referenced_message)
+                        messages = [ referenced_envelope.message ]
+                        #eprint(json.dumps(referenced_message.to_dict(),indent=2))
                     else:
-                        response.error(f"Unable to load message_id {referenced_message_id}", error_code="CannotLoadMessageById")
+                        response.error(f"Unable to load response_id {referenced_response_id}", error_code="CannotLoadPreviousResponseById")
                         return response
 
         #### If there are one or more messages embedded in the POST, process them
