@@ -70,7 +70,7 @@ def test_error():
             "add_qnode(category=chemical_substance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
-            "filter_kg(action=remove_edges_by_predicate, edge_predicate=contraindicated_for, remove_connected_nodes=t)",
+            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:contraindicated_for, remove_connected_nodes=t)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
         ]}}
