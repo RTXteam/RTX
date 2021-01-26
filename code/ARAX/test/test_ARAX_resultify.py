@@ -1403,5 +1403,34 @@ def test_disconnected_qg():
     assert "QG is disconnected" in response.show()
 
 
+def test_recompute_qg_keys():
+    shorthand_qnodes = {"n00": "",
+                        "n01": ""}
+    shorthand_qedges = {"e00": "n00--n01"}
+    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
+    shorthand_kg_nodes = {"n00": ["DOID:731"],
+                          "n01": ["HP:01", "HP:02", "HP:03", "HP:04"]}
+    shorthand_kg_edges = {"e00": ["DOID:731--HP:01", "DOID:731--HP:02", "DOID:731--HP:03", "DOID:731--HP:04"]}
+    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
+    assert response.status == 'OK'
+    assert message.results
+    # Clear all qnode_keys/qedge_keys from the KG
+    for node_key, node in message.knowledge_graph.nodes.items():
+        node.qnode_keys = []
+    for edge_key, edge in message.knowledge_graph.edges.items():
+        edge.qedge_keys = []
+    # Then recompute qg keys and make sure look ok
+    resultifier = ARAXResultify()
+    resultifier.recompute_qg_keys(response)
+    assert response.status == 'OK'
+    kg = response.envelope.message.knowledge_graph
+    assert kg.nodes and kg.edges
+    for node_key, node in kg.nodes.items():
+        assert node.qnode_keys == ["n00"] if node_key in shorthand_kg_nodes["n00"] else ["n01"]
+    for edge_key, edge in kg.edges.items():
+        assert edge.qedge_keys == ["e00"]
+
+
 if __name__ == '__main__':
     pytest.main(['-v', 'test_ARAX_resultify.py'])
