@@ -177,14 +177,16 @@ class ARAXQuery:
         #### Otherwise extract the id and the terms from the incoming parameters
         else:
             response.info(f"Found id and terms from canned query")
-            id = query["message"]["query_type_id"]
-            terms = query["message"]["terms"]
+            eprint(json.dumps(query,sort_keys=True,indent=2))
+            id = query["query_type_id"]
+            terms = query["terms"]
 
         #### Create an RTX Feedback management object
-        response.info(f"Try to find a cached message for this canned query")
+        #response.info(f"Try to find a cached message for this canned query")
         #rtxFeedback = RTXFeedback()
         #rtxFeedback.connect()
         #cachedMessage = rtxFeedback.getCachedMessage(query)
+        cachedMessage = None
 
         #### If we can find a cached message for this query and this version of RTX, then return the cached message
         if ( cachedMessage is not None ):
