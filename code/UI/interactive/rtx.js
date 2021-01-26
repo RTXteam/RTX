@@ -431,7 +431,9 @@ function sendQuestion(e) {
 		xhr2.open("post",  baseAPI + "api/arax/v1.0/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
-                var queryObj = { "message" : jsonObj };
+                //var queryObj = { "message" : jsonObj };
+                var queryObj = jsonObj;
+                queryObj["message"] = { };
                 queryObj.bypass_cache = bypass_cache;
                 queryObj.max_results = 100;
 
