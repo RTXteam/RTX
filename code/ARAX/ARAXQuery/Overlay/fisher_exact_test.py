@@ -424,8 +424,8 @@ class ComputeFTEST:
                     EdgeAttribute(name="is_defined_by", value="ARAX", type="ARAX_TYPE_PLACEHOLDER"),
                     EdgeAttribute(name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), type="metatype:Datetime"),
                     EdgeAttribute(name="provided_by", value="ARAX", type="biolink:provided_by"),
-                    EdgeAttribute(name="confidence", value=None, type="biolink:ConfidenceLevel"),
-                    EdgeAttribute(name="weight", value=None, type="metatype:Float")
+                    #EdgeAttribute(name="confidence", value=None, type="biolink:ConfidenceLevel"),
+                    #EdgeAttribute(name="weight", value=None, type="metatype:Float")
                 ]
                 edge_id = f"{value[0]}_{index}"
                 edge = Edge(predicate='biolink:has_fisher_exact_test_p-value_with', subject=value[2], object=value[3], relation=value[0],

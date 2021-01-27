@@ -220,8 +220,8 @@ class PredictDrugTreatsDisease:
                         EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
                         EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
                         EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
-                        EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
-                        EdgeAttribute(name="weight", value=weight, type="metatype:Float")
+                        #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
+                        #EdgeAttribute(name="weight", value=weight, type="metatype:Float")
                     ]
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
                                 attributes=edge_attribute_list)

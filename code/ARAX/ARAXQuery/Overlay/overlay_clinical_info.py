@@ -308,8 +308,8 @@ class OverlayClinicalInfo:
                     EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
                     EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
                     EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
-                    EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
-                    EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
+                    #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
+                    #EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
                     #EdgeAttribute(name="qedge_ids", value=qedge_ids)
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key,
