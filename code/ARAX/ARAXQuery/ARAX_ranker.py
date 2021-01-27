@@ -49,8 +49,8 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
         for edge_binding in edge_binding_list:
             kg_edge = kg_edge_id_to_edge[edge_binding.id]
             kg_edge_attributes = {x.name:x.value for x in kg_edge.attributes}
-            #kg_edge_conf = kg_edge.confidence
-            kg_edge_conf = kg_edge_attributes["confidence"]
+            kg_edge_conf = kg_edge.confidence
+            #kg_edge_conf = kg_edge_attributes["confidence"]
             qedge_keys = kg_edge.qedge_keys
             for qedge_key in qedge_keys:
                 qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
@@ -230,9 +230,9 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 # TODO: replace this with the more intelligent function
                 # here we are just multiplying the edge confidences
                 # --- to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
-                #result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
-                kg_edge_attributes = {x.name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
-                result_confidence *= kg_edge_attributes["confidence"]
+                result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
+                #kg_edge_attributes = {x.name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
+                #result_confidence *= kg_edge_attributes["confidence"]
             result.confidence = result_confidence
         else:
             # consider each pair of nodes in the QG, then somehow combine that information
@@ -519,10 +519,12 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             #if False:       # FIXME: there is no longer such an attribute. Stored as a generic attribute?
             #if edge.confidence is not None:
                 # don't touch the confidence, since apparently someone already knows what the confidence should be
-                continue
+                edge.confidence = edge_attributes['confidence']
+                #continue
             else:
                 confidence = self.edge_attribute_score_combiner(edge)
-                edge.attributes.append(Attribute(name="confidence", value=confidence))
+                #edge.attributes.append(Attribute(name="confidence", value=confidence))
+                edge.confidence = confidence
 
         # Now that each edge has a confidence attached to it based on it's attributes, we can now:
         # 1. consider edge types of the results
