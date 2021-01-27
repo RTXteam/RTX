@@ -54,7 +54,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     """
     Tests overlay functions that add virtual edges
     message: returned from _do_arax_query
-    edge_predicate: the name of the virtual edge (eg. has_jaccard_index_with)
+    edge_predicate: the name of the virtual edge (eg. biolink:has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
     attribute_type: the attribute type (eg. 'EDAM:data_1234')
@@ -130,8 +130,8 @@ def test_example_2():
     assert response.status == 'OK'
     assert len(message.results) == 15  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
-    _virtual_tester(message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
 
 
 def test_example_3():
@@ -155,8 +155,8 @@ def test_example_3():
     #assert len(message.results) in [47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert len(message.results) >= 60
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
-    _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
+    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
 
 
 @pytest.mark.slow
@@ -186,7 +186,7 @@ def test_FET_example_1():
     assert response.status == 'OK'
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 3
@@ -205,7 +205,7 @@ def test_FET_example_1():
     assert len(query_node_keys) == 4
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicate')
-        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert query_edge.predicate == 'biolink:has_fisher_exact_test_p-value_with'
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -243,7 +243,7 @@ def test_FET_example_2():
     assert response.status == 'OK'
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 4
@@ -262,7 +262,7 @@ def test_FET_example_2():
     assert len(query_node_keys) == 5
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicate')
-        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert query_edge.predicate == 'biolink:has_fisher_exact_test_p-value_with'
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -310,7 +310,7 @@ def test_FET_example_3():
     assert response.status == 'OK'
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 6
@@ -329,7 +329,7 @@ def test_FET_example_3():
     assert len(query_node_keys) == 5
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicate')
-        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert query_edge.predicate == 'biolink:has_fisher_exact_test_p-value_with'
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -356,7 +356,7 @@ def test_FET_example_4():
     assert response.status == 'OK'
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation and x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 2
@@ -378,7 +378,7 @@ def test_FET_example_4():
     assert len(query_node_keys) == 3
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicate')
-        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert query_edge.predicate == 'biolink:has_fisher_exact_test_p-value_with'
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -420,7 +420,7 @@ def test_example_2_kg2():
     assert response.status == 'OK'
     assert len(message.results) == 15
     assert message.results[0].essence is not None
-    _virtual_tester(response.envelope.message, 'has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
+    _virtual_tester(response.envelope.message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
 
 
 @pytest.mark.slow
@@ -451,9 +451,9 @@ def test_clinical_overlay_example1():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
-    _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 2)
-    _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.skip(reason="redundant if the test_clinical_overlay_example() passes and test_ARAX_overlay passes")
@@ -516,9 +516,9 @@ def test_two_hop_based_on_types_1():
         [response, message] = _do_arax_query(query)
         print(message.id)
         assert response.status == 'OK'
-        _virtual_tester(message, 'has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
-        _virtual_tester(message, 'has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
-        _virtual_tester(message, 'has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
+        _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
+        _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
+        _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
         assert len(message.results) > 1
 
 
@@ -629,8 +629,8 @@ def test_one_hop_kitchen_sink_BTE_2():
 #     assert response.status == 'OK'
 #     #assert len(message.results) == ?
 #     assert message.results[0].essence is not None
-#     _virtual_tester(message, 'has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
-#     _virtual_tester(message, 'has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
+#     _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+#     _virtual_tester(message, 'biolink:has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
 
 
 if __name__ == "__main__":

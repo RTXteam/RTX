@@ -69,7 +69,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     """
     Tests overlay functions that add virtual edges
     message: returned from _do_arax_query
-    edge_predicate: the name of the virtual edge (eg. has_jaccard_index_with)
+    edge_predicate: the name of the virtual edge (eg. biolink:has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
     attribute_type: the attribute type (eg. 'EDAM:data_1234')
@@ -109,7 +109,7 @@ def test_jaccard():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_jaccard_index_with' in edge_predicates_in_kg
+    assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
     jaccard_edges = [x for x in message.knowledge_graph.edges.values() if x.relation == "J1"]
     for edge in jaccard_edges:
         assert hasattr(edge, 'attributes')
@@ -165,7 +165,7 @@ def test_compute_ngd_virtual():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_normalized_google_distance_with' in edge_predicates_in_kg
+    assert 'biolink:has_normalized_google_distance_with' in edge_predicates_in_kg
     ngd_edges = [x for x in message.knowledge_graph.edges.values() if x.relation == "N1"]
     assert len(ngd_edges) > 0
     for edge in ngd_edges:
@@ -220,7 +220,7 @@ def test_FET_ex1():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 2
@@ -242,7 +242,7 @@ def test_FET_ex1():
     assert len(query_node_keys) == 3
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicate')
-        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert query_edge.predicate == 'biolink:has_fisher_exact_test_p-value_with'
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -264,7 +264,7 @@ def test_FET_ex2():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation and x.relation.find("FET") != -1]
     assert len(FET_edges) >= 2
     FET_edge_labels = set([edge.relation for edge in FET_edges])
@@ -283,7 +283,7 @@ def test_FET_ex2():
     assert len(query_node_keys) == 2
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicate')
-        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert query_edge.predicate == 'biolink:has_fisher_exact_test_p-value_with'
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -304,7 +304,7 @@ def test_paired_concept_frequency_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.slow
@@ -340,7 +340,7 @@ def test_observed_expected_ratio_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.slow
@@ -376,7 +376,7 @@ def test_chi_square_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_chi_square_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_chi_square_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.slow
@@ -411,7 +411,7 @@ def test_predict_drug_treats_disease_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
 
 
 def test_predict_drug_treats_disease_attribute():
@@ -445,7 +445,7 @@ def test_issue_832():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
 
 
 def test_issue_832_non_drug():
@@ -482,7 +482,7 @@ def test_issue_840():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_paired_concept_frequency_with', 'V1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'V1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
     # And for the non-virtual test
     query = {"operations": {"actions": [
@@ -556,7 +556,7 @@ def test_issue_892():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 10)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 10)
 
 
 def test_overlay_exposures_data_virtual():
@@ -571,7 +571,7 @@ def test_overlay_exposures_data_virtual():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show())
-    _virtual_tester(message, 'has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1, 0)
+    _virtual_tester(message, 'biolink:has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1, 0)
 
 
 def test_overlay_exposures_data_attribute():

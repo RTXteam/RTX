@@ -421,14 +421,14 @@ class ComputeFTEST:
 
                 edge_attribute_list =  [
                     EdgeAttribute(type="EDAM:data_1669", name="fisher_exact_test_p-value", value=str(value[1]), url=None),
-                    EdgeAttribute(name="is_defined_by", value="ARAX"),
-                    EdgeAttribute(name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-                    EdgeAttribute(name="provided_by", value="ARAX"),
-                    EdgeAttribute(name="confidence", value=None),
-                    EdgeAttribute(name="weight", value=None)
+                    EdgeAttribute(name="is_defined_by", value="ARAX", type="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), type="metatype:Datetime"),
+                    EdgeAttribute(name="provided_by", value="ARAX", type="biolink:provided_by"),
+                    EdgeAttribute(name="confidence", value=None, type="biolink:ConfidenceLevel"),
+                    EdgeAttribute(name="weight", value=None, type="metatype:Float")
                 ]
                 edge_id = f"{value[0]}_{index}"
-                edge = Edge(predicate='has_fisher_exact_test_p-value_with', subject=value[2], object=value[3], relation=value[0],
+                edge = Edge(predicate='biolink:has_fisher_exact_test_p-value_with', subject=value[2], object=value[3], relation=value[0],
                             attributes=edge_attribute_list)
                 edge.qedge_keys = [value[0]]
 
@@ -441,7 +441,7 @@ class ComputeFTEST:
             # add the virtual edge to message QG
             if count > 0:
                 self.response.debug(f"Adding virtual edge to message QG")
-                edge_type = "has_fisher_exact_test_p-value_with"
+                edge_type = "biolink:has_fisher_exact_test_p-value_with"
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                           self.message.query_graph, self.response)
                 qedge_id = virtual_relation_label

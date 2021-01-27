@@ -88,7 +88,7 @@ class ComputeNGD:
 
                     # edge properties
                     now = datetime.now()
-                    edge_type = "has_normalized_google_distance_with"
+                    edge_type = "biolink:has_normalized_google_distance_with"
                     qedge_keys = [parameters['virtual_relation_label']]
                     relation = parameters['virtual_relation_label']
                     is_defined_by = "ARAX"
@@ -108,11 +108,11 @@ class ComputeNGD:
                     self.global_iter += 1
                     edge_attribute_list = [
                         edge_attribute,
-                        EdgeAttribute(name="is_defined_by", value=is_defined_by),
-                        EdgeAttribute(name="defined_datetime", value=defined_datetime),
-                        EdgeAttribute(name="provided_by", value=provided_by),
-                        EdgeAttribute(name="confidence", value=confidence),
-                        EdgeAttribute(name="weight", value=weight),
+                        EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
+                        EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
+                        EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
+                        EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
+                        EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
                         #EdgeAttribute(name="qedge_keys", value=qedge_keys)
                     ]
                     # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key,
@@ -128,7 +128,7 @@ class ComputeNGD:
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             if added_flag:
                 #edge_type = parameters['virtual_edge_type']
-                edge_type = "has_normalized_google_distance_with"
+                edge_type = "biolink:has_normalized_google_distance_with"
                 relation = parameters['virtual_relation_label']
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, qg, self.response)
                 # q_edge = QEdge(id=relation, type=edge_type, relation=relation,

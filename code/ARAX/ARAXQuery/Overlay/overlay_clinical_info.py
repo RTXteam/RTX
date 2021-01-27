@@ -285,7 +285,7 @@ class OverlayClinicalInfo:
 
                 # edge properties
                 now = datetime.now()
-                edge_type = f"has_{name}_with"
+                edge_type = f"biolink:has_{name}_with"
                 qedge_keys = [parameters['virtual_relation_label']]
                 relation = parameters['virtual_relation_label']
                 is_defined_by = "ARAX"
@@ -305,11 +305,11 @@ class OverlayClinicalInfo:
                 self.global_iter += 1
                 edge_attribute_list = [
                     edge_attribute,
-                    EdgeAttribute(name="is_defined_by", value=is_defined_by),
-                    EdgeAttribute(name="defined_datetime", value=defined_datetime),
-                    EdgeAttribute(name="provided_by", value=provided_by),
-                    EdgeAttribute(name="confidence", value=confidence),
-                    EdgeAttribute(name="weight", value=weight),
+                    EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
+                    EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
+                    EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
+                    EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
                     #EdgeAttribute(name="qedge_ids", value=qedge_ids)
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key,
@@ -324,7 +324,7 @@ class OverlayClinicalInfo:
 
         # Now add a q_edge the query_graph since I've added an extra edge to the KG
         if added_flag:
-            edge_type = f"has_{name}_with"
+            edge_type = f"biolink:has_{name}_with"
             relation = parameters['virtual_relation_label']
             qedge_keys = [parameters['virtual_relation_label']]
             subject_qnode_key = parameters['subject_qnode_key']

@@ -784,12 +784,12 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 f"Edge attribute must be provided, allowable attributes are: {list(allowable_parameters['edge_attribute'])}",
                 error_code="UnknownValue")
         else:
-            if edge_params['edge_attribute'] in {'ngd', 'chi_square', 'fisher_exact', 'normalized_google_distance'}:
+            if edge_params['edge_attribute'] in {'ngd', 'normalized_google_distance', 'chi_square', 'fisher_exact', 'fisher_exact_test_p-value'}:
                 edge_params['direction'] = 'above'
                 edge_params['top'] = False
                 if edge_params['stat'] == 'percentile':
                     edge_params['threshold'] = 1-edge_params['threshold']
-            elif edge_params['edge_attribute'] in {'jaccard_index', 'observed_expected_ratio', 'probability_treats'}:
+            elif edge_params['edge_attribute'] in {'jaccard_index', 'observed_expected_ratio', 'probability_treats', 'paired_concept_frequency'}:
                 edge_params['direction'] = 'below'
                 edge_params['top'] = True
             else:

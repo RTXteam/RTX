@@ -74,7 +74,7 @@ class ComputeJaccard:
             j_iter = 0
             now = datetime.now()
             #edge_type = parameters['virtual_edge_type']
-            edge_type = 'has_jaccard_index_with'
+            edge_type = 'biolink:has_jaccard_index_with'
             qedge_keys = [parameters['virtual_relation_label']]
             relation = parameters['virtual_relation_label']
             is_defined_by = "ARAX"
@@ -112,11 +112,11 @@ class ComputeJaccard:
                 # Do these need a attribute type and url?
                 edge_attribute_list = [
                     edge_attribute,
-                    EdgeAttribute(name="is_defined_by", value=is_defined_by),
-                    EdgeAttribute(name="defined_datetime", value=defined_datetime),
-                    EdgeAttribute(name="provided_by", value=provided_by),
-                    EdgeAttribute(name="confidence", value=confidence),
-                    EdgeAttribute(name="weight", value=weight),
+                    EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
+                    EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
+                    EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
+                    EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
                     #EdgeAttribute(name="qedge_ids", value=qedge_ids)
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key, object_key=object_key,
