@@ -183,8 +183,8 @@ class MoleProQuerier:
         swagger_edge = Edge(subject=kp_edge['source_id'],
                             object=kp_edge['target_id'],
                             predicate=kp_edge['type'])
-        swagger_edge.attributes = [Attribute(name="provided_by", value=self.kp_name),
-                                   Attribute(name="is_defined_by", value="ARAX")]
+        swagger_edge.attributes = [Attribute(name="provided_by", value=self.kp_name, type=eu.get_attribute_type("provided_by")),
+                                   Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by"))]
         return kp_edge['id'], swagger_edge
 
     @staticmethod

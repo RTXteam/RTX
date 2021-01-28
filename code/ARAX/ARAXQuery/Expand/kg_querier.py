@@ -303,7 +303,7 @@ class KGQuerier:
         other_properties = ["provided_by", "publications", "negated", "relation_curie", "simplified_relation_curie",
                             "simplified_relation", "edge_label"]
         swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2")
+        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2", type=eu.get_attribute_type("is_defined_by"))
         swagger_edge.attributes.append(is_defined_by_attribute)
         return swagger_edge_key, swagger_edge
 
@@ -315,7 +315,7 @@ class KGQuerier:
         swagger_edge.object = neo4j_edge.get("object")
         other_properties = ["provided_by", "publications"]
         swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2c")
+        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2c", type=eu.get_attribute_type("is_defined_by"))
         swagger_edge.attributes.append(is_defined_by_attribute)
         return swagger_edge_key, swagger_edge
 
@@ -328,7 +328,7 @@ class KGQuerier:
         swagger_edge.relation = neo4j_edge.get("relation")
         other_properties = ["provided_by", "probability"]
         swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG1")
+        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG1", type=eu.get_attribute_type("is_defined_by"))
         swagger_edge.attributes.append(is_defined_by_attribute)
         return swagger_edge_key, swagger_edge
 
@@ -348,6 +348,7 @@ class KGQuerier:
             if property_value is not None and property_value != {} and property_value != []:
                 swagger_attribute = Attribute()
                 swagger_attribute.name = property_name
+                swagger_attribute.type = eu.get_attribute_type(swagger_attribute.name)
                 # Figure out whether this is a url and store it appropriately
                 if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
                     swagger_attribute.url = property_value

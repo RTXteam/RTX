@@ -342,3 +342,23 @@ def switch_kg_to_arax_curie_format(dict_kg: QGOrganizedKnowledgeGraph) -> QGOrga
 
 def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
+
+
+def get_attribute_type(attribute_name: str) -> str:
+    # These are placeholder types for attributes (plan is to discuss such types in API working group #1192)
+    attribute_type_map = {
+        "is_defined_by": "type:Unknown",
+        "all_names": "type:Unknown",
+        "deprecated": "type:Unknown",
+        "equivalent_curies": "type:Unknown",
+        "full_name": "type:Unknown",
+        "negated": "type:Unknown",
+        "probability": "type:Unknown",
+        "publications": "type:Unknown",
+        "relation": "type:Unknown",
+        "symbol": "biolink:SymbolType",
+        "synonym": "type:Unknown",
+        "update_date": "metatype:Datetime",
+        "uri": "metatype:Uri"
+    }
+    return attribute_type_map.get(attribute_name, "type:Unknown")

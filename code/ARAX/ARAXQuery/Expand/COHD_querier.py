@@ -954,8 +954,8 @@ class COHDQuerier:
         url = "http://cohd.smart-api.info/"
 
         swagger_edge.attributes = [Attribute(type=type, name=name, value=str(value), url=url),
-                                   Attribute(name="provided_by", value="ARAX/COHD"),
-                                   Attribute(name="is_defined_by", value="ARAX")]
+                                   Attribute(name="provided_by", value="ARAX/COHD", type=eu.get_attribute_type("provided_by")),
+                                   Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by"))]
 
         return swagger_edge_key, swagger_edge
 

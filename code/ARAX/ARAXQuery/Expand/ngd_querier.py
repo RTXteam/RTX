@@ -130,8 +130,8 @@ class NGDQuerier:
                                          type=self.ngd_edge_attribute_type,
                                          value=ngd_value,
                                          url=self.ngd_edge_attribute_url)]
-        ngd_edge.attributes += [Attribute(name="provided_by", value="ARAX"),
-                                Attribute(name="is_defined_by", value="ARAX")]
+        ngd_edge.attributes += [Attribute(name="provided_by", value="ARAX", type=eu.get_attribute_type("provided_by")),
+                                Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by"))]
         return ngd_edge_key, ngd_edge
 
     @staticmethod
