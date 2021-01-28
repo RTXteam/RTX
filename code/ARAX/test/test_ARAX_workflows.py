@@ -11,6 +11,8 @@ import json
 import ast
 from typing import List, Union
 
+import numpy as np
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_query import ARAXQuery
@@ -606,6 +608,38 @@ def test_one_hop_kitchen_sink_BTE_2():
     _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
+
+def test_FET_ranking():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(key=n00,id=[UniProtKB:P14136,UniProtKB:P35579],is_set=true,category=protein)",
+        "add_qnode(category=biological_process, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00,kp=ARAX/KG1)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    fet_ranking_value = {}
+    for result in message.results:
+        for key, edge_bindings in result.edge_bindings.items():
+            if key.startswith('FET'):
+                for edge in edge_bindings:
+                    for attribute in message.knowledge_graph.edges[edge.id].attributes:
+                        if attribute.name == "fisher_exact_test_p-value":
+                            if str(result.confidence) in fet_ranking_value:
+                                fet_ranking_value[str(result.confidence)].append(float(attribute.value))
+                            else:
+                                fet_ranking_value[str(result.confidence)] = [float(attribute.value)]
+    
+    for fet_val, conf_list in fet_ranking_value.items():
+        if len(conf_list) > 1:
+            for diff in [abs(x - y) for i,x in enumerate(conf_list) for j,y in enumerate(conf_list) if i < j]:
+                assert diff == 0
+
+
 
 
 # Not working yet
