@@ -347,17 +347,18 @@ def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
 def get_attribute_type(attribute_name: str) -> str:
     # These are placeholder types for attributes (plan is to discuss such types in API working group #1192)
     attribute_type_map = {
-        "is_defined_by": "type:Unknown",
-        "all_names": "type:Unknown",
+        "all_names": "biolink:synonym",
         "deprecated": "type:Unknown",
-        "equivalent_curies": "type:Unknown",
-        "full_name": "type:Unknown",
-        "negated": "type:Unknown",
-        "probability": "type:Unknown",
-        "publications": "type:Unknown",
-        "relation": "type:Unknown",
-        "symbol": "biolink:SymbolType",
-        "synonym": "type:Unknown",
+        "equivalent_curies": "biolink:synonym",
+        "full_name": "biolink:full_name",
+        "is_defined_by": "type:Unknown",
+        "negated": "biolink:negated",
+        "probability": "biolink:p_value",
+        "provided_by": "biolink:provided_by",
+        "publications": "biolink:publications",
+        "relation": "biolink:relation",
+        "symbol": "biolink:symbol",
+        "synonym": "biolink:synonym",
         "update_date": "metatype:Datetime",
         "uri": "metatype:Uri"
     }
