@@ -28,7 +28,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.response import Response
+from openapi_server.models.response import Response as Envelope
 
 
 
@@ -206,21 +206,46 @@ class ResponseCache:
         if response_id is None:
             return( { "status": 400, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 400)
 
-        #### Find the response
-        stored_response = session.query(Response).filter(Response.response_id==int(response_id)).first()
-        if stored_response is not None:
-            response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
-            response_filename = f"{stored_response.response_id}.json"
-            response_path = f"{response_dir}/{response_filename}"
+        response_id = str(response_id)
+
+        #### Check to see if this is an integer. If so, it is a local response id
+        match = re.match(r'\d+\s*',response_id)
+        if match:
+            #### Find the response
+            stored_response = session.query(Response).filter(Response.response_id==int(response_id)).first()
+            if stored_response is not None:
+                response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
+                response_filename = f"{stored_response.response_id}.json"
+                response_path = f"{response_dir}/{response_filename}"
+                try:
+                    with open(response_path) as infile:
+                        return json.load(infile)
+                except:
+                    eprint(f"ERROR: Unable to read response from file '{response_path}'")
+                    return
+
+            else:
+                return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+        #### Otherwise, see if it is an ARS style response_id
+        if len(response_id) > 30:
+            response_content = requests.get('https://ars.transltr.io/ars/api/messages/'+response_id, headers={'accept': 'application/json'})
+            status_code = response_content.status_code
+
+            if status_code != 200:
+                return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+            #### Unpack the response content into a dict and dump
             try:
-                with open(response_path) as infile:
-                    return json.load(infile)
+                response_dict = response_content.json()
+                if 'fields' in response_dict and 'data' in response_dict['fields']:
+                    #envelope = Envelope().from_dict(response_dict['fields']['data'])
+                    return response_dict['fields']['data']
+                return( { "status": 404, "title": "Cannot find Response in ARS response packet", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
             except:
-                eprint(f"ERROR: Unable to read response from file '{response_path}'")
+                return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
-        else:
-            return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
-
+        return( { "status": 404, "title": "UnrecognizedResponse_idFormat", "detail": "Unrecognized response_id format", "type": "about:blank" }, 404)
 
 
 ############################################ Main ############################################################
@@ -232,7 +257,7 @@ def main():
     import argparse
     argparser = argparse.ArgumentParser(description='CLI testing of the ResponseCache class')
     argparser.add_argument('--verbose', action='count', help='If set, print more information about ongoing processing' )
-    argparser.add_argument('response_id', type=int, nargs='*', help='Integer number of a response to read and display')
+    argparser.add_argument('response_id', type=str, nargs='*', help='Integer number of a response to read and display')
     params = argparser.parse_args()
 
     #### Create a new ResponseStore object
@@ -250,7 +275,9 @@ def main():
     else:
         print(f"Content of response_id {params.response_id[0]}:")
         envelope = response_cache.get_response(params.response_id[0])
-        print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+
+        #print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+        print(json.dumps(envelope, sort_keys=True, indent=2))
 
 
 if __name__ == "__main__": main()
