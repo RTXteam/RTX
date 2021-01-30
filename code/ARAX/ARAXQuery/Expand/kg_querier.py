@@ -53,6 +53,7 @@ class KGQuerier:
         kg_name = self.kg_name
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
+        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until we switch to KG2.5.1
 
         # Verify this is a valid one-hop query graph
         if len(query_graph.edges) != 1:
@@ -64,7 +65,6 @@ class KGQuerier:
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
             return final_kg, edge_to_nodes_map
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
-        qedge = query_graph.edges[qedge_key]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
         qnodes_with_curies = [qnode for qnode in query_graph.nodes.values() if qnode.id]
@@ -96,6 +96,7 @@ class KGQuerier:
         use_synonyms = self.use_synonyms
         log = self.response
         final_kg = QGOrganizedKnowledgeGraph()
+        single_node_qg = eu.make_qg_use_old_types(single_node_qg)  # Temporary patch until we switch to KG2.5.1
         qnode_key = next(qnode_key for qnode_key in single_node_qg.nodes)
         qnode = single_node_qg.nodes[qnode_key]
 

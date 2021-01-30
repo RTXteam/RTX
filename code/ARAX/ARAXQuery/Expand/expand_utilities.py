@@ -363,3 +363,20 @@ def get_attribute_type(attribute_name: str) -> str:
         "uri": "metatype:Uri"
     }
     return attribute_type_map.get(attribute_name, "type:Unknown")
+
+
+def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
+    # This is a temporary patch to change types from biolink:__ to old snakecase format until all KPs are on TRAPI 1.0
+    qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
+                         edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+    for qnode in qg_copy.nodes.values():
+        if qnode.category:
+            categories = convert_string_or_list_to_list(qnode.category)
+            prefixless_categories = [category.split(":")[-1] for category in categories]
+            formatted_categories = [convert_string_to_snake_case(category) for category in prefixless_categories]
+            qnode.category = formatted_categories[0] if len(formatted_categories) == 1 else formatted_categories
+    for qedge in qg_copy.edges.values():
+        if qedge.predicate:
+            prefixless_predicate = qedge.predicate.split(":")[-1]
+            qedge.predicate = prefixless_predicate
+    return qg_copy

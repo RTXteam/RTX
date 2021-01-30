@@ -803,5 +803,22 @@ def test_option_group_query_no_results():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
 
 
+def test_category_and_predicate_format():
+    actions_list = [
+        "add_qnode(name=type 2 diabetes mellitus, key=n00)",
+        "add_qnode(category=biolink:Protein, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    for qnode_key, nodes in nodes_by_qg_id.items():
+        for node_key, node in nodes.items():
+            assert all(category.startswith("biolink:") for category in node.category)
+    for qedge_key, edges in edges_by_qg_id.items():
+        for edge_key, edge in edges.items():
+            assert edge.predicate.startswith("biolink:")
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

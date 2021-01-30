@@ -45,6 +45,7 @@ class MoleProQuerier:
         log = self.response
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
+        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until we switch to TRAPI 1.0 endpoint
 
         # Verify this is a valid one-hop query graph and tweak its contents as needed for this KP
         self._verify_one_hop_query_graph_is_valid(query_graph, log)

@@ -23,6 +23,8 @@ class ARAXExpander:
 
     def __init__(self):
         self.default_kp = "ARAX/KG2"
+        self.protein_category = "biolink:Protein"
+        self.gene_category = "biolink:Gene"
         self.edge_key_parameter_info = {
             "is_required": False,
             "examples": ["e00", "[e00, e01]"],
@@ -212,13 +214,13 @@ class ARAXExpander:
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
-            response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
+            log.error("Provided parameters is not a dict", error_code="ParametersNotDict")
             return response
 
         # Define a complete set of allowed parameters and their defaults
         kp = input_parameters.get("kp", self.default_kp)
         if kp not in self.command_definitions:
-            response.error(f"Invalid KP. Options are: {set(self.command_definitions)}", error_code="InvalidKP")
+            log.error(f"Invalid KP. Options are: {set(self.command_definitions)}", error_code="InvalidKP")
             return response
         parameters = {"kp": kp}
         for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
@@ -232,7 +234,7 @@ class ARAXExpander:
         for param_name, value in input_parameters.items():
             if param_name and param_name not in parameters:
                 kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
-                response.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}", error_code="InvalidParameter")
+                log.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}", error_code="InvalidParameter")
             else:
                 parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
 
@@ -240,7 +242,7 @@ class ARAXExpander:
         if parameters['kp'].upper() == "ARAX/KG2C":
             parameters['kp'] = "ARAX/KG2"
             if not parameters['use_synonyms']:
-                response.warning(f"KG2c is only used when use_synonyms=true; overriding use_synonyms to True")
+                log.warning(f"KG2c is only used when use_synonyms=true; overriding use_synonyms to True")
                 parameters['use_synonyms'] = True
 
         # Default to expanding the entire query graph if the user didn't specify what to expand
@@ -255,29 +257,23 @@ class ARAXExpander:
         self.parameters = parameters
 
         # Do the actual expansion
-        response.debug(f"Applying Expand to Message with parameters {parameters}")
+        log.debug(f"Applying Expand to Message with parameters {parameters}")
         input_qedge_keys = eu.convert_string_or_list_to_list(parameters['edge_key'])
         input_qnode_keys = eu.convert_string_or_list_to_list(parameters['node_key'])
         kp_to_use = self.parameters['kp']
         continue_if_no_results = self.parameters['continue_if_no_results']
         use_synonyms = self.parameters['use_synonyms']
-        query_graph = message.query_graph
+        # We'll use a copy of the QG because we modify it for internal use within Expand
+        query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
+                                 edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
 
-        # Temporarily convert all qnode types to 'protein' format and all qedge types to 'has_phenotype' format
-        # TODO: remove this patch (or refine it for particular KPs) once we switch to KG2.5.0!
-        query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in query_graph.nodes.items()},
-                                 edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in query_graph.edges.items()})
-        for qnode in query_graph.nodes.values():
-            if qnode.category:
-                prefixless_category = qnode.category.replace("biolink:", "")
-                qnode.category = eu.convert_string_to_snake_case(prefixless_category)
-        for qedge in query_graph.edges.values():
-            if qedge.predicate:
-                prefixless_predicate = qedge.predicate.replace("biolink:", "")
-                qedge.predicate = prefixless_predicate
-
-        # Convert message knowledge graph to dictionary format, for faster processing
+        # Convert message knowledge graph to format organized by QG keys, for faster processing
         dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
+        # Consider both protein and gene if qnode's category is one of those (since KPs handle these differently)
+        for qnode_key, qnode in query_graph.nodes.items():
+            if qnode.category in {self.protein_category, self.gene_category, "protein", "gene"}:
+                qnode.category = [self.protein_category, self.gene_category]
+                log.debug(f"Will consider qnode {qnode_key}'s category to be {qnode.category}")
 
         # Expand any specified edges
         if input_qedge_keys:
@@ -417,12 +413,6 @@ class ARAXExpander:
         if not qnode.id:
             log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
-        copy_of_qnode = eu.copy_qnode(qnode)
-
-        # Consider both gene and protein when one is given
-        if copy_of_qnode.category in ["protein", "gene"]:
-            copy_of_qnode.category = ["protein", "gene"]
-        log.debug(f"Modified query node is: {copy_of_qnode.to_dict()}")
 
         # Answer the query using the proper KP
         valid_kps_for_single_node_queries = ["ARAX/KG1", "ARAX/KG2"]
@@ -483,11 +473,6 @@ class ARAXExpander:
                 else:
                     qnode_copy.id = existing_curies_for_this_qnode_key
             edge_qg.nodes[qnode_key] = qnode_copy
-
-        # Consider both protein and gene if qnode's type is one of those (since KPs handle these differently)
-        for qnode in edge_qg.nodes.values():
-            if qnode.category in {'protein', 'gene'}:
-                qnode.category = ['protein', 'gene']
 
         # Display a summary of what the modified query graph for this edge looks like
         qnodes_with_curies = [qnode_key for qnode_key, qnode in edge_qg.nodes.items() if qnode.id]

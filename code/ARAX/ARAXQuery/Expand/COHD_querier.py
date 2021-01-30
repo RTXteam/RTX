@@ -50,6 +50,7 @@ class COHDQuerier:
         COHD_method_percentile = self.response.data['parameters']['COHD_method_percentile']
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
+        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until we switch to KG2.5.1
 
         if COHD_method_percentile == 99:
             pass

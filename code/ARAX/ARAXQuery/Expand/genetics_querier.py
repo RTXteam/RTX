@@ -48,6 +48,7 @@ class GeneticsQuerier:
         include_all_scores = self.response.data['parameters']['include_all_scores']
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
+        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until TRAPI 1.0 KP endpoint is ready
 
         # Verify this is a valid one-hop query graph and tweak its contents as needed for this KP
         self._verify_one_hop_query_graph_is_valid(query_graph, log)
