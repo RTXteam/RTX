@@ -336,7 +336,7 @@ class ARAXExpander:
         if not kg.nodes and not continue_if_no_results and not only_kryptonite_qedges_expanded:
             log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
         else:
-            log.info(f"After Expand, Message.KnowledgeGraph has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
+            log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
                      f"({eu.get_printable_counts_by_qg_id(dict_kg)})")
         return response
 
