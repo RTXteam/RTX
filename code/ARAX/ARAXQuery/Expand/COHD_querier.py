@@ -84,6 +84,9 @@ class COHDQuerier:
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
+        # TODO: remove this patch once we switch to KG2.5.1!
+        eu.convert_node_and_edge_types_to_new_format(final_kg)
+
         return final_kg, edge_to_nodes_map
 
     def _answer_query_using_COHD_paired_concept_freq(self, query_graph: QueryGraph, COHD_method_percentile: float, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
@@ -945,7 +948,7 @@ class COHDQuerier:
     def _convert_to_swagger_edge(self, subject: str, object: str, name: str, value: float) -> Tuple[str, Edge]:
         swagger_edge = Edge()
         self.count = self.count + 1
-        swagger_edge.predicate = f"has_{name}_with"
+        swagger_edge.predicate = f"biolink:has_{name}_with"
         swagger_edge.subject = subject
         swagger_edge.object = object
         swagger_edge_key = f"COHD:{subject}-has_{name}_with-{object}"

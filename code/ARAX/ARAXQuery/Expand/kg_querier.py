@@ -87,7 +87,7 @@ class KGQuerier:
             return final_kg, edge_to_nodes_map
 
         # TODO: remove this patch once we switch to KG2.5.0!
-        self._convert_node_and_edge_types_to_new_format(final_kg)
+        eu.convert_node_and_edge_types_to_new_format(final_kg)
 
         return final_kg, edge_to_nodes_map
 
@@ -122,25 +122,9 @@ class KGQuerier:
             final_kg.add_node(swagger_node_key, swagger_node, qnode_key)
 
         # TODO: remove this patch once we switch to KG2.5.0!
-        self._convert_node_and_edge_types_to_new_format(final_kg)
+        eu.convert_node_and_edge_types_to_new_format(final_kg)
 
         return final_kg
-
-    @staticmethod
-    def _convert_node_and_edge_types_to_new_format(kg: QGOrganizedKnowledgeGraph):
-        # Temporary patch to convert from old snake case format to biolink:Protein/biolink:has_phenotype format
-        for nodes_dict in kg.nodes_by_qg_id.values():
-            for node in nodes_dict.values():
-                if node.category:
-                    correct_categories = {category for category in node.category if category.startswith(f"biolink:")}
-                    categories_to_convert = set(node.category).difference(correct_categories)
-                    corrected_categories = {f"biolink:{eu.convert_string_to_pascal_case(category)}" for category in
-                                            categories_to_convert}
-                    node.category = list(correct_categories.union(corrected_categories))
-        for edges_dict in kg.edges_by_qg_id.values():
-            for edge in edges_dict.values():
-                if edge.predicate and not edge.predicate.startswith("biolink:"):
-                    edge.predicate = f"biolink:{edge.predicate}"
 
     def _convert_one_hop_query_graph_to_cypher_query(self, qg: QueryGraph, enforce_directionality: bool,
                                                      kg_name: str, log: ARAXResponse) -> str:

@@ -535,7 +535,7 @@ def test_COHD_expand_paired_concept_freq():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "has_paired_concept_frequency_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:has_paired_concept_frequency_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].name == "paired_concept_frequency" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].type == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
@@ -551,7 +551,7 @@ def test_COHD_expand_observed_expected_ratio():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "has_ln_observed_expected_ratio_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:has_ln_observed_expected_ratio_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].name == "ln_observed_expected_ratio" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].type == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
@@ -566,7 +566,7 @@ def test_COHD_expand_chi_square():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "has_chi_square_pvalue_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:has_chi_square_pvalue_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].name == "chi_square_pvalue" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].type == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])

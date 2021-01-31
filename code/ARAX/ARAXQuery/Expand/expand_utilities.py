@@ -380,3 +380,19 @@ def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
             prefixless_predicate = qedge.predicate.split(":")[-1]
             qedge.predicate = prefixless_predicate
     return qg_copy
+
+
+def convert_node_and_edge_types_to_new_format(kg: QGOrganizedKnowledgeGraph):
+    # Temporary patch to convert from old snake case format to biolink:Protein/biolink:has_phenotype format
+    for nodes_dict in kg.nodes_by_qg_id.values():
+        for node in nodes_dict.values():
+            if node.category:
+                correct_categories = {category for category in node.category if category.startswith(f"biolink:")}
+                categories_to_convert = set(node.category).difference(correct_categories)
+                corrected_categories = {f"biolink:{convert_string_to_pascal_case(category)}" for category in
+                                        categories_to_convert}
+                node.category = list(correct_categories.union(corrected_categories))
+    for edges_dict in kg.edges_by_qg_id.values():
+        for edge in edges_dict.values():
+            if edge.predicate and not edge.predicate.startswith("biolink:"):
+                edge.predicate = f"biolink:{edge.predicate}"
