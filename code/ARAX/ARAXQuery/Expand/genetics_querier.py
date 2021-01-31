@@ -32,7 +32,8 @@ class GeneticsQuerier:
         self.kp_preferred_prefixes = {"gene": "NCBIGene", "pathway": "GO", "phenotypic_feature": "EFO", "disease": "EFO"}
         self.magma_score_name = "MAGMA-pvalue"
         self.score_type_lookup = {self.magma_score_name: "EDAM:data_1669",
-                                  "Genetics-quantile": "SIO:001414"}
+                                  "Genetics-quantile": "SIO:001414",
+                                  "Richards-effector-genes": "type:Unknown"}  # TODO: Figure out type here
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
@@ -202,7 +203,7 @@ class GeneticsQuerier:
         score_value = kp_edge.get('score')
         if score_value:  # Some returned edges are missing a score value for whatever reason
             swagger_edge.attributes.append(Attribute(name=score_name,
-                                                     type=self.score_type_lookup.get(score_name),
+                                                     type=self.score_type_lookup.get(score_name, "type:Unknown"),
                                                      value=score_value))
         return kp_edge['id'], swagger_edge
 
