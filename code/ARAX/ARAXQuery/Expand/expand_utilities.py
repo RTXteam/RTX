@@ -348,10 +348,10 @@ def get_attribute_type(attribute_name: str) -> str:
     # These are placeholder types for attributes (plan is to discuss such types in API working group #1192)
     attribute_type_map = {
         "all_names": "biolink:synonym",
-        "deprecated": "type:Unknown",
+        "deprecated": "biolink:Unknown",
         "equivalent_curies": "biolink:synonym",
         "full_name": "biolink:full_name",
-        "is_defined_by": "type:Unknown",
+        "is_defined_by": "biolink:Unknown",
         "negated": "biolink:negated",
         "probability": "biolink:p_value",
         "provided_by": "biolink:provided_by",
@@ -362,7 +362,7 @@ def get_attribute_type(attribute_name: str) -> str:
         "update_date": "metatype:Datetime",
         "uri": "metatype:Uri"
     }
-    return attribute_type_map.get(attribute_name, "type:Unknown")
+    return attribute_type_map.get(attribute_name, "biolink:Unknown")
 
 
 def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
