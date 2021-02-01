@@ -271,10 +271,10 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 if n_publications == 0:
                     pub_value = 0.01
                 else:
-                    pub_value = np.log(n_publications)
+                    pub_value = n_publications
                     max_value = 1.0
-                    curve_steepness = 2
-                    logistic_midpoint = 1.60944
+                    curve_steepness = 1
+                    logistic_midpoint = 5
                     pub_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
                 edge_confidence *= pub_value
         return edge_confidence
