@@ -363,3 +363,36 @@ def get_attribute_type(attribute_name: str) -> str:
         "uri": "metatype:Uri"
     }
     return attribute_type_map.get(attribute_name, "type:Unknown")
+
+
+def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
+    # This is a temporary patch to change types from biolink:__ to old snakecase format until all KPs are on TRAPI 1.0
+    qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
+                         edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+    for qnode in qg_copy.nodes.values():
+        if qnode.category:
+            categories = convert_string_or_list_to_list(qnode.category)
+            prefixless_categories = [category.split(":")[-1] for category in categories]
+            formatted_categories = [convert_string_to_snake_case(category) for category in prefixless_categories]
+            qnode.category = formatted_categories[0] if len(formatted_categories) == 1 else formatted_categories
+    for qedge in qg_copy.edges.values():
+        if qedge.predicate:
+            prefixless_predicate = qedge.predicate.split(":")[-1]
+            qedge.predicate = prefixless_predicate
+    return qg_copy
+
+
+def convert_node_and_edge_types_to_new_format(kg: QGOrganizedKnowledgeGraph):
+    # Temporary patch to convert from old snake case format to biolink:Protein/biolink:has_phenotype format
+    for nodes_dict in kg.nodes_by_qg_id.values():
+        for node in nodes_dict.values():
+            if node.category:
+                correct_categories = {category for category in node.category if category.startswith(f"biolink:")}
+                categories_to_convert = set(node.category).difference(correct_categories)
+                corrected_categories = {f"biolink:{convert_string_to_pascal_case(category)}" for category in
+                                        categories_to_convert}
+                node.category = list(correct_categories.union(corrected_categories))
+    for edges_dict in kg.edges_by_qg_id.values():
+        for edge in edges_dict.values():
+            if edge.predicate and not edge.predicate.startswith("biolink:"):
+                edge.predicate = f"biolink:{edge.predicate}"

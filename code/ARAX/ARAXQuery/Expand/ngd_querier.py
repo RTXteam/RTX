@@ -27,7 +27,7 @@ class NGDQuerier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
-        self.ngd_edge_type = "has_normalized_google_distance_with"
+        self.ngd_edge_type = "biolink:has_normalized_google_distance_with"
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
         self.ngd_edge_attribute_url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"

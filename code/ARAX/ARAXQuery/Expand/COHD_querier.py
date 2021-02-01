@@ -50,6 +50,7 @@ class COHDQuerier:
         COHD_method_percentile = self.response.data['parameters']['COHD_method_percentile']
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
+        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until we switch to KG2.5.1
 
         if COHD_method_percentile == 99:
             pass
@@ -82,6 +83,9 @@ class COHDQuerier:
             log.error(f"The parameter 'COHD_method' was passed an invalid option. The current allowed options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square`.", error_code="InvalidParameterOption")
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
+
+        # TODO: remove this patch once we switch to KG2.5.1!
+        eu.convert_node_and_edge_types_to_new_format(final_kg)
 
         return final_kg, edge_to_nodes_map
 
@@ -944,7 +948,7 @@ class COHDQuerier:
     def _convert_to_swagger_edge(self, subject: str, object: str, name: str, value: float) -> Tuple[str, Edge]:
         swagger_edge = Edge()
         self.count = self.count + 1
-        swagger_edge.predicate = f"has_{name}_with"
+        swagger_edge.predicate = f"biolink:has_{name}_with"
         swagger_edge.subject = subject
         swagger_edge.object = object
         swagger_edge_key = f"COHD:{subject}-has_{name}_with-{object}"

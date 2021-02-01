@@ -41,6 +41,7 @@ class BTEQuerier:
         answer_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
         valid_bte_inputs_dict = self._get_valid_bte_inputs_dict()
+        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until KP is TRAPI 1.0 compliant
 
         # Validate our input to make sure it will work with BTE
         input_qnode_key, output_qnode_key = self._validate_and_pre_process_input(qg=query_graph,
@@ -270,8 +271,8 @@ class BTEQuerier:
     def _get_valid_bte_inputs_dict() -> Dict[str, Set[str]]:
         # TODO: Load these using the soon to be built method in ARAX/KnowledgeSources (then will be regularly updated)
         node_categories = {'ChemicalSubstance', 'Transcript', 'AnatomicalEntity', 'Disease', 'GenomicEntity', 'Gene',
-                      'BiologicalProcess', 'Cell', 'SequenceVariant', 'MolecularActivity', 'PhenotypicFeature',
-                      'Protein', 'CellularComponent', 'Pathway'}
+                           'BiologicalProcess', 'Cell', 'SequenceVariant', 'MolecularActivity', 'PhenotypicFeature',
+                           'Protein', 'CellularComponent', 'Pathway'}
         curie_prefixes = {'ENSEMBL', 'CHEBI', 'HP', 'DRUGBANK', 'MOP', 'MONDO', 'GO', 'HGNC', 'CL', 'DOID', 'MESH',
                           'OMIM', 'SO', 'SYMBOL', 'Reactome', 'UBERON', 'UNIPROTKB', 'PR', 'NCBIGene', 'UMLS',
                           'CHEMBL.COMPOUND', 'MGI', 'DBSNP', 'WIKIPATHWAYS', 'MP'}
