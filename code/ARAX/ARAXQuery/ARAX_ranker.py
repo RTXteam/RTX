@@ -173,7 +173,7 @@ class ARAXRanker:
         # edge attributes we know about
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
                                  'probability_treats', 'paired_concept_frequency',
-                                 'observed_expected_ratio', 'chi_square', 'MAGMA-pvalue', 'Genetics-quantile',
+                                 'observed_expected_ratio', 'chi_square', 'chi_square_pvalue', 'MAGMA-pvalue', 'Genetics-quantile',
                                  'fisher_exact_test_p-value','Richards-effector-genes'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
@@ -183,6 +183,7 @@ class ARAXRanker:
                                           'paired_concept_frequency': 0.5,
                                           'observed_expected_ratio': 0.8,
                                           'chi_square': 0.8,
+                                          'chi_square_pvalue': 0.8,
                                           'MAGMA-pvalue': 1.0,
                                           'Genetics-quantile': 1.0,
                                           'fisher_exact_test_p-value': 0.8,
@@ -253,13 +254,30 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         """
         # Currently a dead simple "just multiply them all together"
         edge_confidence = 1
+        edge_attribute_dict = {}
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
+                edge_attribute_dict[edge_attribute.name] = edge_attribute.value
                 normalized_score = self.edge_attribute_score_normalizer(edge_attribute.name, edge_attribute.value)
                 if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
                     edge_confidence *= normalized_score
+        if edge_attribute_dict.get("provided_by", None) is not None:
+            if "SEMMEDDB:" in edge_attribute_dict["provided_by"]:
+                if edge_attribute_dict.get("publications", None) is not None:
+                    n_publications = len(edge_attribute_dict["publications"])
+                else:
+                    n_publications = 0
+                if n_publications == 0:
+                    pub_value = 0.01
+                else:
+                    pub_value = n_publications
+                    max_value = 1.0
+                    curve_steepness = 1
+                    logistic_midpoint = 5
+                    pub_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
+                edge_confidence *= pub_value
         return edge_confidence
 
     def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value) -> float:
@@ -408,6 +426,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
+    def __normalize_chi_square_pvalue(self, value):
+        return self.__normalize_chi_square(value)
 
     def __normalize_MAGMA_pvalue(self, value):
         """

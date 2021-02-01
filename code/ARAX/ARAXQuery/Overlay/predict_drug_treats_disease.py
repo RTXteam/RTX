@@ -138,11 +138,11 @@ class PredictDrugTreatsDisease:
             for node_key, node in self.message.knowledge_graph.nodes.items():
                 if hasattr(node, 'qnode_keys'):
                     if parameters['subject_qnode_key'] in node.qnode_keys:
-                        if "drug" in node.category or "chemical_substance" in node.category:  # this is now NOT checked by ARAX_overlay
+                        if "drug" in node.category or "chemical_substance" in node.category or "biolink:Drug" in node.category or "biolink:ChemicalSubstance" in node.category:  # this is now NOT checked by ARAX_overlay
                             source_curies_to_decorate.add(node_key)
                             curie_to_name[node_key] = node.name
                     if parameters['object_qnode_key'] in node.qnode_keys:
-                        if "disease" in node.category or "phenotypic_feature" in node.category:  # this is now NOT checked by ARAX_overlay
+                        if "disease" in node.category or "phenotypic_feature" in node.category or "biolink:Disease" in node.category or "biolink:PhenotypicFeature" in node.category:  # this is now NOT checked by ARAX_overlay
                             target_curies_to_decorate.add(node_key)
                             curie_to_name[node_key] = node.name
 
