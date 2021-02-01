@@ -400,8 +400,8 @@ def test_chi_square_attribute():
 def test_predict_drug_treats_disease_virtual():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(id=DOID:9008, key=n0, category=disease)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(id=DOID:9008, key=n0, category=biolink:Disease)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
