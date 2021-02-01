@@ -173,7 +173,7 @@ class ARAXRanker:
         # edge attributes we know about
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
                                  'probability_treats', 'paired_concept_frequency',
-                                 'observed_expected_ratio', 'chi_square', 'MAGMA-pvalue', 'Genetics-quantile',
+                                 'observed_expected_ratio', 'chi_square', 'chi_square_pvalue', 'MAGMA-pvalue', 'Genetics-quantile',
                                  'fisher_exact_test_p-value','Richards-effector-genes'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
@@ -183,6 +183,7 @@ class ARAXRanker:
                                           'paired_concept_frequency': 0.5,
                                           'observed_expected_ratio': 0.8,
                                           'chi_square': 0.8,
+                                          'chi_square_pvalue': 0.8,
                                           'MAGMA-pvalue': 1.0,
                                           'Genetics-quantile': 1.0,
                                           'fisher_exact_test_p-value': 0.8,
@@ -425,6 +426,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
+    def __normalize_chi_square_pvalue(self, value):
+        return self.__normalize_chi_square(value)
 
     def __normalize_MAGMA_pvalue(self, value):
         """
