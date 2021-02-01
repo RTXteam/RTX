@@ -253,13 +253,30 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         """
         # Currently a dead simple "just multiply them all together"
         edge_confidence = 1
+        edge_attribute_dict = {}
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
+                edge_attribute_dict[edge_attribute.name] = edge_attribute.value
                 normalized_score = self.edge_attribute_score_normalizer(edge_attribute.name, edge_attribute.value)
                 if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
                     edge_confidence *= normalized_score
+        if edge_attribute_dict.get("provided_by", None) is not None:
+            if "SEMMEDDB:" in edge_attribute_dict["provided_by"]:
+                if edge_attribute_dict.get("publications", None) is not None:
+                    n_publications = len(edge_attribute_dict["publications"])
+                else:
+                    n_publications = 0
+                if n_publications == 0:
+                    pub_value = 0.01
+                else:
+                    pub_value = np.log(n_publications)
+                    max_value = 1.0
+                    curve_steepness = 2
+                    logistic_midpoint = 1.60944
+                    pub_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
+                edge_confidence *= pub_value
         return edge_confidence
 
     def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value) -> float:
