@@ -209,7 +209,7 @@ class ResponseCache:
         response_id = str(response_id)
 
         #### Check to see if this is an integer. If so, it is a local response id
-        match = re.match(r'\d+\s*',response_id)
+        match = re.match(r'\d+\s*$',response_id)
         if match:
             #### Find the response
             stored_response = session.query(Response).filter(Response.response_id==int(response_id)).first()
