@@ -248,6 +248,22 @@ class ResponseCache:
                 #envelope = Envelope().from_dict(response_dict['fields']['data'])
                 envelope = response_dict['fields']['data']
 
+                #### Actor lookup
+                actor_lookup = { 
+                    '1': 'Aragorn',
+                    '2': 'ARAX',
+                    '3': 'BTE',
+                    '4': 'NCATS',
+                    '5': 'Robokop',
+                    '6': 'Unsecret',
+                    '7': 'Genetics',
+                    '8': 'MolePro',
+                    '9': 'Explanatory',
+                    '10': 'ImProving',
+                    '11': 'Cam',
+                    '12': 'TextMining'
+                }
+
                 #### Perform a validation on it
                 try:
                     validate_Message(envelope['message'])
@@ -259,6 +275,17 @@ class ResponseCache:
                         envelope['logs'] = []
                     envelope['logs'].append( { "code": 'InvalidTRAPI', "level": "ERROR", "message": "TRAPI validator reported an error: " + str(error),
                         "timestamp": timestamp } )
+
+                #### Try to add the reasoner_id
+                if 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
+                    actor = str(response_dict['fields']['actor'])
+                    if actor in actor_lookup:
+                        if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:
+                            for result in envelope['message']['results']:
+                                if 'reasoner_id' in result and result['reasoner_id'] is not None:
+                                    pass
+                                else:
+                                    result['reasoner_id'] = actor_lookup[actor]
 
 
                 return envelope
