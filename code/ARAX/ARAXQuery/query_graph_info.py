@@ -12,6 +12,9 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
 from node_synonymizer import NodeSynonymizer
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.query_graph import QueryGraph
+
 
 class QueryGraphInfo:
 
@@ -106,13 +109,15 @@ class QueryGraphInfo:
         edge_info = {}
         self.edge_predicate_map = {}
         unique_links = {}
+
+        #### Ignore special informationational edges for now.
+        virtual_edge_predicates = {'has_normalized_google_distance_with': 1, 'has_fisher_exact_test_p-value_with': 1,
+                                'has_jaccard_index_with': 1, 'probably_treats': 1,
+                                'has_paired_concept_frequency_with': 1,
+                                'has_observed_expected_ratio_with': 1, 'has_chi_square_with': 1}
+
         for key,qedge in edges.items():
 
-            #### Ignore special informationational edges for now.
-            virtual_edge_predicates = {'has_normalized_google_distance_with': 1, 'has_fisher_exact_test_p-value_with': 1,
-                                  'has_jaccard_index_with': 1, 'probably_treats': 1,
-                                  'has_paired_concept_frequency_with': 1,
-                                  'has_observed_expected_ratio_with': 1, 'has_chi_square_with': 1}
             if qedge.predicate is not None and qedge.predicate in virtual_edge_predicates:
                 continue
 
@@ -207,15 +212,19 @@ class QueryGraphInfo:
         node_order = [ start_node ]
         edge_order = [ ]
         edges = current_node['edges']
+        debug = False
+
         while 1:
-            #tmp = { 'astate': '1', 'current_node': current_node, 'node_order': node_order, 'edge_order': edge_order, 'edges': edges }
-            #print(json.dumps(ast.literal_eval(repr(tmp)),sort_keys=True,indent=2))
-            #print('==================================================================================')
-            #tmp = input()
+            if debug:
+                tmp = { 'astate': '1', 'current_node': current_node, 'node_order': node_order, 'edge_order': edge_order, 'edges': edges }
+                print(json.dumps(ast.literal_eval(repr(tmp)),sort_keys=True,indent=2))
+                print('==================================================================================')
+                tmp = input()
 
             if len(edges) == 0:
                 break
-            if len(edges) > 1:
+            #if len(edges) > 1:
+            if current_node['n_links'] > 1:
                 response.error("Help, two edges at A583. Don't know what to do", error_code="InteralErrorA583")
                 return response
             edge_order.append(edges[0])
@@ -331,7 +340,66 @@ class QueryGraphInfo:
 
 
 ##########################################################################################
+def test_example1():
+    query_graph = {
+          "edges":{
+            "e00":{
+            "subject":"n00",
+            "object":"n01"
+            },
+            "e01":{
+            "subject":"n00",
+            "object":"n01",
+            "predicate":"biolink:contraindicated_for",
+            "exclude": True
+            }
+        },
+          "nodes":{
+            "n00":{
+            "id":"MONDO:0001627",
+            "category":"biolink:Disease"
+            },
+            "n01":{
+            "category":"biolink:ChemicalSubstance"
+            }
+          }
+        }
+
+    from ARAX_messenger import ARAXMessenger
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+
+    response.envelope.message.query_graph = QueryGraph().from_dict(query_graph)
+
+    query_graph_info = QueryGraphInfo()
+    result = query_graph_info.assess(response.envelope.message)
+    response.merge(result)
+    if result.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    query_graph_info_dict = {
+        'n_nodes': query_graph_info.n_nodes,
+        'n_edges': query_graph_info.n_edges,
+        'is_bifurcated_graph': query_graph_info.is_bifurcated_graph,
+        'start_node': query_graph_info.start_node,
+        'node_info': query_graph_info.node_info,
+        'edge_info': query_graph_info.edge_info,
+        'node_order': query_graph_info.node_order,
+        'edge_order': query_graph_info.edge_order,
+        'node_category_map': query_graph_info.node_category_map,
+        'edge_predicate_map': query_graph_info.edge_predicate_map,
+    }
+    print(json.dumps(ast.literal_eval(repr(query_graph_info_dict)),sort_keys=True,indent=2))
+
+
+
+##########################################################################################
 def main():
+
+    test_example1()
+    return
 
     #### Create a response object
     response = ARAXResponse()
