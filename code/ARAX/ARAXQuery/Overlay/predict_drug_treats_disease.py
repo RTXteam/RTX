@@ -160,7 +160,7 @@ class PredictDrugTreatsDisease:
                     continue
                 else:
                     preferred_type = converted_source_curie['preferred_type']
-                    if preferred_type == "drug" or preferred_type == "chemical_substance":
+                    if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
                         converted_source_curie = converted_source_curie['preferred_curie']
                     else:
                         continue
@@ -169,7 +169,7 @@ class PredictDrugTreatsDisease:
                     continue
                 else:
                     preferred_type = converted_target_curie['preferred_type']
-                    if preferred_type == "disease" or preferred_type == "phenotypic_feature":
+                    if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
                         converted_target_curie = converted_target_curie['preferred_curie']
                     else:
                         continue
