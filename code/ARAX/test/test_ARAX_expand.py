@@ -820,5 +820,17 @@ def test_category_and_predicate_format():
             assert edge.predicate.startswith("biolink:")
 
 
+def test_issue_1212():
+    # If a qnode curie isn't recognized by synonymizer, shouldn't end up with results when using KG2c
+    actions_list = [
+        "add_qnode(id=FAKE:Curie, category=biolink:Drug, key=n00)",
+        "add_qnode(category=biolink:Disease, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(kp=ARAX/KG2, continue_if_no_results=true)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

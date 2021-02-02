@@ -277,6 +277,10 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
             if unrecognized_curies:
                 log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
             canonical_curies = {canonical_curies_dict[recognized_curie].get('preferred_curie') for recognized_curie in recognized_input_curies}
+            # Include any original curies we weren't able to find a canonical version for
+            canonical_curies.update(unrecognized_curies)
+            if not canonical_curies:
+                log.error(f"Final list of canonical curies is empty. This shouldn't happen!", error_code="CanonicalCurieIssue")
             return list(canonical_curies)
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
