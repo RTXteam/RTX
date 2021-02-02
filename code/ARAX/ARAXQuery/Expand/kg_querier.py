@@ -67,12 +67,15 @@ class KGQuerier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        qnodes_with_curies = [qnode for qnode in query_graph.nodes.values() if qnode.id]
-        for qnode in qnodes_with_curies:
+        qnode_keys_with_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id]
+        for qnode_key in qnode_keys_with_curies:
+            qnode = query_graph.nodes[qnode_key]
             if use_synonyms and kg_name == "KG1":
                 qnode.id = eu.get_curie_synonyms(qnode.id, log)
             elif kg_name == "KG2c":
-                qnode.id = eu.get_canonical_curies_list(qnode.id, log)
+                canonical_curies = eu.get_canonical_curies_list(qnode.id, log)
+                log.debug(f"Using {len(canonical_curies)} curies as canonical curies for qnode {qnode_key}")
+                qnode.id = canonical_curies
             qnode.category = None  # Important to clear this, otherwise results are limited (#889)
 
         # Run the actual query and process results
