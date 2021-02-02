@@ -4,7 +4,6 @@ var cyobj = [];
 var cytodata = [];
 var predicates = {};
 var all_predicates = {};
-var response_id = null;
 var summary_table_html = '';
 var summary_tsv = [];
 var compare_tsv = [];
@@ -13,6 +12,13 @@ var UIstate = {};
 
 var baseAPI = "";
 //var baseAPI = "http://localhost:5001/devED/";
+
+var providers = {
+    "ARAX" : { "url" : baseAPI + "api/arax/v1.0/response/" },
+//    "ARS"  : { "url" : "https://ars.transltr.io/ars/api/messages/" }
+    "ARS"  : { "url": "https://arax.ncats.io/devED/api/arax/v1.0/response/" }
+};
+
 
 function main() {
     get_example_questions();
@@ -24,15 +30,26 @@ function main() {
     cytodata[999] = 'dummy';
     UIstate.nodedd = 1;
 
-    response_id = getQueryVariable("r") || null;
+    var response_id = getQueryVariable("r") || null;
+    var provider_id = getQueryVariable("source") || "ARAX";
+    var rurl = null;
     if (response_id) {
+	provider_id = "ARAX";
+        rurl = providers[provider_id].url;
+    }
+    else if (provider_id) {
+	rurl = providers[provider_id].url;
+	response_id = getQueryVariable("id") || null;
+    }
+
+    if (rurl && response_id) {
 	var statusdiv = document.getElementById("statusdiv");
 	statusdiv.innerHTML = '';
-	statusdiv.appendChild(document.createTextNode("You have requested ARAX response id = " + response_id));
+	statusdiv.appendChild(document.createTextNode("You have requested "+provider_id+" response id = " + response_id));
 	statusdiv.appendChild(document.createElement("br"));
 
-	document.getElementById("devdiv").innerHTML =  "Requested ARAX response id = " + response_id + "<br>";
-	retrieve_response();
+	document.getElementById("devdiv").innerHTML =  "Requested "+provider_id+" response id = " + response_id + "<br>";
+	retrieve_response(provider_id,rurl+response_id,response_id);
 	openSection(null,'queryDiv');
     }
     else {
@@ -484,20 +501,20 @@ function sendQuestion(e) {
 }
 
 
-function retrieve_response() {
+function retrieve_response(provider, resp_url, resp_id) {
     var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("Retrieving ARAX response id = " + response_id));
+    statusdiv.appendChild(document.createTextNode("Retrieving "+provider+" response id = " + resp_id));
     statusdiv.appendChild(document.createElement("hr"));
     sesame('openmax',statusdiv);
 
     var xhr = new XMLHttpRequest();
-    xhr.open("get",  baseAPI + "api/arax/v1.0/response/" + response_id, true);
+    xhr.open("get",  resp_url, true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr.send(null);
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================ RESPONSE REQUEST::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
+	    document.getElementById("devdiv").innerHTML += "<br>================================================================ RESPONSE REQUEST::&nbsp;&nbsp;&nbsp;&nbsp;[<a target='_NEW' href='"+resp_url+"'> view raw json response &#8599;</a>]<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
 
 	    if (jsonObj2["restated_question"]) {
 		statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
@@ -506,13 +523,19 @@ function retrieve_response() {
 	    else {
 		document.getElementById("questionForm").elements["questionText"].value = "";
 	    }
-	    statusdiv.innerHTML += "<br><i>"+jsonObj2["description"]+"</i><br>";
+
+	    if (jsonObj2.description)
+		statusdiv.innerHTML += "<br><i>"+jsonObj2.description+"</i><br>";
 	    sesame('openmax',statusdiv);
 
+	    if (!jsonObj2.id) {
+		jsonObj2.araxui_provider = provider;
+		jsonObj2.araxui_response = resp_id;
+	    }
 	    render_response(jsonObj2,true);
 	}
 	else if ( xhr.status == 404 ) {
-	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+response_id+"</span> was not found.";
+	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found.";
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
 	}
@@ -526,47 +549,6 @@ function retrieve_response() {
 
 }
 
-
-function DELETE_retrieve_message() {
-    var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("Retrieving ARAX message id = " + message_id));
-    statusdiv.appendChild(document.createElement("hr"));
-    sesame('openmax',statusdiv);
-
-    var xhr = new XMLHttpRequest();
-    xhr.open("get",  baseAPI + "api/arax/v1.0/message/" + message_id, true);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr.send(null);
-    xhr.onloadend = function() {
-	if ( xhr.status == 200 ) {
-	    var jsonObj2 = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
-
-	    if (jsonObj2["restated_question"].length > 2) {
-		statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
-		document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
-	    }
-	    else {
-		document.getElementById("questionForm").elements["questionText"].value = "";
-	    }
-	    statusdiv.innerHTML += "<br><i>"+jsonObj2["code_description"]+"</i><br>";
-	    sesame('openmax',statusdiv);
-
-	    render_message(jsonObj2,true);
-	}
-	else if ( xhr.status == 404 ) {
-	    statusdiv.innerHTML += "<br>Message with id=<span class='error'>"+message_id+"</span> was not found.";
-	    sesame('openmax',statusdiv);
-	    there_was_an_error();
-	}
-	else {
-	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
-	    sesame('openmax',statusdiv);
-            there_was_an_error();
-	}
-    };
-}
 
 
 // DELETE_LATER::
@@ -583,7 +565,7 @@ function render_response(respObj,dispjson) {
     sesame('openmax',statusdiv);
 
     if (respObj.id) {
-	response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
+	var response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 	document.title = "ARAX-UI ["+response_id+"]";
 
 	if (respObj.restated_question) {
@@ -596,9 +578,15 @@ function render_response(respObj,dispjson) {
 	}
 	history.pushState({ id: 'ARAX_UI' }, 'ARAX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
     }
-    else {
-        document.title = "ARAX-UI [no response_id]: "+respObj.restated_question+"?";
+    else if (respObj.araxui_provider) {
+        document.title = "ARAX-UI ["+respObj.araxui_provider+" : "+respObj.araxui_response+"]";
+        add_to_session('source='+respObj.araxui_provider+"&id="+respObj.araxui_response,"["+respObj.araxui_provider+"] id="+respObj.araxui_response);
+	history.pushState({ id: 'ARAX_UI' }, 'ARAX | source='+respObj.araxui_provider+"&id="+respObj.araxui_response, "//"+ window.location.hostname + window.location.pathname + '?source='+respObj.araxui_provider+"&id="+respObj.araxui_response);
     }
+    else if (respObj.restated_question)
+        document.title = "ARAX-UI [no response_id]: "+respObj.restated_question+"?";
+    else
+	document.title = "ARAX-UI [no response_id]";
 
     if ( respObj["table_column_names"] )
 	add_to_summary(respObj["table_column_names"],0);
@@ -683,7 +671,7 @@ function render_response(respObj,dispjson) {
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
-// UPDATE THIS :: operations->actions !!?
+
     if (respObj["operations"])
 	process_q_options(respObj["operations"]);
 
@@ -975,18 +963,130 @@ function process_results(reslist,kg) {
 	    cnf = Number(result.confidence).toFixed(3);
 	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : "p1";
 
-	var rsrc = '';
+	var rsrc = 'n/a';
 	if (result.reasoner_id)
 	    rsrc = result.reasoner_id;
 	var rscl = (rsrc=="ARAX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
 
-	
-        document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span class='r100'><span title='confidence="+cnf+"' class='"+pcl+" qprob'>"+cnf+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></span></div>";
+	var result_container = document.getElementById("result_container");
 
-	document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+result.description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+num+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+num+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+num+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+num+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+num+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td>&nbsp;</td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+        var div = document.createElement("div");
+        div.id = 'h'+num+'_div';
+	div.title = 'Click to expand / collapse result '+num;
+        div.className = 'accordion';
+	div.setAttribute('onclick', 'sesame(this,a'+num+'_div);');
+	div.appendChild(document.createTextNode("Result "+num));
+	if (ess)
+	    div.innerHTML += " :: <b>"+ess+"</b>"; // meh...
+
+	var span100 = document.createElement("span");
+	span100.className = 'r100';
+
+        var span = document.createElement("span");
+        span.className = pcl+' qprob';
+	span.title = "confidence="+cnf;
+        span.appendChild(document.createTextNode(cnf));
+	span100.appendChild(span);
+
+        span = document.createElement("span");
+	span.className = rscl+' qprob';
+	span.title = "source="+rsrc;
+	span.appendChild(document.createTextNode(rsrc));
+	span100.appendChild(span);
+
+	div.appendChild(span100);
+	result_container.appendChild(div);
+
+        div = document.createElement("div");
+        div.id = 'a'+num+'_div';
+        div.className = 'panel';
+
+        var table = document.createElement("table");
+        table.className = 't100';
+
+        var tr = document.createElement("tr");
+	var td = document.createElement("td");
+        td.className = 'textanswer';
+	if (result.description)
+	    td.appendChild(document.createTextNode(result.description));
+	else
+	    td.appendChild(document.createTextNode('No description'));
+        tr.appendChild(td);
+
+        td = document.createElement("td");
+        td.className = 'cytograph_controls';
+
+	var link = document.createElement("a");
+	link.title='reset zoom and center';
+        link.setAttribute('onclick', 'cyobj['+num+'].reset();');
+        link.appendChild(document.createTextNode("\u21BB"));
+        td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+	tr.appendChild(td);
+
+        link = document.createElement("a");
+	link.title='breadthfirst layout';
+	link.setAttribute('onclick', 'cylayout('+num+',"breadthfirst");');
+	link.appendChild(document.createTextNode("B"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+	link.title='force-directed layout';
+	link.setAttribute('onclick', 'cylayout('+num+',"cose");');
+	link.appendChild(document.createTextNode("F"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+	link.title='circle layout';
+	link.setAttribute('onclick', 'cylayout('+num+',"circle");');
+	link.appendChild(document.createTextNode("C"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+	link.title='random layout';
+	link.setAttribute('onclick', 'cylayout('+num+',"random");');
+	link.appendChild(document.createTextNode("R"));
+	td.appendChild(link);
+
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+	td.className = 'cytograph';
+        var div2 = document.createElement("div");
+	div2.id = 'cy'+num;
+	div2.style.height = '100%';
+	div2.style.width  = '100%';
+	td.appendChild(div2);
+        tr.appendChild(td);
+        table.appendChild(tr);
+
+
+        tr = document.createElement("tr");
+	td = document.createElement("td");
+        tr.appendChild(td);
+	td = document.createElement("td");
+	tr.appendChild(td);
+
+	td = document.createElement("td");
+        div2 = document.createElement("div");
+	div2.id = 'd'+num+'_div';
+	div2.className = 'panel';
+        link = document.createElement("i");
+        link.appendChild(document.createTextNode("Click on a node or edge to get details"));
+        div2.appendChild(link);
+	td.appendChild(div2);
+	tr.appendChild(td);
+
+        table.appendChild(tr);
+
+	div.appendChild(table);
+	result_container.appendChild(div);
+
 
         cytodata[num] = [];
-
 	//console.log("=================== CYTO num:"+num+"  #nb:"+result.node_bindings.length);
 
         for (var nbid in result.node_bindings) {
@@ -1241,6 +1341,7 @@ function show_attributes(html_div, atts) {
 		att.name == "paired_concept_frequency"   ||
 		att.name == "paired_concept_freq"        ||
 		att.name == "jaccard_index"              ||
+		att.name == "Contribution"               ||
 		att.name == "probability"                ||
 		att.name == "confidence"                 ||
 		att.name == "chi_square"                 ||
@@ -1987,7 +2088,7 @@ function get_example_questions() {
     fetch(baseAPI + "api/arax/v1.0/exampleQuestions")
         .then(response => response.json())
         .then(data => {
-	    add_to_dev_info("EXAMPLE Qs",data);
+	    //add_to_dev_info("EXAMPLE Qs",data);
 
 	    var qqq = document.getElementById("qqq");
 	    qqq.innerHTML = '';
@@ -2020,7 +2121,7 @@ function load_nodes_and_predicates() {
 	    else throw new Error('Something went wrong');
 	})
         .then(data => {
-	    add_to_dev_info("PREDICATES",data);
+	    //add_to_dev_info("PREDICATES",data);
 	    predicates = data;
 
 	    var opt = document.createElement('option');
@@ -2385,7 +2486,13 @@ function display_session() {
     for (var li in listItems[listId]) {
         if (listItems[listId].hasOwnProperty(li) && !li.startsWith("qtext_")) {
             numitems++;
-            listhtml += "<tr><td>"+li+".</td><td><a target='_new' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname + "?r="+listItems[listId][li]+"'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+            listhtml += "<tr><td>"+li+".</td><td><a target='_new' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname;
+	    if (listItems[listId][li].startsWith("source")) // hacky
+		listhtml += "?"+listItems[listId][li];
+	    else
+		listhtml += "?r="+listItems[listId][li];
+
+	    listhtml +="'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
         }
     }
     if (numitems > 0) {
