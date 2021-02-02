@@ -24,6 +24,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 from sqlalchemy import inspect
 
+from reasoner_validator import validate_Message, validate_Result, validate_EdgeBinding, validate_NodeBinding, ValidationError
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
 
@@ -238,12 +240,30 @@ class ResponseCache:
             #### Unpack the response content into a dict and dump
             try:
                 response_dict = response_content.json()
-                if 'fields' in response_dict and 'data' in response_dict['fields']:
-                    #envelope = Envelope().from_dict(response_dict['fields']['data'])
-                    return response_dict['fields']['data']
-                return( { "status": 404, "title": "Cannot find Response in ARS response packet", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
             except:
                 return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
+
+
+            if 'fields' in response_dict and 'data' in response_dict['fields']:
+                #envelope = Envelope().from_dict(response_dict['fields']['data'])
+                envelope = response_dict['fields']['data']
+
+                #### Perform a validation on it
+                try:
+                    validate_Message(envelope['message'])
+                    #print('- Message is valid')
+                except ValidationError as error:
+                    #print(f"- Message INVALID: {error}")
+                    timestamp = str(datetime.now().isoformat())
+                    if 'logs' not in envelope or envelope['logs'] is None:
+                        envelope['logs'] = []
+                    envelope['logs'].append( { "code": 'InvalidTRAPI', "level": "ERROR", "message": "TRAPI validator reported an error: " + str(error),
+                        "timestamp": timestamp } )
+
+
+                return envelope
+            return( { "status": 404, "title": "Cannot find Response (in 'fields' and 'data') in ARS response packet", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
+
 
         return( { "status": 404, "title": "UnrecognizedResponse_idFormat", "detail": "Unrecognized response_id format", "type": "about:blank" }, 404)
 
@@ -277,7 +297,53 @@ def main():
         envelope = response_cache.get_response(params.response_id[0])
 
         #print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
-        print(json.dumps(envelope, sort_keys=True, indent=2))
+        #print(json.dumps(envelope, sort_keys=True, indent=2))
+        print(json.dumps(envelope['logs'], sort_keys=True, indent=2))
+
+    try:
+        validate_Message(envelope['message'])
+        print('- Message is valid')
+    except ValidationError as error:
+        print(f"- Message INVALID: {error}")
+
+    return
+
+    for component in [ 'query_graph', 'knowledge_graph', 'results' ]:
+        if component in envelope['message']:
+            try:
+                validate_Message(envelope['message'][component])
+                print(f"  - {component} is valid")
+            except ValidationError:
+                print(f"  - {component} INVALID")
+        else:
+            print(f"  - {component} is not present")
+
+    for result in envelope['message']['results']:
+        try:
+            validate_Result(result)
+            print(f"    - result is valid")
+        except ValidationError:
+            print(f"    - result INVALID")
+
+        for key,node_binding_list in result['node_bindings'].items():
+            for node_binding in node_binding_list:
+                try:
+                    validate_NodeBinding(node_binding)
+                    print(f"      - node_binding {key} is valid")
+                except ValidationError:
+                    print(f"      - node_binding {key} INVALID")
+
+        for key,edge_binding_list in result['edge_bindings'].items():
+            for edge_binding in edge_binding_list:
+                print(json.dumps(edge_binding, sort_keys=True, indent=2))
+                try:
+                    validate_EdgeBinding(edge_binding)
+                    print(f"      - edge_binding {key} is valid")
+                except ValidationError:
+                    print(f"      - edge_binding {key} INVALID")
+
+
+
 
 
 if __name__ == "__main__": main()
