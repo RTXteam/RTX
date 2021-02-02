@@ -34,7 +34,8 @@ class OverlayClinicalInfo:
         self.response = response
         self.message = message
         self.parameters = params
-        self.who_knows_about_what = {'COHD': ['chemical_substance', 'phenotypic_feature', 'disease']}  # FIXME: replace this with information about the KP's, KS's, and their API's
+        self.who_knows_about_what = {'COHD': ['chemical_substance', 'phenotypic_feature', 'disease', 'drug',
+                                                'biolink:ChemicalSubstance', 'biolink:PhenotypicFeature', 'biolink:Disease', 'biolink:Drug']}  # FIXME: replace this with information about the KP's, KS's, and their API's
         self.node_curie_to_type = dict()
         self.global_iter = 0
         try:

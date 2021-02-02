@@ -258,7 +258,7 @@ class PredictDrugTreatsDisease:
                     target_curie = edge.object
                     source_types = curie_to_type[source_curie]
                     target_types = curie_to_type[target_curie]
-                    if (("drug" in source_types) or ("chemical_substance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types)):
+                    if (("drug" in source_types) or ("chemical_substance" in source_types) or ("biolink:Drug" in source_types) or ("biolink:ChemicalSubstance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types) or ("biolink:Disease" in target_types) or ("biolink:PhenotypicFeature" in target_types)):
                         # loop over all pairs of equivalent curies and take the highest probability
                         self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
@@ -267,7 +267,7 @@ class PredictDrugTreatsDisease:
                             continue
                         else:
                             preferred_type = converted_source_curie['preferred_type']
-                            if preferred_type == "drug" or preferred_type == "chemical_substance":
+                            if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
                                 converted_source_curie = converted_source_curie['preferred_curie']
                             else:
                                 continue
@@ -276,7 +276,7 @@ class PredictDrugTreatsDisease:
                             continue
                         else:
                             preferred_type = converted_target_curie['preferred_type']
-                            if preferred_type == "disease" or preferred_type == "phenotypic_feature":
+                            if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
                                 converted_target_curie = converted_target_curie['preferred_curie']
                             else:
                                 continue
@@ -302,7 +302,7 @@ class PredictDrugTreatsDisease:
                         #probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
-                    elif (("drug" in target_types) or ("chemical_substance" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types)):
+                    elif (("drug" in target_types) or ("chemical_substance" in target_types) or ("biolink:Drug" in target_types) or ("biolink:ChemicalSubstance" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types) or ("biolink:Disease" in source_types) or ("biolink:PhenotypicFeature" in source_types)):
                         #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
@@ -313,7 +313,7 @@ class PredictDrugTreatsDisease:
                             continue
                         else:
                             preferred_type = converted_source_curie['preferred_type']
-                            if preferred_type == "disease" or preferred_type == "phenotypic_feature":
+                            if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
                                 converted_source_curie = converted_source_curie['preferred_curie']
                             else:
                                 continue
@@ -322,7 +322,7 @@ class PredictDrugTreatsDisease:
                             continue
                         else:
                             preferred_type = converted_target_curie['preferred_type']
-                            if preferred_type == "drug" or preferred_type == "chemical_substance":
+                            if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
                                 converted_target_curie = converted_target_curie['preferred_curie']
                             else:
                                 continue
