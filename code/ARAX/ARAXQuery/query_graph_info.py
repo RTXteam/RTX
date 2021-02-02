@@ -224,7 +224,7 @@ class QueryGraphInfo:
             if len(edges) == 0:
                 break
             #if len(edges) > 1:
-            if current_node['n_links'] > 2:
+            if current_node['n_links'] > 1:
                 response.error(f"Help, two edges at A583. Don't know what to do: {current_node['n_links']}", error_code="InteralErrorA583")
                 return response
             edge_order.append(edges[0])
