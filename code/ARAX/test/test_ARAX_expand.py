@@ -826,10 +826,10 @@ def test_issue_1212():
         "add_qnode(id=FAKE:Curie, category=biolink:Drug, key=n00)",
         "add_qnode(category=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=ARAX/KG2, continue_if_no_results=true)",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
 
 
 if __name__ == "__main__":
