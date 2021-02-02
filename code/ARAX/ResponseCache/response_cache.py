@@ -275,6 +275,9 @@ class ResponseCache:
                         envelope['logs'] = []
                     envelope['logs'].append( { "code": 'InvalidTRAPI', "level": "ERROR", "message": "TRAPI validator reported an error: " + str(error),
                         "timestamp": timestamp } )
+                    if 'description' not in envelope or envelope['description'] is None:
+                        envelope['description'] = ''
+                    envelope['description'] = 'ERROR: TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description']
 
                 #### Try to add the reasoner_id
                 if 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
