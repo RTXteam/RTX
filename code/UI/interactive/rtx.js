@@ -11,12 +11,10 @@ var columnlist = [];
 var UIstate = {};
 
 var baseAPI = "";
-//var baseAPI = "http://localhost:5001/devED/";
 
 var providers = {
     "ARAX" : { "url" : baseAPI + "api/arax/v1.0/response/" },
-//    "ARS"  : { "url" : "https://ars.transltr.io/ars/api/messages/" }
-    "ARS"  : { "url": "https://arax.ncats.io/devED/api/arax/v1.0/response/" }
+    "ARS"  : { "url" : baseAPI + "api/arax/v1.0/response/" }
 };
 
 
@@ -102,7 +100,7 @@ function selectInput (obj, input_id) {
     if (e[0]) { e[0].classList.remove("slink_on"); }
     obj.classList.add("slink_on");
 
-    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input']) {
+    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qid_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -118,6 +116,11 @@ function clearDSL() {
     document.getElementById("dslText").value = '';
 }
 
+function pasteId(id) {
+    document.getElementById("idForm").elements["idText"].value = id;
+    document.getElementById("qid").value = '';
+    document.getElementById("qid").blur();
+}
 function pasteQuestion(question) {
     document.getElementById("questionForm").elements["questionText"].value = question;
     document.getElementById("qqq").value = '';
@@ -403,6 +406,18 @@ function postQuery(qtype) {
 }
 
 
+function sendId() {
+    var id = document.getElementById("idText").value.trim();
+    if (!id) return;
+
+    reset_vars();
+    if (cyobj[999]) {cyobj[999].elements().remove();}
+    input_qg = { "edges": [], "nodes": [] };
+
+    retrieve_response("ARS",providers["ARS"].url+id,id);
+    openSection(null,'queryDiv');
+}
+
 function sendQuestion(e) {
     reset_vars();
     if (cyobj[999]) {cyobj[999].elements().remove();}
@@ -514,7 +529,21 @@ function retrieve_response(provider, resp_url, resp_id) {
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================ RESPONSE REQUEST::&nbsp;&nbsp;&nbsp;&nbsp;[<a target='_NEW' href='"+resp_url+"'> view raw json response &#8599;</a>]<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
+
+	    var devdiv = document.getElementById("devdiv");
+	    devdiv.appendChild(document.createElement("br"));
+	    devdiv.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE REQUEST::"));
+            var link = document.createElement("a");
+	    link.target = '_NEW';
+	    link.href = resp_url;
+            link.style.position = "relative";
+            link.style.left = "30px";
+            link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
+	    devdiv.appendChild(link);
+            var pre = document.createElement("pre");
+	    pre.id = 'responseJSON';
+	    pre.textContent = JSON.stringify(jsonObj2,null,2);
+            devdiv.appendChild(pre);
 
 	    if (jsonObj2["restated_question"]) {
 		statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
@@ -524,8 +553,12 @@ function retrieve_response(provider, resp_url, resp_id) {
 		document.getElementById("questionForm").elements["questionText"].value = "";
 	    }
 
-	    if (jsonObj2.description)
-		statusdiv.innerHTML += "<br><i>"+jsonObj2.description+"</i><br>";
+	    if (jsonObj2.description) {
+		if (jsonObj2.description.startsWith("ERROR"))
+		    statusdiv.innerHTML += "<br><span class='error'>"+jsonObj2.description+"</span><br>";
+		else
+		    statusdiv.innerHTML += "<br><i>"+jsonObj2.description+"</i><br>";
+	    }
 	    sesame('openmax',statusdiv);
 
 	    if (!jsonObj2.id) {
@@ -588,29 +621,6 @@ function render_response(respObj,dispjson) {
     else
 	document.title = "ARAX-UI [no response_id]";
 
-    if ( respObj["table_column_names"] )
-	add_to_summary(respObj["table_column_names"],0);
-
-    if ( respObj.message["results"] ) {
-	if (!respObj.message["knowledge_graph"] ) {
-            document.getElementById("result_container").innerHTML  += "<h2 class='error'>Knowledge Graph missing in response; cannot process results.</h2>";
-	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
-	}
-	else {
-            document.getElementById("result_container").innerHTML += "<h2>" + respObj.message.results.length + " results</h2>";
-            document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
-            document.getElementById("menunumresults").classList.add("numnew");
-	    document.getElementById("menunumresults").classList.remove("numold");
-
-	    process_graph(respObj.message["knowledge_graph"],0);
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"]);
-	}
-    }
-    else {
-        document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
-        document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
-    }
-
 
     if (respObj.message["query_graph"]) {
 	if (dispjson) {
@@ -636,6 +646,40 @@ function render_response(respObj,dispjson) {
 	cytodata[999] = 'dummy'; // this enables query graph editing
 
 
+    if (respObj["operations"])
+	process_q_options(respObj["operations"]);
+
+
+    if (respObj["logs"])
+	process_log(respObj["logs"]);
+    else
+        document.getElementById("logdiv").innerHTML = "<h2 style='margin-left:20px;'>No log messages in this response</h2>";
+
+    // Do this *before* processing results
+    if ( respObj["table_column_names"] )
+	add_to_summary(respObj["table_column_names"],0);
+
+    if ( respObj.message["results"] ) {
+	if (!respObj.message["knowledge_graph"] ) {
+            document.getElementById("result_container").innerHTML  += "<h2 class='error'>Knowledge Graph missing in response; cannot process results.</h2>";
+	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
+	}
+	else {
+            document.getElementById("result_container").innerHTML += "<h2>" + respObj.message.results.length + " results</h2>";
+            document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
+            document.getElementById("menunumresults").classList.add("numnew");
+	    document.getElementById("menunumresults").classList.remove("numold");
+
+	    process_graph(respObj.message["knowledge_graph"],0);
+	    process_results(respObj.message["results"],respObj.message["knowledge_graph"]);
+	}
+    }
+    else {
+        document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
+        document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
+    }
+
+    // table was (potentially) populated in process_results
     if (respObj["table_column_names"]) {
 	var div = document.createElement("div");
 	div.className = 'statushead';
@@ -670,16 +714,6 @@ function render_response(respObj,dispjson) {
     }
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
-
-
-    if (respObj["operations"])
-	process_q_options(respObj["operations"]);
-
-
-    if (respObj["logs"])
-	process_log(respObj["logs"]);
-    else
-        document.getElementById("logdiv").innerHTML = "<h2 style='margin-left:20px;'>No log messages in this response</h2>";
 
     add_cyto();
     statusdiv.appendChild(document.createTextNode("done."));
@@ -1350,6 +1384,8 @@ function show_attributes(html_div, atts) {
 	    }
             else if (Array.isArray(att.value))
 		for (var val of att.value) snippet += "<br>&nbsp;&nbsp;&nbsp;"+val;
+	    else if (typeof att.value === 'object')
+		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
 	    else
 		snippet += att.value;
 
