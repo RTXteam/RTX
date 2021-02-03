@@ -258,10 +258,10 @@ class ResponseCache:
                     '6': 'Unsecret',
                     '7': 'Genetics',
                     '8': 'MolePro',
-                    '9': 'Explanatory',
-                    '10': 'ImProving',
-                    '11': 'Cam',
-                    '12': 'TextMining'
+                    '10': 'Explanatory',
+                    '11': 'ImProving',
+                    '12': 'Cam',
+                    '13': 'TextMining'
                 }
 
                 #### Perform a validation on it
