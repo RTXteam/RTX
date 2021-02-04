@@ -112,7 +112,7 @@ class NGDDatabaseBuilder:
 
     def _add_pmids_from_kg2_edges(self, curie_to_pmids_map):
         print(f"  Getting PMIDs from edges in KG2 neo4j..")
-        edge_query = f"match (n)-[e]->(m) where e.publications is not null and e.publications <> '[]' " \
+        edge_query = f"match (n)-[e]->(m) where e.publications is not null " \
                      f"return distinct n.id, m.id, e.publications{' limit 100' if self.is_test else ''}"
         edge_results = self._run_cypher_query(edge_query, 'KG2')
         print(f"  Processing results..")
@@ -128,7 +128,7 @@ class NGDDatabaseBuilder:
 
     def _add_pmids_from_kg2_nodes(self, curie_to_pmids_map):
         print(f"  Getting PMIDs from nodes in KG2 neo4j..")
-        node_query = f"match (n) where n.publications is not null and n.publications <> '[]' " \
+        node_query = f"match (n) where n.publications is not null " \
                      f"return distinct n.id, n.publications{' limit 100' if self.is_test else ''}"
         node_results = self._run_cypher_query(node_query, 'KG2')
         print(f"  Processing results..")
@@ -291,7 +291,7 @@ class NGDDatabaseBuilder:
 
 def main():
     # Load command-line arguments
-    arg_parser = argparse.ArgumentParser(description="Builds pickle database of curie->PMID mappings needed for NGD")
+    arg_parser = argparse.ArgumentParser(description="Builds database of curie->PMID mappings needed for NGD")
     arg_parser.add_argument("pubmedDirectory", type=str, nargs='?', default=os.getcwd())
     arg_parser.add_argument("--full", dest="full", action="store_true", default=False)
     arg_parser.add_argument("--test", dest="test", action="store_true", default=False)
