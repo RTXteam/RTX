@@ -36,6 +36,8 @@
 <div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
 <div onclick="openSection(this,'messagesDiv');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
 <br><br>
+&nbsp;Tools<br>
+<div onclick="openSection(this,'synonymDiv');" class="menuleftitem">Synonyms</div>
 <div onclick="openSection(this,'devDiv');" class="menuleftitem">Dev Info</div>
 <br><br><br><br>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
@@ -246,6 +248,15 @@
 
 <div class="pagesection" id="messagesDiv">
   <div id="messages_container"></div>
+</div>
+
+<div class="pagesection" id="synonymDiv">
+  <h3 style="display:inline;">Synonym Lookup:</h3>
+  <br>
+  <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newsynonym" name="newsynonym" onkeydown="enter_node(this);" size="100" maxlength="1000"/>
+  <input type="button" class="questionBox button" name="action" value="Look Up" onClick="sendSyn();"/>
+  <span title="clear" class="clq" onclick="pasteSyn('');">&#9587;</span>
+  <div id="synonym_result_container"></div>
 </div>
 
 

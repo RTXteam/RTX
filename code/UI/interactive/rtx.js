@@ -116,6 +116,9 @@ function clearDSL() {
     document.getElementById("dslText").value = '';
 }
 
+function pasteSyn(word) {
+    document.getElementById("newsynonym").value = word;
+}
 function pasteId(id) {
     document.getElementById("idForm").elements["idText"].value = id;
     document.getElementById("qid").value = '';
@@ -406,6 +409,156 @@ function postQuery(qtype) {
 	});
 }
 
+
+async function sendSyn() {
+    var word = document.getElementById("newsynonym").value.trim();
+    if (!word) return;
+
+    var syndiv = document.getElementById("synonym_result_container");
+    syndiv.innerHTML = "";
+    var allweknow = await check_entity(word,true);
+
+    if (0) { // set to 1 if you just want full JSON dump instead of html tables
+	syndiv.innerHTML = "<pre>"+JSON.stringify(allweknow,null,2)+"</pre>";
+	return;
+    }
+
+    var table;
+    var tr;
+    var td;
+
+    var text = document.createElement("h1");
+    text.appendChild(document.createTextNode(word));
+    syndiv.appendChild(text);
+
+    if (!allweknow[word]) {
+	syndiv.appendChild(document.createElement("br"));
+	syndiv.appendChild(document.createElement("br"));
+	syndiv.appendChild(document.createTextNode("Entity not found."));
+	return;
+    }
+
+    if (allweknow[word].id) {
+	table = document.createElement("table");
+	table.className = 'sumtab';
+	for (var syn in allweknow[word].id) {
+	    tr = document.createElement("tr");
+	    td = document.createElement("td")
+	    td.style.fontWeight = 'bold';
+	    td.appendChild(document.createTextNode(syn));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(allweknow[word].id[syn]));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+
+	if (allweknow[word].type) {
+	    tr = document.createElement("tr");
+	    td = document.createElement("td")
+	    td.style.fontWeight = 'bold';
+	    td.appendChild(document.createTextNode('type (all)'));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(allweknow[word].type));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+
+	syndiv.appendChild(table);
+    }
+
+    if (allweknow[word].synonyms) {
+	text = document.createElement("h2");
+	text.appendChild(document.createTextNode('\u25BA Synonyms'));
+	syndiv.appendChild(text);
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+        tr = document.createElement("tr");
+	for (var head of ["Label","Source"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+        table.appendChild(tr);
+	for (var syn of allweknow[word].synonyms) {
+            tr = document.createElement("tr");
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.label));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.source));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+	syndiv.appendChild(table);
+    }
+
+    if (allweknow[word].equivalent_identifiers) {
+	text = document.createElement("h2");
+	text.appendChild(document.createTextNode('\u25BA Equivalent Identifiers'));
+	syndiv.appendChild(text);
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+	tr = document.createElement("tr");
+	for (var head of ["Identifier","Source","Type"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+	table.appendChild(tr);
+	for (var syn of allweknow[word].equivalent_identifiers) {
+	    tr = document.createElement("tr");
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.identifier));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.source));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.type));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+	syndiv.appendChild(table);
+    }
+
+    if (allweknow[word].nodes) {
+	text = document.createElement("h2");
+	text.appendChild(document.createTextNode('\u25BA Nodes'));
+	syndiv.appendChild(text);
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+	tr = document.createElement("tr");
+	for (var head of ["Identifier","Label","Original Label","Type"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+	table.appendChild(tr);
+	for (var syn of allweknow[word].nodes) {
+	    tr = document.createElement("tr");
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.identifier));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.label));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.original_label));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.type));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+	syndiv.appendChild(table);
+    }
+
+}
 
 function sendId() {
     var id = document.getElementById("idText").value.trim();
@@ -1036,6 +1189,11 @@ function process_graph(gne,gid) {
 
 }
 
+function extract_essence(result) {
+    var essence = '';
+    // ToDo
+    return essence;
+}
 
 function process_results(reslist,kg) {
     var num = 0;
@@ -1048,6 +1206,8 @@ function process_results(reslist,kg) {
 	var ess = '';
 	if (result.essence)
 	    ess = result.essence;
+	else
+	    ess = extract_essence(result);
 
 	var cnf = 0;
 	if (Number(result.confidence))
@@ -1898,7 +2058,7 @@ async function add_node_to_query_graph() {
 	return;
     }
 
-    var bestthing = await check_entity(thing);
+    var bestthing = await check_entity(thing,false);
     document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
 
     if (bestthing.found) {
@@ -2478,15 +2638,15 @@ function check_entities() {
 	    .then(data => {
                 add_to_dev_info("ENTITIES:"+entity,data);
 
-		if (data.curie) {
-		    entities[entity].curie = data.curie;
-		    entities[entity].name  = data.name;
-		    entities[entity].type  = data.type;
-		    //entities[entity].name = data.name.replace(/['"]/g, '&apos;');  // might need this?
+		if (data[entity].id && data[entity].id.kg2_best_curie) {
+		    entities[entity].curie = data[entity].id.kg2_best_curie;
+		    entities[entity].name  = data[entity].id.label;
+		    entities[entity].type  = data[entity].id.type;
+		    //entities[entity].name = data[entity].id.label.replace(/['"]/g, '&apos;');  // might need this?
 
 		    entities[entity].isvalid   = true;
 		    entities[entity].checkHTML = "<span class='explevel p9'>&check;</span>&nbsp;";
-		    document.getElementById("devdiv").innerHTML += data.type+"<br>";
+		    document.getElementById("devdiv").innerHTML += data[entity].id.type+"<br>";
 		}
 		else {
 		    entities[entity].curie = "<span class='error'>unknown</span>";
@@ -2526,12 +2686,12 @@ function check_entities() {
 }
 
 
-async function check_entity(term) {
-    var data;
-    var ent = {};
+async function check_entity(term,wantall) {
+    var data = {};
+    var ent  = {};
     ent.found = false;
 
-    if (entities[term]) {
+    if (!wantall && entities[term]) {
         if (!entities[term].isvalid)
             return ent; // contains found=false
 
@@ -2539,11 +2699,17 @@ async function check_entity(term) {
     }
     else {
 	var response = await fetch(baseAPI + "api/arax/v1.0/entity/" + term);
-	data = await response.json();
+	var fulldata = await response.json();
 
-	add_to_dev_info("ENTITY:"+term,data);
-	if (!data.curie)
+	add_to_dev_info("ENTITY:"+term,fulldata);
+	if (wantall)
+	    return fulldata;
+	else if (!fulldata[term].id)
 	    return ent; // contains found=false
+
+	data.curie = fulldata[term].id.kg2_best_curie;
+	data.name  = fulldata[term].id.label;
+	data.type  = fulldata[term].id.type;
     }
 
     ent.found = true;
