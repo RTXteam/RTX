@@ -96,7 +96,7 @@ class MoleProQuerier:
             accepted_qnode_categories = formatted_qnode_categories.intersection(self.accepted_node_categories)
             if not accepted_qnode_categories:
                 log.error(f"{self.kp_name} can only be used for queries involving {self.accepted_node_categories} "
-                          f"and QNode {qnode_key} has type '{qnode.category}'", error_code="UnsupportedQueryForKP")
+                          f"and QNode {qnode_key} has category '{qnode.category}'", error_code="UnsupportedQueryForKP")
                 return query_graph
             else:
                 qnode.category = list(accepted_qnode_categories)[0]

@@ -331,6 +331,8 @@ class KGQuerier:
                         (property_value.startswith('{') and property_value.endswith('}')) or \
                         property_value.lower() == "true" or property_value.lower() == "false":
                     property_value = ast.literal_eval(property_value)
+                    if isinstance(property_value, list):
+                        property_value.sort()  # Alphabetize lists
 
             # Create an Attribute for all non-empty values
             if property_value is not None and property_value != {} and property_value != []:
@@ -395,7 +397,7 @@ class KGQuerier:
     @staticmethod
     def _get_cypher_for_query_edge(qedge_key: str, qg: QueryGraph, enforce_directionality: bool) -> str:
         qedge = qg.edges[qedge_key]
-        qedge_type_cypher = f":{qedge.predicate}" if qedge.predicate else ""
+        qedge_type_cypher = f":`{qedge.predicate}`" if qedge.predicate else ""
         full_qedge_cypher = f"-[{qedge_key}{qedge_type_cypher}]-"
         if enforce_directionality:
             full_qedge_cypher += ">"
