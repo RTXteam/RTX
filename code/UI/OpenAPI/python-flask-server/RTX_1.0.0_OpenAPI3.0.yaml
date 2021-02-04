@@ -1,20 +1,23 @@
 openapi: 3.0.1
 info:
-  description: OpenAPI for NCATS Biomedical Translator Reasoners
-  version: 1.0.0-beta
-  title: OpenAPI for NCATS Biomedical Translator Reasoners
+  description: TRAPI 1.0 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
+  version: 1.0.0
+  title: ARAX Translator Reasoner
   contact:
     email: edeutsch@systemsbiology.org
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: INSERT-URL-HERE
+  termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
+  x-translator:
+    component: ARA
+    team: Expander Agent
 externalDocs:
   description: >-
     Documentation for the NCATS Biomedical Translator Reasoners web services
-  url: https://github.com/NCATS-Tangerine/NCATS-ReasonerStdAPI
+  url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-  - url: https://arax.ncats.io/api/arax/v1
+  - url: https://arax.ncats.io/api/arax/v1.0
     description: ARAX Translator Reasoner API
 tags:
   - name: predicates
@@ -60,6 +63,7 @@ paths:
       tags:
         - predicates
       summary: Get supported relationships by source and target
+      operationId: predicates
       responses:
         '200':
           description: Predicates by source and target
@@ -81,7 +85,6 @@ paths:
                     'biolink:Gene':
                       - biolink:directly_interacts_with
                       - biolink:decreases_activity_of
-      x-swagger-router-controller: openapi_server.controllers.predicates_controller
   /query:
     post:
       tags:
@@ -137,7 +140,6 @@ paths:
             application/json:
               schema:
                 type: string
-      x-swagger-router-controller: openapi_server.controllers.query_controller
   /response/{response_id}:
     get:
       tags:
@@ -161,8 +163,6 @@ paths:
                 $ref: '#/components/schemas/Response'
         '404':
           description: response_id not found
-      x-swagger-router-controller: \
-        openapi_server.controllers.response_controller
   /translate:
     post:
       tags:
@@ -188,7 +188,6 @@ paths:
                   $ref: '#/components/schemas/Query'
         '400':
           description: Invalid status value
-      x-swagger-router-controller: openapi_server.controllers.translate_controller
   /entity/{search_string}:
     get:
       tags:
@@ -214,7 +213,6 @@ paths:
                   type: object
         '404':
           description: "Entity not found"
-      x-swagger-router-controller: "openapi_server.controllers.entity_controller"
   /exampleQuestions:
     get:
       tags:
@@ -231,7 +229,6 @@ paths:
                 type: array
                 items:
                   type: object
-      x-swagger-router-controller: "openapi_server.controllers.example_questions_controller"
   '/PubmedMeshNgd/{term1}/{term2}':
     get:
       tags:
@@ -261,7 +258,6 @@ paths:
                 $ref: '#/components/schemas/MeshNgdResponse'
         '400':
           description: "Invalid terms"
-      x-swagger-router-controller: "openapi_server.controllers.pubmed_mesh_ngd_controller"
 components:
   schemas:
     Query:
@@ -314,20 +310,19 @@ components:
             page_size
         reasoner_ids:
           type: array
-          example:
-            - RTX
-            - Robokop
-          description: List of reasoners to consult for the query
+          description: >-
+            List of reasoners to consult for the query. By default it is
+            assumed to be the current reasoner being queried, but this
+            mechanism could be used to proxy queries to other reasoners.
           items:
             type: string
-        previous_message_processing_plan:
-          type: object
+        operations:
           description: >-
             Container for one or more Message objects or identifiers for one or
-            more Messages along with a processing plan for how those messages
-            should be processed and returned
-          items:
-            $ref: '#/components/schemas/PreviousMessageProcessingPlan'
+            more Messages along with a processing plan and options for how those
+            messages should be processed and returned
+          allOf:
+            - $ref: '#/components/schemas/Operations'
       additionalProperties: true
       required:
         - message
@@ -366,15 +361,22 @@ components:
           items:
             $ref: '#/components/schemas/LogEntry'
           nullable: true
+        operations:
+          description: >-
+            Container for one or more Message objects or identifiers for one or
+            more Messages along with the processing plan and options for how those
+            messages were processed and returned
+          allOf:
+            - $ref: '#/components/schemas/Operations'
         reasoner_id:
           type: string
-          example: reasoner
+          example: ARAX
           description: >-
             Identifier string of the reasoner that provided this response
             (one of ARAX, Robokop, etc.)
         tool_version:
           type: string
-          example: ARAX 0.6.1
+          example: ARAX 0.7.0
           description: Version label of the tool that generated this response
         schema_version:
           type: string
@@ -451,7 +453,7 @@ components:
           description: Entity type of this response
         id:
           type: string
-          example: 'https://arax.ncats.io/api/rtx/v1/response/123'
+          example: 'https://arax.ncats.io/api/rtx/v1.0/response/123'
           description: URI for this response
       additionalProperties: true
       required:
@@ -466,7 +468,6 @@ components:
         thought graph corresponding to this message. The content of these
         properties is context-dependent to the encompassing object and
         the TRAPI operation requested.
-
       type: object
       properties:
         results:
@@ -491,6 +492,19 @@ components:
             - $ref: '#/components/schemas/KnowledgeGraph'
           nullable: true
       additionalProperties: false
+      example:
+        query_graph:
+          edges:
+            e00:
+              subject: n00
+              object: n01
+              predicate: biolink:physically_interacts_with
+          nodes:
+            n00:
+              id: CHEMBL.COMPOUND:CHEMBL112
+              category: biolink:ChemicalSubstance
+            n01:
+              category: biolink:Protein
     LogEntry:
       description: >-
         The LogEntry object contains information useful for tracing
@@ -567,7 +581,7 @@ components:
               $ref: '#/components/schemas/EdgeBinding'
         id:
           type: string
-          example: https://arax.ncats.io/api/rtx/v1/result/234
+          example: result:234
           description: URI for this result
         description:
           type: string
@@ -583,10 +597,10 @@ components:
           description: >-
             A single string that is the terse essence of the result (useful for
             simple answers)
-        essence_type:
+        essence_category:
           type: string
-          example: drug
-          description: A Translator bioentity type of the essence
+          example: biolink:ChemicalSubstance
+          description: A Translator BioLink bioentity category of the essence
         row_data:
           type: array
           example:
@@ -595,7 +609,7 @@ components:
           description: >-
             An arbitrary list of values that captures the essence of the result
             that can be turned into a tabular result across all answers (each
-            result is a row) for a user that wants tabular output
+            result is a row) for a user that wants simplified tabular output
           items:
             type: string
         score:
@@ -620,12 +634,6 @@ components:
           description: >-
             Confidence metric for this result, a value between (inclusive)
              0.0 (no confidence) and 1.0 (highest confidence)
-        result_type:
-          type: string
-          example: individual query answer
-          description: >-
-            One of several possible result types: 'individual query answer',
-            'neighborhood graph', 'type summary graph'
         result_group:
           type: integer
           example: 1
@@ -642,10 +650,10 @@ components:
             of the result_group
         reasoner_id:
           type: string
-          example: RTX
+          example: ARAX
           description: >-
             Identifier string of the reasoner that provided this result (e.g.,
-            RTX, Robokop, Indigo, Integrator)
+            ARAX, Robokop, etc.)
       additionalProperties: true
       required:
         - node_bindings
@@ -771,6 +779,12 @@ components:
             with is_set=True is connected to a QNode (n2) with is_set=True,
             each n1 must be connected to at least one n2.
           default: false
+        option_group_id:
+          type: string
+          description: >-
+            Optional string acting as a label on a set of nodes and/or edges
+            indicating that they belong to a group that are to be
+            evaluated as a group. 
       additionalProperties: true
     QEdge:
       type: object
@@ -814,6 +828,17 @@ components:
             Corresponds to the map key identifier of the
             object concept node anchoring the query filter
             pattern for the query relationship edge.
+        exclude:
+          type: boolean
+          description: >-
+            If set to true, then all subgraphs containing this edge
+            are excluded from the final results. (optional)
+        option_group_id:
+          type: string
+          description: >-
+            Optional string acting as a label on a set of nodes and/or edges
+            indicating that they belong to a group that are to be
+            evaluated as a group. 
       additionalProperties: true
       required:
         - subject
@@ -966,38 +991,45 @@ components:
         URI.
       externalDocs:
         url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
-    PreviousMessageProcessingPlan:
+    Operations:
       type: object
+      description: >-
+        Container for one or more Message objects or identifiers for one or
+        more Messages along with a processing plan and options for how those
+        messages should be processed and returned
       properties:
-        previous_message_uris:
+        message_uris:
           type: array
           example:
-            - 'https://rtx.ncats.io/api/rtx/v1/message/300'
-          description: List of URIs for Message objects to fetch and process
+            - 'https://arax.ncats.io/api/arax/v1.0/response/38'
+          description: >-
+            List of URIs for Message or Response objects to fetch and process
           items:
             type: string
-        previous_messages:
+        messages:
           type: array
           description: List of Message objects to process
           items:
             $ref: '#/components/schemas/Message'
-        processing_actions:
+        actions:
           type: array
           example:
-            - mod45filter
-            - redirect2RTX
+            - add_qnode(name=acetaminophen, key=n00)
+            - add_qnode(category=biolink:Protein, key=n01)
+            - add_qedge(subject=n01, object=n00, key=e00)
+            - expand(edge_key=e00)
+            - resultify()
+            - filter_results(action=limit_number_of_results, max_results=10)
           description: >-
-            List of order-dependent actions to guide what happens with the Message
-            object(s)
+            List of order-dependent operations to execute
           items:
             type: string
         options:
           type: object
           example:
-            topNMostFrequent: 1
+            halt_on_warning: False
           description: >-
-            Dict of options that apply during processing in an order independent
-            fashion
+            Map of order independent options that apply during processing
           additionalProperties: true
       additionalProperties: true
     Question:

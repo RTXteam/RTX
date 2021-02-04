@@ -23,13 +23,13 @@ class KnowledgeGraph(Model):
         """KnowledgeGraph - a model defined in OpenAPI
 
         :param nodes: The nodes of this KnowledgeGraph.  # noqa: E501
-        :type nodes: List[Node]
+        :type nodes: Dict[str, Node]
         :param edges: The edges of this KnowledgeGraph.  # noqa: E501
-        :type edges: List[Edge]
+        :type edges: Dict[str, Edge]
         """
         self.openapi_types = {
-            'nodes': List[Node],
-            'edges': List[Edge]
+            'nodes': Dict[str, Node],
+            'edges': Dict[str, Edge]
         }
 
         self.attribute_map = {
@@ -55,10 +55,10 @@ class KnowledgeGraph(Model):
     def nodes(self):
         """Gets the nodes of this KnowledgeGraph.
 
-        List of nodes in the KnowledgeGraph  # noqa: E501
+        Dictionary of Node instances used in the KnowledgeGraph, referenced elsewhere in the TRAPI output by the dictionary key.  # noqa: E501
 
         :return: The nodes of this KnowledgeGraph.
-        :rtype: List[Node]
+        :rtype: Dict[str, Node]
         """
         return self._nodes
 
@@ -66,11 +66,13 @@ class KnowledgeGraph(Model):
     def nodes(self, nodes):
         """Sets the nodes of this KnowledgeGraph.
 
-        List of nodes in the KnowledgeGraph  # noqa: E501
+        Dictionary of Node instances used in the KnowledgeGraph, referenced elsewhere in the TRAPI output by the dictionary key.  # noqa: E501
 
         :param nodes: The nodes of this KnowledgeGraph.
-        :type nodes: List[Node]
+        :type nodes: Dict[str, Node]
         """
+        if nodes is None:
+            raise ValueError("Invalid value for `nodes`, must not be `None`")  # noqa: E501
 
         self._nodes = nodes
 
@@ -78,10 +80,10 @@ class KnowledgeGraph(Model):
     def edges(self):
         """Gets the edges of this KnowledgeGraph.
 
-        List of edges in the KnowledgeGraph  # noqa: E501
+        Dictionary of Edge instances used in the KnowledgeGraph, referenced elsewhere in the TRAPI output by the dictionary key.  # noqa: E501
 
         :return: The edges of this KnowledgeGraph.
-        :rtype: List[Edge]
+        :rtype: Dict[str, Edge]
         """
         return self._edges
 
@@ -89,10 +91,12 @@ class KnowledgeGraph(Model):
     def edges(self, edges):
         """Sets the edges of this KnowledgeGraph.
 
-        List of edges in the KnowledgeGraph  # noqa: E501
+        Dictionary of Edge instances used in the KnowledgeGraph, referenced elsewhere in the TRAPI output by the dictionary key.  # noqa: E501
 
         :param edges: The edges of this KnowledgeGraph.
-        :type edges: List[Edge]
+        :type edges: Dict[str, Edge]
         """
+        if edges is None:
+            raise ValueError("Invalid value for `edges`, must not be `None`")  # noqa: E501
 
         self._edges = edges

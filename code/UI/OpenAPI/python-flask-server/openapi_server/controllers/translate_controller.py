@@ -7,13 +7,13 @@ from openapi_server import util
 from ParseQuestion import ParseQuestion
 
 
-def translate(request_body):  # noqa: E501
+def translate(request_body=None):  # noqa: E501
     """Translate natural language question into a standardized query
 
      # noqa: E501
 
     :param request_body: Question information to be translated
-    :type request_body: dict | bytes
+    :type request_body: Dict[str, ]
 
     :rtype: List[Query]
     """
@@ -23,4 +23,4 @@ def translate(request_body):  # noqa: E501
         query = questionParser.format_response(question)
         return(query)
     else:
-        return( { "status": 502, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 502 )
+        return( { "status": 400, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 400 )

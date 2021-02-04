@@ -8,7 +8,7 @@ import math
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.edge_attribute import EdgeAttribute
+from openapi_server.models.attribute import Attribute as EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
@@ -61,13 +61,13 @@ class SortResults:
         try:
             edge_values = {}
             # iterate over the edges find the attribute values
-            for edge in self.message.knowledge_graph.edges:  # iterate over the edges
-                edge_values[str(edge.id)] = {'value': None, 'relation': edge.relation}
-                if hasattr(edge, 'edge_attributes'):  # check if they have attributes
-                    if edge.edge_attributes:  # if there are any edge attributes
-                        for attribute in edge.edge_attributes:  # for each attribute
+            for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
+                edge_values[key] = {'value': None, 'relation': edge.relation}
+                if hasattr(edge, 'attributes'):  # check if they have attributes
+                    if edge.attributes:  # if there are any edge attributes
+                        for attribute in edge.attributes:  # for each attribute
                             if attribute.name == params['edge_attribute']:  # check if it's the desired one
-                                edge_values[str(edge.id)] = {'value': attribute.value, 'relation': edge.relation}
+                                edge_values[key] = {'value': attribute.value, 'relation': edge.relation}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
@@ -75,14 +75,16 @@ class SortResults:
             i = 0
             type_flag = 'edge_relation' in params
             for result in self.message.results:
-                for binding in result.edge_bindings:
-                    if edge_values[binding.kg_id]['value'] is not None:
-                        if not type_flag or (type_flag and params['edge_relation'] == edge_values[binding.kg_id]['relation']):
-                            if abs(value_list[i]) == math.inf:
-                                value_list[i] = edge_values[binding.kg_id]['value']
-                            else:
-                                # this will take the sum off all edges with the attribute if we want to change to max edit this line
-                                value_list[i] += edge_values[binding.kg_id]['value']
+                for binding_list in result.edge_bindings.values():
+                    for binding in binding_list:
+                        # need to test this for TRAPI 1.0 after expand (and resultify?)is updated to see if binding.id matches edge_key
+                        if edge_values[binding.id]['value'] is not None:
+                            if not type_flag or (type_flag and params['edge_relation'] == edge_values[binding.id]['relation']):
+                                if abs(value_list[i]) == math.inf:
+                                    value_list[i] = edge_values[binding.id]['value']
+                                else:
+                                    # this will take the sum off all edges with the attribute if we want to change to max edit this line
+                                    value_list[i] += edge_values[binding.id]['value']
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -116,7 +118,7 @@ class SortResults:
             value_list=[0]*len(self.message.results)
             i = 0
             for result in self.message.results:
-                value_list[i] = len(result.edge_bindings)
+                value_list[i] = len([binding for binding_list in result.edge_bindings.values() for binding in binding_list])
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -149,31 +151,32 @@ class SortResults:
         try:
             node_values = {}
             # iterate over the nodes find the attribute values
-            for node in self.message.knowledge_graph.nodes:  # iterate over the nodes
-                node_values[str(node.id)] = {'value': None, 'type': node.type}
-                if hasattr(node, 'node_attributes'):  # check if they have attributes
-                    if node.node_attributes:  # if there are any node attributes
-                        for attribute in node.node_attributes:  # for each attribute
+            for key, node in self.message.knowledge_graph.nodes.items():  # iterate over the nodes
+                node_values[key] = {'value': None, 'category': node.category}
+                if hasattr(node, 'attributes'):  # check if they have attributes
+                    if node.attributes:  # if there are any node attributes
+                        for attribute in node.attributes:  # for each attribute
                             if attribute.name == params['node_attribute']:  # check if it's the desired one
                                 if attribute.name == 'pubmed_ids':
-                                    node_values[str(node.id)] = {'value': attribute.value.count("PMID"), 'type': node.type}
+                                    node_values[key] = {'value': attribute.value.count("PMID"), 'category': node.category}
                                 else:
-                                    node_values[str(node.id)] = {'value': attribute.value, 'type': node.type}
+                                    node_values[key] = {'value': attribute.value, 'category': node.category}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
                 value_list=[math.inf]*len(self.message.results)
             i = 0
-            type_flag = 'node_type' in params
+            type_flag = 'node_category' in params
             for result in self.message.results:
-                for binding in result.node_bindings:
-                    if node_values[binding.kg_id]['value'] is not None:
-                        if not type_flag or (type_flag and params['node_type'] == node_values[binding.kg_id]['type']):
-                            if abs(value_list[i]) == math.inf:
-                                value_list[i] = node_values[binding.kg_id]['value']
-                            else:
-                                # this will take the sum off all nodes with the attribute if we want to change to max edit this line
-                                value_list[i] += node_values[binding.kg_id]['value']
+                for binding_list in result.node_bindings.values():
+                    for binding in binding_list:
+                        if node_values[binding.id]['value'] is not None:
+                            if not type_flag or (type_flag and params['node_category'] == node_values[binding.id]['category']):
+                                if abs(value_list[i]) == math.inf:
+                                    value_list[i] = node_values[binding.id]['value']
+                                else:
+                                    # this will take the sum off all nodes with the attribute if we want to change to max edit this line
+                                    value_list[i] += node_values[binding.id]['value']
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -207,7 +210,7 @@ class SortResults:
             value_list=[0]*len(self.message.results)
             i = 0
             for result in self.message.results:
-                value_list[i] = len(result.node_bindings)
+                value_list[i] = len([binding for binding_list in result.node_bindings.values() for binding in binding_list])
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -236,32 +239,34 @@ class SortResults:
         :return: response
         """
         try:
-            node_ids = set()
-            edge_ids = set()
+            node_keys = set()
+            edge_keys = set()
             nodes_to_remove = set()
             edges_to_remove = set()
             for result in self.message.results:
-                for node_binding in result.node_bindings:
-                    node_ids.add(node_binding.kg_id)
-                for edge_binding in result.edge_bindings:
-                    edge_ids.add(edge_binding.kg_id)
-            node_ids_to_remove = set()
-            i = 0
-            for node in self.message.knowledge_graph.nodes:
-                if node.id not in node_ids:
-                    nodes_to_remove.add(i)
-                    node_ids_to_remove.add(node.id)
-                i += 1
-            self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
-            i = 0
+                for node_binding_list in result.node_bindings.values():
+                    for node_binding in node_binding_list:
+                        node_keys.add(node_binding.id)
+                for edge_binding_list in result.edge_bindings.values():
+                    for edge_binding in edge_binding_list:
+                        edge_keys.add(edge_binding.id)
+            #node_keys_to_remove = set()
+            for key, node in self.message.knowledge_graph.nodes.items():
+                if key not in node_keys:
+                    nodes_to_remove.add(key)
+                    #node_keys_to_remove.add(node.id)
+            #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
+            for key in nodes_to_remove:
+                del self.message.knowledge_graph.nodes[key]
             edges_to_remove = set()
             # iterate over edges find edges connected to the nodes
-            for edge in self.message.knowledge_graph.edges:
-                if edge.id not in edge_ids or edge.source_id in node_ids_to_remove or edge.target_id in node_ids_to_remove:
-                    edges_to_remove.add(i)
-                i += 1
+            for key, edge in self.message.knowledge_graph.edges.items():
+                if key not in edge_keys or edge.subject in nodes_to_remove or edge.object in nodes_to_remove:
+                    edges_to_remove.add(key)
             # remove edges
-            self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+            #self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
+            for key in edges_to_remove:
+                del self.message.knowledge_graph.edges[key]
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()

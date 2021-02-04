@@ -44,7 +44,7 @@
 <div class="banner" banner-bg-text="ARAX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a href="api/rtx/v1/ui/">API 0.9.3</a>
+<a href="api/arax/v1.0/ui/">TRAPI 1.0.0</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
@@ -61,10 +61,11 @@
 <div class="pagesection" id="queryDiv">
   <h3 style="margin:0px;">Choose Query Type:</h3>
   &nbsp;&nbsp;&nbsp;
-  <img src="qtxt.png"  class="slink" onclick="selectInput(this,'qtext_input');"  title="Enter Query using Natural Language"/>
+<!--  <img src="qtxt.png"  class="slink" onclick="selectInput(this,'qtext_input');"  title="Enter Query using Natural Language"/> -->
   <img src="qg.png"    class="slink" onclick="selectInput(this,'qgraph_input');" title="Enter Query Graph"/>
   <img src="qjson.png" class="slink" onclick="selectInput(this,'qjson_input');"  title="Enter JSON representation of Query Graph"/>
   <img src="qdsl.png"  class="slink" onclick="selectInput(this,'qdsl_input');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
+  <img src="qid.png"  class="slink" onclick="selectInput(this,'qid_input');"  title="Retrieve stored response by id"/>
 
   <div class="inputsection" id="qtext_input">
     <h3 style="display:inline;">Enter question:</h3>
@@ -79,7 +80,7 @@
       </select>
     </div>
 
-    <form id="questionForm" name="questionForm" method="post" action="sendQuestion();">
+    <form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion();">
       <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="typeInput questionBox" id="questionText" name="questionText" size="100" maxlength="1000"/>
 
       <input type="button" class="questionBox button" name="action" value="ASK" onClick="sendQuestion();"/>
@@ -175,7 +176,26 @@
       <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL');">
     </form>
   </div>
-  
+
+  <div class="inputsection" id="qid_input">
+    <h3 style="display:inline;">Enter a TRAPI Response identifier to load:</h3>
+    <div class="sampleqs">
+      <select id="qid" onchange="pasteId(this.value);">
+	<option style="border-bottom:1px solid black;" value="">Example Ids&nbsp;&nbsp;&nbsp;&#8675;</option>
+	<option value="507">ARAX example: 507</option>
+	<option value="4a2fe25a-bfba-40a8-91a7-2db4076144b7">ARS example: 4a2fe25a-bfba-40a8-91a7-2db4076144b7</option>
+      </select>
+    </div>
+
+    <form id="idForm" name="idForm" method="post" action="javascript:sendId();">
+      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="typeInput questionBox" id="idText" name="idText" size="100" maxlength="100"/>
+
+      <input type="button" class="questionBox button" name="action" value="LOAD" onClick="sendId();"/>
+      <span title="clear id" class="clq" onclick="pasteId('');">&#9587;</span>
+    </form>
+    <br>
+  </div>
+
   <br><br>
 
   <div id="status_container"></div>
