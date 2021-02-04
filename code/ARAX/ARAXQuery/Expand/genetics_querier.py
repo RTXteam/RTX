@@ -88,8 +88,9 @@ class GeneticsQuerier:
                             final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
                         edge_to_nodes_map[swagger_edge_key] = {source_qnode_key: swagger_edge.subject,
                                                                target_qnode_key: swagger_edge.object}
-            log.warning(f"Encountered unknown score(s) from {self.kp_name}: {unknown_scores_encountered}. "
-                        f"Not sure what data type to assign these.")
+            if unknown_scores_encountered:
+                log.warning(f"Encountered unknown score(s) from {self.kp_name}: {unknown_scores_encountered}. "
+                            f"Not sure what data type to assign these.")
             for returned_node in returned_kg['nodes']:
                 if returned_node['id']:  # Skip any nodes with 'None' for their ID (see discussion in #1154)
                     swagger_node_key, swagger_node = self._create_swagger_node_from_kp_node(returned_node)
@@ -120,7 +121,7 @@ class GeneticsQuerier:
             accepted_qnode_categories = formatted_qnode_categories.intersection(self.accepted_node_categories)
             if not accepted_qnode_categories:
                 log.error(f"{self.kp_name} can only be used for queries involving {self.accepted_node_categories} "
-                          f"and QNode {qnode_key} has type '{qnode.category}'", error_code="UnsupportedQueryForKP")
+                          f"and QNode {qnode_key} has category '{qnode.category}'", error_code="UnsupportedQueryForKP")
                 return query_graph
             else:
                 qnode.category = list(accepted_qnode_categories)[0]

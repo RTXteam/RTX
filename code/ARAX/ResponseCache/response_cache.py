@@ -237,11 +237,26 @@ class ResponseCache:
             if status_code != 200:
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
-            #### Unpack the response content into a dict and dump
+            #### Unpack the response content into a dict
             try:
                 response_dict = response_content.json()
             except:
                 return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
+
+            if 'fields' in response_dict and 'actor' in response_dict['fields'] and str(response_dict['fields']['actor']) == '9':
+                response_content = requests.get('https://ars.transltr.io/ars/api/messages/' + response_id + '?trace=y', headers={'accept': 'application/json'})
+                status_code = response_content.status_code
+
+                if status_code != 200:
+                    return( { "status": 404, "title": "Response not found", "detail": "Failed attempting to fetch trace=y from ARS with response_id="+str(response_id), "type": "about:blank" }, 404)
+
+                #### Unpack the response content into a dict and dump
+                try:
+                    response_dict = response_content.json()
+                except:
+                    return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
+
+                return response_dict
 
 
             if 'fields' in response_dict and 'data' in response_dict['fields']:
@@ -327,8 +342,9 @@ def main():
         envelope = response_cache.get_response(params.response_id[0])
 
         #print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
-        #print(json.dumps(envelope, sort_keys=True, indent=2))
-        print(json.dumps(envelope['logs'], sort_keys=True, indent=2))
+        print(json.dumps(envelope, sort_keys=True, indent=2))
+        return
+        #print(json.dumps(envelope['logs'], sort_keys=True, indent=2))
 
     try:
         validate_Message(envelope['message'])
