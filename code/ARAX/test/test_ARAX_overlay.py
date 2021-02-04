@@ -96,10 +96,10 @@ def test_jaccard():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:14717, key=n00)",
-        "add_qnode(category=protein, is_set=true, key=n01)",
-        "add_qnode(category=chemical_substance, key=n02)",
+        "add_qnode(category=biolink:biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicate=physically_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "resultify(ignore_edge_direction=true, debug=true)",
@@ -122,7 +122,7 @@ def test_add_node_pmids():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:384, key=n00)",
-        "add_qnode(category=chemical_substance, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
         "overlay(action=add_node_pmids, max_num=15)",
@@ -154,7 +154,7 @@ def test_compute_ngd_virtual():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:384, key=n00)",
-        "add_qnode(category=chemical_substance, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
         "overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)",
@@ -179,7 +179,7 @@ def test_compute_ngd_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:384, key=n00)",
-        "add_qnode(category=chemical_substance, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
         "overlay(action=compute_ngd)",
@@ -210,7 +210,7 @@ def test_FET_ex1():
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n01)",
         "add_qnode(category=chemical_substance, is_set=true, key=n02)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicate=physically_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
         "expand(edge_key=e01, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01, filter_type=cutoff, value=0.05)",
         "resultify()",
@@ -294,7 +294,7 @@ def test_paired_concept_frequency_virtual():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
@@ -312,7 +312,7 @@ def test_paired_concept_frequency_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, COHD_method=paired_concept_frequency)",
@@ -330,7 +330,7 @@ def test_observed_expected_ratio_virtual():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info,observed_expected_ratio=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
@@ -348,7 +348,7 @@ def test_observed_expected_ratio_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio)",
@@ -366,7 +366,7 @@ def test_chi_square_virtual():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
@@ -384,7 +384,7 @@ def test_chi_square_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, COHD_method=chi_square)",
@@ -418,7 +418,7 @@ def test_predict_drug_treats_disease_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=DOID:9008, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease)",
@@ -435,7 +435,7 @@ def test_issue_832():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=DOID:9008, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
@@ -452,7 +452,7 @@ def test_issue_832_non_drug():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=UniProtKB:Q13627, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
@@ -472,7 +472,7 @@ def test_issue_840():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
@@ -488,7 +488,7 @@ def test_issue_840():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -506,7 +506,7 @@ def test_issue_840_non_drug():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=UniProtKB:Q13627, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
@@ -524,7 +524,7 @@ def test_issue_840_non_drug():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=UniProtKB:Q13627, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -544,8 +544,8 @@ def test_issue_840_non_drug():
 def test_issue_892():
     query = {"operations": {"actions": [
         "add_qnode(id=DOID:11830, category=disease, key=n00)",
-        "add_qnode(category=gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
-        "add_qnode(category=chemical_substance, key=n02)",
+        "add_qnode(category=biolink:Gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(kp=BTE)",
