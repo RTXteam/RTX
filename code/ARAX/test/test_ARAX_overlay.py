@@ -590,5 +590,28 @@ def test_overlay_exposures_data_attribute():
     _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1, 0)
 
 
+@pytest.mark.slow
+def test_overlay_clinical_info_no_ids():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(name=Sotos syndrome, key=n1)",
+        "expand(kp=ARAX/KG2)",
+        "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
+        "overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=C2,subject_qnode_key=n0,object_qnode_key=n1)",
+        "overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=C3,subject_qnode_key=n0,object_qnode_key=n1)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
+    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
+    _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
+
+
 if __name__ == "__main__":
     pytest.main(['-v'])
