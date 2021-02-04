@@ -407,10 +407,10 @@ def test_example_2_kg2():
     query = {"operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
-            "add_qnode(category=protein, is_set=true, key=n01)",
-            "add_qnode(category=chemical_substance, key=n02)",
+            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "add_qedge(subject=n01, object=n02, key=e01, predicate=molecularly_interacts_with)",
+            "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:molecularly_interacts_with)",
             "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",  # seems to work just fine
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_key=n02)",
@@ -434,10 +434,10 @@ def test_clinical_overlay_example1():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:11830, key=n00)",
-        "add_qnode(category=protein, is_set=true, key=n01)",
-        "add_qnode(category=chemical_substance, key=n02)",
+        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicate=molecularly_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:molecularly_interacts_with)",
         "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
         # overlay a bunch of clinical info
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
@@ -466,7 +466,7 @@ def test_clinical_overlay_example2():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:11830, key=n00)",
-        "add_qnode(category=chemical_substance, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG2)",
         # overlay a bunch of clinical info
@@ -498,9 +498,9 @@ def test_two_hop_based_on_types_1():
     for doid in doid_list:
         query = {"operations": {"actions": [
             "create_message",
-            f"add_qnode(name={doid}, key=n00, category=disease)",
-            "add_qnode(category=protein, is_set=true, key=n01)",
-            "add_qnode(category=chemical_substance, key=n02)",
+            f"add_qnode(name={doid}, key=n00, category=biolink:Disease)",
+            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(edge_key=e00, kp=ARAX/KG2)",
@@ -534,8 +534,8 @@ def test_one_hop_based_on_types_1():
     for doid in doid_list:
         query = {"operations": {"actions": [
             "create_message",
-            f"add_qnode(id={doid}, key=n00, category=disease)",
-            "add_qnode(category=chemical_substance, key=n01)",
+            f"add_qnode(id={doid}, key=n00, category=biolink:Disease)",
+            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG2)",
             "expand(edge_key=e00, kp=BTE)",
@@ -559,8 +559,8 @@ def test_one_hop_kitchen_sink_BTE_1():
     """
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(curie=DOID:11830, key=n0, category=disease)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(curie=DOID:11830, key=n0, category=biolink:Disease)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e1)",
         #"expand(edge_key=e00, kp=ARAX/KG2)",
         "expand(edge_key=e1, kp=BTE)",
@@ -588,8 +588,8 @@ def test_one_hop_kitchen_sink_BTE_2():
     """
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(curie=DOID:11830, key=n0, category=disease)",
-        "add_qnode(category=gene, key=n1)",
+        "add_qnode(curie=DOID:11830, key=n0, category=biolink:Disease)",
+        "add_qnode(category=biolink:Gene, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e1)",
         #"expand(edge_key=e00, kp=ARAX/KG2)",
         "expand(edge_key=e1, kp=BTE)",
