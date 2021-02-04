@@ -146,6 +146,7 @@ function reset_vars() {
     document.getElementById("menunumresults").className = "numold menunum";
     summary_table_html = '';
     summary_tsv = [];
+    columnlist = [];
     cyobj = [];
     cytodata = [];
     UIstate.nodedd = 1;
@@ -516,6 +517,57 @@ function sendQuestion(e) {
 }
 
 
+function process_ars_message(ars_msg, level) {
+    if (level > 5)
+	return; // stopgap
+    var table;
+    var tr;
+    var td;
+    if (level == 0) {
+	if (document.getElementById('ars_message_list'))
+	    document.getElementById('ars_message_list').remove();
+	table = document.createElement("table");
+	table.id = 'ars_message_list';
+	table.className = 'sumtab';
+
+	tr = document.createElement("tr");
+	for (var head of ["","Agent","Status","Message Id"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+	table.appendChild(tr);
+	document.getElementById('qid_input').appendChild(table);
+    }
+    else
+	table = document.getElementById('ars_message_list');
+
+    tr = document.createElement("tr");
+    td = document.createElement("td");
+    td.appendChild(document.createTextNode('\u25BA'.repeat(level)));
+    tr.appendChild(td);
+    td = document.createElement("td");
+    td.appendChild(document.createTextNode(ars_msg.actor.agent));
+    tr.appendChild(td);
+    td = document.createElement("td");
+    td.appendChild(document.createTextNode(ars_msg.status));
+    tr.appendChild(td);
+    td = document.createElement("td");
+    var link = document.createElement("a");
+    link.title='view this response';
+    link.style.cursor = "pointer";
+    link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId();addCheckBox(this,false);');
+    link.appendChild(document.createTextNode(ars_msg.message));
+    td.appendChild(link);
+    tr.appendChild(td);
+    table.appendChild(tr);
+
+    level++;
+    for (let child of ars_msg["children"])
+	process_ars_message(child, level);
+}
+
+
 function retrieve_response(provider, resp_url, resp_id) {
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("Retrieving "+provider+" response id = " + resp_id));
@@ -544,6 +596,11 @@ function retrieve_response(provider, resp_url, resp_id) {
 	    pre.id = 'responseJSON';
 	    pre.textContent = JSON.stringify(jsonObj2,null,2);
             devdiv.appendChild(pre);
+
+            if (jsonObj2["children"]) {
+		process_ars_message(jsonObj2,0);
+		return;
+	    }
 
 	    if (jsonObj2["restated_question"]) {
 		statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
@@ -2557,7 +2614,7 @@ function copyJSON(ele) {
 	range.moveToElementText(document.getElementById(containerid));
 	range.select().createTextRange();
 	document.execCommand("copy");
-	addCheckBox(ele);
+	addCheckBox(ele,true);
     }
     else if (window.getSelection) {
 	var range = document.createRange();
@@ -2565,7 +2622,7 @@ function copyJSON(ele) {
         window.getSelection().removeAllRanges();
 	window.getSelection().addRange(range);
 	document.execCommand("copy");
-	addCheckBox(ele);
+	addCheckBox(ele,true);
 	//alert("text copied")
     }
 }
@@ -2580,14 +2637,15 @@ function copyTSVToClipboard(ele,tsv) {
     document.execCommand("copy");
     document.body.removeChild(dummy);
 
-    addCheckBox(ele);
+    addCheckBox(ele,true);
 }
 
-function addCheckBox(ele) {
+function addCheckBox(ele,remove) {
     var check = document.createElement("span");
     check.className = 'explevel p9';
     check.innerHTML = '&check;';
     ele.parentNode.insertBefore(check, ele.nextSibling);
 
-    var timeout = setTimeout(function() { check.remove(); }, 1500 );
+    if (remove)
+	var timeout = setTimeout(function() { check.remove(); }, 1500 );
 }
