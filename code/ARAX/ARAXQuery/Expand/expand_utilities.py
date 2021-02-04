@@ -386,9 +386,9 @@ def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
             qnode.category = formatted_categories[0] if len(formatted_categories) == 1 else formatted_categories
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
-            predicate_with_commas = predicates_with_commas.get(qedge.predicate, qedge.predicate)
-            prefixless_predicate = predicate_with_commas.split(":")[-1]
-            qedge.predicate = prefixless_predicate
+            prefixless_predicate = qedge.predicate.split(":")[-1]
+            predicate_with_commas = predicates_with_commas.get(prefixless_predicate, prefixless_predicate)
+            qedge.predicate = predicate_with_commas
     return qg_copy
 
 

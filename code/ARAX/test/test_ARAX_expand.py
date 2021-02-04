@@ -807,7 +807,7 @@ def test_category_and_predicate_format():
     actions_list = [
         "add_qnode(id=UniProtKB:P42857, key=n00)",
         "add_qnode(category=biolink:Protein, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicate=positively_regulates_entity_to_entity)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:positively_regulates_entity_to_entity)",
         "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
