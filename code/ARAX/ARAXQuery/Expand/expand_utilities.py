@@ -370,7 +370,12 @@ def get_attribute_type(attribute_name: str) -> str:
 
 
 def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
-    # This is a temporary patch to change types from biolink:__ to old snakecase format until all KPs are on TRAPI 1.0
+    # This is a temporary patch until we switch to KG2.5+
+    predicates_with_commas = {"positively_regulates_entity_to_entity": "positively_regulates,_entity_to_entity",
+                              "negatively_regulates_entity_to_entity": "negatively_regulates,_entity_to_entity",
+                              "positively_regulates_process_to_process": "positively_regulates,_process_to_process",
+                              "regulates_process_to_process": "regulates,_process_to_process",
+                              "negatively_regulates_process_to_process": "negatively_regulates,_process_to_process"}
     qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
                          edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
     for qnode in qg_copy.nodes.values():
@@ -381,13 +386,14 @@ def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
             qnode.category = formatted_categories[0] if len(formatted_categories) == 1 else formatted_categories
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
-            prefixless_predicate = qedge.predicate.split(":")[-1]
+            predicate_with_commas = predicates_with_commas.get(qedge.predicate, qedge.predicate)
+            prefixless_predicate = predicate_with_commas.split(":")[-1]
             qedge.predicate = prefixless_predicate
     return qg_copy
 
 
 def convert_node_and_edge_types_to_new_format(kg: QGOrganizedKnowledgeGraph):
-    # Temporary patch to convert from old snake case format to biolink:Protein/biolink:has_phenotype format
+    # This is a temporary patch to make edge/node types TRAPI 1.0 compliant until we switch to KG2.5+
     for nodes_dict in kg.nodes_by_qg_id.values():
         for node in nodes_dict.values():
             if node.category:
@@ -398,5 +404,6 @@ def convert_node_and_edge_types_to_new_format(kg: QGOrganizedKnowledgeGraph):
                 node.category = list(correct_categories.union(corrected_categories))
     for edges_dict in kg.edges_by_qg_id.values():
         for edge in edges_dict.values():
+            edge.predicate = edge.predicate.replace(",", "")  # Remove any commas
             if edge.predicate and not edge.predicate.startswith("biolink:"):
                 edge.predicate = f"biolink:{edge.predicate}"
