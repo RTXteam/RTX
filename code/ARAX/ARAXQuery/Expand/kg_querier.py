@@ -51,9 +51,11 @@ class KGQuerier:
         enforce_directionality = self.enforce_directionality
         use_synonyms = self.use_synonyms
         kg_name = self.kg_name
+        if kg_name == "KG1":
+            query_graph = eu.make_qg_use_old_snake_case_types(query_graph)
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
-        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until we switch to KG2.5.1
+        query_graph = eu.make_qedge_predicates_use_commas(query_graph)  # Temporary until we have KG2 without commas
 
         # Verify this is a valid one-hop query graph
         if len(query_graph.edges) != 1:
@@ -89,8 +91,8 @@ class KGQuerier:
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
-        # TODO: remove this patch once we switch to KG2.5.0!
-        eu.convert_node_and_edge_types_to_new_format(final_kg)
+        # TODO: remove this patch once KG2 predicates no longer have commas
+        eu.remove_commas_from_predicates(final_kg)
 
         return final_kg, edge_to_nodes_map
 
@@ -98,8 +100,9 @@ class KGQuerier:
         kg_name = self.kg_name
         use_synonyms = self.use_synonyms
         log = self.response
+        if kg_name == "KG1":
+            single_node_qg = eu.make_qg_use_old_snake_case_types(single_node_qg)
         final_kg = QGOrganizedKnowledgeGraph()
-        single_node_qg = eu.make_qg_use_old_types(single_node_qg)  # Temporary patch until we switch to KG2.5.1
         qnode_key = next(qnode_key for qnode_key in single_node_qg.nodes)
         qnode = single_node_qg.nodes[qnode_key]
 
@@ -124,8 +127,8 @@ class KGQuerier:
             swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
             final_kg.add_node(swagger_node_key, swagger_node, qnode_key)
 
-        # TODO: remove this patch once we switch to KG2.5.0!
-        eu.convert_node_and_edge_types_to_new_format(final_kg)
+        # TODO: remove this patch once KG2 predicates no longer have commas
+        eu.remove_commas_from_predicates(final_kg)
 
         return final_kg
 

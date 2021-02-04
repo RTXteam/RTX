@@ -41,7 +41,7 @@ class BTEQuerier:
         answer_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
         valid_bte_inputs_dict = self._get_valid_bte_inputs_dict()
-        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until KP is TRAPI 1.0 compliant
+        query_graph = eu.make_qg_use_old_snake_case_types(query_graph)  # Temporary patch until KP is TRAPI 1.0 compliant
 
         # Validate our input to make sure it will work with BTE
         input_qnode_key, output_qnode_key = self._validate_and_pre_process_input(qg=query_graph,

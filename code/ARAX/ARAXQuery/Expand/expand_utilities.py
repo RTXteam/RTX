@@ -369,13 +369,8 @@ def get_attribute_type(attribute_name: str) -> str:
     return attribute_type_map.get(attribute_name, "biolink:Unknown")
 
 
-def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
-    # This is a temporary patch until we switch to KG2.5+
-    predicates_with_commas = {"positively_regulates_entity_to_entity": "positively_regulates,_entity_to_entity",
-                              "negatively_regulates_entity_to_entity": "negatively_regulates,_entity_to_entity",
-                              "positively_regulates_process_to_process": "positively_regulates,_process_to_process",
-                              "regulates_process_to_process": "regulates,_process_to_process",
-                              "negatively_regulates_process_to_process": "negatively_regulates,_process_to_process"}
+def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
+    # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
     qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
                          edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
     for qnode in qg_copy.nodes.values():
@@ -386,24 +381,28 @@ def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
             qnode.category = formatted_categories[0] if len(formatted_categories) == 1 else formatted_categories
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
-            prefixless_predicate = qedge.predicate.split(":")[-1]
-            predicate_with_commas = predicates_with_commas.get(prefixless_predicate, prefixless_predicate)
-            qedge.predicate = predicate_with_commas
+            qedge.predicate = qedge.predicate.split(":")[-1]
+            qedge.predicate.lower()
     return qg_copy
 
 
-def convert_node_and_edge_types_to_new_format(kg: QGOrganizedKnowledgeGraph):
-    # This is a temporary patch to make edge/node types TRAPI 1.0 compliant until we switch to KG2.5+
-    for nodes_dict in kg.nodes_by_qg_id.values():
-        for node in nodes_dict.values():
-            if node.category:
-                correct_categories = {category for category in node.category if category.startswith(f"biolink:")}
-                categories_to_convert = set(node.category).difference(correct_categories)
-                corrected_categories = {f"biolink:{convert_string_to_pascal_case(category)}" for category in
-                                        categories_to_convert}
-                node.category = list(correct_categories.union(corrected_categories))
+def make_qedge_predicates_use_commas(qg: QueryGraph) -> QueryGraph:
+    # This is a temporary patch until we're on a KG2 where predicates no longer have commas
+    predicates_with_commas = {"positively_regulates_entity_to_entity": "positively_regulates,_entity_to_entity",
+                              "negatively_regulates_entity_to_entity": "negatively_regulates,_entity_to_entity",
+                              "positively_regulates_process_to_process": "positively_regulates,_process_to_process",
+                              "regulates_process_to_process": "regulates,_process_to_process",
+                              "negatively_regulates_process_to_process": "negatively_regulates,_process_to_process"}
+    qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
+                         edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+    for qedge in qg_copy.edges.values():
+        if qedge.predicate:
+            qedge.predicate = predicates_with_commas.get(qedge.predicate, qedge.predicate)
+    return qg_copy
+
+
+def remove_commas_from_predicates(kg: QGOrganizedKnowledgeGraph):
+    # This is a temporary patch until edge types with commas are fixed in regular KG2
     for edges_dict in kg.edges_by_qg_id.values():
         for edge in edges_dict.values():
             edge.predicate = edge.predicate.replace(",", "")  # Remove any commas
-            if edge.predicate and not edge.predicate.startswith("biolink:"):
-                edge.predicate = f"biolink:{edge.predicate}"
