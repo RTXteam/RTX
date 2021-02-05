@@ -35,7 +35,7 @@ class COHDQuerier:
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
-        This function answers a one-hop (single-edge) query using either KG1 or KG2.
+        This function answers a one-hop (single-edge) query using COHD database.
         :param query_graph: A Reasoner API standard query graph.
         :return: A tuple containing:
             1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
@@ -51,6 +51,8 @@ class COHDQuerier:
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
         query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until we switch to KG2.5.1
+
+        print(query_graph)
 
         if COHD_method_percentile == 99:
             pass
@@ -81,8 +83,6 @@ class COHDQuerier:
             final_kg, edge_to_nodes_map = self._answer_query_using_COHD_chi_square(query_graph, COHD_method_percentile, log)
         else:
             log.error(f"The parameter 'COHD_method' was passed an invalid option. The current allowed options are `paired_concept_freq`, `observed_expected_ratio`, `chi_square`.", error_code="InvalidParameterOption")
-        if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
 
         # TODO: remove this patch once we switch to KG2.5.1!
         eu.convert_node_and_edge_types_to_new_format(final_kg)
@@ -911,37 +911,37 @@ class COHDQuerier:
 
         res_dict = {}
         if isinstance(qnode.id, str):
-            res = self.synonymizer.get_canonical_curies(curies=qnode.id)
-            if res[qnode.id] is None:
-                log.error("Can't find the preferred curie for {qnode.id}", error_code="NoPreferredCurie")
-                return {}
-            else:
-                preferred_curie = res[qnode.id]['preferred_curie']
+            # res = self.synonymizer.get_canonical_curies(curies=qnode.id)
+            # if res[qnode.id] is None:
+            #     log.error("Can't find the preferred curie for {qnode.id}", error_code="NoPreferredCurie")
+            #     return {}
+            # else:
+            #     preferred_curie = res[qnode.id]['preferred_curie']
             try:
                 omop_ids = self.cohdindex.get_concept_ids(qnode.id)
             except:
                 log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
                 return {}
-            res_dict[preferred_curie] = omop_ids
+            res_dict[qnode.id] = omop_ids
 
         else:
             # classify the curies based on the preferred curie
-            res = self.synonymizer.get_canonical_curies(curies=qnode.id)
-            for curie in res:
-                if res[curie] is None:
-                    log.error("Can't find the preferred curie for {curie}", error_code="NoPreferredCurie")
-                    return {}
-                else:
-                    if res[curie]['preferred_curie'] not in res_dict:
-                        res_dict[res[curie]['preferred_curie']] = []
+            # res = self.synonymizer.get_canonical_curies(curies=qnode.id)
+            # for curie in res:
+            #     if res[curie] is None:
+            #         log.error("Can't find the preferred curie for {curie}", error_code="NoPreferredCurie")
+            #         return {}
+            #     else:
+            #         if res[curie]['preferred_curie'] not in res_dict:
+            #             res_dict[res[curie]['preferred_curie']] = []
 
-            for preferred_curie in res_dict:
+            for curie in qnode.id:
                 try:
-                    omop_ids = self.cohdindex.get_concept_ids(preferred_curie)
+                    omop_ids = self.cohdindex.get_concept_ids(curie)
                 except:
                     log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
                     return {}
-                res_dict[preferred_curie] = omop_ids
+                res_dict[curie] = omop_ids
 
         return res_dict
 
