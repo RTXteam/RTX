@@ -570,6 +570,15 @@ function sendId() {
     if (cyobj[999]) {cyobj[999].elements().remove();}
     input_qg = { "edges": [], "nodes": [] };
 
+    if (document.getElementById("numresults_"+id)) {
+	document.getElementById("numresults_"+id).innerHTML = '';
+	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
+	var wait = document.createElement("span");
+	wait.className = 'loading';
+	wait.innerHTML = '\u231A';
+	document.getElementById("numresults_"+id).appendChild(wait);
+    }
+
     retrieve_response("ARS",providers["ARS"].url+id,id);
     openSection(null,'queryDiv');
 }
@@ -1241,6 +1250,7 @@ function process_graph(gne,gid) {
 
 }
 
+// a watered-down essence, if you will...
 function eau_du_essence(result) {
     var guessence = 'n/a';
     for (var nbid in result.node_bindings)

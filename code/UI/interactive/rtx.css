@@ -336,6 +336,20 @@ hr {
     background-color: #b00;
 }
 
+.loading {
+    display: inline-block;
+    width: 20%;
+    height: 100%;
+    animation: 0.5s left-right cubic-bezier(.45,.05,.55,.95) alternate infinite;
+}
+@keyframes left-right {
+    0% {
+	transform:translateX(0%);
+    }
+    100% {
+	transform:translateX(400%);
+    }
+}
 
 .p9, .msgINFO    { background-color: #291; }
 .p7              { background-color: #7b4; }
