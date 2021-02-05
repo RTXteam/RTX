@@ -15,10 +15,11 @@ conn = sqlite3.connect(database_name)
 conn.text_factory = str
 c = conn.cursor()
 
-tablename = "term"
-print(f"Creating table {tablename}")
+print(f"Creating tables")
 #c.execute(f"CREATE TABLE {tablename}(curie TEXT, name TEXT, type TEXT, rank INTEGER)")
-c.execute(f"CREATE TABLE {tablename}(term VARCHAR(255))")
+c.execute(f"CREATE TABLE terms(term VARCHAR(255) COLLATE NOCASE)")
+c.execute(f"CREATE TABLE cached_fragments(fragment VARCHAR(255) COLLATE NOCASE)")
+c.execute(f"CREATE TABLE cached_fragment_terms(fragment_id INT, term VARCHAR(255) COLLATE NOCASE)")
 
 rank = 1
 row_count = 0
@@ -28,22 +29,24 @@ with open("../../data/KGmetadata/NodeNamesDescriptions_KG2.tsv", 'r', encoding="
     print("Loading node names")
     for line in nodeData:
         curie, name, type = line[:-1].split("\t")
-        #c.execute("INSERT INTO %s(curie,name,type,rank) VALUES(?,?,?,?)" % (tablename), (curie,name,type,rank,))
+        #c.execute("INSERT INTO term(curie,name,type,rank) VALUES(?,?,?,?)" % (tablename), (curie,name,type,rank,))
 
         for term in [ name, curie ]:
 
             uc_term = term.upper()
             if uc_term not in uc_terms:
-                c.execute("INSERT INTO %s(term) VALUES(?)" % (tablename), (term,))
+                c.execute("INSERT INTO terms(term) VALUES(?)", (term,))
                 uc_terms[uc_term] = 1
 
         row_count += 1
         if row_count == int(row_count/1000000) * 1000000:
             print(f"{row_count}...", end='', flush=True)
+            #break
 
 print()
-print(f"Creating index idx_{tablename}_term")
-c.execute(f"CREATE INDEX idx_{tablename}_term ON {tablename}(term)")
+print(f"Creating indexes")
+c.execute(f"CREATE INDEX idx_terms_term ON terms(term)")
+c.execute(f"CREATE INDEX idx_cached_fragments_fragment ON cached_fragments(fragment)")
 
 conn.commit()
 conn.close()
