@@ -276,6 +276,40 @@ class predictor():
             else:
                 return res[2]
 
+    def get_probs_from_DTD_db_based_on_disease(self, disease_id_list):
+        """
+        Get the probabilities of all pairs of source and target curie ids from DTD probability database based on given disease ids
+
+        :param disease_id_list: A list containg the curie ids of queried disease
+        """
+
+        if self.use_prob_db is True:
+            cursor = self.connection.cursor()
+
+            row = cursor.execute(f"select * from DTD_PROBABILITY where disease in {tuple(set(disease_id_list))}")
+            res = row.fetchall()
+            if len(res)!=0:
+                return res
+            else:
+                return None
+
+    def get_probs_from_DTD_db_based_on_drug(self, drug_id_list):
+        """
+        Get the probabilities of all pairs of source and target curie ids from DTD probability database based on given drug ids
+
+        :param drug_id_list: A list containg the curie ids of queried drug
+        """
+
+        if self.use_prob_db is True:
+            cursor = self.connection.cursor()
+
+            row = cursor.execute(f"select * from DTD_PROBABILITY where drug in {tuple(set(drug_id_list))}")
+            res = row.fetchall()
+            if len(res)!=0:
+                return res
+            else:
+                return None
+
     def test(self):
         self.import_file('test_set.csv')
         print('df w/o nodes not in largest connected component:')
