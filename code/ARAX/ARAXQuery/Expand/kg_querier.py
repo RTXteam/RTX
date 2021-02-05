@@ -388,7 +388,7 @@ class KGQuerier:
     @staticmethod
     def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph, kg_name: str) -> str:
         qnode = qg.nodes[qnode_key]
-        type_cypher = f":{qnode.category}" if qnode.category and isinstance(qnode.category, str) and kg_name != "KG2c" else ""
+        type_cypher = f":`{qnode.category}`" if qnode.category and isinstance(qnode.category, str) and kg_name != "KG2c" else ""
         if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
             curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
             curie_cypher = f" {{id:'{curie}'}}"
