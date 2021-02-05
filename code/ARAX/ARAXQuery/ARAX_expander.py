@@ -185,6 +185,38 @@ class ARAXExpander:
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
                     "use_synonyms": self.use_synonyms_parameter_info
                 }
+            },
+            "DTD": {
+                "dsl_command": "expand(kp=DTD)",
+                "description": "This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
+                               "a query graph; it returns edges between nodes with an DTD probability above a certain "
+                               "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
+                               "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
+                               "DTD probability above 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
+                               "to do a real-time calculation and this will be quite time-consuming.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                    "DTD_threshold": {
+                        "is_required": False,
+                        "examples": [0.8, 0.5],
+                        "min": 0,
+                        "max": 1,
+                        "default": 0.8,
+                        "type": "float",
+                        "description": "What cut-off/threshold to use for expanding the DTD virtual edges."
+                    },
+                    "DTD_slow_mode": {
+                        "is_required": False,
+                        "examples": ["true", "false"],
+                        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+                        "default": "false",
+                        "type": "boolean",
+                        "description": "Whether to call DTD model to do a real-time calculation for DTD probability."
+                    }
+                }
             }
         }
 
@@ -369,6 +401,9 @@ class ARAXExpander:
             elif kp_to_use == 'COHD':
                 from Expand.COHD_querier import COHDQuerier
                 kp_querier = COHDQuerier(log)
+            elif kp_to_use == 'DTD':
+                from Expand.DTD_querier import DTDQuerier
+                kp_querier = DTDQuerier(log)
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
