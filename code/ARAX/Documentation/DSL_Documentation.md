@@ -43,7 +43,7 @@
     - [rank_results()](#rank_results)
 
 # Domain Specific Langauage (DSL) description
-aThis document describes the features and components of the DSL developed for the ARA Expander team.
+This document describes the features and components of the DSL developed for the ARA Expander team.
 
 Full documentation is given below, but an example can help: in the API specification, there is field called `Query.previous_message_processing_plan.processing_actions:`,
 while initially an empty list, a set of processing actions can be applied with something along the lines of:
