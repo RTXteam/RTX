@@ -107,7 +107,7 @@
       <span title="remove all elements from query graph" class="clq" onclick="clear_qg(1);">&#9587;</span>
     </span><br><br>
     <div class="cytograph_q">
-      <div style="height: 100%; width: 100%" id="cy999"></div>
+      <div style="height: 100%; width: 100%" id="cy99999"></div>
     </div>
     <div id="qg_items"></div>
 
@@ -253,7 +253,7 @@
 <div class="pagesection" id="synonymDiv">
   <h3 style="display:inline;">Synonym Lookup:</h3>
   <br>
-  <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newsynonym" name="newsynonym" onkeydown="enter_node(this);" size="100" maxlength="1000"/>
+  <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newsynonym" name="newsynonym" onkeydown="enter_synonym(this);" size="100" maxlength="1000"/>
   <input type="button" class="questionBox button" name="action" value="Look Up" onClick="sendSyn();"/>
   <span title="clear" class="clq" onclick="pasteSyn('');">&#9587;</span>
   <div id="synonym_result_container"></div>
