@@ -290,6 +290,8 @@ class ResponseCache:
                 #### Perform a validation on it
                 try:
                     validate_Response(envelope)
+                    if 'description' not in envelope or envelope['description'] is None:
+                        envelope['description'] = 'reasoner-validator: PASS'
 
                 except ValidationError as error:
                     timestamp = str(datetime.now().isoformat())
