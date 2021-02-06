@@ -239,18 +239,20 @@ class predictor():
             if isinstance(source_target_curie_list, list):
 
                 X_list = []
+                out_source_target_curie_list = list()
                 for (equiv_source_curie, equiv_target_curie) in source_target_curie_list:
 
                     source_feature = self.get_feature(equiv_source_curie)
                     target_feature = self.get_feature(equiv_target_curie)
 
                     if source_feature is not None and target_feature is not None:
+                        out_source_target_curie_list += [(equiv_source_curie, equiv_target_curie)]
                         X_list += [[a * b for a, b in zip(source_feature, target_feature)]]
                     else:
                         continue
                 if len(X_list)!=0:
                     X = np.array(X_list)
-                    return list(self.prob(X)[:, 1])
+                    return [out_source_target_curie_list, list(self.prob(X)[:, 1])]
                 else:
                     return None
             else:
