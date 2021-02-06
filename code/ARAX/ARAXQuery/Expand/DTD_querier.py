@@ -165,60 +165,76 @@ class DTDQuerier:
 
         # check if the query nodes are drug or disease
         if source_qnode.id is not None:
-            has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
-            if has_error:
-                return final_kg, edge_to_nodes_map
+
+            if type(source_qnode.id) is str:
+                source_pass_nodes = [source_qnode.id]
             else:
-                if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
-                    source_pass_nodes = pass_nodes
-                elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
-                    source_pass_nodes = pass_nodes
-                    if len(not_pass_nodes)==1:
-                        log.warning(f"The preferred label of {not_pass_nodes[0]} is not drug or disease")
-                    else:
-                        log.warning(f"The preferred labels of {not_pass_nodes} are not drug or disease")
-                else:
-                    if type(source_qnode.id) is str:
-                        log.error(f"The preferred label of {source_qnode.id} is not drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
-                    else:
-                        log.error(f"The preferred labels of {source_qnode.id} are not drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                source_pass_nodes = source_qnode.id
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
+            # if has_error:
+            #     return final_kg, edge_to_nodes_map
+            # else:
+            #     if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
+            #         source_pass_nodes = pass_nodes
+            #     elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
+            #         source_pass_nodes = pass_nodes
+            #         if len(not_pass_nodes)==1:
+            #             log.warning(f"The preferred label of {not_pass_nodes[0]} is not drug or disease")
+            #         else:
+            #             log.warning(f"The preferred labels of {not_pass_nodes} are not drug or disease")
+            #     else:
+            #         if type(source_qnode.id) is str:
+            #             log.error(f"The preferred label of {source_qnode.id} is not drug or disease", error_code="CategoryError")
+            #             return final_kg, edge_to_nodes_map
+            #         else:
+            #             log.error(f"The preferred labels of {source_qnode.id} are not drug or disease", error_code="CategoryError")
+            #             return final_kg, edge_to_nodes_map
         else:
             category = source_qnode.category.replace('biolink:','').replace('_','').lower()
-            if (category in drug_label_list) or (category in disease_label_list):
-                source_category = category
-            else:
-                log.error(f"The category of query node {source_qnode_key} is unsatisfiable", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+            source_category = category
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # if (category in drug_label_list) or (category in disease_label_list):
+            #     source_category = category
+            # else:
+            #     log.error(f"The category of query node {source_qnode_key} is unsatisfiable", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
 
         if target_qnode.id is not None:
-            has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
-            if has_error:
-                return final_kg, edge_to_nodes_map
+
+            if type(target_qnode.id) is str:
+                target_pass_nodes = [target_qnode.id]
             else:
-                if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
-                    target_pass_nodes = pass_nodes
-                elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
-                    target_pass_nodes = pass_nodes
-                    if len(not_pass_nodes)==1:
-                        log.warning(f"The preferred label of {not_pass_nodes[0]} is not drug or disease")
-                    else:
-                        log.warning(f"The preferred labels of {not_pass_nodes} are not drug or disease")
-                else:
-                    if type(target_qnode.id) is str:
-                        log.error(f"The preferred label of {target_qnode.id} is not drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
-                    else:
-                        log.error(f"The preferred labels of {target_qnode.id} are not drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                target_pass_nodes = target_qnode.id
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
+            # if has_error:
+            #     return final_kg, edge_to_nodes_map
+            # else:
+            #     if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
+            #         target_pass_nodes = pass_nodes
+            #     elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
+            #         target_pass_nodes = pass_nodes
+            #         if len(not_pass_nodes)==1:
+            #             log.warning(f"The preferred label of {not_pass_nodes[0]} is not drug or disease")
+            #         else:
+            #             log.warning(f"The preferred labels of {not_pass_nodes} are not drug or disease")
+            #     else:
+            #         if type(target_qnode.id) is str:
+            #             log.error(f"The preferred label of {target_qnode.id} is not drug or disease", error_code="CategoryError")
+            #             return final_kg, edge_to_nodes_map
+            #         else:
+            #             log.error(f"The preferred labels of {target_qnode.id} are not drug or disease", error_code="CategoryError")
+            #             return final_kg, edge_to_nodes_map
         else:
             category = target_qnode.category.replace('biolink:','').replace('_','').lower()
-            if (category in drug_label_list) or (category in disease_label_list):
-                target_category = category
-            else:
-                log.error(f"The category of query node {target_qnode_key} is unsatisfiable", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+            target_category = category
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # if (category in drug_label_list) or (category in disease_label_list):
+            #     target_category = category
+            # else:
+            #     log.error(f"The category of query node {target_qnode_key} is unsatisfiable", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
 
         if (source_pass_nodes is None) and (target_pass_nodes is None):
             return final_kg, edge_to_nodes_map
@@ -226,217 +242,225 @@ class DTDQuerier:
         elif (source_pass_nodes is not None) and (target_pass_nodes is not None):
             source_dict = dict()
             target_dict = dict()
-            normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
-            preferred_type = normalizer_result[source_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
-            if preferred_type in drug_label_list:
-                source_category_temp = 'drug'
-            else:
-                source_category_temp = 'disease'
-            normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
-            preferred_type = normalizer_result[target_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
-            if preferred_type in drug_label_list:
-                target_category_temp = 'drug'
-            else:
-                target_category_temp = 'disease'
-            if source_category_temp == target_category_temp:
-                log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
-            else:
-                for (source_curie, target_curie) in itertools.product(source_pass_nodes, target_pass_nodes):
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
+            # preferred_type = normalizer_result[source_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
+            # if preferred_type in drug_label_list:
+            #     source_category_temp = 'drug'
+            # else:
+            #     source_category_temp = 'disease'
+            # normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
+            # preferred_type = normalizer_result[target_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
+            # if preferred_type in drug_label_list:
+            #     target_category_temp = 'drug'
+            # else:
+            #     target_category_temp = 'disease'
+            # if source_category_temp == target_category_temp:
+            #     log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
+            # else:
+            for (source_curie, target_curie) in itertools.product(source_pass_nodes, target_pass_nodes):
 
-                    max_probability = -1
-                    normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
-                    converted_source_curie = normalizer_result[source_curie]
-                    normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
-                    converted_target_curie = normalizer_result[target_curie]
-                    if source_category_temp == 'drug':
-                        converted_source_curie = converted_source_curie['preferred_curie']
-                        converted_target_curie = converted_target_curie['preferred_curie']
-                    else:
-                        temp = converted_source_curie['preferred_curie']
-                        converted_source_curie = converted_target_curie['preferred_curie']
-                        converted_target_curie = temp
-                    probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
-                    if probability is not None:
-                        if np.isfinite(probability):
-                            max_probability = probability
+                max_probability = -1
 
-                    if max_probability >= self.DTD_threshold:
-                        if source_category_temp == 'drug':
-                            swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, target_curie, "probability_treats", max_probability)
-                        else:
-                            swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, source_curie, "probability_treats", max_probability)
+                converted_source_curie = source_curie
+                converted_target_curie = target_curie
+                # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                # normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
+                # converted_source_curie = normalizer_result[source_curie]
+                # normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
+                # converted_target_curie = normalizer_result[target_curie]
+                # if source_category_temp == 'drug':
+                #     converted_source_curie = converted_source_curie['preferred_curie']
+                #     converted_target_curie = converted_target_curie['preferred_curie']
+                # else:
+                #     temp = converted_source_curie['preferred_curie']
+                #     converted_source_curie = converted_target_curie['preferred_curie']
+                #     converted_target_curie = temp
+                probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
+                if probability is not None:
+                    if np.isfinite(probability):
+                        max_probability = probability
 
-                        source_dict[source_curie] = source_qnode_key
-                        target_dict[target_curie] = target_qnode_key
+                if max_probability >= self.DTD_threshold:
+                    # if source_category_temp == 'drug':
+                    swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, target_curie, "probability_treats", max_probability)
+                    # else:
+                    #     swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, source_curie, "probability_treats", max_probability)
 
-                        # Record which of this edge's nodes correspond to which qnode_key
-                        if swagger_edge_key not in edge_to_nodes_map:
-                            edge_to_nodes_map[swagger_edge_key] = dict()
-                        edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                        edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
+                    source_dict[source_curie] = source_qnode_key
+                    target_dict[target_curie] = target_qnode_key
 
-                        # Finally add the current edge to our answer knowledge graph
-                        final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
-                    else:
-                        continue
+                    # Record which of this edge's nodes correspond to which qnode_key
+                    if swagger_edge_key not in edge_to_nodes_map:
+                        edge_to_nodes_map[swagger_edge_key] = dict()
+                    edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
+                    edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
 
-                # Add the nodes to our answer knowledge graph
-                if len(source_dict) != 0:
-                    for source_curie in source_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
-                if len(target_dict) != 0:
-                    for target_curie in target_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+                    # Finally add the current edge to our answer knowledge graph
+                    final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                else:
+                    continue
 
-                return final_kg, edge_to_nodes_map
+            # Add the nodes to our answer knowledge graph
+            if len(source_dict) != 0:
+                for source_curie in source_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
+            if len(target_dict) != 0:
+                for target_curie in target_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+
+            return final_kg, edge_to_nodes_map
 
         elif source_pass_nodes is not None:
             source_dict = dict()
             target_dict = dict()
 
-            normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
-            preferred_type = normalizer_result[source_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
-            if preferred_type in drug_label_list:
-                source_category_temp = 'drug'
-            else:
-                source_category_temp = 'disease'
-            if target_category in drug_label_list:
-                target_category_temp = 'drug'
-            else:
-                target_category_temp = 'disease'
-            if source_category_temp == target_category_temp:
-                log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
-            else:
-                if source_category_temp == 'drug':
-                    for source_curie in source_pass_nodes:
-                        normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
-                        res = self.pred.get_probs_from_DTD_db_based_on_drug(normalizer_result[source_curie])
-                        if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and self.synonymizer.get_canonical_curies(row[0])[row[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()==target_category]
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
+            # preferred_type = normalizer_result[source_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
+            # if preferred_type in drug_label_list:
+            #     source_category_temp = 'drug'
+            # else:
+            #     source_category_temp = 'disease'
+            # if target_category in drug_label_list:
+            #     target_category_temp = 'drug'
+            # else:
+            #     target_category_temp = 'disease'
+            # if source_category_temp == target_category_temp:
+            #     log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
+            # else:
+                # if source_category_temp == 'drug':
+            for source_curie in source_pass_nodes:
+                normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
+                res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[source_curie]['preferred_curie']])
+                if res is not None:
+                    res = [row for row in res if row[2]>=self.DTD_threshold and self.synonymizer.get_canonical_curies(row[0])[row[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()==target_category]
 
-                            for row in res:
-                                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, row[0], "probability_treats", row[2])
+                    for row in res:
+                        swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, row[0], "probability_treats", row[2])
 
-                                source_dict[source_curie] = source_qnode_key
-                                target_dict[row[0]] = target_qnode_key
+                        source_dict[source_curie] = source_qnode_key
+                        target_dict[row[0]] = target_qnode_key
 
-                                # Record which of this edge's nodes correspond to which qnode_key
-                                if swagger_edge_key not in edge_to_nodes_map:
-                                    edge_to_nodes_map[swagger_edge_key] = dict()
-                                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[0]
+                        # Record which of this edge's nodes correspond to which qnode_key
+                        if swagger_edge_key not in edge_to_nodes_map:
+                            edge_to_nodes_map[swagger_edge_key] = dict()
+                        edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
+                        edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[0]
 
-                                # Finally add the current edge to our answer knowledge graph
-                                final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
-                else:
-                    for source_curie in source_pass_nodes:
-                        normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
-                        res = self.pred.get_probs_from_DTD_db_based_on_disease(normalizer_result[source_curie])
-                        if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and self.synonymizer.get_canonical_curies(row[1])[row[1]]['preferred_type'].replace('biolink:','').replace('_','').lower()==target_category]
+                        # Finally add the current edge to our answer knowledge graph
+                        final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                # else:
+                #     for source_curie in source_pass_nodes:
+                #         normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
+                #         res = self.pred.get_probs_from_DTD_db_based_on_disease(normalizer_result[source_curie])
+                #         if res is not None:
+                #             res = [row for row in res if row[2]>=self.DTD_threshold and self.synonymizer.get_canonical_curies(row[1])[row[1]]['preferred_type'].replace('biolink:','').replace('_','').lower()==target_category]
 
-                            for row in res:
-                                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], source_curie, "probability_treats", row[2])
+                #             for row in res:
+                #                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], source_curie, "probability_treats", row[2])
 
-                                source_dict[source_curie] = source_qnode_key
-                                target_dict[row[1]] = target_qnode_key
+                #                 source_dict[source_curie] = source_qnode_key
+                #                 target_dict[row[1]] = target_qnode_key
 
-                                # Record which of this edge's nodes correspond to which qnode_key
-                                if swagger_edge_key not in edge_to_nodes_map:
-                                    edge_to_nodes_map[swagger_edge_key] = dict()
-                                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
+                #                 # Record which of this edge's nodes correspond to which qnode_key
+                #                 if swagger_edge_key not in edge_to_nodes_map:
+                #                     edge_to_nodes_map[swagger_edge_key] = dict()
+                #                 edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
+                #                 edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
 
-                                # Finally add the current edge to our answer knowledge graph
-                                final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                #                 # Finally add the current edge to our answer knowledge graph
+                #                 final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
 
-                # Add the nodes to our answer knowledge graph
-                if len(source_dict) != 0:
-                    for source_curie in source_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
-                if len(target_dict) != 0:
-                    for target_curie in target_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+            # Add the nodes to our answer knowledge graph
+            if len(source_dict) != 0:
+                for source_curie in source_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
+            if len(target_dict) != 0:
+                for target_curie in target_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-                return final_kg, edge_to_nodes_map
+            return final_kg, edge_to_nodes_map
         else:
             source_dict = dict()
             target_dict = dict()
 
-            normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
-            preferred_type = normalizer_result[target_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
-            if preferred_type in drug_label_list:
-                target_category_temp = 'drug'
-            else:
-                target_category_temp = 'disease'
-            if source_category in drug_label_list:
-                source_category_temp = 'drug'
-            else:
-                source_category_temp = 'disease'
-            if source_category_temp == target_category_temp:
-                log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
-            else:
-                if target_category_temp == 'drug':
-                    for target_curie in target_pass_nodes:
-                        normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
-                        res = self.pred.get_probs_from_DTD_db_based_on_drug(normalizer_result[target_curie])
-                        if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and self.synonymizer.get_canonical_curies(row[0])[row[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()==source_category]
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
+            # preferred_type = normalizer_result[target_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
+            # if preferred_type in drug_label_list:
+            #     target_category_temp = 'drug'
+            # else:
+            #     target_category_temp = 'disease'
+            # if source_category in drug_label_list:
+            #     source_category_temp = 'drug'
+            # else:
+            #     source_category_temp = 'disease'
+            # if source_category_temp == target_category_temp:
+            #     log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
+            # else:
+            #     if target_category_temp == 'drug':
+            #         for target_curie in target_pass_nodes:
+            #             normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
+            #             res = self.pred.get_probs_from_DTD_db_based_on_drug(normalizer_result[target_curie])
+            #             if res is not None:
+            #                 res = [row for row in res if row[2]>=self.DTD_threshold and self.synonymizer.get_canonical_curies(row[0])[row[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()==source_category]
 
-                            for row in res:
-                                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, row[0], "probability_treats", row[2])
+            #                 for row in res:
+            #                     swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, row[0], "probability_treats", row[2])
 
-                                source_dict[row[0]] = source_qnode_key
-                                target_dict[target_curie] = target_qnode_key
+            #                     source_dict[row[0]] = source_qnode_key
+            #                     target_dict[target_curie] = target_qnode_key
 
-                                # Record which of this edge's nodes correspond to which qnode_key
-                                if swagger_edge_key not in edge_to_nodes_map:
-                                    edge_to_nodes_map[swagger_edge_key] = dict()
-                                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
-                                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
+            #                     # Record which of this edge's nodes correspond to which qnode_key
+            #                     if swagger_edge_key not in edge_to_nodes_map:
+            #                         edge_to_nodes_map[swagger_edge_key] = dict()
+            #                     edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
+            #                     edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
 
-                                # Finally add the current edge to our answer knowledge graph
-                                final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
-                else:
-                    for target_curie in target_pass_nodes:
-                        normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
-                        res = self.pred.get_probs_from_DTD_db_based_on_disease(normalizer_result[target_curie])
-                        if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and self.synonymizer.get_canonical_curies(row[1])[row[1]]['preferred_type'].replace('biolink:','').replace('_','').lower()==source_category]
+            #                     # Finally add the current edge to our answer knowledge graph
+            #                     final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+            #     else:
+            for target_curie in target_pass_nodes:
+                normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
+                res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[target_curie]['preferred_curie']])
+                if res is not None:
+                    res = [row for row in res if row[2]>=self.DTD_threshold and self.synonymizer.get_canonical_curies(row[1])[row[1]]['preferred_type'].replace('biolink:','').replace('_','').lower()==source_category]
 
-                            for row in res:
-                                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], target_curie, "probability_treats", row[2])
+                    for row in res:
+                        swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], target_curie, "probability_treats", row[2])
 
-                                source_dict[row[1]] = source_qnode_key
-                                target_dict[target_curie] = target_qnode_key
+                        source_dict[row[1]] = source_qnode_key
+                        target_dict[target_curie] = target_qnode_key
 
-                                # Record which of this edge's nodes correspond to which qnode_key
-                                if swagger_edge_key not in edge_to_nodes_map:
-                                    edge_to_nodes_map[swagger_edge_key] = dict()
-                                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[1]
-                                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
+                        # Record which of this edge's nodes correspond to which qnode_key
+                        if swagger_edge_key not in edge_to_nodes_map:
+                            edge_to_nodes_map[swagger_edge_key] = dict()
+                        edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[1]
+                        edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
 
-                                # Finally add the current edge to our answer knowledge graph
-                                final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                        # Finally add the current edge to our answer knowledge graph
+                        final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
 
-                # Add the nodes to our answer knowledge graph
-                if len(source_dict) != 0:
-                    for source_curie in source_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
-                if len(target_dict) != 0:
-                    for target_curie in target_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+            # Add the nodes to our answer knowledge graph
+            if len(source_dict) != 0:
+                for source_curie in source_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
+            if len(target_dict) != 0:
+                for target_curie in target_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-                return final_kg, edge_to_nodes_map
+            return final_kg, edge_to_nodes_map
 
 
     def _answer_query_using_DTD_model(self, query_graph: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
@@ -465,60 +489,76 @@ class DTDQuerier:
 
         # check if the query nodes are drug or disease
         if source_qnode.id is not None:
-            has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
-            if has_error:
-                return final_kg, edge_to_nodes_map
+
+            if type(source_qnode.id) is str:
+                source_pass_nodes = [source_qnode.id]
             else:
-                if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
-                    source_pass_nodes = pass_nodes
-                elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
-                    source_pass_nodes = pass_nodes
-                    if len(not_pass_nodes)==1:
-                        log.warning(f"The preferred label of {not_pass_nodes[0]} is not drug or disease")
-                    else:
-                        log.warning(f"The preferred labels of {not_pass_nodes} are not drug or disease")
-                else:
-                    if type(source_qnode.id) is str:
-                        log.error(f"The preferred label of {source_qnode.id} is not drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
-                    else:
-                        log.error(f"The preferred labels of {source_qnode.id} are not drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                source_pass_nodes = source_qnode.id
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
+            # if has_error:
+            #     return final_kg, edge_to_nodes_map
+            # else:
+            #     if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
+            #         source_pass_nodes = pass_nodes
+            #     elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
+            #         source_pass_nodes = pass_nodes
+            #         if len(not_pass_nodes)==1:
+            #             log.warning(f"The preferred label of {not_pass_nodes[0]} is not drug or disease")
+            #         else:
+            #             log.warning(f"The preferred labels of {not_pass_nodes} are not drug or disease")
+            #     else:
+            #         if type(source_qnode.id) is str:
+            #             log.error(f"The preferred label of {source_qnode.id} is not drug or disease", error_code="CategoryError")
+            #             return final_kg, edge_to_nodes_map
+            #         else:
+            #             log.error(f"The preferred labels of {source_qnode.id} are not drug or disease", error_code="CategoryError")
+            #             return final_kg, edge_to_nodes_map
         else:
             category = source_qnode.category.replace('biolink:','').replace('_','').lower()
-            if (category in drug_label_list) or (category in disease_label_list):
-                source_category = category
-            else:
-                log.error(f"The category of query node {source_qnode_key} is unsatisfiable", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+            source_category = category
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # if (category in drug_label_list) or (category in disease_label_list):
+            #     source_category = category
+            # else:
+            #     log.error(f"The category of query node {source_qnode_key} is unsatisfiable", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
 
         if target_qnode.id is not None:
-            has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
-            if has_error:
-                return final_kg, edge_to_nodes_map
+
+            if type(target_qnode.id) is str:
+                target_pass_nodes = [target_qnode.id]
             else:
-                if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
-                    target_pass_nodes = pass_nodes
-                elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
-                    target_pass_nodes = pass_nodes
-                    if len(not_pass_nodes)==1:
-                        log.warning(f"The preferred label of {not_pass_nodes[0]} is not drug or disease")
-                    else:
-                        log.warning(f"The preferred labels of {not_pass_nodes} are not drug or disease")
-                else:
-                    if type(target_qnode.id) is str:
-                        log.error(f"The preferred label of {target_qnode.id} is not drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
-                    else:
-                        log.error(f"The preferred labels of {target_qnode.id} are not drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                target_pass_nodes = target_qnode.id
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
+            # if has_error:
+            #     return final_kg, edge_to_nodes_map
+            # else:
+            #     if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
+            #         target_pass_nodes = pass_nodes
+            #     elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
+            #         target_pass_nodes = pass_nodes
+            #         if len(not_pass_nodes)==1:
+            #             log.warning(f"The preferred label of {not_pass_nodes[0]} is not drug or disease")
+            #         else:
+            #             log.warning(f"The preferred labels of {not_pass_nodes} are not drug or disease")
+            #     else:
+            #         if type(target_qnode.id) is str:
+            #             log.error(f"The preferred label of {target_qnode.id} is not drug or disease", error_code="CategoryError")
+            #             return final_kg, edge_to_nodes_map
+            #         else:
+            #             log.error(f"The preferred labels of {target_qnode.id} are not drug or disease", error_code="CategoryError")
+            #             return final_kg, edge_to_nodes_map
         else:
             category = target_qnode.category.replace('biolink:','').replace('_','').lower()
-            if (category in drug_label_list) or (category in disease_label_list):
-                target_category = category
-            else:
-                log.error(f"The category of query node {target_qnode_key} is unsatisfiable", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+            target_category = category
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # if (category in drug_label_list) or (category in disease_label_list):
+            #     target_category = category
+            # else:
+            #     log.error(f"The category of query node {target_qnode_key} is unsatisfiable", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
 
         if (source_pass_nodes is None) and (target_pass_nodes is None):
             return final_kg, edge_to_nodes_map
@@ -527,224 +567,236 @@ class DTDQuerier:
             source_dict = dict()
             target_dict = dict()
 
-            normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
-            preferred_type = normalizer_result[source_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
-            if preferred_type in drug_label_list:
-                source_category_temp = 'drug'
-            else:
-                source_category_temp = 'disease'
-            normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
-            preferred_type = normalizer_result[target_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
-            if preferred_type in drug_label_list:
-                target_category_temp = 'drug'
-            else:
-                target_category_temp = 'disease'
-            if source_category_temp == target_category_temp:
-                log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
-            else:
-                for (source_curie, target_curie) in itertools.product(source_pass_nodes, target_pass_nodes):
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
+            # preferred_type = normalizer_result[source_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
+            # if preferred_type in drug_label_list:
+            #     source_category_temp = 'drug'
+            # else:
+            #     source_category_temp = 'disease'
+            # normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
+            # preferred_type = normalizer_result[target_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
+            # if preferred_type in drug_label_list:
+            #     target_category_temp = 'drug'
+            # else:
+            #     target_category_temp = 'disease'
+            # if source_category_temp == target_category_temp:
+            #     log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
+            # else:
+            for (source_curie, target_curie) in itertools.product(source_pass_nodes, target_pass_nodes):
 
-                    max_probability = -1
-                    normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
-                    converted_source_curie = normalizer_result[source_curie]
-                    normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
-                    converted_target_curie = normalizer_result[target_curie]
-                    if source_category_temp == 'drug':
-                        converted_source_curie = converted_source_curie['preferred_curie']
-                        converted_target_curie = converted_target_curie['preferred_curie']
-                    else:
-                        temp = converted_source_curie['preferred_curie']
-                        converted_source_curie = converted_target_curie['preferred_curie']
-                        converted_target_curie = temp
-                    probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
-                    if probability is not None:
-                        probability = probability[0]
-                        if np.isfinite(probability):
-                            max_probability = probability
+                max_probability = -1
+                normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
+                converted_source_curie = normalizer_result[source_curie]
+                normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
+                converted_target_curie = normalizer_result[target_curie]
+                # if source_category_temp == 'drug':
+                #     converted_source_curie = converted_source_curie['preferred_curie']
+                #     converted_target_curie = converted_target_curie['preferred_curie']
+                # else:
+                #     temp = converted_source_curie['preferred_curie']
+                #     converted_source_curie = converted_target_curie['preferred_curie']
+                #     converted_target_curie = temp
+                # probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+                probability = self.pred.prob_single(converted_source_curie['preferred_curie'], converted_target_curie['preferred_curie'])
+                if probability is not None:
+                    probability = probability[0]
+                    if np.isfinite(probability):
+                        max_probability = probability
 
-                    if max_probability >= self.DTD_threshold:
-                        if source_category_temp == 'drug':
-                            swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, target_curie, "probability_treats", max_probability)
-                        else:
-                            swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, source_curie, "probability_treats", max_probability)
+                if max_probability >= self.DTD_threshold:
+                    # if source_category_temp == 'drug':
+                    swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, target_curie, "probability_treats", max_probability)
+                    # else:
+                    #     swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, source_curie, "probability_treats", max_probability)
 
-                        source_dict[source_curie] = source_qnode_key
-                        target_dict[target_curie] = target_qnode_key
+                    source_dict[source_curie] = source_qnode_key
+                    target_dict[target_curie] = target_qnode_key
 
-                        # Record which of this edge's nodes correspond to which qnode_key
-                        if swagger_edge_key not in edge_to_nodes_map:
-                            edge_to_nodes_map[swagger_edge_key] = dict()
-                        edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                        edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
+                    # Record which of this edge's nodes correspond to which qnode_key
+                    if swagger_edge_key not in edge_to_nodes_map:
+                        edge_to_nodes_map[swagger_edge_key] = dict()
+                    edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
+                    edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
 
-                        # Finally add the current edge to our answer knowledge graph
-                        final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
-                    else:
-                        continue
+                    # Finally add the current edge to our answer knowledge graph
+                    final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                else:
+                    continue
 
-                # Add the nodes to our answer knowledge graph
-                if len(source_dict) != 0:
-                    for source_curie in source_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
-                if len(target_dict) != 0:
-                    for target_curie in target_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+            # Add the nodes to our answer knowledge graph
+            if len(source_dict) != 0:
+                for source_curie in source_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
+            if len(target_dict) != 0:
+                for target_curie in target_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-                return final_kg, edge_to_nodes_map
+            return final_kg, edge_to_nodes_map
 
         elif source_pass_nodes is not None:
             source_dict = dict()
             target_dict = dict()
 
-            normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
-            preferred_type = normalizer_result[source_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
-            if preferred_type in drug_label_list:
-                source_category_temp = 'drug'
-            else:
-                source_category_temp = 'disease'
-            if target_category in drug_label_list:
-                target_category_temp = 'drug'
-            else:
-                target_category_temp = 'disease'
-            if source_category_temp == target_category_temp:
-                log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
+            # preferred_type = normalizer_result[source_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
+            # if preferred_type in drug_label_list:
+            #     source_category_temp = 'drug'
+            # else:
+            #     source_category_temp = 'disease'
+            # if target_category in drug_label_list:
+            #     target_category_temp = 'drug'
+            # else:
+            #     target_category_temp = 'disease'
+            # if source_category_temp == target_category_temp:
+            #     log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
+            # else:
+            cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, "KG2c", log)
+            if log.status != 'OK':
                 return final_kg, edge_to_nodes_map
-            else:
-                cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, "KG2c", log)
-                if log.status != 'OK':
-                    return final_kg, edge_to_nodes_map
-                neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, "KG2c", log)
-                if log.status != 'OK':
-                    return final_kg, edge_to_nodes_map
-                results_table = neo4j_results[0]
-                column_names = [column_name for column_name in results_table]
-                res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
-                if len(res) != 0:
-                    all_probabilities = self.pred.prob_all(res)
+            neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, "KG2c", log)
+            if log.status != 'OK':
+                return final_kg, edge_to_nodes_map
+            results_table = neo4j_results[0]
+            column_names = [column_name for column_name in results_table]
+            res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
+            if len(res) != 0:
+                all_probabilities = self.pred.prob_all(res)
+                if all_probabilities is not None:
+                    res, all_probabilities = all_probabilities
                     res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
                 else:
                     return final_kg, edge_to_nodes_map
-
-                if source_category_temp == 'drug':
-                    for row in res:
-                        swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[0], row[1], "probability_treats", row[2])
-
-                        source_dict[row[0]] = source_qnode_key
-                        target_dict[row[1]] = target_qnode_key
-
-                        # Record which of this edge's nodes correspond to which qnode_key
-                        if swagger_edge_key not in edge_to_nodes_map:
-                            edge_to_nodes_map[swagger_edge_key] = dict()
-                        edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
-                        edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
-
-                        # Finally add the current edge to our answer knowledge graph
-                        final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
-                else:
-                    for row in res:
-                        swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], row[0], "probability_treats", row[2])
-
-                        source_dict[row[0]] = source_qnode_key
-                        target_dict[row[1]] = target_qnode_key
-
-                        # Record which of this edge's nodes correspond to which qnode_key
-                        if swagger_edge_key not in edge_to_nodes_map:
-                            edge_to_nodes_map[swagger_edge_key] = dict()
-                        edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
-                        edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
-
-                        # Finally add the current edge to our answer knowledge graph
-                        final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
-
-                # Add the nodes to our answer knowledge graph
-                if len(source_dict) != 0:
-                    for source_curie in source_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
-                if len(target_dict) != 0:
-                    for target_curie in target_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
-
+            else:
                 return final_kg, edge_to_nodes_map
+
+            # if source_category_temp == 'drug':
+            for row in res:
+                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[0], row[1], "probability_treats", row[2])
+
+                source_dict[row[0]] = source_qnode_key
+                target_dict[row[1]] = target_qnode_key
+
+                # Record which of this edge's nodes correspond to which qnode_key
+                if swagger_edge_key not in edge_to_nodes_map:
+                    edge_to_nodes_map[swagger_edge_key] = dict()
+                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
+                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
+
+                # Finally add the current edge to our answer knowledge graph
+                final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+            # else:
+            #     for row in res:
+            #         swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], row[0], "probability_treats", row[2])
+
+            #         source_dict[row[0]] = source_qnode_key
+            #         target_dict[row[1]] = target_qnode_key
+
+            #         # Record which of this edge's nodes correspond to which qnode_key
+            #         if swagger_edge_key not in edge_to_nodes_map:
+            #             edge_to_nodes_map[swagger_edge_key] = dict()
+            #         edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
+            #         edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
+
+            #         # Finally add the current edge to our answer knowledge graph
+            #         final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+
+            # Add the nodes to our answer knowledge graph
+            if len(source_dict) != 0:
+                for source_curie in source_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
+            if len(target_dict) != 0:
+                for target_curie in target_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+
+            return final_kg, edge_to_nodes_map
         else:
             source_dict = dict()
             target_dict = dict()
 
-            normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
-            preferred_type = normalizer_result[target_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
-            if preferred_type in drug_label_list:
-                target_category_temp = 'drug'
-            else:
-                target_category_temp = 'disease'
-            if source_category in drug_label_list:
-                source_category_temp = 'drug'
-            else:
-                source_category_temp = 'disease'
-            if source_category_temp == target_category_temp:
-                log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
+            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            # normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
+            # preferred_type = normalizer_result[target_pass_nodes[0]]['preferred_type'].replace('biolink:','').replace('_','').lower()
+            # if preferred_type in drug_label_list:
+            #     target_category_temp = 'drug'
+            # else:
+            #     target_category_temp = 'disease'
+            # if source_category in drug_label_list:
+            #     source_category_temp = 'drug'
+            # else:
+            #     source_category_temp = 'disease'
+            # if source_category_temp == target_category_temp:
+            #     log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
+            #     return final_kg, edge_to_nodes_map
+            # else:
+            cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, "KG2c", log)
+            if log.status != 'OK':
                 return final_kg, edge_to_nodes_map
-            else:
-                cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, "KG2c", log)
-                if log.status != 'OK':
-                    return final_kg, edge_to_nodes_map
-                neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, "KG2c", log)
-                if log.status != 'OK':
-                    return final_kg, edge_to_nodes_map
-                results_table = neo4j_results[0]
-                column_names = [column_name for column_name in results_table]
-                res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
-                if len(res) != 0:
-                    all_probabilities = self.pred.prob_all(res)
+            neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, "KG2c", log)
+            if log.status != 'OK':
+                return final_kg, edge_to_nodes_map
+            results_table = neo4j_results[0]
+            column_names = [column_name for column_name in results_table]
+            res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
+            if len(res) != 0:
+                all_probabilities = self.pred.prob_all(res)
+                if all_probabilities is not None:
+                    res, all_probabilities = all_probabilities
                     res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
                 else:
                     return final_kg, edge_to_nodes_map
-
-                if target_category_temp == 'drug':
-                    for row in res:
-                        swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], row[0], "probability_treats", row[2])
-
-                        source_dict[row[0]] = source_qnode_key
-                        target_dict[row[1]] = target_qnode_key
-
-                        # Record which of this edge's nodes correspond to which qnode_key
-                        if swagger_edge_key not in edge_to_nodes_map:
-                            edge_to_nodes_map[swagger_edge_key] = dict()
-                        edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
-                        edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
-
-                        # Finally add the current edge to our answer knowledge graph
-                        final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
-                else:
-                    for row in res:
-                        swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[0], row[1], "probability_treats", row[2])
-
-                        source_dict[row[0]] = source_qnode_key
-                        target_dict[row[1]] = target_qnode_key
-
-                        # Record which of this edge's nodes correspond to which qnode_key
-                        if swagger_edge_key not in edge_to_nodes_map:
-                            edge_to_nodes_map[swagger_edge_key] = dict()
-                        edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
-                        edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
-
-                        # Finally add the current edge to our answer knowledge graph
-                        final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
-
-                # Add the nodes to our answer knowledge graph
-                if len(source_dict) != 0:
-                    for source_curie in source_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
-                if len(target_dict) != 0:
-                    for target_curie in target_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
-
+            else:
                 return final_kg, edge_to_nodes_map
+
+                # if target_category_temp == 'drug':
+                #     for row in res:
+                #         swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], row[0], "probability_treats", row[2])
+
+                #         source_dict[row[0]] = source_qnode_key
+                #         target_dict[row[1]] = target_qnode_key
+
+                #         # Record which of this edge's nodes correspond to which qnode_key
+                #         if swagger_edge_key not in edge_to_nodes_map:
+                #             edge_to_nodes_map[swagger_edge_key] = dict()
+                #         edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
+                #         edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
+
+                #         # Finally add the current edge to our answer knowledge graph
+                #         final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                # else:
+            for row in res:
+                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[0], row[1], "probability_treats", row[2])
+
+                source_dict[row[0]] = source_qnode_key
+                target_dict[row[1]] = target_qnode_key
+
+                # Record which of this edge's nodes correspond to which qnode_key
+                if swagger_edge_key not in edge_to_nodes_map:
+                    edge_to_nodes_map[swagger_edge_key] = dict()
+                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
+                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
+
+            # Finally add the current edge to our answer knowledge graph
+            final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+
+            # Add the nodes to our answer knowledge graph
+            if len(source_dict) != 0:
+                for source_curie in source_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
+            if len(target_dict) != 0:
+                for target_curie in target_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+
+            return final_kg, edge_to_nodes_map
 
 
     def _check_id(self, qnode_id, log):
