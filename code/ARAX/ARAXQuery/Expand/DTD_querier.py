@@ -624,7 +624,11 @@ class DTDQuerier:
                 res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
                 if len(res) != 0:
                     all_probabilities = self.pred.prob_all(res)
-                    res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    if all_probabilities is not None:
+                        res, all_probabilities = all_probabilities
+                        res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    else:
+                        return final_kg, edge_to_nodes_map
                 else:
                     return final_kg, edge_to_nodes_map
 
@@ -699,7 +703,11 @@ class DTDQuerier:
                 res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
                 if len(res) != 0:
                     all_probabilities = self.pred.prob_all(res)
-                    res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    if all_probabilities is not None:
+                        res, all_probabilities = all_probabilities
+                        res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    else:
+                        return final_kg, edge_to_nodes_map
                 else:
                     return final_kg, edge_to_nodes_map
 
