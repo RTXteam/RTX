@@ -42,5 +42,3 @@ for curie in NodeNamesDescriptions['curie']:
 with open(args.OutFile, "wb") as file:
     pickle.dump(preferred_synonyms, file)
 
-
-    

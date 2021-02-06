@@ -8,7 +8,7 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 
 parser = argparse.ArgumentParser(description="pull canonicalized KG2", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--OutFolder', type=str, help="The path of output folder", default='~/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_5_0/kg2canonicalized_data/')
+parser.add_argument('--OutFolder', type=str, help="The path of output folder", default='~/RTX/code/reasoningtool/MLDrugRepurposing/kg2_5_0/kg2canonicalized_data/')
 args = parser.parse_args()
 
 output_path = args.OutFolder
@@ -21,15 +21,15 @@ session = driver.session()
 
 ## Pull a dataframe of all of the graph edges excluding 
 # 1. the nodes which are both 'drug' and 'disease'
-# 2. the nodes with type including 'drug' and 'disease' != preferred_type
+# 2. the nodes with type including 'drug' and 'disease' != category
 # 3. all edges directly connecting 'drug' and 'disease'
-query = "match (n) where (((n.preferred_type<>'biolink:Disease' and n.preferred_type<>'biolink:PhenotypicFeature' and n.preferred_type<>'biolink:DiseaseOrPhenotypicFeature') and ('biolink:Disease' in n.types or 'biolink:PhenotypicFeature' in n.types or 'biolink:DiseaseOrPhenotypicFeature' in n.types)) or ((n.preferred_type<>'biolink:Drug' and n.preferred_type<>'biolink:ChemicalSubstance') and ('biolink:Drug' in n.types or 'biolink:ChemicalSubstance' in n.types))) or (('biolink:Disease' in n.types or 'biolink:PhenotypicFeature' in n.types or 'biolink:DiseaseOrPhenotypicFeature' in n.types) and ('biolink:Drug' in n.types or 'biolink:ChemicalSubstance' in n.types)) with COLLECT(DISTINCT n.id) as exclude_id match (m1)-[]-(m2) where m1<>m2 and not m1.id in exclude_id and not m2.id in exclude_id and not ((m1.preferred_type='biolink:Disease' or m1.preferred_type='biolink:PhenotypicFeature' or m1.preferred_type='biolink:DiseaseOrPhenotypicFeature') and (m2.preferred_type='biolink:Drug' or m2.preferred_type='biolink:ChemicalSubstance')) and not ((m1.preferred_type='biolink:Drug' or m1.preferred_type='biolink:ChemicalSubstance') and (m2.preferred_type='biolink:Disease' or m2.preferred_type='biolink:PhenotypicFeature' or m2.preferred_type='biolink:DiseaseOrPhenotypicFeature')) with distinct m1 as node1, m2 as node2 return node1.id as source, node2.id as target"
+query = "match (n) where (((n.category<>'biolink:Disease' and n.category<>'biolink:PhenotypicFeature' and n.category<>'biolink:DiseaseOrPhenotypicFeature') and ('biolink:Disease' in n.all_categories or 'biolink:PhenotypicFeature' in n.all_categories or 'biolink:DiseaseOrPhenotypicFeature' in n.all_categories)) or ((n.category<>'biolink:Drug' and n.category<>'biolink:ChemicalSubstance') and ('biolink:Drug' in n.all_categories or 'biolink:ChemicalSubstance' in n.all_categories))) or (('biolink:Disease' in n.all_categories or 'biolink:PhenotypicFeature' in n.all_categories or 'biolink:DiseaseOrPhenotypicFeature' in n.all_categories) and ('biolink:Drug' in n.all_categories or 'biolink:ChemicalSubstance' in n.all_categories)) with COLLECT(DISTINCT n.id) as exclude_id match (m1)-[]-(m2) where m1<>m2 and not m1.id in exclude_id and not m2.id in exclude_id and not ((m1.category='biolink:Disease' or m1.category='biolink:PhenotypicFeature' or m1.category='biolink:DiseaseOrPhenotypicFeature') and (m2.category='biolink:Drug' or m2.category='biolink:ChemicalSubstance')) and not ((m1.category='biolink:Drug' or m1.category='biolink:ChemicalSubstance') and (m2.category='biolink:Disease' or m2.category='biolink:PhenotypicFeature' or m2.category='biolink:DiseaseOrPhenotypicFeature')) with distinct m1 as node1, m2 as node2 return node1.id as source, node2.id as target"
 res = session.run(query)
 KG2_alledges = pd.DataFrame(res.data())
 KG2_alledges.to_csv(output_path + 'graph_edges.txt', sep='\t', index=None)
 
 ## Pulls a dataframe of all of the graph nodes with category label
-query = "match (n) with distinct n.id as id, n.name as name, n.preferred_type as category return id, name, category"
+query = "match (n) with distinct n.id as id, n.name as name, n.category as category return id, name, category"
 res = session.run(query)
 KG2_allnodes_label = pd.DataFrame(res.data())
 KG2_allnodes_label = KG2_allnodes_label.iloc[:, [0, 2]]
