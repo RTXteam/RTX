@@ -280,11 +280,12 @@ class ResponseCache:
                     '13': 'TextMining'
                 }
 
-                if 'logs' in envelope and envelope['logs'] is not None:
-                    for log in envelope['logs']:
-                        if isinstance(log,dict):
-                            if 'code' in log and log['code'] is None:
-                                log['code'] = '-'
+                #Remove warning code hack
+                #if 'logs' in envelope and envelope['logs'] is not None:
+                #    for log in envelope['logs']:
+                #        if isinstance(log,dict):
+                #            if 'code' in log and log['code'] is None:
+                #                log['code'] = '-'
 
 
                 #### Perform a validation on it
