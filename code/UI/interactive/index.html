@@ -22,23 +22,23 @@
 <div class="menuleft">
 <br><br><br>
 &nbsp;Input<br>
-<div onclick="openSection(this,'queryDiv');" class="menucurrent">Query</div>
-<div onclick="openSection(this,'listaDiv');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
-<div onclick="openSection(this,'listbDiv');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
-<div onclick="openSection(this,'compareDiv');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
+<div id="queryMenu" onclick="openSection('query');" class="menucurrent">Query</div>
+<div id="listaMenu" onclick="openSection('lista');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
+<div id="listbMenu" onclick="openSection('listb');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
+<div id="compareMenu" onclick="openSection('compare');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
 <br>
-<div onclick="openSection(this,'historyDiv');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
-<!-- div onclick="openSection(this,'statusDiv');" class="menuleftitem">Status</div -->
+<div id="historyMenu" onclick="openSection('history');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
+<!-- div onclick="openSection('status');" class="menuleftitem">Status</div -->
 <br>
 &nbsp;Output<br>
-<div onclick="openSection(this,'summaryDiv');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
-<div onclick="openSection(this,'kgDiv');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge<br>Graph</div>
-<div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
-<div onclick="openSection(this,'messagesDiv');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
+<div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
+<div id="kgMenu" onclick="openSection('kg');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge<br>Graph</div>
+<div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
+<div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
 <br><br>
 &nbsp;Tools<br>
-<div onclick="openSection(this,'synonymDiv');" class="menuleftitem">Synonyms</div>
-<div onclick="openSection(this,'devDiv');" class="menuleftitem">Dev Info</div>
+<div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
+<div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
 <br><br><br><br>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
 </div>
