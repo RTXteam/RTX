@@ -153,7 +153,7 @@ paths:
           description: Integer identifier of the response to return
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         '200':
           description: successful operation
