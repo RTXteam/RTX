@@ -188,19 +188,26 @@ paths:
                   $ref: '#/components/schemas/Query'
         '400':
           description: Invalid status value
-  /entity/{search_string}:
+  /entity:
     get:
       tags:
       - entity
-      summary: Obtain the CURIE and type of some entity by name
+      summary: Obtain CURIE and synonym information about a search term
       description: ''
-      operationId: get_entity_by_string
+      operationId: get_entity
       parameters:
-        - in: path
-          name: search_string
-          description: Some string to search by (name, abbreviation, CURIE, etc.)
-          required: true
-          schema:
+      - in: query
+        name: q
+        description: >-
+          A string to search by (name, abbreviation, CURIE, etc.).
+          The parameter may be repeated for multiple search strings.
+        required: true
+        schema:
+          type: array
+          example:
+          - MESH:D014867
+          - NCIT:C34373
+          items:
             type: string
       responses:
         '200':
@@ -208,9 +215,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
+                type: object
         '404':
           description: "Entity not found"
   /exampleQuestions:
