@@ -118,8 +118,8 @@ def main():
 	is_test = args.test
 
 	dump_kg2_node_info('kg2_node_info.tsv', 'w', is_test)
-	dump_kg2_equivalencies('kg2_synonyms.json', is_test)
-	dump_kg2_synonym_field('kg2_equivalencies.tsv', is_test)
+	dump_kg2_equivalencies('kg2_equivalencies.tsv', is_test)
+	dump_kg2_synonym_field('kg2_synonyms.json', is_test)
 	print("Done dumping KG2 node data!")
 
 
