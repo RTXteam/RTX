@@ -138,13 +138,15 @@ class PredictDrugTreatsDisease:
             for node_key, node in self.message.knowledge_graph.nodes.items():
                 if hasattr(node, 'qnode_keys'):
                     if parameters['subject_qnode_key'] in node.qnode_keys:
-                        if "drug" in node.category or "chemical_substance" in node.category or "biolink:Drug" in node.category or "biolink:ChemicalSubstance" in node.category:  # this is now NOT checked by ARAX_overlay
-                            source_curies_to_decorate.add(node_key)
-                            curie_to_name[node_key] = node.name
+                        # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                        # if "drug" in node.category or "chemical_substance" in node.category or "biolink:Drug" in node.category or "biolink:ChemicalSubstance" in node.category:  # this is now NOT checked by ARAX_overlay
+                        source_curies_to_decorate.add(node_key)
+                        curie_to_name[node_key] = node.name
                     if parameters['object_qnode_key'] in node.qnode_keys:
-                        if "disease" in node.category or "phenotypic_feature" in node.category or "biolink:Disease" in node.category or "biolink:PhenotypicFeature" in node.category:  # this is now NOT checked by ARAX_overlay
-                            target_curies_to_decorate.add(node_key)
-                            curie_to_name[node_key] = node.name
+                        # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                        # if "disease" in node.category or "phenotypic_feature" in node.category or "biolink:Disease" in node.category or "biolink:PhenotypicFeature" in node.category:  # this is now NOT checked by ARAX_overlay
+                        target_curies_to_decorate.add(node_key)
+                        curie_to_name[node_key] = node.name
 
             added_flag = False  # check to see if any edges where added
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
@@ -159,20 +161,22 @@ class PredictDrugTreatsDisease:
                 if converted_source_curie is None:
                     continue
                 else:
-                    preferred_type = converted_source_curie['preferred_type']
-                    if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
-                        converted_source_curie = converted_source_curie['preferred_curie']
-                    else:
-                        continue
+                    # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                    # preferred_type = converted_source_curie['preferred_type']
+                    # if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
+                    converted_source_curie = converted_source_curie['preferred_curie']
+                    # else:
+                    #     continue
                 converted_target_curie = self.convert_to_trained_curies(target_curie)
                 if converted_target_curie is None:
                     continue
                 else:
-                    preferred_type = converted_target_curie['preferred_type']
-                    if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
-                        converted_target_curie = converted_target_curie['preferred_curie']
-                    else:
-                        continue
+                    # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                    # preferred_type = converted_target_curie['preferred_type']
+                    # if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
+                    converted_target_curie = converted_target_curie['preferred_curie']
+                    # else:
+                    #     continue
                 if self.use_prob_db is True:
                     probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
                     if probability is not None:
@@ -266,20 +270,22 @@ class PredictDrugTreatsDisease:
                         if converted_source_curie is None:
                             continue
                         else:
-                            preferred_type = converted_source_curie['preferred_type']
-                            if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
-                                converted_source_curie = converted_source_curie['preferred_curie']
-                            else:
-                                continue
+                            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                            # preferred_type = converted_source_curie['preferred_type']
+                            # if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
+                            converted_source_curie = converted_source_curie['preferred_curie']
+                            # else:
+                            #     continue
                         converted_target_curie = self.convert_to_trained_curies(target_curie)
                         if converted_target_curie is None:
                             continue
                         else:
-                            preferred_type = converted_target_curie['preferred_type']
-                            if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
-                                converted_target_curie = converted_target_curie['preferred_curie']
-                            else:
-                                continue
+                            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                            # preferred_type = converted_target_curie['preferred_type']
+                            # if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
+                            converted_target_curie = converted_target_curie['preferred_curie']
+                            # else:
+                            #     continue
                         if self.use_prob_db is True:
                             probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
                             if probability is not None:
@@ -312,20 +318,22 @@ class PredictDrugTreatsDisease:
                         if converted_source_curie is None:
                             continue
                         else:
-                            preferred_type = converted_source_curie['preferred_type']
-                            if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
-                                converted_source_curie = converted_source_curie['preferred_curie']
-                            else:
-                                continue
+                            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                            # preferred_type = converted_source_curie['preferred_type']
+                            # if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
+                            converted_source_curie = converted_source_curie['preferred_curie']
+                            # else:
+                            #     continue
                         converted_target_curie = self.convert_to_trained_curies(target_curie)
                         if converted_target_curie is None:
                             continue
                         else:
-                            preferred_type = converted_target_curie['preferred_type']
-                            if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
-                                converted_target_curie = converted_target_curie['preferred_curie']
-                            else:
-                                continue
+                            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                            # preferred_type = converted_target_curie['preferred_type']
+                            # if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
+                            converted_target_curie = converted_target_curie['preferred_curie']
+                            # else:
+                            #     continue
 
                         if self.use_prob_db is True:
                             probability = self.pred.get_prob_from_DTD_db(converted_target_curie, converted_source_curie)
