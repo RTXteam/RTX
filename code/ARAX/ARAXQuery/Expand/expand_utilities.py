@@ -369,6 +369,15 @@ def get_attribute_type(attribute_name: str) -> str:
     return attribute_type_map.get(attribute_name, "biolink:Unknown")
 
 
+def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
+    endpoint_map = {
+        "GeneticsKP": "https://translator.broadinstitute.org/genetics_data_provider",
+        "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
+        "BTE": "https://api.bte.ncats.io/v1"
+    }
+    return endpoint_map.get(kp_name)
+
+
 def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
     # This is a temporary patch until we switch to KG2.5+
     predicates_with_commas = {"positively_regulates_entity_to_entity": "positively_regulates,_entity_to_entity",

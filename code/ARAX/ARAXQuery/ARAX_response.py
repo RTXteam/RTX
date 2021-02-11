@@ -44,6 +44,9 @@ class ARAXResponse:
         :param message: A natural English statement describing ongoing events.
         :type message: str
         """
+
+        if code is None:
+            code = ''
         self.__add_message( message, self.DEBUG, code=code )
 
 
@@ -56,6 +59,9 @@ class ARAXResponse:
         :param message: A natural English statement describing ongoing events.
         :type message: str
         """
+
+        if code is None:
+            code = ''
         self.__add_message( message, self.INFO, code=code )
 
 
@@ -69,6 +75,9 @@ class ARAXResponse:
         :param message: A natural English statement describing an important event.
         :type message: str
         """
+
+        if code is None:
+            code = ''
         self.__add_message( message, self.WARNING, code=code )
         self.n_warnings += 1
 

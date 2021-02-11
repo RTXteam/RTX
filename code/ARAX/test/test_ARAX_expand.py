@@ -572,6 +572,35 @@ def test_COHD_expand_chi_square():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
+def test_DTD_expand_1():
+    actions_list = [
+        "add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(name=Sotos syndrome, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:probability_treats" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].name == "probability_treats" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].type == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+
+@pytest.mark.slow
+def test_DTD_expand_2():
+    actions_list = [
+        "add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(category=disease, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:probability_treats" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].name == "probability_treats" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].type == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+
 def test_ngd_expand():
     actions_list = [
         "add_qnode(name=DOID:14330, key=n00)",

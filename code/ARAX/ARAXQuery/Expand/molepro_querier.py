@@ -21,8 +21,8 @@ class MoleProQuerier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
-        self.kp_api_url = "https://translator.broadinstitute.org/molepro/trapi/v1.0/query"
         self.kp_name = "MolePro"
+        self.kp_query_endpoint = f"{eu.get_kp_endpoint_url(self.kp_name)}/query"
         # TODO: Eventually validate queries better based on info in future TRAPI knowledge_map endpoint
         self.accepted_node_categories = {"biolink:ChemicalSubstance", "biolink:Gene", "biolink:Disease"}
         self.accepted_edge_types = {"biolink:correlated_with"}
@@ -152,7 +152,7 @@ class MoleProQuerier:
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
             log.debug(f"Sending {qedge_key} query to {self.kp_name} for {input_curie}")
             source_stripped_qnode['id'] = input_curie
-            kp_response = requests.post(self.kp_api_url,
+            kp_response = requests.post(self.kp_query_endpoint,
                                         json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': {qedge_key: stripped_qedge}}}},
                                         headers={'accept': 'application/json'})
             if kp_response.status_code != 200:

@@ -74,7 +74,7 @@ def test_no_results():
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
-    assert 'WARNING: filter_results called with no results.' in response.show(level=ARAXResponse.WARNING)
+    assert 'WARNING: [] filter_results called with no results.' in response.show(level=ARAXResponse.WARNING)
     assert response.status == 'OK'
 
 def test_prune():

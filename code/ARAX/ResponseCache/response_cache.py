@@ -24,7 +24,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 from sqlalchemy import inspect
 
-from reasoner_validator import validate_Message, validate_Result, validate_EdgeBinding, validate_NodeBinding, ValidationError
+from reasoner_validator import validate_Response, ValidationError
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -258,10 +258,11 @@ class ResponseCache:
 
                 return response_dict
 
-
             if 'fields' in response_dict and 'data' in response_dict['fields']:
-                #envelope = Envelope().from_dict(response_dict['fields']['data'])
                 envelope = response_dict['fields']['data']
+                if envelope is None:
+                    envelope = {}
+                    return envelope
 
                 #### Actor lookup
                 actor_lookup = { 
@@ -279,12 +280,21 @@ class ResponseCache:
                     '13': 'TextMining'
                 }
 
+                #Remove warning code hack
+                #if 'logs' in envelope and envelope['logs'] is not None:
+                #    for log in envelope['logs']:
+                #        if isinstance(log,dict):
+                #            if 'code' in log and log['code'] is None:
+                #                log['code'] = '-'
+
+
                 #### Perform a validation on it
                 try:
-                    validate_Message(envelope['message'])
-                    #print('- Message is valid')
+                    validate_Response(envelope)
+                    if 'description' not in envelope or envelope['description'] is None:
+                        envelope['description'] = 'reasoner-validator: PASS'
+
                 except ValidationError as error:
-                    #print(f"- Message INVALID: {error}")
                     timestamp = str(datetime.now().isoformat())
                     if 'logs' not in envelope or envelope['logs'] is None:
                         envelope['logs'] = []
