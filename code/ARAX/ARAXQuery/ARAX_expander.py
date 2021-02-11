@@ -192,9 +192,10 @@ class ARAXExpander:
                                "a query graph; it returns edges between nodes with an DTD probability above a certain "
                                "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
                                "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
-                               "DTD probability above 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
-                               "to do a real-time calculation and this will be quite time-consuming. Please pay attention that source query node should be "
-                               "drug and target query node should be disease.",
+                               "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
+                               "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
+                               "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to "
+                               "to call DTD model to do a real-time calculation."
                 "parameters": {
                     "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
@@ -215,7 +216,7 @@ class ARAXExpander:
                         "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
                         "default": "false",
                         "type": "boolean",
-                        "description": "Whether to call DTD model to do a real-time calculation for DTD probability."
+                        "description": "Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability."
                     }
                 }
             }
