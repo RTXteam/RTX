@@ -93,30 +93,34 @@ paths:
       tags:
       - PubmedMeshNgd
       x-openapi-router-controller: openapi_server.controllers.pubmed_mesh_ngd_controller
-  /entity/{search_string}:
+  /entity:
     get:
-      operationId: get_entity_by_string
+      operationId: get_entity
       parameters:
-      - description: Some string to search by (name, abbreviation, CURIE, etc.)
-        explode: false
-        in: path
-        name: search_string
+      - description: A string to search by (name, abbreviation, CURIE, etc.). The
+          parameter may be repeated for multiple search strings.
+        explode: true
+        in: query
+        name: q
         required: true
         schema:
-          type: string
-        style: simple
+          example:
+          - MESH:D014867
+          - NCIT:C34373
+          items:
+            type: string
+          type: array
+        style: form
       responses:
         "200":
           content:
             application/json:
               schema:
-                items:
-                  type: object
-                type: array
+                type: object
           description: successful operation
         "404":
           description: Entity not found
-      summary: Obtain the CURIE and type of some entity by name
+      summary: Obtain CURIE and synonym information about a search term
       tags:
       - entity
       x-openapi-router-controller: openapi_server.controllers.entity_controller
@@ -227,7 +231,7 @@ paths:
         name: response_id
         required: true
         schema:
-          type: integer
+          type: string
         style: simple
       responses:
         "200":
