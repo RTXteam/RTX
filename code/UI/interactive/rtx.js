@@ -59,8 +59,7 @@ function main() {
 
     if (syn) {
 	tab = "synonym";
-	document.getElementById("newsynonym").value = syn;
-	sendSyn();
+	lookup_synonym(syn,false);
     }
     openSection(tab);
 }
@@ -425,6 +424,13 @@ function enter_synonym(ele) {
 	sendSyn();
 }
 
+function lookup_synonym(syn,open) {
+    document.getElementById("newsynonym").value = syn.trim();
+    sendSyn();
+    if (open)
+	openSection("synonym");
+}
+
 async function sendSyn() {
     var word = document.getElementById("newsynonym").value.trim();
     if (!word) return;
@@ -459,6 +465,8 @@ async function sendSyn() {
 	text.className = "qprob p1";
 	syndiv.appendChild(document.createElement("br"));
 	syndiv.appendChild(document.createTextNode("Entity not found."));
+	syndiv.appendChild(document.createElement("br"));
+	syndiv.appendChild(document.createElement("br"));
 	return;
     }
 
@@ -467,11 +475,14 @@ async function sendSyn() {
 	table.className = 'sumtab';
 	for (var syn in allweknow[word].id) {
 	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
 	    td = document.createElement("td")
 	    td.style.fontWeight = 'bold';
 	    td.appendChild(document.createTextNode(syn));
 	    tr.appendChild(td);
 	    td = document.createElement("td")
+	    if (syn == "identifier")
+		td.appendChild(link_to_identifiers_dot_org(allweknow[word].id[syn]));
 	    td.appendChild(document.createTextNode(allweknow[word].id[syn]));
 	    tr.appendChild(td);
 	    table.appendChild(tr);
@@ -479,6 +490,7 @@ async function sendSyn() {
 
 	if (allweknow[word].type) {
 	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
 	    td = document.createElement("td")
 	    td.style.fontWeight = 'bold';
 	    td.appendChild(document.createTextNode('type (all)'));
@@ -510,6 +522,7 @@ async function sendSyn() {
         table.appendChild(tr);
 	for (var syn of allweknow[word].synonyms) {
             tr = document.createElement("tr");
+	    tr.className = 'hoverable';
 	    td = document.createElement("td")
 	    td.appendChild(document.createTextNode(syn.label));
 	    tr.appendChild(td);
@@ -538,7 +551,9 @@ async function sendSyn() {
 	table.appendChild(tr);
 	for (var syn of allweknow[word].equivalent_identifiers) {
 	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
 	    td = document.createElement("td")
+	    td.appendChild(link_to_identifiers_dot_org(syn.identifier));
 	    td.appendChild(document.createTextNode(syn.identifier));
 	    tr.appendChild(td);
 	    td = document.createElement("td")
@@ -569,7 +584,9 @@ async function sendSyn() {
 	table.appendChild(tr);
 	for (var syn of allweknow[word].nodes) {
 	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
 	    td = document.createElement("td")
+	    td.appendChild(link_to_identifiers_dot_org(syn.identifier));
 	    td.appendChild(document.createTextNode(syn.identifier));
 	    tr.appendChild(td);
 	    td = document.createElement("td")
@@ -585,8 +602,26 @@ async function sendSyn() {
 	}
 	syndiv.appendChild(table);
     }
-
+    syndiv.appendChild(document.createElement("br"));
 }
+
+function link_to_identifiers_dot_org(thing) {
+    if (!thing) return;
+
+    var link = document.createElement("a");
+    link.style.marginRight = "5px";
+    link.target = 'ARAXidentifiers';
+    link.title = 'look up '+thing+' in identifiers.org';
+    link.href = "http://identifiers.org/resolve?query=" + thing;
+    var img = document.createElement('img');
+    img.src = 'id_org.png';
+    img.width  = "15";
+    img.height = "15";
+    link.appendChild(img);
+
+    return link;
+}
+
 
 function sendId() {
     var id = document.getElementById("idText").value.trim();
@@ -2448,6 +2483,13 @@ function add_dsl_command(command) {
     if (typeof dslbox.selectionStart == "number" &&
 	typeof dslbox.selectionEnd   == "number") {
 	var endIndex = dslbox.selectionEnd;
+
+	while (endIndex>0) {
+	    if (dslval.slice(endIndex-1, endIndex) == "\n")
+		break;
+	    endIndex--;
+	}
+
 	dslbox.value = dslval.slice(0, endIndex) + command + dslval.slice(endIndex);
 	dslbox.selectionStart = dslbox.selectionEnd = endIndex + command.length;
     }
@@ -2605,13 +2647,20 @@ function display_list(listId) {
 
 	    if (entities.hasOwnProperty(li)) {
 		listhtml += "<td>"+entities[li].checkHTML+"</td>";
+		listhtml += "<td title='view ARAX synonyms' class='clq' onclick='lookup_synonym(this.nextSibling.innerHTML,true);'>\u2139</td>";
 		listhtml += "<td>"+entities[li].name+"</td>";
+		if (entities[li].isvalid)
+		    listhtml += "<td title='view ARAX synonyms' class='clq' onclick='lookup_synonym(this.nextSibling.innerHTML,true);'>\u2139</td>";
+		else
+		    listhtml += "<td></td>";
 		listhtml += "<td>"+entities[li].curie+"</td>";
 		listhtml += "<td>"+entities[li].type+"</td>";
 	    }
 	    else {
 		listhtml += "<td id='list"+listId+"_entitycheck_"+li+"'>--</td>";
+		listhtml += "<td title='view ARAX synonyms' class='clq' onclick='lookup_synonym(this.nextSibling.innerHTML,true);'>\u2139</td>";
 		listhtml += "<td id='list"+listId+"_entityname_"+li+"'>"+li+"</td>";
+		listhtml += "<td title='view ARAX synonyms' class='clq' onclick='lookup_synonym(this.nextSibling.innerHTML,true);'>\u2139</td>";
 		listhtml += "<td id='list"+listId+"_entitycurie_"+li+"'>looking up...</td>";
 		listhtml += "<td id='list"+listId+"_entitytype_"+li+"'>looking up...</td>";
 		entities[li] = {};
@@ -2630,7 +2679,7 @@ function display_list(listId) {
 	document.getElementById("nodeset"+listId).innerHTML = "List [" + listId + "] -- (" + numitems + " items)";
 
     if (numitems > 0) {
-	listhtml = "<table class='sumtab'><tr><th></th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
+	listhtml = "<table class='sumtab'><tr><th></th><th></th><th>Name</th><th></th><th>Item</th><th>Type</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
 	document.getElementById("menunumlistitems"+listId).classList.add("numnew");
 	document.getElementById("menunumlistitems"+listId).classList.remove("numold");
     }
