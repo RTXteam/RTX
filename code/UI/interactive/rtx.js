@@ -444,29 +444,35 @@ async function sendSyn() {
 	return;
     }
 
-    var table;
-    var tr;
-    var td;
+    var div, text, table, tr, td;
 
-    var text = document.createElement("a");
+    div = document.createElement("div");
+    div.className = "statushead";
+    div.appendChild(document.createTextNode("Synonym Results"));
+    text = document.createElement("a");
     text.target = '_new';
     text.title = 'link to this synonym entry';
     text.href = "http://"+ window.location.hostname + window.location.pathname + "?term=" + word;
     text.innerHTML = "[ Direct link to this entry ]";
-    syndiv.appendChild(text);
+    text.style.marginLeft = "50px";
+    div.appendChild(text);
+    syndiv.appendChild(div);
 
-    text = document.createElement("h1");
+    div = document.createElement("div");
+    div.className = "status";
+    text = document.createElement("h2");
     text.className = "qprob p9";
     text.appendChild(document.createTextNode(word));
-    syndiv.appendChild(text);
-    syndiv.appendChild(document.createElement("br"));
+    div.appendChild(text);
+    //div.appendChild(document.createElement("br"));
 
     if (!allweknow[word]) {
 	text.className = "qprob p1";
-	syndiv.appendChild(document.createElement("br"));
-	syndiv.appendChild(document.createTextNode("Entity not found."));
-	syndiv.appendChild(document.createElement("br"));
-	syndiv.appendChild(document.createElement("br"));
+	div.appendChild(document.createElement("br"));
+	div.appendChild(document.createTextNode("Entity not found."));
+	div.appendChild(document.createElement("br"));
+	div.appendChild(document.createElement("br"));
+	syndiv.appendChild(div);
 	return;
     }
 
@@ -501,15 +507,15 @@ async function sendSyn() {
 	    table.appendChild(tr);
 	}
 
-	syndiv.appendChild(table);
+	div.appendChild(table);
     }
 
     if (allweknow[word].synonyms) {
-	text = document.createElement("h2");
+	text = document.createElement("h3");
 	text.className = "qprob p5";
 	//text.appendChild(document.createTextNode('\u25BA Synonyms'));
 	text.appendChild(document.createTextNode('Synonyms'));
-	syndiv.appendChild(text);
+	div.appendChild(text);
 
 	table = document.createElement("table");
 	table.className = 'sumtab';
@@ -531,14 +537,14 @@ async function sendSyn() {
 	    tr.appendChild(td);
 	    table.appendChild(tr);
 	}
-	syndiv.appendChild(table);
+	div.appendChild(table);
     }
 
     if (allweknow[word].equivalent_identifiers) {
-	text = document.createElement("h2");
+	text = document.createElement("h3");
         text.className = "qprob p5";
 	text.appendChild(document.createTextNode('Equivalent Identifiers'));
-	syndiv.appendChild(text);
+	div.appendChild(text);
 
 	table = document.createElement("table");
 	table.className = 'sumtab';
@@ -564,14 +570,14 @@ async function sendSyn() {
 	    tr.appendChild(td);
 	    table.appendChild(tr);
 	}
-	syndiv.appendChild(table);
+	div.appendChild(table);
     }
 
     if (allweknow[word].nodes) {
-	text = document.createElement("h2");
+	text = document.createElement("h3");
         text.className = "qprob p5";
 	text.appendChild(document.createTextNode('Nodes'));
-	syndiv.appendChild(text);
+	div.appendChild(text);
 
 	table = document.createElement("table");
 	table.className = 'sumtab';
@@ -600,9 +606,10 @@ async function sendSyn() {
 	    tr.appendChild(td);
 	    table.appendChild(tr);
 	}
-	syndiv.appendChild(table);
+	div.appendChild(table);
     }
-    syndiv.appendChild(document.createElement("br"));
+    div.appendChild(document.createElement("br"));
+    syndiv.appendChild(div);
 }
 
 function link_to_identifiers_dot_org(thing) {
@@ -635,8 +642,10 @@ function sendId() {
 	document.getElementById("numresults_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	var wait = document.createElement("span");
-	wait.className = 'loading';
-	wait.innerHTML = '\u231A';
+	wait.className = 'loading_cell';
+	var waitbar = document.createElement("span");
+	waitbar.className = 'loading_bar';
+	wait.appendChild(waitbar);
 	document.getElementById("numresults_"+id).appendChild(wait);
     }
 
@@ -745,29 +754,43 @@ function sendQuestion(e) {
 function process_ars_message(ars_msg, level) {
     if (level > 5)
 	return; // stopgap
-    var table;
-    var tr;
-    var td;
+    var table, tr, td;
     if (level == 0) {
 	if (document.getElementById('ars_message_list'))
 	    document.getElementById('ars_message_list').remove();
+	var div = document.createElement("div");
+	div.id = 'ars_message_list';
+
+        var div2 = document.createElement("div");
+	div2.className = "statushead";
+        div2.appendChild(document.createTextNode("Collection Results"));
+        div.appendChild(div2);
+
+	var div2 = document.createElement("div");
+	div2.className = "status";
 	table = document.createElement("table");
-	table.id = 'ars_message_list';
+	table.id = 'ars_message_list_table';
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status","Message Id","N_Results","TRAPI?"] ) {
+	for (var head of ["","Agent","Status","Message Id","N_Results","TRAPI 1.0?"] ) {
 	    td = document.createElement("th")
 	    td.appendChild(document.createTextNode(head));
 	    tr.appendChild(td);
 	}
 	table.appendChild(tr);
-	document.getElementById('qid_input').appendChild(table);
+
+	div2.appendChild(document.createElement("br"));
+	div2.appendChild(table);
+        div2.appendChild(document.createElement("br"));
+        div.appendChild(div2);
+	document.getElementById('qid_input').appendChild(div);
     }
     else
-	table = document.getElementById('ars_message_list');
+	table = document.getElementById('ars_message_list_table');
 
     tr = document.createElement("tr");
+    tr.className = 'hoverable';
     td = document.createElement("td");
     td.appendChild(document.createTextNode('\u25BA'.repeat(level)));
     tr.appendChild(td);
@@ -1911,7 +1934,7 @@ function display_query_graph_items() {
         td = document.createElement("td");
 	var link = document.createElement("a");
 	link.href = 'javascript:remove_node_from_query_graph(\"'+result.id+'\")';
-	link.appendChild(document.createTextNode(" Remove "));
+	link.appendChild(document.createTextNode("Remove"));
 	td.appendChild(link);
         tr.appendChild(td);
 
@@ -1941,7 +1964,7 @@ function display_query_graph_items() {
         td = document.createElement("td");
 	var link = document.createElement("a");
 	link.href = 'javascript:remove_edge_from_query_graph(\"'+result.id+'\")';
-	link.appendChild(document.createTextNode(" Remove "));
+	link.appendChild(document.createTextNode("Remove"));
 	td.appendChild(link);
 	tr.appendChild(td);
 
@@ -2667,7 +2690,7 @@ function display_list(listId) {
 		entities[li].checkHTML = '--';
 	    }
 
-	    listhtml += "<td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+	    listhtml += "<td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/>Remove</a></td></tr>";
 	}
     }
 
@@ -2693,7 +2716,7 @@ function display_list(listId) {
 //    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
     if (numitems > 0)
-    	listhtml += "<a style='margin-left:20px;' href='javascript:delete_list(\""+listId+"\");'/> Delete List </a>";
+	listhtml += "<a style='margin-left:20px;' href='javascript:delete_list(\""+listId+"\");'/>Delete List</a>";
 
     listhtml += "<br><br>";
 
@@ -2991,7 +3014,7 @@ function display_session() {
 	    else
 		listhtml += "?r="+listItems[listId][li];
 
-	    listhtml +="'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+	    listhtml +="'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/>Remove</a></td></tr>";
         }
     }
     if (numitems > 0) {
