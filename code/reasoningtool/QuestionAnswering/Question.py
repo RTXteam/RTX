@@ -95,7 +95,7 @@ def find_target_label(string):
 	"""
 	Find target label (drug, disease, etc) in string
 	:param string: input string (chunck of text)
-	:param node_labels: node labels in the KG (see input dumpdata.py)
+	:param node_labels: node labels in the KG (see input dump_kg2_node_data.py)
 	:return: one of the node labels
 	"""
 	# drop any "s" endings
@@ -124,7 +124,7 @@ def find_edge_type(string):
 	"""
 	Extract edge type from string
 	:param string: input string (chunck of text)
-	:param edge_types: edge types in the KG (see dumpdata.py)
+	:param edge_types: edge types in the KG (see dump_kg2_node_data.py)
 	:return: one of the edge types
 	"""
 	p = nltk.stem.snowball.SnowballStemmer("english")

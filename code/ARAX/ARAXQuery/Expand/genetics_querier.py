@@ -23,8 +23,8 @@ class GeneticsQuerier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
-        self.kp_api_url = "https://translator.broadinstitute.org/genetics_data_provider/query"
         self.kp_name = "GeneticsKP"
+        self.kp_query_endpoint = f"{eu.get_kp_endpoint_url(self.kp_name)}/query"
         # TODO: Eventually validate queries better based on info in future TRAPI knowledge_map endpoint
         self.accepted_node_categories = {"gene", "pathway", "phenotypic_feature", "disease"}
         self.accepted_edge_types = {"associated"}
@@ -178,7 +178,7 @@ class GeneticsQuerier:
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
             log.debug(f"Sending {qedge_key} query to {self.kp_name} for {input_curie}")
             source_stripped_qnode['curie'] = input_curie
-            kp_response = requests.post(self.kp_api_url,
+            kp_response = requests.post(self.kp_query_endpoint,
                                         json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': [stripped_qedge]}}},
                                         headers={'accept': 'application/json'})
             if kp_response.status_code != 200:

@@ -369,6 +369,15 @@ def get_attribute_type(attribute_name: str) -> str:
     return attribute_type_map.get(attribute_name, "biolink:Unknown")
 
 
+def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
+    endpoint_map = {
+        "GeneticsKP": "https://translator.broadinstitute.org/genetics_data_provider",
+        "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
+        "BTE": "https://api.bte.ncats.io/v1"
+    }
+    return endpoint_map.get(kp_name)
+
+
 def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
     # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
     qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
