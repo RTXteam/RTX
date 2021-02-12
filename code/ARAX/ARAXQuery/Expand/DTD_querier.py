@@ -76,7 +76,6 @@ class DTDQuerier:
         DTD_slow_mode = self.response.data['parameters']['DTD_slow_mode']
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
-        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until we switch to KG2.5.1
 
         if 0.8 <= self.DTD_threshold <=1:
             if not DTD_slow_mode:
@@ -134,8 +133,6 @@ class DTDQuerier:
         else:
             log.error("The 'DTD_threshold' in Expander should be between 0 and 1", error_code="ParameterError")
 
-        # TODO: remove this patch once we switch to KG2.5.1!
-        eu.convert_node_and_edge_types_to_new_format(final_kg)
 
         return final_kg, edge_to_nodes_map
 

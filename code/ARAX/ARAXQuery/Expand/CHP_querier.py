@@ -54,12 +54,8 @@ class CHPQuerier:
         self.allowable_drug_curies = [curie_id.replace('CHEMBL:','CHEMBL.COMPOUND:') for curie_id in list(allowable_curies['biolink:Drug'].keys())]
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
-        query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until we switch to KG2.5.1
 
         final_kg, edge_to_nodes_map = self._answer_query_using_CHP_client(query_graph, log)
-
-        # TODO: remove this patch once we switch to KG2.5.1!
-        eu.convert_node_and_edge_types_to_new_format(final_kg)
 
         return final_kg, edge_to_nodes_map
 
@@ -177,10 +173,10 @@ class CHPQuerier:
                 for (source_curie, target_curie) in itertools.product(source_pass_nodes, target_pass_nodes):
 
                     if source_category_temp == 'drug':
-                        source_curie = source_curie.replace('CHEMBL.COMPOUND:','CHEMBL:')
+                        source_curie_temp = source_curie.replace('CHEMBL.COMPOUND:','CHEMBL:')
                         # Let's build a simple single query
                         q = build_query(genes=[target_curie],
-                                        therapeutic=source_curie,
+                                        therapeutic=source_curie_temp,
                                         disease='MONDO:0007254',
                                         outcome=('EFO:0000714', '>=', self.CHP_survival_threshold))
 
@@ -188,10 +184,10 @@ class CHPQuerier:
                         max_probability = self.client.get_outcome_prob(response)
                         swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, source_curie, "paired_with", max_probability)
                     else:
-                        target_curie = target_curie.replace('CHEMBL.COMPOUND:','CHEMBL:')
+                        target_curie_temp = target_curie.replace('CHEMBL.COMPOUND:','CHEMBL:')
                         # Let's build a simple single query
                         q = build_query(genes=[source_curie],
-                                        therapeutic=target_curie,
+                                        therapeutic=target_curie_temp,
                                         disease='MONDO:0007254',
                                         outcome=('EFO:0000714', '>=', self.CHP_survival_threshold))
 
@@ -278,7 +274,7 @@ class CHPQuerier:
                     for source_curie in source_pass_nodes:
 
                         genes = [source_curie]
-                        therapeutic = [curie for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and target_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_types=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_types'].keys())]]
+                        therapeutic = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and target_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_types=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_types'].keys())]]
                         disease = 'MONDO:0007254'
                         outcome = ('EFO:0000714', '>=', self.CHP_survival_threshold)
 
@@ -378,7 +374,7 @@ class CHPQuerier:
                     for target_curie in target_pass_nodes:
 
                         genes = [target_curie]
-                        therapeutic = [curie for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and source_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_types=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_types'].keys())]]
+                        therapeutic = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and source_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_types=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_types'].keys())]]
                         disease = 'MONDO:0007254'
                         outcome = ('EFO:0000714', '>=', self.CHP_survival_threshold)
 
@@ -451,7 +447,7 @@ class CHPQuerier:
 
     def _convert_to_swagger_edge(self, subject: str, object: str, name: str, value: float) -> Tuple[str, Edge]:
         swagger_edge = Edge()
-        swagger_edge.predicate = f"CHP:{name}"
+        swagger_edge.predicate = f"biolink:{name}"
         swagger_edge.subject = subject
         swagger_edge.object = object
         swagger_edge_key = f"CHP:{subject}-{name}-{object}"
