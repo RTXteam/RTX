@@ -30,6 +30,8 @@ class PredictDrugTreatsDisease:
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor','retrain_data'])
+        self.drug_label_list = ['chemicalsubstance','drug']
+        self.disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
 
         ## check if there is LogModel.pkl
         pkl_file = f"{filepath}/LogModel.pkl"
@@ -95,23 +97,9 @@ class PredictDrugTreatsDisease:
         """
         Takes an input curie from the KG, uses the synonymizer, and then returns something that the map.csv can handle
         """
-        normalizer_result = self.synonymizer.get_canonical_curies(input_curie)
+        normalizer_result = self.synonymizer.get_canonical_curies(curies=[input_curie], return_all_types=True)
         curies_in_model = normalizer_result[input_curie]
-        # curies_in_model = [curie for curie in curies_in_model if curie in self.known_curies]
-        # equivalent_curies = []  # start with empty equivalent_curies
-        # try:
-        #     equivalent_curies = [x['identifier'] for x in normalizer_result[input_curie]['equivalent_identifiers']]
-        # except:
-        #     self.response.warning(f"NodeSynonmizer could not find curies for {input_curie}, skipping this one.")
-        # for curie in equivalent_curies:
-        #     curie_prefix = curie.split(':')[0]
-        #     # FIXME: fix this when re-training the ML model, as when this was originally trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
-        #     if curie_prefix == "CHEMBL.COMPOUND":
-        #         chembl_fix = 'ChEMBL:' + curie[22:]
-        #         if chembl_fix in self.known_curies:
-        #             curies_in_model.add(chembl_fix)
-        #     elif curie in self.known_curies:
-        #         curies_in_model.add(curie)
+
         return curies_in_model
 
     def predict_drug_treats_disease(self):
@@ -157,32 +145,55 @@ class PredictDrugTreatsDisease:
                 # loop over all equivalent curies and take the highest probability
 
                 max_probability = 0
-                converted_source_curie = self.convert_to_trained_curies(source_curie)
-                if converted_source_curie is None:
-                    continue
-                else:
-                    # *The code below was commented because we don't need to check the type of input nodes #issue1240
-                    # preferred_type = converted_source_curie['preferred_type']
-                    # if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
-                    converted_source_curie = converted_source_curie['preferred_curie']
-                    # else:
-                    #     continue
-                converted_target_curie = self.convert_to_trained_curies(target_curie)
-                if converted_target_curie is None:
-                    continue
-                else:
-                    # *The code below was commented because we don't need to check the type of input nodes #issue1240
-                    # preferred_type = converted_target_curie['preferred_type']
-                    # if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
-                    converted_target_curie = converted_target_curie['preferred_curie']
-                    # else:
-                    #     continue
                 if self.use_prob_db is True:
+
+                    converted_source_curie = self.convert_to_trained_curies(source_curie)
+                    if converted_source_curie is None:
+                        continue
+                    else:
+                        all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_source_curie['all_types'].keys())]
+                        if (len(set(self.drug_label_list).intersection(set(all_types))) > 0):
+                            converted_source_curie = converted_source_curie['preferred_curie']
+                        else:
+                            continue
+                    converted_target_curie = self.convert_to_trained_curies(target_curie)
+                    if converted_target_curie is None:
+                        continue
+                    else:
+                        all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_target_curie['all_types'].keys())]
+                        if (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
+                            converted_target_curie = converted_target_curie['preferred_curie']
+                        else:
+                            continue
+
                     probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
                     if probability is not None:
                         if np.isfinite(probability):
                             max_probability = probability
+
                 else:
+
+                    converted_source_curie = self.convert_to_trained_curies(source_curie)
+                    if converted_source_curie is None:
+                        continue
+                    else:
+                        # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                        # preferred_type = converted_source_curie['preferred_type']
+                        # if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
+                        converted_source_curie = converted_source_curie['preferred_curie']
+                        # else:
+                        #     continue
+                    converted_target_curie = self.convert_to_trained_curies(target_curie)
+                    if converted_target_curie is None:
+                        continue
+                    else:
+                        # *The code below was commented because we don't need to check the type of input nodes #issue1240
+                        # preferred_type = converted_target_curie['preferred_type']
+                        # if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
+                        converted_target_curie = converted_target_curie['preferred_curie']
+                        # else:
+                        #     continue
+
                     probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
                     if probability is not None:
                         probability = probability[0]
@@ -262,7 +273,7 @@ class PredictDrugTreatsDisease:
                     target_curie = edge.object
                     source_types = curie_to_type[source_curie]
                     target_types = curie_to_type[target_curie]
-                    if (("drug" in source_types) or ("chemical_substance" in source_types) or ("biolink:Drug" in source_types) or ("biolink:ChemicalSubstance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types) or ("biolink:Disease" in target_types) or ("biolink:PhenotypicFeature" in target_types)):
+                    if (("drug" in source_types) or ("chemical_substance" in source_types) or ("biolink:Drug" in source_types) or ("biolink:ChemicalSubstance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types) or ("biolink:Disease" in target_types) or ("biolink:PhenotypicFeature" in target_types) or ("biolink:DiseaseOrPhenotypicFeature" in target_types)):
                         # loop over all pairs of equivalent curies and take the highest probability
                         self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
@@ -270,22 +281,20 @@ class PredictDrugTreatsDisease:
                         if converted_source_curie is None:
                             continue
                         else:
-                            # *The code below was commented because we don't need to check the type of input nodes #issue1240
-                            # preferred_type = converted_source_curie['preferred_type']
-                            # if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
-                            converted_source_curie = converted_source_curie['preferred_curie']
-                            # else:
-                            #     continue
+                            all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_source_curie['all_types'].keys())]
+                            if (len(set(self.drug_label_list).intersection(set(all_types))) > 0):
+                                converted_source_curie = converted_source_curie['preferred_curie']
+                            else:
+                                continue
                         converted_target_curie = self.convert_to_trained_curies(target_curie)
                         if converted_target_curie is None:
                             continue
                         else:
-                            # *The code below was commented because we don't need to check the type of input nodes #issue1240
-                            # preferred_type = converted_target_curie['preferred_type']
-                            # if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
-                            converted_target_curie = converted_target_curie['preferred_curie']
-                            # else:
-                            #     continue
+                            all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_target_curie['all_types'].keys())]
+                            if (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
+                                converted_target_curie = converted_target_curie['preferred_curie']
+                            else:
+                                continue
                         if self.use_prob_db is True:
                             probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
                             if probability is not None:
@@ -305,10 +314,7 @@ class PredictDrugTreatsDisease:
 
                         value = max_probability
 
-                        #probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
-                        #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
-                        #    value = probability[0]
-                    elif (("drug" in target_types) or ("chemical_substance" in target_types) or ("biolink:Drug" in target_types) or ("biolink:ChemicalSubstance" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types) or ("biolink:Disease" in source_types) or ("biolink:PhenotypicFeature" in source_types)):
+                    elif (("drug" in target_types) or ("chemical_substance" in target_types) or ("biolink:Drug" in target_types) or ("biolink:ChemicalSubstance" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types) or ("biolink:Disease" in source_types) or ("biolink:PhenotypicFeature" in source_types) or ("biolink:DiseaseOrPhenotypicFeature" in source_types)):
                         #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
@@ -318,22 +324,20 @@ class PredictDrugTreatsDisease:
                         if converted_source_curie is None:
                             continue
                         else:
-                            # *The code below was commented because we don't need to check the type of input nodes #issue1240
-                            # preferred_type = converted_source_curie['preferred_type']
-                            # if preferred_type == "disease" or preferred_type == "phenotypic_feature" or preferred_type == "biolink:Disease" or preferred_type == "biolink:PhenotypicFeature":
-                            converted_source_curie = converted_source_curie['preferred_curie']
-                            # else:
-                            #     continue
+                            all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_source_curie['all_types'].keys())]
+                            if (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
+                                converted_source_curie = converted_source_curie['preferred_curie']
+                            else:
+                                continue
                         converted_target_curie = self.convert_to_trained_curies(target_curie)
                         if converted_target_curie is None:
                             continue
                         else:
-                            # *The code below was commented because we don't need to check the type of input nodes #issue1240
-                            # preferred_type = converted_target_curie['preferred_type']
-                            # if preferred_type == "drug" or preferred_type == "chemical_substance" or preferred_type == "biolink:Drug" or preferred_type == "biolink:ChemicalSubstance":
-                            converted_target_curie = converted_target_curie['preferred_curie']
-                            # else:
-                            #     continue
+                            all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_target_curie['all_types'].keys())]
+                            if (len(set(self.drug_label_list).intersection(set(all_types))) > 0):
+                                converted_target_curie = converted_target_curie['preferred_curie']
+                            else:
+                                continue
 
                         if self.use_prob_db is True:
                             probability = self.pred.get_prob_from_DTD_db(converted_target_curie, converted_source_curie)
