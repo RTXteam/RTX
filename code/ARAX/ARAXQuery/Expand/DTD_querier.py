@@ -170,25 +170,25 @@ class DTDQuerier:
                 source_pass_nodes = [source_qnode.id]
             else:
                 source_pass_nodes = source_qnode.id
-                has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
-                if has_error:
-                    return final_kg, edge_to_nodes_map
-                else:
-                    if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
-                        source_pass_nodes = pass_nodes
-                    elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
-                        source_pass_nodes = pass_nodes
-                        if len(not_pass_nodes)==1:
-                            log.warning(f"All potential categories of {not_pass_nodes[0]} don't contain drug or disease")
-                        else:
-                            log.warning(f"All potential categories of these nodes {not_pass_nodes} don't contain drug or disease")
+            has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
+            if has_error:
+                return final_kg, edge_to_nodes_map
+            else:
+                if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
+                    source_pass_nodes = pass_nodes
+                elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
+                    source_pass_nodes = pass_nodes
+                    if len(not_pass_nodes)==1:
+                        log.warning(f"All potential categories of {not_pass_nodes[0]} don't contain drug or disease")
                     else:
-                        if type(source_qnode.id) is str:
-                            log.error(f"All potential categories of {source_qnode.id} don't contain drug or disease", error_code="CategoryError")
-                            return final_kg, edge_to_nodes_map
-                        else:
-                            log.error(f"All potential categories of {source_qnode.id} don't contain drug or disease", error_code="CategoryError")
-                            return final_kg, edge_to_nodes_map
+                        log.warning(f"All potential categories of these nodes {not_pass_nodes} don't contain drug or disease")
+                else:
+                    if type(source_qnode.id) is str:
+                        log.error(f"All potential categories of {source_qnode.id} don't contain drug or disease", error_code="CategoryError")
+                        return final_kg, edge_to_nodes_map
+                    else:
+                        log.error(f"All potential categories of {source_qnode.id} don't contain drug or disease", error_code="CategoryError")
+                        return final_kg, edge_to_nodes_map
         else:
             category = source_qnode.category.replace('biolink:','').replace('_','').lower()
             source_category = category
@@ -204,25 +204,25 @@ class DTDQuerier:
                 target_pass_nodes = [target_qnode.id]
             else:
                 target_pass_nodes = target_qnode.id
-                has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
-                if has_error:
-                    return final_kg, edge_to_nodes_map
-                else:
-                    if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
-                        target_pass_nodes = pass_nodes
-                    elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
-                        target_pass_nodes = pass_nodes
-                        if len(not_pass_nodes)==1:
-                            log.warning(f"All potential categories of {not_pass_nodes[0]} don't contain drug or disease")
-                        else:
-                            log.warning(f"All potential categories of these nodes {not_pass_nodes} don't contain drug or disease")
+            has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
+            if has_error:
+                return final_kg, edge_to_nodes_map
+            else:
+                if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
+                    target_pass_nodes = pass_nodes
+                elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
+                    target_pass_nodes = pass_nodes
+                    if len(not_pass_nodes)==1:
+                        log.warning(f"All potential categories of {not_pass_nodes[0]} don't contain drug or disease")
                     else:
-                        if type(target_qnode.id) is str:
-                            log.error(f"All potential categories of {target_qnode.id} don't contain drug or disease", error_code="CategoryError")
-                            return final_kg, edge_to_nodes_map
-                        else:
-                            log.error(f"All potential categories of {target_qnode.id} don't contain drug or disease", error_code="CategoryError")
-                            return final_kg, edge_to_nodes_map
+                        log.warning(f"All potential categories of these nodes {not_pass_nodes} don't contain drug or disease")
+                else:
+                    if type(target_qnode.id) is str:
+                        log.error(f"All potential categories of {target_qnode.id} don't contain drug or disease", error_code="CategoryError")
+                        return final_kg, edge_to_nodes_map
+                    else:
+                        log.error(f"All potential categories of {target_qnode.id} don't contain drug or disease", error_code="CategoryError")
+                        return final_kg, edge_to_nodes_map
         else:
             category = target_qnode.category.replace('biolink:','').replace('_','').lower()
             target_category = category
