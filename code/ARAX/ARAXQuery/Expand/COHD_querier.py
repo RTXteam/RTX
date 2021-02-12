@@ -51,8 +51,6 @@ class COHDQuerier:
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
 
-        print(query_graph)
-
         if COHD_method_percentile == 99:
             pass
         elif type(COHD_method_percentile) is str:
