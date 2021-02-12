@@ -825,7 +825,7 @@ class DTDQuerier:
                     return [True, [], []]
 
             if len(pass_nodes_drug_temp)!=0 and len(pass_nodes_disease_temp) != 0:
-                log.error(f"The preferred types of {qnode_id} don't contain both drug and disease", error_code="NoPreferredCurie")
+                log.error(f"The preferred types of {qnode_id} contain both drug and disease", error_code="MixedTypes")
                 return [True, [], []]
             else:
                 pass_nodes = pass_nodes_drug_temp + pass_nodes_disease_temp
