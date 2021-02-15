@@ -7,7 +7,7 @@ import json
 import ast
 import re
 
-from response import Response
+from ARAX_response import ARAXResponse
 
 
 class ActionsParser:
@@ -20,7 +20,7 @@ class ActionsParser:
     def parse(self, input_actions):
 
         #### Define a default response
-        response = Response()
+        response = ARAXResponse()
         response.info(f"Parsing input actions list")
 
         #### Basic error checking of the input_actions
@@ -147,7 +147,7 @@ def main():
     result = actions_parser.parse(actions_list)
 
     #### Print the response information (including debug information)
-    print(result.show(level=Response.DEBUG))
+    print(result.show(level=ARAXResponse.DEBUG))
 
     #### Print the final response data envelope
     print(json.dumps(ast.literal_eval(repr(result.data)),sort_keys=True,indent=2))

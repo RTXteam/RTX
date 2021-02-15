@@ -22,7 +22,7 @@ class TestPubmedMeshNgdController(BaseTestCase):
             'Accept': 'application/json',
         }
         response = self.client.open(
-            '/api/rtx/v1/PubmedMeshNgd/{term1}/{term2}'.format(term1='term1_example', term2='term2_example'),
+            '/api/arax/v1/PubmedMeshNgd/{term1}/{term2}'.format(term1='term1_example', term2='term2_example'),
             method='GET',
             headers=headers)
         self.assert200(response,

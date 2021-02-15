@@ -236,21 +236,21 @@ hr {
     margin-top: 15px;
     padding: 10px;
     max-width: 100%;
-    border-top: 3px solid black;
-    border-left: 3px solid black;
-    border-right: 3px solid black;
-    border-radius: 12px 12px 0 0;
+    border: 3px solid black;
+    border-radius: 12px;
     text-align: left;
     outline: none;
     font-size: 15px;
-    transition: 0.1s;
+    transition: background-color 0.1s, border-radius 0.4s linear 0.1s;
 }
 
 .openaccordion {
     border-bottom: 0px;
+    border-radius: 12px 12px 0 0;
     background-color: #9bc;
     color: #333;
     font-weight:bold;
+    transition: border-radius 0.4s linear 0.1s;
 }
 
 .accordion:hover {
@@ -336,6 +336,28 @@ hr {
     background-color: #b00;
 }
 
+.loading_cell {
+    display: inline-block;
+    overflow: hidden;
+    padding: 0;
+    height: 16px;
+    margin: 0;
+    width: 100%;
+    border: 1px solid #000;
+    background-color: #ccd8e2;
+}
+.loading_bar {
+    display: inline-block;
+    background-color: #5596d0;
+    border: 1px solid #3d6d98;
+    width: 50%;
+    height: 100%;
+    animation: 1s left-right linear infinite;
+}
+@keyframes left-right {
+    0%   { transform:translateX(-100%); }
+    100% { transform:translateX(300%); }
+}
 
 .p9, .msgINFO    { background-color: #291; }
 .p7              { background-color: #7b4; }
@@ -374,18 +396,21 @@ pre {
 }
 
 
-.panel {
-    border-top: 1px solid #444;
-    border-bottom: 3px solid black;
-    border-left: 3px solid black;
-    border-right: 3px solid black;
+.accordion + .panel {
+    border: 0;
     border-radius: 0 0 12px 12px;
     padding: 0 18px;
     background-color: #ccd8e2;
     max-width: 100%;
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.4s ease-out;
+    transition: max-height 0.4s ease-out, border 0.4s ease-out 0.1s;
+}
+.openaccordion + .panel {
+    border-top: 1px solid #444;
+    border-bottom: 3px solid black;
+    border-left: 3px solid black;
+    border-right: 3px solid black;
 }
 
 .t100 {
@@ -436,7 +461,7 @@ td {
     vertical-align:top;
 }
 .textanswer {
-    width: 30%;
+    width: 10%;
 }
 .cytograph_controls {
     vertical-align:top;
@@ -451,7 +476,7 @@ td {
 .cytograph {
     border: 1px solid #444;
     height: 300px;
-    width: 70%;
+    width: 90%;
     background-color: #fff;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
 }

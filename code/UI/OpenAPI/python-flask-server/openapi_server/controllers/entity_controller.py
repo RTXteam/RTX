@@ -3,18 +3,24 @@ import six
 
 from openapi_server import util
 
-from KGNodeIndex import KGNodeIndex
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/NodeSynonymizer")
+from node_synonymizer import NodeSynonymizer
 
 
-def get_entity_by_string(search_string):  # noqa: E501
-    """Obtain the CURIE and type of some entity by name
+def get_entity(q):  # noqa: E501
+    """Obtain CURIE and synonym information about a search term
 
      # noqa: E501
 
-    :param search_string: Some string to search by (name, abbreviation, CURIE, etc.)
-    :type search_string: str
+    :param q: A string to search by (name, abbreviation, CURIE, etc.). The parameter may be repeated for multiple search strings.
+    :type q: List[str]
 
-    :rtype: List[object]
+    :rtype: object
     """
-    kGNodeIndex = KGNodeIndex()
-    return kGNodeIndex.get_curies_and_types(search_string)
+    synonymizer = NodeSynonymizer()
+    response = synonymizer.get_normalizer_results(q,kg_name='KG2')
+
+    return response
+

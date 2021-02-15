@@ -1441,7 +1441,8 @@ class NodeSynonymizer:
 
                 # Now store the final list of types into the list
                 for entity,all_types in entity_all_types.items():
-                    results[entity]['all_types'] = all_types
+                    if entity in results and results[entity] is not None:
+                        results[entity]['all_types'] = all_types
 
 
         return results
@@ -1793,14 +1794,14 @@ def run_example_9():
     t1 = timeit.default_timer()
     canonical_curies2 = synonymizer.get_canonical_curies(names=names, return_all_types=True)
     t2 = timeit.default_timer()
-    canonical_curies3 = synonymizer.get_canonical_curies(curies=combined_list,names=combined_list, return_all_types=True)
+    canonical_curies3 = synonymizer.get_canonical_curies(curies=combined_list,names=combined_list, return_all_types=True, return_type='equivalent_nodes')
     t3 = timeit.default_timer()
-    print(json.dumps(canonical_curies,sort_keys=True,indent=2))
-    print("Elapsed time: "+str(t1-t0))
+    #print(json.dumps(canonical_curies,sort_keys=True,indent=2))
+    #print("Elapsed time: "+str(t1-t0))
     #print(json.dumps(canonical_curies2,sort_keys=True,indent=2))
     #print("Elapsed time: "+str(t2-t1))
-    #print(json.dumps(canonical_curies3,sort_keys=True,indent=2))
-    #print("Elapsed time: "+str(t3-t2))
+    print(json.dumps(canonical_curies3,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t3-t2))
 
 
 # ############################################################################################
@@ -1832,10 +1833,24 @@ def run_example_11():
     print("Elapsed time: "+str(t1-t0))
 
 
+# ############################################################################################
+def run_example_12():
+    synonymizer = NodeSynonymizer()
+
+    print("==== Get full information in nouveau normalizer format  ============================")
+    entities = [ "DOID:14330", "anemia", "aardvark" ]
+
+    t0 = timeit.default_timer()
+    normalizer_results = synonymizer.get_normalizer_results(entities=entities, kg_name='KG2')
+    t1 = timeit.default_timer()
+    print(json.dumps(normalizer_results,sort_keys=True,indent=2))
+    print("Elapsed time: "+str(t1-t0))
+
+
 
 # ############################################################################################
 def run_examples():
-    run_example_9()
+    run_example_12()
     return
     run_example_1()
     run_example_2()

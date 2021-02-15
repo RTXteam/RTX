@@ -7,7 +7,7 @@ from QuestionExamples import QuestionExamples
 
 
 def example_questions():  # noqa: E501
-    """Request a list of example questions that RTX can answer
+    """Request a list of example questions that ARAX can answer
 
      # noqa: E501
 

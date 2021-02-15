@@ -255,18 +255,20 @@ class predictor():
             if isinstance(source_target_curie_list, list):
 
                 X_list = []
+                out_source_target_curie_list = list()
                 for (equiv_source_curie, equiv_target_curie) in source_target_curie_list:
 
                     source_feature = self.get_feature(equiv_source_curie)
                     target_feature = self.get_feature(equiv_target_curie)
 
                     if source_feature is not None and target_feature is not None:
+                        out_source_target_curie_list += [(equiv_source_curie, equiv_target_curie)]
                         X_list += [[a * b for a, b in zip(source_feature, target_feature)]]
                     else:
                         continue
                 if len(X_list)!=0:
                     X = np.array(X_list)
-                    return list(self.prob(X)[:, 1])
+                    return [out_source_target_curie_list, list(self.prob(X)[:, 1])]
                 else:
                     return None
             else:
@@ -291,6 +293,40 @@ class predictor():
                 return None
             else:
                 return res[2]
+
+    def get_probs_from_DTD_db_based_on_disease(self, disease_id_list):
+        """
+        Get the probabilities of all pairs of source and target curie ids from DTD probability database based on given disease ids
+
+        :param disease_id_list: A list containg the curie ids of queried disease
+        """
+
+        if self.use_prob_db is True:
+            cursor = self.connection.cursor()
+
+            row = cursor.execute(f"select * from DTD_PROBABILITY where disease in {tuple(set(disease_id_list))}")
+            res = row.fetchall()
+            if len(res)!=0:
+                return res
+            else:
+                return None
+
+    def get_probs_from_DTD_db_based_on_drug(self, drug_id_list):
+        """
+        Get the probabilities of all pairs of source and target curie ids from DTD probability database based on given drug ids
+
+        :param drug_id_list: A list containg the curie ids of queried drug
+        """
+
+        if self.use_prob_db is True:
+            cursor = self.connection.cursor()
+
+            row = cursor.execute(f"select * from DTD_PROBABILITY where drug in {tuple(set(drug_id_list))}")
+            res = row.fetchall()
+            if len(res)!=0:
+                return res
+            else:
+                return None
 
     def test(self):
         self.import_file('test_set.csv')

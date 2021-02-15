@@ -1,3 +1,34 @@
+# 2.5.1 
+
+**Date: 2021.1.24**
+
+Nodes: 10,533,862
+
+Edges: 53,474,162
+
+- Issue #1185
+- Issue #1171 (tentative)
+- Issue #1122
+- Issue #1200
+- Issue #1079
+
+Build host: `kg2lindsey.rtx.ai` `~/kg2-build/`
+
+# 2.5.0 
+
+**Date: 2021.1.14**
+
+Nodes: 10,533,862
+
+Edges: 53,416,143
+
+- Issue #1173
+- Issue #1180
+- Issue #1155
+- Issue #1083
+
+Build host: `kg2lindsey.rtx.ai` `~/kg2-build/`
+
 # 2.4.0 
 
 **Date: 2020.12.11**

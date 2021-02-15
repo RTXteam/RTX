@@ -23,16 +23,17 @@ class ARAXResponse:
     #output = 'STDERR'
 
     #### Constructor
-    def __init__(self, status='OK', logging_level=WARNING, code='OK', message='Normal completion'):
+    def __init__(self, status='OK', logging_level=WARNING, error_code='OK', message='Normal completion'):
         self.status = status
         self.logging_level = logging_level
-        self.code = code
+        self.error_code = error_code
         self.message = message
         self.messages = []
         self.n_messages = 0
         self.n_errors = 0
         self.n_warnings = 0
         self.data = {}
+        self.envelope = None
 
 
     #### Add a debugging message
@@ -43,6 +44,9 @@ class ARAXResponse:
         :param message: A natural English statement describing ongoing events.
         :type message: str
         """
+
+        if code is None:
+            code = ''
         self.__add_message( message, self.DEBUG, code=code )
 
 
@@ -55,6 +59,9 @@ class ARAXResponse:
         :param message: A natural English statement describing ongoing events.
         :type message: str
         """
+
+        if code is None:
+            code = ''
         self.__add_message( message, self.INFO, code=code )
 
 
@@ -68,12 +75,15 @@ class ARAXResponse:
         :param message: A natural English statement describing an important event.
         :type message: str
         """
+
+        if code is None:
+            code = ''
         self.__add_message( message, self.WARNING, code=code )
         self.n_warnings += 1
 
 
     #### Add an error message
-    def error(self, message, code='UnknownError'):
+    def error(self, message, code='UnknownError', error_code=None):
         """Public method that adds an ERROR level message to the response object logger.
         ERROR level messages must be conveyed to ordinary users usually because a
         crucial subtask could not be successfully completed and successful execution
@@ -88,10 +98,15 @@ class ARAXResponse:
         :param code: A terse, unique string identifying the error (e.g. 'FileNotFound').
         :type code: str
         """
+
+        # Some backwards compatibility
+        if error_code is not None and code is 'UnknownError':
+            code = error_code
+
         self.__add_message( message, self.ERROR, code=code )
         self.n_errors += 1
         self.status = 'ERROR'
-        self.code = code
+        self.error_code = code
         self.message = message
 
 
@@ -141,7 +156,7 @@ class ARAXResponse:
             self.messages.append(message)
         if response_to_merge.status != 'OK':
             self.status = response_to_merge.status
-            self.code = response_to_merge.code
+            self.error_code = response_to_merge.error_code
             self.message = response_to_merge.message
 
 
@@ -161,7 +176,7 @@ class ARAXResponse:
         buffer += f"  status: {self.status}\n"
         buffer += f"  n_errors: {self.n_errors}  n_warnings: {self.n_warnings}  n_messages: {self.n_messages}\n"
         if self.status != 'OK':
-            buffer += f"  code: {self.code}   message: {self.message}\n"
+            buffer += f"  error_code: {self.error_code}   message: {self.message}\n"
         for message in self.messages:
             if message['level'] in self.equal_or_greater_levels[self.level_names[level]]:
 

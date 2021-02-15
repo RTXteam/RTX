@@ -12,7 +12,7 @@ class RTXConfiguration:
 
     # ### Constructor
     def __init__(self):
-        self.version = "ARAX 0.6.0"
+        self.version = "ARAX 0.7.0"
 
         file_path = os.path.dirname(os.path.abspath(__file__)) + '/configv2.json'
         local_path = os.path.dirname(os.path.abspath(__file__)) + '/config_local.json'
@@ -41,6 +41,12 @@ class RTXConfiguration:
         # self.live = "rtxdev"
         # self.live = "staging"
         # self.live = "local"
+
+        self.is_production_server = False
+        if ( ( 'HOSTNAME' in os.environ and os.environ['HOSTNAME'] == '6d6766e08a31' ) or
+            ( 'PWD' in os.environ and 'mnt/data/orangeboard' in os.environ['PWD'] ) ):
+            self.is_production_server = True
+
 
     # ### Define attribute version
     @property

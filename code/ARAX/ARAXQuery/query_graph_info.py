@@ -7,10 +7,13 @@ import json
 import ast
 import re
 
-from response import Response
+from ARAX_response import ARAXResponse
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
 from node_synonymizer import NodeSynonymizer
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.query_graph import QueryGraph
 
 
 class QueryGraphInfo:
@@ -28,8 +31,8 @@ class QueryGraphInfo:
         self.edge_info = None
         self.node_order = None
         self.edge_order = None
-        self.node_type_map = None
-        self.edge_type_map = None
+        self.node_category_map = None
+        self.edge_predicate_map = None
 
         self.query_graph_templates = None
 
@@ -38,7 +41,7 @@ class QueryGraphInfo:
     def assess(self, message):
 
         #### Define a default response
-        response = Response()
+        response = ARAXResponse()
         self.response = response
         self.message = message
         response.debug(f"Assessing the QueryGraph for basic information")
@@ -66,100 +69,101 @@ class QueryGraphInfo:
 
         #### Loop through nodes computing some stats
         node_info = {}
-        self.node_type_map = {}
-        for qnode in nodes:
-            id = qnode.id
-            node_info[id] = { 'id': id, 'node_object': qnode, 'has_curie': False, 'type': qnode.type, 'has_type': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
-            if qnode.curie is not None:
-                node_info[id]['has_curie'] = True
+        self.node_category_map = {}
+        for key,qnode in nodes.items():
+            node_info[key] = { 'key': key, 'node_object': qnode, 'has_id': False, 'category': qnode.category, 'has_category': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
+            if qnode.id is not None:
+                node_info[key]['has_id'] = True
 
-                #### If the user did not specify a type, but there is a curie, try to figure out the type
-                if node_info[id]['type'] is None:
+                #### If the user did not specify a category, but there is a curie, try to figure out the category
+                if node_info[key]['category'] is None:
                     synonymizer = NodeSynonymizer()
-                    canonical_curies = synonymizer.get_canonical_curies(curies=[qnode.curie], return_all_types=True)
-                    if qnode.curie in canonical_curies and 'preferred_type' in canonical_curies[qnode.curie]:
-                        node_info[id]['has_type'] = True
-                        node_info[id]['type'] = canonical_curies[qnode.curie]['preferred_type']
+                    canonical_curies = synonymizer.get_canonical_curies(curies=[qnode.id], return_all_types=True)
+                    if qnode.id in canonical_curies and 'preferred_type' in canonical_curies[qnode.id]:
+                        node_info[key]['has_category'] = True
+                        node_info[key]['category'] = canonical_curies[qnode.id]['preferred_type']
 
-            if qnode.type is not None:
-                node_info[id]['has_type'] = True
+            if qnode.category is not None:
+                node_info[key]['has_category'] = True
 
-            #if qnode.is_set is not None: node_info[id]['is_set'] = True
-            if qnode.id is None:
-                response.error("QueryGraph has a node with no id. This is not permitted", error_code="QueryGraphNodeWithNoId")
+            #if qnode.is_set is not None: node_info[key]['is_set'] = True
+            if key is None:
+                response.error("QueryGraph has a node with null key. This is not permitted", error_code="QueryGraphNodeWithNoId")
                 return response
 
-            #### Remap the node types from unsupported to supported
-            if qnode.type is not None:
-                qnode.type = self.remap_node_type(qnode.type)
+            #### Remap the node categorys from unsupported to supported
+            if qnode.category is not None:
+                qnode.category = self.remap_node_category(qnode.category)
 
-            #### Store lookup of types
+            #### Store lookup of categorys
             warning_counter = 0
-            if qnode.type is None:
+            if qnode.category is None:
                 if warning_counter == 0:
-                    response.debug("QueryGraph has nodes with no type. This may cause problems with results inference later")
+                    response.debug("QueryGraph has nodes with no category. This may cause problems with results inference later")
                 warning_counter += 1
-                self.node_type_map['unknown'] = id
+                self.node_category_map['unknown'] = key
             else:
-                self.node_type_map[qnode.type] = id
+                self.node_category_map[qnode.category] = key
 
         #### Loop through edges computing some stats
         edge_info = {}
-        self.edge_type_map = {}
+        self.edge_predicate_map = {}
         unique_links = {}
-        for qedge in edges:
 
-            #### Ignore special informationational edges for now.
-            virtual_edge_types = {'has_normalized_google_distance_with': 1, 'has_fisher_exact_test_p-value_with': 1,
-                                  'has_jaccard_index_with': 1, 'probably_treats': 1,
-                                  'has_paired_concept_frequency_with': 1,
-                                  'has_observed_expected_ratio_with': 1, 'has_chi_square_with': 1}
-            if qedge.type is not None and qedge.type in virtual_edge_types:
+        #### Ignore special informationational edges for now.
+        virtual_edge_predicates = {'has_normalized_google_distance_with': 1, 'has_fisher_exact_test_p-value_with': 1,
+                                'has_jaccard_index_with': 1, 'probably_treats': 1,
+                                'has_paired_concept_frequency_with': 1,
+                                'has_observed_expected_ratio_with': 1, 'has_chi_square_with': 1}
+
+        for key,qedge in edges.items():
+
+            if qedge.predicate is not None and qedge.predicate in virtual_edge_predicates:
                 continue
 
-            id = qedge.id
-            edge_info[id] = { 'id': id, 'has_type': False, 'source_id': qedge.source_id, 'target_id': qedge.target_id, 'type': None }
-            #if qnode.type is not None:
-            if qedge.type is not None:
-                edge_info[id]['has_type'] = True
-                edge_info[id]['type'] = qedge.type
-            if qedge.id is None:
-                response.error("QueryGraph has a edge with no id. This is not permitted", error_code="QueryGraphEdgeWithNoId")
+            edge_info[key] = { 'key': key, 'has_predicate': False, 'subject': qedge.subject, 'object': qedge.object, 'predicate': None }
+            #if qnode.predicate is not None:
+            if qedge.predicate is not None:
+                edge_info[key]['has_predicate'] = True
+                edge_info[key]['predicate'] = qedge.predicate
+
+            if key is None:
+                response.error("QueryGraph has a edge with null key. This is not permitted", error_code="QueryGraphEdgeWithNoKey")
                 return response
 
             #### Create a unique node link string
-            link_string = ','.join(sorted([qedge.source_id,qedge.target_id]))
+            link_string = ','.join(sorted([qedge.subject,qedge.object]))
             if link_string not in unique_links:
-                node_info[qedge.source_id]['n_links'] += 1
-                node_info[qedge.target_id]['n_links'] += 1
+                node_info[qedge.subject]['n_links'] += 1
+                node_info[qedge.object]['n_links'] += 1
                 unique_links[link_string] = 1
                 #print(link_string)
 
-            node_info[qedge.source_id]['n_edges'] += 1
-            node_info[qedge.target_id]['n_edges'] += 1
-            node_info[qedge.source_id]['is_connected'] = True
-            node_info[qedge.target_id]['is_connected'] = True
-            #node_info[qedge.source_id]['edges'].append(edge_info[id])
-            #node_info[qedge.target_id]['edges'].append(edge_info[id])
-            node_info[qedge.source_id]['edges'].append(edge_info[id])
-            node_info[qedge.target_id]['edges'].append(edge_info[id])
-            node_info[qedge.source_id]['edge_dict'][id] = edge_info[id]
-            node_info[qedge.target_id]['edge_dict'][id] = edge_info[id]
+            node_info[qedge.subject]['n_edges'] += 1
+            node_info[qedge.object]['n_edges'] += 1
+            node_info[qedge.subject]['is_connected'] = True
+            node_info[qedge.object]['is_connected'] = True
+            #node_info[qedge.subject]['edges'].append(edge_info[key])
+            #node_info[qedge.object]['edges'].append(edge_info[key])
+            node_info[qedge.subject]['edges'].append(edge_info[key])
+            node_info[qedge.object]['edges'].append(edge_info[key])
+            node_info[qedge.subject]['edge_dict'][key] = edge_info[key]
+            node_info[qedge.object]['edge_dict'][key] = edge_info[key]
 
-            #### Store lookup of types
+            #### Store lookup of predicates
             warning_counter = 0
-            edge_type = 'any'
-            if qedge.type is None:
+            edge_predicate = 'any'
+            if qedge.predicate is None:
                 if warning_counter == 0:
-                    response.debug("QueryGraph has edges with no type. This may cause problems with results inference later")
+                    response.debug("QueryGraph has edges with no predicate. This may cause problems with results inference later")
                 warning_counter += 1
             else:
-                edge_type = qedge.type
+                edge_predicate = qedge.predicate
 
-            #### It's not clear yet whether we need to store the whole sentence or just the type
-            #type_encoding = f"{node_info[qedge.source_id]['type']}---{edge_type}---{node_info[qedge.target_id]['type']}"
-            type_encoding = edge_type
-            self.edge_type_map[type_encoding] = id
+            #### It's not clear yet whether we need to store the whole sentence or just the predicate
+            #predicate_encoding = f"{node_info[qedge.subject]['predicate']}---{edge_predicate}---{node_info[qedge.object]['predicate']}"
+            predicate_encoding = edge_predicate
+            self.edge_predicate_map[predicate_encoding] = key
 
         #### Loop through the nodes again, trying to identify the start_node and the end_node
         singletons = []
@@ -173,7 +177,7 @@ class QueryGraphInfo:
         #### If this doesn't produce any singletons, then try curie based selection
         if len(singletons) == 0:
             for node_id,node_data in node_info.items():
-                if node_data['has_curie']:
+                if node_data['has_id']:
                     singletons.append(node_data)
 
         #### If this doesn't produce any singletons, then we don't know how to continue
@@ -191,9 +195,9 @@ class QueryGraphInfo:
         elif len(singletons) > 2:
             response.warning("QueryGraph appears to have a fork in it. This might cause trouble")
         else:
-            if singletons[0]['has_curie'] is True and singletons[1]['has_curie'] is False:
+            if singletons[0]['has_id'] is True and singletons[1]['has_id'] is False:
                 start_node = singletons[0]
-            elif singletons[0]['has_curie'] is False and singletons[1]['has_curie'] is True:
+            elif singletons[0]['has_id'] is False and singletons[1]['has_id'] is True:
                 start_node = singletons[1]
             else:
                 start_node = singletons[0]
@@ -208,23 +212,27 @@ class QueryGraphInfo:
         node_order = [ start_node ]
         edge_order = [ ]
         edges = current_node['edges']
+        debug = False
+
         while 1:
-            #tmp = { 'astate': '1', 'current_node': current_node, 'node_order': node_order, 'edge_order': edge_order, 'edges': edges }
-            #print(json.dumps(ast.literal_eval(repr(tmp)),sort_keys=True,indent=2))
-            #print('==================================================================================')
-            #tmp = input()
+            if debug:
+                tmp = { 'astate': '1', 'current_node': current_node, 'node_order': node_order, 'edge_order': edge_order, 'edges': edges }
+                print(json.dumps(ast.literal_eval(repr(tmp)),sort_keys=True,indent=2))
+                print('==================================================================================')
+                tmp = input()
 
             if len(edges) == 0:
                 break
-            if len(edges) > 1:
-                response.error("Help, two edges at A583. Don't know what to do", error_code="InteralErrorA583")
+            #if len(edges) > 1:
+            if current_node['n_links'] > 1:
+                response.error(f"Help, two edges at A583. Don't know what to do: {current_node['n_links']}", error_code="InteralErrorA583")
                 return response
             edge_order.append(edges[0])
             previous_node = current_node
-            if edges[0]['source_id'] == current_node['id']:
-                current_node = node_info[edges[0]['target_id']]
-            elif edges[0]['target_id'] == current_node['id']:
-                current_node = node_info[edges[0]['source_id']]
+            if edges[0]['subject'] == current_node['key']:
+                current_node = node_info[edges[0]['object']]
+            elif edges[0]['object'] == current_node['key']:
+                current_node = node_info[edges[0]['subject']]
             else:
                 response.error("Help, edge error A584. Don't know what to do", error_code="InteralErrorA584")
                 return response
@@ -238,7 +246,8 @@ class QueryGraphInfo:
             edges = current_node['edges']
             new_edges = []
             for edge in edges:
-                if edge['id'] not in previous_node['edge_dict']:
+                key = edge['key']
+                if key not in previous_node['edge_dict']:
                     new_edges.append(edge)
             edges = new_edges
             if len(edges) == 0:
@@ -260,15 +269,15 @@ class QueryGraphInfo:
         for node in node_order:
             component_id = f"n{node_index:02}"
             content = ''
-            component = { 'component_type': 'node', 'component_id': component_id, 'has_curie': node['has_curie'], 'has_type': node['has_type'], 'type_value': None }
+            component = { 'component_type': 'node', 'component_id': component_id, 'has_id': node['has_id'], 'has_category': node['has_category'], 'category_value': None }
             self.query_graph_templates['detailed']['components'].append(component)
-            if node['has_curie']:
-                content = 'curie'
-            if node['has_type'] and node['node_object'].type is not None:
-                content = f"type={node['node_object'].type}"
-                component['type_value'] = node['node_object'].type
-            elif node['has_type']:
-                content = 'type'
+            if node['has_id']:
+                content = 'id'
+            elif node['has_category'] and node['node_object'].category is not None:
+                content = f"category={node['node_object'].category}"
+                component['category_value'] = node['node_object'].category
+            elif node['has_category']:
+                content = 'category'
             template_part = f"{component_id}({content})"
             self.query_graph_templates['simple'] += template_part
 
@@ -276,35 +285,35 @@ class QueryGraphInfo:
             if node_index > 0 and node_index < (self.n_nodes - 1 ):
                 if 'is_set' not in node or node['is_set'] is None:
                     node['node_object'].is_set = True
-                    response.warning(f"Setting unspecified is_set to true for {node['id']} because this will probably lead to a happier result")
+                    response.warning(f"Setting unspecified is_set to true for {node['key']} because this will probably lead to a happier result")
                 elif node['is_set'] is True:
-                    response.debug(f"Value for is_set is already true for {node['id']} so that's good")
+                    response.debug(f"Value for is_set is already true for {node['key']} so that's good")
                 elif node['is_set'] is False:
-                    #response.info(f"Value for is_set is set to false for intermediate node {node['id']}. This could lead to weird results. Consider setting it to true")
-                    response.info(f"Value for is_set is false for intermediate node {node['id']}. Setting to true because this will probably lead to a happier result")
+                    #response.info(f"Value for is_set is set to false for intermediate node {node['key']}. This could lead to weird results. Consider setting it to true")
+                    response.info(f"Value for is_set is false for intermediate node {node['key']}. Setting to true because this will probably lead to a happier result")
                     node['node_object'].is_set = True
                 #else:
-                #    response.error(f"Unrecognized value is_set='{node['is_set']}' for {node['id']}. This should be true or false")
+                #    response.error(f"Unrecognized value is_set='{node['is_set']}' for {node['key']}. This should be true or false")
 
             node_index += 1
             if node_index < self.n_nodes:
                 #print(json.dumps(ast.literal_eval(repr(node)),sort_keys=True,indent=2))
 
-                #### Extract the has_type and type_value from the edges of the node
+                #### Extract the has_predicate and predicate_value from the edges of the node
                 #### This could fail if there are two edges coming out of the node FIXME
-                has_type = False
-                type_value = None
+                has_predicate = False
+                predicate_value = None
                 if 'edges' in node:
                     for related_edge in node['edges']:
-                        if related_edge['source_id'] == node['id']:
-                            has_type = related_edge['has_type']
-                            if has_type is True and 'type' in related_edge:
-                                type_value = related_edge['type']
+                        if related_edge['subject'] == node['key']:
+                            has_predicate = related_edge['has_predicate']
+                            if has_predicate is True and 'predicate' in related_edge:
+                                predicate_value = related_edge['predicate']
 
                 component_id = f"e{edge_index:02}"
                 template_part = f"-{component_id}()-"
                 self.query_graph_templates['simple'] += template_part
-                component = { 'component_type': 'edge', 'component_id': component_id, 'has_curie': False, 'has_type': has_type, 'type_value': type_value }
+                component = { 'component_type': 'edge', 'component_id': component_id, 'has_id': False, 'has_predicate': has_predicate, 'predicate_value': predicate_value }
                 self.query_graph_templates['detailed']['components'].append(component)
                 edge_index += 1
 
@@ -320,20 +329,80 @@ class QueryGraphInfo:
 
 
     ##########################################################################################
-    #### Remap node types from the new TRAPI 1.0 style to the older TRAPI 0.9.x style
-    def remap_node_type(self, node_type):
-        match = re.match(r'biolink:(.+)', node_type)
-        if match:
-            node_type = match.group(1)
-            node_type = re.sub(r'(?<!^)(?=[A-Z])', '_', node_type).lower()
-        return node_type
+    #### Remap node categorys from the new TRAPI 1.0 style to the older TRAPI 0.9.x style
+    #### No longer needed. FIXME
+    def remap_node_category(self, node_category):
+        #match = re.match(r'biolink:(.+)', node_category)
+        #if match:
+        #    node_category = match.group(1)
+        #    node_category = re.sub(r'(?<!^)(?=[A-Z])', '_', node_category).lower()
+        return node_category
+
+
+##########################################################################################
+def test_example1():
+    query_graph = {
+          "edges":{
+            "e00":{
+            "subject":"n00",
+            "object":"n01"
+            },
+            "e01":{
+            "subject":"n00",
+            "object":"n01",
+            "predicate":"biolink:contraindicated_for",
+            "exclude": True
+            }
+        },
+          "nodes":{
+            "n00":{
+            "id":"MONDO:0001627",
+            "category":"biolink:Disease"
+            },
+            "n01":{
+            "category":"biolink:ChemicalSubstance"
+            }
+          }
+        }
+
+    from ARAX_messenger import ARAXMessenger
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+
+    response.envelope.message.query_graph = QueryGraph().from_dict(query_graph)
+
+    query_graph_info = QueryGraphInfo()
+    result = query_graph_info.assess(response.envelope.message)
+    response.merge(result)
+    if result.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    query_graph_info_dict = {
+        'n_nodes': query_graph_info.n_nodes,
+        'n_edges': query_graph_info.n_edges,
+        'is_bifurcated_graph': query_graph_info.is_bifurcated_graph,
+        'start_node': query_graph_info.start_node,
+        'node_info': query_graph_info.node_info,
+        'edge_info': query_graph_info.edge_info,
+        'node_order': query_graph_info.node_order,
+        'edge_order': query_graph_info.edge_order,
+        'node_category_map': query_graph_info.node_category_map,
+        'edge_predicate_map': query_graph_info.edge_predicate_map,
+    }
+    print(json.dumps(ast.literal_eval(repr(query_graph_info_dict)),sort_keys=True,indent=2))
+
 
 
 ##########################################################################################
 def main():
 
+    test_example1()
+    return
+
     #### Create a response object
-    response = Response()
+    response = ARAXResponse()
 
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
@@ -349,7 +418,7 @@ def main():
     result = actions_parser.parse(actions_list)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     actions = result.data['actions']
 
@@ -369,7 +438,7 @@ def main():
     result = query_graph_info.assess(message)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     
     query_graph_info_dict = {
@@ -381,8 +450,8 @@ def main():
         'edge_info': query_graph_info.edge_info,
         'node_order': query_graph_info.node_order,
         'edge_order': query_graph_info.edge_order,
-        'node_type_map': query_graph_info.node_type_map,
-        'edge_type_map': query_graph_info.edge_type_map,
+        'node_category_map': query_graph_info.node_category_map,
+        'edge_predicate_map': query_graph_info.edge_predicate_map,
     }
     print(json.dumps(ast.literal_eval(repr(query_graph_info_dict)),sort_keys=True,indent=2))
 

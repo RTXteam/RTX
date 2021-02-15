@@ -7,8 +7,9 @@ import sys
 import pytest
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-from response import Response
-from typing import List, Union, Dict, Tuple
+from ARAX_response import ARAXResponse
+from ARAX_messenger import ARAXMessenger
+from typing import List, Union, Dict, Tuple, Set, Iterable
 
 import ARAX_resultify
 from ARAX_resultify import ARAXResultify
@@ -17,73 +18,88 @@ from ARAX_query import ARAXQuery
 # is there a better way to import swagger_server?  Following SO posting 16981921
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
-from swagger_server.models.edge import Edge
-from swagger_server.models.node import Node
-from swagger_server.models.q_edge import QEdge
-from swagger_server.models.q_node import QNode
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.knowledge_graph import KnowledgeGraph
-from swagger_server.models.result import Result
-from swagger_server.models.message import Message
+from openapi_server.models.edge import Edge
+from openapi_server.models.node import Node
+from openapi_server.models.q_edge import QEdge
+from openapi_server.models.q_node import QNode
+from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.result import Result
+from openapi_server.models.message import Message
 
 
 def _slim_kg(kg: KnowledgeGraph) -> KnowledgeGraph:
-    slimmed_nodes = [Node(id=node.id,
-                          type=node.type,
-                          name=node.name,
-                          qnode_ids=node.qnode_ids) for node in kg.nodes]
-    slimmed_edges = [Edge(id=edge.id,
-                          source_id=edge.source_id,
-                          target_id=edge.target_id,
-                          type=edge.type,
-                          qedge_ids=edge.qedge_ids) for edge in kg.edges]
+    slimmed_nodes = {node_key: Node(category=node.category,
+                                    name=node.name,
+                                    qnode_keys=node.qnode_keys) for node_key, node in kg.nodes.items()}
+    slimmed_edges = {edge_key: Edge(subject=edge.subject,
+                                    object=edge.object,
+                                    category=edge.category,
+                                    qedge_keys=edge.qedge_keys) for edge_key, edge in kg.edges.items()}
     return KnowledgeGraph(nodes=slimmed_nodes, edges=slimmed_edges)
 
 
-def _create_node(node_id: str, node_type: List[str], qnode_ids: List[str], node_name: str = None) -> Node:
-    node = Node(id=node_id,
-                type=node_type,
-                name=node_name)
-    node.qnode_ids = qnode_ids  # Must set outside initializer until (if?) qnode_ids is made an actual class attribute
-    return node
+def _create_nodes(kg_node_info: Iterable[Dict[str, any]]) -> Dict[str, Node]:
+    nodes_dict = dict()
+    for kg_node in kg_node_info:
+        node = Node(category=kg_node.get("category"),
+                    name=kg_node.get("name"))
+        node.qnode_keys = kg_node["qnode_keys"]
+        nodes_dict[kg_node["node_key"]] = node
+    return nodes_dict
 
 
-def _create_edge(edge_id: str, source_id: str, target_id: str, qedge_ids: List[str], edge_type: str = None) -> Edge:
-    edge = Edge(id=edge_id,
-                source_id=source_id,
-                target_id=target_id,
-                type=edge_type)
-    edge.qedge_ids = qedge_ids  # Must set outside initializer until (if?) qedge_ids is made an actual class attribute
-    return edge
+def _create_edges(kg_edge_info: Iterable[Dict[str, any]]) -> Dict[str, Edge]:
+    edges_dict = dict()
+    for kg_edge in kg_edge_info:
+        edge = Edge(subject=kg_edge["subject"],
+                    object=kg_edge["object"],
+                    predicate=kg_edge.get("predicate"))
+        edge.qedge_keys = kg_edge["qedge_keys"]
+        edges_dict[kg_edge["edge_key"]] = edge
+    return edges_dict
+
+
+def _create_qnodes(qg_node_info: Iterable[Dict[str, any]]) -> Dict[str, QNode]:
+    return {qnode_info["node_key"]: QNode(category=qnode_info['category'],
+                                          is_set=qnode_info['is_set']) for qnode_info in qg_node_info}
+
+
+def _create_qedges(qg_edge_info: Iterable[Dict[str, any]]) -> Dict[str, QEdge]:
+    return {qedge_info["edge_key"]: QEdge(subject=qedge_info['subject'],
+                                          object=qedge_info['object']) for qedge_info in qg_edge_info}
 
 
 def _print_results_for_debug(results: List[Result]):
     print()
     for result in results:
         print(result.essence)
-        for node_binding in result.node_bindings:
-            print(f"  {node_binding.qg_id}: {node_binding.kg_id}")
-        for edge_binding in result.edge_bindings:
-            print(f"  {edge_binding.qg_id}: {edge_binding.kg_id}")
+        for qnode_key, node_bindings_list in result.node_bindings.items():
+            print(f" {qnode_key}:")
+            for node_binding in node_bindings_list:
+                print(f"  {node_binding.id}")
+        for qedge_key, edge_bindings_list in result.edge_bindings.items():
+            print(f" {qedge_key}:")
+            for edge_binding in edge_bindings_list:
+                print(f"  {edge_binding.id}")
 
 
-def _get_result_nodes_by_qg_id(result: Result, kg_nodes_map: Dict[str, Node], qg: QueryGraph) -> Dict[str, Dict[str, Node]]:
-    return {qnode.id: {node_binding.kg_id: kg_nodes_map[node_binding.kg_id] for node_binding in result.node_bindings
-                       if node_binding.qg_id == qnode.id} for qnode in qg.nodes}
+def _get_result_node_keys_by_qg_key(result: Result) -> Dict[str, Set[str]]:
+    return {qnode_key: {node_binding.id for node_binding in result.node_bindings[qnode_key]} for qnode_key in result.node_bindings}
 
 
-def _get_result_edges_by_qg_id(result: Result, kg_edges_map: Dict[str, Edge], qg: QueryGraph) -> Dict[str, Dict[str, Edge]]:
-    return {qedge.id: {edge_binding.kg_id: kg_edges_map[edge_binding.kg_id] for edge_binding in result.edge_bindings
-                       if edge_binding.qg_id == qedge.id} for qedge in qg.edges}
+def _get_result_edge_keys_by_qg_key(result: Result) -> Dict[str, Set[str]]:
+    return {qedge_key: {edge_binding.id for edge_binding in result.edge_bindings[qedge_key]} for qedge_key in result.edge_bindings}
 
 
-def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[Response, Message]:
-    query = {"previous_message_processing_plan": {"processing_actions": actions_list}}
+def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[ARAXResponse, Message]:
+    query = {"operations": {"actions": actions_list}}
     araxq = ARAXQuery()
     response = araxq.query(query)
     message = araxq.message
-    if response.status != 'OK' or debug:
-        _print_results_for_debug(message.results)
+    if response.status != 'OK':
+        if debug:
+            _print_results_for_debug(message.results)
         print(response.show(level=response.DEBUG))
     return response, message
 
@@ -91,8 +107,10 @@ def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[Response, Mess
 def _run_resultify_directly(query_graph: QueryGraph,
                             knowledge_graph: KnowledgeGraph,
                             ignore_edge_direction=True,
-                            debug=False) -> Tuple[Response, Message]:
-    response = Response()
+                            debug=False) -> Tuple[ARAXResponse, Message]:
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
     actions_list = [f"resultify(ignore_edge_direction={ignore_edge_direction})"]
@@ -101,121 +119,123 @@ def _run_resultify_directly(query_graph: QueryGraph,
     actions = result.data['actions']
     assert result.status == 'OK'
     resultifier = ARAXResultify()
-    message = Message(query_graph=query_graph,
-                      knowledge_graph=knowledge_graph,
-                      results=[])
+    message_original = Message(query_graph=query_graph,
+                               knowledge_graph=knowledge_graph,
+                               results=[])
+    message = ARAXMessenger().from_dict(message_original.to_dict())
+    # qnode_keys/qedge_keys are lost when grabbing message from_dict() - so we add them back
+    for node_key, node in message_original.knowledge_graph.nodes.items():
+        message.knowledge_graph.nodes[node_key].qnode_keys = node.qnode_keys
+    for edge_key, edge in message_original.knowledge_graph.edges.items():
+        message.knowledge_graph.edges[edge_key].qedge_keys = edge.qedge_keys
+    response.envelope.message = message
     parameters = actions[0]['parameters']
     parameters['debug'] = 'true'
-    result = resultifier.apply(message, parameters)
-    response.merge(result)
-    if response.status != 'OK' or debug:
-        _print_results_for_debug(message.results)
+    resultifier.apply(response, parameters)
+    if response.status != 'OK':
+        if debug:
+            _print_results_for_debug(message.results)
         print(response.show(level=response.DEBUG))
     return response, message
 
 
 def _convert_shorthand_to_qg(shorthand_qnodes: Dict[str, str], shorthand_qedges: Dict[str, str]) -> QueryGraph:
-    return QueryGraph(nodes=[QNode(id=qnode_id, is_set=bool(is_set))
-                             for qnode_id, is_set in shorthand_qnodes.items()],
-                      edges=[QEdge(id=qedge_id, source_id=qnodes.split("--")[0], target_id=qnodes.split("--")[1])
-                             for qedge_id, qnodes in shorthand_qedges.items()])
+    return QueryGraph(nodes={qnode_key: QNode(is_set=bool(is_set)) for qnode_key, is_set in shorthand_qnodes.items()},
+                      edges={qedge_key: QEdge(subject=qnodes.split("--")[0],
+                                              object=qnodes.split("--")[1]) for qedge_key, qnodes in shorthand_qedges.items()})
 
 
 def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_edges: Dict[str, List[str]]) -> KnowledgeGraph:
     nodes_dict = dict()
-    for qnode_id, nodes_list in shorthand_nodes.items():
-        for node_id in nodes_list:
-            node = nodes_dict.get(node_id, Node(id=node_id, qnode_ids=[]))
-            node.qnode_ids.append(qnode_id)
-            nodes_dict[node_id] = node
+    for qnode_key, nodes_list in shorthand_nodes.items():
+        for node_key in nodes_list:
+            node = nodes_dict.get(node_key, Node())
+            if not hasattr(node, "qnode_keys"):
+                node.qnode_keys = []
+            node.qnode_keys.append(qnode_key)
+            nodes_dict[node_key] = node
     edges_dict = dict()
-    for qedge_id, edges_list in shorthand_edges.items():
+    for qedge_key, edges_list in shorthand_edges.items():
         for edge_key in edges_list:
-            source_node_id = edge_key.split("--")[0]
-            target_node_id = edge_key.split("--")[1]
-            edge = edges_dict.get(edge_key, Edge(id=edge_key, source_id=source_node_id, target_id=target_node_id, qedge_ids=[]))
-            edge.qedge_ids.append(qedge_id)
-            edges_dict[f"{qedge_id}:{edge_key}"] = edge
-    return KnowledgeGraph(nodes=list(nodes_dict.values()), edges=list(edges_dict.values()))
+            source_node_key = edge_key.split("--")[0]
+            target_node_key = edge_key.split("--")[1]
+            edge = edges_dict.get(edge_key, Edge(subject=source_node_key, object=target_node_key))
+            if not hasattr(edge, "qedge_keys"):
+                edge.qedge_keys = []
+            edge.qedge_keys.append(qedge_key)
+            edges_dict[f"{qedge_key}:{edge_key}"] = edge
+    return KnowledgeGraph(nodes=nodes_dict, edges=edges_dict)
+
+
+def _get_kg_edge_keys_using_node(node_key: str, kg: KnowledgeGraph) -> Set[str]:
+    return {edge_key for edge_key, edge in kg.edges.items() if node_key in {edge.subject, edge.object}}
 
 
 def test01():
-    kg_node_info = ({'id': 'UniProtKB:12345',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'UniProtKB:23456',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
-                     'qnode_ids': ['DOID:12345']},
-                    {'id': 'HP:56789',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n02']},
-                    {'id': 'HP:67890',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n02']},
-                    {'id': 'HP:34567',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n02']})
+    kg_node_info = ({'node_key': 'UniProtKB:12345',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'UniProtKB:23456',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
+                     'qnode_keys': ['DOID:12345']},
+                    {'node_key': 'HP:56789',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'HP:67890',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'HP:34567',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n02']})
 
-    kg_edge_info = ({'edge_id': 'ke01',
-                     'source_id': 'UniProtKB:12345',
-                     'target_id': 'DOID:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke02',
-                     'source_id': 'UniProtKB:23456',
-                     'target_id': 'DOID:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke03',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'HP:56789',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke04',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'HP:67890',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke05',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'HP:34567',
-                     'qedge_ids': ['qe02']})
+    kg_edge_info = ({'edge_key': 'ke01',
+                     'subject': 'UniProtKB:12345',
+                     'object': 'DOID:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke02',
+                     'subject': 'UniProtKB:23456',
+                     'object': 'DOID:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke03',
+                     'subject': 'DOID:12345',
+                     'object': 'HP:56789',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke04',
+                     'subject': 'DOID:12345',
+                     'object': 'HP:67890',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke05',
+                     'subject': 'DOID:12345',
+                     'object': 'HP:34567',
+                     'qedge_keys': ['qe02']})
 
-    kg_nodes = [_create_node(node_id=node_info['id'],
-                             node_type=[node_info['type']],
-                             qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
-
-    kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
-                             source_id=edge_info['source_id'],
-                             target_id=edge_info['target_id'],
-                             qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
+    kg_nodes = _create_nodes(kg_node_info)
+    kg_edges = _create_edges(kg_edge_info)
 
     knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
-    qg_node_info = ({'id': 'n01',
-                     'type': 'protein',
+    qg_node_info = ({'node_key': 'n01',
+                     'category': 'protein',
                      'is_set': False},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
                      'is_set': False},
-                    {'id': 'n02',
-                     'type': 'phenotypic_feature',
+                    {'node_key': 'n02',
+                     'category': 'phenotypic_feature',
                      'is_set': True})
 
-    qg_edge_info = ({'edge_id': 'qe01',
-                     'source_id': 'n01',
-                     'target_id': 'DOID:12345'},
-                    {'edge_id': 'qe02',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'n02'})
+    qg_edge_info = ({'edge_key': 'qe01',
+                     'subject': 'n01',
+                     'object': 'DOID:12345'},
+                    {'edge_key': 'qe02',
+                     'subject': 'DOID:12345',
+                     'object': 'n02'})
 
-    qg_nodes = [QNode(id=node_info['id'],
-                      type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
-                      is_set=node_info['is_set']) for node_info in qg_node_info]
-
-    qg_edges = [QEdge(id=edge_info['edge_id'],
-                      source_id=edge_info['source_id'],
-                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
-
+    qg_nodes = _create_qnodes(qg_node_info)
+    qg_edges = _create_qedges(qg_edge_info)
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
     results_list = ARAX_resultify._get_results_for_kg_by_qg(knowledge_graph,
@@ -225,82 +245,70 @@ def test01():
 
 
 def test02():
-    kg_node_info = ({'id': 'UniProtKB:12345',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'UniProtKB:23456',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
-                     'qnode_ids': ['DOID:12345']},
-                    {'id': 'HP:56789',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n02']},
-                    {'id': 'HP:67890',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n02']},
-                    {'id': 'HP:34567',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n02']})
+    kg_node_info = ({'node_key': 'UniProtKB:12345',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'UniProtKB:23456',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
+                     'qnode_keys': ['DOID:12345']},
+                    {'node_key': 'HP:56789',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'HP:67890',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'HP:34567',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n02']})
 
-    kg_edge_info = ({'edge_id': 'ke01',
-                     'source_id': 'UniProtKB:12345',
-                     'target_id': 'DOID:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke02',
-                     'source_id': 'UniProtKB:23456',
-                     'target_id': 'DOID:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke03',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'HP:56789',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke04',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'HP:67890',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke05',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'HP:34567',
-                     'qedge_ids': ['qe02']})
+    kg_edge_info = ({'edge_key': 'ke01',
+                     'subject': 'UniProtKB:12345',
+                     'object': 'DOID:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke02',
+                     'subject': 'UniProtKB:23456',
+                     'object': 'DOID:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke03',
+                     'subject': 'DOID:12345',
+                     'object': 'HP:56789',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke04',
+                     'subject': 'DOID:12345',
+                     'object': 'HP:67890',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke05',
+                     'subject': 'DOID:12345',
+                     'object': 'HP:34567',
+                     'qedge_keys': ['qe02']})
 
-    kg_nodes = [_create_node(node_id=node_info['id'],
-                             node_type=[node_info['type']],
-                             qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
-
-    kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
-                             source_id=edge_info['source_id'],
-                             target_id=edge_info['target_id'],
-                             qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
+    kg_nodes = _create_nodes(kg_node_info)
+    kg_edges = _create_edges(kg_edge_info)
 
     knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
-    qg_node_info = ({'id': 'n01',
-                     'type': 'protein',
+    qg_node_info = ({'node_key': 'n01',
+                     'category': 'protein',
                      'is_set': None},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
                      'is_set': False},
-                    {'id': 'n02',
-                     'type': 'phenotypic_feature',
+                    {'node_key': 'n02',
+                     'category': 'phenotypic_feature',
                      'is_set': True})
 
-    qg_edge_info = ({'edge_id': 'qe01',
-                     'source_id': 'n01',
-                     'target_id': 'DOID:12345'},
-                    {'edge_id': 'qe02',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'n02'})
+    qg_edge_info = ({'edge_key': 'qe01',
+                     'subject': 'n01',
+                     'object': 'DOID:12345'},
+                    {'edge_key': 'qe02',
+                     'subject': 'DOID:12345',
+                     'object': 'n02'})
 
-    qg_nodes = [QNode(id=node_info['id'],
-                      type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
-                      is_set=node_info['is_set']) for node_info in qg_node_info]
-
-    qg_edges = [QEdge(id=edge_info['edge_id'],
-                      source_id=edge_info['source_id'],
-                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
-
+    qg_nodes = _create_qnodes(qg_node_info)
+    qg_edges = _create_qedges(qg_edge_info)
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
     results_list = ARAX_resultify._get_results_for_kg_by_qg(knowledge_graph,
@@ -309,82 +317,70 @@ def test02():
 
 
 def test03():
-    kg_node_info = ({'id': 'UniProtKB:12345',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'UniProtKB:23456',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
-                     'qnode_ids': ['DOID:12345']},
-                    {'id': 'HP:56789',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n02']},
-                    {'id': 'HP:67890',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n02']},
-                    {'id': 'HP:34567',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n02']})
+    kg_node_info = ({'node_key': 'UniProtKB:12345',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'UniProtKB:23456',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
+                     'qnode_keys': ['DOID:12345']},
+                    {'node_key': 'HP:56789',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'HP:67890',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'HP:34567',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n02']})
 
-    kg_edge_info = ({'edge_id': 'ke01',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke02',
-                     'source_id': 'UniProtKB:23456',
-                     'target_id': 'DOID:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke03',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'HP:56789',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke04',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'HP:67890',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke05',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'HP:34567',
-                     'qedge_ids': ['qe02']})
+    kg_edge_info = ({'edge_key': 'ke01',
+                     'subject': 'DOID:12345',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke02',
+                     'subject': 'UniProtKB:23456',
+                     'object': 'DOID:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke03',
+                     'subject': 'DOID:12345',
+                     'object': 'HP:56789',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke04',
+                     'subject': 'DOID:12345',
+                     'object': 'HP:67890',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke05',
+                     'subject': 'DOID:12345',
+                     'object': 'HP:34567',
+                     'qedge_keys': ['qe02']})
 
-    kg_nodes = [_create_node(node_id=node_info['id'],
-                             node_type=[node_info['type']],
-                             qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
-
-    kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
-                             source_id=edge_info['source_id'],
-                             target_id=edge_info['target_id'],
-                             qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
+    kg_nodes = _create_nodes(kg_node_info)
+    kg_edges = _create_edges(kg_edge_info)
 
     knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
-    qg_node_info = ({'id': 'n01',
-                     'type': 'protein',
+    qg_node_info = ({'node_key': 'n01',
+                     'category': 'protein',
                      'is_set': None},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
                      'is_set': False},
-                    {'id': 'n02',
-                     'type': 'phenotypic_feature',
+                    {'node_key': 'n02',
+                     'category': 'phenotypic_feature',
                      'is_set': True})
 
-    qg_edge_info = ({'edge_id': 'qe01',
-                     'source_id': 'n01',
-                     'target_id': 'DOID:12345'},
-                    {'edge_id': 'qe02',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'n02'})
+    qg_edge_info = ({'edge_key': 'qe01',
+                     'subject': 'n01',
+                     'object': 'DOID:12345'},
+                    {'edge_key': 'qe02',
+                     'subject': 'DOID:12345',
+                     'object': 'n02'})
 
-    qg_nodes = [QNode(id=node_info['id'],
-                      type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
-                      is_set=node_info['is_set']) for node_info in qg_node_info]
-
-    qg_edges = [QEdge(id=edge_info['edge_id'],
-                      source_id=edge_info['source_id'],
-                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
-
+    qg_nodes = _create_qnodes(qg_node_info)
+    qg_edges = _create_qedges(qg_edge_info)
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
     results_list = ARAX_resultify._get_results_for_kg_by_qg(knowledge_graph,
@@ -394,86 +390,74 @@ def test03():
 
 
 def test04():
-    kg_node_info = ({'id': 'UniProtKB:12345',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'UniProtKB:23456',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
-                     'qnode_ids': ['DOID:12345']},
-                    {'id': 'UniProtKB:56789',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'ChEMBL.COMPOUND:12345',
-                     'type': 'chemical_substance',
-                     'qnode_ids': ['n02']},
-                    {'id': 'ChEMBL.COMPOUND:23456',
-                     'type': 'chemical_substance',
-                     'qnode_ids': ['n02']})
+    kg_node_info = ({'node_key': 'UniProtKB:12345',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'UniProtKB:23456',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
+                     'qnode_keys': ['DOID:12345']},
+                    {'node_key': 'UniProtKB:56789',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'ChEMBL.COMPOUND:12345',
+                     'category': 'chemical_substance',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'ChEMBL.COMPOUND:23456',
+                     'category': 'chemical_substance',
+                     'qnode_keys': ['n02']})
 
-    kg_edge_info = ({'edge_id': 'ke01',
-                     'source_id': 'ChEMBL.COMPOUND:12345',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke02',
-                     'source_id': 'ChEMBL.COMPOUND:12345',
-                     'target_id': 'UniProtKB:23456',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke03',
-                     'source_id': 'ChEMBL.COMPOUND:23456',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke04',
-                     'source_id': 'ChEMBL.COMPOUND:23456',
-                     'target_id': 'UniProtKB:23456',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke05',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke06',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'UniProtKB:23456',
-                     'qedge_ids': ['qe02']})
+    kg_edge_info = ({'edge_key': 'ke01',
+                     'subject': 'ChEMBL.COMPOUND:12345',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke02',
+                     'subject': 'ChEMBL.COMPOUND:12345',
+                     'object': 'UniProtKB:23456',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke03',
+                     'subject': 'ChEMBL.COMPOUND:23456',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke04',
+                     'subject': 'ChEMBL.COMPOUND:23456',
+                     'object': 'UniProtKB:23456',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke05',
+                     'subject': 'DOID:12345',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke06',
+                     'subject': 'DOID:12345',
+                     'object': 'UniProtKB:23456',
+                     'qedge_keys': ['qe02']})
 
-    kg_nodes = [_create_node(node_id=node_info['id'],
-                             node_type=[node_info['type']],
-                             qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
-
-    kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
-                             source_id=edge_info['source_id'],
-                             target_id=edge_info['target_id'],
-                             qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
+    kg_nodes = _create_nodes(kg_node_info)
+    kg_edges = _create_edges(kg_edge_info)
 
     knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
-    qg_node_info = ({'id': 'n01',
-                     'type': 'protein',
+    qg_node_info = ({'node_key': 'n01',
+                     'category': 'protein',
                      'is_set': True},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
                      'is_set': False},
-                    {'id': 'n02',
-                     'type': 'chemical_substance',
+                    {'node_key': 'n02',
+                     'category': 'chemical_substance',
                      'is_set': False})
 
-    qg_edge_info = ({'edge_id': 'qe01',
-                     'source_id': 'n02',
-                     'target_id': 'n01'},
-                    {'edge_id': 'qe02',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'n01'})
+    qg_edge_info = ({'edge_key': 'qe01',
+                     'subject': 'n02',
+                     'object': 'n01'},
+                    {'edge_key': 'qe02',
+                     'subject': 'DOID:12345',
+                     'object': 'n01'})
 
-    qg_nodes = [QNode(id=node_info['id'],
-                      type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
-                      is_set=node_info['is_set']) for node_info in qg_node_info]
-
-    qg_edges = [QEdge(id=edge_info['edge_id'],
-                      source_id=edge_info['source_id'],
-                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
-
+    qg_nodes = _create_qnodes(qg_node_info)
+    qg_edges = _create_qedges(qg_edge_info)
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
     results_list = ARAX_resultify._get_results_for_kg_by_qg(knowledge_graph,
@@ -483,200 +467,154 @@ def test04():
 
 
 def test05():
-    kg_node_info = ({'id': 'UniProtKB:12345',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'UniProtKB:23456',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
-                     'qnode_ids': ['DOID:12345']},
-                    {'id': 'UniProtKB:56789',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'ChEMBL.COMPOUND:12345',
-                     'type': 'chemical_substance',
-                     'qnode_ids': ['n02']},
-                    {'id': 'ChEMBL.COMPOUND:23456',
-                     'type': 'chemical_substance',
-                     'qnode_ids': ['n02']})
+    kg_node_info = ({'node_key': 'UniProtKB:12345',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'UniProtKB:23456',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
+                     'qnode_keys': ['DOID:12345']},
+                    {'node_key': 'UniProtKB:56789',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'ChEMBL.COMPOUND:12345',
+                     'category': 'chemical_substance',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'ChEMBL.COMPOUND:23456',
+                     'category': 'chemical_substance',
+                     'qnode_keys': ['n02']})
 
-    kg_edge_info = ({'edge_id': 'ke01',
-                     'source_id': 'ChEMBL.COMPOUND:12345',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke02',
-                     'source_id': 'ChEMBL.COMPOUND:12345',
-                     'target_id': 'UniProtKB:23456',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke03',
-                     'source_id': 'ChEMBL.COMPOUND:23456',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke04',
-                     'source_id': 'ChEMBL.COMPOUND:23456',
-                     'target_id': 'UniProtKB:23456',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke05',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke06',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'UniProtKB:23456',
-                     'qedge_ids': ['qe02']})
+    kg_edge_info = ({'edge_key': 'ke01',
+                     'subject': 'ChEMBL.COMPOUND:12345',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke02',
+                     'subject': 'ChEMBL.COMPOUND:12345',
+                     'object': 'UniProtKB:23456',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke03',
+                     'subject': 'ChEMBL.COMPOUND:23456',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke04',
+                     'subject': 'ChEMBL.COMPOUND:23456',
+                     'object': 'UniProtKB:23456',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke05',
+                     'subject': 'DOID:12345',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke06',
+                     'subject': 'DOID:12345',
+                     'object': 'UniProtKB:23456',
+                     'qedge_keys': ['qe02']})
 
-    kg_nodes = [_create_node(node_id=node_info['id'],
-                             node_type=[node_info['type']],
-                             qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
-
-    kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
-                             source_id=edge_info['source_id'],
-                             target_id=edge_info['target_id'],
-                             qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
-
+    kg_nodes = _create_nodes(kg_node_info)
+    kg_edges = _create_edges(kg_edge_info)
     knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
-    qg_node_info = ({'id': 'n01',
-                     'type': 'protein',
+    qg_node_info = ({'node_key': 'n01',
+                     'category': 'protein',
                      'is_set': True},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
                      'is_set': False},
-                    {'id': 'n02',
-                     'type': 'chemical_substance',
-                     'is_set': False},
-                     )
+                    {'node_key': 'n02',
+                     'category': 'chemical_substance',
+                     'is_set': False})
 
-    qg_edge_info = ({'edge_id': 'qe01',
-                     'source_id': 'n02',
-                     'target_id': 'n01'},
-                    {'edge_id': 'qe02',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'n01'})
+    qg_edge_info = ({'edge_key': 'qe01',
+                     'subject': 'n02',
+                     'object': 'n01'},
+                    {'edge_key': 'qe02',
+                     'subject': 'DOID:12345',
+                     'object': 'n01'})
 
-    qg_nodes = [QNode(id=node_info['id'],
-                      type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
-                      is_set=node_info['is_set']) for node_info in qg_node_info]
-
-    qg_edges = [QEdge(id=edge_info['edge_id'],
-                      source_id=edge_info['source_id'],
-                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
-
+    qg_nodes = _create_qnodes(qg_node_info)
+    qg_edges = _create_qedges(qg_edge_info)
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
-    message = Message(query_graph=query_graph,
-                      knowledge_graph=knowledge_graph,
-                      results=[])
-    resultifier = ARAXResultify()
-    input_parameters = {'ignore_edge_direction': 'true'}
-    resultifier.apply(message, input_parameters)
-    assert resultifier.response.status == 'OK'
-    assert len(resultifier.message.results) == 2
+    response, message = _run_resultify_directly(query_graph, knowledge_graph, ignore_edge_direction=True)
+    assert response.status == 'OK'
+    assert len(message.results) == 2
 
 
 def test07():
-    kg_node_info = ({'id': 'UniProtKB:12345',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'UniProtKB:23456',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
-                     'qnode_ids': ['DOID:12345']},
-                    {'id': 'UniProtKB:56789',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'ChEMBL.COMPOUND:12345',
-                     'type': 'chemical_substance',
-                     'qnode_ids': ['n02']},
-                    {'id': 'ChEMBL.COMPOUND:23456',
-                     'type': 'chemical_substance',
-                     'qnode_ids': ['n02']})
+    kg_node_info = ({'node_key': 'UniProtKB:12345',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'UniProtKB:23456',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
+                     'qnode_keys': ['DOID:12345']},
+                    {'node_key': 'UniProtKB:56789',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'ChEMBL.COMPOUND:12345',
+                     'category': 'chemical_substance',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'ChEMBL.COMPOUND:23456',
+                     'category': 'chemical_substance',
+                     'qnode_keys': ['n02']})
 
-    kg_edge_info = ({'edge_id': 'ke01',
-                     'source_id': 'ChEMBL.COMPOUND:12345',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke02',
-                     'source_id': 'ChEMBL.COMPOUND:12345',
-                     'target_id': 'UniProtKB:23456',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke03',
-                     'source_id': 'ChEMBL.COMPOUND:23456',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke04',
-                     'source_id': 'ChEMBL.COMPOUND:23456',
-                     'target_id': 'UniProtKB:23456',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke05',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'UniProtKB:12345',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke06',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'UniProtKB:23456',
-                     'qedge_ids': ['qe02']})
+    kg_edge_info = ({'edge_key': 'ke01',
+                     'subject': 'ChEMBL.COMPOUND:12345',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke02',
+                     'subject': 'ChEMBL.COMPOUND:12345',
+                     'object': 'UniProtKB:23456',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke03',
+                     'subject': 'ChEMBL.COMPOUND:23456',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke04',
+                     'subject': 'ChEMBL.COMPOUND:23456',
+                     'object': 'UniProtKB:23456',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke05',
+                     'subject': 'DOID:12345',
+                     'object': 'UniProtKB:12345',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke06',
+                     'subject': 'DOID:12345',
+                     'object': 'UniProtKB:23456',
+                     'qedge_keys': ['qe02']})
 
-    kg_nodes = [_create_node(node_id=node_info['id'],
-                             node_type=[node_info['type']],
-                             qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
-
-    kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
-                             source_id=edge_info['source_id'],
-                             target_id=edge_info['target_id'],
-                             qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
+    kg_nodes = _create_nodes(kg_node_info)
+    kg_edges = _create_edges(kg_edge_info)
 
     knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
-    qg_node_info = ({'id': 'n01',
-                     'type': 'protein',
+    qg_node_info = ({'node_key': 'n01',
+                     'category': 'protein',
                      'is_set': True},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
                      'is_set': False},
-                    {'id': 'n02',
-                     'type': 'chemical_substance',
+                    {'node_key': 'n02',
+                     'category': 'chemical_substance',
                      'is_set': False})
 
-    qg_edge_info = ({'edge_id': 'qe01',
-                     'source_id': 'n02',
-                     'target_id': 'n01'},
-                    {'edge_id': 'qe02',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'n01'})
+    qg_edge_info = ({'edge_key': 'qe01',
+                     'subject': 'n02',
+                     'object': 'n01'},
+                    {'edge_key': 'qe02',
+                     'subject': 'DOID:12345',
+                     'object': 'n01'})
 
-    qg_nodes = [QNode(id=node_info['id'],
-                      type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
-                      is_set=node_info['is_set']) for node_info in qg_node_info]
-
-    qg_edges = [QEdge(id=edge_info['edge_id'],
-                      source_id=edge_info['source_id'],
-                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
-
+    qg_nodes = _create_qnodes(qg_node_info)
+    qg_edges = _create_qedges(qg_edge_info)
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
-    response = Response()
-    from actions_parser import ActionsParser
-    actions_parser = ActionsParser()
-    actions_list = ['resultify(ignore_edge_direction=true)']
-    result = actions_parser.parse(actions_list)
-    response.merge(result)
-    actions = result.data['actions']
-    assert result.status == 'OK'
-    resultifier = ARAXResultify()
-    message = Message(query_graph=query_graph,
-                      knowledge_graph=knowledge_graph,
-                      results=[])
-    parameters = actions[0]['parameters']
-    parameters['debug'] = 'true'
-    result = resultifier.apply(message, parameters)
-    response.merge(result)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph, ignore_edge_direction=True)
     assert len(message.results) == 2
-    assert result.status == 'OK'
+    assert response.status == 'OK'
 
 
 def test08():
@@ -690,17 +628,17 @@ def test08():
     knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
-    n01_nodes = {node.id for node in message.knowledge_graph.nodes if "n01" in node.qnode_ids}
+    n01_nodes = {node_key for node_key, node in message.knowledge_graph.nodes.items() if "n01" in node.qnode_keys}
     assert message.results and len(message.results) == len(n01_nodes)
 
 
 @pytest.mark.slow
 def test09():
     actions = [
-        "add_qnode(name=DOID:731, id=n00, type=disease, is_set=false)",
-        "add_qnode(type=phenotypic_feature, is_set=false, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "expand(edge_id=e00, kp=ARAX/KG1)",
+        "add_qnode(name=DOID:731, key=n00, category=disease, is_set=false)",
+        "add_qnode(category=phenotypic_feature, is_set=false, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00, kp=ARAX/KG1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "filter_results(action=limit_number_of_results, max_results=100)",
         "return(message=true, store=false)"
@@ -720,46 +658,40 @@ def test10():
 @pytest.mark.slow
 def test_example1():
     actions = [
-        "add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)",
-        "add_qnode(id=qg1, type=protein)",
-        "add_qedge(source_id=qg1, target_id=qg0, id=qe0)",
-        "expand(edge_id=qe0, kp=ARAX/KG1)",
+        "add_qnode(key=qg0, id=CHEMBL.COMPOUND:CHEMBL112)",
+        "add_qnode(key=qg1, category=protein)",
+        "add_qedge(subject=qg1, object=qg0, key=qe0)",
+        "expand(edge_key=qe0, kp=ARAX/KG1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    qg1_nodes = {node.id for node in message.knowledge_graph.nodes if "qg1" in node.qnode_ids}
+    qg1_nodes = {node_key for node_key, node in message.knowledge_graph.nodes.items() if "qg1" in node.qnode_keys}
     assert message.results and len(message.results) == len(qg1_nodes)
     assert message.results[0].essence is not None
 
 
 def test_bfs():
-    qg_node_info = ({'id': 'n01',
-                     'type': 'protein',
+    qg_node_info = ({'node_key': 'n01',
+                     'category': 'protein',
                      'is_set': None},
-                    {'id': 'DOID:12345',
-                     'type': 'disease',
+                    {'node_key': 'DOID:12345',
+                     'category': 'disease',
                      'is_set': False},
-                    {'id': 'n02',
-                     'type': 'phenotypic_feature',
+                    {'node_key': 'n02',
+                     'category': 'phenotypic_feature',
                      'is_set': True})
 
-    qg_edge_info = ({'edge_id': 'qe01',
-                     'source_id': 'n01',
-                     'target_id': 'DOID:12345'},
-                    {'edge_id': 'qe02',
-                     'source_id': 'DOID:12345',
-                     'target_id': 'n02'})
+    qg_edge_info = ({'edge_key': 'qe01',
+                     'subject': 'n01',
+                     'object': 'DOID:12345'},
+                    {'edge_key': 'qe02',
+                     'subject': 'DOID:12345',
+                     'object': 'n02'})
 
-    qg_nodes = [QNode(id=node_info['id'],
-                      type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
-                      is_set=node_info['is_set']) for node_info in qg_node_info]
-
-    qg_edges = [QEdge(id=edge_info['edge_id'],
-                      source_id=edge_info['source_id'],
-                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
-
+    qg_nodes = _create_qnodes(qg_node_info)
+    qg_edges = _create_qedges(qg_edge_info)
     qg = QueryGraph(qg_nodes, qg_edges)
     adj_map = ARAX_resultify._make_adj_maps(qg, directed=False, droploops=True)['both']
     bfs_dists = ARAX_resultify._bfs_dists(adj_map, 'n01')
@@ -769,85 +701,73 @@ def test_bfs():
 
 
 def test_bfs_in_essence_code():
-    kg_node_info = ({'id': 'DOID:12345',
-                     'type': 'disease',
-                     'qnode_ids': ['n00']},
-                    {'id': 'UniProtKB:12345',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'UniProtKB:23456',
-                     'type': 'protein',
-                     'qnode_ids': ['n01']},
-                    {'id': 'FOO:12345',
-                     'type': 'gene',
-                     'qnode_ids': ['n02']},
-                    {'id': 'HP:56789',
-                     'type': 'phenotypic_feature',
-                     'qnode_ids': ['n03']})
+    kg_node_info = ({'node_key': 'DOID:12345',
+                     'category': 'disease',
+                     'qnode_keys': ['n00']},
+                    {'node_key': 'UniProtKB:12345',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'UniProtKB:23456',
+                     'category': 'protein',
+                     'qnode_keys': ['n01']},
+                    {'node_key': 'FOO:12345',
+                     'category': 'gene',
+                     'qnode_keys': ['n02']},
+                    {'node_key': 'HP:56789',
+                     'category': 'phenotypic_feature',
+                     'qnode_keys': ['n03']})
 
-    kg_edge_info = ({'edge_id': 'ke01',
-                     'target_id': 'UniProtKB:12345',
-                     'source_id': 'DOID:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke02',
-                     'target_id': 'UniProtKB:23456',
-                     'source_id': 'DOID:12345',
-                     'qedge_ids': ['qe01']},
-                    {'edge_id': 'ke03',
-                     'source_id': 'UniProtKB:12345',
-                     'target_id': 'FOO:12345',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke04',
-                     'source_id': 'UniProtKB:23456',
-                     'target_id': 'FOO:12345',
-                     'qedge_ids': ['qe02']},
-                    {'edge_id': 'ke05',
-                     'source_id': 'FOO:12345',
-                     'target_id': 'HP:56789',
-                     'qedge_ids': ['qe03']})
+    kg_edge_info = ({'edge_key': 'ke01',
+                     'object': 'UniProtKB:12345',
+                     'subject': 'DOID:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke02',
+                     'object': 'UniProtKB:23456',
+                     'subject': 'DOID:12345',
+                     'qedge_keys': ['qe01']},
+                    {'edge_key': 'ke03',
+                     'subject': 'UniProtKB:12345',
+                     'object': 'FOO:12345',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke04',
+                     'subject': 'UniProtKB:23456',
+                     'object': 'FOO:12345',
+                     'qedge_keys': ['qe02']},
+                    {'edge_key': 'ke05',
+                     'subject': 'FOO:12345',
+                     'object': 'HP:56789',
+                     'qedge_keys': ['qe03']})
 
-    kg_nodes = [_create_node(node_id=node_info['id'],
-                             node_type=[node_info['type']],
-                             qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
-
-    kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
-                             source_id=edge_info['source_id'],
-                             target_id=edge_info['target_id'],
-                             qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
+    kg_nodes = _create_nodes(kg_node_info)
+    kg_edges = _create_edges(kg_edge_info)
 
     knowledge_graph = KnowledgeGraph(kg_nodes, kg_edges)
 
-    qg_node_info = ({'id': 'n00',  # DOID:12345
-                     'type': 'disease',
+    qg_node_info = ({'node_key': 'n00',  # DOID:12345
+                     'category': 'disease',
                      'is_set': False},
-                    {'id': 'n01',
-                     'type': 'protein',
+                    {'node_key': 'n01',
+                     'category': 'protein',
                      'is_set': False},
-                    {'id': 'n02',
-                     'type': 'gene',
+                    {'node_key': 'n02',
+                     'category': 'gene',
                      'is_set': False},
-                    {'id': 'n03',  # HP:56789
-                     'type': 'phenotypic_feature',
+                    {'node_key': 'n03',  # HP:56789
+                     'category': 'phenotypic_feature',
                      'is_set': False})
 
-    qg_edge_info = ({'edge_id': 'qe01',
-                     'source_id': 'n00',
-                     'target_id': 'n01'},
-                    {'edge_id': 'qe02',
-                     'source_id': 'n01',
-                     'target_id': 'n02'},
-                    {'edge_id': 'qe03',
-                     'source_id': 'n02',
-                     'target_id': 'n03'})
+    qg_edge_info = ({'edge_key': 'qe01',
+                     'subject': 'n00',
+                     'object': 'n01'},
+                    {'edge_key': 'qe02',
+                     'subject': 'n01',
+                     'object': 'n02'},
+                    {'edge_key': 'qe03',
+                     'subject': 'n02',
+                     'object': 'n03'})
 
-    qg_nodes = [QNode(id=node_info['id'],
-                      type=ARAX_resultify.BIOLINK_ENTITY_TYPE_OBJECTS[node_info['type']],
-                      is_set=node_info['is_set']) for node_info in qg_node_info]
-
-    qg_edges = [QEdge(id=edge_info['edge_id'],
-                      source_id=edge_info['source_id'],
-                      target_id=edge_info['target_id']) for edge_info in qg_edge_info]
-
+    qg_nodes = _create_qnodes(qg_node_info)
+    qg_edges = _create_qedges(qg_edge_info)
     query_graph = QueryGraph(qg_nodes, qg_edges)
 
     results_list = ARAX_resultify._get_results_for_kg_by_qg(knowledge_graph,
@@ -859,47 +779,47 @@ def test_bfs_in_essence_code():
 @pytest.mark.slow
 def test_issue680():
     actions = [
-        "add_qnode(curie=DOID:14330, id=n00, type=disease)",
-        "add_qnode(type=protein, is_set=true, id=n01)",
-        "add_qnode(type=chemical_substance, id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01, type=physically_interacts_with)",
-        "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
-        "overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_id=n02)",
+        "add_qnode(id=DOID:14330, key=n00, category=disease)",
+        "add_qnode(category=protein, is_set=true, key=n01)",
+        "add_qnode(category=chemical_substance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=physically_interacts_with)",
+        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
         "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-        "overlay(action=predict_drug_treats_disease, source_qnode_id=n02, target_qnode_id=n00, virtual_relation_label=P1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)",
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert message.results[0].essence is not None
-    kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
-    kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
+    kg = message.knowledge_graph
     for result in message.results:
-        result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
-        result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
+        result_nodes_by_qg_id = _get_result_node_keys_by_qg_key(result)
+        result_edges_by_qg_id = _get_result_edge_keys_by_qg_key(result)
         # Make sure all intermediate nodes are connected to at least one (real, not virtual) edge on BOTH sides
-        for n01_node_id in result_nodes_by_qg_id['n01']:
-            assert any(edge for edge in result_edges_by_qg_id['e00'].values() if
-                       edge.source_id == n01_node_id or edge.target_id == n01_node_id)
-            assert any(edge for edge in result_edges_by_qg_id['e01'].values() if
-                       edge.source_id == n01_node_id or edge.target_id == n01_node_id)
+        for n01_node_key in result_nodes_by_qg_id['n01']:
+            assert any(edge_key for edge_key in result_edges_by_qg_id['e00'] if
+                       kg.edges[edge_key].subject == n01_node_key or kg.edges[edge_key].object == n01_node_key)
+            assert any(edge_key for edge_key in result_edges_by_qg_id['e01'] if
+                       kg.edges[edge_key].subject == n01_node_key or kg.edges[edge_key].object == n01_node_key)
         # Make sure all edges' nodes actually exist in this result (includes virtual and real edges)
-        for qedge_id, edges_map in result_edges_by_qg_id.items():
-            qedge = next(qedge for qedge in message.query_graph.edges if qedge.id == qedge_id)
-            for edge_id, edge in edges_map.items():
-                assert (edge.source_id in result_nodes_by_qg_id[qedge.source_id] and edge.target_id in
-                        result_nodes_by_qg_id[qedge.target_id]) or \
-                       (edge.target_id in result_nodes_by_qg_id[qedge.source_id] and edge.source_id in
-                        result_nodes_by_qg_id[qedge.target_id])
+        for qedge_key, edge_keys in result_edges_by_qg_id.items():
+            qedge = message.query_graph.edges[qedge_key]
+            for edge_key in edge_keys:
+                edge = kg.edges[edge_key]
+                assert (edge.subject in result_nodes_by_qg_id[qedge.subject] and edge.object in
+                        result_nodes_by_qg_id[qedge.object]) or \
+                       (edge.object in result_nodes_by_qg_id[qedge.subject] and edge.subject in
+                        result_nodes_by_qg_id[qedge.object])
 
 
 def test_issue686a():
     # Tests that an error is thrown when an invalid parameter is passed to resultify
     actions = [
-        'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+        'add_qnode(key=qg0, id=CHEMBL.COMPOUND:CHEMBL112)',
         'expand(kp=ARAX/KG1)',
         'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
         "return(message=true, store=false)"
@@ -911,7 +831,7 @@ def test_issue686a():
 def test_issue686b():
     # Tests that resultify can be called with no parameters passed in
     actions = [
-        'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+        'add_qnode(key=qg0, id=CHEMBL.COMPOUND:CHEMBL112)',
         'expand(kp=ARAX/KG1)',
         'resultify()',
         "return(message=true, store=false)"
@@ -923,7 +843,7 @@ def test_issue686b():
 def test_issue686c():
     # Tests that setting ignore_edge_direction to an invalid value results in an error
     actions = [
-        'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+        'add_qnode(key=qg0, id=CHEMBL.COMPOUND:CHEMBL112)',
         'expand(kp=ARAX/KG1)',
         'resultify(ignore_edge_direction=foo)',
         "return(message=true, store=false)"
@@ -935,7 +855,7 @@ def test_issue686c():
 def test_issue687():
     # Tests that ignore_edge_direction need not be specified
     actions = [
-        'add_qnode(id=qg0, curie=CHEMBL.COMPOUND:CHEMBL112)',
+        'add_qnode(key=qg0, id=CHEMBL.COMPOUND:CHEMBL112)',
         'expand(kp=ARAX/KG1)',
         'resultify(debug=true)',
         "return(message=true, store=false)"
@@ -982,65 +902,54 @@ def test_issue731():
 @pytest.mark.slow
 def test_issue731b():
     actions = [
-        "add_qnode(name=MONDO:0005737, id=n0, type=disease)",
-        "add_qnode(type=protein, id=n1)",
-        "add_qnode(type=disease, id=n2)",
-        "add_qedge(source_id=n0, target_id=n1, id=e0)",
-        "add_qedge(source_id=n1, target_id=n2, id=e1)",
-        "expand(edge_id=[e0,e1], kp=ARAX/KG2)",
+        "add_qnode(name=MONDO:0005737, key=n0, category=disease)",
+        "add_qnode(category=protein, key=n1)",
+        "add_qnode(category=disease, key=n2)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "add_qedge(subject=n1, object=n2, key=e1)",
+        "expand(edge_key=[e0,e1], kp=ARAX/KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     for result in message.results:
-        found_e01 = any(edge_binding.qg_id == 'e1' for edge_binding in result.edge_bindings)
+        found_e01 = result.edge_bindings.get('e1')
         assert found_e01
 
 
 def test_issue731c():
-    qg = QueryGraph(nodes=[QNode(curie='MONDO:0005737',
-                                 id='n0',
-                                 type='disease'),
-                           QNode(id='n1',
-                                 type='protein'),
-                           QNode(id='n2',
-                                 type='disease')],
-                    edges=[QEdge(source_id='n0',
-                                 target_id='n1',
-                                 id='e0'),
-                           QEdge(source_id='n1',
-                                 target_id='n2',
-                                 id='e1')])
-    kg_node_info = ({'id': 'MONDO:0005737',
-                     'type': 'disease',
-                     'qnode_ids': ['n0']},
-                    {'id': 'UniProtKB:Q14943',
-                     'type': 'protein',
-                     'qnode_ids': ['n1']},
-                    {'id': 'DOID:12297',
-                     'type': 'disease',
-                     'qnode_ids': ['n2']},
-                    {'id': 'DOID:11077',
-                     'type': 'disease',
-                     'qnode_ids': ['n2']})
-    kg_edge_info = ({'edge_id': 'UniProtKB:Q14943--MONDO:0005737',
-                     'target_id': 'MONDO:0005737',
-                     'source_id': 'UniProtKB:Q14943',
-                     'qedge_ids': ['e0']},
-                    {'edge_id': 'DOID:12297--UniProtKB:Q14943',
-                     'target_id': 'UniProtKB:Q14943',
-                     'source_id': 'DOID:12297',
-                     'qedge_ids': ['e1']})
+    qg = QueryGraph(nodes={'n0': QNode(id='MONDO:0005737',
+                                       category='disease'),
+                           'n1': QNode(category='protein'),
+                           'n2': QNode(category='disease')},
+                    edges={'e0': QEdge(subject='n0',
+                                       object='n1'),
+                           'e1': QEdge(subject='n1',
+                                       object='n2')})
+    kg_node_info = ({'node_key': 'MONDO:0005737',
+                     'category': 'disease',
+                     'qnode_keys': ['n0']},
+                    {'node_key': 'UniProtKB:Q14943',
+                     'category': 'protein',
+                     'qnode_keys': ['n1']},
+                    {'node_key': 'DOID:12297',
+                     'category': 'disease',
+                     'qnode_keys': ['n2']},
+                    {'node_key': 'DOID:11077',
+                     'category': 'disease',
+                     'qnode_keys': ['n2']})
+    kg_edge_info = ({'edge_key': 'UniProtKB:Q14943--MONDO:0005737',
+                     'object': 'MONDO:0005737',
+                     'subject': 'UniProtKB:Q14943',
+                     'qedge_keys': ['e0']},
+                    {'edge_key': 'DOID:12297--UniProtKB:Q14943',
+                     'object': 'UniProtKB:Q14943',
+                     'subject': 'DOID:12297',
+                     'qedge_keys': ['e1']})
 
-    kg_nodes = [_create_node(node_id=node_info['id'],
-                             node_type=[node_info['type']],
-                             qnode_ids=node_info['qnode_ids']) for node_info in kg_node_info]
-
-    kg_edges = [_create_edge(edge_id=edge_info['edge_id'],
-                             source_id=edge_info['source_id'],
-                             target_id=edge_info['target_id'],
-                             qedge_ids=edge_info['qedge_ids']) for edge_info in kg_edge_info]
+    kg_nodes = _create_nodes(kg_node_info)
+    kg_edges = _create_edges(kg_edge_info)
 
     kg = KnowledgeGraph(nodes=kg_nodes, edges=kg_edges)
     results = ARAX_resultify._get_results_for_kg_by_qg(kg, qg)
@@ -1064,69 +973,68 @@ def test_issue740():
 
 
 def test_issue692():
-    kg = KnowledgeGraph(nodes=[],
-                        edges=[])
-    qg = QueryGraph(nodes=[],
-                    edges=[])
+    kg = KnowledgeGraph(nodes=dict(),
+                        edges=dict())
+    qg = QueryGraph(nodes=dict(),
+                    edges=dict())
     results_list = ARAX_resultify._get_results_for_kg_by_qg(kg, qg)
     assert len(results_list) == 0
 
 
 def test_issue692b():
-    message = Message(query_graph=QueryGraph(nodes=[], edges=[]),
-                      knowledge_graph=KnowledgeGraph(nodes=[], edges=[]))
-    resultifier = ARAXResultify()
-    response = resultifier.apply(message, {})
-    assert 'WARNING: no results returned; empty knowledge graph' in response.messages_list()[0]
+    query_graph = QueryGraph(nodes=dict(), edges=dict())
+    knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
+    assert 'no results returned; empty knowledge graph' in response.messages_list()[0]['message']
 
 
 def test_issue720_1():
-    # Test when same node fulfills different qnode_ids within same result
+    # Test when same node fulfills different qnode_keys within same result
     actions = [
-        "add_qnode(curie=DOID:14330, id=n00)",
-        "add_qnode(type=protein, curie=[UniProtKB:Q02878, UniProtKB:Q9BXM7], is_set=true, id=n01)",
-        "add_qnode(type=disease, id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(id=DOID:14330, key=n00)",
+        "add_qnode(category=protein, id=[UniProtKB:Q02878, UniProtKB:Q9BXM7], is_set=true, key=n01)",
+        "add_qnode(category=disease, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
-    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
+    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes.values() if "n02" in node.qnode_keys]
     assert message.results and len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
 
 
 @pytest.mark.slow
 def test_issue720_2():
-    # Test when same node fulfills different qnode_ids within same result
+    # Test when same node fulfills different qnode_keys within same result
     actions = [
-        "add_qnode(curie=UMLS:C0158779, id=n00)",
-        "add_qnode(curie=UMLS:C0578454, id=n01)",
-        "add_qnode(id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
+        "add_qnode(id=UMLS:C0158779, key=n00)",
+        "add_qnode(id=UMLS:C0578454, key=n01)",
+        "add_qnode(key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(use_synonyms=false, kp=ARAX/KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
-    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes if "n02" in node.qnode_ids]
+    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes.values() if "n02" in node.qnode_keys]
     assert message.results and len(message.results) == len(n02_nodes_in_kg)
     assert response.status == 'OK'
 
 
 def test_issue720_3():
-    # Tests when same node fulfills different qnode_ids in different results
+    # Tests when same node fulfills different qnode_keys in different results
     actions = [
-        "add_qnode(id=n00, curie=DOID:14330)",  # parkinson's
-        "add_qnode(id=n01, type=protein)",
-        "add_qnode(id=n02, type=chemical_substance, curie=CHEMBL.COMPOUND:CHEMBL452076)",  # cilnidipine
-        "add_qnode(id=n03, type=protein)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01)",
-        "add_qedge(id=e01, source_id=n01, target_id=n02)",
-        "add_qedge(id=e02, source_id=n02, target_id=n03)",
+        "add_qnode(key=n00, id=DOID:14330)",  # parkinson's
+        "add_qnode(key=n01, category=protein)",
+        "add_qnode(key=n02, category=chemical_substance, id=CHEMBL.COMPOUND:CHEMBL452076)",  # cilnidipine
+        "add_qnode(key=n03, category=protein)",
+        "add_qedge(key=e00, subject=n00, object=n01)",
+        "add_qedge(key=e01, subject=n01, object=n02)",
+        "add_qedge(key=e02, subject=n02, object=n03)",
         "expand(use_synonyms=false, kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
@@ -1137,8 +1045,8 @@ def test_issue720_3():
     found_result_where_syna_is_n01_and_not_n03 = False
     found_result_where_syna_is_n03_and_not_n01 = False
     for result in message.results:
-        syna_as_n01 = any(node_binding for node_binding in result.node_bindings if node_binding.kg_id == snca_id and node_binding.qg_id == 'n01')
-        syna_as_n03 = any(node_binding for node_binding in result.node_bindings if node_binding.kg_id == snca_id and node_binding.qg_id == 'n03')
+        syna_as_n01 = any(node_binding for node_binding in result.node_bindings["n01"] if node_binding.id == snca_id)
+        syna_as_n03 = any(node_binding for node_binding in result.node_bindings["n03"] if node_binding.id == snca_id)
         if syna_as_n01 and not syna_as_n03:
             found_result_where_syna_is_n01_and_not_n03 = True
         elif syna_as_n03 and not syna_as_n01:
@@ -1167,19 +1075,19 @@ def test_issue833_extraneous_intermediate_nodes():
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
     for result in message.results:
-        result_n01_nodes = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
-        result_e01_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"}
-        result_e00_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00"}
-        for n01_node in result_n01_nodes:
-            kg_edges_using_this_node = {edge.id for edge in message.knowledge_graph.edges if n01_node in {edge.source_id, edge.target_id}}
+        result_n01_nodes = {node_binding.id for node_binding in result.node_bindings["n01"]}
+        result_e01_edges = {edge_binding.id for edge_binding in result.edge_bindings["e01"]}
+        result_e00_edges = {edge_binding.id for edge_binding in result.edge_bindings["e00"]}
+        for n01_node_key in result_n01_nodes:
+            kg_edges_using_this_node = _get_kg_edge_keys_using_node(n01_node_key, message.knowledge_graph)
             assert result_e01_edges.intersection(kg_edges_using_this_node)
             assert result_e00_edges.intersection(kg_edges_using_this_node)
 
 
 def test_single_node():
     actions = [
-        "add_qnode(name=ibuprofen, id=n00)",
-        "expand(node_id=n00, kp=ARAX/KG1)",
+        "add_qnode(name=ibuprofen, key=n00)",
+        "expand(node_key=n00, kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1202,22 +1110,23 @@ def test_parallel_edges_between_nodes():
     kg_edges = {"e00": ["DOID:11830--UniProtKB:P39060", "DOID:11830--UniProtKB:P20849"],
                 "e01": ["UniProtKB:P39060--CHEBI:85164", "UniProtKB:P20849--CHEBI:29057"],
                 "parallel01": ["UniProtKB:P39060--CHEBI:85164", "UniProtKB:P20849--CHEBI:29057", "UniProtKB:P39060--CHEBI:29057"]}
-    knowledge_graph = _convert_shorthand_to_kg(kg_nodes, kg_edges)
-    response, message = _run_resultify_directly(query_graph, knowledge_graph)
+    kg_before_resultify = _convert_shorthand_to_kg(kg_nodes, kg_edges)
+    response, message = _run_resultify_directly(query_graph, kg_before_resultify)
+    kg = message.knowledge_graph
     assert response.status == 'OK'
-    kg_nodes_map = {node.id: node for node in message.knowledge_graph.nodes}
-    kg_edges_map = {edge.id: edge for edge in message.knowledge_graph.edges}
-    n02_nodes = {node_id for node_id, node in kg_nodes_map.items() if "n02" in node.qnode_ids}
+    n02_nodes = {node_key for node_key, node in kg.nodes.items() if "n02" in node.qnode_keys}
     assert message.results and len(message.results) == len(n02_nodes)
     # Make sure every n01 node is connected to both an e01 edge and a parallel01 edge in each result
     for result in message.results:
-        result_nodes_by_qg_id = _get_result_nodes_by_qg_id(result, kg_nodes_map, message.query_graph)
-        result_edges_by_qg_id = _get_result_edges_by_qg_id(result, kg_edges_map, message.query_graph)
-        node_ids_used_by_e01_edges = {edge.source_id for edge in result_edges_by_qg_id['e01'].values()}.union({edge.target_id for edge in result_edges_by_qg_id['e01'].values()})
-        node_ids_used_by_parallel01_edges = {edge.source_id for edge in result_edges_by_qg_id['parallel01'].values()}.union({edge.target_id for edge in result_edges_by_qg_id['parallel01'].values()})
-        for node_id in result_nodes_by_qg_id['n01']:
-            assert node_id in node_ids_used_by_e01_edges
-            assert node_id in node_ids_used_by_parallel01_edges
+        result_node_keys_by_qg_key = _get_result_node_keys_by_qg_key(result)
+        result_edge_keys_by_qg_key = _get_result_edge_keys_by_qg_key(result)
+        node_keys_used_by_e01_edges = {node_key for edge_key in result_edge_keys_by_qg_key['e01']
+                                      for node_key in {kg.edges[edge_key].subject, kg.edges[edge_key].object}}
+        node_keys_used_by_parallel01_edges = {node_key for edge_key in result_edge_keys_by_qg_key['parallel01']
+                                             for node_key in {kg.edges[edge_key].subject, kg.edges[edge_key].object}}
+        for node_key in result_node_keys_by_qg_key['n01']:
+            assert node_key in node_keys_used_by_e01_edges
+            assert node_key in node_keys_used_by_parallel01_edges
 
 
 def test_issue912_clean_up_kg():
@@ -1237,42 +1146,41 @@ def test_issue912_clean_up_kg():
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
     assert len(message.results) == 1
-    returned_kg_node_ids = {node.id for node in message.knowledge_graph.nodes}
-    assert returned_kg_node_ids == {"DOID:11", "PR:110", "PR:111", "CHEBI:11"}
-    orphan_edges = {edge.id for edge in message.knowledge_graph.edges if not {edge.source_id, edge.target_id}.issubset(returned_kg_node_ids)}
+    returned_kg_node_keys = set(message.knowledge_graph.nodes)
+    assert returned_kg_node_keys == {"DOID:11", "PR:110", "PR:111", "CHEBI:11"}
+    orphan_edges = {edge_key for edge_key, edge in message.knowledge_graph.edges.items()
+                    if not {edge.subject, edge.object}.issubset(returned_kg_node_keys)}
     assert not orphan_edges
 
 
 def test_issue1119_a():
     # Run a query to identify chemical substances that are both indicated for and contraindicated for our disease
     actions = [
-        "add_qnode(name=DOID:3312, id=n00)",
-        "add_qnode(type=chemical_substance, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
-        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, id=e01)",
+        "add_qnode(name=DOID:3312, key=n00)",
+        "add_qnode(category=chemical_substance, key=n01)",
+        "add_qedge(subject=n00, object=n01, predicate=indicated_for, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicate=contraindicated_for, key=e01)",
         "expand(kp=ARAX/KG1)",
         "resultify()"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert message.results
-    n01_nodes_contraindicated = {node_binding.kg_id for result in message.results
-                                 for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+    n01_nodes_contraindicated = {node_binding.id for result in message.results for node_binding in result.node_bindings["n01"]}
 
     # Verify those chemical substances aren't returned when we make the contraindicated_for edge kryptonite
     actions = [
-        "add_qnode(name=DOID:3312, id=n00)",
-        "add_qnode(type=chemical_substance, id=n01)",
-        "add_qedge(source_id=n00, target_id=n01, type=indicated_for, id=e00)",
-        "add_qedge(source_id=n00, target_id=n01, type=contraindicated_for, exclude=true, id=e01)",
+        "add_qnode(name=DOID:3312, key=n00)",
+        "add_qnode(category=chemical_substance, key=n01)",
+        "add_qedge(subject=n00, object=n01, predicate=indicated_for, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicate=contraindicated_for, exclude=true, key=e01)",
         "expand(kp=ARAX/KG1)",
         "resultify()"
     ]
     kryptonite_response, kryptonite_message = _do_arax_query(actions)
     assert kryptonite_response.status == 'OK'
     assert kryptonite_message.results
-    n01_nodes_kryptonite_query = {node_binding.kg_id for result in kryptonite_message.results
-                                  for node_binding in result.node_bindings if node_binding.qg_id == "n01"}
+    n01_nodes_kryptonite_query = {node_binding.id for result in kryptonite_message.results for node_binding in result.node_bindings["n01"]}
     assert not n01_nodes_contraindicated.intersection(n01_nodes_kryptonite_query)
 
 
@@ -1280,13 +1188,13 @@ def test_issue1119_a():
 def test_issue1119_b():
     # Tests a perpendicular kryptonite qedge situation
     actions = [
-        "add_qnode(curie=DOID:3312, id=n00)",
-        "add_qnode(type=protein, id=n01)",
-        "add_qnode(type=chemical_substance, id=n02)",
-        "add_qedge(source_id=n00, target_id=n01, id=e00)",
-        "add_qedge(source_id=n01, target_id=n02, id=e01)",
-        "add_qnode(type=pathway, id=n03)",
-        "add_qedge(source_id=n01, target_id=n03, id=e02, exclude=true)",
+        "add_qnode(id=DOID:3312, key=n00)",
+        "add_qnode(category=protein, key=n01)",
+        "add_qnode(category=chemical_substance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01)",
+        "add_qnode(category=pathway, key=n03)",
+        "add_qedge(subject=n01, object=n03, key=e02, exclude=true)",
         "expand(kp=ARAX/KG1)",
         "resultify()"
     ]
@@ -1294,35 +1202,34 @@ def test_issue1119_b():
     assert response.status == 'OK'
     assert message.results
     # Make sure the kryptonite edge and its leaf qnode don't appear in any results
-    assert not any(node_binding.qg_id == "n03" for result in message.results for node_binding in result.node_bindings)
-    assert not any(edge_binding.qg_id == "e02" for result in message.results for edge_binding in result.edge_bindings)
+    assert not any(result.node_bindings.get("n03") for result in message.results)
+    assert not any(result.edge_bindings.get("e02") for result in message.results)
 
 
 @pytest.mark.slow
 def test_issue1119_c():
     # Test a simple one-hop query with one single-edge option group
     actions = [
-        "add_qnode(id=n00, curie=DOID:3312)",
-        "add_qnode(id=n01, type=chemical_substance)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
-        "add_qedge(id=e01, source_id=n00, target_id=n01, type=correlated_with, option_group_id=1)",
+        "add_qnode(key=n00, id=DOID:3312)",
+        "add_qnode(key=n01, category=chemical_substance)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicate=positively_regulates)",
+        "add_qedge(key=e01, subject=n00, object=n01, predicate=correlated_with, option_group_id=1)",
         "expand(kp=ARAX/KG2)",
         "resultify(debug=true)",
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert message.results
-    for result in message.results:
-        assert any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00")
+    assert all(result.edge_bindings.get("e00") for result in message.results)
     # Make sure at least one of our results has the "optional" group 1 edge
-    results_with_optional_edge = [result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01")]
+    results_with_optional_edge = [result for result in message.results if result.edge_bindings.get("e01")]
     assert results_with_optional_edge
 
     # Make sure the number of results is the same as if we asked only for the required portion
     actions = [
-        "add_qnode(id=n00, curie=DOID:3312)",
-        "add_qnode(id=n01, type=chemical_substance)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
+        "add_qnode(key=n00, id=DOID:3312)",
+        "add_qnode(key=n01, category=chemical_substance)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicate=positively_regulates)",
         "expand(kp=ARAX/KG2)",
         "resultify(debug=true)",
     ]
@@ -1332,28 +1239,28 @@ def test_issue1119_c():
 
     # And make sure the number of results with an option group edge makes sense
     actions = [
-        "add_qnode(id=n00, curie=DOID:3312)",
-        f"add_qnode(id=n01, curie=[{', '.join([node.id for node in message.knowledge_graph.nodes if 'n01' in node.qnode_ids])}])",
-        "add_qedge(id=e00, source_id=n00, target_id=n01, type=correlated_with)",
+        "add_qnode(key=n00, id=DOID:3312)",
+        f"add_qnode(key=n01, id=[{', '.join([node_key for node_key, node in message.knowledge_graph.nodes.items() if 'n01' in node.qnode_keys])}])",
+        "add_qedge(key=e00, subject=n00, object=n01, predicate=correlated_with)",
         "expand(kp=ARAX/KG2)",
         # Note: skipping resultify here due to issue #1152
     ]
     response, message_option_edge_only = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert len(results_with_optional_edge) == len([node for node in message_option_edge_only.knowledge_graph.nodes
-                                                   if "n01" in node.qnode_ids])
+    assert len(results_with_optional_edge) == len([node for node in message_option_edge_only.knowledge_graph.nodes.values()
+                                                   if "n01" in node.qnode_keys])
 
 
 @pytest.mark.slow
 def test_issue1119_d():
     # Test one-hop query with multiple single-edge option groups and a required 'not' edge
     actions = [
-        "add_qnode(id=n00, curie=DOID:3312)",
-        "add_qnode(id=n01, type=chemical_substance)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01, type=positively_regulates)",
-        "add_qedge(id=e01, source_id=n00, target_id=n01, type=correlated_with, option_group_id=1)",
-        "add_qedge(id=e02, source_id=n00, target_id=n01, type=affects, option_group_id=2)",
-        "add_qedge(id=e03, source_id=n00, target_id=n01, exclude=True, type=contraindicated_for)",
+        "add_qnode(key=n00, id=DOID:3312)",
+        "add_qnode(key=n01, category=chemical_substance)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicate=positively_regulates)",
+        "add_qedge(key=e01, subject=n00, object=n01, predicate=correlated_with, option_group_id=1)",
+        "add_qedge(key=e02, subject=n00, object=n01, predicate=affects, option_group_id=2)",
+        "add_qedge(key=e03, subject=n00, object=n01, exclude=True, predicate=contraindicated_for)",
         "expand(kp=ARAX/KG2)",
         "resultify(debug=true)",
     ]
@@ -1361,45 +1268,44 @@ def test_issue1119_d():
     assert response.status == 'OK'
     assert message.results
     # Make sure every result has a required edge
-    for result in message.results:
-        assert any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e00")
-        assert not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e03")
+    assert all(result.edge_bindings.get("e00") for result in message.results)
+    assert not any(result.edge_bindings.get("e03") for result in message.results)
     # Make sure our "optional" edges appear in one or more results
-    assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e01"))
-    assert any(result for result in message.results if any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id == "e02"))
+    assert any(result for result in message.results if result.edge_bindings.get("e01"))
+    assert any(result for result in message.results if result.edge_bindings.get("e02"))
     # Verify there are some results without any optional portion (happens to be true for this query)
-    assert any(result for result in message.results if not any(edge_binding for edge_binding in result.edge_bindings if edge_binding.qg_id in {"e01", "e02"}))
+    assert any(result for result in message.results if not {"e01", "e02"}.issubset(set(result.edge_bindings)))
 
 
 @pytest.mark.slow
 def test_issue1119_e():
     # Test (curie)--(curie) query where required portion is one-hop and there's one optional group that's two-hop
     actions = [
-        "add_qnode(id=n00, curie=DOID:3312)",
-        "add_qnode(id=n01, curie=CHEBI:48607)",
-        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
-        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
-        "add_qedge(id=e02, source_id=n02, target_id=n01, option_group_id=1, type=physically_interacts_with)",
+        "add_qnode(key=n00, id=DOID:3312)",
+        "add_qnode(key=n01, id=CHEBI:48607)",
+        "add_qnode(key=n02, category=protein, option_group_id=1, is_set=true)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicate=related_to)",
+        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=predisposes)",
+        "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicate=physically_interacts_with)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert len(message.results) == 1
-    intermediate_proteins_in_result = {node_binding.kg_id for node_binding in message.results[0].node_bindings if node_binding.qg_id == "n02"}
+    intermediate_proteins_in_result = {node_binding.id for node_binding in message.results[0].node_bindings["n02"]}
     assert len(intermediate_proteins_in_result) > 1
 
     # Then make sure when we introduce a not edge on our option group, we see a reduction in the proteins in the result
     actions = [
-        "add_qnode(id=n0, curie=DOID:3312)",
-        "add_qnode(id=n1, curie=CHEBI:48607)",
-        "add_qnode(id=group1_n1, type=protein, option_group_id=1, is_set=true)",
-        "add_qnode(id=group1_n2, curie=UMLS:C0023692, option_group_id=1)",
-        "add_qedge(id=e0, source_id=n0, target_id=n1, type=related_to)",
-        "add_qedge(id=group1_e1, source_id=n0, target_id=group1_n1, option_group_id=1, type=predisposes)",
-        "add_qedge(id=group1_e2, source_id=group1_n1, target_id=n1, option_group_id=1, type=physically_interacts_with)",
-        "add_qedge(id=group1_ex, source_id=group1_n2, target_id=group1_n1, option_group_id=1, exclude=True)",
+        "add_qnode(key=n0, id=DOID:3312)",
+        "add_qnode(key=n1, id=CHEBI:48607)",
+        "add_qnode(key=group1_n1, category=protein, option_group_id=1, is_set=true)",
+        "add_qnode(key=group1_n2, id=UMLS:C0023692, option_group_id=1)",
+        "add_qedge(key=e0, subject=n0, object=n1, predicate=related_to)",
+        "add_qedge(key=group1_e1, subject=n0, object=group1_n1, option_group_id=1, predicate=predisposes)",
+        "add_qedge(key=group1_e2, subject=group1_n1, object=n1, option_group_id=1, predicate=physically_interacts_with)",
+        "add_qedge(key=group1_ex, subject=group1_n2, object=group1_n1, option_group_id=1, exclude=True)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
@@ -1407,7 +1313,7 @@ def test_issue1119_e():
     response_x, message_x = _do_arax_query(actions)
     assert response_x.status == 'OK'
     assert len(message_x.results) == 1
-    intermediate_proteins_in_result_x = {node_binding.kg_id for node_binding in message_x.results[0].node_bindings if node_binding.qg_id == "group1_n1"}
+    intermediate_proteins_in_result_x = {node_binding.id for node_binding in message_x.results[0].node_bindings["group1_n1"]}
     assert len(intermediate_proteins_in_result) > len(intermediate_proteins_in_result_x)
 
 
@@ -1415,14 +1321,14 @@ def test_issue1119_e():
 def test_issue1119_f():
     # Test (curie)--(curie) query where required portion is one-hop and there's one 3-hop optional group
     actions = [
-        "add_qnode(id=n00, curie=DOID:3312)",
-        "add_qnode(id=n01, curie=CHEBI:48607)",
-        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
-        "add_qnode(id=n03, type=pathway, option_group_id=1, is_set=true)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
-        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
-        "add_qedge(id=e02, source_id=n02, target_id=n03, option_group_id=1, type=affects)",
-        "add_qedge(id=e03, source_id=n03, target_id=n01, option_group_id=1, type=disrupts)",
+        "add_qnode(key=n00, id=DOID:3312)",
+        "add_qnode(key=n01, id=CHEBI:48607)",
+        "add_qnode(key=n02, category=protein, option_group_id=1, is_set=true)",
+        "add_qnode(key=n03, category=pathway, option_group_id=1, is_set=true)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicate=related_to)",
+        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=predisposes)",
+        "add_qedge(key=e02, subject=n02, object=n03, option_group_id=1, predicate=affects)",
+        "add_qedge(key=e03, subject=n03, object=n01, option_group_id=1, predicate=disrupts)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
@@ -1430,19 +1336,19 @@ def test_issue1119_f():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert len(message.results) == 1
-    n02_proteins = {node_binding.kg_id for node_binding in message.results[0].node_bindings if node_binding.qg_id == "n02"}
+    n02_proteins = {node_binding.id for node_binding in message.results[0].node_bindings["n02"]}
 
     # Then introduce a not edge going from the option group to the required (start) node
     actions = [
-        "add_qnode(id=n00, curie=DOID:3312)",
-        "add_qnode(id=n01, curie=CHEBI:48607)",
-        "add_qnode(id=n02, type=protein, option_group_id=1, is_set=true)",
-        "add_qnode(id=n03, type=pathway, option_group_id=1, is_set=true)",
-        "add_qedge(id=e00, source_id=n00, target_id=n01, type=related_to)",
-        "add_qedge(id=e01, source_id=n00, target_id=n02, option_group_id=1, type=predisposes)",
-        "add_qedge(id=e02, source_id=n02, target_id=n03, option_group_id=1, type=affects)",
-        "add_qedge(id=e03, source_id=n03, target_id=n01, option_group_id=1, type=disrupts)",
-        "add_qedge(id=e0x, source_id=n02, target_id=n00, option_group_id=1, type=prevents, exclude=True)",
+        "add_qnode(key=n00, id=DOID:3312)",
+        "add_qnode(key=n01, id=CHEBI:48607)",
+        "add_qnode(key=n02, category=protein, option_group_id=1, is_set=true)",
+        "add_qnode(key=n03, category=pathway, option_group_id=1, is_set=true)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicate=related_to)",
+        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=predisposes)",
+        "add_qedge(key=e02, subject=n02, object=n03, option_group_id=1, predicate=affects)",
+        "add_qedge(key=e03, subject=n03, object=n01, option_group_id=1, predicate=disrupts)",
+        "add_qedge(key=e0x, subject=n02, object=n00, option_group_id=1, predicate=prevents, exclude=True)",
         "expand()",
         "resultify()",
         "return(message=true, store=false)"
@@ -1451,19 +1357,19 @@ def test_issue1119_f():
     assert response_x.status == 'OK'
     assert len(message_x.results) == 1
     # Make sure this time we have fewer proteins included in our option group
-    n02_proteins_x = {node_binding.kg_id for node_binding in message_x.results[0].node_bindings if node_binding.qg_id == "n02"}
+    n02_proteins_x = {node_binding.id for node_binding in message_x.results[0].node_bindings["n02"]}
     assert len(n02_proteins_x) < len(n02_proteins)
 
 
 def test_issue1146_a():
     actions = [
-        "add_qnode(id=n0, curie=MONDO:0001475, type=disease)",
-        "add_qnode(id=n2, type=chemical_substance)",
-        "add_qnode(id=n1, type=protein, is_set=true)",
-        "add_qedge(id=e0, source_id=n2, target_id=n1, type=physically_interacts_with)",
-        "add_qedge(id=e1, source_id=n1, target_id=n0)",
+        "add_qnode(key=n0, id=MONDO:0001475, category=disease)",
+        "add_qnode(key=n2, category=chemical_substance)",
+        "add_qnode(key=n1, category=protein, is_set=true)",
+        "add_qedge(key=e0, subject=n2, object=n1, predicate=physically_interacts_with)",
+        "add_qedge(key=e1, subject=n1, object=n0)",
         "expand(kp=ARAX/KG1)",
-        "overlay(action=compute_ngd, virtual_relation_label=N2, source_qnode_id=n0, target_qnode_id=n2)",
+        "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n0, object_qnode_key=n2)",
         "resultify(debug=true)",
         "filter_results(action=limit_number_of_results, max_results=4)",
     ]
@@ -1472,11 +1378,11 @@ def test_issue1146_a():
     assert len(message.results) == 4
     # Make sure every n1 node is connected to an e1 and e0 edge
     for result in message.results:
-        result_n1_nodes = {node_binding.kg_id for node_binding in result.node_bindings if node_binding.qg_id == "n1"}
-        result_e1_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e1"}
-        result_e0_edges = {edge_binding.kg_id for edge_binding in result.edge_bindings if edge_binding.qg_id == "e0"}
+        result_n1_nodes = {node_binding.id for node_binding in result.node_bindings["n1"]}
+        result_e1_edges = {edge_binding.id for edge_binding in result.edge_bindings["e1"]}
+        result_e0_edges = {edge_binding.id for edge_binding in result.edge_bindings["e0"]}
         for n1_node in result_n1_nodes:
-            kg_edges_using_this_node = {edge.id for edge in message.knowledge_graph.edges if n1_node in {edge.source_id, edge.target_id}}
+            kg_edges_using_this_node = _get_kg_edge_keys_using_node(n1_node, message.knowledge_graph)
             assert result_e1_edges.intersection(kg_edges_using_this_node)
             assert result_e0_edges.intersection(kg_edges_using_this_node)
 
@@ -1484,10 +1390,10 @@ def test_issue1146_a():
 def test_disconnected_qg():
     # Ensure an (informative) error is thrown when the QG is disconnected (has more than one component)
     actions = [
-        "add_qnode(name=ibuprofen, id=n00)",
-        "add_qnode(name=acetaminophen, id=n01)",
-        "add_qnode(type=disease, id=n02)",
-        "add_qedge(id=e00, source_id=n01, target_id=n02)",
+        "add_qnode(name=ibuprofen, key=n00)",
+        "add_qnode(name=acetaminophen, key=n01)",
+        "add_qnode(category=disease, key=n02)",
+        "add_qedge(key=e00, subject=n01, object=n02)",
         "expand(kp=ARAX/KG1)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
@@ -1495,6 +1401,35 @@ def test_disconnected_qg():
     response, message = _do_arax_query(actions)
     assert response.status != 'OK'
     assert "QG is disconnected" in response.show()
+
+
+def test_recompute_qg_keys():
+    shorthand_qnodes = {"n00": "",
+                        "n01": ""}
+    shorthand_qedges = {"e00": "n00--n01"}
+    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
+    shorthand_kg_nodes = {"n00": ["DOID:731"],
+                          "n01": ["HP:01", "HP:02", "HP:03", "HP:04"]}
+    shorthand_kg_edges = {"e00": ["DOID:731--HP:01", "DOID:731--HP:02", "DOID:731--HP:03", "DOID:731--HP:04"]}
+    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
+    assert response.status == 'OK'
+    assert message.results
+    # Clear all qnode_keys/qedge_keys from the KG
+    for node_key, node in message.knowledge_graph.nodes.items():
+        node.qnode_keys = []
+    for edge_key, edge in message.knowledge_graph.edges.items():
+        edge.qedge_keys = []
+    # Then recompute qg keys and make sure look ok
+    resultifier = ARAXResultify()
+    resultifier.recompute_qg_keys(response)
+    assert response.status == 'OK'
+    kg = response.envelope.message.knowledge_graph
+    assert kg.nodes and kg.edges
+    for node_key, node in kg.nodes.items():
+        assert node.qnode_keys == ["n00"] if node_key in shorthand_kg_nodes["n00"] else ["n01"]
+    for edge_key, edge in kg.edges.items():
+        assert edge.qedge_keys == ["e00"]
 
 
 if __name__ == '__main__':

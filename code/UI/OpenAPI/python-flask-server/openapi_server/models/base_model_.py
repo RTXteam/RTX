@@ -39,11 +39,36 @@ class Model(object):
             elif hasattr(value, "to_dict"):
                 result[attr] = value.to_dict()
             elif isinstance(value, dict):
-                result[attr] = dict(map(
-                    lambda item: (item[0], item[1].to_dict())
-                    if hasattr(item[1], "to_dict") else item,
-                    value.items()
-                ))
+
+                #### This only can handle one level of lists or dicts between objects
+                #result[attr] = dict(map(
+                #    lambda item: (item[0], item[1].to_dict())
+                #    if hasattr(item[1], "to_dict") else item,
+                #    value.items()
+                #))
+
+                #### This is a little fancier in that it can handle two levels, a dict and then
+                #### another dict or list between objects. Not the ultimate solution but
+                #### perhaps adequate for now?
+                result_dict = {}
+                for dict_key, dict_value in value.items():
+                    if isinstance(dict_value, list):
+                        result_dict[dict_key] = list(map(
+                            lambda x: x.to_dict() if hasattr(x, "to_dict") else x,
+                            dict_value
+                        ))
+                    elif isinstance(dict_value, dict):
+                        result_dict[dict_key] = dict(map(
+                            lambda dict_value_item: (dict_value_item[0], dict_value_item[1].to_dict())
+                            if hasattr(dict_value_item[1], "to_dict") else dict_value_item,
+                            dict_value.items()
+                        ))
+                    elif hasattr(dict_value, "to_dict"):
+                        result_dict[dict_key] = dict_value.to_dict()
+                    else:
+                        result_dict[dict_key] = dict_value
+                result[attr] = result_dict
+
             else:
                 result[attr] = value
 

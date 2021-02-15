@@ -20,12 +20,12 @@ while initially an empty list, a set of processing actions can be applied with s
 
 ```
 [
-"add_qnode(name=hypertension, id=n00)",  # add a new node to the query graph
-"add_qnode(type=protein, is_set=True, id=n01)",  # add a new set of nodes of a certain type to the query graph
-"add_qedge(source_id=n01, target_id=n00, id=e00)",  # add an edge connecting these two nodes
-"expand(edge_id=e00)",  # reach out to knowledge providers to find all subgraphs that satisfy these new query nodes/edges
-"overlay(action=compute_ngd)",  # overlay each edge with the normalized Google distance (a metric based on Edge.source_id and Edge.target_id co-occurrence frequency in all PubMed abstracts)
-"filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_id=n01)",  # remove all edges with normalized google distance above 0.85 as well as the connected protein
+"add_qnode(name=hypertension, key=n00)",  # add a new node to the query graph
+"add_qnode(category=biolink:Protein, is_set=True, key=n01)",  # add a new set of nodes of a certain type to the query graph
+"add_qedge(subject=n01, object=n00, key=e00)",  # add an edge connecting these two nodes
+"expand(edge_key=e00)",  # reach out to knowledge providers to find all subgraphs that satisfy these new query nodes/edges
+"overlay(action=compute_ngd)",  # overlay each edge with the normalized Google distance (a metric based on Edge.subject and Edge.object co-occurrence frequency in all PubMed abstracts)
+"filter_kg(action=remove_edges_by_attribute, edge_attribute=ngd, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_key=n01)",  # remove all edges with normalized google distance above 0.85 as well as the connected protein
 "return(message=true, store=false)"  # return the message to the ARS
 ]
 ```
@@ -58,7 +58,7 @@ for (module, cls) in zip(modules, classes):
         if 'action' in dic:  # for classes that use the `action=` paradigm
             action = dic['action'].pop()
             del dic['action']
-            to_print += '### ' + re.sub('\(\)',f'(action={action})', dsl_name) + '\n'
+            to_print += '### ' + re.sub(r'\(\)',f'(action={action})', dsl_name) + '\n'
         elif 'dsl_command' in dic:  # for classes like ARAX_messenger that have different DSL commands with different top level names as methods to the main class
             dsl_command = dic['dsl_command']
             del dic['dsl_command']

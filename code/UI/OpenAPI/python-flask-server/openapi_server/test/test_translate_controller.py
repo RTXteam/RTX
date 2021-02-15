@@ -24,7 +24,7 @@ class TestTranslateController(BaseTestCase):
             'Content-Type': 'application/json',
         }
         response = self.client.open(
-            '/api/rtx/v1/translate',
+            '/api/arax/v1/translate',
             method='POST',
             headers=headers,
             data=json.dumps(request_body),
