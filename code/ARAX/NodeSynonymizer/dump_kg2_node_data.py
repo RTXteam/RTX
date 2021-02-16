@@ -87,9 +87,10 @@ def dump_kg2_equivalencies(output_file_name: str, is_test: bool):
 	if equivalent_node_pairs:
 		column_headers = equivalent_node_pairs[0].keys()
 		with open(output_file_name, "w+") as output_file:
-			dict_writer = csv.DictWriter(output_file, column_headers, delimiter='\t')
-			dict_writer.writeheader()
-			dict_writer.writerows(equivalent_node_pairs)
+			csv_writer = csv.writer(output_file, delimiter='\t')
+			csv_writer.writerow(list(equivalent_node_pairs[0].keys()))
+			distinct_pairs = {tuple(sorted([node_pair["n1.id"], node_pair["n2.id"]])) for node_pair in equivalent_node_pairs}
+			csv_writer.writerows(list(distinct_pairs))
 		print(f"Successfully created file '{output_file_name}'.")
 	else:
 		print(f"Sorry, couldn't get equivalency data. No file created.")
