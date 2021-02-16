@@ -82,7 +82,7 @@ def _run_cypher_query(cypher_query: str) -> List[Dict[str, any]]:
 
 def dump_kg2_equivalencies(output_file_name: str, is_test: bool):
 	# This function creates a TSV file of node pairs linked by a 'same_as' relationship in KG2
-	cypher_query = f"match (n1)-[`biolink:same_as`]->(n2) return distinct n1.id, n2.id {'limit 20' if is_test else ''}"
+	cypher_query = f"match (n1)-[:`biolink:same_as`]->(n2) return distinct n1.id, n2.id {'limit 20' if is_test else ''}"
 	equivalent_node_pairs = _run_cypher_query(cypher_query)
 	if equivalent_node_pairs:
 		column_headers = equivalent_node_pairs[0].keys()
