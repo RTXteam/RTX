@@ -66,7 +66,7 @@ class ARAXQuery:
         if self.DBManager.check_versions():
             self.response = ARAXResponse()
             self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
-            self.response = self.DBManager.update_databases(response=response)
+            self.response = self.DBManager.update_databases(response=self.response)
 
 
     def query_return_stream(self,query):
