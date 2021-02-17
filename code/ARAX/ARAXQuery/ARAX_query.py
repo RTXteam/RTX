@@ -62,11 +62,11 @@ class ARAXQuery:
         self.message = None
         self.rtxConfig = RTXConfiguration()
         
-        # If we want to update the databases automatically we would uncomment this code
-        # self.DBManager = ARAXDatabaseManager(live = "Production")
-        # if self.DBManager.check_versions():
-        #     response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
-        #     response = self.DBManager.update_databases(response=response)
+        self.DBManager = ARAXDatabaseManager(live = "Production")
+        if self.DBManager.check_versions():
+            self.response = ARAXResponse()
+            self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
+            self.response = self.DBManager.update_databases(response=response)
 
 
     def query_return_stream(self,query):
