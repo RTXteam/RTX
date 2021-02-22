@@ -384,9 +384,12 @@ class ARAXQuery:
         message = None
 
         # If there is already a message (perhaps with a query_graph) already in the query, preserve it
-        if 'message' in input_operations_dict and input_operations_dict['message'] is not None and len(input_operations_dict['message']) > 0:
-            message = input_operations_dict['message']    # FIXME is a dict not an object??
-            messages = [ message ]
+        if 'message' in input_operations_dict and input_operations_dict['message'] is not None:
+            incoming_message = input_operations_dict['message']
+            if isinstance(incoming_message,dict):
+                incoming_message = Message.from_dict(incoming_message)
+            eprint(f"TESTING: incoming_test is a {type(incoming_message)}")
+            messages = [ incoming_message ]
 
         #### Pull out the main processing plan
         operations = Operations.from_dict(input_operations_dict["operations"])
