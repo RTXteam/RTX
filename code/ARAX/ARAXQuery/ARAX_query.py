@@ -43,10 +43,8 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
-from ParseQuestion import ParseQuestion
-from Q0Solution import Q0
-#import ReasoningUtilities
-from QueryGraphReasoner import QueryGraphReasoner
+#from ParseQuestion import ParseQuestion
+#from QueryGraphReasoner import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
