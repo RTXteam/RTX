@@ -407,13 +407,33 @@ class ARAXQuery:
                     response.debug(f"Found local ARAX identifier corresponding to response_id {referenced_response_id}")
                     response.debug(f"Loading response_id {referenced_response_id}")
                     referenced_envelope = response_cache.get_response(referenced_response_id)
-                    eprint(type(referenced_envelope))
-                    eprint(json.dumps(referenced_envelope,indent=2))
+
+                    if False:
+                        #### Hack to get it to work
+                        for node_key,node in referenced_envelope["message"]["knowledge_graph"]["nodes"].items():
+                            if 'attributes' in node and node['attributes'] is not None:
+                                new_attrs = []
+                                for attr in node['attributes']:
+                                    if attr['type'] is not None:
+                                        new_attrs.append(attr)
+                                if len(new_attrs) < len(node['attributes']):
+                                    node['attributes'] = new_attrs
+
+                        #### Hack to get it to work
+                        for node_key,node in referenced_envelope["message"]["knowledge_graph"]["edges"].items():
+                            if 'attributes' in node and node['attributes'] is not None:
+                                new_attrs = []
+                                for attr in node['attributes']:
+                                    if attr['type'] is not None:
+                                        new_attrs.append(attr)
+                                if len(new_attrs) < len(node['attributes']):
+                                    node['attributes'] = new_attrs
+
                     if isinstance(referenced_envelope,dict):
                         referenced_envelope = Response().from_dict(referenced_envelope)
                         #messages.append(referenced_message)
                         messages = [ referenced_envelope.message ]
-                        #eprint(json.dumps(referenced_message.to_dict(),indent=2))
+                        #eprint(json.dumps(referenced_envelope.message.results,indent=2))
                     else:
                         response.error(f"Unable to load response_id {referenced_response_id}", error_code="CannotLoadPreviousResponseById")
                         return response
@@ -461,6 +481,7 @@ class ARAXQuery:
         elif n_messages == 1:
             response.debug(f"A single Message is ready and in hand")
             message = messages[0]
+            response.envelope.message = message
 
         #### Multiple messages unsupported
         else:
@@ -546,7 +567,8 @@ class ARAXQuery:
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         filter_kg.apply(response, action['parameters'])
 
-                    elif action['command'] == 'filter_results':  # recognize the filter_kg command
+                    elif action['command'] == 'filter_results':  # recognize the filter_results command
+                        response.debug(f"Before filtering, there are {len(response.envelope.message.results)} results")
                         filter_results.apply(response, action['parameters'])
 
                     elif action['command'] == 'query_graph_reasoner':
