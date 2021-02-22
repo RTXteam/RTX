@@ -588,6 +588,7 @@ components:
           type: string
           example: result:234
           description: URI for this result
+          nullable: true
         description:
           type: string
           example: >-
@@ -596,16 +597,19 @@ components:
             (P68871) and HMOX1 (P09601).
           description: >-
             A free text description of this result answer from the reasoner
+          nullable: true
         essence:
           type: string
           example: ibuprofen
           description: >-
             A single string that is the terse essence of the result (useful for
             simple answers)
+          nullable: true
         essence_category:
           type: string
           example: biolink:ChemicalSubstance
           description: A Translator BioLink bioentity category of the essence
+          nullable: true
         row_data:
           type: array
           example:
@@ -615,23 +619,25 @@ components:
             An arbitrary list of values that captures the essence of the result
             that can be turned into a tabular result across all answers (each
             result is a row) for a user that wants simplified tabular output
-          items:
-            type: string
+          nullable: true
         score:
           type: number
           format: float
           example: 163.233
           description: Any type of score associated with this result
+          nullable: true
         score_name:
           type: string
           example: Jaccard distance
           description: Name for the score
+          nullable: true
         score_direction:
           type: string
           example: lower_is_better
           description: >-
             Sorting indicator for the score: one of higher_is_better or
             lower_is_better
+          nullable: true
         confidence:
           type: number
           format: float
@@ -639,6 +645,7 @@ components:
           description: >-
             Confidence metric for this result, a value between (inclusive)
              0.0 (no confidence) and 1.0 (highest confidence)
+          nullable: true
         result_group:
           type: integer
           example: 1
@@ -646,6 +653,7 @@ components:
             An integer group number for results for use in cases where several
             results should be grouped together. Also useful to control sorting
             ascending.
+          nullable: true
         result_group_similarity_score:
           type: number
           format: float
@@ -653,12 +661,14 @@ components:
           description: >-
             A score that denotes the similarity of this result to other members
             of the result_group
+          nullable: true
         reasoner_id:
           type: string
           example: ARAX
           description: >-
             Identifier string of the reasoner that provided this result (e.g.,
             ARAX, Robokop, etc.)
+          nullable: true
       additionalProperties: true
       required:
         - node_bindings
@@ -996,6 +1006,7 @@ components:
         URI.
       externalDocs:
         url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+      nullable: true
     Operations:
       type: object
       description: >-
