@@ -36,12 +36,12 @@ class SriNodeNormalizer:
         # Translation table of different curie prefixes ARAX -> normalizer
         self.curie_prefix_tx_arax2sri = {
             #'REACT': 'Reactome',
-            'Orphanet': 'ORPHANET',
+            #'Orphanet': 'ORPHANET',
             #'ICD10': 'ICD-10',
         }
         self.curie_prefix_tx_sri2arax = {
             #'Reactome': 'REACT',
-            'ORPHANET': 'Orphanet',
+            #'ORPHANET': 'Orphanet',
             #'ICD-10': 'ICD10',
         }
 
@@ -75,13 +75,21 @@ class SriNodeNormalizer:
 
     # ############################################################################################
     # Fill the cache with KG nodes
-    def fill_cache(self, kg_name):
+    def fill_cache(self):
 
         # Get a hash of curie prefixes supported
         self.get_supported_prefixes()
 
-        filename = os.path.dirname(os.path.abspath(__file__)) + f"/../../../data/KGmetadata/NodeNamesDescriptions_{kg_name}.tsv"
+        filename = 'kg2_node_info.tsv'
         filesize = os.path.getsize(filename)
+
+        # Correction for Windows line endings
+        extra_bytes = 0
+        fh = open(filename, 'rb')
+        if platform.system() == 'Windows' and b'\r\n' in fh.read():
+            print('WARNING: Windows line ending requires bytes_read compenstation')
+            extra_bytes = 1
+        fh.close()
 
         # Open the file and read in the curies
         fh = open(filename, 'r', encoding="latin-1", errors="replace")
@@ -94,14 +102,10 @@ class SriNodeNormalizer:
         # Create dicts to hold all the information
         batch = []
 
-        # Correction for Windows line endings
-        extra_bytes = 0
-        if platform.system() == 'Windows':
-            extra_bytes = 1
-
         # Loop over each line in the file
         for line in fh:
             bytes_read += len(line) + extra_bytes
+
             match = re.match(r'^\s*$',line)
             if match:
                 continue
@@ -126,7 +130,7 @@ class SriNodeNormalizer:
             # Unless it's already in the cache, then no
             if normalizer_node_curie in self.cache['ids']:
                 keep = 0
-            # Or if we've reached the end of the file, then set keep to 1 and trigger end-of-file processing of the last batch
+            # Or if we've reached the end of the file, then set keep to 99 and trigger end-of-file processing of the last batch
             if bytes_read + 3 > filesize and len(batch) > 0:
                 keep = 99
 
@@ -382,7 +386,8 @@ class SriNodeNormalizer:
                     id = equivalence['identifier']
                     if curie != normalizer_curie:
                         id = re.sub(self.curie_prefix_tx_arax2sri[curie_prefix],curie_prefix,id)
-                    response['equivalent_identifiers'].append(id)
+                    #response['equivalent_identifiers'].append(id)
+                    response['equivalent_identifiers'].append(equivalence)
                 if 'label' in equivalence:
                     if equivalence['label'] not in names:
                         response['equivalent_names'].append(equivalence['label'])
@@ -403,7 +408,7 @@ def main():
     parser.add_argument('-l', '--load', action="store_true",
                         help="If set, load the previously built local SRI Node Normalizer cache", default=False)
     parser.add_argument('-c', '--curie', action="store",
-                        help="Specify a curie to look up with the SRI Node Normalizer (e.g., UniProtKB:P01308, Orphanet:2322, DRUGBANK:DB11655", default=None)
+                        help="Specify a curie to look up with the SRI Node Normalizer (e.g., UniProtKB:P01308, ORPHANET:2322, DRUGBANK:DB11655", default=None)
     parser.add_argument('-p', '--prefixes', action="store_true",
                         help="If set, list the SRI Node Normalizer supported prefixes", default=None)
     parser.add_argument('-t', '--types', action="store_true",
@@ -427,9 +432,9 @@ def main():
         return
 
     if args.build:
-        print("INFO: Beginning SRI Node Normalizer cache building process for both KG1 and KG2. Make sure you have a good network connection as this will download ~2 GB of data.")
-        normalizer.fill_cache(kg_name='KG2')
-        normalizer.fill_cache(kg_name='KG1')
+        print("INFO: Beginning SRI Node Normalizer cache building process for KG2. Make sure you have a good network connection as this will download ~2 GB of data.")
+        print("INFO: Note that requests-cache is used, so the sri_node_normalizer_requests_cache.sqlite file should be deleted first if it might be stale.")
+        normalizer.fill_cache()
         normalizer.store_cache()
         print("INFO: Build process complete")
         return
