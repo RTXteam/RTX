@@ -133,11 +133,15 @@ class ARAXQuery:
         #### Create the skeleton of the response
         response = ARAXResponse()
         self.response = response
-        messenger = ARAXMessenger()
-        messenger.create_envelope(response)
 
+        #### Announce the launch of query()
+        #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
         ARAXResponse.output = 'STDERR'
         response.info(f"ARAXQuery launching on incoming Query")
+
+        #### Create an empty envelope
+        messenger = ARAXMessenger()
+        messenger.create_envelope(response)
 
         #### Determine a plan for what to do based on the input
         result = self.examine_incoming_query(query)
@@ -380,7 +384,7 @@ class ARAXQuery:
         message = None
 
         # If there is already a message (perhaps with a query_graph) already in the query, preserve it
-        if 'message' in input_operations_dict and input_operations_dict['message'] is not None:
+        if 'message' in input_operations_dict and input_operations_dict['message'] is not None and len(input_operations_dict['message']) > 0:
             message = input_operations_dict['message']    # FIXME is a dict not an object??
             messages = [ message ]
 
