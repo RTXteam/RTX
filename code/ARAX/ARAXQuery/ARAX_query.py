@@ -61,10 +61,12 @@ class ARAXQuery:
         self.rtxConfig = RTXConfiguration()
         
         self.DBManager = ARAXDatabaseManager(live = "Production")
+        self.db_response = None
         if self.DBManager.check_versions():
-            self.response = ARAXResponse()
-            self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
-            self.response = self.DBManager.update_databases(response=self.response)
+            self.db_response = ARAXResponse()
+            self.db_response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
+            self.db_response = self.DBManager.update_databases(response=self.db_response)
+            self.db_response.status = f"DONE,{self.db_response.status}"
 
 
     def query_return_stream(self,query):
@@ -73,6 +75,9 @@ class ARAXQuery:
         main_query_thread.start()
 
         if self.response is None or "DONE" not in self.response.status:
+
+            if self.db_response is not None and "DONE" not in self.db_response.status:
+                yield(json.dumps(self.db_response.messages[0])+"\n")
 
             # Sleep until a response object has been created
             while self.response is None:
