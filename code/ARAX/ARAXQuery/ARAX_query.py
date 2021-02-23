@@ -76,9 +76,6 @@ class ARAXQuery:
 
         if self.response is None or "DONE" not in self.response.status:
 
-            if self.db_response is not None and "DONE" not in self.db_response.status:
-                yield(json.dumps(self.db_response.messages[0])+"\n")
-
             # Sleep until a response object has been created
             while self.response is None:
                 time.sleep(0.1)
