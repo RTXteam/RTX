@@ -246,7 +246,7 @@ class KGQuerier:
         node_category = neo4j_node.get('category_label')
         swagger_node.category = eu.convert_string_or_list_to_list(node_category)
         # Add all additional properties on KG2 nodes as swagger Attribute objects
-        other_properties = ["full_name", "description", "uri", "publications", "synonym", "category", "provided_by",
+        other_properties = ["full_name", "description", "iri", "publications", "synonym", "category", "provided_by",
                             "deprecated", "update_date"]
         swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
         return swagger_node_key, swagger_node
@@ -257,7 +257,7 @@ class KGQuerier:
         swagger_node.name = neo4j_node.get('name')
         swagger_node.category = neo4j_node.get('types')
         # Add all additional properties on KG2c nodes as swagger Attribute objects
-        other_properties = ["description", "uri", "equivalent_curies", "publications", "all_names"]
+        other_properties = ["description", "iri", "equivalent_curies", "publications", "all_names"]
         swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
         return swagger_node_key, swagger_node
 
