@@ -156,13 +156,17 @@ class ARAXDatabaseManager:
             with open(versions_path,"r") as fid:
                 local_versions = json.load(fid)
             for database_name, local_path in self.local_paths.items():
-                if database_name not in local_versions or not os.path.exists(local_path):
+                if database_name not in local_versions:
                     if debug:
                         print(f"{database_name} not present locally")
                     download_flag = True
                 elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']:
                     if debug:
                         print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
+                    download_flag = True
+                elif not os.path.exists(local_path):
+                    if debug:
+                        print(f"{database_name} not present locally")
                     download_flag = True
                 else:
                     if debug:
