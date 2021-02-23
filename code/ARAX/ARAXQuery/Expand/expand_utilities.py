@@ -364,7 +364,8 @@ def get_attribute_type(attribute_name: str) -> str:
         "symbol": "biolink:symbol",
         "synonym": "biolink:synonym",
         "update_date": "metatype:Datetime",
-        "uri": "metatype:Uri"
+        "uri": "metatype:Uri",
+        "iri": "biolink:IriType"
     }
     return attribute_type_map.get(attribute_name, "biolink:Unknown")
 
