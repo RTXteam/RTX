@@ -1,8 +1,8 @@
 openapi: 3.0.1
 info:
-  description: TRAPI 1.0 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
-  version: 1.0.0
-  title: ARAX Translator Reasoner
+  description: TRAPI 1.0 endpoint for the NCATS Biomedical Translator KP called RTX KG2
+  version: 2.3.4
+  title: RTX KG2
   contact:
     email: edeutsch@systemsbiology.org
   license:
@@ -12,13 +12,15 @@ info:
   x-translator:
     component: ARA
     team: Expander Agent
+  x-trapi:
+    version: 1.0.0
 externalDocs:
   description: >-
     Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-  - url: https://arax.ncats.io/api/arax/v1.0
-    description: ARAX Translator Reasoner API
+  - url: https://arax.ncats.io/api/rtxkg2/v1.0
+    description: RTX KG2.3.4 API
 tags:
   - name: predicates
     description: Get supported relationships by source and target
@@ -32,31 +34,11 @@ tags:
       url: http://arax.ncats.io/overview.html#query
   - name: translator
   - name: reasoner
-  - name: response
-    description: Request a previously stored response from the server
-    externalDocs:
-      description: Documentation for the reasoner response function
-      url: https://arax.ncats.io/overview.html#response
-  - name: translate
-    description: Translate natural language question into a standardized query
-    externalDocs:
-      description: Documentation for the reasoner translate function
-      url: 'https://arax.ncats.io/overview.html#translate'
   - name: entity
     description: Return identifier and type of some entity in the knowledge graph
     externalDocs:
       description: Documentation for the reasoner entity function
       url: 'https://arax.ncats.io/overview.html#entity'
-  - name: exampleQuestions
-    description: Return a list of example questions that the reasoner can answer
-    externalDocs:
-      description: Documentation for the reasoner exampleQuestions function
-      url: 'https://arax.ncats.io/overview.html#exampleQuestions'
-  - name: PubmedMeshNgd
-    description: Query to get the Normalized Google Distance between two MeSH terms based on co-occurance in all PubMed article annotations
-    externalDocs:
-      description: Documentation for the reasoner PubmedMeshNgd function
-      url: 'https://arax.ncats.io/overview.html#PubmedMeshNgd'
 paths:
   /predicates:
     get:
@@ -140,54 +122,6 @@ paths:
             application/json:
               schema:
                 type: string
-  /response/{response_id}:
-    get:
-      tags:
-        - response
-      summary: Request a previously stored response from the server
-      description: ''
-      operationId: get_response
-      parameters:
-        - in: path
-          name: response_id
-          description: Integer identifier of the response to return
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Response'
-        '404':
-          description: response_id not found
-  /translate:
-    post:
-      tags:
-      - translate
-      summary: Translate natural language question into a standardized query
-      description: ''
-      operationId: translate
-      requestBody:
-        description: Question information to be translated
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Question'
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Query'
-        '400':
-          description: Invalid status value
   /entity:
     get:
       tags:
@@ -218,51 +152,6 @@ paths:
                 type: object
         '404':
           description: "Entity not found"
-  /exampleQuestions:
-    get:
-      tags:
-      - exampleQuestions
-      summary: Request a list of example questions that ARAX can answer
-      description: ''
-      operationId: example_questions
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-  '/PubmedMeshNgd/{term1}/{term2}':
-    get:
-      tags:
-      - PubmedMeshNgd
-      summary: Query to get the Normalized Google Distance between two MeSH terms based on co-occurrence in all PubMed article annotations
-      description: ''
-      operationId: PubmedMeshNgd
-      parameters:
-        - in: path
-          name: term1
-          description: First of two terms. Order not important.
-          required: true
-          schema:
-            type: string
-        - in: path
-          name: term2
-          description: Second of two terms. Order not important.
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MeshNgdResponse'
-        '400':
-          description: "Invalid terms"
 components:
   schemas:
     Query:
@@ -588,6 +477,7 @@ components:
           type: string
           example: result:234
           description: URI for this result
+          nullable: true
         description:
           type: string
           example: >-
@@ -596,16 +486,19 @@ components:
             (P68871) and HMOX1 (P09601).
           description: >-
             A free text description of this result answer from the reasoner
+          nullable: true
         essence:
           type: string
           example: ibuprofen
           description: >-
             A single string that is the terse essence of the result (useful for
             simple answers)
+          nullable: true
         essence_category:
           type: string
           example: biolink:ChemicalSubstance
           description: A Translator BioLink bioentity category of the essence
+          nullable: true
         row_data:
           type: array
           example:
@@ -615,23 +508,25 @@ components:
             An arbitrary list of values that captures the essence of the result
             that can be turned into a tabular result across all answers (each
             result is a row) for a user that wants simplified tabular output
-          items:
-            type: string
+          nullable: true
         score:
           type: number
           format: float
           example: 163.233
           description: Any type of score associated with this result
+          nullable: true
         score_name:
           type: string
           example: Jaccard distance
           description: Name for the score
+          nullable: true
         score_direction:
           type: string
           example: lower_is_better
           description: >-
             Sorting indicator for the score: one of higher_is_better or
             lower_is_better
+          nullable: true
         confidence:
           type: number
           format: float
@@ -639,6 +534,7 @@ components:
           description: >-
             Confidence metric for this result, a value between (inclusive)
              0.0 (no confidence) and 1.0 (highest confidence)
+          nullable: true
         result_group:
           type: integer
           example: 1
@@ -646,6 +542,7 @@ components:
             An integer group number for results for use in cases where several
             results should be grouped together. Also useful to control sorting
             ascending.
+          nullable: true
         result_group_similarity_score:
           type: number
           format: float
@@ -653,12 +550,14 @@ components:
           description: >-
             A score that denotes the similarity of this result to other members
             of the result_group
+          nullable: true
         reasoner_id:
           type: string
           example: ARAX
           description: >-
             Identifier string of the reasoner that provided this result (e.g.,
             ARAX, Robokop, etc.)
+          nullable: true
       additionalProperties: true
       required:
         - node_bindings
@@ -996,6 +895,7 @@ components:
         URI.
       externalDocs:
         url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+      nullable: true
     Operations:
       type: object
       description: >-
@@ -1037,33 +937,3 @@ components:
             Map of order independent options that apply during processing
           additionalProperties: true
       additionalProperties: true
-    Question:
-      type: object
-      properties:
-        text:
-          type: string
-          example: what genetic conditions offer protection against malaria
-          description: Free text question
-        language:
-          type: string
-          example: English
-          description: Human language in which the question is posed
-          enum:
-          - English
-      additionalProperties: true
-    MeshNgdResponse:
-      type: object
-      properties:
-        result_code:
-          type: string
-          example: TermNotFound
-          description: Set to OK for success, or some other short string to indicate and error (e.g., TermNotFound, etc.)
-        message:
-          type: string
-          example: Term 1 'malria' not found in MeSH
-          description: Extended message denoting the success or mode of failure for request
-        value:
-          type: number
-          format: float
-          description: Calculated Normalized Google Distance for the two supplied terms
-          example: 0.714

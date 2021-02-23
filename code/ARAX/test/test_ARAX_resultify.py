@@ -15,7 +15,7 @@ import ARAX_resultify
 from ARAX_resultify import ARAXResultify
 from ARAX_query import ARAXQuery
 
-# is there a better way to import swagger_server?  Following SO posting 16981921
+# is there a better way to import openapi_server?  Following SO posting 16981921
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
 from openapi_server.models.edge import Edge

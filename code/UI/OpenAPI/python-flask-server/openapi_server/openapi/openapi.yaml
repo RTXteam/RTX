@@ -621,21 +621,25 @@ components:
           description: URI for this result
           example: result:234
           type: string
+          nullable: true
         description:
           description: A free text description of this result answer from the reasoner
           example: The genetic condition sickle cell anemia may provide protection
             from cerebral malaria via genetic alterations of proteins HBB (P68871)
             and HMOX1 (P09601).
           type: string
+          nullable: true
         essence:
           description: A single string that is the terse essence of the result (useful
             for simple answers)
           example: ibuprofen
           type: string
+          nullable: true
         essence_category:
           description: A Translator BioLink bioentity category of the essence
           example: biolink:ChemicalSubstance
           type: string
+          nullable: true
         row_data:
           description: An arbitrary list of values that captures the essence of the
             result that can be turned into a tabular result across all answers (each
@@ -643,23 +647,25 @@ components:
           example:
           - ibuprofen
           - CHEMBL:CHEMBL521
-          items:
-            type: string
           type: array
+          nullable: true
         score:
           description: Any type of score associated with this result
           example: 163.233
           format: float
           type: number
+          nullable: true
         score_name:
           description: Name for the score
           example: Jaccard distance
           type: string
+          nullable: true
         score_direction:
           description: 'Sorting indicator for the score: one of higher_is_better or
             lower_is_better'
           example: lower_is_better
           type: string
+          nullable: true
         confidence:
           description: |-
             Confidence metric for this result, a value between (inclusive)
@@ -667,23 +673,27 @@ components:
           example: 0.9234
           format: float
           type: number
+          nullable: true
         result_group:
           description: An integer group number for results for use in cases where
             several results should be grouped together. Also useful to control sorting
             ascending.
           example: 1
           type: integer
+          nullable: true
         result_group_similarity_score:
           description: A score that denotes the similarity of this result to other
             members of the result_group
           example: 0.95
           format: float
           type: number
+          nullable: true
         reasoner_id:
           description: Identifier string of the reasoner that provided this result
             (e.g., ARAX, Robokop, etc.)
           example: ARAX
           type: string
+          nullable: true
       required:
       - edge_bindings
       - node_bindings
@@ -982,6 +992,7 @@ components:
       externalDocs:
         url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
       type: string
+      nullable: true
     Operations:
       additionalProperties: true
       description: Container for one or more Message objects or identifiers for one

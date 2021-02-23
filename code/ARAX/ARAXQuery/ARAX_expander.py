@@ -229,7 +229,11 @@ class ARAXExpander:
 
     def apply(self, response, input_parameters):
         message = response.envelope.message
+        # Initiate an empty knowledge graph if one doesn't already exist
+        if message.knowledge_graph is None:
+            message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
         log = response
+
         # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
         required_portion_of_qg = eu.get_required_portion_of_qg(message.query_graph)
         if required_portion_of_qg.edges and eu.qg_is_disconnected(required_portion_of_qg):

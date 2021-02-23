@@ -43,10 +43,8 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
-from ParseQuestion import ParseQuestion
-from Q0Solution import Q0
-#import ReasoningUtilities
-from QueryGraphReasoner import QueryGraphReasoner
+#from ParseQuestion import ParseQuestion
+#from QueryGraphReasoner import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
@@ -143,11 +141,15 @@ class ARAXQuery:
         #### Create the skeleton of the response
         response = ARAXResponse()
         self.response = response
-        messenger = ARAXMessenger()
-        messenger.create_envelope(response)
 
+        #### Announce the launch of query()
+        #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
         ARAXResponse.output = 'STDERR'
         response.info(f"ARAXQuery launching on incoming Query")
+
+        #### Create an empty envelope
+        messenger = ARAXMessenger()
+        messenger.create_envelope(response)
 
         #### Determine a plan for what to do based on the input
         result = self.examine_incoming_query(query)
@@ -392,8 +394,11 @@ class ARAXQuery:
 
         # If there is already a message (perhaps with a query_graph) already in the query, preserve it
         if 'message' in input_operations_dict and input_operations_dict['message'] is not None:
-            message = input_operations_dict['message']    # FIXME is a dict not an object??
-            messages = [ message ]
+            incoming_message = input_operations_dict['message']
+            if isinstance(incoming_message,dict):
+                incoming_message = Message.from_dict(incoming_message)
+            eprint(f"TESTING: incoming_test is a {type(incoming_message)}")
+            messages = [ incoming_message ]
 
         #### Pull out the main processing plan
         operations = Operations.from_dict(input_operations_dict["operations"])
@@ -416,13 +421,33 @@ class ARAXQuery:
                     response.debug(f"Found local ARAX identifier corresponding to response_id {referenced_response_id}")
                     response.debug(f"Loading response_id {referenced_response_id}")
                     referenced_envelope = response_cache.get_response(referenced_response_id)
-                    eprint(type(referenced_envelope))
-                    eprint(json.dumps(referenced_envelope,indent=2))
+
+                    if False:
+                        #### Hack to get it to work
+                        for node_key,node in referenced_envelope["message"]["knowledge_graph"]["nodes"].items():
+                            if 'attributes' in node and node['attributes'] is not None:
+                                new_attrs = []
+                                for attr in node['attributes']:
+                                    if attr['type'] is not None:
+                                        new_attrs.append(attr)
+                                if len(new_attrs) < len(node['attributes']):
+                                    node['attributes'] = new_attrs
+
+                        #### Hack to get it to work
+                        for node_key,node in referenced_envelope["message"]["knowledge_graph"]["edges"].items():
+                            if 'attributes' in node and node['attributes'] is not None:
+                                new_attrs = []
+                                for attr in node['attributes']:
+                                    if attr['type'] is not None:
+                                        new_attrs.append(attr)
+                                if len(new_attrs) < len(node['attributes']):
+                                    node['attributes'] = new_attrs
+
                     if isinstance(referenced_envelope,dict):
                         referenced_envelope = Response().from_dict(referenced_envelope)
                         #messages.append(referenced_message)
                         messages = [ referenced_envelope.message ]
-                        #eprint(json.dumps(referenced_message.to_dict(),indent=2))
+                        #eprint(json.dumps(referenced_envelope.message.results,indent=2))
                     else:
                         response.error(f"Unable to load response_id {referenced_response_id}", error_code="CannotLoadPreviousResponseById")
                         return response
@@ -470,6 +495,7 @@ class ARAXQuery:
         elif n_messages == 1:
             response.debug(f"A single Message is ready and in hand")
             message = messages[0]
+            response.envelope.message = message
 
         #### Multiple messages unsupported
         else:
@@ -555,7 +581,8 @@ class ARAXQuery:
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         filter_kg.apply(response, action['parameters'])
 
-                    elif action['command'] == 'filter_results':  # recognize the filter_kg command
+                    elif action['command'] == 'filter_results':  # recognize the filter_results command
+                        response.debug(f"Before filtering, there are {len(response.envelope.message.results)} results")
                         filter_results.apply(response, action['parameters'])
 
                     elif action['command'] == 'query_graph_reasoner':
