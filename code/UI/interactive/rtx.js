@@ -454,7 +454,7 @@ async function sendSyn() {
     text.title = 'link to this synonym entry';
     text.href = "http://"+ window.location.hostname + window.location.pathname + "?term=" + word;
     text.innerHTML = "[ Direct link to this entry ]";
-    text.style.marginLeft = "50px";
+    text.style.float = "right";
     div.appendChild(text);
     syndiv.appendChild(div);
 
@@ -1615,7 +1615,7 @@ function add_cyto(i) {
 		span.className = "fieldname";
 		span.appendChild(document.createTextNode(field+": "));
 		div.appendChild(span);
-		if (field == "uri") {
+		if (field == "uri") { //iri?//
 		    var link = document.createElement("a");
 		    link.href = this.data(field);
 		    link.target = "nodeuri";
@@ -1767,7 +1767,24 @@ function show_attributes(html_div, atts) {
 		snippet += Number(att.value).toPrecision(3);
 	    }
             else if (Array.isArray(att.value))
-		for (var val of att.value) snippet += "<br>&nbsp;&nbsp;&nbsp;"+val;
+		for (var val of att.value) {
+                    snippet += "<br>&nbsp;&nbsp;&nbsp;";
+		    if (val.startsWith("PMID:")) {
+			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
+			snippet += " target='pubmed'>" + val + "</a>";
+		    }
+		    else if (val.startsWith("DOI:")) {
+			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
+			snippet += " target='pubmed'>" + val + "</a>";
+		    }
+		    else if (val.toString().startsWith("http")) {
+                        snippet += "<a href='" + val + "'";
+                        snippet += " target='araxuri'>" + val + "</a>";
+		    }
+		    else {
+			snippet += val;
+		    }
+		}
 	    else if (typeof att.value === 'object')
 		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
 	    else
