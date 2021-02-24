@@ -60,6 +60,16 @@ class ARAXDatabaseManager:
             'map_txt': f"{self.RTXConfig.map_txt_username}@{self.RTXConfig.map_txt_host}:{self.RTXConfig.map_txt_path}",
             'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}"
         }
+        self.remote_paths = {
+            'cohd_database': f"{self.RTXConfig.cohd_database_path}",
+            'graph_database': f"{self.RTXConfig.graph_database_path}",
+            'log_model': f"{self.RTXConfig.log_model_path}",
+            'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_path}",
+            'node_synonymizer': f"{self.RTXConfig.node_synonymizer_path}",
+            'rel_max': f"{self.RTXConfig.rel_max_path}",
+            'map_txt': f"{self.RTXConfig.map_txt_path}",
+            'dtd_prob': f"{self.RTXConfig.dtd_prob_path}"
+        }
 
         self.db_versions = {
             'cohd_database': {
@@ -106,14 +116,14 @@ class ARAXDatabaseManager:
                         print(f"{database_name} not present locally, downloading now...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
-                    self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
+                    self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.remote_paths[database_name], debug=debug)
                 elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']:
                     if debug:
                         print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
                         prinf("downloading remote version...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
-                    self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
+                    self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.remote_paths[database_name], debug=debug)
                     if os.path.exists(self.local_paths[database_name]):
                         if debug:
                             print("Download successful. Removing local version...")
@@ -130,7 +140,7 @@ class ARAXDatabaseManager:
                         print(f"{database_name} not present locally, downloading now...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
-                    self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
+                    self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.remote_paths[database_name], debug=debug)
                 else:
                     if debug:
                         print(f"Local version of {database_name} matches the remote version, skipping...")
@@ -190,6 +200,15 @@ class ARAXDatabaseManager:
         else:
             return True
 
+    def download_database(self, remote_location, local_path, remote_path, debug=False):
+        if os.path.exists(remote_path):
+            self.symlink_database(local_path=local_path, remote_path=remote_path)
+        else:
+            self.rsync_database(remote_location=remote_location, local_path=local_path, debug=debug)
+
+    def symlink_database(self, local_path, remote_path):
+        os.system(f"ln -s {remote_path} {local_path}")
+
     def rsync_database(self, remote_location, local_path, debug=False):
         verbose = ""
         if debug:
@@ -200,7 +219,7 @@ class ARAXDatabaseManager:
         for database_name in self.remote_locations.keys():
             if debug:
                 print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
-            self.rsync_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], debug=debug)
+            self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.remote_paths[database_name], debug=debug)
 
     def check_all(self, max_days=31, debug=False):
         update_flag = False
@@ -230,7 +249,7 @@ class ARAXDatabaseManager:
             if self.check_date(local_path, max_days=max_days):
                 if debug:
                     print(f"{database_name} not present or older than {max_days} days. Updating file...")
-                self.rsync_database(remote_location=self.remote_locations[database_name], local_path=local_path, debug=debug)
+                self.download_database(remote_location=self.remote_locations[database_name], local_path=local_path, remote_path=self.remote_paths[database_name], debug=debug)
 
 
 def main():
