@@ -61,12 +61,10 @@ class ARAXQuery:
         self.rtxConfig = RTXConfiguration()
         
         self.DBManager = ARAXDatabaseManager(live = "Production")
-        self.db_response = None
         if self.DBManager.check_versions():
-            self.db_response = ARAXResponse()
-            self.db_response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
-            self.db_response = self.DBManager.update_databases(response=self.db_response)
-            self.db_response.status = f"DONE,{self.db_response.status}"
+            self.response = ARAXResponse()
+            self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
+            self.response = self.DBManager.update_databases(response=self.response)
 
 
     def query_return_stream(self,query):
