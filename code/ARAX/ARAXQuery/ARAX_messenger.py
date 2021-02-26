@@ -79,7 +79,7 @@ class ARAXMessenger:
         self.response = response
     
         #### Create the top-level Response object called an envelope
-        response.info("Creating an empty template ARAX Envelope")
+        response.info("Creating an empty template TRAPI Response")
         envelope = Response()
         response.envelope = envelope
         self.envelope = envelope
