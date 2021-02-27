@@ -25,9 +25,6 @@ class GeneralQuerier:
         self.log = response_object
         self.kp_name = kp_name
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
-        # TODO: Eventually validate queries here based on info in future TRAPI knowledge_map endpoint
-        self.accepted_node_categories = {"biolink:ChemicalSubstance", "biolink:Gene", "biolink:Disease"}
-        self.accepted_edge_types = {"biolink:correlated_with"}
         self.node_category_overrides_for_kp = eu.get_node_category_overrides_for_kp(kp_name)
         self.kp_preferred_prefixes = eu.get_kp_preferred_prefixes(kp_name)
 
