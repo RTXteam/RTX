@@ -417,12 +417,13 @@ class ARAXExpander:
             elif kp_to_use == 'MolePro':
                 from Expand.molepro_querier import MoleProQuerier
                 kp_querier = MoleProQuerier(log)
-            elif kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2':
-                from Expand.kg_querier import KGQuerier
-                kp_querier = KGQuerier(log, kp_to_use)
-            else:
+            elif kp_to_use == 'ARAX/KG2' and mode == 'ARAX':
                 from Expand.general_querier import GeneralQuerier
                 kp_querier = GeneralQuerier(log, kp_to_use)
+            else:
+                from Expand.kg2_querier import KG2Querier
+                kp_querier = KG2Querier(log, kp_to_use)
+
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
                 return answer_kg, edge_to_nodes_map
@@ -459,9 +460,13 @@ class ARAXExpander:
         # Answer the query using the proper KP
         valid_kps_for_single_node_queries = ["ARAX/KG1", "ARAX/KG2"]
         if kp_to_use in valid_kps_for_single_node_queries:
-            from Expand.kg_querier import KGQuerier
-            kg_querier = KGQuerier(log, kp_to_use)
-            answer_kg = kg_querier.answer_single_node_query(single_node_qg)
+            if kp_to_use == "ARAX/KG2" and mode == "ARAX":
+                from Expand.general_querier import GeneralQuerier
+                kp_querier = GeneralQuerier(log, kp_to_use)
+            else:
+                from Expand.kg2_querier import KG2Querier
+                kp_querier = KG2Querier(log, kp_to_use)
+            answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Make sure all qnodes have been fulfilled (unless we're continuing if no results)

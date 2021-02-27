@@ -23,7 +23,7 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 
 
-class KGQuerier:
+class KG2Querier:
 
     def __init__(self, response_object: ARAXResponse, input_kp: str):
         self.response = response_object
@@ -57,11 +57,11 @@ class KGQuerier:
 
         # Verify this is a valid one-hop query graph
         if len(query_graph.edges) != 1:
-            log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph that is not one-hop: "
+            log.error(f"answer_one_hop_query() was passed a query graph that is not one-hop: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
             return final_kg, edge_to_nodes_map
         if len(query_graph.nodes) != 2:
-            log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph with more than two nodes: "
+            log.error(f"answer_one_hop_query() was passed a query graph with more than two nodes: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
             return final_kg, edge_to_nodes_map
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
