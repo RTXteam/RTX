@@ -60,11 +60,12 @@ class GeneralQuerier:
 
         # Answer the query using the KP and load its answers into our Swagger model
         json_response = self._send_query_to_kp(query_graph)
-        if json_response['message'].get('knowledge_graph') is None:
-            log.warning(f"'knowledge_graph' is missing in the message returned from {self.kp_name}")
+        returned_message = Message().from_dict(json_response['message'])
+        if not returned_message.results:
+            log.warning(f"No 'results' are present in the message returned from {self.kp_name}. Response from KP "
+                        f"was: {json_response}")
+            returned_message.results = []
         else:
-            returned_message = Message().from_dict(json_response['message'])
-            print(returned_message.results)  # TODO: Why does this print but then is empty in next line??
             # Build a map that indicates which qnodes/qedges a given node/edge fulfills
             qg_id_mappings = self._get_qg_id_mappings_from_results(returned_message.results)
 
@@ -108,19 +109,21 @@ class GeneralQuerier:
         else:
             predicates_dict = kp_predicates_response.json()
             qnodes = query_graph.nodes
-            triples = [[qnodes[qedge.subject].category, qedge.predicate, qnodes[qedge.object].category]
-                       for qedge in query_graph.edges.values()]
-            for triple in triples:
+            qg_triples = [[qnodes[qedge.subject].category, qedge.predicate, qnodes[qedge.object].category]
+                          for qedge in query_graph.edges.values()]
+            for triple in qg_triples:
                 subject_category = triple[0]
                 object_category = triple[1]
                 predicate = triple[2]
                 if subject_category not in predicates_dict:
-                    self.log.error(f"{self.kp_name} cannot answer queries with {subject_category} as subject. Supported"
-                                   f" subject categories are: {list(predicates_dict)}", error_code="UnsupportedQueryForKP")
+                    if not (subject_category is None and self.kp_name == "ARAX/KG2"):  # KG2 supports None for qnode categories, so we allow that (TODO: should the predicates endpoint indicate this?)
+                        self.log.error(f"{self.kp_name} cannot answer queries with {subject_category} as subject. Supported"
+                                       f" subject categories are: {list(predicates_dict)}", error_code="UnsupportedQueryForKP")
                 elif object_category not in predicates_dict[subject_category]:
-                    self.log.error(f"{self.kp_name} cannot answer queries from {subject_category} to {object_category}."
-                                   f"Supported object categories for a subject of {subject_category} are "
-                                   f"{list(predicates_dict[subject_category])}", error_code="UnsupportedQueryForKP")
+                    if not (object_category is None and self.kp_name == "ARAX/KG2"):  # KG2 supports None for qnode categories, so we allow that
+                        self.log.error(f"{self.kp_name} cannot answer queries from {subject_category} to {object_category}."
+                                       f"Supported object categories for a subject of {subject_category} are "
+                                       f"{list(predicates_dict[subject_category])}", error_code="UnsupportedQueryForKP")
                 elif predicate not in predicates_dict[subject_category][object_category]:
                     self.log.error(f"For {subject_category}--{object_category} qedges, {self.kp_name} doesn't support "
                                    f"a predicate of '{predicate}'. Supported predicates are: {predicates_dict[subject_category][object_category]}",
@@ -187,9 +190,8 @@ class GeneralQuerier:
                            for qedge_key, qedge in query_graph.edges.items()}
 
         # Send the query to the KP's API
-        kp_response = requests.post(f"{self.kp_endpoint}/query",
-                                    json={'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}},
-                                    headers={'accept': 'application/json'})
+        body = {'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}}
+        kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'})
         if kp_response.status_code == 200:
             return kp_response.json()
         else:

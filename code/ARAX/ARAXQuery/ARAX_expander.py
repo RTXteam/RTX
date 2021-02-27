@@ -290,15 +290,14 @@ class ARAXExpander:
             return response
 
         response.data['parameters'] = parameters
-        self.parameters = parameters
 
         # Do the actual expansion
         log.debug(f"Applying Expand to Message with parameters {parameters}")
         input_qedge_keys = eu.convert_string_or_list_to_list(parameters['edge_key'])
         input_qnode_keys = eu.convert_string_or_list_to_list(parameters['node_key'])
-        kp_to_use = self.parameters['kp']
-        continue_if_no_results = self.parameters['continue_if_no_results']
-        use_synonyms = self.parameters['use_synonyms']
+        kp_to_use = parameters['kp']
+        continue_if_no_results = parameters['continue_if_no_results']
+        use_synonyms = parameters['use_synonyms']
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
                                  edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
