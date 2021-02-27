@@ -227,7 +227,7 @@ class ARAXExpander:
         """
         return list(self.command_definitions.values())
 
-    def apply(self, response, input_parameters):
+    def apply(self, response, input_parameters, mode="ARAX"):
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
@@ -324,7 +324,7 @@ class ARAXExpander:
             for qedge_key in ordered_qedge_keys_to_expand:
                 qedge = query_graph.edges[qedge_key]
                 answer_kg, edge_node_usage_map = self._expand_edge(qedge_key, kp_to_use, dict_kg, continue_if_no_results,
-                                                                   query_graph, use_synonyms, log)
+                                                                   query_graph, use_synonyms, mode, log)
                 if log.status != 'OK':
                     return response
                 elif qedge.exclude and not answer_kg.is_empty():
@@ -346,7 +346,8 @@ class ARAXExpander:
         # Expand any specified nodes
         if input_qnode_keys:
             for qnode_key in input_qnode_keys:
-                answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms, log)
+                answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms,
+                                              mode, log)
                 if log.status != 'OK':
                     return response
 
@@ -377,7 +378,7 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, qedge_key: str, kp_to_use: str, dict_kg: QGOrganizedKnowledgeGraph, continue_if_no_results: bool,
-                     query_graph: QueryGraph, use_synonyms: bool, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+                     query_graph: QueryGraph, use_synonyms: bool, mode: str, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
@@ -417,12 +418,13 @@ class ARAXExpander:
             elif kp_to_use == 'MolePro':
                 from Expand.molepro_querier import MoleProQuerier
                 kp_querier = MoleProQuerier(log)
-            elif kp_to_use == 'ARAX/KG2' and mode == 'ARAX':
-                from Expand.general_querier import GeneralQuerier
-                kp_querier = GeneralQuerier(log, kp_to_use)
-            else:
+            elif (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
+            else:
+                from Expand.general_querier import GeneralQuerier
+                kp_querier = GeneralQuerier(log, kp_to_use)
+
 
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
@@ -445,7 +447,7 @@ class ARAXExpander:
             return answer_kg, edge_to_nodes_map
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
-                     use_synonyms: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     use_synonyms: bool, mode: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -460,12 +462,12 @@ class ARAXExpander:
         # Answer the query using the proper KP
         valid_kps_for_single_node_queries = ["ARAX/KG1", "ARAX/KG2"]
         if kp_to_use in valid_kps_for_single_node_queries:
-            if kp_to_use == "ARAX/KG2" and mode == "ARAX":
-                from Expand.general_querier import GeneralQuerier
-                kp_querier = GeneralQuerier(log, kp_to_use)
-            else:
+            if (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
+            else:
+                from Expand.general_querier import GeneralQuerier
+                kp_querier = GeneralQuerier(log, kp_to_use)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 

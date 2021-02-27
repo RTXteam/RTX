@@ -11,8 +11,8 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
-from openapi_server.models.node import QNode
-from openapi_server.models.edge import QEdge
+from openapi_server.models.q_node import QNode
+from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.message import Message
@@ -30,8 +30,6 @@ class GeneralQuerier:
         self.accepted_edge_types = {"biolink:correlated_with"}
         self.node_category_overrides_for_kp = eu.get_node_category_overrides_for_kp(kp_name)
         self.kp_preferred_prefixes = eu.get_kp_preferred_prefixes(kp_name)
-        self.essential_qnode_properties = ["id", "category", "is_set"]
-        self.essential_qedge_properties = ["subject", "object", "predicate"]
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
@@ -53,7 +51,6 @@ class GeneralQuerier:
             return final_kg, edge_to_nodes_map
         if self.node_category_overrides_for_kp:
             query_graph = self._override_qnode_types_as_needed(query_graph)
-        self._verify_qg_is_accepted_by_kp(query_graph)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
@@ -66,12 +63,14 @@ class GeneralQuerier:
 
         # Answer the query using the KP and load its answers into our Swagger model
         json_response = self._send_query_to_kp(query_graph)
-        if json_response.get('knowledge_graph') is None:
+        if json_response['message'].get('knowledge_graph') is None:
             log.warning(f"'knowledge_graph' is missing in the message returned from {self.kp_name}")
         else:
-            returned_message = Message.from_dict(json_response['message'])
+            returned_message = Message().from_dict(json_response['message'])
+            print(returned_message.results)  # TODO: Why does this print but then is empty in next line??
             # Build a map that indicates which qnodes/qedges a given node/edge fulfills
             qg_id_mappings = self._get_qg_id_mappings_from_results(returned_message.results)
+
             # Populate our final KG with the returned nodes and edges
             for returned_edge_key, returned_edge in returned_message.knowledge_graph.edges.items():
                 arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
@@ -104,6 +103,7 @@ class GeneralQuerier:
         return query_graph
 
     def _verify_qg_is_accepted_by_kp(self, query_graph: QueryGraph):
+        # TODO: Make this work for "None" categories, move to somewhere else? (where Expand decides what KP to use?)
         kp_predicates_response = requests.get(f"{self.kp_endpoint}/predicates", headers={'accept': 'application/json'})
         if kp_predicates_response.status_code != 200:
             self.log.warning(f"Unable to access {self.kp_name}'s predicates endpoint "
@@ -152,14 +152,14 @@ class GeneralQuerier:
         qnode_key_mappings = dict()
         qedge_key_mappings = dict()
         for result in results:
-            for qnode_key, node_bindings in result['node_bindings'].items():
-                kg_ids = {node_binding['id'] for node_binding in node_bindings}
+            for qnode_key, node_bindings in result.node_bindings.items():
+                kg_ids = {node_binding.id for node_binding in node_bindings}
                 for kg_id in kg_ids:
                     if kg_id not in qnode_key_mappings:
                         qnode_key_mappings[kg_id] = set()
                     qnode_key_mappings[kg_id].add(qnode_key)
-            for qedge_key, edge_bindings in result['edge_bindings'].items():
-                kg_ids = {edge_binding['id'] for edge_binding in edge_bindings}
+            for qedge_key, edge_bindings in result.edge_bindings.items():
+                kg_ids = {edge_binding.id for edge_binding in edge_bindings}
                 for kg_id in kg_ids:
                     if kg_id not in qedge_key_mappings:
                         qedge_key_mappings[kg_id] = set()
@@ -175,7 +175,7 @@ class GeneralQuerier:
         edge_to_nodes_map = dict()
         kg_node_to_qnode_mappings = qg_id_mappings["nodes"]
         for edge_key, edge in kg.edges.items():
-            arax_edge_key = self._get_arax_edge_key(edge_key)  # We use edge keys guaranteed to be unique across KPs
+            arax_edge_key = self._get_arax_edge_key(edge)  # We use edge keys guaranteed to be unique across KPs
             if qedge.subject in kg_node_to_qnode_mappings[edge.subject] and qedge.object in kg_node_to_qnode_mappings[edge.object]:
                 edge_to_nodes_map[arax_edge_key] = {qedge.subject: edge.subject, qedge.object: edge.object}
             else:
@@ -184,9 +184,9 @@ class GeneralQuerier:
 
     def _send_query_to_kp(self, query_graph: QueryGraph) -> Union[Dict[str, any], None]:
         # Strip non-essential and 'empty' properties off of our qnodes and qedges
-        stripped_qnodes = {qnode_key: self._strip_to_essentials(qnode, self.essential_qnode_properties)
+        stripped_qnodes = {qnode_key: self._strip_empty_properties(qnode)
                            for qnode_key, qnode in query_graph.nodes.items()}
-        stripped_qedges = {qedge_key: self._strip_to_essentials(qedge, self.essential_qedge_properties)
+        stripped_qedges = {qedge_key: self._strip_empty_properties(qedge)
                            for qedge_key, qedge in query_graph.edges.items()}
 
         # Send the query to the KP's API
@@ -200,9 +200,9 @@ class GeneralQuerier:
             return None
 
     @staticmethod
-    def _strip_to_essentials(qnode_or_qedge: Union[QNode, QEdge], essential_properties: List[str]) -> Dict[str, any]:
+    def _strip_empty_properties(qnode_or_qedge: Union[QNode, QEdge]) -> Dict[str, any]:
         dict_version_of_object = qnode_or_qedge.to_dict()
-        stripped_dict = {property_name: dict_version_of_object[property_name] for property_name in essential_properties
+        stripped_dict = {property_name: value for property_name, value in dict_version_of_object.items()
                          if dict_version_of_object.get(property_name) is not None}
         return stripped_dict
 
@@ -211,5 +211,5 @@ class GeneralQuerier:
         return kp_node_key, Node(category=kp_node['category'],
                                  name=kp_node.get('name'))
 
-    def _get_arax_edge_key(self, swagger_edge: Edge) -> str:
-        return f"{self.kp_name}:{swagger_edge.subject}-{swagger_edge.predicate}-{swagger_edge.object}"
+    def _get_arax_edge_key(self, edge: Edge) -> str:
+        return f"{self.kp_name}:{edge.subject}-{edge.predicate}-{edge.object}"
