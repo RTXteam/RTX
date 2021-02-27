@@ -209,6 +209,18 @@ def convert_curie_to_bte_format(curie: str) -> str:
     return prefix + ':' + local_id
 
 
+def get_node_category_overrides_for_kp(kp_name: str) -> Union[Dict[str, str], None]:
+    overrides = {"MolePro": {"biolink:Protein": "biolink:Gene"}}
+    return overrides.get(kp_name)
+
+
+def get_kp_preferred_prefixes(kp_name: str) -> Union[Dict[str, str], None]:
+    overrides = {"MolePro": {"biolink:ChemicalSubstance": "CHEMBL.COMPOUND",
+                             "biolink:Gene": "HGNC",
+                             "biolink:Disease": "MONDO"}}
+    return overrides.get(kp_name)
+
+
 def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
     curies = convert_string_or_list_to_list(curie)
     try:
@@ -372,9 +384,10 @@ def get_attribute_type(attribute_name: str) -> str:
 
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
+        "BTE": "https://api.bte.ncats.io/v1",
         "GeneticsKP": "https://translator.broadinstitute.org/genetics_data_provider",
         "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
-        "BTE": "https://api.bte.ncats.io/v1"
+        "RTX KG2": "https://arax.ncats.io/api/rtxkg2/v1.0"
     }
     return endpoint_map.get(kp_name)
 

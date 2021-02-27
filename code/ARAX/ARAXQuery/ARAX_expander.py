@@ -417,9 +417,12 @@ class ARAXExpander:
             elif kp_to_use == 'MolePro':
                 from Expand.molepro_querier import MoleProQuerier
                 kp_querier = MoleProQuerier(log)
-            else:
+            elif kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2':
                 from Expand.kg_querier import KGQuerier
                 kp_querier = KGQuerier(log, kp_to_use)
+            else:
+                from Expand.general_querier import GeneralQuerier
+                kp_querier = GeneralQuerier(log, kp_to_use)
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
                 return answer_kg, edge_to_nodes_map
