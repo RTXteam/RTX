@@ -184,7 +184,7 @@ class ARAXQuery:
         #### If we have operations, handle that
         if "have_operations" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
-            result = self.executeProcessingPlan(query)
+            result = self.execute_processing_plan(query, mode=mode)
             return response
 
         #### Otherwise extract the id and the terms from the incoming parameters
@@ -392,10 +392,10 @@ class ARAXQuery:
 
     ############################################################################################
     #### Given an input query with a processing plan, execute that processing plan on the input
-    def executeProcessingPlan(self,input_operations_dict):
+    def execute_processing_plan(self,input_operations_dict, mode='ARAX'):
 
         response = self.response
-        response.debug(f"Entering executeProcessingPlan")
+        response.debug(f"Entering execute_processing_plan")
         messages = []
         message = None
 
@@ -574,7 +574,7 @@ class ARAXQuery:
                         messenger.add_qedge(response,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        expander.apply(response,action['parameters'])
+                        expander.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'filter':
                         filter.apply(response,action['parameters'])
