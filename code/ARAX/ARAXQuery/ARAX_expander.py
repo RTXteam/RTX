@@ -301,6 +301,13 @@ class ARAXExpander:
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
                                  edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
+        # If this is a query being sent to the KG2 API, ignore all option_group_id and exclude properties
+        if mode == "RTXKG2":
+            for qnode in query_graph.nodes.values():
+                qnode.option_group_id = None
+            for qedge in query_graph.edges.values():
+                qedge.option_group_id = None
+                qedge.exclude = None
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
@@ -424,11 +431,10 @@ class ARAXExpander:
                 from Expand.general_querier import GeneralQuerier
                 kp_querier = GeneralQuerier(log, kp_to_use)
 
-
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
                 return answer_kg, edge_to_nodes_map
-            log.debug(f"Query for edge {qedge_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+            log.debug(f"Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated

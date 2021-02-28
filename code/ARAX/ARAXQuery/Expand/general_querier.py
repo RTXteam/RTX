@@ -1,4 +1,5 @@
 #!/bin/env python3
+import json
 import sys
 import os
 from typing import List, Dict, Tuple, Set, Union
@@ -9,13 +10,12 @@ from Expand.expand_utilities import QGOrganizedKnowledgeGraph
 from ARAX_response import ARAXResponse
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.knowledge_graph import KnowledgeGraph
-from openapi_server.models.message import Message
+from openapi_server.models.response import Response
 from openapi_server.models.result import Result
 
 
@@ -48,37 +48,41 @@ class GeneralQuerier:
             return final_kg, edge_to_nodes_map
         if self.node_category_overrides_for_kp:
             query_graph = self._override_qnode_types_as_needed(query_graph)
+        self._verify_qg_is_accepted_by_kp(query_graph)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
         # Convert curies to the prefixes that this KP prefers (if we know that info)
         if self.kp_preferred_prefixes:
-            query_graph = self._convert_to_accepted_curies(query_graph)
+            query_graph = self._convert_to_accepted_curie_prefixes(query_graph)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         qedge = next(qedge for qedge in query_graph.edges.values())
 
         # Answer the query using the KP and load its answers into our Swagger model
         json_response = self._send_query_to_kp(query_graph)
-        returned_message = Message().from_dict(json_response['message'])
-        if not returned_message.results:
-            log.warning(f"No 'results' are present in the message returned from {self.kp_name}. Response from KP "
-                        f"was: {json_response}")
-            returned_message.results = []
+        kp_response = Response().from_dict(json_response)
+        if not kp_response.message:
+            log.warning(f"No 'message' was included in the response from {self.kp_name}. Response from KP was: "
+                        f"{json.dumps(json_response, indent=4)}")
+        elif not kp_response.message.results:
+            log.warning(f"No 'results' were returned from {self.kp_name}. Response from KP was: "
+                        f"{json.dumps(json_response, indent=4)}")
+            kp_response.message.results = []  # Setting this to empty list helps downstream processing
         else:
             # Build a map that indicates which qnodes/qedges a given node/edge fulfills
-            qg_id_mappings = self._get_qg_id_mappings_from_results(returned_message.results)
+            kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_response.message.results)
 
             # Populate our final KG with the returned nodes and edges
-            for returned_edge_key, returned_edge in returned_message.knowledge_graph.edges.items():
+            for returned_edge_key, returned_edge in kp_response.message.knowledge_graph.edges.items():
                 arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
-                for qedge_key in qg_id_mappings['edges'][returned_edge_key]:
+                for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
                     final_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
-            for returned_node_key, returned_node in returned_message.knowledge_graph.nodes.items():
-                for qnode_key in qg_id_mappings['nodes'][returned_node_key]:
+            for returned_node_key, returned_node in kp_response.message.knowledge_graph.nodes.items():
+                for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
                     final_kg.add_node(returned_node_key, returned_node, qnode_key)
             # Build a map that indicates which of an edge's nodes fulfill which qnode
-            edge_to_nodes_map = self._create_edge_to_nodes_map(qg_id_mappings, returned_message.knowledge_graph, qedge)
+            edge_to_nodes_map = self._create_edge_to_nodes_map(kg_to_qg_mappings, kp_response.message.knowledge_graph, qedge)
 
         return final_kg, edge_to_nodes_map
 
@@ -101,7 +105,6 @@ class GeneralQuerier:
         return query_graph
 
     def _verify_qg_is_accepted_by_kp(self, query_graph: QueryGraph):
-        # TODO: Make this work for "None" categories, move to somewhere else? (where Expand decides what KP to use?)
         kp_predicates_response = requests.get(f"{self.kp_endpoint}/predicates", headers={'accept': 'application/json'})
         if kp_predicates_response.status_code != 200:
             self.log.warning(f"Unable to access {self.kp_name}'s predicates endpoint "
@@ -116,35 +119,43 @@ class GeneralQuerier:
                 object_category = triple[1]
                 predicate = triple[2]
                 if subject_category not in predicates_dict:
-                    if not (subject_category is None and self.kp_name == "ARAX/KG2"):  # KG2 supports None for qnode categories, so we allow that (TODO: should the predicates endpoint indicate this?)
-                        self.log.error(f"{self.kp_name} cannot answer queries with {subject_category} as subject. Supported"
-                                       f" subject categories are: {list(predicates_dict)}", error_code="UnsupportedQueryForKP")
+                    # KG2 supports None for qnode categories, so we make an exception for that
+                    if not (subject_category is None and self.kp_name == "ARAX/KG2"):
+                        self.log.error(f"{self.kp_name} cannot answer queries with {subject_category} as subject. "
+                                       f"Supported subject categories are: {list(predicates_dict)}",
+                                       error_code="UnsupportedQueryForKP")
                 elif object_category not in predicates_dict[subject_category]:
-                    if not (object_category is None and self.kp_name == "ARAX/KG2"):  # KG2 supports None for qnode categories, so we allow that
-                        self.log.error(f"{self.kp_name} cannot answer queries from {subject_category} to {object_category}."
-                                       f"Supported object categories for a subject of {subject_category} are "
-                                       f"{list(predicates_dict[subject_category])}", error_code="UnsupportedQueryForKP")
+                    # KG2 supports None for qnode categories, so we make an exception for that
+                    if not (object_category is None and self.kp_name == "ARAX/KG2"):
+                        self.log.error(f"{self.kp_name} cannot answer queries from {subject_category} to "
+                                       f"{object_category}. Supported object categories for a subject of "
+                                       f"{subject_category} are {list(predicates_dict[subject_category])}",
+                                       error_code="UnsupportedQueryForKP")
                 elif predicate not in predicates_dict[subject_category][object_category]:
-                    self.log.error(f"For {subject_category}--{object_category} qedges, {self.kp_name} doesn't support "
-                                   f"a predicate of '{predicate}'. Supported predicates are: {predicates_dict[subject_category][object_category]}",
-                                   error_code="UnsupportedQueryForKP")
+                    # KG2 supports None for predicates, so we make an exception for that
+                    if not (predicate is None and self.kp_name == "ARAX/KG2"):
+                        self.log.error(f"For {subject_category}--{object_category} qedges, {self.kp_name} doesn't "
+                                       f"support a predicate of '{predicate}'. Supported predicates are: "
+                                       f"{predicates_dict[subject_category][object_category]}",
+                                       error_code="UnsupportedQueryForKP")
 
-    def _convert_to_accepted_curies(self, query_graph: QueryGraph) -> QueryGraph:
+    def _convert_to_accepted_curie_prefixes(self, query_graph: QueryGraph) -> QueryGraph:
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.id:
                 equivalent_curies = eu.get_curie_synonyms(qnode.id, self.log)
-                preferred_prefix = self.kp_preferred_prefixes[qnode.category]
-                desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{preferred_prefix}:")]
-                if desired_curies:
-                    qnode.id = desired_curies if len(desired_curies) > 1 else desired_curies[0]
-                    self.log.debug(f"Converted qnode {qnode_key} curie to {qnode.id}")
-                else:
-                    self.log.warning(f"Could not convert qnode {qnode_key} curie(s) to preferred prefix "
-                                     f"({self.kp_preferred_prefixes[qnode.category]})")
+                preferred_prefix = self.kp_preferred_prefixes.get(qnode.category)
+                if preferred_prefix:
+                    desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{preferred_prefix}:")]
+                    if desired_curies:
+                        qnode.id = desired_curies if len(desired_curies) > 1 else desired_curies[0]
+                        self.log.debug(f"Converted qnode {qnode_key} curie to {qnode.id}")
+                    else:
+                        self.log.warning(f"Could not convert qnode {qnode_key} curie(s) to preferred prefix "
+                                         f"({self.kp_preferred_prefixes[qnode.category]})")
         return query_graph
 
     @staticmethod
-    def _get_qg_id_mappings_from_results(results: List[Result]) -> Dict[str, Dict[str, Set[str]]]:
+    def _get_kg_to_qg_mappings_from_results(results: List[Result]) -> Dict[str, Dict[str, Set[str]]]:
         """
         This function returns a dictionary in which one can lookup which qnode_keys/qedge_keys a given node/edge
         fulfills. Like: {"nodes": {"PR:11": {"n00"}, "MESH:22": {"n00", "n01"} ... }, "edges": { ... }}
@@ -166,17 +177,17 @@ class GeneralQuerier:
                     qedge_key_mappings[kg_id].add(qedge_key)
         return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}
 
-    def _create_edge_to_nodes_map(self, qg_id_mappings: Dict[str, Dict[str, Set[str]]], kg: KnowledgeGraph, qedge: QEdge) -> Dict[str, Dict[str, str]]:
+    def _create_edge_to_nodes_map(self, kg_to_qg_mappings: Dict[str, Dict[str, Set[str]]], kg: KnowledgeGraph, qedge: QEdge) -> Dict[str, Dict[str, str]]:
         """
         This function creates an 'edge_to_nodes_map' that indicates which of an edge's nodes (subject or object) is
         fulfilling which qnode ID (since edge.subject does not necessarily fulfill qedge.subject).
-        Example: {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
+        Example: {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:12'}}
         """
         edge_to_nodes_map = dict()
-        kg_node_to_qnode_mappings = qg_id_mappings["nodes"]
+        node_to_qnode_map = kg_to_qg_mappings["nodes"]
         for edge_key, edge in kg.edges.items():
             arax_edge_key = self._get_arax_edge_key(edge)  # We use edge keys guaranteed to be unique across KPs
-            if qedge.subject in kg_node_to_qnode_mappings[edge.subject] and qedge.object in kg_node_to_qnode_mappings[edge.object]:
+            if qedge.subject in node_to_qnode_map[edge.subject] and qedge.object in node_to_qnode_map[edge.object]:
                 edge_to_nodes_map[arax_edge_key] = {qedge.subject: edge.subject, qedge.object: edge.object}
             else:
                 edge_to_nodes_map[arax_edge_key] = {qedge.subject: edge.object, qedge.object: edge.subject}
@@ -192,11 +203,9 @@ class GeneralQuerier:
         # Send the query to the KP's API
         body = {'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}}
         kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'})
-        if kp_response.status_code == 200:
-            return kp_response.json()
-        else:
-            self.log.warning(f"{self.kp_name} KP API returned response of {kp_response.status_code}: {kp_response.text}")
-            return None
+        if kp_response.status_code != 200:
+            self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}")
+        return kp_response.json()
 
     @staticmethod
     def _strip_empty_properties(qnode_or_qedge: Union[QNode, QEdge]) -> Dict[str, any]:
@@ -204,11 +213,6 @@ class GeneralQuerier:
         stripped_dict = {property_name: value for property_name, value in dict_version_of_object.items()
                          if dict_version_of_object.get(property_name) is not None}
         return stripped_dict
-
-    @staticmethod
-    def _create_swagger_node_from_kp_node(kp_node_key: str, kp_node: Dict[str, any]) -> Tuple[str, Node]:
-        return kp_node_key, Node(category=kp_node['category'],
-                                 name=kp_node.get('name'))
 
     def _get_arax_edge_key(self, edge: Edge) -> str:
         return f"{self.kp_name}:{edge.subject}-{edge.predicate}-{edge.object}"

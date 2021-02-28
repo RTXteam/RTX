@@ -128,7 +128,7 @@ def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
 def get_printable_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> str:
     counts_by_qg_id = get_counts_by_qg_id(dict_kg)
     counts_string = ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
-    return counts_string if counts_string else "none found"
+    return counts_string if counts_string else "no answers"
 
 
 def get_qg_without_kryptonite_portion(qg: QueryGraph) -> QueryGraph:
