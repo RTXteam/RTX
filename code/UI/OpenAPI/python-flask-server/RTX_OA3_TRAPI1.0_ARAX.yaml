@@ -619,6 +619,10 @@ components:
             An arbitrary list of values that captures the essence of the result
             that can be turned into a tabular result across all answers (each
             result is a row) for a user that wants simplified tabular output
+          items:
+            oneOf:
+              - type: string
+              - type: number
           nullable: true
         score:
           type: number

@@ -202,21 +202,12 @@ components:
           description: >-
             Page number of results when the number of results exceeds the
             page_size
-        reasoner_ids:
-          type: array
-          description: >-
-            List of reasoners to consult for the query. By default it is
-            assumed to be the current reasoner being queried, but this
-            mechanism could be used to proxy queries to other reasoners.
-          items:
-            type: string
         operations:
           description: >-
             Container for one or more Message objects or identifiers for one or
             more Messages along with a processing plan and options for how those
             messages should be processed and returned
-          allOf:
-            - $ref: '#/components/schemas/Operations'
+          type: object
       additionalProperties: true
       required:
         - message
@@ -508,6 +499,10 @@ components:
             An arbitrary list of values that captures the essence of the result
             that can be turned into a tabular result across all answers (each
             result is a row) for a user that wants simplified tabular output
+          items:
+            oneOf:
+              - type: string
+              - type: number
           nullable: true
         score:
           type: number
