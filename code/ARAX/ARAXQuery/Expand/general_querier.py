@@ -48,7 +48,7 @@ class GeneralQuerier:
             return final_kg, edge_to_nodes_map
         if self.node_category_overrides_for_kp:
             query_graph = self._override_qnode_types_as_needed(query_graph)
-        self._verify_qg_is_accepted_by_kp(query_graph)
+        # self._verify_qg_is_accepted_by_kp(query_graph)  TODO: reinstate this once have smoothed out validation
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
@@ -101,10 +101,11 @@ class GeneralQuerier:
         for qnode_key, qnode in query_graph.nodes.items():
             overriden_categories = {self.node_category_overrides_for_kp.get(qnode_category, qnode_category)
                                     for qnode_category in eu.convert_string_or_list_to_list(qnode.category)}
-            qnode.category = list(overriden_categories)[0] if len(overriden_categories) == 1 else list(overriden_categories)
+            qnode.category = list(overriden_categories)
         return query_graph
 
     def _verify_qg_is_accepted_by_kp(self, query_graph: QueryGraph):
+        # TODO: Handle lists for qnode.category or qedge.predicate; what will this mean in terms of validation?
         kp_predicates_response = requests.get(f"{self.kp_endpoint}/predicates", headers={'accept': 'application/json'})
         if kp_predicates_response.status_code != 200:
             self.log.warning(f"Unable to access {self.kp_name}'s predicates endpoint "
@@ -143,7 +144,7 @@ class GeneralQuerier:
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.id:
                 equivalent_curies = eu.get_curie_synonyms(qnode.id, self.log)
-                preferred_prefix = self.kp_preferred_prefixes.get(qnode.category)
+                preferred_prefix = self.kp_preferred_prefixes.get(qnode.category[0])  # TODO: right to take first item?
                 if preferred_prefix:
                     desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{preferred_prefix}:")]
                     if desired_curies:
@@ -151,7 +152,7 @@ class GeneralQuerier:
                         self.log.debug(f"Converted qnode {qnode_key} curie to {qnode.id}")
                     else:
                         self.log.warning(f"Could not convert qnode {qnode_key} curie(s) to preferred prefix "
-                                         f"({self.kp_preferred_prefixes[qnode.category]})")
+                                         f"({self.kp_preferred_prefixes[qnode.category[0]]})")
         return query_graph
 
     @staticmethod

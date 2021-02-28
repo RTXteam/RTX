@@ -392,6 +392,21 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     return endpoint_map.get(kp_name)
 
 
+def switch_back_to_str_or_list_types(qg: QueryGraph) -> QueryGraph:
+    # Switches QG back to old style where qnode.category and qedge.predicate can be strings OR lists (vs. always lists)
+    for qnode in qg.nodes.values():
+        if not qnode.category:
+            qnode.category = None
+        elif len(qnode.category) == 1:
+            qnode.category = qnode.category[0]
+    for qedge in qg.edges.values():
+        if not qedge.predicate:
+            qedge.predicate = None
+        elif len(qedge.predicate) == 1:
+            qedge.predicate = qedge.predicate[0]
+    return qg
+
+
 def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
     # This is a temporary patch until we switch to KG2.5+
     predicates_with_commas = {"positively_regulates_entity_to_entity": "positively_regulates,_entity_to_entity",
@@ -405,13 +420,12 @@ def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
         if qnode.category:
             categories = convert_string_or_list_to_list(qnode.category)
             prefixless_categories = [category.split(":")[-1] for category in categories]
-            formatted_categories = [convert_string_to_snake_case(category) for category in prefixless_categories]
-            qnode.category = formatted_categories[0] if len(formatted_categories) == 1 else formatted_categories
+            qnode.category = [convert_string_to_snake_case(category) for category in prefixless_categories]
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
-            prefixless_predicate = qedge.predicate.split(":")[-1]
-            predicate_with_commas = predicates_with_commas.get(prefixless_predicate, prefixless_predicate)
-            qedge.predicate = predicate_with_commas
+            predicates = convert_string_or_list_to_list(qedge.predicate)
+            prefixless_predicates = [predicate.split(":")[-1] for predicate in predicates]
+            qedge.predicate = [predicates_with_commas.get(predicate, predicate) for predicate in prefixless_predicates]
     return qg_copy
 
 

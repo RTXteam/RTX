@@ -308,13 +308,19 @@ class ARAXExpander:
             for qedge in query_graph.edges.values():
                 qedge.option_group_id = None
                 qedge.exclude = None
+        # Convert all qnode categories and qedge predicates to lists (easier than supporting either string AND list)
+        for qnode in query_graph.nodes.values():
+            qnode.category = eu.convert_string_or_list_to_list(qnode.category)
+        for qedge in query_graph.edges.values():
+            qedge.predicate = eu.convert_string_or_list_to_list(qedge.predicate)
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
         # Consider both protein and gene if qnode's category is one of those (since KPs handle these differently)
+        protein_gene_categories = {self.protein_category, self.gene_category}
         for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.category in {self.protein_category, self.gene_category, "protein", "gene"}:
-                qnode.category = [self.protein_category, self.gene_category]
+            if qnode.category and set(qnode.category).intersection(protein_gene_categories):
+                qnode.category = list(set(qnode.category).union(protein_gene_categories))
                 log.debug(f"Will consider qnode {qnode_key}'s category to be {qnode.category}")
 
         # Expand any specified edges
@@ -572,7 +578,7 @@ class ARAXExpander:
                     # Means the NodeSynonymizer didn't recognize this curie
                     preferred_curie = node_key
                     preferred_name = node.name
-                    preferred_category = node.category
+                    preferred_category = eu.convert_string_or_list_to_list(node.category)
                     curie_mappings[node_key] = preferred_curie
 
                 # Add this node into our deduplicated KG as necessary
@@ -906,10 +912,10 @@ class ARAXExpander:
     def _override_node_categories(kg: KnowledgeGraph, qg: QueryGraph):
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
         for node in kg.nodes.values():
-            corresponding_qnode_categories = {qg.nodes[qnode_key].category for qnode_key in node.qnode_keys}
-            non_none_categories = [qnode_category for qnode_category in corresponding_qnode_categories if qnode_category]
-            if non_none_categories:
-                node.category = non_none_categories
+            corresponding_qnode_categories = {category for qnode_key in node.qnode_keys for category in
+                                              eu.convert_string_or_list_to_list(qg.nodes[qnode_key].category)}
+            if corresponding_qnode_categories:
+                node.category = list(corresponding_qnode_categories)
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):
