@@ -11,9 +11,17 @@ var compare_tsv = [];
 var columnlist = [];
 var UIstate = {};
 
+// defaults
 var base = "";
 var baseAPI = base + "api/arax/v1.0";
-//var baseAPI = base + "api/rtxkg2/v1.0";
+
+// possibly imported by calling page (e.g. index.html)
+if (typeof config !== 'undefined') {
+    if (config.base)
+	base = config.base;
+    if (config.baseAPI)
+	baseAPI = config.baseAPI;
+}
 
 var providers = {
     "ARAX" : { "url" : baseAPI + "/response/" },
@@ -22,6 +30,8 @@ var providers = {
 
 
 function main() {
+    document.getElementById("menuapiurl").href = baseAPI + "/ui/";
+
     get_example_questions();
     load_nodes_and_predicates();
     populate_dsl_commands();
@@ -30,6 +40,7 @@ function main() {
     add_status_divs();
     cytodata[99999] = 'dummy';
     UIstate.nodedd = 1;
+    UIstate.hasNodeArray = false;
 
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
@@ -165,6 +176,7 @@ function reset_vars() {
     cyobj = [];
     cytodata = [];
     UIstate.nodedd = 1;
+    UIstate.hasNodeArray = false;
 }
 
 
@@ -1067,7 +1079,8 @@ function render_response(respObj,dispjson) {
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
     add_cyto(0);
-    add_cyto(99999);
+    if (!UIstate.hasNodeArray)
+	add_cyto(99999);
     statusdiv.appendChild(document.createTextNode("done."));
     sesame('openmax',statusdiv);
 }
@@ -1268,15 +1281,25 @@ function process_graph(gne,gid) {
 	if (gnode.node_id) // deal with QueryGraphNode (QNode)
 	    gnode.id = gnode.node_id;
 
-	if (!gnode.id)
-	    gnode.id = id;
+	//if (!gnode.id)
+	//gnode.id = id;
 
-	if (gnode.id) {
+        if (gnode.id) {
+	    if (Array.isArray(gnode.id)) {
+		if (gnode.id.length == 1)
+		    gnode.id = gnode.id[0];
+		else
+		    UIstate.hasNodeArray = true;
+	    }
+
 	    if (gnode.name)
 		gnode.name += " ("+gnode.id+")";
 	    else
 		gnode.name = gnode.id;
 	}
+
+        gnode.id = id;
+
 	if (!gnode.name) {
 	    if (gnode.category)
 		gnode.name = gnode.category + "s?";

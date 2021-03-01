@@ -195,19 +195,11 @@ components:
             page_size
           example: 1
           type: integer
-        reasoner_ids:
-          description: List of reasoners to consult for the query. By default it is
-            assumed to be the current reasoner being queried, but this mechanism could
-            be used to proxy queries to other reasoners.
-          items:
-            type: string
-          type: array
         operations:
-          allOf:
-          - $ref: '#/components/schemas/Operations'
           description: Container for one or more Message objects or identifiers for
             one or more Messages along with a processing plan and options for how
             those messages should be processed and returned
+          type: object
       required:
       - message
       type: object
