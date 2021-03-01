@@ -104,13 +104,17 @@ class QueryGraphInfo:
 
             #### Store lookup of categorys
             warning_counter = 0
-            if qnode.category is None:
+            if qnode.category is None or ( isinstance(qnode.category,list) and len(qnode.category) == 0 ):
                 if warning_counter == 0:
-                    response.debug("QueryGraph has nodes with no category. This may cause problems with results inference later")
+                    #response.debug("QueryGraph has nodes with no category. This may cause problems with results inference later")
+                    pass
                 warning_counter += 1
                 self.node_category_map['unknown'] = key
             else:
-                self.node_category_map[qnode.category] = key
+                category = qnode.category
+                if isinstance(qnode.category,list):
+                    category = qnode.category[0]                # FIXME this is a hack prior to proper list handling
+                self.node_category_map[category] = key
 
         #### Loop through edges computing some stats
         edge_info = {}
@@ -125,14 +129,20 @@ class QueryGraphInfo:
 
         for key,qedge in edges.items():
 
-            if qedge.predicate is not None and qedge.predicate in virtual_edge_predicates:
+            predicate = qedge.predicate
+            if isinstance(predicate,list):
+                if len(predicate) == 0:
+                    predicate = None
+                else:
+                    predicate = predicate[0]                       # FIXME Hack before dealing with predicates as lists!
+
+            if predicate is not None and predicate in virtual_edge_predicates:
                 continue
 
             edge_info[key] = { 'key': key, 'has_predicate': False, 'subject': qedge.subject, 'object': qedge.object, 'predicate': None }
-            #if qnode.predicate is not None:
-            if qedge.predicate is not None:
+            if predicate is not None:
                 edge_info[key]['has_predicate'] = True
-                edge_info[key]['predicate'] = qedge.predicate
+                edge_info[key]['predicate'] = predicate
 
             if key is None:
                 response.error("QueryGraph has a edge with null key. This is not permitted", error_code="QueryGraphEdgeWithNoKey")
@@ -160,12 +170,12 @@ class QueryGraphInfo:
             #### Store lookup of predicates
             warning_counter = 0
             edge_predicate = 'any'
-            if qedge.predicate is None:
+            if predicate is None:
                 if warning_counter == 0:
                     response.debug("QueryGraph has edges with no predicate. This may cause problems with results inference later")
                 warning_counter += 1
             else:
-                edge_predicate = qedge.predicate
+                edge_predicate = predicate
 
             #### It's not clear yet whether we need to store the whole sentence or just the predicate
             #predicate_encoding = f"{node_info[qedge.subject]['predicate']}---{edge_predicate}---{node_info[qedge.object]['predicate']}"
