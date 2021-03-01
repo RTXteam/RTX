@@ -144,6 +144,7 @@ class ARAXQuery:
         messenger.create_envelope(response)
 
         #### Determine a plan for what to do based on the input
+        #eprint(json.dumps(query, indent=2, sort_keys=True))
         result = self.examine_incoming_query(query, mode=mode)
         if result.status != 'OK':
             return response
@@ -158,9 +159,14 @@ class ARAXQuery:
                 query['message'] = ARAXMessenger().from_dict(query['message'])
                 pass
             else:
+                response.debug(f"Deserializing message")
                 query['message'] = ARAXMessenger().from_dict(query['message'])
+                #eprint(json.dumps(query['message'].__dict__, indent=2, sort_keys=True))
                 #print(response.__dict__)
+                response.debug(f"Storing deserializing message")
                 response.envelope.message.query_graph = query['message'].query_graph
+                response.debug(f"Logging query_graph")
+                eprint(json.dumps(ast.literal_eval(repr(response.envelope.message.query_graph)), indent=2, sort_keys=True))
 
                 if mode == 'ARAX':
                     response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
