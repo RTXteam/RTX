@@ -227,7 +227,7 @@ class ARAXExpander:
         """
         return list(self.command_definitions.values())
 
-    def apply(self, response, input_parameters):
+    def apply(self, response, input_parameters, mode="ARAX"):
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
@@ -290,25 +290,37 @@ class ARAXExpander:
             return response
 
         response.data['parameters'] = parameters
-        self.parameters = parameters
 
         # Do the actual expansion
         log.debug(f"Applying Expand to Message with parameters {parameters}")
         input_qedge_keys = eu.convert_string_or_list_to_list(parameters['edge_key'])
         input_qnode_keys = eu.convert_string_or_list_to_list(parameters['node_key'])
-        kp_to_use = self.parameters['kp']
-        continue_if_no_results = self.parameters['continue_if_no_results']
-        use_synonyms = self.parameters['use_synonyms']
+        kp_to_use = parameters['kp']
+        continue_if_no_results = parameters['continue_if_no_results']
+        use_synonyms = parameters['use_synonyms']
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
                                  edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
+        # If this is a query being sent to the KG2 API, ignore all option_group_id and exclude properties
+        if mode == "RTXKG2":
+            for qnode in query_graph.nodes.values():
+                qnode.option_group_id = None
+            for qedge in query_graph.edges.values():
+                qedge.option_group_id = None
+                qedge.exclude = None
+        # Convert all qnode categories and qedge predicates to lists (easier than supporting either string AND list)
+        for qnode in query_graph.nodes.values():
+            qnode.category = eu.convert_string_or_list_to_list(qnode.category)
+        for qedge in query_graph.edges.values():
+            qedge.predicate = eu.convert_string_or_list_to_list(qedge.predicate)
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
         # Consider both protein and gene if qnode's category is one of those (since KPs handle these differently)
+        protein_gene_categories = {self.protein_category, self.gene_category}
         for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.category in {self.protein_category, self.gene_category, "protein", "gene"}:
-                qnode.category = [self.protein_category, self.gene_category]
+            if qnode.category and set(qnode.category).intersection(protein_gene_categories):
+                qnode.category = list(set(qnode.category).union(protein_gene_categories))
                 log.debug(f"Will consider qnode {qnode_key}'s category to be {qnode.category}")
 
         # Expand any specified edges
@@ -324,7 +336,7 @@ class ARAXExpander:
             for qedge_key in ordered_qedge_keys_to_expand:
                 qedge = query_graph.edges[qedge_key]
                 answer_kg, edge_node_usage_map = self._expand_edge(qedge_key, kp_to_use, dict_kg, continue_if_no_results,
-                                                                   query_graph, use_synonyms, log)
+                                                                   query_graph, use_synonyms, mode, log)
                 if log.status != 'OK':
                     return response
                 elif qedge.exclude and not answer_kg.is_empty():
@@ -346,7 +358,8 @@ class ARAXExpander:
         # Expand any specified nodes
         if input_qnode_keys:
             for qnode_key in input_qnode_keys:
-                answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms, log)
+                answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms,
+                                              mode, log)
                 if log.status != 'OK':
                     return response
 
@@ -377,7 +390,7 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, qedge_key: str, kp_to_use: str, dict_kg: QGOrganizedKnowledgeGraph, continue_if_no_results: bool,
-                     query_graph: QueryGraph, use_synonyms: bool, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+                     query_graph: QueryGraph, use_synonyms: bool, mode: str, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
@@ -417,13 +430,17 @@ class ARAXExpander:
             elif kp_to_use == 'MolePro':
                 from Expand.molepro_querier import MoleProQuerier
                 kp_querier = MoleProQuerier(log)
+            elif (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
+                from Expand.kg2_querier import KG2Querier
+                kp_querier = KG2Querier(log, kp_to_use)
             else:
-                from Expand.kg_querier import KGQuerier
-                kp_querier = KGQuerier(log, kp_to_use)
+                from Expand.general_querier import GeneralQuerier
+                kp_querier = GeneralQuerier(log, kp_to_use)
+
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
                 return answer_kg, edge_to_nodes_map
-            log.debug(f"Query for edge {qedge_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+            log.debug(f"Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
@@ -441,7 +458,7 @@ class ARAXExpander:
             return answer_kg, edge_to_nodes_map
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
-                     use_synonyms: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     use_synonyms: bool, mode: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -456,9 +473,13 @@ class ARAXExpander:
         # Answer the query using the proper KP
         valid_kps_for_single_node_queries = ["ARAX/KG1", "ARAX/KG2"]
         if kp_to_use in valid_kps_for_single_node_queries:
-            from Expand.kg_querier import KGQuerier
-            kg_querier = KGQuerier(log, kp_to_use)
-            answer_kg = kg_querier.answer_single_node_query(single_node_qg)
+            if (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
+                from Expand.kg2_querier import KG2Querier
+                kp_querier = KG2Querier(log, kp_to_use)
+            else:
+                from Expand.general_querier import GeneralQuerier
+                kp_querier = GeneralQuerier(log, kp_to_use)
+            answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Make sure all qnodes have been fulfilled (unless we're continuing if no results)
@@ -557,7 +578,7 @@ class ARAXExpander:
                     # Means the NodeSynonymizer didn't recognize this curie
                     preferred_curie = node_key
                     preferred_name = node.name
-                    preferred_category = node.category
+                    preferred_category = eu.convert_string_or_list_to_list(node.category)
                     curie_mappings[node_key] = preferred_curie
 
                 # Add this node into our deduplicated KG as necessary
@@ -891,10 +912,10 @@ class ARAXExpander:
     def _override_node_categories(kg: KnowledgeGraph, qg: QueryGraph):
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
         for node in kg.nodes.values():
-            corresponding_qnode_categories = {qg.nodes[qnode_key].category for qnode_key in node.qnode_keys}
-            non_none_categories = [qnode_category for qnode_category in corresponding_qnode_categories if qnode_category]
-            if non_none_categories:
-                node.category = non_none_categories
+            corresponding_qnode_categories = {category for qnode_key in node.qnode_keys for category in
+                                              eu.convert_string_or_list_to_list(qg.nodes[qnode_key].category)}
+            if corresponding_qnode_categories:
+                node.category = list(corresponding_qnode_categories)
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):
