@@ -67,9 +67,9 @@ class ARAXQuery:
             self.response = self.DBManager.update_databases(True, response=self.response)
 
 
-    def query_return_stream(self,query):
+    def query_return_stream(self,query, mode='ARAX'):
 
-        main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,))
+        main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,mode,))
         main_query_thread.start()
 
         if self.response is None or "DONE" not in self.response.status:
@@ -105,14 +105,14 @@ class ARAXQuery:
         return { 'DONE': True }
 
 
-    def asynchronous_query(self,query):
+    def asynchronous_query(self,query, mode='ARAX'):
 
         #### Define a new response object if one does not yet exist
         if self.response is None:
             self.response = ARAXResponse()
 
         #### Execute the query
-        self.query(query)
+        self.query(query, mode=mode)
 
         #### Do we still need all this cruft?
         #result = self.query(query)
@@ -129,14 +129,14 @@ class ARAXQuery:
         return
 
 
-    def query_return_message(self,query):
+    def query_return_message(self,query, mode='ARAX'):
 
-        self.query(query)
+        self.query(query, mode=mode)
         response = self.response
         return response.envelope
 
 
-    def query(self,query):
+    def query(self,query, mode='ARAX'):
 
         #### Create the skeleton of the response
         response = ARAXResponse()
@@ -145,14 +145,15 @@ class ARAXQuery:
         #### Announce the launch of query()
         #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
         ARAXResponse.output = 'STDERR'
-        response.info(f"ARAXQuery launching on incoming Query")
+        response.info(f"{mode} Query launching on incoming Query")
 
         #### Create an empty envelope
         messenger = ARAXMessenger()
         messenger.create_envelope(response)
 
         #### Determine a plan for what to do based on the input
-        result = self.examine_incoming_query(query)
+        #eprint(json.dumps(query, indent=2, sort_keys=True))
+        result = self.examine_incoming_query(query, mode=mode)
         if result.status != 'OK':
             return response
         query_attributes = result.data
@@ -167,23 +168,38 @@ class ARAXQuery:
                 query['message'] = ARAXMessenger().from_dict(query['message'])
                 pass
             else:
-                response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
-                interpreter = ARAXQueryGraphInterpreter()
+                response.debug(f"Deserializing message")
                 query['message'] = ARAXMessenger().from_dict(query['message'])
-                print(response.__dict__)
+                #eprint(json.dumps(query['message'].__dict__, indent=2, sort_keys=True))
+                #print(response.__dict__)
+                response.debug(f"Storing deserializing message")
                 response.envelope.message.query_graph = query['message'].query_graph
-                interpreter.translate_to_araxi(response)
-                if response.status != 'OK':
-                    return response
-                query['operations'] = {}
-                query['operations']['actions'] = result.data['araxi_commands']
+                response.debug(f"Logging query_graph")
+                eprint(json.dumps(ast.literal_eval(repr(response.envelope.message.query_graph)), indent=2, sort_keys=True))
+
+                if mode == 'ARAX':
+                    response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                    interpreter = ARAXQueryGraphInterpreter()
+                    interpreter.translate_to_araxi(response)
+                    if response.status != 'OK':
+                        return response
+                    query['operations'] = {}
+                    query['operations']['actions'] = result.data['araxi_commands']
+                else:
+                    response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
+                    if len(response.envelope.message.query_graph.nodes) > 2:
+                        response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
+                        return response
+                    query['operations'] = {}
+                    query['operations']['actions'] = [ 'expand(kp=ARAX/KG2)', 'resultify()', 'return(store=false)' ]
+
                 query_attributes['have_operations'] = True
 
 
         #### If we have operations, handle that
         if "have_operations" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
-            result = self.executeProcessingPlan(query)
+            result = self.execute_processing_plan(query, mode=mode)
             return response
 
         #### Otherwise extract the id and the terms from the incoming parameters
@@ -296,7 +312,7 @@ class ARAXQuery:
 
 
 
-    def examine_incoming_query(self,query):
+    def examine_incoming_query(self, query, mode='ARAX'):
 
         response = self.response
         response.info(f"Examine input query for needed information for dispatch")
@@ -344,6 +360,12 @@ class ARAXQuery:
         # #### FIXME Need to do more validation and tidying of the incoming message here or somewhere
 
 
+        # RTXKG2 does not support operations
+        if mode == 'RTXKG2' and "have_operations" in response.data:
+            response.error("RTXKG2 does not support operations in Query", error_code="OperationsNotSupported")
+            return response
+
+
         #### If we got this far, then everything seems to be good enough to proceed
         return response
 
@@ -385,10 +407,10 @@ class ARAXQuery:
 
     ############################################################################################
     #### Given an input query with a processing plan, execute that processing plan on the input
-    def executeProcessingPlan(self,input_operations_dict):
+    def execute_processing_plan(self,input_operations_dict, mode='ARAX'):
 
         response = self.response
-        response.debug(f"Entering executeProcessingPlan")
+        response.debug(f"Entering execute_processing_plan")
         messages = []
         message = None
 
@@ -567,7 +589,7 @@ class ARAXQuery:
                         messenger.add_qedge(response,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        expander.apply(response,action['parameters'])
+                        expander.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'filter':
                         filter.apply(response,action['parameters'])
@@ -671,10 +693,12 @@ class ARAXQuery:
 
             #### Else just the id is returned
             else:
+                n_results = len(message.results)
+                response.info(f"Processing is complete and resulted in {n_results} results.")
                 if response_id is None:
                     response_id = 0
-                n_results = len(message.results)
-                response.info(f"Processing is complete. Resulting Message id is {response_id} and is available to fetch via /response endpoint.")
+                else:
+                    response.info(f"Resulting Message id is {response_id} and is available to fetch via /response endpoint.")
 
                 servername = 'localhost'
                 if self.rtxConfig.is_production_server:

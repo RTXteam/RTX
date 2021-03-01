@@ -78,10 +78,17 @@ class QueryGraphInfo:
                 #### If the user did not specify a category, but there is a curie, try to figure out the category
                 if node_info[key]['category'] is None:
                     synonymizer = NodeSynonymizer()
-                    canonical_curies = synonymizer.get_canonical_curies(curies=[qnode.id], return_all_types=True)
-                    if qnode.id in canonical_curies and 'preferred_type' in canonical_curies[qnode.id]:
+                    curie = qnode.id
+                    curies_list = qnode.id
+                    if isinstance(qnode.id,list):
+                        curie = qnode.id[0]
+                    else:
+                        curies_list = [ qnode.id ]
+
+                    canonical_curies = synonymizer.get_canonical_curies(curies=curies_list, return_all_types=True)
+                    if curie in canonical_curies and 'preferred_type' in canonical_curies[curie]:
                         node_info[key]['has_category'] = True
-                        node_info[key]['category'] = canonical_curies[qnode.id]['preferred_type']
+                        node_info[key]['category'] = canonical_curies[curie]['preferred_type']
 
             if qnode.category is not None:
                 node_info[key]['has_category'] = True

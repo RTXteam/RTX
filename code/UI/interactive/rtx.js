@@ -11,15 +11,27 @@ var compare_tsv = [];
 var columnlist = [];
 var UIstate = {};
 
-var baseAPI = "";
+// defaults
+var base = "";
+var baseAPI = base + "api/arax/v1.0";
+
+// possibly imported by calling page (e.g. index.html)
+if (typeof config !== 'undefined') {
+    if (config.base)
+	base = config.base;
+    if (config.baseAPI)
+	baseAPI = config.baseAPI;
+}
 
 var providers = {
-    "ARAX" : { "url" : baseAPI + "api/arax/v1.0/response/" },
-    "ARS"  : { "url" : baseAPI + "api/arax/v1.0/response/" }
+    "ARAX" : { "url" : baseAPI + "/response/" },
+    "ARS"  : { "url" : baseAPI + "/response/" }
 };
 
 
 function main() {
+    document.getElementById("menuapiurl").href = baseAPI + "/ui/";
+
     get_example_questions();
     load_nodes_and_predicates();
     populate_dsl_commands();
@@ -28,6 +40,7 @@ function main() {
     add_status_divs();
     cytodata[99999] = 'dummy';
     UIstate.nodedd = 1;
+    UIstate.hasNodeArray = false;
 
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
@@ -163,6 +176,7 @@ function reset_vars() {
     cyobj = [];
     cytodata = [];
     UIstate.nodedd = 1;
+    UIstate.hasNodeArray = false;
 }
 
 
@@ -278,7 +292,7 @@ function postQuery(qtype) {
     sesame('openmax',statusdiv);
 
     add_to_dev_info("Posted to QUERY",queryObj);
-    fetch(baseAPI + "api/arax/v1.0/query", {
+    fetch(baseAPI + "/query", {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -679,7 +693,7 @@ function sendQuestion(e) {
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
-    xhr.open("post", baseAPI + "api/arax/v1.0/translate", true);
+    xhr.open("post", baseAPI + "/translate", true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
     // send the collected data as JSON
@@ -695,7 +709,7 @@ function sendQuestion(e) {
 
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post",  baseAPI + "api/arax/v1.0/query", true);
+		xhr2.open("post",  baseAPI + "/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
                 //var queryObj = { "message" : jsonObj };
@@ -1065,7 +1079,8 @@ function render_response(respObj,dispjson) {
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
     add_cyto(0);
-    add_cyto(99999);
+    if (!UIstate.hasNodeArray)
+	add_cyto(99999);
     statusdiv.appendChild(document.createTextNode("done."));
     sesame('openmax',statusdiv);
 }
@@ -1266,15 +1281,25 @@ function process_graph(gne,gid) {
 	if (gnode.node_id) // deal with QueryGraphNode (QNode)
 	    gnode.id = gnode.node_id;
 
-	if (!gnode.id)
-	    gnode.id = id;
+	//if (!gnode.id)
+	//gnode.id = id;
 
-	if (gnode.id) {
+        if (gnode.id) {
+	    if (Array.isArray(gnode.id)) {
+		if (gnode.id.length == 1)
+		    gnode.id = gnode.id[0];
+		else
+		    UIstate.hasNodeArray = true;
+	    }
+
 	    if (gnode.name)
 		gnode.name += " ("+gnode.id+")";
 	    else
 		gnode.name = gnode.id;
 	}
+
+        gnode.id = id;
+
 	if (!gnode.name) {
 	    if (gnode.category)
 		gnode.name = gnode.category + "s?";
@@ -2550,7 +2575,7 @@ function abort_dsl() {
 
 
 function get_example_questions() {
-    fetch(baseAPI + "api/arax/v1.0/exampleQuestions")
+    fetch(baseAPI + "/exampleQuestions")
         .then(response => response.json())
         .then(data => {
 	    //add_to_dev_info("EXAMPLE Qs",data);
@@ -2580,7 +2605,7 @@ function load_nodes_and_predicates() {
     var allnodes_node = document.getElementById("allnodetypes");
     allnodes_node.innerHTML = '';
 
-    fetch(baseAPI + "api/arax/v1.0/predicates")
+    fetch(baseAPI + "/predicates")
 	.then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong');
@@ -2867,7 +2892,7 @@ function check_entities_batch(batchsize) {
     if (thisbatch) batches.push(thisbatch);
 
     for (let batch of batches) {
-        fetch(baseAPI + "api/arax/v1.0/entity?output_mode=minimal" + batch)
+        fetch(baseAPI + "/entity?output_mode=minimal" + batch)
 	    .then(response => response.json())
 	    .then(data => {
 		add_to_dev_info("ENTITIES:"+batch,data);
@@ -2913,7 +2938,7 @@ function check_entities() {
     for (let entity in entities) {
 	if (entities[entity].checkHTML != '--') continue;
 
-	fetch(baseAPI + "api/arax/v1.0/entity?q=" + entity)
+	fetch(baseAPI + "/entity?q=" + entity)
 	    .then(response => response.json())
 	    .then(data => {
                 add_to_dev_info("ENTITIES:"+entity,data);
@@ -2978,7 +3003,7 @@ async function check_entity(term,wantall) {
 	data = entities[term];
     }
     else {
-	var response = await fetch(baseAPI + "api/arax/v1.0/entity?q=" + term);
+	var response = await fetch(baseAPI + "/entity?q=" + term);
 	var fulldata = await response.json();
 
 	add_to_dev_info("ENTITY:"+term,fulldata);
