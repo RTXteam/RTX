@@ -234,21 +234,14 @@ class ARAXExpander:
             message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
         log = response
 
-        # We'll use a copy of the QG because we modify it for internal use within Expand
-        query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
-                                 edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
-        # If this is a query being sent to the KG2 API, ignore all option_group_id and exclude properties
+        # If this is a query for the KG2 API, ignore all option_group_id and exclude properties (only does one-hop)
         if mode == "RTXKG2":
-            for qnode in query_graph.nodes.values():
+            log.debug(f"Ignoring all 'option_group_id' and 'exclude' properties on qnodes/qedges since we're in RTXKG2 mode")
+            for qnode in message.query_graph.nodes.values():
                 qnode.option_group_id = None
-            for qedge in query_graph.edges.values():
+            for qedge in message.query_graph.edges.values():
                 qedge.option_group_id = None
                 qedge.exclude = None
-        # Convert all qnode categories and qedge predicates to lists (easier than supporting either string AND list)
-        for qnode in query_graph.nodes.values():
-            qnode.category = eu.convert_string_or_list_to_list(qnode.category)
-        for qedge in query_graph.edges.values():
-            qedge.predicate = eu.convert_string_or_list_to_list(qedge.predicate)
 
         # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
         required_portion_of_qg = eu.get_required_portion_of_qg(message.query_graph)
@@ -301,6 +294,15 @@ class ARAXExpander:
         if not parameters['edge_key'] and not parameters['node_key']:
             parameters['edge_key'] = list(message.query_graph.edges)
             parameters['node_key'] = self._get_orphan_qnode_keys(message.query_graph)
+
+        # We'll use a copy of the QG because we modify it for internal use within Expand
+        query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
+                                 edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
+        # Convert all qnode categories and qedge predicates to lists (easier than supporting string AND list)
+        for qnode in query_graph.nodes.values():
+            qnode.category = eu.convert_string_or_list_to_list(qnode.category)
+        for qedge in query_graph.edges.values():
+            qedge.predicate = eu.convert_string_or_list_to_list(qedge.predicate)
 
         if response.status != 'OK':
             return response
@@ -388,6 +390,10 @@ class ARAXExpander:
         else:
             log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
                      f"({eu.get_printable_counts_by_qg_id(dict_kg)})")
+
+        for node_key, node in kg.nodes.items():
+            if not isinstance(node.category, list):
+                print(f"UH OH! node {node_key} has category: {node.category}. Mode is {mode}.")
         return response
 
     def _expand_edge(self, qedge_key: str, kp_to_use: str, dict_kg: QGOrganizedKnowledgeGraph, continue_if_no_results: bool,
