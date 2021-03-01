@@ -11,9 +11,17 @@ var compare_tsv = [];
 var columnlist = [];
 var UIstate = {};
 
+// defaults
 var base = "";
 var baseAPI = base + "api/arax/v1.0";
-//var baseAPI = base + "api/rtxkg2/v1.0";
+
+// possibly imported by calling page (e.g. index.html)
+if (typeof config !== 'undefined') {
+    if (config.base)
+	base = config.base;
+    if (config.baseAPI)
+	baseAPI = config.baseAPI;
+}
 
 var providers = {
     "ARAX" : { "url" : baseAPI + "/response/" },
