@@ -30,6 +30,8 @@ var providers = {
 
 
 function main() {
+    document.getElementById("menuapiurl").href = baseAPI + "/ui/";
+
     get_example_questions();
     load_nodes_and_predicates();
     populate_dsl_commands();
