@@ -789,7 +789,10 @@ class ARAXMessenger:
                 for node_key, node in message.query_graph.nodes.items():
                     if node.category is not None:
                         if isinstance(node.category, list):
-                            node.category = node.category[0]
+                            if len(node.category) > 0:
+                                node.category = node.category[0]
+                            else:
+                                node.category = None
                         # id is NOT fixed
 
 
