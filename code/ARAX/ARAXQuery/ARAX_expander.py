@@ -234,6 +234,22 @@ class ARAXExpander:
             message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
         log = response
 
+        # We'll use a copy of the QG because we modify it for internal use within Expand
+        query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
+                                 edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
+        # If this is a query being sent to the KG2 API, ignore all option_group_id and exclude properties
+        if mode == "RTXKG2":
+            for qnode in query_graph.nodes.values():
+                qnode.option_group_id = None
+            for qedge in query_graph.edges.values():
+                qedge.option_group_id = None
+                qedge.exclude = None
+        # Convert all qnode categories and qedge predicates to lists (easier than supporting either string AND list)
+        for qnode in query_graph.nodes.values():
+            qnode.category = eu.convert_string_or_list_to_list(qnode.category)
+        for qedge in query_graph.edges.values():
+            qedge.predicate = eu.convert_string_or_list_to_list(qedge.predicate)
+
         # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
         required_portion_of_qg = eu.get_required_portion_of_qg(message.query_graph)
         if required_portion_of_qg.edges and eu.qg_is_disconnected(required_portion_of_qg):
@@ -298,21 +314,6 @@ class ARAXExpander:
         kp_to_use = parameters['kp']
         continue_if_no_results = parameters['continue_if_no_results']
         use_synonyms = parameters['use_synonyms']
-        # We'll use a copy of the QG because we modify it for internal use within Expand
-        query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
-                                 edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
-        # If this is a query being sent to the KG2 API, ignore all option_group_id and exclude properties
-        if mode == "RTXKG2":
-            for qnode in query_graph.nodes.values():
-                qnode.option_group_id = None
-            for qedge in query_graph.edges.values():
-                qedge.option_group_id = None
-                qedge.exclude = None
-        # Convert all qnode categories and qedge predicates to lists (easier than supporting either string AND list)
-        for qnode in query_graph.nodes.values():
-            qnode.category = eu.convert_string_or_list_to_list(qnode.category)
-        for qedge in query_graph.edges.values():
-            qedge.predicate = eu.convert_string_or_list_to_list(qedge.predicate)
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
