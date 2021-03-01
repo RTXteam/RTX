@@ -773,26 +773,26 @@ class ARAXMessenger:
 
         #### Revert some things back temporarily
 
-        if message.query_graph is not None:
-            print("DEFixing edges", file=sys.stderr, flush=True)
-            if message.query_graph.edges is not None:
-                for edge_key, edge in message.query_graph.edges.items():
-                    if edge.predicate is not None:
-                        if isinstance(edge.predicate, list):
-                            if len(edge.predicate) > 0:
-                                edge.predicate = edge.predicate[0]
-                            else:
-                                edge.predicate = None
+#        if message.query_graph is not None:
+#            print("DEFixing edges", file=sys.stderr, flush=True)
+#            if message.query_graph.edges is not None:
+#                for edge_key, edge in message.query_graph.edges.items():
+#                    if edge.predicate is not None:
+#                        if isinstance(edge.predicate, list):
+#                            if len(edge.predicate) > 0:
+#                                edge.predicate = edge.predicate[0]
+#                            else:
+#                                edge.predicate = None
 
-            print("DEFixing nodes", file=sys.stderr, flush=True)
-            if message.query_graph.nodes is not None:
-                for node_key, node in message.query_graph.nodes.items():
-                    if node.category is not None:
-                        if isinstance(node.category, list):
-                            if len(node.category) > 0:
-                                node.category = node.category[0]
-                            else:
-                                node.category = None
+#            print("DEFixing nodes", file=sys.stderr, flush=True)
+#            if message.query_graph.nodes is not None:
+#                for node_key, node in message.query_graph.nodes.items():
+#                    if node.category is not None:
+#                        if isinstance(node.category, list):
+#                            if len(node.category) > 0:
+#                                node.category = node.category[0]
+#                            else:
+#                                node.category = None
                         # id is NOT fixed
 
 
