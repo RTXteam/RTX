@@ -393,7 +393,7 @@ class ARAXExpander:
 
         for node_key, node in kg.nodes.items():
             if not isinstance(node.category, list):
-                print(f"UH OH! node {node_key} has category: {node.category}. Mode is {mode}.")
+                log.warning(f"Node {node_key}'s category is not a list': {node.category} (mode is {mode}).")
         return response
 
     def _expand_edge(self, qedge_key: str, kp_to_use: str, dict_kg: QGOrganizedKnowledgeGraph, continue_if_no_results: bool,
