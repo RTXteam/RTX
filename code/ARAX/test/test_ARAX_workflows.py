@@ -223,7 +223,7 @@ def test_FET_example_2():
         "expand(edge_key=e00, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_key=n01)",
-        "add_qnode(category=biolink:CiologicalProcess, is_set=true, key=n02)",
+        "add_qnode(category=biolink:BiologicalProcess, is_set=true, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=e01, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2)",
