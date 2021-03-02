@@ -63,7 +63,7 @@ function main() {
 	statusdiv.appendChild(document.createElement("br"));
 
 	document.getElementById("devdiv").innerHTML =  "Requested "+provider_id+" response id = " + response_id + "<br>";
-	retrieve_response(provider_id,rurl+response_id,response_id);
+	retrieve_response(provider_id,rurl+response_id,response_id,"all");
     }
     else {
 	add_cyto(99999);
@@ -117,17 +117,17 @@ function openSection(sect) {
 }
 
 // somehow merge with above?  eh...
-function selectInput (obj, input_id) {
+function selectInput (input_id) {
     var e = document.getElementsByClassName("slink_on");
     if (e[0]) { e[0].classList.remove("slink_on"); }
-    obj.classList.add("slink_on");
+    document.getElementById(input_id+"_link").classList.add("slink_on");
 
     for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qid_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
-    document.getElementById(input_id).style.maxHeight = "100%";
-    document.getElementById(input_id).style.visibility = 'visible';
+    document.getElementById(input_id+"_input").style.maxHeight = "100%";
+    document.getElementById(input_id+"_input").style.visibility = 'visible';
 }
 
 
@@ -644,6 +644,20 @@ function link_to_identifiers_dot_org(thing) {
 }
 
 
+function getIdStats(id) {
+    if (document.getElementById("numresults_"+id)) {
+	document.getElementById("numresults_"+id).innerHTML = '';
+	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
+	var wait = document.createElement("span");
+	wait.className = 'loading_cell';
+	var waitbar = document.createElement("span");
+	waitbar.className = 'loading_bar';
+	wait.appendChild(waitbar);
+	document.getElementById("numresults_"+id).appendChild(wait);
+    }
+    retrieve_response("ARS",providers["ARS"].url+id,id,"stats");
+}
+
 function sendId() {
     var id = document.getElementById("idText").value.trim();
     if (!id) return;
@@ -663,7 +677,7 @@ function sendId() {
 	document.getElementById("numresults_"+id).appendChild(wait);
     }
 
-    retrieve_response("ARS",providers["ARS"].url+id,id);
+    retrieve_response("ARS",providers["ARS"].url+id,id,"all");
     openSection('query');
 }
 
@@ -817,6 +831,7 @@ function process_ars_message(ars_msg, level) {
     td = document.createElement("td");
 
     var link;
+    var go = false;
     if (ars_msg.status == "Running")
 	link = document.createTextNode(ars_msg.message);
     else {
@@ -825,6 +840,8 @@ function process_ars_message(ars_msg, level) {
 	link.style.cursor = "pointer";
 	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId();');
 	link.appendChild(document.createTextNode(ars_msg.message));
+	if (!ars_msg["children"] || ars_msg["children"].length == 0)
+	    go = true;
     }
     td.appendChild(link);
     tr.appendChild(td);
@@ -836,13 +853,17 @@ function process_ars_message(ars_msg, level) {
     tr.appendChild(td);
     table.appendChild(tr);
 
+    if (go)
+	getIdStats(ars_msg.message);
+
     level++;
     for (let child of ars_msg["children"])
 	process_ars_message(child, level);
 }
 
 
-function retrieve_response(provider, resp_url, resp_id) {
+function retrieve_response(provider, resp_url, resp_id, type) {
+    if (type == null) type = "all";
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("Retrieving "+provider+" response id = " + resp_id));
     statusdiv.appendChild(document.createElement("hr"));
@@ -856,23 +877,26 @@ function retrieve_response(provider, resp_url, resp_id) {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
 
-	    var devdiv = document.getElementById("devdiv");
-	    devdiv.appendChild(document.createElement("br"));
-	    devdiv.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE REQUEST::"));
-            var link = document.createElement("a");
-	    link.target = '_NEW';
-	    link.href = resp_url;
-            link.style.position = "relative";
-            link.style.left = "30px";
-            link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
-	    devdiv.appendChild(link);
-            var pre = document.createElement("pre");
-	    pre.id = 'responseJSON';
-	    pre.textContent = JSON.stringify(jsonObj2,null,2);
-            devdiv.appendChild(pre);
+	    if (type == "all") {
+		var devdiv = document.getElementById("devdiv");
+		devdiv.appendChild(document.createElement("br"));
+		devdiv.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE REQUEST::"));
+		var link = document.createElement("a");
+		link.target = '_NEW';
+		link.href = resp_url;
+		link.style.position = "relative";
+		link.style.left = "30px";
+		link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
+		devdiv.appendChild(link);
+		var pre = document.createElement("pre");
+		pre.id = 'responseJSON';
+		pre.textContent = JSON.stringify(jsonObj2,null,2);
+		devdiv.appendChild(pre);
+	    }
 
             if (jsonObj2["children"]) {
 		process_ars_message(jsonObj2,0);
+		selectInput("qid");
 		return;
 	    }
 
@@ -890,12 +914,14 @@ function retrieve_response(provider, resp_url, resp_id) {
 	    if (jsonObj2.description) {
 		var nr = document.createElement("span");
 		if (jsonObj2.description.startsWith("ERROR")) {
-		    statusdiv.innerHTML += "<br><span class='error'>"+jsonObj2.description+"</span><br>";
+		    if (type == "all")
+			statusdiv.innerHTML += "<br><span class='error'>"+jsonObj2.description+"</span><br>";
 		    nr.innerHTML = '&cross;';
 		    nr.className = 'explevel p1';
 		}
 		else {
-		    statusdiv.innerHTML += "<br><i>"+jsonObj2.description+"</i><br>";
+                    if (type == "all")
+			statusdiv.innerHTML += "<br><i>"+jsonObj2.description+"</i><br>";
 		    nr.innerHTML = '&check;';
 		    nr.className = 'explevel p9';
 		}
@@ -907,7 +933,10 @@ function retrieve_response(provider, resp_url, resp_id) {
 	    }
 	    sesame('openmax',statusdiv);
 
-	    render_response(jsonObj2,true);
+	    if (type == "stats")
+		render_response_stats(jsonObj2);
+	    else
+		render_response(jsonObj2,true);
 	}
 	else if ( xhr.status == 404 ) {
 	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found.";
@@ -933,6 +962,29 @@ function render_message(respObj,dispjson) {
     sesame('openmax',statusdiv);
 }
 
+
+function render_response_stats(respObj) {
+    if (!document.getElementById("numresults_"+respObj.araxui_response)) return;
+
+    var nr = document.createElement("span");
+    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
+
+    if ( respObj.message["results"] ) {
+	if (respObj.description && respObj.description.startsWith("ERROR"))
+	    nr.className = 'explevel p1';
+	else if (respObj.message.results.length > 0)
+	    nr.className = 'explevel p9';
+	else
+	    nr.className = 'explevel p5';
+	nr.innerHTML = '&nbsp;'+respObj.message.results.length+'&nbsp;';
+    }
+    else {
+	nr.className = 'explevel p0';
+	nr.innerHTML = '&nbsp;n/a&nbsp;';
+    }
+
+    document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
+}
 
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
