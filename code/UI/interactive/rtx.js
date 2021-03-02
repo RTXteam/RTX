@@ -939,11 +939,27 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 		render_response(jsonObj2,true);
 	}
 	else if ( xhr.status == 404 ) {
-	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found.";
+	    if (document.getElementById("numresults_"+resp_id)) {
+		document.getElementById("numresults_"+resp_id).innerHTML = '';
+                document.getElementById("istrapi_"+resp_id).innerHTML = '';
+		var nr = document.createElement("span");
+		nr.className = 'explevel p0';
+		nr.innerHTML = '&nbsp;N/A&nbsp;';
+		document.getElementById("numresults_"+resp_id).appendChild(nr);
+	    }
+	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
 	}
 	else {
+            if (document.getElementById("numresults_"+resp_id)) {
+		document.getElementById("numresults_"+resp_id).innerHTML = '';
+		document.getElementById("istrapi_"+resp_id).innerHTML = '';
+		var nr = document.createElement("span");
+		nr.className = 'explevel p0';
+		nr.innerHTML = '&nbsp;Error&nbsp;';
+		document.getElementById("numresults_"+resp_id).appendChild(nr);
+	    }
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
