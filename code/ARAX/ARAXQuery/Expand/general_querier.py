@@ -42,49 +42,45 @@ class GeneralQuerier:
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
 
-        # Verify this query graph is valid and will work for this KP
+        # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
         self._verify_is_one_hop_query_graph(query_graph)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        if self.node_category_overrides_for_kp:
-            query_graph = self._override_qnode_types_as_needed(query_graph)
+        query_graph = self._preprocess_query_graph(query_graph)
+        if log.status != 'OK':
+            return final_kg, edge_to_nodes_map
         # self._verify_qg_is_accepted_by_kp(query_graph)  TODO: reinstate this once have smoothed out validation
-        if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+        # if log.status != 'OK':
+        #     return final_kg, edge_to_nodes_map
 
-        # Convert curies to the prefixes that this KP prefers (if we know that info)
-        if self.kp_preferred_prefixes:
-            query_graph = self._convert_to_accepted_curie_prefixes(query_graph)
-        if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
-        qedge = next(qedge for qedge in query_graph.edges.values())
-
-        # Answer the query using the KP and load its answers into our Swagger model
-        json_response = self._send_query_to_kp(query_graph)
-        kp_response = Response().from_dict(json_response)
-        if not kp_response.message:
-            log.warning(f"No 'message' was included in the response from {self.kp_name}. Response from KP was: "
-                        f"{json.dumps(json_response, indent=4)}")
-        elif not kp_response.message.results:
-            log.warning(f"No 'results' were returned from {self.kp_name}. Response from KP was: "
-                        f"{json.dumps(json_response, indent=4)}")
-            kp_response.message.results = []  # Setting this to empty list helps downstream processing
-        else:
-            # Build a map that indicates which qnodes/qedges a given node/edge fulfills
-            kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_response.message.results)
-
-            # Populate our final KG with the returned nodes and edges
-            for returned_edge_key, returned_edge in kp_response.message.knowledge_graph.edges.items():
-                arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
-                for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
-                    final_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
-            for returned_node_key, returned_node in kp_response.message.knowledge_graph.nodes.items():
-                for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
-                    final_kg.add_node(returned_node_key, returned_node, qnode_key)
-            # Build a map that indicates which of an edge's nodes fulfill which qnode
-            edge_to_nodes_map = self._create_edge_to_nodes_map(kg_to_qg_mappings, kp_response.message.knowledge_graph, qedge)
-
+        # Answer the query using the KP and load its answers into our object model
+        final_kg, edge_to_nodes_map = self._answer_query_using_kp(query_graph)
         return final_kg, edge_to_nodes_map
+
+    def answer_single_node_query(self, single_node_qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
+        """
+        This function answers a single-node (edge-less) query using the specified KP.
+        :param single_node_qg: A TRAPI query graph containing a single node (no edges).
+        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
+           results for the query. (Organized by QG IDs.)
+        """
+        log = self.log
+        final_kg = QGOrganizedKnowledgeGraph()
+
+        # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
+        self._verify_is_single_node_query_graph(single_node_qg)
+        if log.status != 'OK':
+            return final_kg
+        query_graph = self._preprocess_query_graph(single_node_qg)
+        if log.status != 'OK':
+            return final_kg
+        # self._verify_qg_is_accepted_by_kp(query_graph)  TODO: reinstate this once have smoothed out validation
+        # if log.status != 'OK':
+        #     return final_kg, edge_to_nodes_map
+
+        # Answer the query using the KP and load its answers into our object model
+        final_kg, _ = self._answer_query_using_kp(query_graph)
+        return final_kg
 
     def _verify_is_one_hop_query_graph(self, query_graph: QueryGraph):
         if len(query_graph.edges) != 1:
@@ -96,6 +92,22 @@ class GeneralQuerier:
         elif len(query_graph.nodes) < 2:
             self.log.error(f"answer_one_hop_query() was passed a query graph with less than two nodes: "
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
+
+    def _verify_is_single_node_query_graph(self, query_graph: QueryGraph):
+        if len(query_graph.edges) > 0:
+            self.log.error(f"answer_single_node_query() was passed a query graph that has edges: "
+                           f"{query_graph.to_dict()}", error_code="InvalidQuery")
+
+    def _preprocess_query_graph(self, query_graph: QueryGraph):
+        # Make any overrides of categories that are needed (e.g., consider 'proteins' to be 'genes', etc.)
+        if self.node_category_overrides_for_kp:
+            query_graph = self._override_qnode_types_as_needed(query_graph)
+
+        # Convert curies to the prefixes that this KP prefers (if we know that info)
+        if self.kp_preferred_prefixes:
+            query_graph = self._convert_to_accepted_curie_prefixes(query_graph)
+
+        return query_graph
 
     def _override_qnode_types_as_needed(self, query_graph: QueryGraph) -> QueryGraph:
         for qnode_key, qnode in query_graph.nodes.items():
@@ -194,7 +206,9 @@ class GeneralQuerier:
                 edge_to_nodes_map[arax_edge_key] = {qedge.subject: edge.object, qedge.object: edge.subject}
         return edge_to_nodes_map
 
-    def _send_query_to_kp(self, query_graph: QueryGraph) -> Union[Dict[str, any], None]:
+    def _answer_query_using_kp(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+        answer_kg = QGOrganizedKnowledgeGraph()
+        edge_to_nodes_map = dict()
         # Strip non-essential and 'empty' properties off of our qnodes and qedges
         stripped_qnodes = {qnode_key: self._strip_empty_properties(qnode)
                            for qnode_key, qnode in query_graph.nodes.items()}
@@ -203,10 +217,41 @@ class GeneralQuerier:
 
         # Send the query to the KP's API
         body = {'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}}
+        self.log.debug(f"Sending query to {self.kp_name} API")
         kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'})
-        if kp_response.status_code != 200:
-            self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}")
-        return kp_response.json()
+        json_response = kp_response.json()
+        if kp_response.status_code == 200:
+            kp_response_obj = Response().from_dict(json_response)
+            if not kp_response_obj.message:
+                self.log.warning(
+                    f"No 'message' was included in the response from {self.kp_name}. Response from KP was: "
+                    f"{json.dumps(json_response, indent=4)}")
+            elif not kp_response_obj.message.results:
+                self.log.warning(f"No 'results' were returned from {self.kp_name}. Response from KP was: "
+                                 f"{json.dumps(json_response, indent=4)}")
+                kp_response_obj.message.results = []  # Setting this to empty list helps downstream processing
+            else:
+                kp_message = kp_response_obj.message
+                # Build a map that indicates which qnodes/qedges a given node/edge fulfills
+                kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
+
+                # Populate our final KG with the returned nodes and edges
+                for returned_edge_key, returned_edge in kp_message.knowledge_graph.edges.items():
+                    arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
+                    for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
+                        answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
+                for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
+                    for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
+                        answer_kg.add_node(returned_node_key, returned_node, qnode_key)
+                # Build a map that indicates which of an edge's nodes fulfill which qnode
+                if query_graph.edges:
+                    qedge = next(qedge for qedge in query_graph.edges.values())
+                    edge_to_nodes_map = self._create_edge_to_nodes_map(kg_to_qg_mappings, kp_message.knowledge_graph, qedge)
+        else:
+            self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. Response from KP was:"
+                             f" {json.dumps(json_response, indent=4)}")
+
+        return answer_kg, edge_to_nodes_map
 
     @staticmethod
     def _strip_empty_properties(qnode_or_qedge: Union[QNode, QEdge]) -> Dict[str, any]:

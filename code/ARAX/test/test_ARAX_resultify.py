@@ -1432,5 +1432,19 @@ def test_recompute_qg_keys():
         assert edge.qedge_keys == ["e00"]
 
 
+def test_multi_node_edgeless_qg():
+    shorthand_qnodes = {"n00": "",
+                        "n01": ""}
+    shorthand_qedges = {}
+    query_graph = _convert_shorthand_to_qg(shorthand_qnodes, shorthand_qedges)
+    shorthand_kg_nodes = {"n00": ["CHEMBL.COMPOUND:CHEMBL635"],
+                          "n01": ["MESH:D052638"]}
+    shorthand_kg_edges = {}
+    knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
+    response, message = _run_resultify_directly(query_graph, knowledge_graph)
+    assert response.status == 'OK'
+    assert len(message.results) == 1
+
+
 if __name__ == '__main__':
     pytest.main(['-v', 'test_ARAX_resultify.py'])
