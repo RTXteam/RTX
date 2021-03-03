@@ -1868,11 +1868,11 @@ function show_attributes(html_div, atts) {
             else if (Array.isArray(att.value))
 		for (var val of att.value) {
                     snippet += "<br>&nbsp;&nbsp;&nbsp;";
-		    if (val.startsWith("PMID:")) {
+		    if (val.toString().startsWith("PMID:")) {
 			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
 			snippet += " target='pubmed'>" + val + "</a>";
 		    }
-		    else if (val.startsWith("DOI:")) {
+		    else if (val.toString().startsWith("DOI:")) {
 			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
 			snippet += " target='pubmed'>" + val + "</a>";
 		    }
