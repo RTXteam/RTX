@@ -50,6 +50,7 @@ class ARAXDatabaseManager:
             'map_txt': f"{pred_filepath}{os.path.sep}{self.RTXConfig.map_txt_path.split('/')[-1]}",
             'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
         }
+        # user, host, and paths to databases on remote server
         self.remote_locations = {
             'cohd_database': f"{self.RTXConfig.cohd_database_username}@{self.RTXConfig.cohd_database_host}:{self.RTXConfig.cohd_database_path}",
             'graph_database': f"{self.RTXConfig.graph_database_username}@{self.RTXConfig.graph_database_host}:{self.RTXConfig.graph_database_path}",
@@ -60,6 +61,7 @@ class ARAXDatabaseManager:
             'map_txt': f"{self.RTXConfig.map_txt_username}@{self.RTXConfig.map_txt_host}:{self.RTXConfig.map_txt_path}",
             'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}"
         }
+        # database locations if inside rtx1 docker container
         self.docker_paths = {
             'cohd_database': f"{self.RTXConfig.cohd_database_path.replace('/translator/','/mnt/')}",
             'graph_database': f"{self.RTXConfig.graph_database_path.replace('/translator/','/mnt/')}",
@@ -71,6 +73,7 @@ class ARAXDatabaseManager:
             'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace('/translator/','/mnt/')}"
         }
 
+        # database local paths + version numbers
         self.db_versions = {
             'cohd_database': {
                 'path': self.local_paths['cohd_database'],
@@ -107,35 +110,35 @@ class ARAXDatabaseManager:
         }
 
     def update_databases(self, debug = False, response = None):
-        if os.path.exists(versions_path):
+        if os.path.exists(versions_path): # check if the versions file exists
             with open(versions_path,"r") as fid:
                 local_versions = json.load(fid)
-            for database_name, local_path in self.local_paths.items():
-                if database_name not in local_versions:
+            for database_name, local_path in self.local_paths.items(): # iterate through all databases
+                if database_name not in local_versions: # if database is not present locally
                     if debug:
                         print(f"{database_name} not present locally, downloading now...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
-                elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']:
+                elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']: # If database is present but wrong version
                     if debug:
                         print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
                         prinf("downloading remote version...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
-                    if os.path.exists(self.local_paths[database_name]):
+                    if os.path.exists(self.local_paths[database_name]): # check that download worked if so remove old version
                         if debug:
                             print("Download successful. Removing local version...")
                         if os.path.exists(local_versions[database_name]['path']):
-                            os.system(f"rm {local_versions[database_name]['path']}")
+                            os.system(f"rm {local_versions[database_name]['path']}") 
                     else:
                         if debug:
                             print(f"Error downloading {database_name} leaving local copy.")
                         if response is not None:
-                            response.warning(f"Error downloading {database_name} reverting to using local copy.")
+                            response.warning(f"Error downloading {database_name} reverting to using local copy.") 
                         self.db_versions[database_name] = local_versions[database_name]
-                elif not os.path.exists(self.local_paths[database_name]):
+                elif not os.path.exists(self.local_paths[database_name]): # If database file is missing
                     if debug:
                         print(f"{database_name} not present locally, downloading now...")
                     if response is not None:
@@ -148,7 +151,7 @@ class ARAXDatabaseManager:
                 if debug:
                     print("Saving new version file...")
                 json.dump(self.db_versions, fid)
-        else:
+        else: # If database manager has never been run download all databases
             if debug:
                 print("No local verson json file present. Downloading all databases...")
             if response is not None:
@@ -201,7 +204,7 @@ class ARAXDatabaseManager:
             return True
 
     def download_database(self, remote_location, local_path, remote_path, debug=False):
-        if os.path.exists(remote_path):
+        if os.path.exists(remote_path): # if on the server symlink instead of downloading
             self.symlink_database(local_path=local_path, remote_path=remote_path)
         else:
             self.rsync_database(remote_location=remote_location, local_path=local_path, debug=debug)
