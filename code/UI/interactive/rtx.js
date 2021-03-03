@@ -1077,7 +1077,8 @@ function render_response(respObj,dispjson) {
 	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
 	}
 	else {
-            document.getElementById("result_container").innerHTML += "<h2>" + respObj.message.results.length + " results</h2>";
+	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
+	    document.getElementById("result_container").innerHTML += "<h2>" + respObj.message.results.length + rtext + "</h2>";
             document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
             document.getElementById("menunumresults").classList.add("numnew");
 	    document.getElementById("menunumresults").classList.remove("numold");
@@ -1150,6 +1151,11 @@ function render_response(respObj,dispjson) {
     if (!UIstate.hasNodeArray)
 	add_cyto(99999);
     statusdiv.appendChild(document.createTextNode("done."));
+    statusdiv.appendChild(document.createElement("br"));
+    var nr = document.createElement("span");
+    nr.className = 'essence';
+    nr.appendChild(document.createTextNode("Click on Results, Summary, or Knowledge Graph links on the left to explore results."));
+    statusdiv.appendChild(nr);
     sesame('openmax',statusdiv);
 }
 
