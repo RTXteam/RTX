@@ -721,6 +721,8 @@ class ComputeFTEST:
             self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
             return size_of_total
 
+        node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:','')) # TODO: This is a temporary path, it will be removed once we stich to KG2-5-1.
+
         if kg == 'KG1':
             if use_cypher_command:
                 rtxConfig = RTXConfiguration()
@@ -776,3 +778,16 @@ class ComputeFTEST:
             error_message.append((tb, error_type.__name__))
             error_message.append(f"Something went wrong for target node {node} to calculate FET p-value")
             return error_message
+
+    @staticmethod
+    def convert_string_to_snake_case(input_string: str) -> str:
+        # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
+        if len(input_string) > 1:
+            snake_string = input_string[0].lower()
+            for letter in input_string[1:]:
+                if letter.isupper():
+                    snake_string += "_"
+                snake_string += letter.lower()
+            return snake_string
+        else:
+            return input_string.lower()

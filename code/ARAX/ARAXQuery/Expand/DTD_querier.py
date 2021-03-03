@@ -77,6 +77,8 @@ class DTDQuerier:
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
         query_graph = eu.make_qg_use_old_types(query_graph)  # Temporary patch until we switch to KG2.5.1
+        # Switch QG back to old style where category/predicate can be strings OR lists
+        query_graph = eu.switch_back_to_str_or_list_types(query_graph)
 
         if 0.8 <= self.DTD_threshold <=1:
             if not DTD_slow_mode:

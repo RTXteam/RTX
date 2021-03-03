@@ -128,7 +128,7 @@ def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
 def get_printable_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> str:
     counts_by_qg_id = get_counts_by_qg_id(dict_kg)
     counts_string = ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
-    return counts_string if counts_string else "none found"
+    return counts_string if counts_string else "no answers"
 
 
 def get_qg_without_kryptonite_portion(qg: QueryGraph) -> QueryGraph:
@@ -207,6 +207,18 @@ def convert_curie_to_bte_format(curie: str) -> str:
     elif prefix == "UniProtKB":
         prefix = prefix.upper()
     return prefix + ':' + local_id
+
+
+def get_node_category_overrides_for_kp(kp_name: str) -> Union[Dict[str, str], None]:
+    overrides = {"MolePro": {"biolink:Protein": "biolink:Gene"}}
+    return overrides.get(kp_name)
+
+
+def get_kp_preferred_prefixes(kp_name: str) -> Union[Dict[str, str], None]:
+    overrides = {"MolePro": {"biolink:ChemicalSubstance": "CHEMBL.COMPOUND",
+                             "biolink:Gene": "HGNC",
+                             "biolink:Disease": "MONDO"}}
+    return overrides.get(kp_name)
 
 
 def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
@@ -372,11 +384,27 @@ def get_attribute_type(attribute_name: str) -> str:
 
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
+        "BTE": "https://api.bte.ncats.io/v1",
         "GeneticsKP": "https://translator.broadinstitute.org/genetics_data_provider",
         "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
-        "BTE": "https://api.bte.ncats.io/v1"
+        "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.0"
     }
     return endpoint_map.get(kp_name)
+
+
+def switch_back_to_str_or_list_types(qg: QueryGraph) -> QueryGraph:
+    # Switches QG back to old style where qnode.category and qedge.predicate can be strings OR lists (vs. always lists)
+    for qnode in qg.nodes.values():
+        if not qnode.category:
+            qnode.category = None
+        elif len(qnode.category) == 1:
+            qnode.category = qnode.category[0]
+    for qedge in qg.edges.values():
+        if not qedge.predicate:
+            qedge.predicate = None
+        elif len(qedge.predicate) == 1:
+            qedge.predicate = qedge.predicate[0]
+    return qg
 
 
 def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
@@ -392,13 +420,12 @@ def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
         if qnode.category:
             categories = convert_string_or_list_to_list(qnode.category)
             prefixless_categories = [category.split(":")[-1] for category in categories]
-            formatted_categories = [convert_string_to_snake_case(category) for category in prefixless_categories]
-            qnode.category = formatted_categories[0] if len(formatted_categories) == 1 else formatted_categories
+            qnode.category = [convert_string_to_snake_case(category) for category in prefixless_categories]
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
-            prefixless_predicate = qedge.predicate.split(":")[-1]
-            predicate_with_commas = predicates_with_commas.get(prefixless_predicate, prefixless_predicate)
-            qedge.predicate = predicate_with_commas
+            predicates = convert_string_or_list_to_list(qedge.predicate)
+            prefixless_predicates = [predicate.split(":")[-1] for predicate in predicates]
+            qedge.predicate = [predicates_with_commas.get(predicate, predicate) for predicate in prefixless_predicates]
     return qg_copy
 
 

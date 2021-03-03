@@ -19,11 +19,9 @@ from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
-from openapi_server.models.q_node import QNode
-from openapi_server.models.q_edge import QEdge
 
 
-class KGQuerier:
+class KG2Querier:
 
     def __init__(self, response_object: ARAXResponse, input_kp: str):
         self.response = response_object
@@ -57,11 +55,11 @@ class KGQuerier:
 
         # Verify this is a valid one-hop query graph
         if len(query_graph.edges) != 1:
-            log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph that is not one-hop: "
+            log.error(f"answer_one_hop_query() was passed a query graph that is not one-hop: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
             return final_kg, edge_to_nodes_map
         if len(query_graph.nodes) != 2:
-            log.error(f"KGQuerier.answer_one_hop_query() was passed a query graph with more than two nodes: "
+            log.error(f"answer_one_hop_query() was passed a query graph with more than two nodes: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
             return final_kg, edge_to_nodes_map
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
@@ -76,7 +74,7 @@ class KGQuerier:
                 canonical_curies = eu.get_canonical_curies_list(qnode.id, log)
                 log.debug(f"Using {len(canonical_curies)} curies as canonical curies for qnode {qnode_key}")
                 qnode.id = canonical_curies
-            qnode.category = None  # Important to clear this, otherwise results are limited (#889)
+            qnode.category = []  # Important to clear this, otherwise results are limited (#889)
 
         # Run the actual query and process results
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kg_name, log)
@@ -107,10 +105,10 @@ class KGQuerier:
         if qnode.id:
             if use_synonyms and kg_name == "KG1":
                 qnode.id = eu.get_curie_synonyms(qnode.id, log)
-                qnode.category = None  # Important to clear this, otherwise results are limited (#889)
+                qnode.category = []  # Important to clear this, otherwise results are limited (#889)
             elif kg_name == "KG2c":
                 qnode.id = eu.get_canonical_curies_list(qnode.id, log)
-                qnode.category = None  # Important to clear this to avoid discrepancies in types for particular concepts
+                qnode.category = []  # Important to clear this to avoid discrepancies in types for particular concepts
 
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
@@ -136,27 +134,28 @@ class KGQuerier:
         log.debug(f"Generating cypher for edge {qedge_key} query graph")
         try:
             # Build the match clause
-            source_qnode_key = qedge.subject
-            target_qnode_key = qedge.object
+            subject_qnode_key = qedge.subject
+            object_qnode_key = qedge.object
             qedge_cypher = self._get_cypher_for_query_edge(qedge_key, qg, enforce_directionality)
-            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode_key, qg, kg_name)
-            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode_key, qg, kg_name)
+            source_qnode_cypher = self._get_cypher_for_query_node(subject_qnode_key, qg, kg_name)
+            target_qnode_cypher = self._get_cypher_for_query_node(object_qnode_key, qg, kg_name)
             match_clause = f"MATCH {source_qnode_cypher}{qedge_cypher}{target_qnode_cypher}"
 
             # Build the where clause
             where_fragments = []
-            for qnode_key in [source_qnode_key, target_qnode_key]:
+            for qnode_key in [subject_qnode_key, object_qnode_key]:
                 qnode = qg.nodes[qnode_key]
                 if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
                     where_fragments.append(f"{qnode_key}.id in {qnode.id}")
                 if qnode.category:
+                    # Only inspect the 'all_categories' field if we're using KG2c
                     if kg_name == "KG2c":
-                        qnode_categories = eu.convert_string_or_list_to_list(qnode.category)
-                        category_fragments = [f"'{qnode_category}' in {qnode_key}.types" for qnode_category in qnode_categories]
+                        category_fragments = [f"'{category}' in {qnode_key}.types" for category in qnode.category]
                         joined_category_fragments = " OR ".join(category_fragments)
                         category_where_clause = joined_category_fragments if len(category_fragments) < 2 else f"({joined_category_fragments})"
                         where_fragments.append(category_where_clause)
-                    elif isinstance(qnode.category, list):
+                    # Otherwise add a simple where condition if we have multiple categories
+                    elif len(qnode.category) > 1:
                         if kg_name == "KG2":
                             node_category_property = "category_label"
                         else:
@@ -169,13 +168,13 @@ class KGQuerier:
                 where_clause = ""
 
             # Build the with clause
-            source_qnode_col_name = f"nodes_{source_qnode_key}"
-            target_qnode_col_name = f"nodes_{target_qnode_key}"
+            source_qnode_col_name = f"nodes_{subject_qnode_key}"
+            target_qnode_col_name = f"nodes_{object_qnode_key}"
             qedge_col_name = f"edges_{qedge_key}"
             # This line grabs the edge's ID and a record of which of its nodes correspond to which qnode ID
-            extra_edge_properties = "{.*, " + f"id:ID({qedge_key}), {source_qnode_key}:{source_qnode_key}.id, {target_qnode_key}:{target_qnode_key}.id" + "}"
-            with_clause = f"WITH collect(distinct {source_qnode_key}) as {source_qnode_col_name}, " \
-                          f"collect(distinct {target_qnode_key}) as {target_qnode_col_name}, " \
+            extra_edge_properties = "{.*, " + f"id:ID({qedge_key}), {subject_qnode_key}:{subject_qnode_key}.id, {object_qnode_key}:{object_qnode_key}.id" + "}"
+            with_clause = f"WITH collect(distinct {subject_qnode_key}) as {source_qnode_col_name}, " \
+                          f"collect(distinct {object_qnode_key}) as {target_qnode_col_name}, " \
                           f"collect(distinct {qedge_key}{extra_edge_properties}) as {qedge_col_name}"
 
             # Build the return clause
@@ -385,20 +384,21 @@ class KGQuerier:
     @staticmethod
     def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph, kg_name: str) -> str:
         qnode = qg.nodes[qnode_key]
-        type_cypher = f":{qnode.category}" if qnode.category and isinstance(qnode.category, str) and kg_name != "KG2c" else ""
+        # Add in node label if there's only one category (and we're not using KG2c - KG2c only ever uses all_categories)
+        category_cypher = f":{qnode.category[0]}" if len(qnode.category) == 1 and kg_name != "KG2c" else ""
         if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
             curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
             curie_cypher = f" {{id:'{curie}'}}"
         else:
             curie_cypher = ""
-        qnode_cypher = f"({qnode_key}{type_cypher}{curie_cypher})"
+        qnode_cypher = f"({qnode_key}{category_cypher}{curie_cypher})"
         return qnode_cypher
 
     @staticmethod
     def _get_cypher_for_query_edge(qedge_key: str, qg: QueryGraph, enforce_directionality: bool) -> str:
         qedge = qg.edges[qedge_key]
-        qedge_type_cypher = f":`{qedge.predicate}`" if qedge.predicate else ""
-        full_qedge_cypher = f"-[{qedge_key}{qedge_type_cypher}]-"
+        predicate_cypher = "|".join([f":`{predicate}`" for predicate in qedge.predicate])
+        full_qedge_cypher = f"-[{qedge_key}{predicate_cypher}]-"
         if enforce_directionality:
             full_qedge_cypher += ">"
         return full_qedge_cypher

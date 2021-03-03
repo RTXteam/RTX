@@ -198,10 +198,19 @@ class BTEQuerier:
         output_qnode = qg.nodes[output_qnode_key]
 
         # Make sure predicate is allowed
-        if qedge.predicate not in valid_bte_inputs_dict['predicates'] and qedge.predicate is not None:
-            log.error(f"BTE does not accept predicate '{qedge.predicate}'. Valid options are "
-                      f"{valid_bte_inputs_dict['predicates']}", error_code="InvalidInput")
-            return "", ""
+        if qedge.predicate:
+            accepted_predicates = set(qedge.predicate).intersection(valid_bte_inputs_dict['predicates'])
+            # Throw an error if none of the predicates are supported
+            if not accepted_predicates:
+                log.error(f"BTE does not accept predicate(s) {qedge.predicate}. Valid options are "
+                          f"{valid_bte_inputs_dict['predicates']}", error_code="UnsupportedQueryForKP")
+                return "", ""
+            # Give a warning if only some of the predicates are supported
+            elif len(accepted_predicates) < len(qedge.predicate):
+                unaccepted_predicates = set(qedge.predicate).difference(accepted_predicates)
+                log.warning(f"Some of qedge {qedge_key}'s predicates are not accepted by BTE: {unaccepted_predicates}."
+                            f" Valid options are: {valid_bte_inputs_dict['predicates']}")
+                qedge.predicate = list(accepted_predicates)
 
         # Process qnode types (convert to preferred format, make sure allowed)
         input_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(input_qnode.category)]

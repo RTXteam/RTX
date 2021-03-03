@@ -64,11 +64,11 @@
 <div class="pagesection" id="queryDiv">
   <h3 style="margin:0px;">Choose Query Type:</h3>
   &nbsp;&nbsp;&nbsp;
-<!--  <img src="qtxt.png"  class="slink" onclick="selectInput(this,'qtext_input');"  title="Enter Query using Natural Language"/> -->
-  <img src="qg.png"    class="slink" onclick="selectInput(this,'qgraph_input');" title="Enter Query Graph"/>
-  <img src="qjson.png" class="slink" onclick="selectInput(this,'qjson_input');"  title="Enter JSON representation of Query Graph"/>
-  <img src="qdsl.png"  class="slink" onclick="selectInput(this,'qdsl_input');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
-  <img src="qid.png"  class="slink" onclick="selectInput(this,'qid_input');"  title="Retrieve stored response by id"/>
+<!--  <img src="qtxt.png"  class="slink" id="qtext_link" onclick="selectInput('qtext');"  title="Enter Query using Natural Language"/> -->
+  <img src="qg.png"    class="slink" id="qgraph_link" onclick="selectInput('qgraph');" title="Enter Query Graph"/>
+  <img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/>
+  <img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
+  <img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/>
 
   <div class="inputsection" id="qtext_input">
     <h3 style="display:inline;">Enter question:</h3>
@@ -191,8 +191,7 @@
     </div>
 
     <form id="idForm" name="idForm" method="post" action="javascript:sendId();">
-      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="typeInput questionBox" id="idText" name="idText" size="100" maxlength="100"/>
-
+      <input type="text" autocomplete="off" class="questionBox" id="idText" name="idText" size="100" maxlength="100"/>
       <input type="button" class="questionBox button" name="action" value="LOAD" onClick="sendId();"/>
       <span title="clear id" class="clq" onclick="pasteId('');">&#9587;</span>
     </form>

@@ -159,7 +159,7 @@ class OverlayExposuresData:
         if self.icees_known_curies:
             return self.icees_known_curies.intersection(formatted_synonyms)
         else:
-            return formatted_synonyms
+            return set(list(formatted_synonyms)[:5])  # Only use first few equivalent curies if we don't know which they like
 
     def _get_icees_p_value_for_edge(self, qedge, log):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
