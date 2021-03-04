@@ -2,24 +2,24 @@
 import json
 import sys
 import os
+import requests
 from typing import List, Dict, Tuple, Set, Union
 
 import Expand.expand_utilities as eu
-import requests
 from Expand.expand_utilities import QGOrganizedKnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
-
+from ARAX_messenger import ARAXMessenger
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.knowledge_graph import KnowledgeGraph
-from openapi_server.models.response import Response
 from openapi_server.models.result import Result
 
 
-class GeneralQuerier:
+class TRAPIQuerier:
 
     def __init__(self, response_object: ARAXResponse, kp_name: str):
         self.log = response_object
@@ -253,17 +253,16 @@ class GeneralQuerier:
         kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'})
         json_response = kp_response.json()
         if kp_response.status_code == 200:
-            kp_response_obj = Response().from_dict(json_response)
-            if not kp_response_obj.message:
+            if not json_response.get("message"):
                 self.log.warning(
                     f"No 'message' was included in the response from {self.kp_name}. Response from KP was: "
                     f"{json.dumps(json_response, indent=4)}")
-            elif not kp_response_obj.message.results:
+            elif not json_response["message"].get("results"):
                 self.log.warning(f"No 'results' were returned from {self.kp_name}. Response from KP was: "
                                  f"{json.dumps(json_response, indent=4)}")
-                kp_response_obj.message.results = []  # Setting this to empty list helps downstream processing
+                json_response["message"]["results"] = []  # Setting this to empty list helps downstream processing
             else:
-                kp_message = kp_response_obj.message
+                kp_message = ARAXMessenger().from_dict(json_response["message"])
                 # Build a map that indicates which qnodes/qedges a given node/edge fulfills
                 kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
 

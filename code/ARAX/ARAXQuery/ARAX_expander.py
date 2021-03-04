@@ -418,8 +418,8 @@ class ARAXExpander:
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
-                from Expand.general_querier import GeneralQuerier
-                kp_querier = GeneralQuerier(log, kp_to_use)
+                from Expand.trapi_querier import TRAPIQuerier
+                kp_querier = TRAPIQuerier(log, kp_to_use)
 
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
@@ -461,8 +461,8 @@ class ARAXExpander:
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
-                from Expand.general_querier import GeneralQuerier
-                kp_querier = GeneralQuerier(log, kp_to_use)
+                from Expand.trapi_querier import TRAPIQuerier
+                kp_querier = TRAPIQuerier(log, kp_to_use)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
