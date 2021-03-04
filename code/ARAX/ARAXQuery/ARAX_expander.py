@@ -296,13 +296,12 @@ class ARAXExpander:
             parameters['node_key'] = self._get_orphan_qnode_keys(message.query_graph)
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
-        query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
-                                 edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
+        query_graph = eu.copy_qg(message.query_graph)
         # Convert all qnode categories and qedge predicates to lists (easier than supporting string AND list)
         for qnode in query_graph.nodes.values():
-            qnode.category = eu.convert_string_or_list_to_list(qnode.category)
+            qnode.category = eu.convert_to_list(qnode.category)
         for qedge in query_graph.edges.values():
-            qedge.predicate = eu.convert_string_or_list_to_list(qedge.predicate)
+            qedge.predicate = eu.convert_to_list(qedge.predicate)
 
         if response.status != 'OK':
             return response
@@ -311,8 +310,8 @@ class ARAXExpander:
 
         # Do the actual expansion
         log.debug(f"Applying Expand to Message with parameters {parameters}")
-        input_qedge_keys = eu.convert_string_or_list_to_list(parameters['edge_key'])
-        input_qnode_keys = eu.convert_string_or_list_to_list(parameters['node_key'])
+        input_qedge_keys = eu.convert_to_list(parameters['edge_key'])
+        input_qnode_keys = eu.convert_to_list(parameters['node_key'])
         kp_to_use = parameters['kp']
         continue_if_no_results = parameters['continue_if_no_results']
         use_synonyms = parameters['use_synonyms']
@@ -434,9 +433,6 @@ class ARAXExpander:
             elif kp_to_use == 'GeneticsKP':
                 from Expand.genetics_querier import GeneticsQuerier
                 kp_querier = GeneticsQuerier(log)
-            elif kp_to_use == 'MolePro':
-                from Expand.molepro_querier import MoleProQuerier
-                kp_querier = MoleProQuerier(log)
             elif (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
@@ -579,13 +575,13 @@ class ARAXExpander:
                 if canonicalized_node:
                     preferred_curie = canonicalized_node.get('preferred_curie', node_key)
                     preferred_name = canonicalized_node.get('preferred_name', node.name)
-                    preferred_category = eu.convert_string_or_list_to_list(canonicalized_node.get('preferred_type', node.category))
+                    preferred_category = eu.convert_to_list(canonicalized_node.get('preferred_type', node.category))
                     curie_mappings[node_key] = preferred_curie
                 else:
                     # Means the NodeSynonymizer didn't recognize this curie
                     preferred_curie = node_key
                     preferred_name = node.name
-                    preferred_category = eu.convert_string_or_list_to_list(node.category)
+                    preferred_category = eu.convert_to_list(node.category)
                     curie_mappings[node_key] = preferred_curie
 
                 # Add this node into our deduplicated KG as necessary
@@ -920,7 +916,7 @@ class ARAXExpander:
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
         for node in kg.nodes.values():
             corresponding_qnode_categories = {category for qnode_key in node.qnode_keys for category in
-                                              eu.convert_string_or_list_to_list(qg.nodes[qnode_key].category)}
+                                              eu.convert_to_list(qg.nodes[qnode_key].category)}
             if corresponding_qnode_categories:
                 node.category = list(corresponding_qnode_categories)
 

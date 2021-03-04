@@ -112,7 +112,6 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
         for edge_key, edge in edges.items():
             assert edge_key and isinstance(edge_key, str)
             assert edge.qedge_keys and isinstance(edge.qedge_keys, list)
-            assert edge.predicate and isinstance(edge.predicate, str)
             assert edge.subject and isinstance(edge.subject, str)
             assert edge.object and isinstance(edge.object, str)
 

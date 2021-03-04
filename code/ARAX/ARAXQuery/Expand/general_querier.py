@@ -27,6 +27,8 @@ class GeneralQuerier:
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.node_category_overrides_for_kp = eu.get_node_category_overrides_for_kp(kp_name)
         self.kp_preferred_prefixes = eu.get_kp_preferred_prefixes(kp_name)
+        self.kp_supports_category_lists = eu.kp_supports_category_lists(kp_name)
+        self.kp_supports_predicate_lists = eu.kp_supports_predicate_lists(kp_name)
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
@@ -41,12 +43,13 @@ class GeneralQuerier:
         log = self.log
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
+        qg_copy = eu.copy_qg(query_graph)  # Create a copy so we don't modify the original
 
         # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
-        self._verify_is_one_hop_query_graph(query_graph)
+        self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        query_graph = self._preprocess_query_graph(query_graph)
+        qg_copy = self._preprocess_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         # self._verify_qg_is_accepted_by_kp(query_graph)  TODO: reinstate this once have smoothed out validation
@@ -54,7 +57,29 @@ class GeneralQuerier:
         #     return final_kg, edge_to_nodes_map
 
         # Answer the query using the KP and load its answers into our object model
-        final_kg, edge_to_nodes_map = self._answer_query_using_kp(query_graph)
+        if self.kp_name in ["ARAX/KG2", "ARAX/KG1"]:
+            # Our KPs can handle batch queries (where qnode.id is a list of curies)
+            final_kg, edge_to_nodes_map = self._answer_query_using_kp(qg_copy)
+        else:
+            # Otherwise we need to search for curies one-by-one (until TRAPI includes a batch querying method)
+            qedge = next(qedge for qedge in qg_copy.edges.values())
+            subject_qnode_curies = eu.convert_to_list(qg_copy.nodes[qedge.subject].id)
+            subject_qnode_curies = subject_qnode_curies if subject_qnode_curies else [None]
+            object_qnode_curies = eu.convert_to_list(qg_copy.nodes[qedge.object].id)
+            object_qnode_curies = object_qnode_curies if object_qnode_curies else [None]
+            curie_combinations = [(curie_subj, curie_obj) for curie_subj in subject_qnode_curies for curie_obj in object_qnode_curies]
+            qg_copy = eu.copy_qg(qg_copy)  # Make a copy so we don't alter the original QG
+            # Query KP for all pairs of subject/object curies (pairs look like ("curie1", None) if one has no curies)
+            for curie_combination in curie_combinations:
+                subject_curie = curie_combination[0]
+                object_curie = curie_combination[1]
+                qg_copy.nodes[qedge.subject].id = subject_curie
+                qg_copy.nodes[qedge.object].id = object_curie
+                self.log.debug(f"Current curie pair is: subject: {subject_curie}, object: {object_curie}")
+                sub_kg, sub_edge_to_nodes_map = self._answer_query_using_kp(qg_copy)
+                edge_to_nodes_map.update(sub_edge_to_nodes_map)
+                final_kg = eu.merge_two_kgs(sub_kg, final_kg)
+
         return final_kg, edge_to_nodes_map
 
     def answer_single_node_query(self, single_node_qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -66,12 +91,13 @@ class GeneralQuerier:
         """
         log = self.log
         final_kg = QGOrganizedKnowledgeGraph()
+        qg_copy = eu.copy_qg(single_node_qg)
 
         # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
-        self._verify_is_single_node_query_graph(single_node_qg)
+        self._verify_is_single_node_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg
-        query_graph = self._preprocess_query_graph(single_node_qg)
+        qg_copy = self._preprocess_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg
         # self._verify_qg_is_accepted_by_kp(query_graph)  TODO: reinstate this once have smoothed out validation
@@ -79,7 +105,7 @@ class GeneralQuerier:
         #     return final_kg, edge_to_nodes_map
 
         # Answer the query using the KP and load its answers into our object model
-        final_kg, _ = self._answer_query_using_kp(query_graph)
+        final_kg, _ = self._answer_query_using_kp(qg_copy)
         return final_kg
 
     def _verify_is_one_hop_query_graph(self, query_graph: QueryGraph):
@@ -102,17 +128,23 @@ class GeneralQuerier:
         # Make any overrides of categories that are needed (e.g., consider 'proteins' to be 'genes', etc.)
         if self.node_category_overrides_for_kp:
             query_graph = self._override_qnode_types_as_needed(query_graph)
-
         # Convert curies to the prefixes that this KP prefers (if we know that info)
         if self.kp_preferred_prefixes:
             query_graph = self._convert_to_accepted_curie_prefixes(query_graph)
-
+        # Grab only the first category if KP doesn't support category lists (they're supposed to)
+        if not self.kp_supports_category_lists:
+            for qnode in query_graph.nodes.values():
+                qnode.category = qnode.category[0] if qnode.category else None
+        # Grab only the first predicate if KP doesn't support predicate lists (they're supposed to)
+        if not self.kp_supports_predicate_lists:
+            for qedge in query_graph.edges.values():
+                qedge.predicate = qedge.predicate[0] if qedge.predicate else None
         return query_graph
 
     def _override_qnode_types_as_needed(self, query_graph: QueryGraph) -> QueryGraph:
         for qnode_key, qnode in query_graph.nodes.items():
             overriden_categories = {self.node_category_overrides_for_kp.get(qnode_category, qnode_category)
-                                    for qnode_category in eu.convert_string_or_list_to_list(qnode.category)}
+                                    for qnode_category in eu.convert_to_list(qnode.category)}
             qnode.category = list(overriden_categories)
         return query_graph
 

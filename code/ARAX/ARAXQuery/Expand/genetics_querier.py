@@ -117,7 +117,7 @@ class GeneticsQuerier:
     def _pre_process_query_graph(self, query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:
         for qnode_key, qnode in query_graph.nodes.items():
             # Convert node types to preferred format and verify we can do this query
-            formatted_qnode_categories = {self.node_category_overrides_for_kp.get(qnode_category, qnode_category) for qnode_category in eu.convert_string_or_list_to_list(qnode.category)}
+            formatted_qnode_categories = {self.node_category_overrides_for_kp.get(qnode_category, qnode_category) for qnode_category in eu.convert_to_list(qnode.category)}
             accepted_qnode_categories = formatted_qnode_categories.intersection(self.accepted_node_categories)
             if not accepted_qnode_categories:
                 log.error(f"{self.kp_name} can only be used for queries involving {self.accepted_node_categories} "
@@ -173,7 +173,7 @@ class GeneticsQuerier:
                           'target_id': qedge.object,
                           'type': list(self.accepted_edge_types)[0]}
         source_stripped_qnode = next(qnode for qnode in stripped_qnodes if qnode['id'] == qedge.subject)
-        input_curies = eu.convert_string_or_list_to_list(source_stripped_qnode['curie'])
+        input_curies = eu.convert_to_list(source_stripped_qnode['curie'])
         combined_response = dict()
         for input_curie in input_curies:  # Until we have batch querying, ping them one-by-one for each input curie
             log.debug(f"Sending {qedge_key} query to {self.kp_name} for {input_curie}")
