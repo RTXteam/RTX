@@ -57,7 +57,7 @@ class GeneralQuerier:
         #     return final_kg, edge_to_nodes_map
 
         # Answer the query using the KP and load its answers into our object model
-        if self.kp_name in ["ARAX/KG2", "ARAX/KG1"]:
+        if self.kp_name.endswith("KG2"):
             # Our KPs can handle batch queries (where qnode.id is a list of curies)
             final_kg, edge_to_nodes_map = self._answer_query_using_kp(qg_copy)
         else:
