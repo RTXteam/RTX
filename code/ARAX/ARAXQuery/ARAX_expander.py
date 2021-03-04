@@ -145,11 +145,7 @@ class ARAXExpander:
             "MolePro": {
                 "dsl_command": "expand(kp=MolePro)",
                 "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
-                               "subpaths that satisfy the query graph. It currently can answer questions involving "
-                               "the following node types: gene, protein, disease, chemical_substance. QNode types are "
-                               "required for MolePro queries. Generally you should not specify a QEdge type for "
-                               "MolePro queries (Expand uses 'correlated_with' by default behind the scenes, which is "
-                               "the primary edge type of interest for ARAX in MolePro).",
+                               "subpaths that satisfy the query graph.",
                 "parameters": {
                     "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
