@@ -29,6 +29,8 @@ class TRAPIQuerier:
         self.kp_preferred_prefixes = eu.get_kp_preferred_prefixes(kp_name)
         self.kp_supports_category_lists = eu.kp_supports_category_lists(kp_name)
         self.kp_supports_predicate_lists = eu.kp_supports_predicate_lists(kp_name)
+        self.kp_supports_none_for_category = eu.kp_supports_none_for_category(kp_name)
+        self.kp_supports_none_for_predicate = eu.kp_supports_none_for_predicate(kp_name)
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
@@ -52,9 +54,9 @@ class TRAPIQuerier:
         qg_copy = self._preprocess_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        # self._verify_qg_is_accepted_by_kp(query_graph)  TODO: reinstate this once have smoothed out validation
-        # if log.status != 'OK':
-        #     return final_kg, edge_to_nodes_map
+        self._verify_qg_is_accepted_by_kp(qg_copy)
+        if log.status != 'OK':
+            return final_kg, edge_to_nodes_map
 
         # Answer the query using the KP and load its answers into our object model
         if self.kp_name.endswith("KG2"):
@@ -68,7 +70,6 @@ class TRAPIQuerier:
             object_qnode_curies = eu.convert_to_list(qg_copy.nodes[qedge.object].id)
             object_qnode_curies = object_qnode_curies if object_qnode_curies else [None]
             curie_combinations = [(curie_subj, curie_obj) for curie_subj in subject_qnode_curies for curie_obj in object_qnode_curies]
-            qg_copy = eu.copy_qg(qg_copy)  # Make a copy so we don't alter the original QG
             # Query KP for all pairs of subject/object curies (pairs look like ("curie1", None) if one has no curies)
             for curie_combination in curie_combinations:
                 subject_curie = curie_combination[0]
@@ -100,9 +101,9 @@ class TRAPIQuerier:
         qg_copy = self._preprocess_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg
-        # self._verify_qg_is_accepted_by_kp(query_graph)  TODO: reinstate this once have smoothed out validation
-        # if log.status != 'OK':
-        #     return final_kg, edge_to_nodes_map
+        self._verify_qg_is_accepted_by_kp(qg_copy)
+        if log.status != 'OK':
+            return final_kg
 
         # Answer the query using the KP and load its answers into our object model
         final_kg, _ = self._answer_query_using_kp(qg_copy)
@@ -149,40 +150,69 @@ class TRAPIQuerier:
         return query_graph
 
     def _verify_qg_is_accepted_by_kp(self, query_graph: QueryGraph):
-        # TODO: Handle lists for qnode.category or qedge.predicate; what will this mean in terms of validation?
         kp_predicates_response = requests.get(f"{self.kp_endpoint}/predicates", headers={'accept': 'application/json'})
         if kp_predicates_response.status_code != 200:
             self.log.warning(f"Unable to access {self.kp_name}'s predicates endpoint "
                              f"(returned status of {kp_predicates_response.status_code})")
         else:
             predicates_dict = kp_predicates_response.json()
+            # TEMPORARY patch until new KG2 is rolled out where no predicates have commas in them
+            if self.kp_name.endswith("KG2"):
+                for subject_category in predicates_dict:
+                    for object_category in predicates_dict[subject_category]:
+                        commaless_predicates = [predicate.replace(",", "") for predicate in predicates_dict[subject_category][object_category]]
+                        predicates_dict[subject_category][object_category] = commaless_predicates
+
             qnodes = query_graph.nodes
+            qedge_key = next(qedge_key for qedge_key in query_graph.edges)
+            qedge = query_graph.edges[qedge_key]
             qg_triples = [[qnodes[qedge.subject].category, qedge.predicate, qnodes[qedge.object].category]
                           for qedge in query_graph.edges.values()]
             for triple in qg_triples:
-                subject_category = triple[0]
-                object_category = triple[1]
-                predicate = triple[2]
-                if subject_category not in predicates_dict:
-                    # KG2 supports None for qnode categories, so we make an exception for that
-                    if not (subject_category is None and self.kp_name == "ARAX/KG2"):
-                        self.log.error(f"{self.kp_name} cannot answer queries with {subject_category} as subject. "
-                                       f"Supported subject categories are: {list(predicates_dict)}",
-                                       error_code="UnsupportedQueryForKP")
-                elif object_category not in predicates_dict[subject_category]:
-                    # KG2 supports None for qnode categories, so we make an exception for that
-                    if not (object_category is None and self.kp_name == "ARAX/KG2"):
-                        self.log.error(f"{self.kp_name} cannot answer queries from {subject_category} to "
-                                       f"{object_category}. Supported object categories for a subject of "
-                                       f"{subject_category} are {list(predicates_dict[subject_category])}",
-                                       error_code="UnsupportedQueryForKP")
-                elif predicate not in predicates_dict[subject_category][object_category]:
-                    # KG2 supports None for predicates, so we make an exception for that
-                    if not (predicate is None and self.kp_name == "ARAX/KG2"):
-                        self.log.error(f"For {subject_category}--{object_category} qedges, {self.kp_name} doesn't "
-                                       f"support a predicate of '{predicate}'. Supported predicates are: "
-                                       f"{predicates_dict[subject_category][object_category]}",
-                                       error_code="UnsupportedQueryForKP")
+                query_subject_categories = set(eu.convert_to_list(triple[0]))
+                query_predicates = set(eu.convert_to_list(triple[1]))
+                query_object_categories = set(eu.convert_to_list(triple[2]))
+
+                # Make sure the subject qnode's category(s) are accepted by the KP
+                allowed_subj_categories = set(predicates_dict)
+                accepted_query_subj_categories = query_subject_categories.intersection(allowed_subj_categories)
+                if not query_subject_categories and self.kp_supports_none_for_category:
+                    # If this KP supports None for category, we'll pretend we have all supported categories
+                    accepted_query_subj_categories = allowed_subj_categories
+                if not accepted_query_subj_categories:
+                    self.log.error(f"{self.kp_name} doesn't support {qedge.subject}'s category. Supported categories "
+                                   f"for subject qnodes are: {allowed_subj_categories}",
+                                   error_code="UnsupportedQueryForKP")
+                    return
+
+                # Make sure that, given the subject qnode's category(s), >=1 of the object's categories are accepted
+                allowed_object_categories = {category for subj_category in accepted_query_subj_categories
+                                             for category in predicates_dict[subj_category]}
+                accepted_query_obj_categories = query_object_categories.intersection(allowed_object_categories)
+                if not query_object_categories and self.kp_supports_none_for_category:
+                    # If this KP supports None for category, we'll pretend we have all nested categories on this qnode
+                    accepted_query_obj_categories = allowed_object_categories
+                if not accepted_query_obj_categories:
+                    self.log.error(f"{self.kp_name} doesn't support {qedge.object}'s category. When subject "
+                                   f"category is {query_subject_categories}, supported object categories are: "
+                                   f"{allowed_object_categories}", error_code="UnsupportedQueryForKP")
+                    return
+
+                # Make sure that, given the subject/object categories, at least one of the predicates is accepted
+                allowed_predicates = set()
+                for subj_category in accepted_query_subj_categories:
+                    for obj_category in accepted_query_obj_categories:
+                        if obj_category in predicates_dict[subj_category]:
+                            allowed_predicates.update(set(predicates_dict[subj_category][obj_category]))
+                accepted_query_predicates = query_predicates.intersection(allowed_predicates)
+                if not query_predicates and self.kp_supports_none_for_predicate:
+                    # If this KP supports None for predicate, we'll pretend we have all nested predicates
+                    accepted_query_predicates = allowed_predicates
+                if not accepted_query_predicates:
+                    self.log.error(f"{self.kp_name} doesn't support {qedge_key}'s predicate. For "
+                                   f"{query_subject_categories}-->{query_object_categories} qedges, supported "
+                                   f"predicates are: {allowed_predicates}")
+                    return
 
     def _convert_to_accepted_curie_prefixes(self, query_graph: QueryGraph) -> QueryGraph:
         for qnode_key, qnode in query_graph.nodes.items():

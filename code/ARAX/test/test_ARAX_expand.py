@@ -816,6 +816,7 @@ def test_option_group_query_one_hop():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
 
 
+@pytest.mark.slow
 def test_option_group_query_no_results():
     # Tests query with optional path that doesn't have any matches in the KP (shouldn't error out)
     actions = [
@@ -823,7 +824,7 @@ def test_option_group_query_no_results():
         "add_qnode(key=n01, id=CHEBI:48607)",
         "add_qnode(key=n02, category=biolink:Protein, option_group_id=1, is_set=true)",
         "add_qedge(key=e00, subject=n00, object=n01, predicate=biolink:related_to)",
-        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=biolink:not_a_real_edge_type)",
+        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=biolink:overlaps)",
         "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicate=biolink:affects)",
         "expand()",
         "return(message=true, store=false)"
