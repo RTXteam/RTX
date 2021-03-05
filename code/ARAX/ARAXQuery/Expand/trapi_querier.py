@@ -101,9 +101,6 @@ class TRAPIQuerier:
         qg_copy = self._preprocess_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg
-        self._verify_qg_is_accepted_by_kp(qg_copy)
-        if log.status != 'OK':
-            return final_kg
 
         # Answer the query using the KP and load its answers into our object model
         final_kg, _ = self._answer_query_using_kp(qg_copy)
