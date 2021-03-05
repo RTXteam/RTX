@@ -745,7 +745,7 @@ class ARAXMessenger:
 
 
         #### 2021-02 Temporary hack. Convert some lists into strings and some strings in lists
-        print("Fixing edges", file=sys.stderr, flush=True)
+        #print("Fixing edges", file=sys.stderr, flush=True)
         if 'query_graph' in message and message['query_graph'] is not None:
             if 'edges' in message['query_graph'] and message['query_graph']['edges'] is not None:
                 for edge_key, edge in message['query_graph']['edges'].items():
@@ -753,7 +753,7 @@ class ARAXMessenger:
                         if isinstance(edge['predicate'], str):
                             edge['predicate'] = [ edge['predicate'] ]
 
-            print("Fixing nodes", file=sys.stderr, flush=True)
+            #print("Fixing nodes", file=sys.stderr, flush=True)
             if 'nodes' in message['query_graph'] and message['query_graph']['nodes'] is not None:
                 for node_key, node in message['query_graph']['nodes'].items():
                     if 'category' in node and node['category'] is not None:
@@ -764,6 +764,14 @@ class ARAXMessenger:
                         if isinstance(node['id'], str):
                             #eprint(f"node {node_key} id {node['id']}")
                             node['id'] = [ node['id'] ]
+
+        if 'knowledge_graph' in message and message['knowledge_graph'] is not None:
+            if 'nodes' in message['knowledge_graph'] and message['knowledge_graph']['nodes'] is not None:
+                for node_key, node in message['knowledge_graph']['nodes'].items():
+                    if 'category' in node and node['category'] is not None:
+                        if isinstance(node['category'], str):
+                            node['category'] = [ node['category'] ]
+
 
         #eprint("Done")
         #eprint(json.dumps(message,indent=2,sort_keys=True))
