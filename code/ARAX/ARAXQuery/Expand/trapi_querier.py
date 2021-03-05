@@ -54,7 +54,8 @@ class TRAPIQuerier:
         qg_copy = self._preprocess_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
-        self._verify_qg_is_accepted_by_kp(qg_copy)
+        if not self.kp_name.endswith("KG2"):  # Skip for KG2 for now since predicates/ isn't symmetric yet
+            self._verify_qg_is_accepted_by_kp(qg_copy)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
