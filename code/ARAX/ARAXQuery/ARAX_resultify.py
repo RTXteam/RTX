@@ -519,47 +519,54 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if unfulfilled_qnode_keys or unfulfilled_qedge_keys or not kg.nodes:
         return results
 
-    # Create results off the "required" portion of the QG (excluding any qnodes/qedges belong to an "option group")
-    required_qg = QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items() if not qnode.option_group_id},
-                             edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items() if not qedge.option_group_id})
-    qg_is_disconnected = _qg_is_disconnected(required_qg)
-    if qg_is_disconnected:
-        raise ValueError(f"Required portion of QG is disconnected. This isn't allowed! 'Required' qnode IDs are: "
-                         f"{[qnode_key for qnode_key in required_qg.nodes]}")
-    result_graphs_required = _create_result_graphs(kg, required_qg, ignore_edge_direction)
-
-    # Then create results for each of the "option groups" in the QG (including the required portion of the QG with each)
-    option_groups_in_qg = {qedge.option_group_id for qedge in qg.edges.values() if qedge.option_group_id}
-    option_group_results_dict = dict()
-    for option_group_id in option_groups_in_qg:
-        # Include qnodes/qedges that are either required or belong to this option group in our QG for this run
-        option_group_qg = QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items()
-                                            if qnode.option_group_id == option_group_id or not qnode.option_group_id},
-                                     edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items()
-                                            if qedge.option_group_id == option_group_id or not qedge.option_group_id})
-        qg_is_disconnected = _qg_is_disconnected(option_group_qg)
+    # Handle case where QG contains multiple qnodes and no qedges (we'll dump everything in one result)
+    if not qg.edges and len(qg.nodes) > 1:
+        nodes_by_qg_key = _get_kg_node_keys_by_qg_key(kg)
+        result_graph = _create_new_empty_result_graph(qg)
+        result_graph["nodes"] = nodes_by_qg_key
+        final_result_graphs = [result_graph]
+    else:
+        # Create results off the "required" portion of the QG (excluding any qnodes/qedges belong to an "option group")
+        required_qg = QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items() if not qnode.option_group_id},
+                                 edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items() if not qedge.option_group_id})
+        qg_is_disconnected = _qg_is_disconnected(required_qg)
         if qg_is_disconnected:
-            raise ValueError(f"Required + option group {option_group_id} portion of the QG is disconnected. "
-                             f"This isn't allowed! 'Required'/group {option_group_id} qnode IDs are: "
-                             f"{[qnode_key for qnode_key in option_group_qg.nodes]}")
-        result_graphs_for_option_group = _create_result_graphs(kg, option_group_qg, ignore_edge_direction)
-        option_group_results_dict[option_group_id] = result_graphs_for_option_group
+            raise ValueError(f"Required portion of QG is disconnected. This isn't allowed! 'Required' qnode IDs are: "
+                             f"{[qnode_key for qnode_key in required_qg.nodes]}")
+        result_graphs_required = _create_result_graphs(kg, required_qg, ignore_edge_direction)
 
-    # Organize our results for the 'required' portion of the QG by the IDs of their is_set=False nodes
-    required_non_set_qnode_keys = [qnode_key for qnode_key, qnode in required_qg.nodes.items() if not qnode.is_set]
-    result_graphs_by_key = dict()
-    for result_graph in result_graphs_required:
-        result_key = _get_result_graph_key(result_graph, required_non_set_qnode_keys)
-        result_graphs_by_key[result_key] = result_graph
-    # Then merge our results for each option group ID into the appropriate "required" results
-    for option_group_id in option_groups_in_qg:
-        for option_group_result_graph in option_group_results_dict[option_group_id]:
-            result_key = _get_result_graph_key(option_group_result_graph, required_non_set_qnode_keys)
-            corresponding_result_graph = result_graphs_by_key[result_key]
-            # Merge this optional result's contents into its corresponding "required" result
-            result_graphs_by_key[result_key] = _merge_two_result_graphs(option_group_result_graph, corresponding_result_graph)
+        # Then create results for each of the "option groups" in the QG (including the required portion of the QG with each)
+        option_groups_in_qg = {qedge.option_group_id for qedge in qg.edges.values() if qedge.option_group_id}
+        option_group_results_dict = dict()
+        for option_group_id in option_groups_in_qg:
+            # Include qnodes/qedges that are either required or belong to this option group in our QG for this run
+            option_group_qg = QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items()
+                                                if qnode.option_group_id == option_group_id or not qnode.option_group_id},
+                                         edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items()
+                                                if qedge.option_group_id == option_group_id or not qedge.option_group_id})
+            qg_is_disconnected = _qg_is_disconnected(option_group_qg)
+            if qg_is_disconnected:
+                raise ValueError(f"Required + option group {option_group_id} portion of the QG is disconnected. "
+                                 f"This isn't allowed! 'Required'/group {option_group_id} qnode IDs are: "
+                                 f"{[qnode_key for qnode_key in option_group_qg.nodes]}")
+            result_graphs_for_option_group = _create_result_graphs(kg, option_group_qg, ignore_edge_direction)
+            option_group_results_dict[option_group_id] = result_graphs_for_option_group
 
-    final_result_graphs = list(result_graphs_by_key.values())
+        # Organize our results for the 'required' portion of the QG by the IDs of their is_set=False nodes
+        required_non_set_qnode_keys = [qnode_key for qnode_key, qnode in required_qg.nodes.items() if not qnode.is_set]
+        result_graphs_by_key = dict()
+        for result_graph in result_graphs_required:
+            result_key = _get_result_graph_key(result_graph, required_non_set_qnode_keys)
+            result_graphs_by_key[result_key] = result_graph
+        # Then merge our results for each option group ID into the appropriate "required" results
+        for option_group_id in option_groups_in_qg:
+            for option_group_result_graph in option_group_results_dict[option_group_id]:
+                result_key = _get_result_graph_key(option_group_result_graph, required_non_set_qnode_keys)
+                corresponding_result_graph = result_graphs_by_key[result_key]
+                # Merge this optional result's contents into its corresponding "required" result
+                result_graphs_by_key[result_key] = _merge_two_result_graphs(option_group_result_graph, corresponding_result_graph)
+
+        final_result_graphs = list(result_graphs_by_key.values())
 
     # Convert the final result graphs into actual Swagger object model results
     results = []

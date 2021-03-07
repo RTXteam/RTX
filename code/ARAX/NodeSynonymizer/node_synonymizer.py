@@ -26,7 +26,7 @@ DEBUG = True
 class NodeSynonymizer:
 
     # Constructor
-    def __init__(self):
+    def __init__(self, live="Production"):
 
         self.databaseLocation = os.path.dirname(os.path.abspath(__file__))
         self.options = {}
@@ -42,7 +42,11 @@ class NodeSynonymizer:
             'skip_SRI': {}
         }
 
-        self.databaseName = "node_synonymizer.sqlite"
+        self.RTXConfig = RTXConfiguration()
+        self.RTXConfig.live = live
+
+        #self.databaseName = "node_synonymizer.sqlite"
+        self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
         self.engine_type = "sqlite"
 
         self.connection = None
@@ -2263,13 +2267,15 @@ def main():
                         help="If set perform the test query and return", default=None)
     parser.add_argument('-g', '--get', action="store",
                         help="Get nodes for the specified list in the specified kg_name", default=None)
+    parser.add_argument('-c', '--live', action="store",
+                        help="Get the config.json field for the filename", default="Production")
     args = parser.parse_args()
 
     if not args.build and not args.test and not args.recollate and not args.lookup and not args.query and not args.get:
         parser.print_help()
         exit()
 
-    synonymizer = NodeSynonymizer()
+    synonymizer = NodeSynonymizer(live = args.live)
 
     # If the user asks to perform the SELECT statement, do it
     if args.query:

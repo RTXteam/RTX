@@ -25,7 +25,7 @@ from ARAX_query import ARAXQuery
 
 def test_query_by_query_graph_2():
     query = { "message": { "query_graph": { "edges": {
-                "qg2": { "subject": "qg1", "object": "qg0", "predicate": "physically_interacts_with" }
+                "qg2": { "subject": "qg1", "object": "qg0", "predicate": "biolink:physically_interacts_with" }
             },
             "nodes": {
                 "qg0": { "name": "acetaminophen", "id": "CHEMBL.COMPOUND:CHEMBL112", "category": "biolink:ChemicalSubstance" },

@@ -157,13 +157,21 @@ class NGDQuerier:
 
     @staticmethod
     def _get_dsl_qnode_category_str(qnode: QNode) -> str:
-        # Use only the first type if there are multiple (which ARAXExpander adds for cases like "gene"/"protein")
-        type_str = qnode.category[0] if isinstance(qnode.category, list) else qnode.category
-        return f"category={type_str}" if qnode.category else ""
+        if len(qnode.category) == 0:
+            return ""
+        elif len(qnode.category) == 1:
+            return f"category={qnode.category[0]}"
+        else:
+            return f"category=[{', '.join(qnode.category)}]"
 
     @staticmethod
     def _get_dsl_qedge_type_str(qedge: QEdge) -> str:
-        return f"predicate={qedge.predicate}" if qedge.predicate else ""
+        if len(qedge.predicate) == 0:
+            return ""
+        elif len(qedge.predicate) == 1:
+            return f"predicate={qedge.predicate[0]}"
+        else:
+            return f"predicate=[{', '.join(qedge.predicate)}]"
 
     @staticmethod
     def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):
