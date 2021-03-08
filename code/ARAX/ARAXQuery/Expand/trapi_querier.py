@@ -78,7 +78,10 @@ class TRAPIQuerier:
                 qg_copy.nodes[qedge.subject].id = subject_curie
                 qg_copy.nodes[qedge.object].id = object_curie
                 self.log.debug(f"Current curie pair is: subject: {subject_curie}, object: {object_curie}")
-                sub_kg, sub_edge_to_nodes_map = self._answer_query_using_kp(qg_copy)
+                if self.kp_supports_category_lists and self.kp_supports_predicate_lists:
+                    sub_kg, sub_edge_to_nodes_map = self._answer_query_using_kp(qg_copy)
+                else:
+                    sub_kg, sub_edge_to_nodes_map = self._answer_query_for_kps_who_dont_like_lists(qg_copy)
                 edge_to_nodes_map.update(sub_edge_to_nodes_map)
                 final_kg = eu.merge_two_kgs(sub_kg, final_kg)
 
@@ -130,14 +133,6 @@ class TRAPIQuerier:
         # Convert curies to the prefixes that this KP prefers (if we know that info)
         if self.kp_preferred_prefixes:
             query_graph = self._convert_to_accepted_curie_prefixes(query_graph)
-        # Grab only the first category if KP doesn't support category lists (they're supposed to)
-        if not self.kp_supports_category_lists:
-            for qnode in query_graph.nodes.values():
-                qnode.category = qnode.category[0] if qnode.category else None
-        # Grab only the first predicate if KP doesn't support predicate lists (they're supposed to)
-        if not self.kp_supports_predicate_lists:
-            for qedge in query_graph.edges.values():
-                qedge.predicate = qedge.predicate[0] if qedge.predicate else None
         return query_graph
 
     def _override_qnode_types_as_needed(self, query_graph: QueryGraph) -> QueryGraph:
@@ -309,6 +304,39 @@ class TRAPIQuerier:
         else:
             self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. Response from KP was:"
                              f" {json.dumps(json_response, indent=4)}")
+
+        return answer_kg, edge_to_nodes_map
+
+    def _answer_query_for_kps_who_dont_like_lists(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+        """
+        TRAPI 1.0 says qnode.category and qedge.predicate can both be strings OR lists, but many KPs don't support
+        them being lists. So this function pings such KPs one by one for each possible
+        subj_category--predicate--obj_category combination.
+        """
+        qg_copy = eu.copy_qg(query_graph)  # Use a copy of the QG so we don't modify the original
+        qnodes = qg_copy.nodes
+        qedge_key = next(qedge_key for qedge_key in qg_copy.edges)
+        qedge = qg_copy.edges[qedge_key]
+        subject_categories = qnodes[qedge.subject].category if qnodes[qedge.subject].category else [None]
+        object_categories = qnodes[qedge.object].category if qnodes[qedge.object].category else [None]
+        predicates = qedge.predicate if qedge.predicate else [None]
+        possible_triples = [(subject_category, predicate, object_category) for subject_category in subject_categories
+                            for predicate in predicates for object_category in object_categories]
+        answer_kg = QGOrganizedKnowledgeGraph()
+        edge_to_nodes_map = dict()
+        for possible_triple in possible_triples:
+            current_subject_category = possible_triple[0]
+            current_predicate = possible_triple[1]
+            current_object_category = possible_triple[2]
+            # Modify the QG so it's asking only for the current category--predicate--category triple
+            qg_copy.nodes[qedge.subject].category = current_subject_category
+            qg_copy.nodes[qedge.object].category = current_object_category
+            qg_copy.edges[qedge_key].predicate = current_predicate
+            self.log.debug(f"Current triple is: {current_subject_category}--{current_predicate}--{current_object_category}")
+            sub_kg, sub_edge_to_nodes_map = self._answer_query_using_kp(qg_copy)
+            # Merge the answers for this triple into our answers received thus far
+            edge_to_nodes_map.update(sub_edge_to_nodes_map)
+            answer_kg = eu.merge_two_kgs(sub_kg, answer_kg)
 
         return answer_kg, edge_to_nodes_map
 

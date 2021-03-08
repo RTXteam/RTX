@@ -246,7 +246,8 @@ def kp_supports_category_lists(kp_name: str) -> bool:
     # TRAPI 1.0 specifies qnode.category can be a list, but not all KPs support that
     list_support = {"ARAX/KG2": True,
                     "MolePro": False,
-                    "GeneticsKP": False}
+                    "GeneticsKP": False,
+                    "BTE": False}
     return list_support.get(kp_name, True)
 
 
@@ -254,7 +255,8 @@ def kp_supports_predicate_lists(kp_name: str) -> bool:
     # TRAPI 1.0 specifies qedge.predicate can be a list, but not all KPs support that
     list_support = {"ARAX/KG2": True,
                     "MolePro": False,
-                    "GeneticsKP": False}
+                    "GeneticsKP": False,
+                    "BTE": False}
     return list_support.get(kp_name, True)
 
 
@@ -262,16 +264,18 @@ def kp_supports_none_for_predicate(kp_name: str) -> bool:
     # This information isn't captured in TRAPI anywhere currently, so hardcoding it
     none_predicates = {"ARAX/KG2": True,
                        "MolePro": True,
-                       "GeneticsKP": False}
+                       "GeneticsKP": False,
+                       "BTE": True}
     return none_predicates.get(kp_name, True)
 
 
 def kp_supports_none_for_category(kp_name: str) -> bool:
     # This information isn't captured in TRAPI anywhere currently, so hardcoding it
-    none_predicates = {"ARAX/KG2": True,
+    none_categories = {"ARAX/KG2": True,
                        "MolePro": False,
-                       "GeneticsKP": False}
-    return none_predicates.get(kp_name, True)
+                       "GeneticsKP": False,
+                       "BTE": True}
+    return none_categories.get(kp_name, True)
 
 
 def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
