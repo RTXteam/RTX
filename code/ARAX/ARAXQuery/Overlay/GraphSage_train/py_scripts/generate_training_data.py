@@ -24,7 +24,7 @@ class DataGeneration:
     def __init__(self):
         ## Connect to neo4j database
         rtxc = RTXConfiguration()
-        rtxc.live = 'KG2C'
+        rtxc.live = 'KG2c'
         self.driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 
     def get_drug_curies_from_graph(self):
