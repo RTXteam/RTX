@@ -2106,8 +2106,8 @@ def main():
         synonymizer.build_kg_map(filter_file=args.filter_file)
         synonymizer.import_equivalencies()
 
-        print("WARNING: Skipping import_synonyms because of memory constraints")
-        #synonymizer.import_synonyms()
+        #print("WARNING: Skipping import_synonyms because of memory constraints")
+        synonymizer.import_synonyms()
 
         # If the flag is set, save our state here for later recollate testing
         if args.save_state:
@@ -2119,9 +2119,6 @@ def main():
         synonymizer.merge_unique_concepts()
         synonymizer.merge_unique_concepts_by_name()
         synonymizer.merge_unique_concepts()
-        #synonymizer.merge_unique_concepts_by_name()
-        #synonymizer.coalesce_duplicates()
-        #synonymizer.remap_unique_concepts()
 
         synonymizer.create_tables()
         synonymizer.store_kg_map()
