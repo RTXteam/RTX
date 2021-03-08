@@ -1,11 +1,13 @@
 #!/bin/env python3
 import sys
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, flush=True, **kwargs)
 
 import os
 import json
 import ast
 import re
+import copy
+
 from datetime import datetime
 import numpy as np
 import requests
@@ -79,7 +81,7 @@ class ARAXMessenger:
         self.response = response
     
         #### Create the top-level Response object called an envelope
-        response.info("Creating an empty template ARAX Envelope")
+        response.info("Creating an empty template TRAPI Response")
         envelope = Response()
         response.envelope = envelope
         self.envelope = envelope
@@ -738,8 +740,71 @@ class ARAXMessenger:
     #### Convert a Message as a dict to a Message as objects
     def from_dict(self, message):
 
-        if str(message.__class__) != "<class 'openapi_server.models.message.Message'>":
-            message = Message().from_dict(message)
+        if str(message.__class__) == "<class 'openapi_server.models.message.Message'>":
+            return message
+
+
+        #### 2021-02 Temporary hack. Convert some lists into strings and some strings in lists
+        #print("Fixing edges", file=sys.stderr, flush=True)
+        if 'query_graph' in message and message['query_graph'] is not None:
+            if 'edges' in message['query_graph'] and message['query_graph']['edges'] is not None:
+                for edge_key, edge in message['query_graph']['edges'].items():
+                    if 'predicate' in edge and edge['predicate'] is not None:
+                        if isinstance(edge['predicate'], str):
+                            edge['predicate'] = [ edge['predicate'] ]
+
+            #print("Fixing nodes", file=sys.stderr, flush=True)
+            if 'nodes' in message['query_graph'] and message['query_graph']['nodes'] is not None:
+                for node_key, node in message['query_graph']['nodes'].items():
+                    if 'category' in node and node['category'] is not None:
+                        if isinstance(node['category'], str):
+                            #eprint(f"node {node_key} category {node['category']}")
+                            node['category'] = [ node['category'] ]
+                    if 'id' in node and node['id'] is not None:
+                        if isinstance(node['id'], str):
+                            #eprint(f"node {node_key} id {node['id']}")
+                            node['id'] = [ node['id'] ]
+
+        if 'knowledge_graph' in message and message['knowledge_graph'] is not None:
+            if 'nodes' in message['knowledge_graph'] and message['knowledge_graph']['nodes'] is not None:
+                for node_key, node in message['knowledge_graph']['nodes'].items():
+                    if 'category' in node and node['category'] is not None:
+                        if isinstance(node['category'], str):
+                            node['category'] = [ node['category'] ]
+
+
+        #eprint("Done")
+        #eprint(json.dumps(message,indent=2,sort_keys=True))
+
+        #### Deserialize
+        message = Message().from_dict(message)
+
+        #### Revert some things back temporarily
+
+#        if message.query_graph is not None:
+#            print("DEFixing edges", file=sys.stderr, flush=True)
+#            if message.query_graph.edges is not None:
+#                for edge_key, edge in message.query_graph.edges.items():
+#                    if edge.predicate is not None:
+#                        if isinstance(edge.predicate, list):
+#                            if len(edge.predicate) > 0:
+#                                edge.predicate = edge.predicate[0]
+#                            else:
+#                                edge.predicate = None
+
+#            print("DEFixing nodes", file=sys.stderr, flush=True)
+#            if message.query_graph.nodes is not None:
+#                for node_key, node in message.query_graph.nodes.items():
+#                    if node.category is not None:
+#                        if isinstance(node.category, list):
+#                            if len(node.category) > 0:
+#                                node.category = node.category[0]
+#                            else:
+#                                node.category = None
+                        # id is NOT fixed
+
+
+
 
         # When tested from ARAX_query_graph_interpreter, none of this subsequent stuff is needed
 

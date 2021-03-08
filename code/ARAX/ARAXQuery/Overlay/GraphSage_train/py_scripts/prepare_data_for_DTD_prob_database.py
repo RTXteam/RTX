@@ -1,8 +1,22 @@
 import pandas as pd
+import sys 
+import os
 
-graph = pd.read_csv("rel_max.emb.gz", sep=' ', skiprows=1, header=None, index_col=None)
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+RTXConfig = RTXConfiguration()
+RTXConfig.live = "Production"
+
+pred_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
+rel_max_path = os.path.sep.join([pred_path,self.RTXConfig.rel_max_path.split('/')[-1]])
+map_txt_path = os.path.sep.join([pred_path,self.RTXConfig.map_txt_path.split('/')[-1]])
+
+
+graph = pd.read_csv(rel_max_path, sep=' ', skiprows=1, header=None, index_col=None)
 graph = graph.sort_values(0).reset_index(drop=True)
-map_df = pd.read_csv('map.txt', sep='\t', index_col=None)
+map_df = pd.read_csv(map_txt_path, sep='\t', index_col=None)
 graph.loc[:, 0] = map_df.loc[:, 'curie']
 graph = graph.set_index([0])
 

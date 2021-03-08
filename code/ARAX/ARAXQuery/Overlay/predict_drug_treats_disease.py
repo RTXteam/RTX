@@ -18,6 +18,11 @@ from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
+from RTXConfiguration import RTXConfiguration
+RTXConfig = RTXConfiguration()
+RTXConfig.live = "Production"
+
 class PredictDrugTreatsDisease:
 
     #### Constructor
@@ -29,30 +34,36 @@ class PredictDrugTreatsDisease:
         ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
-        filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor','retrain_data'])
+        filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
         self.drug_label_list = ['chemicalsubstance','drug']
         self.disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
 
         ## check if there is LogModel.pkl
-        pkl_file = f"{filepath}/LogModel.pkl"
+        log_model_name = RTXConfig.log_model_path.split("/")[-1]
+        pkl_file = f"{filepath}{os.path.sep}{log_model_name}"
         if os.path.exists(pkl_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
+            #os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
+            os.system(f"scp {RTXConfig.log_model_username}@{RTXConfig.log_model_host}:{RTXConfig.log_model_path} {pkl_file}")
+
 
         ## check if there is GRAPH.sqlite
-        db_file = f"{filepath}/GRAPH.sqlite"
+        graph_database_name = RTXConfig.graph_database_path.split("/")[-1]
+        db_file = f"{filepath}{os.path.sep}{graph_database_name}"
         if os.path.exists(db_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/GRAPH.sqlite " + db_file)
+            #os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/GRAPH.sqlite " + db_file)
+            os.system(f"scp {RTXConfig.graph_database_username}@{RTXConfig.graph_database_host}:{RTXConfig.graph_database_path} {db_file}")
 
         ## check if there is DTD_probability_database.db
-        DTD_prob_db_file = f"{filepath}/DTD_probability_database_v1.0.db"
+        DTD_prob_db_file = f"{filepath}{os.path.sep}{RTXConfig.dtd_prob_path.split('/')[-1]}"
         if os.path.exists(DTD_prob_db_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/DTD_probability_database_v1.0.db " + DTD_prob_db_file)
+            #os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/DTD_probability_database_v1.0.db " + DTD_prob_db_file)
+            os.system(f"scp {RTXConfig.dtd_prob_username}@{RTXConfig.dtd_prob_host}:{RTXConfig.dtd_prob_path} {DTD_prob_db_file}")
 
         # use NodeSynonymizer to replace map.txt
         # check if there is map.txt
