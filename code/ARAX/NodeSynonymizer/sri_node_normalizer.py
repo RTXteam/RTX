@@ -13,6 +13,7 @@ import time
 import pickle
 import re
 import platform
+import shelve
 
 import requests
 import requests_cache
@@ -26,12 +27,15 @@ class SriNodeNormalizer:
     def __init__(self):
         requests_cache.install_cache('sri_node_normalizer_requests_cache')
 
+        self.storage_mode = 'dict'      # either dict or shelve
+
         self.supported_types = None
         self.supported_prefixes = None
-        self.cache = {
-            'summary': {},
-            'ids': {},
-        }
+        self.cache = {}
+        self.stats = {}
+
+        if self.storage_mode == 'shelve':
+            self.cache = shelve.open('sri_node_normalizer_curie_cache.shelve')
 
         # Translation table of different curie prefixes ARAX -> normalizer
         self.curie_prefix_tx_arax2sri = {
@@ -49,26 +53,28 @@ class SriNodeNormalizer:
     # ############################################################################################
     # Store the cache of all normalizer results
     def store_cache(self):
+        if self.storage_mode == 'shelve':
+            self.cache.sync()
+            return
         if self.cache is None:
             return
         filename = f"sri_node_normalizer_curie_cache.pickle"
         print(f"INFO: Storing SRI normalizer cache to {filename}")
         with open(filename, "wb") as outfile:
             pickle.dump(self.cache, outfile)
-        print("Summary after store:")
-        print(json.dumps(self.cache['summary'], indent=2, sort_keys=True))
 
 
     # ############################################################################################
     # Load the cache of all normalizer results
     def load_cache(self):
+        if self.storage_mode == 'shelve':
+            return
         filename = f"sri_node_normalizer_curie_cache.pickle"
         if os.path.exists(filename):
             print(f"INFO: Reading SRI normalizer cache from {filename}")
             with open(filename, "rb") as infile:
                 self.cache = pickle.load(infile)
-            #print("Summary after load:")
-            #print(json.dumps(self.cache['summary'], indent=2, sort_keys=True))
+                self.cache = self.cache['ids']
         else:
             print(f"INFO: SRI node normalizer cache {filename} does not yet exist. Need to fill it.")
 
@@ -128,7 +134,7 @@ class SriNodeNormalizer:
             if normalizer_curie_prefix in self.supported_prefixes:
                 keep = 1
             # Unless it's already in the cache, then no
-            if normalizer_node_curie in self.cache['ids']:
+            if normalizer_node_curie in self.cache:
                 keep = 0
             # Or if we've reached the end of the file, then set keep to 99 and trigger end-of-file processing of the last batch
             if bytes_read + 3 > filesize and len(batch) > 0:
@@ -147,18 +153,18 @@ class SriNodeNormalizer:
                     results = self.get_node_normalizer_results(batch)
                     print(".", end='', flush=True)
                     for curie in batch:
-                        if curie in self.cache['ids']:
+                        if curie in self.cache:
                             continue
                         curie_prefix = curie.split(':')[0]
-                        if curie_prefix not in self.cache['summary']:
-                            self.cache['summary'][curie_prefix] = { 'found': 0, 'not found': 0, 'total': 0 }
+                        if curie_prefix not in self.stats:
+                            self.stats[curie_prefix] = { 'found': 0, 'not found': 0, 'total': 0 }
                         if results is None or curie not in results or results[curie] is  None:
-                            self.cache['ids'][curie] = None
-                            self.cache['summary'][curie_prefix]['not found'] += 1
+                            self.cache[curie] = None
+                            self.stats[curie_prefix]['not found'] += 1
                         else:
-                            self.cache['ids'][curie] = results[curie]
-                            self.cache['summary'][curie_prefix]['found'] += 1
-                        self.cache['summary'][curie_prefix]['total'] += 1
+                            self.cache[curie] = results[curie]
+                            self.stats[curie_prefix]['found'] += 1
+                        self.stats[curie_prefix]['total'] += 1
 
                     # Clear the batch list
                     batch = []
@@ -177,7 +183,10 @@ class SriNodeNormalizer:
         print(f"{bytes_read} bytes read of {filesize} bytes in file")
         print(f"{supported_curies} curies with prefixes supported by the SRI normalizer")
 
-        # Store the results
+        print("Build stats:")
+        print(json.dumps(self.stats, indent=2, sort_keys=True))
+
+        # Store or sync the results
         self.store_cache()
 
 
@@ -263,9 +272,9 @@ class SriNodeNormalizer:
 
         if isinstance(curies,str):
             #print(f"INFO: Looking for curie {curies}")
-            if curies in self.cache['ids']:
+            if curies in self.cache:
                 #print(f"INFO: Using prefill cache for lookup on {curies}")
-                result = { curies: self.cache['ids'][curies] }
+                result = { curies: self.cache[curies] }
                 return result
             curies = [ curies ]
 
