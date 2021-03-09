@@ -42,11 +42,11 @@ class NodeSynonymizer:
             'skip_SRI': {}
         }
 
-        self.RTXConfig = RTXConfiguration()
-        self.RTXConfig.live = live
+        #self.RTXConfig = RTXConfiguration()
+        #self.RTXConfig.live = live
 
-        #self.databaseName = "node_synonymizer.sqlite"
-        self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
+        self.databaseName = "node_synonymizer.sqlite"
+        #self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
         self.engine_type = "sqlite"
 
         self.connection = None
@@ -140,6 +140,10 @@ class NodeSynonymizer:
         print(f"INFO: Creating INDEXes on names")
         self.connection.execute(f"CREATE INDEX idx_names_lc_name ON names(lc_name)")
         self.connection.execute(f"CREATE INDEX idx_names_unique_concept_curie ON names(unique_concept_curie)")
+
+        print(f"INFO: Creating INDEXes on name_curies")
+        self.connection.execute(f"CREATE INDEX idx_name_curies_lc_name ON name_curies(lc_name)")
+        self.connection.execute(f"CREATE INDEX idx_name_curies_unique_concept_curie ON name_curies(unique_concept_curie)")
 
 
     # ############################################################################################
@@ -2041,7 +2045,7 @@ def main():
     import json
 
     parser = argparse.ArgumentParser(
-        description="Tests or rebuilds the ARAX Node Synonymizer. Note that the build process requires 26 GB RAM.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Tests or rebuilds the ARAX Node Synonymizer. Note that the build process requires 54 GB RAM.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-b', '--build', action="store_true",
                         help="If set, (re)build the index from scratch", default=False)
     parser.add_argument('-f', '--filter_file', action="store",
@@ -2108,7 +2112,7 @@ def main():
 
     # Else if the build option is selected, build the kg_map from scratch
     elif args.build:
-        print("WARNING: Beginning full NodeSynonymizer build process. This requires 26 GB of RAM. If you don't have 26 GB of RAM available, this would be a good time to stop the process!")
+        print("WARNING: Beginning full NodeSynonymizer build process. This requires 54 GB of RAM. If you don't have 54 GB of RAM available, this would be a good time to stop the process!")
         synonymizer.build_kg_map(filter_file=args.filter_file)
         synonymizer.import_equivalencies()
 
