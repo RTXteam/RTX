@@ -174,7 +174,7 @@ class ARAXRanker:
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
                                  'probability_treats', 'paired_concept_frequency',
                                  'observed_expected_ratio', 'chi_square', 'chi_square_pvalue', 'MAGMA-pvalue', 'Genetics-quantile',
-                                 'fisher_exact_test_p-value','Richards-effector-genes'}
+                                 'pValue', 'fisher_exact_test_p-value','Richards-effector-genes'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
@@ -186,6 +186,7 @@ class ARAXRanker:
                                           'chi_square_pvalue': 0.8,
                                           'MAGMA-pvalue': 1.0,
                                           'Genetics-quantile': 1.0,
+                                          'pValue': 1.0,
                                           'fisher_exact_test_p-value': 0.8,
                                           'Richards-effector-genes': 0.5,
                                           }
@@ -430,6 +431,19 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         return self.__normalize_chi_square(value)
 
     def __normalize_MAGMA_pvalue(self, value):
+        """
+        For Genetics Provider MAGMA p-value: Convert provided p-value to a number between 0 and 1
+        with 1 being best. Estimated conversion from SAR and DMK 2020-09-22
+        """
+
+        value = -np.log(value)
+        max_value = 1.0
+        curve_steepness = 0.849
+        logistic_midpoint = 4.97
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        return normalized_value
+
+    def __normalize_pValue(self, value):
         """
         For Genetics Provider MAGMA p-value: Convert provided p-value to a number between 0 and 1
         with 1 being best. Estimated conversion from SAR and DMK 2020-09-22
