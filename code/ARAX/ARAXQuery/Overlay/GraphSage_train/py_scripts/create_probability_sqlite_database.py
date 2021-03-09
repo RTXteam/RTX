@@ -14,28 +14,32 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
 from Overlay.predictor.predictor import predictor
-filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor', 'retrain_data'])
+#filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor', 'retrain_data'])
+filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
+
+RTXConfig = RTXConfiguration()
+RTXConfig.live = "KG2C"
 
 ## check if there is LogModel.pkl
-pkl_file = f"{filepath}/LogModel.pkl"
+pkl_file = f"{filepath}{os.path.sep}{RTXConfig.log_model_path.split('/')[-1]}"
 if os.path.exists(pkl_file):
     pass
 else:
-    os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
+    os.system(f"scp {RTXConfig.log_model_username}@{RTXConfig.log_model_host}:{RTXConfig.log_model_path} " + pkl_file)
 
 ## check if there is rel_max.emb.gz
-emb_file = f"{filepath}/rel_max.emb.gz"
+emb_file = f"{filepath}{os.path.sep}{RTXConfig.rel_max_path.split('/')[-1]}"
 if os.path.exists(emb_file):
     pass
 else:
-    os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/rel_max.emb.gz " + emb_file)
+    os.system(f"scp {RTXConfig.rel_max_username}@{RTXConfig.rel_max_host}:{RTXConfig.rel_max_path} " + emb_file)
 
 # check if there is map.txt
-map_file = f"{filepath}/map.txt"
+map_file = f"{filepath}{os.path.sep}{RTXConfig.map_txt_path.split('/')[-1]}"
 if os.path.exists(map_file):
     pass
 else:
-    os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/map.txt " + map_file)
+    os.system(f"scp {RTXConfig.map_txt_username}@{RTXConfig.map_txt_host}:{RTXConfig.map_txt_path} " + map_file)
 
 graph = pd.read_csv(emb_file, sep=' ', skiprows=1, header=None, index_col=None)
 graph = graph.sort_values(0).reset_index(drop=True)
@@ -44,8 +48,9 @@ graph.loc[:,0] = map_df.loc[:,'curie']
 graph = graph.set_index([0])
 
 ## Connect to neo4j database
-rtxc = RTXConfiguration()
-driver = GraphDatabase.driver("bolt://kg2canonicalized2.rtx.ai:7687", auth=(rtxc.neo4j_username, rtxc.neo4j_password))
+#rtxc = RTXConfiguration()
+# added RTXConfig at top and set to 'KG2C'
+driver = GraphDatabase.driver(RTXConfig.neo4j_bolt, auth=(RTXConfig.neo4j_username, RTXConfig.neo4j_password))
 session = driver.session()
 
 ## Pulls a dataframe of all of the graph drug-associated nodes

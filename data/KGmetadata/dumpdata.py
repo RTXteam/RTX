@@ -6,6 +6,7 @@ import requests_cache
 import os
 import sys
 import re
+import argparse
 
 #requests_cache.install_cache('orangeboard')
 # specifiy the path of orangeboard database
@@ -114,9 +115,17 @@ def dump_edge_types_KG1(file_name, session, write_mode):
 			fid.write('%s\n' % type)
 	return
 
+parser = argparse.ArgumentParser(
+        description="Dumps the data from KG1 and KG2 into tsvs")
+parser.add_argument('--kg1', type=str,
+                    help="Specify the KG to access for building NodeNamesDescriptions_KG1.tsv", default='Production')
+parser.add_argument('--kg2', type=str,
+                    help="Specify the KG to access for building NodeNamesDescriptions_KG2.tsv", default='KG2')
+args = parser.parse_args()
+
 # Actually dump the data for KG1
 rtxConfig = RTXConfiguration()
-rtxConfig.live = 'Production'
+rtxConfig.live = args.kg1
 driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
 session = driver.session()
 dump_name_description_KG1('NodeNamesDescriptions_KG1.tsv', session, 'w')
@@ -127,7 +136,7 @@ dump_name_description_KG1('NodeNamesDescriptions_KG1.tsv', session, 'w')
 # now dump data for KG2
 del rtxConfig
 rtxConfig = RTXConfiguration()
-rtxConfig.live = 'KG2'
+rtxConfig.live = args.kg2
 driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
 session = driver.session()
 dump_name_description_KG2('NodeNamesDescriptions_KG2.tsv', session, 'w')

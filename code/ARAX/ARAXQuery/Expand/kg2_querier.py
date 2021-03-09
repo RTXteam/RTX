@@ -77,7 +77,7 @@ class KG2Querier:
             qnode.category = []  # Important to clear this, otherwise results are limited (#889)
 
         # Run the actual query and process results
-        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, kg_name, log)
+        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, log)
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
         neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, kg_name, log)
@@ -112,7 +112,7 @@ class KG2Querier:
 
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
-        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, single_node_qg, kg_name)} WHERE {where_clause} RETURN {qnode_key}"
+        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, single_node_qg)} WHERE {where_clause} RETURN {qnode_key}"
         log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
 
@@ -128,7 +128,7 @@ class KG2Querier:
         return final_kg
 
     def _convert_one_hop_query_graph_to_cypher_query(self, qg: QueryGraph, enforce_directionality: bool,
-                                                     kg_name: str, log: ARAXResponse) -> str:
+                                                     log: ARAXResponse) -> str:
         qedge_key = next(qedge_key for qedge_key in qg.edges)
         qedge = qg.edges[qedge_key]
         log.debug(f"Generating cypher for edge {qedge_key} query graph")
@@ -137,8 +137,8 @@ class KG2Querier:
             subject_qnode_key = qedge.subject
             object_qnode_key = qedge.object
             qedge_cypher = self._get_cypher_for_query_edge(qedge_key, qg, enforce_directionality)
-            source_qnode_cypher = self._get_cypher_for_query_node(subject_qnode_key, qg, kg_name)
-            target_qnode_cypher = self._get_cypher_for_query_node(object_qnode_key, qg, kg_name)
+            source_qnode_cypher = self._get_cypher_for_query_node(subject_qnode_key, qg)
+            target_qnode_cypher = self._get_cypher_for_query_node(object_qnode_key, qg)
             match_clause = f"MATCH {source_qnode_cypher}{qedge_cypher}{target_qnode_cypher}"
 
             # Build the where clause
@@ -148,24 +148,12 @@ class KG2Querier:
                 if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
                     where_fragments.append(f"{qnode_key}.id in {qnode.id}")
                 if qnode.category:
-                    # Only inspect the 'all_categories' field if we're using KG2c
-                    if kg_name == "KG2c":
-                        category_fragments = [f"'{category}' in {qnode_key}.types" for category in qnode.category]
-                        joined_category_fragments = " OR ".join(category_fragments)
-                        category_where_clause = joined_category_fragments if len(category_fragments) < 2 else f"({joined_category_fragments})"
-                        where_fragments.append(category_where_clause)
-                    # Otherwise add a simple where condition if we have multiple categories
-                    elif len(qnode.category) > 1:
-                        if kg_name == "KG2":
-                            node_category_property = "category_label"
-                        else:
-                            node_category_property = "category"
-                        where_fragments.append(f"{qnode_key}.{node_category_property} in {qnode.category}")
-
-            if where_fragments:
-                where_clause = f"WHERE {' AND '.join(where_fragments)}"
-            else:
-                where_clause = ""
+                    if len(qnode.category) > 1:
+                        # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
+                        category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.category]
+                        category_where_fragment = f"({' OR '.join(category_sub_fragments)})"
+                        where_fragments.append(category_where_fragment)
+            where_clause = f"WHERE {' AND '.join(where_fragments)}" if where_fragments else ""
 
             # Build the with clause
             source_qnode_col_name = f"nodes_{subject_qnode_key}"
@@ -382,10 +370,10 @@ class KG2Querier:
         return edge
 
     @staticmethod
-    def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph, kg_name: str) -> str:
+    def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph) -> str:
         qnode = qg.nodes[qnode_key]
-        # Add in node label if there's only one category (and we're not using KG2c - KG2c only ever uses all_categories)
-        category_cypher = f":{qnode.category[0]}" if len(qnode.category) == 1 and kg_name != "KG2c" else ""
+        # Add in node label if there's only one category
+        category_cypher = f":{qnode.category[0]}" if len(qnode.category) == 1 else ""
         if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
             curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
             curie_cypher = f" {{id:'{curie}'}}"

@@ -49,6 +49,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
 
+from ARAX_database_manager import ARAXDatabaseManager
+
 
 class ARAXQuery:
 
@@ -57,6 +59,12 @@ class ARAXQuery:
         self.response = None
         self.message = None
         self.rtxConfig = RTXConfiguration()
+        
+        self.DBManager = ARAXDatabaseManager(live = "Production")
+        if self.DBManager.check_versions():
+            self.response = ARAXResponse()
+            self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
+            self.response = self.DBManager.update_databases(True, response=self.response)
 
 
     def query_return_stream(self,query, mode='ARAX'):
@@ -149,6 +157,7 @@ class ARAXQuery:
         if result.status != 'OK':
             return response
         query_attributes = result.data
+
 
         # #### If we have a query_graph in the input query
         if "have_query_graph" in query_attributes:
