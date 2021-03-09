@@ -1,0 +1,3 @@
+# Skip entries to avoid linking Losartan and Erythropoietin
+skip_SRI MESH:D004921
+skip_SRI CHEMBL.COMPOUND:CHEMBL995
