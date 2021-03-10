@@ -8,8 +8,8 @@ services:
 #  - docker
 # command to setup sql feedback docker container
 before_install:
-  - mkdir -p ~/.ssh && echo "Host araxconfig.rtx.ai\n" > ~/.ssh/config && echo "    StrictHostKeyChecking no\n" >> ~/.ssh/config
-  - echo "Host arax.ncats.io\n" >> ~/.ssh/config && echo "    StrictHostKeyChecking no\n" >> ~/.ssh/config
+  - mkdir -p ~/.ssh && echo "Host araxconfig.rtx.ai" > ~/.ssh/config && echo "    StrictHostKeyChecking no" >> ~/.ssh/config
+  - echo "Host arax.ncats.io" >> ~/.ssh/config && echo "    StrictHostKeyChecking no" >> ~/.ssh/config
   - echo -e "${TRAVIS_KEY//_/\\n}" > ~/.ssh/id_rsa
   - echo -e "${TRAVIS_KEY_PUB//_/\\n}" > ~/.ssh/id_rsa.pub
   - chmod og-rwx ~/.ssh/id_rsa
