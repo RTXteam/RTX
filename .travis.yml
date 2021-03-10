@@ -12,6 +12,6 @@ services:
 # command to install python dependencies
 install:
   - pip install -r requirements.txt
-#  - pip install .
+  - pip install reasoner_validator
 # command to run tests
-script: pytest -v ./code/ARAX/test/test_ARAX_trivial.py --disable-pytest-warnings -k test_true
+script: pytest -v ./code/ARAX/test/test_ARAX_filter_kg.py --disable-pytest-warnings
