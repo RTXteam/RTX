@@ -10,9 +10,8 @@ services:
 before_install:
   - mkdir -p ~/.ssh && echo "Host araxconfig.rtx.ai\n" > ~/.ssh/config && echo "    StrictHostKeyChecking no\n" >> ~/.ssh/config
   - echo "Host arax.ncats.io\n" >> ~/.ssh/config && echo "    StrictHostKeyChecking no\n" >> ~/.ssh/config
-  - echo -e "${TEST_KEY//_/\\n}" > ~/.ssh/test_rsa
-  - chmod og-rwx ~/.ssh
-  - cat ~/.ssh/test_rsa
+  - echo -e "${TRAVIS_KEY//_/\\n}" > ~/.ssh/id_rsa
+  - chmod og-rwx ~/.ssh/id_rsa
 #  - bash ./code/kg2/install-docker-ubuntu18.sh
 # cache directories
 # cache:
