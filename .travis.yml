@@ -14,7 +14,7 @@ before_install:
   - echo -e "${TRAVIS_KEY_PUB//_/\\n}" > ~/.ssh/id_rsa.pub
   - chmod og-rwx ~/.ssh/id_rsa
   - chmod og-rwx ~/.ssh/id_rsa.pub
-  - scp ${CONFIG_HOST}:configv2.json ${TRAVIS_BUILD_DIR}/code/config.json
+  - eval "scp ${CONFIG_HOST}:configv2.json ${TRAVIS_BUILD_DIR}/code/config.json"
 #  - bash ./code/kg2/install-docker-ubuntu18.sh
 # cache directories
 # cache:
