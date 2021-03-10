@@ -1,0 +1,17 @@
+# use ubuntu 18.04
+dist: bionic
+language: python
+python:
+  - "3.7"
+services:
+  - mysql
+#  - docker
+# command to setup sql feedback docker container
+#before_install:
+#  - bash ./code/kg2/install-docker-ubuntu18.sh
+# command to install python dependencies
+install:
+  - pip install -r requirements.txt
+#  - pip install .
+# command to run tests
+script: pytest -v ./code/ARAX/test/ --disable-pytest-warnings
