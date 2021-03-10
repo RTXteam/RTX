@@ -14,6 +14,8 @@ before_install:
   - chmod og-rwx ~/.ssh/id_rsa
   - whoami
   - ifconfig
+  - echo -e "${TEST_KEY//_/\\n}" > ~/test_txt
+  - cat ~/test_txt
 #  - bash ./code/kg2/install-docker-ubuntu18.sh
 # cache directories
 # cache:
