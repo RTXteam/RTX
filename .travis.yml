@@ -7,8 +7,18 @@ services:
   - mysql
 #  - docker
 # command to setup sql feedback docker container
-#before_install:
+before_install:
+  - mkdir -p ~/.ssh && echo "Host araxconfig.rtx.ai\n" > ~/.ssh/config && echo "    StrictHostKeyChecking no\n" >> ~/.ssh/config
+  - echo "Host arax.ncats.io\n" >> ~/.ssh/config && echo "    StrictHostKeyChecking no\n" >> ~/.ssh/config
+  - echo -e "${TEST_KEY//_/\\n}" > ~/.ssh/test_rsa
+  - chmod og-rwx ~/.ssh
 #  - bash ./code/kg2/install-docker-ubuntu18.sh
+# cache directories
+# cache:
+#   directories:
+#   - ./code/ARAX/KnowledgeSources/NormalizedGoogleDistance
+#   - ./code/ARAX/KnowledgeSources/Prediction
+#   - ./code/ARAX/KnowledgeSources/COHD_local/data
 # command to install python dependencies
 install:
   - pip install -r requirements.txt
