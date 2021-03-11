@@ -1263,7 +1263,7 @@ class NodeSynonymizer:
         kg_names = self.kg_map['kg_names']
         kg_name_curies = self.kg_map['kg_name_curies']
 
-        outfile = open('Problems.tsv', w)
+        outfile = open('Problems.tsv', 'w')
 
         concept_remap = {}
 
@@ -1427,7 +1427,7 @@ class NodeSynonymizer:
             kg_unique_concepts[uc_new_curie] = kg_unique_concepts[uc_curie]
             del kg_unique_concepts[uc_curie]
 
-        close(outfile)
+        outfile.close()
 
 
 
