@@ -58,13 +58,13 @@ class NodeSynonymizer:
             'DRUGBANK': 3100,
             'RXNORM': 3000,
             'VANDF': 2900,
+            'MONDO': 2500,
             'UNIPROTKB': 2000,
             'NCBIGENE': 1900,
             'HGNC': 1850,
             'CHEMBL.COMPOUND': 1800,
             'CHEMBL.TARGET': 1700,
             'CHEBI': 1100,
-            'MONDO': 1000,
             'DOID': 900,
             'OMIM': 800,
             'MESH': 700,
@@ -1263,6 +1263,8 @@ class NodeSynonymizer:
         kg_names = self.kg_map['kg_names']
         kg_name_curies = self.kg_map['kg_name_curies']
 
+        outfile = open('Problems.tsv', w)
+
         concept_remap = {}
 
         debug_flag = False
@@ -1284,6 +1286,7 @@ class NodeSynonymizer:
 
             concept = { 'category': unique_concept['category'], 'name': unique_concept['name'], 'all_categories': {}, 'all_curie_prefixes': {},
                 'best_curie_score': 0, 'best_curie': unique_concept['curie'], 'best_category': unique_concept['category'], 'best_name': unique_concept['name'] }
+            manual_exception = False
 
 
             for related_uc_curie in unique_concept['all_uc_curies']:
@@ -1292,6 +1295,7 @@ class NodeSynonymizer:
                     node_category = kg_nodes[related_uc_curie]['category']
                     node_curie = kg_nodes[related_uc_curie]['curie']
                     node_name = kg_nodes[related_uc_curie]['adjusted_name']
+                    node_full_name = kg_nodes[related_uc_curie]['full_name']
                     node_curie_prefix = node_curie.split(':')[0].upper()
 
                     if node_category not in concept['all_categories']:
@@ -1308,6 +1312,14 @@ class NodeSynonymizer:
                         concept['best_category'] = node_category
                         concept['best_name'] = node_name
 
+                    if node_curie_prefix == 'NCBIGENE' and node_full_name.startswith('Genetic locus associated with'):
+                        manual_exception = True
+                        concept['best_curie_score'] = 9999
+                        concept['best_curie'] = node_curie
+                        concept['best_category'] = node_category
+                        concept['best_name'] = node_full_name
+
+
             drug_score = 0
             disease_score = 0
             protein_score = 0
@@ -1319,14 +1331,15 @@ class NodeSynonymizer:
                 protein_score = 1
 
             #### Looks for concepts that are both a protein and a disease. A sign of trouble
-            if protein_score > 0 and disease_score > 0:
+            if protein_score > 0 and disease_score > 0 and not manual_exception:
                 if True:
                     print("==== Protein-Disease CONFLICT! ===================================")
                     print(f"{uc_unique_concept_curie} '{concept['name']}' is a {concept['category']}")
                     print(f"  concept = {concept}")
+                    outfile.write("\t".join([ uc_unique_concept_curie, concept['name'], concept['category']]))
 
 
-            if drug_score > 0 and disease_score > 0:
+            if drug_score > 0 and disease_score > 0 and not manual_exception:
 
                 if 'CHEMBL.COMPOUND' in concept['all_curie_prefixes'] or 'CHEBI' in concept['all_curie_prefixes'] or 'DRUGBANK' in concept['all_curie_prefixes'] or 'RXNORM' in concept['all_curie_prefixes'] or 'VANDF' in concept['all_curie_prefixes']:
                     drug_score += 1
@@ -1355,6 +1368,7 @@ class NodeSynonymizer:
                     print(f"{uc_unique_concept_curie} '{concept['name']}' is a {concept['category']}")
                     print(f"  concept = {concept}")
                     print(f"  drug_score={drug_score}, disease_score={disease_score}, final_category={final_category}")
+                    outfile.write("\t".join([ uc_unique_concept_curie, concept['name'], concept['category']]))
 
             if debug_flag:
                 print("========================================================")
@@ -1413,7 +1427,7 @@ class NodeSynonymizer:
             kg_unique_concepts[uc_new_curie] = kg_unique_concepts[uc_curie]
             del kg_unique_concepts[uc_curie]
 
-
+        close(outfile)
 
 
 
