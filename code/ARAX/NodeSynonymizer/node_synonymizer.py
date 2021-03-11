@@ -54,12 +54,15 @@ class NodeSynonymizer:
 
         #### Define a priority of curie prefixes. Higher is better
         self.uc_curie_prefix_scores = {
+            'UMLS_STY': 5000,
+            'DRUGBANK': 3100,
+            'RXNORM': 3000,
+            'VANDF': 2900,
             'UNIPROTKB': 2000,
             'NCBIGENE': 1900,
             'HGNC': 1850,
             'CHEMBL.COMPOUND': 1800,
             'CHEMBL.TARGET': 1700,
-            'DRUGBANK': 1200,
             'CHEBI': 1100,
             'MONDO': 1000,
             'DOID': 900,
@@ -111,7 +114,7 @@ class NodeSynonymizer:
         self.connection.execute(f"CREATE TABLE nodes ( uc_curie VARCHAR(255), curie VARCHAR(255), original_name VARCHAR(255), adjusted_name VARCHAR(255), full_name VARCHAR(255), category VARCHAR(255), unique_concept_curie VARCHAR(255) )" )
 
         self.connection.execute(f"DROP TABLE IF EXISTS unique_concepts")
-        self.connection.execute(f"CREATE TABLE unique_concepts ( uc_curie VARCHAR(255), curie VARCHAR(255), remapped_curie VARCHAR(255), kg2_best_curie VARCHAR(255), name VARCHAR(255), category VARCHAR(255), normalizer_curie VARCHAR(255), normalizer_name VARCHAR(255), normalizer_category VARCHAR(255) )" )
+        self.connection.execute(f"CREATE TABLE unique_concepts ( uc_curie VARCHAR(255), curie VARCHAR(255), name VARCHAR(255), category VARCHAR(255), normalizer_curie VARCHAR(255), normalizer_name VARCHAR(255), normalizer_category VARCHAR(255) )" )
 
         self.connection.execute(f"DROP TABLE IF EXISTS curies")
         self.connection.execute(f"CREATE TABLE curies ( uc_curie VARCHAR(255), curie VARCHAR(255), unique_concept_curie VARCHAR(255), name VARCHAR(255), full_name VARCHAR(255), category VARCHAR(255), normalizer_name VARCHAR(255), normalizer_category VARCHAR(255), source VARCHAR(255) )" )
@@ -402,8 +405,6 @@ class NodeSynonymizer:
                         print(f"DEBUG: Create new unique concept based on SRI normalizer info")
                     kg_unique_concepts[uc_unique_concept_curie] = {
                         'curie': unique_concept_curie,
-                        'remapped_curie': None,
-                        'kg2_best_curie': None,
                         'name': normalizer_name,
                         'category': overridden_normalizer_category,
                         'normalizer_curie': normalizer_curie,
@@ -419,8 +420,6 @@ class NodeSynonymizer:
                         print(f"DEBUG: Create new unique concept based on this node")
                     kg_unique_concepts[uc_unique_concept_curie] = {
                         'curie': unique_concept_curie,
-                        'remapped_curie': None,
-                        'kg2_best_curie': unique_concept_curie,
                         'name': node_name,
                         'category': node_category,
                         'normalizer_curie': None,
@@ -575,8 +574,8 @@ class NodeSynonymizer:
         print("")
 
         print(f"INFO: Freeing SRI node normalizer cache from memory")
-        normalizer = None
         self.normalizer = None
+        del normalizer
 
         print(f"INFO: Reading of KG2 node files complete")
 
@@ -658,10 +657,10 @@ class NodeSynonymizer:
         rows = []
         print(f"\nINFO: Writing {n_rows} unique_concepts to the database")
         for uc_curie,concept in kg_unique_concepts.items():
-            rows.append( [ uc_curie, concept['curie'], concept['remapped_curie'], concept['kg2_best_curie'], concept['name'], concept['category'], concept['normalizer_curie'], concept['normalizer_name'], concept['normalizer_category'] ] )
+            rows.append( [ uc_curie, concept['curie'], concept['name'], concept['category'], concept['normalizer_curie'], concept['normalizer_name'], concept['normalizer_category'] ] )
             i_rows += 1
             if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
-                self.connection.executemany(f"INSERT INTO unique_concepts (uc_curie, curie, remapped_curie, kg2_best_curie, name, category, normalizer_curie, normalizer_name, normalizer_category) values (?,?,?,?,?,?,?,?,?)", rows)
+                self.connection.executemany(f"INSERT INTO unique_concepts (uc_curie, curie, name, category, normalizer_curie, normalizer_name, normalizer_category) values (?,?,?,?,?,?,?)", rows)
                 self.connection.commit()
                 rows = []
                 percentage = int(i_rows*100.0/n_rows)
@@ -1253,6 +1252,315 @@ class NodeSynonymizer:
         return
 
 
+    #############################################################################################
+    #### Go through all unique concepts and reset the lead unique_concept out of all the options based on a set of rules
+    def reprioritize_unique_concepts(self):
+
+        print("INFO: Reprioritizing the unique concepts leaders...")
+        kg_nodes = self.kg_map['kg_nodes']
+        kg_unique_concepts = self.kg_map['kg_unique_concepts']
+        kg_curies = self.kg_map['kg_curies']
+        kg_names = self.kg_map['kg_names']
+        kg_name_curies = self.kg_map['kg_name_curies']
+
+        concept_remap = {}
+
+        debug_flag = False
+
+        #### Progress tracking
+        counter = 0
+        n_items = len(kg_unique_concepts)
+        previous_percentage = 0
+
+        #### Loop over all unique_concepts to see if they need coalescing
+        print("INFO: Looping over all unique_concepts...")
+        for uc_unique_concept_curie, unique_concept in kg_unique_concepts.items():
+
+            curie = unique_concept['curie']
+            curie_prefix = curie.split(':')[0].upper()
+            #### Don't do anything fancy to meta nodes
+            if curie_prefix == 'BIOLINK':
+                continue
+
+            concept = { 'category': unique_concept['category'], 'name': unique_concept['name'], 'all_categories': {}, 'all_curie_prefixes': {},
+                'best_curie_score': 0, 'best_curie': unique_concept['curie'], 'best_category': unique_concept['category'], 'best_name': unique_concept['name'] }
+
+
+            for related_uc_curie in unique_concept['all_uc_curies']:
+
+                if related_uc_curie in kg_nodes:
+                    node_category = kg_nodes[related_uc_curie]['category']
+                    node_curie = kg_nodes[related_uc_curie]['curie']
+                    node_name = kg_nodes[related_uc_curie]['adjusted_name']
+                    node_curie_prefix = node_curie.split(':')[0].upper()
+
+                    if node_category not in concept['all_categories']:
+                        concept['all_categories'][node_category] = 0
+                    concept['all_categories'][node_category] += 1
+
+                    if node_curie_prefix not in concept['all_curie_prefixes']:
+                        concept['all_curie_prefixes'][node_curie_prefix] = 0
+                    concept['all_curie_prefixes'][node_curie_prefix] += 1
+
+                    if node_curie_prefix in self.uc_curie_prefix_scores and self.uc_curie_prefix_scores[node_curie_prefix] > concept['best_curie_score']:
+                        concept['best_curie_score'] = self.uc_curie_prefix_scores[node_curie_prefix]
+                        concept['best_curie'] = node_curie
+                        concept['best_category'] = node_category
+                        concept['best_name'] = node_name
+
+            drug_score = 0
+            disease_score = 0
+            protein_score = 0
+            if 'biolink:Drug' in concept['all_categories'] or 'biolink:ChemicalSubstance' in concept['all_categories']:
+                drug_score = 1
+            if 'biolink:Disease' in concept['all_categories'] or 'biolink:PhenotypicFeature' in concept['all_categories'] or 'biolink:DiseaseOrPhenotypicFeature' in concept['all_categories']:
+                disease_score = 1
+            if 'biolink:Gene' in concept['all_categories'] or 'biolink:Protein' in concept['all_categories'] or 'biolink:GeneOrProtein' in concept['all_categories'] or 'biolink:GenomicEntity' in concept['all_categories']:
+                protein_score = 1
+
+            #### Looks for concepts that are both a protein and a disease. A sign of trouble
+            if protein_score > 0 and disease_score > 0:
+                if True:
+                    print("==== Protein-Disease CONFLICT! ===================================")
+                    print(f"{uc_unique_concept_curie} '{concept['name']}' is a {concept['category']}")
+                    print(f"  concept = {concept}")
+
+
+            if drug_score > 0 and disease_score > 0:
+
+                if 'CHEMBL.COMPOUND' in concept['all_curie_prefixes'] or 'CHEBI' in concept['all_curie_prefixes'] or 'DRUGBANK' in concept['all_curie_prefixes'] or 'RXNORM' in concept['all_curie_prefixes'] or 'VANDF' in concept['all_curie_prefixes']:
+                    drug_score += 1
+                if 'MONDO' in concept['all_curie_prefixes'] or 'DOID' in concept['all_curie_prefixes']:
+                    disease_score += 1
+
+                if drug_score > disease_score:
+                    final_category = 'biolink:Drug'
+                elif disease_score > drug_score:
+                    final_category = 'biolink:Disease'
+                elif disease_score == 1:
+                    final_category = 'ambiguous'
+                else:
+                    final_category = 'CONFLICT'
+
+                is_problem = False
+                if final_category == 'biolink:Drug' and concept['best_category'] != 'biolink:Drug' and concept['best_category'] != 'biolink:ChemicalSubstance':
+                    is_problem = True
+                if final_category == 'biolink:Disease' and concept['best_category'] != 'biolink:PhenotypicFeature' and concept['best_category'] != 'biolink:DiseaseOrPhenotypicFeature':
+                    is_problem = True
+                if final_category == 'CONFLICT':
+                    is_problem = True
+
+                if is_problem:
+                    print("***** PROBLEM ***************************")
+                    print(f"{uc_unique_concept_curie} '{concept['name']}' is a {concept['category']}")
+                    print(f"  concept = {concept}")
+                    print(f"  drug_score={drug_score}, disease_score={disease_score}, final_category={final_category}")
+
+            if debug_flag:
+                print("========================================================")
+                print(f"{uc_unique_concept_curie} '{concept['name']}' is a {concept['category']}")
+                print(f"  concept = {concept}")
+
+            #### Record the necessary remapping
+            if concept['best_curie'].upper() != uc_unique_concept_curie:
+                concept_remap[uc_unique_concept_curie] = concept['best_curie'].upper()
+
+            #### Update the kg_unique_concept with the final normalized information
+            unique_concept['curie'] = concept['best_curie']
+            unique_concept['name'] = concept['best_name']
+            unique_concept['category'] = concept['best_category']
+
+            #### Show progress information
+            counter += 1
+            percentage = int(counter * 100.0 / n_items)
+            if percentage > previous_percentage:
+                previous_percentage = percentage
+                print(str(percentage)+"%..", end='', flush=True)
+
+
+        #### Remap kg_nodes
+        for uc_curie, element in kg_nodes.items():
+            if element['uc_unique_concept_curie'] in concept_remap:
+                element['uc_unique_concept_curie'] = concept_remap[element['uc_unique_concept_curie']]
+
+        #### Remap kg_curies
+        for uc_curie, element in kg_curies.items():
+            if element['uc_unique_concept_curie'] in concept_remap:
+                element['uc_unique_concept_curie'] = concept_remap[element['uc_unique_concept_curie']]
+
+        #### Remap kg_names
+        for lc_name, element in kg_names.items():
+            if element['uc_unique_concept_curie'] in concept_remap:
+                element['uc_unique_concept_curie'] = concept_remap[element['uc_unique_concept_curie']]
+
+            #### Add in the new one                                                                         Maybe should be done, but not used any more anyway?
+            #element['uc_unique_concept_curies'][element['uc_unique_concept_curie']] = True
+
+            #### Remove any remapped uc_curies
+            #new_uc_unique_concept_curies = {}
+            #for uc_curie in element['uc_unique_concept_curies']:
+            #    if uc_curie not in new_concept_remap:
+            #        new_uc_unique_concept_curies[uc_curie] = True
+            #element['uc_unique_concept_curies'] = new_uc_unique_concept_curies
+
+        #### Remap kg_name_curies
+        for lc_name_uc_curie, element in kg_name_curies.items():
+            if element['uc_unique_concept_curie'] in concept_remap:
+                element['uc_unique_concept_curie'] = concept_remap[element['uc_unique_concept_curie']]
+
+        #### And update the unique_concepts
+        for uc_curie, uc_new_curie in concept_remap.items():
+            kg_unique_concepts[uc_new_curie] = kg_unique_concepts[uc_curie]
+            del kg_unique_concepts[uc_curie]
+
+
+
+
+
+    # ############################################################################################
+    # This is just for testing. Doesn't actually do anything
+    def update_categories(self):
+
+        print("INFO: Scanning through unique_concepts, looking for problem nodes to fix")
+
+        debug = False
+
+        # Get all the unique_concept_curies
+        cursor = self.connection.cursor()
+        cursor.execute( f"SELECT uc_curie, category, name FROM unique_concepts LIMIT 1000000" )
+        unique_concept_rows = cursor.fetchall()
+
+        batch_unique_concepts = {}
+        counter = 0
+
+        for unique_concept_row in unique_concept_rows:
+
+            curie = unique_concept_row[0]
+            curie_prefix = curie.split(':')[0].upper()
+            if curie_prefix == 'BIOLINK':
+                continue
+
+
+            batch_unique_concepts[unique_concept_row[0]] = { 'category': unique_concept_row[1], 'name': unique_concept_row[2], 'all_categories': {}, 'all_curie_prefixes': {},
+                'best_curie_score': 0, 'best_curie': unique_concept_row[0], 'best_category': unique_concept_row[1], 'best_name': unique_concept_row[2] }
+
+            if len(batch_unique_concepts) == 100 or unique_concept_row[0] == unique_concept_rows[-1][0]:
+
+                # Create the SQL "IN" list
+                quote_fixed_uc_curies_list = []
+                for uc_curie in batch_unique_concepts:
+                    uc_curie = re.sub(r"'","''",uc_curie)   # Replace embedded ' characters with ''
+                    quote_fixed_uc_curies_list.append(uc_curie)
+                curies_list_str = "','".join(quote_fixed_uc_curies_list)
+
+                # Get all the curies for these concepts and their categories
+                sql = f"""
+                    SELECT curie, unique_concept_curie, category, adjusted_name
+                        FROM nodes
+                        WHERE unique_concept_curie IN ( '{curies_list_str}' )"""
+                cursor = self.connection.cursor()
+                cursor.execute( sql )
+                rows = cursor.fetchall()
+
+                if debug:
+                    print(".", end='', flush=True)
+
+                for row in rows:
+
+                    curie = row[0]
+                    uc_unique_concept_curie = row[1]
+                    node_category = row[2]
+                    name = row[3]
+                    curie_prefix = curie.split(':')[0].upper()
+
+                    if node_category not in batch_unique_concepts[uc_unique_concept_curie]['all_categories']:
+                        batch_unique_concepts[uc_unique_concept_curie]['all_categories'][node_category] = 0
+                    batch_unique_concepts[uc_unique_concept_curie]['all_categories'][node_category] += 1
+
+                    if curie_prefix not in batch_unique_concepts[uc_unique_concept_curie]['all_curie_prefixes']:
+                        batch_unique_concepts[uc_unique_concept_curie]['all_curie_prefixes'][curie_prefix] = 0
+                    batch_unique_concepts[uc_unique_concept_curie]['all_curie_prefixes'][curie_prefix] += 1
+
+                    if curie_prefix in self.uc_curie_prefix_scores and self.uc_curie_prefix_scores[curie_prefix] > batch_unique_concepts[uc_unique_concept_curie]['best_curie_score']:
+                        batch_unique_concepts[uc_unique_concept_curie]['best_curie_score'] = self.uc_curie_prefix_scores[curie_prefix]
+                        batch_unique_concepts[uc_unique_concept_curie]['best_curie'] = curie
+                        batch_unique_concepts[uc_unique_concept_curie]['best_category'] = node_category
+                        batch_unique_concepts[uc_unique_concept_curie]['best_name'] = name
+
+                for uc_unique_concept_curie, concept in batch_unique_concepts.items():
+
+                    drug_score = 0
+                    disease_score = 0
+                    protein_score = 0
+                    if 'biolink:Drug' in concept['all_categories'] or 'biolink:ChemicalSubstance' in concept['all_categories']:
+                        drug_score = 1
+                    if 'biolink:Disease' in concept['all_categories'] or 'biolink:PhenotypicFeature' in concept['all_categories'] or 'biolink:DiseaseOrPhenotypicFeature' in concept['all_categories']:
+                        disease_score = 1
+                    if 'biolink:Gene' in concept['all_categories'] or 'biolink:Protein' in concept['all_categories'] or 'biolink:GeneOrProtein' in concept['all_categories'] or 'biolink:GenomicEntity' in concept['all_categories']:
+                        protein_score = 1
+
+                    if False and uc_unique_concept_curie != batch_unique_concepts[uc_unique_concept_curie]['best_curie']:
+                        print("***************************************************")
+                        print(f"{uc_unique_concept_curie} is a {concept['category']}")
+                        print(f"  concept = {concept}")
+                        counter += 1
+                        if counter >= 50:
+                            exit()
+
+                    if protein_score > 0 and disease_score > 0:
+
+                        if True:
+                            print("==== Protein-Disease CONFLICT! ===================================")
+                            print(f"{uc_unique_concept_curie} '{concept['name']}' is a {concept['category']}")
+                            print(f"  concept = {concept}")
+
+                    if drug_score > 0 and disease_score > 0:
+
+                        if debug:
+                            print("========================================================")
+                            print(f"{uc_unique_concept_curie} '{concept['name']}' is a {concept['category']}")
+                            print(f"  concept = {concept}")
+
+                        if 'CHEMBL.COMPOUND' in concept['all_curie_prefixes'] or 'CHEBI' in concept['all_curie_prefixes'] or 'DRUGBANK' in concept['all_curie_prefixes'] or 'RXNORM' in concept['all_curie_prefixes']:
+                            drug_score += 1
+                        if 'MONDO' in concept['all_curie_prefixes'] or 'DOID' in concept['all_curie_prefixes']:
+                            disease_score += 1
+
+                        if drug_score > disease_score:
+                            final_category = 'biolink:Drug'
+                        elif disease_score > drug_score:
+                            final_category = 'biolink:Disease'
+                        elif disease_score == 1:
+                            final_category = 'ambiguous'
+                        else:
+                            final_category = 'CONFLICT'
+
+                        if debug:
+                            print(f"  drug_score={drug_score}, disease_score={disease_score}, final_category={final_category}")
+
+
+                        counter += 1
+                        if counter >= 50:
+                            exit()
+
+                #### Reset the batch
+                batch_unique_concepts = {}
+
+        print(f"INFO: Processed {len(unique_concept_rows)} unique concepts")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1730,12 +2038,11 @@ class NodeSynonymizer:
             row = rows[0]
             id = {
                 'identifier': row[1],
-                #'kg2_best_curie': row[3],
-                'name': row[4],
-                'category': row[5],
-                'SRI_normalizer_curie': row[6],
-                'SRI_normalizer_name': row[7],
-                'SRI_normalizer_category': row[8],
+                'name': row[2],
+                'category': row[3],
+                'SRI_normalizer_curie': row[4],
+                'SRI_normalizer_name': row[5],
+                'SRI_normalizer_category': row[6],
             }
 
 
@@ -2066,9 +2373,11 @@ def main():
                         help="Get nodes for the specified list in the specified kg_name", default=None)
     parser.add_argument('-c', '--live', action="store",
                         help="Get the config.json field for the filename", default="Production")
+    parser.add_argument('-u', '--update', action="store_true",
+                        help="If set, update the NodeSynonmizer with improved category information")
     args = parser.parse_args()
 
-    if not args.build and not args.test and not args.recollate and not args.lookup and not args.query and not args.get:
+    if not args.build and not args.test and not args.recollate and not args.lookup and not args.query and not args.get and not args.update:
         parser.print_help()
         exit()
 
@@ -2077,6 +2386,11 @@ def main():
     # If the user asks to perform the SELECT statement, do it
     if args.query:
         synonymizer.test_query()
+        return
+
+    # If the user asks to perform the SELECT statement, do it
+    if args.update:
+        synonymizer.update_categories()
         return
 
     # If the user asks to perform the SELECT statement, do it
@@ -2129,6 +2443,7 @@ def main():
         synonymizer.merge_unique_concepts()
         synonymizer.merge_unique_concepts_by_name()
         synonymizer.merge_unique_concepts()
+        synonymizer.reprioritize_unique_concepts()
 
         synonymizer.create_tables()
         synonymizer.store_kg_map()
