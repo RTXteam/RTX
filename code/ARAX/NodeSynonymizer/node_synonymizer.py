@@ -1298,9 +1298,14 @@ class NodeSynonymizer:
                     node_full_name = kg_nodes[related_uc_curie]['full_name']
                     node_curie_prefix = node_curie.split(':')[0].upper()
 
-                    if node_category not in concept['all_categories']:
-                        concept['all_categories'][node_category] = 0
-                    concept['all_categories'][node_category] += 1
+                    ignore_category = False
+                    if node_curie_prefix == 'OMIM':
+                        ignore_category = True
+
+                    if not ignore_category:
+                        if node_category not in concept['all_categories']:
+                            concept['all_categories'][node_category] = 0
+                        concept['all_categories'][node_category] += 1
 
                     if node_curie_prefix not in concept['all_curie_prefixes']:
                         concept['all_curie_prefixes'][node_curie_prefix] = 0
@@ -1336,7 +1341,7 @@ class NodeSynonymizer:
                     print("==== Protein-Disease CONFLICT! ===================================")
                     print(f"{uc_unique_concept_curie} '{concept['name']}' is a {concept['category']}")
                     print(f"  concept = {concept}")
-                    outfile.write("\t".join([ uc_unique_concept_curie, concept['name'], concept['category']]))
+                    outfile.write("\t".join([ uc_unique_concept_curie, concept['name'], concept['category']]) + "\n")
 
 
             if drug_score > 0 and disease_score > 0 and not manual_exception:
@@ -1368,7 +1373,7 @@ class NodeSynonymizer:
                     print(f"{uc_unique_concept_curie} '{concept['name']}' is a {concept['category']}")
                     print(f"  concept = {concept}")
                     print(f"  drug_score={drug_score}, disease_score={disease_score}, final_category={final_category}")
-                    outfile.write("\t".join([ uc_unique_concept_curie, concept['name'], concept['category']]))
+                    outfile.write("\t".join([ uc_unique_concept_curie, concept['name'], concept['category']]) + "\n")
 
             if debug_flag:
                 print("========================================================")
