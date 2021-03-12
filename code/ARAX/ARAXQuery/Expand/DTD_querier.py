@@ -857,7 +857,7 @@ class DTDQuerier:
                     where_fragments.append(f"{qnode_key}.id in {qnode.id}")
                 if qnode.category:
                     if kg_name == "KG2c":
-                        qnode_categories = eu.convert_string_or_list_to_list(qnode.category)
+                        qnode_categories = eu.convert_to_list(qnode.category)
                         category_fragments = [f"'{qnode_category}' in {qnode_key}.types" for qnode_category in qnode_categories]
                         joined_category_fragments = " OR ".join(category_fragments)
                         category_where_clause = joined_category_fragments if len(category_fragments) < 2 else f"({joined_category_fragments})"

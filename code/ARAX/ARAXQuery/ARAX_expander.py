@@ -134,38 +134,18 @@ class ARAXExpander:
             "GeneticsKP": {
                 "dsl_command": "expand(kp=GeneticsKP)",
                 "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
-                               "satisfy the query graph. It currently can answer questions involving the following "
-                               "node types: gene, protein, disease, phenotypic_feature, pathway. QNode types are "
-                               "required for GeneticsKP queries and it is sensitive to the use of disease vs. "
-                               "phenotypic_feature. Note that QEdge types are irrelevant for GeneticsKP queries, since "
-                               "GeneticsKP only outputs edges with a type of 'associated' (so Expand always uses that "
-                               "as the QEdge type behind the scenes). Only MAGMA p-value edges are added by default, "
-                               "but setting 'include_all_scores=true' will return all edges/scores the GeneticsKP "
-                               "returns, including genetics-quantile scores.",
+                               "satisfy the query graph.",
                 "parameters": {
                     "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
                     "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info,
-                    "include_all_scores": {
-                        "is_required": False,
-                        "examples": ["true", "false"],
-                        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-                        "default": "false",
-                        "type": "boolean",
-                        "description": "Whether to return all scores/edges returned from the GeneticsKP (including "
-                                       "genetics-quantile edges) or only MAGMA p-value edges."
-                    }
+                    "use_synonyms": self.use_synonyms_parameter_info
                 }
             },
             "MolePro": {
                 "dsl_command": "expand(kp=MolePro)",
                 "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
-                               "subpaths that satisfy the query graph. It currently can answer questions involving "
-                               "the following node types: gene, protein, disease, chemical_substance. QNode types are "
-                               "required for MolePro queries. Generally you should not specify a QEdge type for "
-                               "MolePro queries (Expand uses 'correlated_with' by default behind the scenes, which is "
-                               "the primary edge type of interest for ARAX in MolePro).",
+                               "subpaths that satisfy the query graph.",
                 "parameters": {
                     "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
@@ -322,13 +302,12 @@ class ARAXExpander:
             parameters['node_key'] = self._get_orphan_qnode_keys(message.query_graph)
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
-        query_graph = QueryGraph(nodes={qnode_key: eu.copy_qnode(qnode) for qnode_key, qnode in message.query_graph.nodes.items()},
-                                 edges={qedge_key: eu.copy_qedge(qedge) for qedge_key, qedge in message.query_graph.edges.items()})
+        query_graph = eu.copy_qg(message.query_graph)
         # Convert all qnode categories and qedge predicates to lists (easier than supporting string AND list)
         for qnode in query_graph.nodes.values():
-            qnode.category = eu.convert_string_or_list_to_list(qnode.category)
+            qnode.category = eu.convert_to_list(qnode.category)
         for qedge in query_graph.edges.values():
-            qedge.predicate = eu.convert_string_or_list_to_list(qedge.predicate)
+            qedge.predicate = eu.convert_to_list(qedge.predicate)
 
         if response.status != 'OK':
             return response
@@ -337,8 +316,8 @@ class ARAXExpander:
 
         # Do the actual expansion
         log.debug(f"Applying Expand to Message with parameters {parameters}")
-        input_qedge_keys = eu.convert_string_or_list_to_list(parameters['edge_key'])
-        input_qnode_keys = eu.convert_string_or_list_to_list(parameters['node_key'])
+        input_qedge_keys = eu.convert_to_list(parameters['edge_key'])
+        input_qnode_keys = eu.convert_to_list(parameters['node_key'])
         kp_to_use = parameters['kp']
         continue_if_no_results = parameters['continue_if_no_results']
         use_synonyms = parameters['use_synonyms']
@@ -460,18 +439,12 @@ class ARAXExpander:
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
-            elif kp_to_use == 'GeneticsKP':
-                from Expand.genetics_querier import GeneticsQuerier
-                kp_querier = GeneticsQuerier(log)
-            elif kp_to_use == 'MolePro':
-                from Expand.molepro_querier import MoleProQuerier
-                kp_querier = MoleProQuerier(log)
             elif (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
-                from Expand.general_querier import GeneralQuerier
-                kp_querier = GeneralQuerier(log, kp_to_use)
+                from Expand.trapi_querier import TRAPIQuerier
+                kp_querier = TRAPIQuerier(log, kp_to_use)
 
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
             if log.status != 'OK':
@@ -513,8 +486,8 @@ class ARAXExpander:
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
-                from Expand.general_querier import GeneralQuerier
-                kp_querier = GeneralQuerier(log, kp_to_use)
+                from Expand.trapi_querier import TRAPIQuerier
+                kp_querier = TRAPIQuerier(log, kp_to_use)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
@@ -608,13 +581,13 @@ class ARAXExpander:
                 if canonicalized_node:
                     preferred_curie = canonicalized_node.get('preferred_curie', node_key)
                     preferred_name = canonicalized_node.get('preferred_name', node.name)
-                    preferred_category = eu.convert_string_or_list_to_list(canonicalized_node.get('preferred_type', node.category))
+                    preferred_category = eu.convert_to_list(canonicalized_node.get('preferred_type', node.category))
                     curie_mappings[node_key] = preferred_curie
                 else:
                     # Means the NodeSynonymizer didn't recognize this curie
                     preferred_curie = node_key
                     preferred_name = node.name
-                    preferred_category = eu.convert_string_or_list_to_list(node.category)
+                    preferred_category = eu.convert_to_list(node.category)
                     curie_mappings[node_key] = preferred_curie
 
                 # Add this node into our deduplicated KG as necessary
@@ -949,7 +922,7 @@ class ARAXExpander:
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
         for node in kg.nodes.values():
             corresponding_qnode_categories = {category for qnode_key in node.qnode_keys for category in
-                                              eu.convert_string_or_list_to_list(qg.nodes[qnode_key].category)}
+                                              eu.convert_to_list(qg.nodes[qnode_key].category)}
             if corresponding_qnode_categories:
                 node.category = list(corresponding_qnode_categories)
 

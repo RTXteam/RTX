@@ -89,9 +89,6 @@ class KG2Querier:
         if log.status != 'OK':
             return final_kg, edge_to_nodes_map
 
-        # TODO: remove this patch once KG2 predicates no longer have commas
-        eu.remove_commas_from_predicates(final_kg)
-
         return final_kg, edge_to_nodes_map
 
     def answer_single_node_query(self, single_node_qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -124,9 +121,6 @@ class KG2Querier:
             neo4j_node = result.get(qnode_key)
             swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
             final_kg.add_node(swagger_node_key, swagger_node, qnode_key)
-
-        # TODO: remove this patch once KG2 predicates no longer have commas
-        eu.remove_commas_from_predicates(final_kg)
 
         return final_kg
 
@@ -234,7 +228,7 @@ class KG2Querier:
         swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         node_category = neo4j_node.get('category_label')
-        swagger_node.category = eu.convert_string_or_list_to_list(node_category)
+        swagger_node.category = eu.convert_to_list(node_category)
         # Add all additional properties on KG2 nodes as swagger Attribute objects
         other_properties = ["full_name", "description", "iri", "publications", "synonym", "category", "provided_by",
                             "deprecated", "update_date"]
@@ -256,7 +250,7 @@ class KG2Querier:
         swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
         node_category = neo4j_node.get('category')
-        swagger_node.category = eu.convert_string_or_list_to_list(node_category)
+        swagger_node.category = eu.convert_to_list(node_category)
         other_properties = ["symbol", "description", "uri"]
         swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
         return swagger_node_key, swagger_node
