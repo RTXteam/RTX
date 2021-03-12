@@ -55,6 +55,8 @@ class NodeSynonymizer:
         #### Define a priority of curie prefixes. Higher is better
         self.uc_curie_prefix_scores = {
             'UMLS_STY': 5000,
+            'UBERON': 3410,
+            'FMA': 3400,
             'DRUGBANK': 3100,
             'RXNORM': 3000,
             'VANDF': 2900,
@@ -1757,9 +1759,9 @@ class NodeSynonymizer:
 
 
     # ############################################################################################
-    def get_equivalent_nodes(self, curies, return_all_types=False):
+    def get_equivalent_nodes(self, curies, return_all_categories=False):
 
-        return self.get_canonical_curies(curies, return_all_types=return_all_types, return_type='equivalent_nodes')
+        return self.get_canonical_curies(curies, return_all_categories=return_all_categories, return_type='equivalent_nodes')
 
 
     # ############################################################################################
@@ -2351,7 +2353,7 @@ def run_example_12():
 
 # ############################################################################################
 def run_examples():
-    run_example_9()
+    run_example_11()
     return
     run_example_1()
     run_example_2()
