@@ -160,6 +160,8 @@ class NodeSynonymizer:
         with open('Exceptions.txt') as infile:
             for line in infile:
                 line = line.rstrip()
+                if len(line) == 0:
+                    continue
                 if line[0] == '#':
                     continue
                 is_understood = False
@@ -170,7 +172,7 @@ class NodeSynonymizer:
                     print(f"INFO: Will use exception skip_SRI {match.group(1)}")
                     is_understood = True
 
-                match = re.match(r'rename (\S) (.+)', line)
+                match = re.match(r'rename (.+?) (.+)', line)
                 if match:
                     self.exceptions['rename'][match.group(1)] = match.group(2)
                     print(f"INFO: Will use exception rename {match.group(1)} = {match.group(2)}")
