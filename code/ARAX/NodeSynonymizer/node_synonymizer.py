@@ -39,7 +39,8 @@ class NodeSynonymizer:
         }
         self.normalizer = None
         self.exceptions = {
-            'skip_SRI': {}
+            'skip_SRI': {},
+            'rename': {},
         }
 
         #self.RTXConfig = RTXConfiguration()
@@ -161,10 +162,21 @@ class NodeSynonymizer:
                 line = line.rstrip()
                 if line[0] == '#':
                     continue
+                is_understood = False
+
                 match = re.match(r'skip_SRI (.+)', line)
                 if match:
                     self.exceptions['skip_SRI'][match.group(1)] = True
-                else:
+                    print(f"INFO: Will use exception skip_SRI {match.group(1)}")
+                    is_understood = True
+
+                match = re.match(r'rename (\S) (.+)', line)
+                if match:
+                    self.exceptions['rename'][match.group(1)] = match.group(2)
+                    print(f"INFO: Will use exception rename {match.group(1)} = {match.group(2)}")
+                    is_understood = True
+
+                if not is_understood:
                     eprint(f"ERROR: Unable to interpret {line} in Exceptions.txt")
 
 
@@ -194,7 +206,6 @@ class NodeSynonymizer:
             'UniProtKB:P01137': 'LAP',
             'UniProtKB:P61812': 'LAP',
             'UniProtKB:P10600': 'LAP',
-            'UniProtKB:P22303': 'AChE',
         }
 
 
@@ -278,6 +289,11 @@ class NodeSynonymizer:
             if debug_flag is True and 'biolink:' in node_curie:
                 continue
 
+            # Apply renaming for problem nodes
+            if uc_node_curie in self.exceptions['rename']:
+                node_name = self.exceptions['rename'][uc_node_curie]
+                print(f"INFO: Based on manual exception, renaming {uc_node_curie} from {original_node_name} to {node_name}")
+
             #### If we're in test subset mode, only continue the the node_curie is in the test subset
             if test_subset_flag:
                 if node_curie not in test_set['identifiers']:
@@ -325,11 +341,12 @@ class NodeSynonymizer:
                     if debug_flag:
                         print("DEBUG: SRI normalizer returned: ", json.dumps(equivalence, indent=2, sort_keys=True))
 
-                # Custom hack, FIXME
-                # This normally comes back as "ACHE" which interferes with pain. What a pain.
-                if equivalence['preferred_curie'] == 'NCBIGene:43':
-                    equivalence['preferred_curie_name'] = 'AChE (protein)'
-                    equivalence['equivalent_names'] = [ 'AChE (protein)' ]
+                # Apply renaming for problem nodes
+                uc_preferred_curie = equivalence['preferred_curie'].upper()
+                if uc_preferred_curie in self.exceptions['rename']:
+                    print(f"INFO: Based on manual exception, renaming SRI node normalizer result {uc_preferred_curie} from {equivalence['preferred_curie_name']} to {self.exceptions['rename'][uc_preferred_curie]}")
+                    equivalence['preferred_curie_name'] = self.exceptions['rename'][uc_preferred_curie]
+                    equivalence['equivalent_names'] = [ self.exceptions['rename'][uc_preferred_curie] ]
 
                 # Extract the preferred designation of the normalizer
                 normalizer_curie = equivalence['preferred_curie']
