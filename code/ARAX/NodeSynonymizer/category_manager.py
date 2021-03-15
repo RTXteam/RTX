@@ -85,8 +85,10 @@ class CategoryManager:
 
         # Check for a returned error
         if status_code != 200:
-            eprint(f"ERROR returned with status {status_code} while retrieving ancestors for {category}")
-            return
+            eprint(f"WARNING: returned with status {status_code} while retrieving ancestors for {category}")
+            response_list = [ category ]
+            self.categories['ancestors'][category] = response_list
+            return response_list
 
         # Unpack the response
         response_list = response_content.json()
