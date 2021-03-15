@@ -207,7 +207,7 @@ class ComputeNGD:
             counts_res = self._compute_marginal_and_joint_counts(pubmed_ids_for_curies)
             return self._compute_multiway_ngd_from_counts(*counts_res), pubmed_id_set
         else:
-            return math.nan, pubmed_id_set
+            return math.nan, {}
 
     @staticmethod
     def _compute_marginal_and_joint_counts(concept_pubmed_ids: List[List[int]]) -> list:
