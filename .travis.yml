@@ -28,4 +28,4 @@ install:
   - pip install reasoner_validator
   - python ./code/ARAX/ARAXQuery/ARAX_database_manager.py --slim
 # command to run tests
-script: pytest -v ./code/ARAX/test/ --disable-pytest-warnings
+script: pytest -v ./code/ARAX/test/test_ARAX_filter_kg.py --disable-pytest-warnings
