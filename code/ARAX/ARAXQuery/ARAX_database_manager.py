@@ -223,6 +223,21 @@ class ARAXDatabaseManager:
             if debug:
                 print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
             self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
+    
+    def download_slim(self, debug=False):
+        for database_name in self.remote_locations.keys():
+            if debug:
+                print(f"Downloading slim {self.remote_locations[database_name].split('/')[-1]}...")
+            if database_name in ["node_synonymizer", "curie_to_pmids"]:
+                self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
+            else:
+                if debug:
+                    print("Making fake database...")
+                os.system(f"touch {self.local_paths[database_name]}")
+        with open(versions_path,"w") as fid:
+            if debug:
+                print("Saving new version file...")
+            json.dump(self.db_versions, fid)
 
     def check_all(self, max_days=31, debug=False):
         update_flag = False
@@ -260,11 +275,14 @@ def main():
     parser.add_argument("-c", "--check_local", action='store_true')
     parser.add_argument("-f", "--force_download", action='store_true')
     parser.add_argument("-l", "--live", type=str, help="Live parameter for RTXConfiguration", default="Production", required=False)
+    parser.add_argument("-s", "--slim", action='store_true')
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager(arguments.live)
     if arguments.check_local:
         if not DBManager.check_versions(debug=True):
             print("All local versions are up to date")
+    elif arguments.slim:
+        DBManager.download_slim(debug=True)
     elif arguments.force_download:
         DBManager.force_download_all(debug=True)
     else:
