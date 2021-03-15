@@ -98,7 +98,7 @@ class NGDQuerier:
             else:
                 ngd_subject = kg2_node_2_key
                 ngd_object = kg2_node_1_key
-            ngd_value = cngd.calculate_ngd_fast(ngd_subject, ngd_object)
+            ngd_value, pmid_set = cngd.calculate_ngd_fast(ngd_subject, ngd_object)
             kg2_edge_ngd_map[kg2_edge_key] = {"ngd_value": ngd_value, "subject": ngd_subject, "object": ngd_object}
 
         # Create edges for those from KG2 found to have a low enough ngd value
