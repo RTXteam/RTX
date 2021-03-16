@@ -77,6 +77,11 @@ def copy_qnode(old_qnode: QNode) -> QNode:
     return new_qnode
 
 
+def copy_qg(qg: QueryGraph) -> QueryGraph:
+    return QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
+                      edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+
+
 def convert_string_to_pascal_case(input_string: str) -> str:
     # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
     if not input_string:
@@ -103,7 +108,7 @@ def convert_string_to_snake_case(input_string: str) -> str:
         return input_string.lower()
 
 
-def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]) -> List[str]:
+def convert_to_list(string_or_list: Union[str, List[str], None]) -> List[str]:
     if isinstance(string_or_list, str):
         return [string_or_list]
     elif isinstance(string_or_list, list):
@@ -151,6 +156,16 @@ def get_required_portion_of_qg(query_graph: QueryGraph) -> QueryGraph:
 
 def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -> Union[QEdge, Edge]:
     return {edge_a.subject, edge_a.object} == {edge_b.subject, edge_b.object}
+
+
+def merge_two_kgs(kg_a: QGOrganizedKnowledgeGraph, kg_b: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
+    for qnode_key, nodes in kg_a.nodes_by_qg_id.items():
+        for node_key, node in nodes.items():
+            kg_b.add_node(node_key, node, qnode_key)
+    for qedge_key, edges in kg_a.edges_by_qg_id.items():
+        for edge_key, edge in edges.items():
+            kg_b.add_edge(edge_key, edge, qedge_key)
+    return kg_b
 
 
 def convert_standard_kg_to_qg_organized_kg(standard_kg: KnowledgeGraph) -> QGOrganizedKnowledgeGraph:
@@ -210,19 +225,61 @@ def convert_curie_to_bte_format(curie: str) -> str:
 
 
 def get_node_category_overrides_for_kp(kp_name: str) -> Union[Dict[str, str], None]:
-    overrides = {"MolePro": {"biolink:Protein": "biolink:Gene"}}
+    overrides = {"MolePro": {"biolink:Protein": "biolink:Gene"},
+                 "GeneticsKP": {"biolink:Protein": "biolink:Gene"}}
     return overrides.get(kp_name)
 
 
 def get_kp_preferred_prefixes(kp_name: str) -> Union[Dict[str, str], None]:
-    overrides = {"MolePro": {"biolink:ChemicalSubstance": "CHEMBL.COMPOUND",
-                             "biolink:Gene": "HGNC",
-                             "biolink:Disease": "MONDO"}}
-    return overrides.get(kp_name)
+    # TODO: Dynamically determine these down the road once meta_knowledge_map endpoint is added to TRAPI
+    preferred_prefixes = {"MolePro": {"biolink:ChemicalSubstance": "CHEMBL.COMPOUND",
+                                      "biolink:Gene": "HGNC",
+                                      "biolink:Disease": "MONDO"},
+                          "GeneticsKP": {"biolink:Gene": "NCBIGene",
+                                         "biolink:Pathway": "GO",
+                                         "biolink:PhenotypicFeature": "EFO",
+                                         "biolink:Disease": "EFO"}}
+    return preferred_prefixes.get(kp_name)
+
+
+def kp_supports_category_lists(kp_name: str) -> bool:
+    # TRAPI 1.0 specifies qnode.category can be a list, but not all KPs support that
+    list_support = {"ARAX/KG2": True,
+                    "MolePro": False,
+                    "GeneticsKP": False,
+                    "BTE": False}
+    return list_support.get(kp_name, True)
+
+
+def kp_supports_predicate_lists(kp_name: str) -> bool:
+    # TRAPI 1.0 specifies qedge.predicate can be a list, but not all KPs support that
+    list_support = {"ARAX/KG2": True,
+                    "MolePro": False,
+                    "GeneticsKP": False,
+                    "BTE": False}
+    return list_support.get(kp_name, True)
+
+
+def kp_supports_none_for_predicate(kp_name: str) -> bool:
+    # This information isn't captured in TRAPI anywhere currently, so hardcoding it
+    none_predicates = {"ARAX/KG2": True,
+                       "MolePro": True,
+                       "GeneticsKP": False,
+                       "BTE": True}
+    return none_predicates.get(kp_name, True)
+
+
+def kp_supports_none_for_category(kp_name: str) -> bool:
+    # This information isn't captured in TRAPI anywhere currently, so hardcoding it
+    none_categories = {"ARAX/KG2": True,
+                       "MolePro": False,
+                       "GeneticsKP": False,
+                       "BTE": True}
+    return none_categories.get(kp_name, True)
 
 
 def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
-    curies = convert_string_or_list_to_list(curie)
+    curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
@@ -248,7 +305,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[
 
 
 def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, Dict[str, str]]:
-    curies = convert_string_or_list_to_list(curie)
+    curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
@@ -271,7 +328,7 @@ def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -
 
 
 def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
-    curies = convert_string_or_list_to_list(curie)
+    curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
@@ -385,7 +442,7 @@ def get_attribute_type(attribute_name: str) -> str:
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
         "BTE": "https://api.bte.ncats.io/v1",
-        "GeneticsKP": "https://translator.broadinstitute.org/genetics_data_provider",
+        "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.0",
         "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
         "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.0"
     }
@@ -418,12 +475,12 @@ def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
                          edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
     for qnode in qg_copy.nodes.values():
         if qnode.category:
-            categories = convert_string_or_list_to_list(qnode.category)
+            categories = convert_to_list(qnode.category)
             prefixless_categories = [category.split(":")[-1] for category in categories]
             qnode.category = [convert_string_to_snake_case(category) for category in prefixless_categories]
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
-            predicates = convert_string_or_list_to_list(qedge.predicate)
+            predicates = convert_to_list(qedge.predicate)
             prefixless_predicates = [predicate.split(":")[-1] for predicate in predicates]
             qedge.predicate = [predicates_with_commas.get(predicate, predicate) for predicate in prefixless_predicates]
     return qg_copy
