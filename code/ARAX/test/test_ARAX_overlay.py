@@ -172,7 +172,6 @@ def test_compute_ngd_virtual():
         assert edge.attributes
         attribute_names = {attribute.name: attribute.value for attribute in edge.attributes}
         assert "publications" in attribute_names
-        assert len(attribute_names['publications']) > 0
         assert edge.attributes[0].name == 'normalized_google_distance'
         assert float(edge.attributes[0].value) >= 0
 
@@ -203,7 +202,6 @@ def test_compute_ngd_attribute():
     for edge in ngd_edges:
         attribute_names = {attribute.name: attribute.value for attribute in edge.attributes}
         assert "ngd_publications" in attribute_names
-        assert len(attribute_names['ngd_publications']) > 0
 
 
 def test_FET_ex1():
