@@ -19,8 +19,11 @@ rtxc.live = 'KG2c'
 driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 session = driver.session()
 
+######### Please ignore this part until Eric finds a better way to categorize these nodes with ambiguous node type ###########
 # !Note: Before running the below code, please first check this DSL query, if there is returned value > 0, report error on github.
 # !DSL query: match (z) where (('biolink:Disease' in z.all_categories or 'biolink:PhenotypicFeature' in z.all_categories or 'biolink:DiseaseOrPhenotypicFeature' in z.all_categories) and ('biolink:Drug' in z.all_categories or 'biolink:ChemicalSubstance' in z.all_categories)) return count(distinct z.id)
+##############################################################################################################################
+
 
 ## Pull a dataframe of all of the graph edges excluding:
 # the edges with one end node with all_categories including 'drug' and another end node with all_categories including 'disease'
