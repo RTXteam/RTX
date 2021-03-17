@@ -98,8 +98,8 @@ class NGDQuerier:
             else:
                 ngd_subject = kg2_node_2_key
                 ngd_object = kg2_node_1_key
-            ngd_value = cngd.calculate_ngd_fast(ngd_subject, ngd_object)
-            kg2_edge_ngd_map[kg2_edge_key] = {"ngd_value": ngd_value, "subject": ngd_subject, "object": ngd_object}
+            ngd_value, pmid_set = cngd.calculate_ngd_fast(ngd_subject, ngd_object)
+            kg2_edge_ngd_map[kg2_edge_key] = {"ngd_value": ngd_value, "subject": ngd_subject, "object": ngd_object, "pmids": [f"PMID:{pmid}" for pmid in pmid_set]}
 
         # Create edges for those from KG2 found to have a low enough ngd value
         threshold = 0.5
@@ -109,7 +109,8 @@ class NGDQuerier:
             if ngd_value is not None and ngd_value < threshold:  # TODO: Make determination of the threshold much more sophisticated
                 subject = ngd_info_dict["subject"]
                 object = ngd_info_dict["object"]
-                ngd_edge_key, ngd_edge = self._create_ngd_edge(ngd_value, subject, object)
+                pmid_list = ngd_info_dict["pmids"]
+                ngd_edge_key, ngd_edge = self._create_ngd_edge(ngd_value, subject, object, pmid_list)
                 ngd_source_node_key, ngd_source_node = self._create_ngd_node(ngd_edge.subject, kg2_answer_kg.nodes.get(ngd_edge.subject))
                 ngd_target_node_key, ngd_target_node = self._create_ngd_node(ngd_edge.object, kg2_answer_kg.nodes.get(ngd_edge.object))
                 final_kg.add_edge(ngd_edge_key, ngd_edge, qedge_key)
@@ -120,7 +121,7 @@ class NGDQuerier:
 
         return final_kg, edge_to_nodes_map
 
-    def _create_ngd_edge(self, ngd_value: float, subject: str, object: str) -> Tuple[str, Edge]:
+    def _create_ngd_edge(self, ngd_value: float, subject: str, object: str, pmid_list: list) -> Tuple[str, Edge]:
         ngd_edge = Edge()
         ngd_edge.predicate = self.ngd_edge_type
         ngd_edge.subject = subject
@@ -131,7 +132,8 @@ class NGDQuerier:
                                          value=ngd_value,
                                          url=self.ngd_edge_attribute_url)]
         ngd_edge.attributes += [Attribute(name="provided_by", value="ARAX", type=eu.get_attribute_type("provided_by")),
-                                Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by"))]
+                                Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by")),
+                                Attribute(name="publications", value=pmid_list, type=eu.get_attribute_type("publications"))]
         return ngd_edge_key, ngd_edge
 
     @staticmethod

@@ -8,7 +8,7 @@ parser.add_argument("-m", "--mapfile", type=str, help="The path of map.txt file"
 parser.add_argument("-o", "--output", type=str, help="The path of output folder")
 args = parser.parse_args()
 
-conn = sqlite3.connect(args.output + '/GRAPH.sqlite')
+conn = sqlite3.connect(args.output + '/GRAPH_v1.0.sqlite')
 
 graph = pd.read_csv(args.embfile, sep=' ', skiprows=1, header=None, index_col=None)
 graph = graph.sort_values(0).reset_index(drop=True)

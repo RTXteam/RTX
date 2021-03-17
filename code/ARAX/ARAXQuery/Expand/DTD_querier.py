@@ -27,37 +27,43 @@ from Overlay.predictor.predictor import predictor
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+
 class DTDQuerier:
 
     def __init__(self, response_object: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+        self.RTXConfig = RTXConfiguration()
         self.response = response_object
         self.synonymizer = NodeSynonymizer()
 
         ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
-        filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'predictor','retrain_data'])
+        filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
 
         ## check if there is LogModel.pkl
-        self.pkl_file = f"{filepath}/LogModel.pkl"
+        self.pkl_file = f"{filepath}/{self.RTXConfig.log_model_path.split('/')[-1]}"
         if os.path.exists(self.pkl_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/LogModel.pkl " + pkl_file)
+            os.system(f"scp {self.RTXConfig.log_model_username}@{self.RTXConfig.log_model_host}:{self.RTXConfig.log_model_path} " + self.pkl_file)
 
         ## check if there is GRAPH.sqlite
-        self.db_file = f"{filepath}/GRAPH.sqlite"
+        self.db_file = f"{filepath}/{self.RTXConfig.graph_database_path.split('/')[-1]}"
         if os.path.exists(self.db_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/GRAPH.sqlite " + db_file)
+            os.system(f"scp {self.RTXConfig.graph_database_username}@{self.RTXConfig.graph_database_host}:{self.RTXConfig.graph_database_path} " + self.db_file)
 
         ## check if there is DTD_probability_database.db
-        self.DTD_prob_db_file = f"{filepath}/DTD_probability_database_v1.0.db"
+        self.DTD_prob_db_file = f"{filepath}/{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
         if os.path.exists(self.DTD_prob_db_file):
             pass
         else:
-            os.system("scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/DTD_probability_database_v1.0.db " + DTD_prob_db_file)
+            os.system(f"scp {self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path} " + self.DTD_prob_db_file)
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         """
@@ -819,7 +825,7 @@ class DTDQuerier:
                     where_fragments.append(f"{qnode_key}.id in {qnode.id}")
                 if qnode.category:
                     if kg_name == "KG2c":
-                        qnode_categories = eu.convert_string_or_list_to_list(qnode.category)
+                        qnode_categories = eu.convert_to_list(qnode.category)
                         category_fragments = [f"'{qnode_category}' in {qnode_key}.types" for qnode_category in qnode_categories]
                         joined_category_fragments = " OR ".join(category_fragments)
                         category_where_clause = joined_category_fragments if len(category_fragments) < 2 else f"({joined_category_fragments})"

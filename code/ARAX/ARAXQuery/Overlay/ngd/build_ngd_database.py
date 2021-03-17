@@ -30,17 +30,23 @@ from lxml import etree
 import pickledb
 from neo4j import GraphDatabase
 
-sys.path.append(f"{os.path.dirname(os.path.abspath(__file__))}/../../../NodeSynonymizer/")
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX','NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")  # code directory
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))  # code directory
 from RTXConfiguration import RTXConfiguration
 
 
 class NGDDatabaseBuilder:
-    def __init__(self, pubmed_directory_path, is_test):
+    def __init__(self, pubmed_directory_path, is_test, live = "Production"):
+        self.RTXConfig = RTXConfiguration()
+        self.RTXConfig.live = live
+        ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
         self.pubmed_directory_path = pubmed_directory_path
         self.conceptname_to_pmids_db_path = "conceptname_to_pmids.db"
-        self.curie_to_pmids_db_path = "curie_to_pmids.sqlite"
+        self.curie_to_pmids_db_path = f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}"
         self.status = 'OK'
         self.synonymizer = NodeSynonymizer()
         self.is_test = is_test
@@ -96,7 +102,7 @@ class NGDDatabaseBuilder:
 
     def build_curie_to_pmids_db(self):
         # This function creates a final sqlite database of curie->PMIDs mappings using data scraped from Pubmed AND KG2
-        print(f"Starting to build {self.curie_to_pmids_db_path}..")
+        print(f"Starting to build {self.curie_to_pmids_db_path.split(os.path.sep)[-1]}..")
         start = time.time()
         curie_to_pmids_map = dict()
         self._add_pmids_from_pubmed_scrape(curie_to_pmids_map)
@@ -106,7 +112,7 @@ class NGDDatabaseBuilder:
         self._add_pmids_from_kg2_nodes(curie_to_pmids_map)
         print(f"  In the end, found PMID lists for {len(curie_to_pmids_map)} (canonical) curies")
         self._save_data_in_sqlite_db(curie_to_pmids_map)
-        print(f"Done! Building {self.curie_to_pmids_db_path} took {round((time.time() - start) / 60)} minutes.")
+        print(f"Done! Building {self.curie_to_pmids_db_path.split(os.path.sep)[-1]} took {round((time.time() - start) / 60)} minutes.")
 
     # Helper methods
 
