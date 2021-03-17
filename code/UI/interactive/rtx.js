@@ -1836,7 +1836,10 @@ function show_attributes(html_div, atts) {
 
     var linebreak = "<hr>";
 
-    for (var att of atts) {
+    // always display iri first
+    var iri = atts.filter(a => a.name == "iri");
+
+    for (var att of iri.concat(atts.filter(a => a.name != "iri"))) {
 	var snippet = linebreak;
 
 	if (att.name != null) {
