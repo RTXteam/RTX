@@ -16,7 +16,7 @@ import requests
 import requests_cache
 
 
-# Class that provides a simple interface to the SRI Node normalizer
+# Class that provides a simple interface to BioLink categories and their ancestors and approved conflations
 class CategoryManager:
 
 
@@ -31,18 +31,20 @@ class CategoryManager:
         }
 
         self.approved_conflations = {
-            'biolink:Gene': 'biolink:Protein',
-            'biolink:Protein': 'biolink:Gene',
-            'biolink:Drug': 'biolink:ChemicalSubstance',
-            'biolink:ChemicalSubstance': 'biolink:Drug',
-            'biolink:Disease': 'biolink:PhenotypicFeature',
-            'biolink:PhenotypicFeature': 'biolink:Disease',
+            'biolink:Gene': [ 'biolink:Protein' ],
+            'biolink:Protein': [ 'biolink:Gene' ],
+            'biolink:Drug': [ 'biolink:ChemicalSubstance' ],
+            'biolink:ChemicalSubstance': [ 'biolink:Drug' ],
+            'biolink:Disease': [ 'biolink:PhenotypicFeature' ],
+            'biolink:PhenotypicFeature': [ 'biolink:Disease' ],
+            'biolink:DiseaseOrPhenotypicFeature': [ 'biolink:Disease', 'biolink:PhenotypicFeature' ],
         }
 
 
 
     # ############################################################################################
     # Store the cache of all category information
+    # Not actually used. Rely on web cache for now
     def store_cache(self):
         if self.categories is None:
             return
@@ -54,6 +56,7 @@ class CategoryManager:
 
     # ############################################################################################
     # Load the cache of all category information
+    # Not actually used. Rely on web cache for now
     def load_cache(self):
         filename = self.location + '/category_manager.pickle'
         if os.path.exists(filename):
@@ -65,7 +68,7 @@ class CategoryManager:
 
 
     # ############################################################################################
-    # Retrieve the ancestors of a biolink category
+    # Retrieve the ancestors of a biolink category from SRI web service
     def get_ancestors(self, category):
 
         if category is None:
@@ -102,28 +105,45 @@ class CategoryManager:
     # Retrieve the ancestors of a biolink category
     def get_expansive_categories(self, categories):
 
+        # If no categories are provided, then there's nothing to do
         if categories is None:
             return
 
+        # If the supplied categories is just a string, then turn is into the expected list
         if isinstance(categories,str):
             categories = [ categories ]
 
+        # If the supplied categories is not a list, then error out
         if not isinstance(categories,list):
             raise(f"ERROR: categories {categories} must be type list or str")
 
+        # Create a dict to store of the computed expansive categories
         expansive_categories = {}
 
+        # Loop over all the supplied categories and merge them into a single list
         for category in categories:
+
+            # First add the category itself plus any approved conflations
             expansive_categories[category] = True
+            if category in self.approved_conflations:
+                for conflated_category in self.approved_conflations[category]:
+                    expansive_categories[conflated_category] = True
+
+            # Get the ancestors of this category
             ancestors = self.get_ancestors(category)
+
+            # If we didn't get any, that's fine, just move on
             if ancestors is None:
                 continue
+
+            # For each discovered ancestor, add it to the dict and also add any approved conflations
             for ancestor in ancestors:
                 if ancestor == 'biolink:Entity':
                     continue
                 expansive_categories[ancestor] = True
-            if category in self.approved_conflations:
-                expansive_categories[self.approved_conflations[category]] = True
+                if ancestor in self.approved_conflations:
+                    for conflated_category in self.approved_conflations[ancestor]:
+                        expansive_categories[conflated_category] = True
 
 
         return expansive_categories
