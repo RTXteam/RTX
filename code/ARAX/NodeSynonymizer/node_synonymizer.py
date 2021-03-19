@@ -18,7 +18,7 @@ from sri_node_normalizer import SriNodeNormalizer
 from category_manager import CategoryManager
 
 # Testing and debugging flags
-DEBUG = True
+DEBUG = False
 
 
 
@@ -230,6 +230,7 @@ class NodeSynonymizer:
         # The SRI NodeNormalizer conflates genes and proteins, so have a special lookup table to try to disambiguate them
         curie_prefix_categories = {
             'NCBIGene:': 'biolink:Gene',
+            'NCBIGENE:': 'biolink:Gene',
             'ENSEMBL:ENSG': 'biolink:Gene',
             'HGNC:': 'biolink:Gene',
             'UniProtKB:': 'biolink:Protein',
@@ -249,7 +250,7 @@ class NodeSynonymizer:
         kg_names = self.kg_map['kg_names']
 
         # For some modes of debugging, import a set of CURIEs to track
-        debug_flag = False
+        debug_flag = DEBUG
         test_subset_flag = False
         test_set = { 'identifiers': {} }
         if filter_file is not None and filter_file != False:
@@ -762,7 +763,7 @@ class NodeSynonymizer:
 
         all_uc_curies_to_unique_concepts = {}
 
-        debug_flag = False
+        debug_flag = DEBUG
 
         #### Progress tracking
         counter = 0
@@ -931,7 +932,7 @@ class NodeSynonymizer:
         all_lc_names_to_unique_concepts = {}
         n_concepts_to_merge = 0
 
-        debug_flag = False
+        debug_flag = DEBUG
 
         #### Progress tracking
         counter = 0
@@ -1016,9 +1017,9 @@ class NodeSynonymizer:
         if 'MONDO:' in node_curie:
             node_name = re.sub(r'\s*\(disease\)\s*$','',node_name)
         # Many PR names have a ' (human)' suffix, which seems undesirable, so strip them out
-        if 'PR:' in node_curie:
+        if 'PR:' in node_curie or 'HGNC:' in node_curie:
             node_name = re.sub(r'\s*\(human\)\s*$','',node_name)
-        # Many ENSEMBLs have  [Source:HGNC Symbol;Acc:HGNC:29884]
+        # Many ENSEMBLs have  [Source:HGNC Symbol;Acc:HGNC:29884], which seems undesirable, so strip them out
         if 'ENSEMBL:' in node_curie:
             node_name = re.sub(r'\s*\[Source:HGNC.+\]\s*','',node_name)
 
@@ -1289,7 +1290,7 @@ class NodeSynonymizer:
 
         concept_remap = {}
 
-        debug_flag = False
+        debug_flag = DEBUG
 
         #### Progress tracking
         counter = 0
@@ -1464,7 +1465,7 @@ class NodeSynonymizer:
 
         print("INFO: Scanning through unique_concepts, looking for problem nodes to fix")
 
-        debug = False
+        debug = DEBUG
 
         # Get all the unique_concept_curies
         cursor = self.connection.cursor()
@@ -2118,19 +2119,9 @@ class NodeSynonymizer:
     # ############################################################################################
     def get_total_entity_count(self, node_type, kg_name='KG1'):
 
-        # Verify the kg_name and set constraints
-        if kg_name.upper() == 'KG1':
-            additional_constraint = 'kg1_best_curie IS NOT NULL AND '
-        elif kg_name.upper() == 'KG2':
-            additional_constraint = ''
-        else:
-            print("ERROR: kg_name must be either 'KG1' or 'KG2'")
-            return None
-        kg_prefix = 'kg2'
-
         # Just get a count of all unique_concepts 
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT COUNT(*) FROM {kg_prefix}_unique_concept{TESTSUFFIX} WHERE {additional_constraint} type = ?", (node_type,) )
+        cursor.execute( f"SELECT COUNT(*) FROM unique_concepts WHERE category = ?", (node_type,) )
         rows = cursor.fetchall()
 
         # Return the count value
@@ -2379,7 +2370,7 @@ def run_example_12():
 
 # ############################################################################################
 def run_examples():
-    run_example_11()
+    run_example_7()
     return
     run_example_1()
     run_example_2()

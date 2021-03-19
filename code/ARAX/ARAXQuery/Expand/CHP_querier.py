@@ -238,7 +238,7 @@ class CHPQuerier:
                 if source_category_temp == 'drug':
                     for source_curie in source_pass_nodes:
 
-                        genes = [curie for curie in self.allowable_gene_curies if self.synonymizer.get_canonical_curies(curie)[curie] is not None and target_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie, return_all_categories=True)[curie]['all_types'].keys())]]
+                        genes = [curie for curie in self.allowable_gene_curies if self.synonymizer.get_canonical_curies(curie)[curie] is not None and target_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie, return_all_categories=True)[curie]['all_categories'].keys())]]
                         therapeutic = source_curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:')
                         disease = 'MONDO:0007254'
                         outcome = ('EFO:0000714', '>=', self.CHP_survival_threshold)
@@ -274,7 +274,7 @@ class CHPQuerier:
                     for source_curie in source_pass_nodes:
 
                         genes = [source_curie]
-                        therapeutic = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and target_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_categories=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_types'].keys())]]
+                        therapeutic = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and target_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_categories=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_categories'].keys())]]
                         disease = 'MONDO:0007254'
                         outcome = ('EFO:0000714', '>=', self.CHP_survival_threshold)
 
@@ -337,7 +337,7 @@ class CHPQuerier:
                 if target_category_temp == 'drug':
                     for target_curie in target_pass_nodes:
 
-                        genes = [curie for curie in self.allowable_gene_curies if self.synonymizer.get_canonical_curies(curie)[curie] is not None and source_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie, return_all_categories=True)[curie]['all_types'].keys())]]
+                        genes = [curie for curie in self.allowable_gene_curies if self.synonymizer.get_canonical_curies(curie)[curie] is not None and source_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie, return_all_categories=True)[curie]['all_categories'].keys())]]
                         therapeutic = target_curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:')
                         disease = 'MONDO:0007254'
                         outcome = ('EFO:0000714', '>=', self.CHP_survival_threshold)
@@ -374,7 +374,7 @@ class CHPQuerier:
                     for target_curie in target_pass_nodes:
 
                         genes = [target_curie]
-                        therapeutic = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and source_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_categories=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_types'].keys())]]
+                        therapeutic = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and source_category in [category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_categories=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_categories'].keys())]]
                         disease = 'MONDO:0007254'
                         outcome = ('EFO:0000714', '>=', self.CHP_survival_threshold)
 
