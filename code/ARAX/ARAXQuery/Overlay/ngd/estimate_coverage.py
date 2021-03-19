@@ -63,7 +63,7 @@ def estimate_percent_nodes_with_mesh_mapping_via_synonymizer(kg: str):
         # Use synonymizer to get their equivalent curies and check for a MESH term
         print(f"    Getting equivalent curies for those random node IDs..")
         synonymizer = NodeSynonymizer()
-        curie_synonym_info = synonymizer.get_equivalent_curies(list(random_node_ids), kg_name='KG2')
+        curie_synonym_info = synonymizer.get_equivalent_curies(list(random_node_ids))
         num_curies_with_mesh_term = 0
         for input_curie, synonym_curies in curie_synonym_info.items():
             if synonym_curies:

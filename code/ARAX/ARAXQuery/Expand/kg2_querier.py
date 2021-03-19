@@ -53,7 +53,6 @@ class KG2Querier:
             query_graph = eu.make_qg_use_old_snake_case_types(query_graph)
         final_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
-        query_graph = eu.make_qedge_predicates_use_commas(query_graph)  # Temporary until we have KG2 without commas
 
         # Verify this is a valid one-hop query graph
         if len(query_graph.edges) != 1:
