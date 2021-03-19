@@ -320,14 +320,12 @@ class KG2Querier:
 
             # Create an Attribute for all non-empty values
             if property_value is not None and property_value != {} and property_value != []:
-                swagger_attribute = Attribute()
-                swagger_attribute.name = property_name
-                swagger_attribute.type = eu.get_attribute_type(swagger_attribute.name)
-                # Figure out whether this is a url and store it appropriately
+                swagger_attribute = Attribute(name=property_name,
+                                              type=eu.get_attribute_type(property_name),
+                                              value=property_value)
+                # Also store this in the 'url' field if it's a URL
                 if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
                     swagger_attribute.url = property_value
-                else:
-                    swagger_attribute.value = property_value
                 new_attributes.append(swagger_attribute)
         return new_attributes
 

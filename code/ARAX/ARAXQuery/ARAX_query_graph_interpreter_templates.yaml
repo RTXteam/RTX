@@ -58,7 +58,7 @@ templates:
       - expand(kp=ARAX/KG2)
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   one_hop_classic_question:
     name: One hop question with one curie and one category node
@@ -72,7 +72,7 @@ templates:
       - expand(kp=ARAX/KG2)
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   one_hop_two_curie_question:
     name: One hop question where both nodes are provided
@@ -85,7 +85,7 @@ templates:
     DSL:
       - expand(kp=ARAX/KG2)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   one_hop_all_connections:
     name: One hop question with one curie and one totally generic
@@ -98,7 +98,7 @@ templates:
     DSL:
       - expand(kp=ARAX/KG2)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   one_hop_drug_treats_disease:
     name: one hop with start node drug, end node disease
@@ -112,7 +112,7 @@ templates:
       - expand(kp=ARAX/KG2)
       - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   one_hop_drug_somehow_related_to_disease:
     name: one hop with start node drug, end node disease
@@ -130,7 +130,7 @@ templates:
       - filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)
       - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
       - resultify(ignore_edge_direction=true)
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   two_hop_drug_disease:
     name: one hop with start node drug, end node disease
@@ -172,7 +172,7 @@ templates:
       - expand(kp=ARAX/KG2)
       - overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   two_hop_curie-category-curie_question:
     name: Two hop question where both end nodes are provided and a category in the middle
@@ -187,7 +187,7 @@ templates:
     DSL:
       - expand(kp=ARAX/KG2)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   two_hop_two_curie_question:
     name: Two hop question where both end nodes are provided and no category in the middle
@@ -202,7 +202,7 @@ templates:
     DSL:
       - expand(kp=ARAX/KG2)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
 
 

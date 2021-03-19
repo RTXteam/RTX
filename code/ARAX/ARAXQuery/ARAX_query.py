@@ -667,6 +667,10 @@ class ARAXQuery:
                     return_action['parameters']['response'] = 'false'
 
             #print(json.dumps(ast.literal_eval(repr(response.__dict__)), sort_keys=True, indent=2))
+            #for node_key, node in response.envelope.message.knowledge_graph.nodes.items():
+            #    if node.attributes is not None:
+            #        for attr in node.attributes:
+            #            eprint(f"  - {node_key}.{attr.name} is {type(attr.value)}")
 
             # Fill out the message with data
             response.envelope.status = response.error_code
