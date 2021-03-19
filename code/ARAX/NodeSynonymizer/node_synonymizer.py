@@ -2116,19 +2116,9 @@ class NodeSynonymizer:
     # ############################################################################################
     def get_total_entity_count(self, node_type, kg_name='KG1'):
 
-        # Verify the kg_name and set constraints
-        if kg_name.upper() == 'KG1':
-            additional_constraint = 'kg1_best_curie IS NOT NULL AND '
-        elif kg_name.upper() == 'KG2':
-            additional_constraint = ''
-        else:
-            print("ERROR: kg_name must be either 'KG1' or 'KG2'")
-            return None
-        kg_prefix = 'kg2'
-
         # Just get a count of all unique_concepts 
         cursor = self.connection.cursor()
-        cursor.execute( f"SELECT COUNT(*) FROM {kg_prefix}_unique_concept{TESTSUFFIX} WHERE {additional_constraint} type = ?", (node_type,) )
+        cursor.execute( f"SELECT COUNT(*) FROM unique_concepts WHERE category = ?", (node_type,) )
         rows = cursor.fetchall()
 
         # Return the count value
@@ -2377,7 +2367,7 @@ def run_example_12():
 
 # ############################################################################################
 def run_examples():
-    run_example_11()
+    run_example_7()
     return
     run_example_1()
     run_example_2()
