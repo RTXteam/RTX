@@ -2,6 +2,8 @@
 import sys
 import os
 from typing import List, Dict, Tuple, Union, Set, Optional
+from itertools import product
+from collections import defaultdict
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
@@ -953,6 +955,63 @@ class ARAXExpander:
         else:
             return ""
 
+    def _get_kps_for_single_hop_qg(qg: QueryGraph) -> list:
+        # confirm that the qg is one hop
+        if len(qg.edges) > 1:
+            #TODO: make error message standard
+            print("QG must be 1 hop only.")
+            return
+    
+        # isolate possible subject object pairs from qg
+        qedge = list(qg.edges.values()][0]
+        sub_category_field = qg.nodes[qedge.subject].category
+        obj_category_field = qg.nodes[qedge.object].category
+        subject_category_list = sub_category_field if isinstance(sub_category_field, list) else [sub_category_field]
+        object_category_list = obj_category_field if isinstance(obj_category_field, list) else [obj_category_field]
+        predicate = list(qg.edges.values())[0].predicate
+        
+        qg_sub_obj_dict = defaultdict(lambda: set())
+        for sub, obj in list(product(subject_category_list, object_category_list)):
+            sub_obj_dict[sub].add(obj)
+        
+        # use /predicates for each possible kp to get available predicates
+        # is there a place to get this list instead of hardcoding it?
+        all_kps = ["BTE", "GeneticsKP", "MolePro", "ARAX/KG2"]
+
+        kps_to_return = []
+        # check each kp response for triple membership
+        for kp in all_kps:
+            # get predicates dictionary from KP
+            kp_endpoint = expand_utils.get_kp_endpoint_url(kp) 
+            kp_predicates_response = requests.get(f"{kp_endpoint}/predicates", headers={'accept': 'application/json'})
+            if kp_predicates_response.status_code != 200:
+                self.log.warning(f"Unable to access {self.kp_name}'s predicates endpoint "
+                             f"(returned status of {kp_predicates_response.status_code})")
+                continue
+            predicates_dict = kp_predicates_response.json()
+            if _triple_is_in_predicates_response(predicates_dict, qg_sub_obj_dict):
+                kps_to_return.append(kp)
+        return kps_to_return
+
+    def _triple_is_in_predicates_response(predicates_dict: dict, qg_sub_obj_dict: Dict[str,list]) -> bool:
+        # check for subjects
+        kp_allowed_subs = set(predicates_dict.keys())
+        accepted_subs = kp_allowed_subs.intersection(set(qg_sub_obj_dict.keys()))
+
+        # check for objects
+        for sub in accepted_subs:
+              kp_allowed_objs = set(predicates_dict[qg_subject].keys())
+              accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub].keys())
+              if len(accepted_objs) > 0:
+                    # check predicates
+                    for obj in accepted_objs:
+                        if predicate in predicates_dict[sub][obj]:
+                                return True
+        return False
+                                    
+                            
+                  
+                            
 
 def main():
     # Note that most of this is just manually doing what ARAXQuery() would normally do for you
