@@ -18,7 +18,7 @@ parser.add_argument('--OutFile', type=str, help="The path of output .pkl file", 
 args = parser.parse_args()
 
 curie_type = eval(args.CurieType)
-NodeNamesDescriptions = pd.read_csv(args.NodeDescriptionFile, sep='\t', header=None, names=['curie', 'name', 'type'])
+NodeNamesDescriptions = pd.read_csv(args.NodeDescriptionFile, sep='\t', header=None, names=['curie', 'name', 'full_name', 'type'])
 NodeNamesDescriptions = NodeNamesDescriptions.loc[NodeNamesDescriptions.type.isin(curie_type),:].reset_index(drop=True)
 
 preferred_synonyms = dict()
