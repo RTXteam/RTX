@@ -283,7 +283,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
-        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies, kg_name="KG2")
+        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
         log.debug(f"Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
@@ -475,6 +475,6 @@ def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
             qnode.category = [convert_string_to_snake_case(category) for category in prefixless_categories]
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
-            qedge.predicate = qedge.predicate.split(":")[-1]
-            qedge.predicate.lower()
+            predicates = convert_to_list(qedge.predicate)
+            qedge.predicate = [predicate.split(":")[-1] for predicate in predicates]
     return qg_copy

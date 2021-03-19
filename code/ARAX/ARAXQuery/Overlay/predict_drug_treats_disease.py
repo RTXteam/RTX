@@ -108,7 +108,7 @@ class PredictDrugTreatsDisease:
         """
         Takes an input curie from the KG, uses the synonymizer, and then returns something that the map.csv can handle
         """
-        normalizer_result = self.synonymizer.get_canonical_curies(curies=[input_curie], return_all_types=True)
+        normalizer_result = self.synonymizer.get_canonical_curies(curies=[input_curie], return_all_categories=True)
         curies_in_model = normalizer_result[input_curie]
 
         return curies_in_model

@@ -801,7 +801,7 @@ class DTDQuerier:
         disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
 
         if type(qnode_id) is str:
-            normalizer_result = self.synonymizer.get_canonical_curies(curies=[qnode_id], return_all_types=True)
+            normalizer_result = self.synonymizer.get_canonical_curies(curies=[qnode_id], return_all_categories=True)
             if normalizer_result[qnode_id] is not None:
                 all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[qnode_id]['all_types'].keys())]
                 if (len(set(drug_label_list).intersection(set(all_types))) > 0) or (len(set(disease_label_list).intersection(set(all_types))) > 0):
@@ -815,7 +815,7 @@ class DTDQuerier:
             pass_nodes_drug_temp = list()
             pass_nodes_disease_temp = list()
             not_pass_nodes = list()
-            normalizer_result = self.synonymizer.get_canonical_curies(curies=[qnode_id], return_all_types=True)
+            normalizer_result = self.synonymizer.get_canonical_curies(curies=[qnode_id], return_all_categories=True)
             for curie in qnode_id:
                 if normalizer_result[curie] is not None:
                     all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[curie]['all_types'].keys())]

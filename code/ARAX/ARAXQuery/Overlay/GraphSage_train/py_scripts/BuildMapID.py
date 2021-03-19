@@ -22,16 +22,16 @@ def map_to_graph(row):
     if len(row) == 2:
         drug, disease = row
         res = nodesynonymizer.get_canonical_curies(drug)[drug]
-        preferred_drug_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='biolink:Drug' or res['preferred_type']=='biolink:ChemicalSubstance') else None
+        preferred_drug_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Drug' or res['preferred_category']=='biolink:ChemicalSubstance') else None
         res = nodesynonymizer.get_canonical_curies(disease)[disease]
-        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='biolink:Disease' or res['preferred_type']=='biolink:PhenotypicFeature' or res['preferred_type']=='biolink:DiseaseOrPhenotypicFeature') else None
+        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Disease' or res['preferred_category']=='biolink:PhenotypicFeature' or res['preferred_category']=='biolink:DiseaseOrPhenotypicFeature') else None
         return [preferred_drug_curie, preferred_disease_curie]
     elif len(row) == 3:
         count, drug, disease = row
         res = nodesynonymizer.get_canonical_curies(drug)[drug]
-        preferred_drug_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='biolink:Drug' or res['preferred_type']=='biolink:ChemicalSubstance') else None
+        preferred_drug_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Drug' or res['preferred_category']=='biolink:ChemicalSubstance') else None
         res = nodesynonymizer.get_canonical_curies(disease)[disease]
-        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_type']=='biolink:Disease' or res['preferred_type']=='biolink:PhenotypicFeature' or res['preferred_type']=='biolink:DiseaseOrPhenotypicFeature') else None
+        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Disease' or res['preferred_category']=='biolink:PhenotypicFeature' or res['preferred_category']=='biolink:DiseaseOrPhenotypicFeature') else None
         return [count, preferred_drug_curie, preferred_disease_curie]
 
 

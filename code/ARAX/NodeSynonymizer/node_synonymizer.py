@@ -15,6 +15,7 @@ import pickle
 import platform
 
 from sri_node_normalizer import SriNodeNormalizer
+from category_manager import CategoryManager
 
 # Testing and debugging flags
 DEBUG = True
@@ -1796,6 +1797,9 @@ class NodeSynonymizer:
         batches = []
         results = {}
 
+        # Set up the category manager
+        category_manager = CategoryManager()
+
         # Make sets of comma-separated list strings for the curies and set up the results dict with all the input values
         uc_curies = []
         curie_map = {}
@@ -1838,19 +1842,16 @@ class NodeSynonymizer:
             if batch_size > 0:
                 batches.append( { 'batch_type': 'names', 'batch_str': "','".join(lc_names) } )
 
-        # Search the curie table for the provided curie
-        kg_prefix = 'kg2'
-
-        #i_batch = 0
         for batch in batches:
             #print(f"INFO: Batch {i_batch} of {batch['batch_type']}")
             #i_batch += 1
             if batch['batch_type'] == 'curies':
                 if return_type == 'equivalent_nodes':
                     sql = f"""
-                        SELECT C.curie,C.unique_concept_curie,N.curie,N.category
+                        SELECT C.curie,C.unique_concept_curie,N.curie,N.category,U.category
                           FROM curies AS C
                          INNER JOIN nodes AS N ON C.unique_concept_curie == N.unique_concept_curie
+                         INNER JOIN unique_concepts AS U ON C.unique_concept_curie == U.uc_curie
                          WHERE C.uc_curie in ( '{batch['batch_str']}' )"""
                 else:
                     sql = f"""
@@ -1903,6 +1904,11 @@ class NodeSynonymizer:
                             'preferred_name': row[3],
                             'preferred_category': row[4]
                         }
+
+                    #### Also store tidy categories
+                    if return_all_categories:
+                        results[entity]['expanded_categories'] = category_manager.get_expansive_categories(row[4])
+
                 else:
                     print(f"ERROR: Unable to find entity {entity}")
 
@@ -1932,6 +1938,7 @@ class NodeSynonymizer:
                     node_category = row[2]
                     entities = batch_curie_map[uc_unique_concept_curie]
 
+                    #### Eric says: I'm a little concerned that this entity is stomping on the previous entity. What's really going on here? FIXME
                     for entity in entities:
                         # Now store this category in the list
                         if entity in results:
@@ -2346,10 +2353,10 @@ def run_example_11():
 
     print("==== Get equivalent curies for a set of input curies ============================")
     curies = [ "DOID:14330", "UMLS:C0031485" ]
-    curies = [ "DOID:14330", "UMLS:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
+    #curies = [ "DOID:14330", "UMLS:C0031485", "FMA:7203", "MESH:D005199", "CHEBI:5855", "DOID:9281xxxxx", "MONDO:0005520" ]
 
     t0 = timeit.default_timer()
-    canonical_curies = synonymizer.get_equivalent_nodes(curies=curies)
+    canonical_curies = synonymizer.get_equivalent_nodes(curies=curies,return_all_categories=True)
     t1 = timeit.default_timer()
     print(json.dumps(canonical_curies,sort_keys=True,indent=2))
     print("Elapsed time: "+str(t1-t0))

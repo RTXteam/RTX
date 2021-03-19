@@ -11,6 +11,7 @@ import traceback
 import numpy as np
 from datetime import datetime
 from typing import List
+import itertools
 
 import random
 import time
@@ -32,7 +33,6 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 RTXConfig.live = "Production"
-
 
 
 class ComputeNGD:
@@ -86,10 +86,11 @@ class ComputeNGD:
                 # create the edge attribute if it can be
                 canonical_subject_curie = canonicalized_curie_lookup.get(subject_curie, subject_curie)
                 canonical_object_curie = canonicalized_curie_lookup.get(object_curie, object_curie)
-                ngd_value = self.calculate_ngd_fast(canonical_subject_curie, canonical_object_curie)
+                ngd_value, pmid_set = self.calculate_ngd_fast(canonical_subject_curie, canonical_object_curie)
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                     value = ngd_value
                 edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
+                pmid_attribute = EdgeAttribute(type="biolink:publications", name="publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
                 if edge_attribute:
                     added_flag = True
                     # make the edge, add the attribute
@@ -116,6 +117,7 @@ class ComputeNGD:
                     self.global_iter += 1
                     edge_attribute_list = [
                         edge_attribute,
+                        pmid_attribute,
                         EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
                         EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
                         EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
@@ -163,11 +165,13 @@ class ComputeNGD:
                     object_curie = edge.object
                     canonical_subject_curie = canonicalized_curie_map.get(subject_curie, subject_curie)
                     canonical_object_curie = canonicalized_curie_map.get(object_curie, object_curie)
-                    ngd_value = self.calculate_ngd_fast(canonical_subject_curie, canonical_object_curie)
+                    ngd_value, pmid_set = self.calculate_ngd_fast(canonical_subject_curie, canonical_object_curie)
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
                         value = ngd_value
                     ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
+                    pmid_edge_attribute = EdgeAttribute(type="biolink:publications", name="ngd_publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
                     edge.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
+                    edge.attributes.append(pmid_edge_attribute)
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
@@ -199,10 +203,18 @@ class ComputeNGD:
         if subject_curie in self.curie_to_pmids_map and object_curie in self.curie_to_pmids_map:
             pubmed_ids_for_curies = [self.curie_to_pmids_map.get(subject_curie),
                                      self.curie_to_pmids_map.get(object_curie)]
+            pubmed_id_set = set(self.curie_to_pmids_map.get(subject_curie)).intersection(set(self.curie_to_pmids_map.get(object_curie)))
+            n_pmids = len(pubmed_id_set)
+            if n_pmids > 30:
+                self.response.debug(f"{n_pmids} publications found for edge ({subject_curie})-[]-({object_curie}) limiting to 30...")
+                limited_pmids = set()
+                for i, val in enumerate(itertools.islice(pubmed_id_set, 30)):
+                    limited_pmids.add(val)
+                pubmed_id_set = limited_pmids
             counts_res = self._compute_marginal_and_joint_counts(pubmed_ids_for_curies)
-            return self._compute_multiway_ngd_from_counts(*counts_res)
+            return self._compute_multiway_ngd_from_counts(*counts_res), pubmed_id_set
         else:
-            return math.nan
+            return math.nan, {}
 
     @staticmethod
     def _compute_marginal_and_joint_counts(concept_pubmed_ids: List[List[int]]) -> list:

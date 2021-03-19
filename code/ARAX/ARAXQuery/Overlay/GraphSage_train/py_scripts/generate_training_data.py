@@ -29,7 +29,7 @@ class DataGeneration:
 
     def get_drug_curies_from_graph(self):
         ## Pulls a dataframe of all of the graph drug-associated nodes
-        query = f"match (n:`biolink:ChemicalSubstance`) with distinct n.id as id, n.name as name, n.equivalent_curies as equivalent_curies return id, name, equivalent_curies union match (n:`biolink:Drug`) with distinct n.id as id, n.name as name, n.equivalent_curies as equivalent_curies return id, name, equivalent_curies"
+        query = "match (n {category:'biolink:ChemicalSubstance'}) with distinct n.id as id, n.name as name, n.equivalent_curies as equivalent_curies return id, name, equivalent_curies union match (n {category:'biolink:Drug'}) with distinct n.id as id, n.name as name, n.equivalent_curies as equivalent_curies return id, name, equivalent_curies"
         session = self.driver.session()
         res = session.run(query)
         drugs = pd.DataFrame(res.data())
