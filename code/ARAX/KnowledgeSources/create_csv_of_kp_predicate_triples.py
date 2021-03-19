@@ -79,7 +79,7 @@ def get_kg2c_predicate_triples():
             'node2 <> "Base" return node1, relationship, node2'
             # Changed this from using n.category so that it can handle node with multiple labels
             # Unfortunetly this makes the cypher a little more unweildly and likely slows a query a bit.
-    results = run_neo4j_query(cypher, "KG2C", "predicate triples")
+    results = run_neo4j_query(cypher, "KG2c", "predicate triples")
     triples_dict = {"subject":[], "predicate":[], "object":[]}
     for result in results:
         subject_type = result.get('node1')
@@ -110,7 +110,7 @@ def get_kg2_node_labels():
 
 def get_kg2c_node_labels():
     cypher = 'call db.labels()'
-    results = run_neo4j_query(cypher, "KG2C", "node labels")
+    results = run_neo4j_query(cypher, "KG2c", "node labels")
     labels_dict = {"label":[]}
     for result in results:
         label = result.get('label')
@@ -137,7 +137,7 @@ def get_kg2_relationship_types():
 
 def get_kg2c_relationship_types():
     cypher = 'call db.relationshipTypes()'
-    results = run_neo4j_query(cypher, "KG2C", "relationship types")
+    results = run_neo4j_query(cypher, "KG2c", "relationship types")
     predicate_dict = {"predicate":[]}
     for result in results:
         predicate = result.get('relationshipType')
@@ -153,21 +153,21 @@ def main():
     kg2c_triple_df = get_kg2c_predicate_triples()
     kg1_triple_df.to_csv("KG1_allowed_predicate_triples.csv", index=False)
     kg2_triple_df.to_csv("KG2_allowed_predicate_triples.csv", index=False)
-    kg2c_triple_df.to_csv("KG2C_allowed_predicate_triples.csv", index=False)
+    kg2c_triple_df.to_csv("KG2c_allowed_predicate_triples.csv", index=False)
 
     kg1_labels_df = get_kg1_node_labels()
     kg2_labels_df = get_kg2_node_labels()
     kg2c_labels_df = get_kg2c_node_labels()
     kg1_labels_df.to_csv("KG1_allowed_node_labels.csv", index=False)
     kg2_labels_df.to_csv("KG2_allowed_node_labels.csv", index=False)
-    kg2c_labels_df.to_csv("KG2C_allowed_node_labels.csv", index=False)
+    kg2c_labels_df.to_csv("KG2c_allowed_node_labels.csv", index=False)
 
     kg1_labels_df = get_kg1_relationship_types()
     kg2_labels_df = get_kg2_relationship_types()
     kg2c_labels_df = get_kg2c_relationship_types()
     kg1_labels_df.to_csv("KG1_allowed_relationship_types.csv", index=False)
     kg2_labels_df.to_csv("KG2_allowed_relationship_types.csv", index=False)
-    kg2c_labels_df.to_csv("KG2C_allowed_relationship_types.csv", index=False)
+    kg2c_labels_df.to_csv("KG2c_allowed_relationship_types.csv", index=False)
     print("----- script finished -----")
 
 if __name__ == "__main__":
