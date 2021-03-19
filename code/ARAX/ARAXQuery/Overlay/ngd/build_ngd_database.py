@@ -187,9 +187,10 @@ class NGDDatabaseBuilder:
     def _save_data_in_sqlite_db(self, curie_to_pmids_map):
         print("  Loading data into sqlite database..")
         # Remove any preexisting version of this database
-        if os.path.exists(self.curie_to_pmids_db_path):
-            os.remove(self.curie_to_pmids_db_path)
-        connection = sqlite3.connect(self.curie_to_pmids_db_path)
+        db_name = self.curie_to_pmids_db_path.split(os.path.sep)[-1]
+        if os.path.exists(db_name):
+            os.remove(db_name)
+        connection = sqlite3.connect(db_name)
         cursor = connection.cursor()
         cursor.execute("CREATE TABLE curie_to_pmids (curie TEXT, pmids TEXT)")
         cursor.execute("CREATE UNIQUE INDEX unique_curie ON curie_to_pmids (curie)")
