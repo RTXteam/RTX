@@ -32,7 +32,7 @@ for curie in NodeNamesDescriptions['curie']:
         if preferred_curie['preferred_curie'] not in preferred_synonyms:
             preferred_synonyms[preferred_curie['preferred_curie']] = dict()
             preferred_synonyms[preferred_curie['preferred_curie']]['preferred_name'] = preferred_curie['preferred_name']
-            preferred_synonyms[preferred_curie['preferred_curie']]['preferred_type'] = preferred_curie['preferred_type']
+            preferred_synonyms[preferred_curie['preferred_curie']]['preferred_type'] = preferred_curie['preferred_category']
             preferred_synonyms[preferred_curie['preferred_curie']]['synonyms'] = [curie]
         else:
             synonyms = set(preferred_synonyms[preferred_curie['preferred_curie']]['synonyms'])
