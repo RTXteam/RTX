@@ -226,10 +226,9 @@ class KG2Querier:
         swagger_node = Node()
         swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
-        node_category = neo4j_node.get('category_label')
-        swagger_node.category = eu.convert_to_list(node_category)
+        swagger_node.category = eu.convert_to_list(neo4j_node.get('category'))
         # Add all additional properties on KG2 nodes as swagger Attribute objects
-        other_properties = ["full_name", "description", "iri", "publications", "synonym", "category", "provided_by",
+        other_properties = ["iri", "full_name", "description", "publications", "synonym", "provided_by",
                             "deprecated", "update_date"]
         swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
         return swagger_node_key, swagger_node
@@ -238,9 +237,10 @@ class KG2Querier:
         swagger_node = Node()
         swagger_node_key = neo4j_node.get('id')
         swagger_node.name = neo4j_node.get('name')
-        swagger_node.category = neo4j_node.get('types')
+        swagger_node.category = eu.convert_to_list(neo4j_node.get('category'))
         # Add all additional properties on KG2c nodes as swagger Attribute objects
-        other_properties = ["description", "iri", "equivalent_curies", "publications", "all_names"]
+        other_properties = ["iri", "description", "equivalent_curies", "all_names", "all_categories",
+                            "expanded_categories", "publications"]
         swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
         return swagger_node_key, swagger_node
 
@@ -266,7 +266,7 @@ class KG2Querier:
     def _convert_kg2_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Edge:
         swagger_edge = Edge()
         swagger_edge_key = f"KG2:{neo4j_edge.get('id')}"
-        swagger_edge.predicate = neo4j_edge.get("simplified_edge_label")
+        swagger_edge.predicate = neo4j_edge.get("predicate")
         swagger_edge.subject = neo4j_edge.get("subject")
         swagger_edge.object = neo4j_edge.get("object")
         swagger_edge.relation = neo4j_edge.get("relation")
@@ -281,7 +281,7 @@ class KG2Querier:
     def _convert_kg2c_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
         swagger_edge = Edge()
         swagger_edge_key = f"KG2c:{neo4j_edge.get('id')}"
-        swagger_edge.predicate = neo4j_edge.get("simplified_edge_label")
+        swagger_edge.predicate = neo4j_edge.get("predicate")
         swagger_edge.subject = neo4j_edge.get("subject")
         swagger_edge.object = neo4j_edge.get("object")
         other_properties = ["provided_by", "publications"]
@@ -367,7 +367,7 @@ class KG2Querier:
     def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph) -> str:
         qnode = qg.nodes[qnode_key]
         # Add in node label if there's only one category
-        category_cypher = f":{qnode.category[0]}" if len(qnode.category) == 1 else ""
+        category_cypher = f":`{qnode.category[0]}`" if len(qnode.category) == 1 else ""
         if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
             curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
             curie_cypher = f" {{id:'{curie}'}}"

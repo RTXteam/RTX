@@ -650,7 +650,7 @@ def test_genetics_kp_2_hop():
 @pytest.mark.slow
 def test_genetics_kp_multi_kp():
     actions_list = [
-        "add_qnode(key=n0, name=AMYLIN, category=biolink:ChemicalSubstance)",
+        "add_qnode(key=n0, name=ertugliflozin, category=biolink:ChemicalSubstance)",
         "add_qnode(key=n1, category=biolink:Disease, is_set=true)",
         "add_qnode(key=n2, category=biolink:Protein)",
         "add_qedge(key=e0, subject=n0, object=n1)",
