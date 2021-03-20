@@ -255,7 +255,7 @@ class NodeSynonymizer:
         test_set = { 'identifiers': {} }
         if filter_file is not None and filter_file != False:
             print(f"INFO: Reading special testing filter_file {filter_file} for a tiny little test database")
-            debug_flag = True
+            debug_flag = DEBUG
             test_subset_flag = True
             with open(filter_file) as debugfile:
                 test_set = json.load(debugfile)
@@ -879,7 +879,12 @@ class NodeSynonymizer:
         #### Show the mapping
         for uc_unique_concept_curie, target_curie in concept_remap.items():
             #print(f"{uc_unique_concept_curie} --> {target_curie}")
-            pass
+            # Transfer the all_uc_curies entries
+            for uc_curie in kg_unique_concepts[uc_unique_concept_curie]['all_uc_curies']:
+                if uc_curie not in kg_unique_concepts[target_curie]['all_uc_curies']:
+                    kg_unique_concepts[target_curie]['all_uc_curies'][uc_curie] = True
+                if DEBUG:
+                    print(f"INFO: Tranferring {uc_curie} from all_uc_curies in {uc_unique_concept_curie} to {target_curie}")
 
         #### Remap kg_nodes
         for uc_curie, element in kg_nodes.items():
@@ -936,7 +941,7 @@ class NodeSynonymizer:
 
         #### Progress tracking
         counter = 0
-        n_items = len(kg_unique_concepts)
+        n_items = len(kg_names)
         previous_percentage = 0
 
         # Loop over all names
@@ -1351,7 +1356,8 @@ class NodeSynonymizer:
                         concept['best_category'] = node_category
                         concept['best_name'] = node_full_name
 
-                    print(f"  - After considering related {related_uc_curie}, concept = {concept}")
+                    if debug_flag:
+                        print(f"  - After considering related {related_uc_curie}, concept = {concept}")
 
 
             drug_score = 0
