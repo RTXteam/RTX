@@ -558,7 +558,7 @@ def test_COHD_expand_observed_expected_ratio():
 
 def test_COHD_expand_chi_square():
     actions_list = [
-        "add_qnode(id=DOID:5844, key=n00)",
+        "add_qnode(id=MONDO:0003674, key=n00)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_percentile=95)",
