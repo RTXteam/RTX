@@ -1303,6 +1303,7 @@ class NodeSynonymizer:
 
             curie = unique_concept['curie']
             curie_prefix = curie.split(':')[0].upper()
+
             #### Don't do anything fancy to meta nodes
             if curie_prefix == 'BIOLINK':
                 continue
@@ -1311,6 +1312,9 @@ class NodeSynonymizer:
                 'best_curie_score': 0, 'best_curie': unique_concept['curie'], 'best_category': unique_concept['category'], 'best_name': unique_concept['name'] }
             manual_exception = False
 
+            if debug_flag:
+                print("===============================================")
+                print(f"Considering {uc_unique_concept_curie}")
 
             for related_uc_curie in unique_concept['all_uc_curies']:
 
@@ -1346,6 +1350,8 @@ class NodeSynonymizer:
                         concept['best_curie'] = node_curie
                         concept['best_category'] = node_category
                         concept['best_name'] = node_full_name
+
+                    print(f"  - After considering related {related_uc_curie}, concept = {concept}")
 
 
             drug_score = 0
