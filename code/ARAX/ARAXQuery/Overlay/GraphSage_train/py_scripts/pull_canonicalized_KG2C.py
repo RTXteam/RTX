@@ -15,8 +15,8 @@ output_path = args.OutFolder
 
 ## Connect to neo4j database
 rtxc = RTXConfiguration()
-rtxc.live = 'KG2c'
-driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
+neo4j_bolt = 'bolt://kg2c-5-2.rtx.ai:7687'
+driver = GraphDatabase.driver(neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 session = driver.session()
 
 ######### Please ignore this part until Eric finds a better way to categorize these nodes with ambiguous node type ###########
