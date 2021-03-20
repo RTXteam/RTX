@@ -161,6 +161,8 @@ class NodeSynonymizer:
         with open('Exceptions.txt') as infile:
             for line in infile:
                 line = line.rstrip()
+                if len(line) == 0:
+                    continue
                 if line[0] == '#':
                     continue
                 is_understood = False
@@ -171,7 +173,7 @@ class NodeSynonymizer:
                     print(f"INFO: Will use exception skip_SRI {match.group(1)}")
                     is_understood = True
 
-                match = re.match(r'rename (\S) (.+)', line)
+                match = re.match(r'rename (.+?) (.+)', line)
                 if match:
                     self.exceptions['rename'][match.group(1)] = match.group(2)
                     print(f"INFO: Will use exception rename {match.group(1)} = {match.group(2)}")
@@ -253,7 +255,7 @@ class NodeSynonymizer:
         test_set = { 'identifiers': {} }
         if filter_file is not None and filter_file != False:
             print(f"INFO: Reading special testing filter_file {filter_file} for a tiny little test database")
-            debug_flag = True
+            debug_flag = DEBUG
             test_subset_flag = True
             with open(filter_file) as debugfile:
                 test_set = json.load(debugfile)
@@ -877,7 +879,12 @@ class NodeSynonymizer:
         #### Show the mapping
         for uc_unique_concept_curie, target_curie in concept_remap.items():
             #print(f"{uc_unique_concept_curie} --> {target_curie}")
-            pass
+            # Transfer the all_uc_curies entries
+            for uc_curie in kg_unique_concepts[uc_unique_concept_curie]['all_uc_curies']:
+                if uc_curie not in kg_unique_concepts[target_curie]['all_uc_curies']:
+                    kg_unique_concepts[target_curie]['all_uc_curies'][uc_curie] = True
+                if DEBUG:
+                    print(f"INFO: Tranferring {uc_curie} from all_uc_curies in {uc_unique_concept_curie} to {target_curie}")
 
         #### Remap kg_nodes
         for uc_curie, element in kg_nodes.items():
@@ -934,7 +941,7 @@ class NodeSynonymizer:
 
         #### Progress tracking
         counter = 0
-        n_items = len(kg_unique_concepts)
+        n_items = len(kg_names)
         previous_percentage = 0
 
         # Loop over all names
@@ -1301,6 +1308,7 @@ class NodeSynonymizer:
 
             curie = unique_concept['curie']
             curie_prefix = curie.split(':')[0].upper()
+
             #### Don't do anything fancy to meta nodes
             if curie_prefix == 'BIOLINK':
                 continue
@@ -1309,6 +1317,9 @@ class NodeSynonymizer:
                 'best_curie_score': 0, 'best_curie': unique_concept['curie'], 'best_category': unique_concept['category'], 'best_name': unique_concept['name'] }
             manual_exception = False
 
+            if debug_flag:
+                print("===============================================")
+                print(f"Considering {uc_unique_concept_curie}")
 
             for related_uc_curie in unique_concept['all_uc_curies']:
 
@@ -1344,6 +1355,9 @@ class NodeSynonymizer:
                         concept['best_curie'] = node_curie
                         concept['best_category'] = node_category
                         concept['best_name'] = node_full_name
+
+                    if debug_flag:
+                        print(f"  - After considering related {related_uc_curie}, concept = {concept}")
 
 
             drug_score = 0
