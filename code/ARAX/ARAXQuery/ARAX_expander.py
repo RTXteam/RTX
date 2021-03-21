@@ -325,8 +325,10 @@ class ARAXExpander:
                     return response
 
                 # TODO: Get list of KPs that can answer this 1-hop QG (e.g., kps = self._get_kps_supporting_qg(one_hop_qg))
+                kps_to_query = _get_kps_for_single_hop_qg(one_hop_qg)
                 # TODO: Then loop through those KPs here
-                answer_kg, edge_node_usage_map = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results,
+                for kp_to_use in kps_to_query:
+                    answer_kg, edge_node_usage_map = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results,
                                                                    use_synonyms, mode, log)
                 if log.status != 'OK':
                     return response
@@ -955,24 +957,16 @@ class ARAXExpander:
         else:
             return ""
 
-    def _get_kps_for_single_hop_qg(qg: QueryGraph) -> list:
+    def _get_kps_for_single_hop_qg(self, qg: QueryGraph) -> list:
         # confirm that the qg is one hop
         if len(qg.edges) > 1:
-            #TODO: make error message standard
-            print("QG must be 1 hop only.")
+            self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.")
             return
-    
-        # isolate possible subject object pairs from qg
-        qedge = list(qg.edges.values()][0]
-        sub_category_field = qg.nodes[qedge.subject].category
-        obj_category_field = qg.nodes[qedge.object].category
-        subject_category_list = sub_category_field if isinstance(sub_category_field, list) else [sub_category_field]
-        object_category_list = obj_category_field if isinstance(obj_category_field, list) else [obj_category_field]
+        # isolate possible subject predicate object from qg
+        qedge = list(qg.edges.values())[0]
+        sub_category_list = expand_utils.convert_to_list(qg.nodes[qedge.subject].category)
+        obj_category_list = expand_utils.convert_to_list(qg.nodes[qedge.object].category)
         predicate = list(qg.edges.values())[0].predicate
-        
-        qg_sub_obj_dict = defaultdict(lambda: set())
-        for sub, obj in list(product(subject_category_list, object_category_list)):
-            sub_obj_dict[sub].add(obj)
         
         # use /predicates for each possible kp to get available predicates
         # is there a place to get this list instead of hardcoding it?
@@ -989,11 +983,17 @@ class ARAXExpander:
                              f"(returned status of {kp_predicates_response.status_code})")
                 continue
             predicates_dict = kp_predicates_response.json()
-            if _triple_is_in_predicates_response(predicates_dict, qg_sub_obj_dict):
+            if _triple_is_in_predicates_response(predicates_dict, sub_category_list, predicate, obj_category_list):
                 kps_to_return.append(kp)
         return kps_to_return
 
-    def _triple_is_in_predicates_response(predicates_dict: dict, qg_sub_obj_dict: Dict[str,list]) -> bool:
+    # returns True if at least one possible triple exists in the predicates endpoint response
+    def _triple_is_in_predicates_response(predicates_dict: dict, subject_list: list, predicate: str, object_list: list)  -> bool:
+        # handle combinations of subject and objects using cross product
+        qg_sub_obj_dict = defaultdict(lambda: set())
+        for sub, obj in list(product(subject_list, object_list)):
+            sub_obj_dict[sub].add(obj)
+
         # check for subjects
         kp_allowed_subs = set(predicates_dict.keys())
         accepted_subs = kp_allowed_subs.intersection(set(qg_sub_obj_dict.keys()))
@@ -1009,9 +1009,6 @@ class ARAXExpander:
                                 return True
         return False
                                     
-                            
-                  
-                            
 
 def main():
     # Note that most of this is just manually doing what ARAXQuery() would normally do for you
