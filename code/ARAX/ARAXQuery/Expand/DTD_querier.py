@@ -918,7 +918,7 @@ class DTDQuerier:
         swagger_node_key = node_key
         swagger_node.name = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_name']
         swagger_node.description = None
-        swagger_node.category = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_type']
+        swagger_node.category = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category']
 
         return swagger_node_key, swagger_node
 
