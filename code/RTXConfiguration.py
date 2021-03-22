@@ -101,16 +101,6 @@ class RTXConfiguration:
         self.node_synonymizer_path = self.config["Contextual"][self.live]["node_synonymizer"]["path"]
         self.node_synonymizer_version = self.config["Contextual"][self.live]["node_synonymizer"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
 
-        self.rel_max_host = self.config["Global"]["rel_max"]["host"]
-        self.rel_max_username = self.config["Global"]["rel_max"]["username"]
-        self.rel_max_path = self.config["Contextual"][self.live]["rel_max"]["path"]
-        self.rel_max_version = self.config["Contextual"][self.live]["rel_max"]["path"].split('/')[-1].split('_v')[-1].replace('.emb.gz','')
-
-        self.map_txt_host = self.config["Global"]["map_txt"]["host"]
-        self.map_txt_username = self.config["Global"]["map_txt"]["username"]
-        self.map_txt_path = self.config["Contextual"][self.live]["map_txt"]["path"]
-        self.map_txt_version = self.config["Contextual"][self.live]["map_txt"]["path"].split('/')[-1].split('_v')[-1].replace('.txt','')
-
         self.dtd_prob_host = self.config["Global"]["dtd_prob"]["host"]
         self.dtd_prob_username = self.config["Global"]["dtd_prob"]["username"]
         self.dtd_prob_path = self.config["Contextual"][self.live]["dtd_prob"]["path"]
