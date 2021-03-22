@@ -230,6 +230,8 @@ class ARAXDatabaseManager:
                 print(f"Downloading slim {self.remote_locations[database_name].split('/')[-1]}...")
             if database_name in ["node_synonymizer", "curie_to_pmids"]:
                 self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
+            elif database_name in ["cohd_database", "dtd_prob", "graph_database"]:
+                self.download_database(remote_location=self.remote_locations[database_name].replace(".sqlite","_slim.sqlite").replace(".db","_slim.db"), local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
             else:
                 if debug:
                     print("Making fake database...")
