@@ -5,6 +5,8 @@ import traceback
 import ast
 from typing import List, Dict, Tuple
 
+import requests
+import yaml
 from neo4j import GraphDatabase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -64,6 +66,9 @@ class KG2Querier:
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
             return final_kg, edge_to_nodes_map
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
+
+        # Consider any inverses of our predicate(s) as well
+        query_graph = self._add_inverted_predicates(query_graph, log)
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
         qnode_keys_with_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id]
@@ -384,3 +389,26 @@ class KG2Querier:
         if enforce_directionality:
             full_qedge_cypher += ">"
         return full_qedge_cypher
+
+    @staticmethod
+    def _add_inverted_predicates(qg: QueryGraph, log: ARAXResponse) -> QueryGraph:
+        # For now, we'll consider BOTH predicates in an inverse pair (TODO: later tailor to what we know is in KG2)
+        qedge = next(qedge for qedge in qg.edges.values())
+        response = requests.get("https://raw.githubusercontent.com/biolink/biolink-model/master/biolink-model.yaml")
+        if response.status_code == 200:
+            qedge.predicate = eu.convert_to_list(qedge.predicate)
+            biolink_model = yaml.safe_load(response.text)
+            inverse_predicates = set()
+            for predicate in qedge.predicate:
+                english_predicate = predicate.split(":")[-1].replace("_", " ")  # Converts to 'subclass of' format
+                biolink_predicate_info = biolink_model["slots"].get(english_predicate)
+                if biolink_predicate_info and "inverse" in biolink_predicate_info:
+                    english_inverse_predicate = biolink_predicate_info["inverse"]
+                    machine_inverse_predicate = f"biolink:{english_inverse_predicate.replace(' ', '_')}"
+                    inverse_predicates.add(machine_inverse_predicate)
+                    log.debug(f"Found inverse predicate for {predicate}: {machine_inverse_predicate}")
+            qedge.predicate = list(set(qedge.predicate).union(inverse_predicates))
+        else:
+            log.warning(f"Cannot check for inverse predicates: Failed to load Biolink Model yaml file. "
+                        f"(Page gave status {response.status_code}.)")
+        return qg
