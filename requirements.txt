@@ -6,7 +6,7 @@ numpy>=1.18.2,<=1.18.5
 ipython-cypher==0.2.6
 networkx==2.4
 pronto==2.1.0
-lxml==4.6.2
+lxml==4.6.3
 mygene==3.1.0
 beautifulsoup4>=4.9.0,<=4.9.1
 nltk>=3.4.5,<=3.5
