@@ -16,8 +16,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-f
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
-from QueryCOHD import QueryCOHD as COHD
 # FIXME:^ this should be pulled from a YAML file pointing to the parser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../KnowledgeSources/COHD_local/scripts/")
 from COHDIndex import COHDIndex

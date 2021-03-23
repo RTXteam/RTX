@@ -166,14 +166,40 @@ class ARAXExpander:
                     "use_synonyms": self.use_synonyms_parameter_info
                 }
             },
+            "CHP": {
+                "dsl_command": "expand(kp=CHP)",
+                "description": "This command reaches out to CHP (the Connections Hypothesis Provider) to query the probability "
+                               "of the form P(Outcome | Gene Mutations, Disease, Therapeutics, ...). It currently can answer a question like "
+                               "'Given a gene or a batch of genes, what is the probability that the survival time (day) >= a given threshold for this gene "
+                               "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
+                               "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
+                               "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                    "CHP_survival_threshold": {
+                        "is_required": False,
+                        "examples": [0.8, 0.5],
+                        "min": 0,
+                        "max": 1000000000000,
+                        "default": 500,
+                        "type": "int",
+                        "description": "What cut-off/threshold for surivial time (day) to estimate probability."
+                    },
+                }
+            },
             "DTD": {
                 "dsl_command": "expand(kp=DTD)",
                 "description": "This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
                                "a query graph; it returns edges between nodes with an DTD probability above a certain "
                                "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
                                "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
-                               "DTD probability above 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
-                               "to do a real-time calculation and this will be quite time-consuming.",
+                               "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
+                               "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
+                               "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to "
+                               "to call DTD model to do a real-time calculation.",
                 "parameters": {
                     "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
@@ -194,7 +220,7 @@ class ARAXExpander:
                         "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
                         "default": "false",
                         "type": "boolean",
-                        "description": "Whether to call DTD model to do a real-time calculation for DTD probability."
+                        "description": "Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability."
                     }
                 }
             }
@@ -317,8 +343,15 @@ class ARAXExpander:
 
             for qedge_key in ordered_qedge_keys_to_expand:
                 qedge = query_graph.edges[qedge_key]
-                answer_kg, edge_node_usage_map = self._expand_edge(qedge_key, kp_to_use, dict_kg, continue_if_no_results,
-                                                                   query_graph, use_synonyms, mode, log)
+                # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
+                one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, dict_kg, log)
+                if log.status != 'OK':
+                    return response
+
+                # TODO: Get list of KPs that can answer this 1-hop QG (e.g., kps = self._get_kps_supporting_qg(one_hop_qg))
+                # TODO: Then loop through those KPs here
+                answer_kg, edge_node_usage_map = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results,
+                                                                   use_synonyms, mode, log)
                 if log.status != 'OK':
                     return response
                 elif qedge.exclude and not answer_kg.is_empty():
@@ -375,19 +408,16 @@ class ARAXExpander:
                 log.warning(f"Node {node_key}'s category is not a list': {node.category} (mode is {mode}).")
         return response
 
-    def _expand_edge(self, qedge_key: str, kp_to_use: str, dict_kg: QGOrganizedKnowledgeGraph, continue_if_no_results: bool,
-                     query_graph: QueryGraph, use_synonyms: bool, mode: str, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, continue_if_no_results: bool, use_synonyms: bool,
+                     mode: str, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
+        qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
+        qedge = edge_qg.edges[qedge_key]
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
-        qedge = query_graph.edges[qedge_key]
 
-        # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
-        edge_query_graph = self._get_query_graph_for_edge(qedge_key, query_graph, dict_kg, log)
-        if log.status != 'OK':
-            return answer_kg, edge_to_nodes_map
-        if not any(qnode for qnode in edge_query_graph.nodes.values() if qnode.id):
+        if not any(qnode for qnode in edge_qg.nodes.values() if qnode.id):
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
@@ -407,6 +437,9 @@ class ARAXExpander:
             elif kp_to_use == 'DTD':
                 from Expand.DTD_querier import DTDQuerier
                 kp_querier = DTDQuerier(log)
+            elif kp_to_use == 'CHP':
+                from Expand.CHP_querier import CHPQuerier
+                kp_querier = CHPQuerier(log)
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
@@ -417,7 +450,7 @@ class ARAXExpander:
                 from Expand.trapi_querier import TRAPIQuerier
                 kp_querier = TRAPIQuerier(log, kp_to_use)
 
-            answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_query_graph)
+            answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_qg)
             if log.status != 'OK':
                 return answer_kg, edge_to_nodes_map
             log.debug(f"Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
@@ -425,11 +458,11 @@ class ARAXExpander:
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
                 answer_kg, edge_to_nodes_map = self._deduplicate_nodes(answer_kg, edge_to_nodes_map, log)
-            if eu.qg_is_fulfilled(edge_query_graph, answer_kg):
-                answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge_key, set(edge_query_graph.nodes), log)
+            if eu.qg_is_fulfilled(edge_qg, answer_kg):
+                answer_kg = self._remove_self_edges(answer_kg, edge_to_nodes_map, qedge_key, set(edge_qg.nodes), log)
 
             # Make sure our query has been fulfilled (unless we're continuing if no results)
-            if not eu.qg_is_fulfilled(edge_query_graph, answer_kg) and not qedge.exclude and not qedge.option_group_id:
+            if not eu.qg_is_fulfilled(edge_qg, answer_kg) and not qedge.exclude and not qedge.option_group_id:
                 if continue_if_no_results:
                     log.warning(f"No paths were found in {kp_to_use} satisfying qedge {qedge_key}")
                 else:

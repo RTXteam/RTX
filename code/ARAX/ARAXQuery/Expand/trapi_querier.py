@@ -127,6 +127,11 @@ class TRAPIQuerier:
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
 
     def _preprocess_query_graph(self, query_graph: QueryGraph):
+        # Make sure category and predicate are always lists
+        for qnode_key, qnode in query_graph.nodes.items():
+            qnode.category = eu.convert_to_list(qnode.category)
+        for qedge_key, qedge in query_graph.edges.items():
+            qedge.predicate = eu.convert_to_list(qedge.predicate)
         # Make any overrides of categories that are needed (e.g., consider 'proteins' to be 'genes', etc.)
         if self.node_category_overrides_for_kp:
             query_graph = self._override_qnode_types_as_needed(query_graph)
@@ -138,7 +143,7 @@ class TRAPIQuerier:
     def _override_qnode_types_as_needed(self, query_graph: QueryGraph) -> QueryGraph:
         for qnode_key, qnode in query_graph.nodes.items():
             overriden_categories = {self.node_category_overrides_for_kp.get(qnode_category, qnode_category)
-                                    for qnode_category in eu.convert_to_list(qnode.category)}
+                                    for qnode_category in qnode.category}
             qnode.category = list(overriden_categories)
         return query_graph
 
@@ -149,22 +154,15 @@ class TRAPIQuerier:
                              f"(returned status of {kp_predicates_response.status_code})")
         else:
             predicates_dict = kp_predicates_response.json()
-            # TEMPORARY patch until new KG2 is rolled out where no predicates have commas in them
-            if self.kp_name.endswith("KG2"):
-                for subject_category in predicates_dict:
-                    for object_category in predicates_dict[subject_category]:
-                        commaless_predicates = [predicate.replace(",", "") for predicate in predicates_dict[subject_category][object_category]]
-                        predicates_dict[subject_category][object_category] = commaless_predicates
-
             qnodes = query_graph.nodes
             qedge_key = next(qedge_key for qedge_key in query_graph.edges)
             qedge = query_graph.edges[qedge_key]
             qg_triples = [[qnodes[qedge.subject].category, qedge.predicate, qnodes[qedge.object].category]
                           for qedge in query_graph.edges.values()]
             for triple in qg_triples:
-                query_subject_categories = set(eu.convert_to_list(triple[0]))
-                query_predicates = set(eu.convert_to_list(triple[1]))
-                query_object_categories = set(eu.convert_to_list(triple[2]))
+                query_subject_categories = set(triple[0])
+                query_predicates = set(triple[1])
+                query_object_categories = set(triple[2])
 
                 # Make sure the subject qnode's category(s) are accepted by the KP
                 allowed_subj_categories = set(predicates_dict)
@@ -211,7 +209,8 @@ class TRAPIQuerier:
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.id:
                 equivalent_curies = eu.get_curie_synonyms(qnode.id, self.log)
-                preferred_prefix = self.kp_preferred_prefixes.get(qnode.category[0])  # TODO: right to take first item?
+                # TODO: Right to take first category here?
+                preferred_prefix = self.kp_preferred_prefixes.get(qnode.category[0]) if qnode.category else None
                 if preferred_prefix:
                     desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{preferred_prefix}:")]
                     if desired_curies:
