@@ -862,5 +862,17 @@ def test_issue_1212():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
 
 
+def test_issue_1314():
+    # KG2 should return answers for "treated_by" (even though it only contains "treats" edges)
+    actions_list = [
+        "add_qnode(key=n0, id=DRUGBANK:DB00394, category=biolink:Drug)",
+        "add_qnode(key=n1, category=biolink:Disease)",
+        "add_qedge(key=e0, subject=n1, object=n0, predicate=biolink:treated_by)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
