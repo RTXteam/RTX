@@ -652,7 +652,7 @@ class DTDQuerier:
             #     log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
             #     return final_kg, edge_to_nodes_map
             # else:
-            cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, "KG2c", log)
+            cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, log)
             if log.status != 'OK':
                 return final_kg, edge_to_nodes_map
             neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, "KG2c", log)
@@ -732,7 +732,7 @@ class DTDQuerier:
             #     log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
             #     return final_kg, edge_to_nodes_map
             # else:
-            cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, "KG2c", log)
+            cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, log)
             if log.status != 'OK':
                 return final_kg, edge_to_nodes_map
             neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, "KG2c", log)
@@ -836,52 +836,42 @@ class DTDQuerier:
                 pass_nodes = pass_nodes_drug_temp + pass_nodes_disease_temp
                 return [False, pass_nodes, not_pass_nodes]
 
-    def _convert_one_hop_query_graph_to_cypher_query(self, qg: QueryGraph, enforce_directionality: bool, kg_name: str, log: ARAXResponse) -> str:
+    def _convert_one_hop_query_graph_to_cypher_query(self, qg: QueryGraph, enforce_directionality: bool, log: ARAXResponse) -> str:
         qedge_key = next(qedge_key for qedge_key in qg.edges)
         qedge = qg.edges[qedge_key]
         log.debug(f"Generating cypher for edge {qedge_key} query graph")
         try:
             # Build the match clause
-            source_qnode_key = qedge.subject
-            target_qnode_key = qedge.object
+            subject_qnode_key = qedge.subject
+            object_qnode_key = qedge.object
             qedge_cypher = self._get_cypher_for_query_edge(qedge_key, qg, enforce_directionality)
-            source_qnode_cypher = self._get_cypher_for_query_node(source_qnode_key, qg, kg_name)
-            target_qnode_cypher = self._get_cypher_for_query_node(target_qnode_key, qg, kg_name)
+            source_qnode_cypher = self._get_cypher_for_query_node(subject_qnode_key, qg)
+            target_qnode_cypher = self._get_cypher_for_query_node(object_qnode_key, qg)
             match_clause = f"MATCH {source_qnode_cypher}{qedge_cypher}{target_qnode_cypher}"
 
             # Build the where clause
             where_fragments = []
-            for qnode_key in [source_qnode_key, target_qnode_key]:
+            for qnode_key in [subject_qnode_key, object_qnode_key]:
                 qnode = qg.nodes[qnode_key]
                 if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
                     where_fragments.append(f"{qnode_key}.id in {qnode.id}")
                 if qnode.category:
-                    if kg_name == "KG2c":
-                        qnode_categories = eu.convert_to_list(qnode.category)
-                        category_fragments = [f"'{qnode_category}' in {qnode_key}.types" for qnode_category in qnode_categories]
-                        joined_category_fragments = " OR ".join(category_fragments)
-                        category_where_clause = joined_category_fragments if len(category_fragments) < 2 else f"({joined_category_fragments})"
-                        where_fragments.append(category_where_clause)
-                    elif isinstance(qnode.category, list):
-                        if kg_name == "KG2":
-                            node_category_property = "category_label"
-                        else:
-                            node_category_property = "category"
-                        where_fragments.append(f"{qnode_key}.{node_category_property} in {qnode.category}")
-
-            if where_fragments:
-                where_clause = f"WHERE {' AND '.join(where_fragments)}"
-            else:
-                where_clause = ""
+                    qnode.category = eu.convert_to_list(qnode.category)
+                    if len(qnode.category) > 1:
+                        # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
+                        category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.category]
+                        category_where_fragment = f"({' OR '.join(category_sub_fragments)})"
+                        where_fragments.append(category_where_fragment)
+            where_clause = f"WHERE {' AND '.join(where_fragments)}" if where_fragments else ""
 
             # Build the with clause
-            source_qnode_col_name = f"nodes_{source_qnode_key}"
-            target_qnode_col_name = f"nodes_{target_qnode_key}"
+            source_qnode_col_name = f"nodes_{subject_qnode_key}"
+            target_qnode_col_name = f"nodes_{object_qnode_key}"
             qedge_col_name = f"edges_{qedge_key}"
             # This line grabs the edge's ID and a record of which of its nodes correspond to which qnode ID
-            extra_edge_properties = "{.*, " + f"id:ID({qedge_key}), {source_qnode_key}:{source_qnode_key}.id, {target_qnode_key}:{target_qnode_key}.id" + "}"
-            with_clause = f"WITH collect(distinct {source_qnode_key}) as {source_qnode_col_name}, " \
-                          f"collect(distinct {target_qnode_key}) as {target_qnode_col_name}, " \
+            extra_edge_properties = "{.*, " + f"id:ID({qedge_key}), {subject_qnode_key}:{subject_qnode_key}.id, {object_qnode_key}:{object_qnode_key}.id" + "}"
+            with_clause = f"WITH collect(distinct {subject_qnode_key}) as {source_qnode_col_name}, " \
+                          f"collect(distinct {object_qnode_key}) as {target_qnode_col_name}, " \
                           f"collect(distinct {qedge_key}{extra_edge_properties}) as {qedge_col_name}"
 
             # Build the return clause
@@ -950,15 +940,16 @@ class DTDQuerier:
             return query_results
 
     @staticmethod
-    def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph, kg_name: str) -> str:
+    def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph) -> str:
         qnode = qg.nodes[qnode_key]
-        type_cypher = f":{qnode.category}" if qnode.category and isinstance(qnode.category, str) and kg_name != "KG2c" else ""
+        # Add in node label if there's only one category
+        category_cypher = f":`{qnode.category[0]}`" if isinstance(qnode.category, list) and len(qnode.category) == 1 else ""
         if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
             curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
             curie_cypher = f" {{id:'{curie}'}}"
         else:
             curie_cypher = ""
-        qnode_cypher = f"({qnode_key}{type_cypher}{curie_cypher})"
+        qnode_cypher = f"({qnode_key}{category_cypher}{curie_cypher})"
         return qnode_cypher
 
     @staticmethod
