@@ -124,7 +124,7 @@ class BTEQuerier:
                 swagger_node = Node()
                 bte_node_key = node.get('id')
                 swagger_node.name = node.get('name')
-                swagger_node.category = eu.convert_string_or_list_to_list(eu.convert_string_to_snake_case(node.get('type')))
+                swagger_node.category = eu.convert_to_list(eu.convert_string_to_snake_case(node.get('type')))
 
                 # Map the returned BTE qg_ids back to the original qnode_keys in our query graph
                 bte_qg_id = kg_to_qg_ids_dict['nodes'].get(bte_node_key)
@@ -213,8 +213,8 @@ class BTEQuerier:
                 qedge.predicate = list(accepted_predicates)
 
         # Process qnode types (convert to preferred format, make sure allowed)
-        input_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(input_qnode.category)]
-        output_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_string_or_list_to_list(output_qnode.category)]
+        input_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_to_list(input_qnode.category)]
+        output_qnode.category = [eu.convert_string_to_pascal_case(node_category) for node_category in eu.convert_to_list(output_qnode.category)]
         qnodes_missing_type = [qnode_key for qnode_key in [input_qnode_key, output_qnode_key] if not qg.nodes[qnode_key].category]
         if qnodes_missing_type:
             log.error(f"BTE requires every query node to have a category. QNode(s) missing a category: "
@@ -235,7 +235,7 @@ class BTEQuerier:
                 qnode.id = synonymized_curies
 
         # Make sure our input node curies are in list form and use prefixes BTE prefers
-        input_curie_list = eu.convert_string_or_list_to_list(input_qnode.id)
+        input_curie_list = eu.convert_to_list(input_qnode.id)
         input_qnode.id = [eu.convert_curie_to_bte_format(curie) for curie in input_curie_list]
 
         return input_qnode_key, output_qnode_key
@@ -251,7 +251,7 @@ class BTEQuerier:
         output_qnode = qg.nodes[output_qnode_key]
         qedge_key = next(qedge_key for qedge_key in qg.edges)
         qedge = qg.edges[qedge_key]
-        desired_output_curies = set(eu.convert_string_or_list_to_list(output_qnode.id))
+        desired_output_curies = set(eu.convert_to_list(output_qnode.id))
         all_output_node_keys = set(kg.nodes_by_qg_id[output_qnode_key])
         output_node_keys_to_remove = all_output_node_keys.difference(desired_output_curies)
         for node_key in output_node_keys_to_remove:
@@ -303,7 +303,7 @@ class BTEQuerier:
             qnode_key = node_binding['qg_id']
             kg_to_qg_ids['nodes'][node_key] = qnode_key
         for edge_binding in results['edge_bindings']:
-            edge_keys = eu.convert_string_or_list_to_list(edge_binding['kg_id'])
+            edge_keys = eu.convert_to_list(edge_binding['kg_id'])
             qedge_keys = edge_binding['qg_id']
             for kg_id in edge_keys:
                 kg_to_qg_ids['edges'][kg_id] = qedge_keys

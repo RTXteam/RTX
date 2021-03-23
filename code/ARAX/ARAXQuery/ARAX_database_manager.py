@@ -46,8 +46,6 @@ class ARAXDatabaseManager:
             'log_model': f"{pred_filepath}{os.path.sep}{self.RTXConfig.log_model_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
-            'rel_max': f"{pred_filepath}{os.path.sep}{self.RTXConfig.rel_max_path.split('/')[-1]}",
-            'map_txt': f"{pred_filepath}{os.path.sep}{self.RTXConfig.map_txt_path.split('/')[-1]}",
             'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
         }
         # user, host, and paths to databases on remote server
@@ -57,8 +55,6 @@ class ARAXDatabaseManager:
             'log_model': f"{self.RTXConfig.log_model_username}@{self.RTXConfig.log_model_host}:{self.RTXConfig.log_model_path}",
             'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_username}@{self.RTXConfig.curie_to_pmids_host}:{self.RTXConfig.curie_to_pmids_path}",
             'node_synonymizer': f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:{self.RTXConfig.node_synonymizer_path}",
-            'rel_max': f"{self.RTXConfig.rel_max_username}@{self.RTXConfig.rel_max_host}:{self.RTXConfig.rel_max_path}",
-            'map_txt': f"{self.RTXConfig.map_txt_username}@{self.RTXConfig.map_txt_host}:{self.RTXConfig.map_txt_path}",
             'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}"
         }
         # database locations if inside rtx1 docker container
@@ -68,8 +64,6 @@ class ARAXDatabaseManager:
             'log_model': f"{self.RTXConfig.log_model_path.replace('/translator/','/mnt/')}",
             'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_path.replace('/translator/','/mnt/')}",
             'node_synonymizer': f"{self.RTXConfig.node_synonymizer_path.replace('/translator/','/mnt/')}",
-            'rel_max': f"{self.RTXConfig.rel_max_path.replace('/translator/','/mnt/')}",
-            'map_txt': f"{self.RTXConfig.map_txt_path.replace('/translator/','/mnt/')}",
             'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace('/translator/','/mnt/')}"
         }
 
@@ -95,14 +89,6 @@ class ARAXDatabaseManager:
                 'path': self.local_paths['node_synonymizer'],
                 'version': self.RTXConfig.node_synonymizer_version
             },
-            'rel_max': {
-                'path': self.local_paths['rel_max'],
-                'version': self.RTXConfig.rel_max_version
-            },
-            'map_txt': {
-                'path': self.local_paths['map_txt'],
-                'version': self.RTXConfig.map_txt_version
-            },
             'dtd_prob': {
                 'path': self.local_paths['dtd_prob'],
                 'version': self.RTXConfig.dtd_prob_version
@@ -123,7 +109,7 @@ class ARAXDatabaseManager:
                 elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']: # If database is present but wrong version
                     if debug:
                         print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
-                        prinf("downloading remote version...")
+                        print("downloading remote version...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
