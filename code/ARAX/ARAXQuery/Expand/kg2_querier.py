@@ -149,6 +149,7 @@ class KG2Querier:
                 if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
                     where_fragments.append(f"{qnode_key}.id in {qnode.id}")
                 if qnode.category:
+                    qnode.category = eu.convert_to_list(qnode.category)
                     if len(qnode.category) > 1:
                         # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
                         category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.category]
@@ -244,8 +245,8 @@ class KG2Querier:
         swagger_node.name = neo4j_node.get('name')
         swagger_node.category = eu.convert_to_list(neo4j_node.get('category'))
         # Add all additional properties on KG2c nodes as swagger Attribute objects
-        other_properties = ["iri", "description", "equivalent_curies", "all_names", "all_categories",
-                            "expanded_categories", "publications"]
+        other_properties = ["iri", "description", "all_names", "all_categories", "expanded_categories",
+                            "equivalent_curies", "publications"]
         swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
         return swagger_node_key, swagger_node
 
@@ -276,8 +277,8 @@ class KG2Querier:
         swagger_edge.object = neo4j_edge.get("object")
         swagger_edge.relation = neo4j_edge.get("relation")
         # Add additional properties on KG2 edges as swagger Attribute objects
-        other_properties = ["provided_by", "publications", "negated", "relation_curie", "simplified_relation_curie",
-                            "simplified_relation", "edge_label"]
+        other_properties = ["provided_by", "negated", "relation_curie", "simplified_relation_curie",
+                            "simplified_relation", "edge_label", "publications"]
         swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
         is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2", type=eu.get_attribute_type("is_defined_by"))
         swagger_edge.attributes.append(is_defined_by_attribute)
@@ -319,11 +320,11 @@ class KG2Querier:
                         (property_value.startswith('{') and property_value.endswith('}')) or \
                         property_value.lower() == "true" or property_value.lower() == "false":
                     property_value = ast.literal_eval(property_value)
-                    if isinstance(property_value, list):
-                        property_value.sort()  # Alphabetize lists
 
             # Create an Attribute for all non-empty values
             if property_value is not None and property_value != {} and property_value != []:
+                if isinstance(property_value, list):
+                    property_value.sort()  # Alphabetize lists
                 swagger_attribute = Attribute(name=property_name,
                                               type=eu.get_attribute_type(property_name),
                                               value=property_value)
