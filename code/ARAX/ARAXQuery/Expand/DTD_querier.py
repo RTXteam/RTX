@@ -856,6 +856,7 @@ class DTDQuerier:
                 if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
                     where_fragments.append(f"{qnode_key}.id in {qnode.id}")
                 if qnode.category:
+                    qnode.category = eu.convert_to_list(qnode.category)
                     if len(qnode.category) > 1:
                         # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
                         category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.category]
