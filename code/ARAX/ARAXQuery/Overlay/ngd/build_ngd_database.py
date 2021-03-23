@@ -33,27 +33,24 @@ from neo4j import GraphDatabase
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 
-sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX','NodeSynonymizer']))
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))  # code directory
 from RTXConfiguration import RTXConfiguration
 
 
 class NGDDatabaseBuilder:
-    def __init__(self, pubmed_directory_path, is_test, live = "Production"):
-        self.RTXConfig = RTXConfiguration()
-        self.RTXConfig.live = live
-        ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
+    def __init__(self, pubmed_directory_path, is_test):
         self.pubmed_directory_path = pubmed_directory_path
-        self.conceptname_to_pmids_db_path = "conceptname_to_pmids.db"
-        self.curie_to_pmids_db_path = f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}"
+        self.conceptname_to_pmids_db_name = "conceptname_to_pmids.db"
+        self.curie_to_pmids_db_name = "curie_to_pmids.sqlite"
         self.status = 'OK'
         self.synonymizer = NodeSynonymizer()
         self.is_test = is_test
 
     def build_conceptname_to_pmids_db(self):
         # This function extracts curie -> PMIDs mappings from a Pubmed XML download (saves data in a pickledb)
-        print(f"Starting to build {self.conceptname_to_pmids_db_path} from pubmed files..")
+        print(f"Starting to build {self.conceptname_to_pmids_db_name} from pubmed files..")
         start = time.time()
         pubmed_directory = os.fsencode(self.pubmed_directory_path)
         all_file_names = [os.fsdecode(file) for file in os.listdir(pubmed_directory)]
@@ -93,16 +90,16 @@ class NGDDatabaseBuilder:
 
             # Save the data to the PickleDB after we're done
             print("  Loading data into PickleDB..")
-            conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_path, False)
+            conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_name, False)
             for concept_name, pmid_list in conceptname_to_pmids_map.items():
                 conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_curie_from_local_id(pmid) for pmid in pmid_list}))
             print("  Saving PickleDB file..")
             conceptname_to_pmids_db.dump()
-            print(f"Done! Building {self.conceptname_to_pmids_db_path} took {round(((time.time() - start) / 60) / 60, 3)} hours")
+            print(f"Done! Building {self.conceptname_to_pmids_db_name} took {round(((time.time() - start) / 60) / 60, 3)} hours")
 
     def build_curie_to_pmids_db(self):
         # This function creates a final sqlite database of curie->PMIDs mappings using data scraped from Pubmed AND KG2
-        print(f"Starting to build {self.curie_to_pmids_db_path.split(os.path.sep)[-1]}..")
+        print(f"Starting to build {self.curie_to_pmids_db_name}..")
         start = time.time()
         curie_to_pmids_map = dict()
         self._add_pmids_from_pubmed_scrape(curie_to_pmids_map)
@@ -112,15 +109,15 @@ class NGDDatabaseBuilder:
         self._add_pmids_from_kg2_nodes(curie_to_pmids_map)
         print(f"  In the end, found PMID lists for {len(curie_to_pmids_map)} (canonical) curies")
         self._save_data_in_sqlite_db(curie_to_pmids_map)
-        print(f"Done! Building {self.curie_to_pmids_db_path.split(os.path.sep)[-1]} took {round((time.time() - start) / 60)} minutes.")
+        print(f"Done! Building {self.curie_to_pmids_db_name} took {round((time.time() - start) / 60)} minutes.")
 
     # Helper methods
 
     def _add_pmids_from_kg2_edges(self, curie_to_pmids_map):
         print(f"  Getting PMIDs from edges in KG2 neo4j..")
-        edge_query = f"match (n)-[e]->(m) where e.publications is not null and e.publications <> '[]' " \
+        edge_query = f"match (n)-[e]->(m) where e.publications is not null " \
                      f"return distinct n.id, m.id, e.publications{' limit 100' if self.is_test else ''}"
-        edge_results = self._run_cypher_query(edge_query, 'KG2')
+        edge_results = self._run_cypher_query(edge_query)
         print(f"  Processing results..")
         node_ids = {result['n.id'] for result in edge_results}.union(result['m.id'] for result in edge_results)
         canonicalized_curies_dict = self._get_canonicalized_curies_dict(list(node_ids))
@@ -134,9 +131,9 @@ class NGDDatabaseBuilder:
 
     def _add_pmids_from_kg2_nodes(self, curie_to_pmids_map):
         print(f"  Getting PMIDs from nodes in KG2 neo4j..")
-        node_query = f"match (n) where n.publications is not null and n.publications <> '[]' " \
+        node_query = f"match (n) where n.publications is not null " \
                      f"return distinct n.id, n.publications{' limit 100' if self.is_test else ''}"
-        node_results = self._run_cypher_query(node_query, 'KG2')
+        node_results = self._run_cypher_query(node_query)
         print(f"  Processing results..")
         node_ids = {result['n.id'] for result in node_results}
         canonicalized_curies_dict = self._get_canonicalized_curies_dict(list(node_ids))
@@ -148,10 +145,10 @@ class NGDDatabaseBuilder:
 
     def _add_pmids_from_pubmed_scrape(self, curie_to_pmids_map):
         # Load the data from the first half of the build process (scraping pubmed)
-        print(f"  Loading pickle DB containing pubmed scrapings ({self.conceptname_to_pmids_db_path})..")
-        conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_path, False)
+        print(f"  Loading pickle DB containing pubmed scrapings ({self.conceptname_to_pmids_db_name})..")
+        conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_name, False)
         if not conceptname_to_pmids_db.getall():
-            print(f"ERROR: {self.conceptname_to_pmids_db_path} must exist to do a partial build. Use --full or locate "
+            print(f"ERROR: {self.conceptname_to_pmids_db_name} must exist to do a partial build. Use --full or locate "
                   f"that file.")
             self.status = 'ERROR'
             return
@@ -187,9 +184,9 @@ class NGDDatabaseBuilder:
     def _save_data_in_sqlite_db(self, curie_to_pmids_map):
         print("  Loading data into sqlite database..")
         # Remove any preexisting version of this database
-        if os.path.exists(self.curie_to_pmids_db_path):
-            os.remove(self.curie_to_pmids_db_path)
-        connection = sqlite3.connect(self.curie_to_pmids_db_path)
+        if os.path.exists(self.curie_to_pmids_db_name):
+            os.remove(self.curie_to_pmids_db_name)
+        connection = sqlite3.connect(self.curie_to_pmids_db_name)
         cursor = connection.cursor()
         cursor.execute("CREATE TABLE curie_to_pmids (curie TEXT, pmids TEXT)")
         cursor.execute("CREATE UNIQUE INDEX unique_curie ON curie_to_pmids (curie)")
@@ -264,10 +261,9 @@ class NGDDatabaseBuilder:
         del file_contents_tree
 
     @staticmethod
-    def _run_cypher_query(cypher_query: str, kg='KG2') -> List[Dict[str, any]]:
+    def _run_cypher_query(cypher_query: str) -> List[Dict[str, any]]:
         rtxc = RTXConfiguration()
-        if kg == 'KG2':
-            rtxc.live = "KG2"
+        rtxc.live = "KG2"
         try:
             driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
             with driver.session() as session:
@@ -276,7 +272,7 @@ class NGDDatabaseBuilder:
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
-            print(f"Encountered an error interacting with {kg} neo4j. {tb}")
+            print(f"Encountered an error interacting with KG2 neo4j. {tb}")
             return []
         else:
             return query_results
@@ -297,7 +293,7 @@ class NGDDatabaseBuilder:
 
 def main():
     # Load command-line arguments
-    arg_parser = argparse.ArgumentParser(description="Builds pickle database of curie->PMID mappings needed for NGD")
+    arg_parser = argparse.ArgumentParser(description="Builds database of curie->PMID mappings needed for NGD")
     arg_parser.add_argument("pubmedDirectory", type=str, nargs='?', default=os.getcwd())
     arg_parser.add_argument("--full", dest="full", action="store_true", default=False)
     arg_parser.add_argument("--test", dest="test", action="store_true", default=False)

@@ -283,7 +283,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
-        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies, kg_name="KG2")
+        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
         log.debug(f"Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
@@ -464,13 +464,8 @@ def switch_back_to_str_or_list_types(qg: QueryGraph) -> QueryGraph:
     return qg
 
 
-def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
-    # This is a temporary patch until we switch to KG2.5+
-    predicates_with_commas = {"positively_regulates_entity_to_entity": "positively_regulates,_entity_to_entity",
-                              "negatively_regulates_entity_to_entity": "negatively_regulates,_entity_to_entity",
-                              "positively_regulates_process_to_process": "positively_regulates,_process_to_process",
-                              "regulates_process_to_process": "regulates,_process_to_process",
-                              "negatively_regulates_process_to_process": "negatively_regulates,_process_to_process"}
+def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
+    # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
     qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
                          edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
     for qnode in qg_copy.nodes.values():
@@ -481,23 +476,5 @@ def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
             predicates = convert_to_list(qedge.predicate)
-            prefixless_predicates = [predicate.split(":")[-1] for predicate in predicates]
-            qedge.predicate = [predicates_with_commas.get(predicate, predicate) for predicate in prefixless_predicates]
+            qedge.predicate = [predicate.split(":")[-1] for predicate in predicates]
     return qg_copy
-
-
-def convert_node_and_edge_types_to_new_format(kg: QGOrganizedKnowledgeGraph):
-    # This is a temporary patch to make edge/node types TRAPI 1.0 compliant until we switch to KG2.5+
-    for nodes_dict in kg.nodes_by_qg_id.values():
-        for node in nodes_dict.values():
-            if node.category:
-                correct_categories = {category for category in node.category if category.startswith(f"biolink:")}
-                categories_to_convert = set(node.category).difference(correct_categories)
-                corrected_categories = {f"biolink:{convert_string_to_pascal_case(category)}" for category in
-                                        categories_to_convert}
-                node.category = list(correct_categories.union(corrected_categories))
-    for edges_dict in kg.edges_by_qg_id.values():
-        for edge in edges_dict.values():
-            edge.predicate = edge.predicate.replace(",", "")  # Remove any commas
-            if edge.predicate and not edge.predicate.startswith("biolink:"):
-                edge.predicate = f"biolink:{edge.predicate}"

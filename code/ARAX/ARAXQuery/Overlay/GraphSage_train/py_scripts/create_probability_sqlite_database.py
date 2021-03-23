@@ -18,7 +18,7 @@ from Overlay.predictor.predictor import predictor
 filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
 
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "KG2C"
+RTXConfig.live = "KG2c"
 
 ## check if there is LogModel.pkl
 pkl_file = f"{filepath}{os.path.sep}{RTXConfig.log_model_path.split('/')[-1]}"

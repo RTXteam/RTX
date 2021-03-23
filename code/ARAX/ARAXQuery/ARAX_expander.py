@@ -166,14 +166,40 @@ class ARAXExpander:
                     "use_synonyms": self.use_synonyms_parameter_info
                 }
             },
+            "CHP": {
+                "dsl_command": "expand(kp=CHP)",
+                "description": "This command reaches out to CHP (the Connections Hypothesis Provider) to query the probability "
+                               "of the form P(Outcome | Gene Mutations, Disease, Therapeutics, ...). It currently can answer a question like "
+                               "'Given a gene or a batch of genes, what is the probability that the survival time (day) >= a given threshold for this gene "
+                               "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
+                               "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
+                               "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                    "CHP_survival_threshold": {
+                        "is_required": False,
+                        "examples": [0.8, 0.5],
+                        "min": 0,
+                        "max": 1000000000000,
+                        "default": 500,
+                        "type": "int",
+                        "description": "What cut-off/threshold for surivial time (day) to estimate probability."
+                    },
+                }
+            },
             "DTD": {
                 "dsl_command": "expand(kp=DTD)",
                 "description": "This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
                                "a query graph; it returns edges between nodes with an DTD probability above a certain "
                                "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
                                "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
-                               "DTD probability above 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
-                               "to do a real-time calculation and this will be quite time-consuming.",
+                               "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
+                               "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
+                               "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to "
+                               "to call DTD model to do a real-time calculation.",
                 "parameters": {
                     "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
@@ -194,7 +220,7 @@ class ARAXExpander:
                         "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
                         "default": "false",
                         "type": "boolean",
-                        "description": "Whether to call DTD model to do a real-time calculation for DTD probability."
+                        "description": "Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability."
                     }
                 }
             }
@@ -411,6 +437,9 @@ class ARAXExpander:
             elif kp_to_use == 'DTD':
                 from Expand.DTD_querier import DTDQuerier
                 kp_querier = DTDQuerier(log)
+            elif kp_to_use == 'CHP':
+                from Expand.CHP_querier import CHPQuerier
+                kp_querier = CHPQuerier(log)
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)

@@ -230,7 +230,7 @@ class OverlayExposuresData:
     def _get_node_synonyms(knowledge_graph):
         synonymizer = NodeSynonymizer()
         node_keys = {key for key in knowledge_graph.nodes.keys()}
-        equivalent_curie_info = synonymizer.get_equivalent_nodes(node_keys, kg_name='KG2')
+        equivalent_curie_info = synonymizer.get_equivalent_nodes(node_keys)
         return {node_key: set(equivalent_curies_dict) for node_key, equivalent_curies_dict in equivalent_curie_info.items()}
 
     @staticmethod
