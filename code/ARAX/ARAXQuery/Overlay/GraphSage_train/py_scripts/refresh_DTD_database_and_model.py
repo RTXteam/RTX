@@ -92,7 +92,7 @@ def main():
         merged_table = merged_table.loc[:,['curie']+list(merged_table.columns)[3:]]
         new_curie_ids = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] if synonymizer.get_canonical_curies(curie)[curie] is not None else None for curie in list(merged_table.curie)]
         graph = pd.concat([pd.DataFrame(new_curie_ids), merged_table.iloc[:,1:]], axis=1)
-        graph = graph.dropna().reset_index()
+        graph = graph.dropna().reset_index(drop=True)
 
         con = sqlite3.connect(os.path.join(args.output_folder, 'GRAPH_refreshed.sqlite'))
         con.execute(f"DROP TABLE IF EXISTs GRAPH")

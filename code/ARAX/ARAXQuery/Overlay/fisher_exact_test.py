@@ -810,6 +810,7 @@ class ComputeFTEST:
                     else:
                         if make_upper is True:
                             modified_string += letter.upper()
+                            make_upper = False
                         else:
                             modified_string += letter
                 return 'biolink:'+ modified_string
