@@ -74,7 +74,7 @@ class SriNodeNormalizer:
             print(f"INFO: Reading SRI normalizer cache from {filename}")
             with open(filename, "rb") as infile:
                 self.cache = pickle.load(infile)
-                self.cache = self.cache['ids']
+                #self.cache = self.cache['ids']
         else:
             print(f"INFO: SRI node normalizer cache {filename} does not yet exist. Need to fill it.")
 

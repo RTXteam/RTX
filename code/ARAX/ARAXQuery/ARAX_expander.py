@@ -417,21 +417,20 @@ class ARAXExpander:
         answer_kg = QGOrganizedKnowledgeGraph()
         edge_to_nodes_map = dict()
 
+        # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.id):
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, edge_to_nodes_map
 
+        # Route this query to the proper place depending on the KP
         allowable_kps = set(self.command_definitions.keys())
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
             return answer_kg, edge_to_nodes_map
         else:
-            if kp_to_use == 'BTE':
-                from Expand.bte_querier import BTEQuerier
-                kp_querier = BTEQuerier(log)
-            elif kp_to_use == 'COHD':
+            if kp_to_use == 'COHD':
                 from Expand.COHD_querier import COHDQuerier
                 kp_querier = COHDQuerier(log)
             elif kp_to_use == 'DTD':
@@ -447,9 +446,11 @@ class ARAXExpander:
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
+                # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
                 from Expand.trapi_querier import TRAPIQuerier
                 kp_querier = TRAPIQuerier(log, kp_to_use)
 
+            # Actually answer the query using the Querier we identified above
             answer_kg, edge_to_nodes_map = kp_querier.answer_one_hop_query(edge_qg)
             if log.status != 'OK':
                 return answer_kg, edge_to_nodes_map
@@ -483,7 +484,7 @@ class ARAXExpander:
             log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
 
-        # Answer the query using the proper KP
+        # Answer the query using the proper KP (only our own KPs answer single-node queries)
         valid_kps_for_single_node_queries = ["ARAX/KG1", "ARAX/KG2"]
         if kp_to_use in valid_kps_for_single_node_queries:
             if (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":

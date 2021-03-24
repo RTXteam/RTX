@@ -204,26 +204,6 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
     return standard_kg
 
 
-def convert_curie_to_arax_format(curie: str) -> str:
-    prefix = get_curie_prefix(curie)
-    local_id = get_curie_local_id(curie)
-    if prefix == "Reactome":
-        prefix = "REACT"
-    elif prefix == "UNIPROTKB":
-        prefix = "UniProtKB"
-    return prefix + ':' + local_id
-
-
-def convert_curie_to_bte_format(curie: str) -> str:
-    prefix = get_curie_prefix(curie)
-    local_id = get_curie_local_id(curie)
-    if prefix == "REACT":
-        prefix = "Reactome"
-    elif prefix == "UniProtKB":
-        prefix = prefix.upper()
-    return prefix + ':' + local_id
-
-
 def get_node_category_overrides_for_kp(kp_name: str) -> Union[Dict[str, str], None]:
     overrides = {"MolePro": {"biolink:Protein": "biolink:Gene"},
                  "GeneticsKP": {"biolink:Protein": "biolink:Gene"}}
@@ -396,21 +376,6 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
         if subgraph_connections:
             return qnode_key_option, subgraph_connections
     return "", set()
-
-
-def switch_kg_to_arax_curie_format(dict_kg: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
-    converted_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in dict_kg.nodes_by_qg_id},
-                                             edges={qedge_key: dict() for qedge_key in dict_kg.edges_by_qg_id})
-    for qnode_key, nodes in dict_kg.nodes_by_qg_id.items():
-        for node_key, node in nodes.items():
-            node_key = convert_curie_to_arax_format(node_key)
-            converted_kg.add_node(node_key, node, qnode_key)
-    for qedge_key, edges in dict_kg.edges_by_qg_id.items():
-        for edge_key, edge in edges.items():
-            edge.subject = convert_curie_to_arax_format(edge.subject)
-            edge.object = convert_curie_to_arax_format(edge.object)
-            converted_kg.add_edge(edge_key, edge, qedge_key)
-    return converted_kg
 
 
 def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:

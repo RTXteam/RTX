@@ -50,14 +50,9 @@ class KnowledgeSourceMetadata:
                     eprint(f"ERROR [{method_name}]: input file {input_filename} line '{iline} does not have 3 columns")
                     continue
 
-                if columns[0].startswith('bioloink:'):
-                    subject_category = columns[0]
-                    predicate = columns[1]
-                    object_category = columns[2]
-                else:
-                    subject_category = 'biolink:' + eu.convert_string_to_pascal_case(columns[0])
-                    predicate = 'biolink:' + columns[1]
-                    object_category = 'biolink:' + eu.convert_string_to_pascal_case(columns[2])
+                subject_category = columns[0]
+                predicate = columns[1]
+                object_category = columns[2]
 
                 if subject_category not in predicates:
                     predicates[subject_category] = {}
