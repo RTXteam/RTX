@@ -13,14 +13,28 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer/']))
 from node_synonymizer import NodeSynonymizer ##Note: For different version of kg2, use corresponding nodesynonymizer
 
+# Get the file paths for the databases
+dtd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
+cohd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
+
+# Import RTX config
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+
+RTXConfig = RTXConfiguration()
+
 ########## paramters ###############
 database = 'COHD' # 'DTD' or 'COHD'
 ## if database = 'DTD', provide the path of following database files, default is None
 db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/GRAPH_v1.0_KG2.3.4.sqlite
+# db_file = f"{dtd_filepath}{os.path.sep}{RTXConfig.graph_database_path.split('/')[-1]}"
 DTD_prob_db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/DTD_probability_database_v1.0_KG2.3.4.db
+# DTD_prob_db_file = f"{dtd_filepath}{os.path.sep}{RTXConfig.dtd_prob_path.split('/')[-1]}"
 ## if database = 'COHD', provide the path of following database files, default is None
-cohd_file = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db' ##  example: RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db
-output_folder = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/' ## os.getcwd()
+#cohd_file = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db' ##  example: RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db
+cohd_file = f"{cohd_filepath}{os.path.sep}{RTXConfig.cohd_database_path.split('/')[-1]}"
+#output_folder = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/' ## os.getcwd()
+output_folder = f"{cohd_filepath}{os.path.sep}"
 DSL_queries = [
 {"operations": {"actions": [
         "add_qnode(id=UMLS:C0015967, key=n00)",
