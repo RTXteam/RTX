@@ -5,6 +5,8 @@ from typing import List, Dict, Tuple, Union, Set, Optional
 from itertools import product
 from collections import defaultdict
 
+import requests
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
@@ -351,28 +353,28 @@ class ARAXExpander:
                     return response
 
                 # TODO: Get list of KPs that can answer this 1-hop QG (e.g., kps = self._get_kps_supporting_qg(one_hop_qg))
-                kps_to_query = _get_kps_for_single_hop_qg(one_hop_qg)
-                # TODO: Then loop through those KPs here
+                kps_to_query = self._get_kps_for_single_hop_qg(one_hop_qg, log)
+                log.debug(f"List of KPs to query is: {kps_to_query}")
                 for kp_to_use in kps_to_query:
                     answer_kg, edge_node_usage_map = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results,
-                                                                   use_synonyms, mode, log)
-                if log.status != 'OK':
-                    return response
-                elif qedge.exclude and not answer_kg.is_empty():
-                    self._store_kryptonite_edge_info(edge_node_usage_map, qedge_key, query_graph, encountered_kryptonite_edges_info, log)
-                else:
-                    # Update our map of which qnodes each of an edge's nodes fulfill (differs from source vs. target)
-                    if qedge_key not in node_usages_by_edges_map:
-                        node_usages_by_edges_map[qedge_key] = dict()
-                    node_usages_by_edges_map[qedge_key].update(edge_node_usage_map)
-                    self._merge_answer_into_message_kg(answer_kg, dict_kg, log)
-                if log.status != 'OK':
-                    return response
+                                                                       use_synonyms, mode, log)
+                    if log.status != 'OK':
+                        return response
+                    elif qedge.exclude and not answer_kg.is_empty():
+                        self._store_kryptonite_edge_info(edge_node_usage_map, qedge_key, query_graph, encountered_kryptonite_edges_info, log)
+                    else:
+                        # Update our map of which qnodes each of an edge's nodes fulfill (differs from source vs. target)
+                        if qedge_key not in node_usages_by_edges_map:
+                            node_usages_by_edges_map[qedge_key] = dict()
+                        node_usages_by_edges_map[qedge_key].update(edge_node_usage_map)
+                        self._merge_answer_into_message_kg(answer_kg, dict_kg, log)
+                    if log.status != 'OK':
+                        return response
 
-                self._apply_any_kryptonite_edges(dict_kg, query_graph, node_usages_by_edges_map, encountered_kryptonite_edges_info, log)
-                self._prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map, qedge, log)
-                if log.status != 'OK':
-                    return response
+                    self._apply_any_kryptonite_edges(dict_kg, query_graph, node_usages_by_edges_map, encountered_kryptonite_edges_info, log)
+                    self._prune_dead_end_paths(dict_kg, query_sub_graph, node_usages_by_edges_map, qedge, log)
+                    if log.status != 'OK':
+                        return response
 
         # Expand any specified nodes
         if input_qnode_keys:
@@ -987,16 +989,16 @@ class ARAXExpander:
         else:
             return ""
 
-    def _get_kps_for_single_hop_qg(self, qg: QueryGraph) -> list:
+    def _get_kps_for_single_hop_qg(self, qg: QueryGraph, log: ARAXResponse) -> list:
         # confirm that the qg is one hop
         if len(qg.edges) > 1:
-            self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.")
+            log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.", error_code="UnexpectedQG")
             return
         # isolate possible subject predicate object from qg
         qedge = list(qg.edges.values())[0]
-        sub_category_list = expand_utils.convert_to_list(qg.nodes[qedge.subject].category)
-        obj_category_list = expand_utils.convert_to_list(qg.nodes[qedge.object].category)
-        predicate = list(qg.edges.values())[0].predicate
+        sub_category_list = eu.convert_to_list(qg.nodes[qedge.subject].category)
+        obj_category_list = eu.convert_to_list(qg.nodes[qedge.object].category)
+        predicate_list = eu.convert_to_list(qedge.predicate)
         
         # use /predicates for each possible kp to get available predicates
         # is there a place to get this list instead of hardcoding it?
@@ -1006,23 +1008,24 @@ class ARAXExpander:
         # check each kp response for triple membership
         for kp in all_kps:
             # get predicates dictionary from KP
-            kp_endpoint = expand_utils.get_kp_endpoint_url(kp) 
+            kp_endpoint = eu.get_kp_endpoint_url(kp)
             kp_predicates_response = requests.get(f"{kp_endpoint}/predicates", headers={'accept': 'application/json'})
             if kp_predicates_response.status_code != 200:
-                self.log.warning(f"Unable to access {self.kp_name}'s predicates endpoint "
+                log.warning(f"Unable to access {kp}'s predicates endpoint "
                              f"(returned status of {kp_predicates_response.status_code})")
                 continue
             predicates_dict = kp_predicates_response.json()
-            if _triple_is_in_predicates_response(predicates_dict, sub_category_list, predicate, obj_category_list):
+            if self._triple_is_in_predicates_response(predicates_dict, sub_category_list, predicate_list, obj_category_list, log):
                 kps_to_return.append(kp)
         return kps_to_return
 
     # returns True if at least one possible triple exists in the predicates endpoint response
-    def _triple_is_in_predicates_response(predicates_dict: dict, subject_list: list, predicate: str, object_list: list)  -> bool:
+    @staticmethod
+    def _triple_is_in_predicates_response(predicates_dict: dict, subject_list: list, predicate_list: list, object_list: list, log: ARAXResponse)  -> bool:
         # handle combinations of subject and objects using cross product
         qg_sub_obj_dict = defaultdict(lambda: set())
         for sub, obj in list(product(subject_list, object_list)):
-            sub_obj_dict[sub].add(obj)
+            qg_sub_obj_dict[sub].add(obj)
 
         # check for subjects
         kp_allowed_subs = set(predicates_dict.keys())
@@ -1030,12 +1033,12 @@ class ARAXExpander:
 
         # check for objects
         for sub in accepted_subs:
-              kp_allowed_objs = set(predicates_dict[qg_subject].keys())
-              accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub].keys())
+              kp_allowed_objs = set(predicates_dict[sub].keys())
+              accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub])
               if len(accepted_objs) > 0:
                     # check predicates
                     for obj in accepted_objs:
-                        if predicate in predicates_dict[sub][obj]:
+                        if set(predicate_list).intersection(set(predicates_dict[sub][obj])):
                                 return True
         return False
                                     
