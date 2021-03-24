@@ -27,14 +27,20 @@ RTXConfig = RTXConfiguration()
 database = 'COHD' # 'DTD' or 'COHD'
 ## if database = 'DTD', provide the path of following database files, default is None
 db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/GRAPH_v1.0_KG2.3.4.sqlite
-# db_file = f"{dtd_filepath}{os.path.sep}{RTXConfig.graph_database_path.split('/')[-1]}"
 DTD_prob_db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/DTD_probability_database_v1.0_KG2.3.4.db
+## FW: below is an exampe of how you would do the dtd and graph databases
+# db_file = f"{dtd_filepath}{os.path.sep}{RTXConfig.graph_database_path.split('/')[-1]}"
 # DTD_prob_db_file = f"{dtd_filepath}{os.path.sep}{RTXConfig.dtd_prob_path.split('/')[-1]}"
 ## if database = 'COHD', provide the path of following database files, default is None
 #cohd_file = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db' ##  example: RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db
 cohd_file = f"{cohd_filepath}{os.path.sep}{RTXConfig.cohd_database_path.split('/')[-1]}"
 #output_folder = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/' ## os.getcwd()
-output_folder = f"{cohd_filepath}{os.path.sep}"
+cohd_output_folder = f"{cohd_filepath}{os.path.sep}"
+dtd_output_folder = f"{dtd_filepath}{os.path.sep}"
+if database == 'COHD':
+    output_folder = cohd_output_folder
+elif database == 'DTD':
+    output_folder = dtd_output_folder
 DSL_queries = [
 {"operations": {"actions": [
         "add_qnode(id=UMLS:C0015967, key=n00)",
