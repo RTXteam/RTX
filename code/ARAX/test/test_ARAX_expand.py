@@ -558,7 +558,7 @@ def test_COHD_expand_observed_expected_ratio():
 
 def test_COHD_expand_chi_square():
     actions_list = [
-        "add_qnode(id=DOID:5844, key=n00)",
+        "add_qnode(id=DOID:1588, key=n00)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_percentile=95)",
@@ -650,7 +650,7 @@ def test_genetics_kp_2_hop():
 @pytest.mark.slow
 def test_genetics_kp_multi_kp():
     actions_list = [
-        "add_qnode(key=n0, name=AMYLIN, category=biolink:ChemicalSubstance)",
+        "add_qnode(key=n0, name=ertugliflozin, category=biolink:ChemicalSubstance)",
         "add_qnode(key=n1, category=biolink:Disease, is_set=true)",
         "add_qnode(key=n2, category=biolink:Protein)",
         "add_qedge(key=e0, subject=n0, object=n1)",
@@ -860,6 +860,18 @@ def test_issue_1212():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
+
+
+def test_issue_1314():
+    # KG2 should return answers for "treated_by" (even though it only contains "treats" edges)
+    actions_list = [
+        "add_qnode(key=n0, id=DRUGBANK:DB00394, category=biolink:Drug)",
+        "add_qnode(key=n1, category=biolink:Disease)",
+        "add_qedge(key=e0, subject=n1, object=n0, predicate=biolink:treated_by)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
 if __name__ == "__main__":

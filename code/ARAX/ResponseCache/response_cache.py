@@ -14,6 +14,8 @@ import hashlib
 import collections
 import requests
 import json
+import requests
+import requests_cache
 from flask import Flask,redirect
 
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
@@ -231,7 +233,8 @@ class ResponseCache:
 
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
-            response_content = requests.get('https://ars.transltr.io/ars/api/messages/'+response_id, headers={'accept': 'application/json'})
+            with requests_cache.disabled():
+                response_content = requests.get('https://ars.transltr.io/ars/api/messages/'+response_id, headers={'accept': 'application/json'})
             status_code = response_content.status_code
 
             if status_code != 200:

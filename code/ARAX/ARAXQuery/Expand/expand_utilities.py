@@ -204,26 +204,6 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
     return standard_kg
 
 
-def convert_curie_to_arax_format(curie: str) -> str:
-    prefix = get_curie_prefix(curie)
-    local_id = get_curie_local_id(curie)
-    if prefix == "Reactome":
-        prefix = "REACT"
-    elif prefix == "UNIPROTKB":
-        prefix = "UniProtKB"
-    return prefix + ':' + local_id
-
-
-def convert_curie_to_bte_format(curie: str) -> str:
-    prefix = get_curie_prefix(curie)
-    local_id = get_curie_local_id(curie)
-    if prefix == "REACT":
-        prefix = "Reactome"
-    elif prefix == "UniProtKB":
-        prefix = prefix.upper()
-    return prefix + ':' + local_id
-
-
 def get_node_category_overrides_for_kp(kp_name: str) -> Union[Dict[str, str], None]:
     overrides = {"MolePro": {"biolink:Protein": "biolink:Gene"},
                  "GeneticsKP": {"biolink:Protein": "biolink:Gene"}}
@@ -283,7 +263,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
-        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies, kg_name="KG2")
+        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
         log.debug(f"Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
@@ -398,21 +378,6 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
     return "", set()
 
 
-def switch_kg_to_arax_curie_format(dict_kg: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
-    converted_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in dict_kg.nodes_by_qg_id},
-                                             edges={qedge_key: dict() for qedge_key in dict_kg.edges_by_qg_id})
-    for qnode_key, nodes in dict_kg.nodes_by_qg_id.items():
-        for node_key, node in nodes.items():
-            node_key = convert_curie_to_arax_format(node_key)
-            converted_kg.add_node(node_key, node, qnode_key)
-    for qedge_key, edges in dict_kg.edges_by_qg_id.items():
-        for edge_key, edge in edges.items():
-            edge.subject = convert_curie_to_arax_format(edge.subject)
-            edge.object = convert_curie_to_arax_format(edge.object)
-            converted_kg.add_edge(edge_key, edge, qedge_key)
-    return converted_kg
-
-
 def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
 
@@ -464,13 +429,8 @@ def switch_back_to_str_or_list_types(qg: QueryGraph) -> QueryGraph:
     return qg
 
 
-def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
-    # This is a temporary patch until we switch to KG2.5+
-    predicates_with_commas = {"positively_regulates_entity_to_entity": "positively_regulates,_entity_to_entity",
-                              "negatively_regulates_entity_to_entity": "negatively_regulates,_entity_to_entity",
-                              "positively_regulates_process_to_process": "positively_regulates,_process_to_process",
-                              "regulates_process_to_process": "regulates,_process_to_process",
-                              "negatively_regulates_process_to_process": "negatively_regulates,_process_to_process"}
+def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
+    # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
     qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
                          edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
     for qnode in qg_copy.nodes.values():
@@ -481,23 +441,5 @@ def make_qg_use_old_types(qg: QueryGraph) -> QueryGraph:
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
             predicates = convert_to_list(qedge.predicate)
-            prefixless_predicates = [predicate.split(":")[-1] for predicate in predicates]
-            qedge.predicate = [predicates_with_commas.get(predicate, predicate) for predicate in prefixless_predicates]
+            qedge.predicate = [predicate.split(":")[-1] for predicate in predicates]
     return qg_copy
-
-
-def convert_node_and_edge_types_to_new_format(kg: QGOrganizedKnowledgeGraph):
-    # This is a temporary patch to make edge/node types TRAPI 1.0 compliant until we switch to KG2.5+
-    for nodes_dict in kg.nodes_by_qg_id.values():
-        for node in nodes_dict.values():
-            if node.category:
-                correct_categories = {category for category in node.category if category.startswith(f"biolink:")}
-                categories_to_convert = set(node.category).difference(correct_categories)
-                corrected_categories = {f"biolink:{convert_string_to_pascal_case(category)}" for category in
-                                        categories_to_convert}
-                node.category = list(correct_categories.union(corrected_categories))
-    for edges_dict in kg.edges_by_qg_id.values():
-        for edge in edges_dict.values():
-            edge.predicate = edge.predicate.replace(",", "")  # Remove any commas
-            if edge.predicate and not edge.predicate.startswith("biolink:"):
-                edge.predicate = f"biolink:{edge.predicate}"

@@ -1,0 +1,7 @@
+# Skip entries to avoid linking Losartan and Erythropoietin
+skip_SRI MESH:D004921
+skip_SRI CHEMBL.COMPOUND:CHEMBL995
+
+rename NCBIGENE:43 AChE (human)
+rename UNIPROTKB:P22303 AChE (human)
+rename ENSEMBL:ENSG00000087085 AChE (human)
