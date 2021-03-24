@@ -549,7 +549,7 @@ def test_issue_840_non_drug():
 @pytest.mark.slow
 def test_issue_892():
     query = {"operations": {"actions": [
-        "add_qnode(id=DOID:11830, category=disease, key=n00)",
+        "add_qnode(id=DOID:11830, category=biolink:Disease, key=n00)",
         "add_qnode(category=biolink:Gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
