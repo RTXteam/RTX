@@ -1314,7 +1314,7 @@ class NodeSynonymizer:
                 continue
 
             concept = { 'category': unique_concept['category'], 'name': unique_concept['name'], 'all_categories': {}, 'all_curie_prefixes': {},
-                'best_curie_score': 0, 'best_curie': unique_concept['curie'], 'best_category': unique_concept['category'], 'best_name': unique_concept['name'] }
+                'best_curie_score': -1, 'best_curie': unique_concept['curie'], 'best_category': unique_concept['category'], 'best_name': unique_concept['name'] }
             manual_exception = False
 
             if debug_flag:
@@ -1343,8 +1343,11 @@ class NodeSynonymizer:
                         concept['all_curie_prefixes'][node_curie_prefix] = 0
                     concept['all_curie_prefixes'][node_curie_prefix] += 1
 
-                    if node_curie_prefix in self.uc_curie_prefix_scores and self.uc_curie_prefix_scores[node_curie_prefix] > concept['best_curie_score']:
-                        concept['best_curie_score'] = self.uc_curie_prefix_scores[node_curie_prefix]
+                    this_score = 0
+                    if node_curie_prefix in self.uc_curie_prefix_scores:
+                        this_score = self.uc_curie_prefix_scores[node_curie_prefix]
+                    if this_score > concept['best_curie_score']:
+                        concept['best_curie_score'] = this_score
                         concept['best_curie'] = node_curie
                         concept['best_category'] = node_category
                         concept['best_name'] = node_name
