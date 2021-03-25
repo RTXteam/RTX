@@ -41,7 +41,8 @@ if database == 'COHD':
     output_folder = cohd_output_folder
 elif database == 'DTD':
     output_folder = dtd_output_folder
-DSL_queries = [
+
+cohd_DSL_queries = [
 {"operations": {"actions": [
         "add_qnode(id=UMLS:C0015967, key=n00)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
@@ -234,126 +235,131 @@ DSL_queries = [
 ]
 
 ## Below queries are for DTD
-# [
-# {"operations": {"actions": [
-#         "add_qnode(name=acetaminophen, key=n0)",
-#         "add_qnode(name=Sotos syndrome, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-# "add_qnode(name=acetaminophen, key=n0)",
-#         "add_qnode(category=disease, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(id=DOID:9008, key=n0, category=biolink:Disease)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=ARAX/KG1)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
-#         "resultify()",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(id=DOID:9008, key=n0)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=ARAX/KG1)",
-#         "overlay(action=predict_drug_treats_disease)",
-#         "resultify()",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(id=DOID:9008, key=n0)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=ARAX/KG1)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
-#         "resultify()",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(id=UniProtKB:Q13627, key=n0)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=ARAX/KG1)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
-#         "resultify()",
-#         "return(message=true, store=false)",
-#     ]}},
-# {"operations": {"actions": [
-#         "add_qnode(id=DOID:11830, category=disease, key=n00)",
-#         "add_qnode(category=biolink:Gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
-#         "add_qedge(subject=n00, object=n01, key=e00)",
-#         "add_qedge(subject=n01, object=n02, key=e01)",
-#         "expand(kp=BTE)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
-#         "resultify(ignore_edge_direction=true)",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(name=DOID:14330, key=n00)",
-#         "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
-#         "add_qedge(subject=n00, object=n01, key=e00)",
-#         "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
-#         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
-#         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
-#         "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
-#         "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
-#         "return(message=true, store=false)",
-#     ]}},
-# {"operations": {"actions": [
-#             "create_message",
-#             f"add_qnode(id=DOID:11830, key=n00, category=biolink:Disease)",
-#             "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
-#             "add_qedge(subject=n00, object=n01, key=e00)",
-#             "expand(edge_key=e00, kp=ARAX/KG2)",
-#             "expand(edge_key=e00, kp=BTE)",
-#             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-#             "overlay(action=predict_drug_treats_disease)",
-#             "return(message=true, store=false)",
-#         ]}}
-# ]
-## example:
-# [{"operations": {"actions": [
-#         "add_qnode(name=acetaminophen, key=n0)",
-#         "add_qnode(name=Sotos syndrome, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
-#         "return(message=true, store=false)"
-# ]}},
-# {"operations": {"actions": [
-# "add_qnode(name=acetaminophen, key=n0)",
-#         "add_qnode(category=disease, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
-#         "return(message=true, store=false)"
-# ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(id=DOID:9008, key=n0, category=biolink:Disease)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=ARAX/KG1)",
-#         # "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
-#         "resultify()",
-#         "return(message=true, store=false)",
-#     ]}}
-# ]
+dtd_DSL_queries = [
+{"operations": {"actions": [
+        "add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(name=Sotos syndrome, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+"add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(category=disease, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=DOID:9008, key=n0, category=biolink:Disease)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=DOID:9008, key=n0)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "overlay(action=predict_drug_treats_disease)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=DOID:9008, key=n0)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=UniProtKB:Q13627, key=n0)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}},
+{"operations": {"actions": [
+        "add_qnode(id=DOID:11830, category=disease, key=n00)",
+        "add_qnode(category=biolink:Gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01)",
+        "expand(kp=BTE)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
+        "resultify(ignore_edge_direction=true)",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=DOID:14330, key=n00)",
+        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
+        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
+        "return(message=true, store=false)",
+    ]}},
+{"operations": {"actions": [
+            "create_message",
+            f"add_qnode(id=DOID:11830, key=n00, category=biolink:Disease)",
+            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "expand(edge_key=e00, kp=ARAX/KG2)",
+            "expand(edge_key=e00, kp=BTE)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+            "overlay(action=predict_drug_treats_disease)",
+            "return(message=true, store=false)",
+        ]}}
+]
+# example:
+[{"operations": {"actions": [
+        "add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(name=Sotos syndrome, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
+        "return(message=true, store=false)"
+]}},
+{"operations": {"actions": [
+"add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(category=disease, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
+        "return(message=true, store=false)"
+]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=DOID:9008, key=n0, category=biolink:Disease)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=ARAX/KG1)",
+        # "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}}
+]
 
 #####################################
+
+if database == 'COHD':
+    DSL_queries = cohd_DSL_queries
+elif database == 'DTD':
+    DSL_queries = dtd_DSL_queries
 
 ########### Below is the main code to run script ##################
 araxq = ARAXQuery()
@@ -393,7 +399,8 @@ if database == 'DTD':
                 table[col] = table[col].astype(str)
             databasefile = list(table.to_records(index=False))
             print(f"Start building the slim version of DTD_probability_database_slim.db", flush=True)
-            con = sqlite3.connect(os.path.join(output_folder, 'DTD_probability_database_slim.db'))
+            #con = sqlite3.connect(os.path.join(output_folder, 'DTD_probability_database_slim.db'))
+            con = sqlite3.connect(DTD_prob_db_file.replace(".db", "_slim.db"))
             con.execute(f"DROP TABLE IF EXISTs DTD_PROBABILITY")
             con.execute(f"CREATE TABLE DTD_PROBABILITY( disease VARCHAR(255), drug VARCHAR(255), probability FLOAT )")
             insert_command = "INSERT INTO DTD_PROBABILITY VALUES (?, ?, ?)"
@@ -435,7 +442,8 @@ if database == 'DTD':
             databasefile = list(table.to_records(index=False))
             con.close()
             print(f"Start building the slim version of GRAPH_slim.db", flush=True)
-            con = sqlite3.connect(os.path.join(output_folder, 'GRAPH_slim.sqlite'))
+            #con = sqlite3.connect(os.path.join(output_folder, 'GRAPH_slim.sqlite'))
+            con = sqlite3.connect(db_file.replace(".sqlite", "_slim.sqlite"))
             insert_command1 = f"CREATE TABLE GRAPH(curie VARCHAR(255)"
             for num in range(1,table.shape[1]):
                 insert_command1 = insert_command1 + f", col{num} INT"
@@ -503,7 +511,8 @@ elif database == 'COHD':
             #     pickle.dump(data, outfile)
             #################################################
             print(f"Start building the slim version of COHDdatabase.db", flush=True)
-            con = sqlite3.connect(os.path.join(output_folder, 'COHDdatabase_slim.db'))
+            #con = sqlite3.connect(os.path.join(output_folder, 'COHDdatabase_slim.db'))
+            con = sqlite3.connect(cohd_file.replace(".db", "_slim.db"))
             con.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
             con.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
             con.execute(f"DROP TABLE IF EXISTS SINGLE_CONCEPT_COUNTS")
