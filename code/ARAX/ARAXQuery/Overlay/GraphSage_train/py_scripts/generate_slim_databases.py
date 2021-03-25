@@ -5,6 +5,13 @@ import numpy as np
 import sqlite3
 import pickle
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-c", "--cohd", action='store_true')
+parser.add_argument("-d", "--dtd", action='store_true')
+arguments = parser.parse_args()
+
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
@@ -24,7 +31,14 @@ from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 
 ########## paramters ###############
-database = 'COHD' # 'DTD' or 'COHD'
+#database = 'COHD' # 'DTD' or 'COHD'
+if arguments.cohd:
+    database = 'COHD'
+elif arguments.dtd:
+    database = 'DTD'
+else:
+    print(f'Neither --dtd not --cohd supplied defaulting to cohd...')
+    database = 'COHD'
 ## if database = 'DTD', provide the path of following database files, default is None
 db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/GRAPH_v1.0_KG2.3.4.sqlite
 DTD_prob_db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/DTD_probability_database_v1.0_KG2.3.4.db
