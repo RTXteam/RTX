@@ -202,7 +202,7 @@ class ARAXDatabaseManager:
         verbose = ""
         if debug:
             verbose = "vv"
-        os.system(f"rsync -hzc{verbose} --progress {remote_location} {local_path}")
+        os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
 
     def force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
