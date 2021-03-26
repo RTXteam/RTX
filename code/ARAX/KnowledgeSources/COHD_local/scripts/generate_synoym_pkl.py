@@ -18,7 +18,7 @@ parser.add_argument('--OutFile', type=str, help="The path of output .pkl file", 
 args = parser.parse_args()
 
 curie_type = eval(args.CurieType)
-NodeNamesDescriptions = pd.read_csv(args.NodeDescriptionFile, sep='\t', header=None, names=['curie', 'name', 'type'])
+NodeNamesDescriptions = pd.read_csv(args.NodeDescriptionFile, sep='\t', header=None, names=['curie', 'name', 'full_name', 'type'])
 NodeNamesDescriptions = NodeNamesDescriptions.loc[NodeNamesDescriptions.type.isin(curie_type),:].reset_index(drop=True)
 
 preferred_synonyms = dict()
@@ -32,7 +32,7 @@ for curie in NodeNamesDescriptions['curie']:
         if preferred_curie['preferred_curie'] not in preferred_synonyms:
             preferred_synonyms[preferred_curie['preferred_curie']] = dict()
             preferred_synonyms[preferred_curie['preferred_curie']]['preferred_name'] = preferred_curie['preferred_name']
-            preferred_synonyms[preferred_curie['preferred_curie']]['preferred_type'] = preferred_curie['preferred_type']
+            preferred_synonyms[preferred_curie['preferred_curie']]['preferred_type'] = preferred_curie['preferred_category']
             preferred_synonyms[preferred_curie['preferred_curie']]['synonyms'] = [curie]
         else:
             synonyms = set(preferred_synonyms[preferred_curie['preferred_curie']]['synonyms'])
@@ -42,5 +42,3 @@ for curie in NodeNamesDescriptions['curie']:
 with open(args.OutFile, "wb") as file:
     pickle.dump(preferred_synonyms, file)
 
-
-    

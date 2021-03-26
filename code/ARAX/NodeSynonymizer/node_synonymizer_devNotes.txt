@@ -1,19 +1,111 @@
 
+TO DO:
+- Sweep through unique concepts and set best category, etc.
+- Remove the remapped_curie ??
+- HEXA is still a problem
+- There are lots of OMIM entries as phenotypic features
+
+
+
 Summary of build process:
 
 cd $RTX/code/ARAX/NodeSynonymizer
-python3 sri_node_normalizer.py --build
-python3 node_synonymizer.py --build --kg_name=both
-python3 node_synonymizer.py --lookup=rickets --kg_name=KG1
+python sri_node_normalizer.py --build
+python node_synonymizer.py --build
+
+Testing:
+
+python node_synonymizer.py --build --filter_file yy_losartan.json
+python node_synonymizer.py --query
+
+python node_synonymizer.py --lookup losartan
+python node_synonymizer.py --lookup erythropoietin
+python node_synonymizer.py --lookup NCIT:C29165
+
+---
+
+python node_synonymizer.py --build --filter_file yy_adenosine.json
+python node_synonymizer.py --query
+
+python node_synonymizer.py --lookup adenosine
+python node_synonymizer.py --lookup CHEBI:16027
+python node_synonymizer.py --lookup CHEBI:15422
+python node_synonymizer.py --lookup CHEBI:16761
+python node_synonymizer.py --lookup CHEBI:50732
+
+---
+
+python node_synonymizer.py --build --filter_file yy_PACA.json
+python node_synonymizer.py --query
+
+python node_synonymizer.py --lookup UniProtKB:P18509
+
+---
+
+python node_synonymizer.py --build --filter_file yy_TGFB1.json
+python node_synonymizer.py --query
+
+python node_synonymizer.py --lookup UniProtKB:P11117
+python node_synonymizer.py --lookup NCBIGene:7040
+
+---
+
+python node_synonymizer.py --build --filter_file yy_GR.json
+python node_synonymizer.py --query
+
+python node_synonymizer.py --lookup PR:P00390
+python node_synonymizer.py --lookup NCBIGENE:2908
+python node_synonymizer.py --lookup NCBIGENE:2936
+python node_synonymizer.py --lookup NCIT:C17071
+
+---
+
+python node_synonymizer.py --build --filter_file yy_AChE.json
+python node_synonymizer.py --query
+
+python node_synonymizer.py --lookup NCBIGENE:43
+python node_synonymizer.py --lookup MONDO:0021668
+python node_synonymizer.py --lookup CHEBI:39061
 
 
-Do to:
-- Add a term to unique_concept: preferred_curie with some rules. Usually kg2_best_curie, but maybe not always
-- When coalescing concepts, transfer the normalizer information!
+========
+
+cp node_synonymizer.sqlite node_synonymizer.sqlite-save1
+
+More issues:
+#1239
+python node_synonymizer.py --lookup FMR1 --export yy_FMR1.json
+mv node_synonymizer.sqlite-save1 node_synonymizer.sqlite
+python node_synonymizer.py --build --filter_file yy_FMR1.json
+python node_synonymizer.py --lookup FMR1
+huh. not quite clear. It's better than the issue for sure, but maybe still a problem?
+
+#1250
+python node_synonymizer.py --lookup SPMSY --export yy_SPMSY.json
+Seems okay now?
+
+#1226
+python node_synonymizer.py --lookup UniProtKB:P01112
+Seems okay now?
+
+#1211
+python node_synonymizer.py --lookup tositumomab
+This is still a problem, but why??
+python node_synonymizer.py --lookup UniProtKB:P01857
+
+#1159
+python node_synonymizer.py --lookup UniProtKB:P01137
+Seems okay now?
+
+
+
 
 ========================================================================
 
 Access method notes:
+
+OBSOLETE
+
 get_curies_and_types			- need to update
 get_curies_and_types_and_names		- Calls previous and then tries to get the description as well from neo4j
 get_names				- old
@@ -26,57 +118,60 @@ get_equivalent_entities			- ? obsolete
 get_normalizer_results			- needs to be updated for batching
 get_total_entity_count			- FIXED. GOOD.
 
-
-preferred curie/name/type for an input curie
-
-
-
 ========================================================================
-
 
 Notes developing the new KGNodeIndex
 
-2020-06-19
+2021-03-06
 
-Data structures (Database tables are singular and don't have uc_ prefixes):
+New data structures (Database tables do not have kg_ prefix):
 
 kg_nodes{uc_curie}:		- Every node has a unique curie and an entry here. Upper case index dict key
-0- uc_curie			- Every node has a unique curie and an entry here. Upper case
+0- uc_curie (tbl only)		- Every node has a unique curie and an entry here. Upper case
 1- curie			- Every node has a unique curie and an entry here. Original case
 2- original_name		- Original/current name of the node in the database
 3- adjusted_name		- Final/potentially prettified name of the node
-4- type				- Type of the node in the database
-5- uc_unique_concept_curie		- Curie of the unique concept coalescing this node
-6- kg_presence			- Which KGs is it in: "KG1", "KG2", "KG1,KG2"
+4- full_name                    - Full name of the node if there is one
+5- category			- Category of the node in the database
+6- uc_unique_concept_curie	- Curie of the unique concept coalescing this node
 
 kg_unique_concepts{uc_curie}:	- Curie identifying the unique concept coalescing many equivalent curies or nodes. Upper case index dict key
-0- uc_curie			- Curie identifying the unique concept coalescing many equivalent curies or nodes. Upper case
+0- uc_curie (tbl only)		- Curie identifying the unique concept coalescing many equivalent curies or nodes. Upper case
 1- curie			- Curie identifying the unique concept coalescing many equivalent curies or nodes. Original case
-2- remapped_curie		- Final best curie for this concept. May be different than the original unique concept curie
-3- kg1_best_curie		- Best curie for KG1
-4- kg2_best_curie		- Best curie for KG2
-5- name				- Final best name of the concept
-6- type				- Final best type of the concept
-7- normalizer_curie		- Best curie from this entry in the normalizer
-8- normalizer_name		- Best name from this entry in the normalizer
-9- normalizer_type		- Best type from this entry in the normalizer
- * normalizer_type_list	- List of types returned by the normalizer
+2- name				- Final best name of the concept
+3- category			- Final best category of the concept
+4- normalizer_curie		- Best curie from this entry in the normalizer
+5- normalizer_name		- Best name from this entry in the normalizer
+6- normalizer_category		- Best category from this entry in the normalizer
  * all_uc_curies{}		- A map of all curies for this concept
- * all_lc_names{}			- A map of all names for this concept (probably expendable. Useful for debugging)
+ * all_lc_names{}		- A map of all names for this concept (probably expendable. Useful for debugging)
 
 kg_curies{uc_curie}:		- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Upper case index dict key
-0- uc_curie			- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Upper case
+0- uc_curie (tbl only)		- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Upper case
 1- curie			- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Original case
 2- uc_unique_concept_curie	- Curie of the unique concept associated with this curie (may not be "final" best curie)
-3- type				- Type of this curie
-4- source			- Source of this curie: KG1, KG2, SRI
+3- name				- KG2 name for this curie
+4- full_name			- KG2 full_name for this curie
+5- category			- KG2 category of this curie
+6- normalizer_name		- Name according to the SRI Normalizer
+7- normalizer_category		- Category according to the SRI Normalizer
+8- source			- Source of this curie
 
-kg_synonyms{lc_synonym}		- All synonym names lower cased, not curies. Lower case index dict key
-0- lc_name			- All synonym names lower cased, not curies. Lower case
-1- name				- Original non-lower-case synonym
+kg_names{lc_name}		- All names lower cased, not curies. Lower case index dict key
+0- lc_name (tbl only)		- All names lower cased, not curies. Lower case
+1- name				- Original non-lower-case name
 2- uc_unique_concept_curie	- Curie of the unique concept coalescing this node
-3- source			- Source of this name: KG1, KG2, SRI
+3- source			- Source of this name: KG2, SRI
+4- has_ambiguitiy		- True or False. If true, then look in kg_ambiguous_names for alternatives
  * uc_unique_concept_curies	- Dict of curies with this name if not coalesced
+
+kg_name_curies{lc_name_uc_curie} - All names lower cased plus upper cased curie dict key
+0- lc_name (tbl only)		- All names lower cased, not curies. Lower case
+1- name				- Original non-lower-case name
+2- uc_curie			- Upper-case curie for this name -> curie association
+3- uc_unique_concept_curie	- Curie of the unique concept coalescing this node
+4- source			- Source of this name: KG2, SRI
+
 
 =====================================================
 

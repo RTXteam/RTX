@@ -33,8 +33,9 @@ class COHDIndex:
     def __init__(self):
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         self.databaseLocation = filepath
-        #lastest_version = "v2.0"
-        #self.databaseName = f"COHDdatabase_{lastest_version}.db"
+        # lastest_version = "v1.0"
+        # kg = 'KG2.5.2'
+        # self.databaseName = f"COHDdatabase_{lastest_version}_{kg}.db"
         self.databaseName = RTXConfig.cohd_database_path.split('/')[-1]
         self.success_con = self.connect()
         self.synonymizer = NodeSynonymizer()
@@ -53,7 +54,7 @@ class COHDIndex:
             print("INFO: Connecting to database", flush=True)
             return True
         else:
-            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_3_4_with_concepts.pkl']
+            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_5_2_with_concepts.pkl']
             # has_files = [f for f in os.listdir(self.databaseLocation) if os.path.isfile(os.path.join(self.databaseLocation, f))]
             # for file in required_files:
             #     if file in has_files:
@@ -63,13 +64,13 @@ class COHDIndex:
             #         return False
 
             # delete the old version of COHD database
-            old_version_database = "COHDdatabase_v1.0.db"
-            if os.path.exists(f"{self.databaseLocation}/{old_version_database}"):
-                os.remove(f"{self.databaseLocation}/{old_version_database}")
+            # old_version_database = "COHDdatabase_v1.0.db"
+            # if os.path.exists(f"{self.databaseLocation}/{old_version_database}"):
+            #     os.remove(f"{self.databaseLocation}/{old_version_database}")
             # copy the database file to local if it doesn't exist
             #os.system(f"scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/{self.databaseName} {database}")
             os.system(f"scp {RTXConfig.cohd_database_username}@{RTXConfig.cohd_database_host}:{RTXConfig.cohd_database_path} {database}")
-            
+
             self.connection = sqlite3.connect(database)
             print("INFO: Connecting to database", flush=True)
             return True
@@ -90,7 +91,7 @@ class COHDIndex:
     def create_tables(self):
 
         return
-        # # if self.success_con is True:
+        # if self.success_con is True:
         #     print("INFO: Creating database " + self.databaseName, flush=True)
         #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
         #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
@@ -185,7 +186,7 @@ class COHDIndex:
         #     # for key in kg1_mapping:
         #     #     if key not in kg_mapping:
         #     #         kg_mapping[key] = kg1_mapping[key]
-        #     with open(f"{self.databaseLocation}/preferred_synonyms_kg2_3_4_with_concepts.pkl", "rb") as file:
+        #     with open(f"{self.databaseLocation}/preferred_synonyms_kg2_5_2_with_concepts.pkl", "rb") as file:
         #         kg = pickle.load(file)
 
         #     insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,concept_id) values (?,?)'
@@ -263,7 +264,7 @@ class COHDIndex:
 
         results_list = []
         cursor = self.connection.cursor()
-        cursor.execute(f"select distinct t1.preferred_curie, t1.concept_id from CURIE_TO_OMOP_MAPPING t1 inner join CONCEPTS t2 on t1.concept_id = t2.concept_id where preferred_curie='{preferred_curie}';")
+        cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where preferred_curie='{preferred_curie}';")
         res = cursor.fetchall()
         if len(res) == 0:
             return []
