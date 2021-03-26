@@ -406,8 +406,8 @@ if database == 'DTD':
             con = sqlite3.connect(DTD_prob_db_file)
             table = pd.read_sql_query("SELECT * from DTD_PROBABILITY", con)
             con.close()
-            drug_list = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] for curie in target_curie_list if synonymizer.get_canonical_curies(curie)[curie] is not None and synonymizer.get_canonical_curies(curie)[curie]['preferred_category'] in ['drug','chemical_substance']]
-            disease_list = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] for curie in target_curie_list if synonymizer.get_canonical_curies(curie)[curie] is not None and synonymizer.get_canonical_curies(curie)[curie]['preferred_category'] in ['disease','disease_or_phenotypic_feature','phenotypic_feature']]
+            drug_list = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] for curie in target_curie_list if synonymizer.get_canonical_curies(curie)[curie] is not None and synonymizer.get_canonical_curies(curie)[curie]['preferred_category'] in ['drug','chemical_substance','biolink:Drug','biolink:ChemicalSubstance']]
+            disease_list = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] for curie in target_curie_list if synonymizer.get_canonical_curies(curie)[curie] is not None and synonymizer.get_canonical_curies(curie)[curie]['preferred_category'] in ['disease','disease_or_phenotypic_feature','phenotypic_feature', 'biolink:Disease','biolink:DiseaseOrPhenotypicFeature','biolink:PhenotypicFeature']]
             table = table.loc[table.disease.isin(disease_list) & table.drug.isin(drug_list),:]
             for col in table.columns:
                 table[col] = table[col].astype(str)
