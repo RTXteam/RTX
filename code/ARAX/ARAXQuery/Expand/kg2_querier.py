@@ -120,11 +120,11 @@ class KG2Querier:
         log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
 
-        # Load the results into swagger object model and add to our answer knowledge graph
+        # Load the results into API object model and add to our answer knowledge graph
         for result in results:
             neo4j_node = result.get(qnode_key)
-            swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-            final_kg.add_node(swagger_node_key, swagger_node, qnode_key)
+            node_key, node = self._convert_neo4j_node_to_trapi_node(neo4j_node, kg_name)
+            final_kg.add_node(node_key, node, qnode_key)
 
         return final_kg
 
@@ -201,137 +201,136 @@ class KG2Querier:
             if column_name.startswith('nodes'):  # Example column name: 'nodes_n00'
                 column_qnode_key = column_name.replace("nodes_", "", 1)
                 for neo4j_node in results_table.get(column_name):
-                    swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-                    final_kg.add_node(swagger_node_key, swagger_node, column_qnode_key)
+                    node_key, node = self._convert_neo4j_node_to_trapi_node(neo4j_node, kg_name)
+                    final_kg.add_node(node_key, node, column_qnode_key)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_key = column_name.replace("edges_", "", 1)
                 for neo4j_edge in results_table.get(column_name):
-                    swagger_edge_key, swagger_edge = self._convert_neo4j_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict, kg_name)
+                    edge_key, edge = self._convert_neo4j_edge_to_trapi_edge(neo4j_edge, node_uuid_to_curie_dict, kg_name)
 
                     # Record which of this edge's nodes correspond to which qnode_key
-                    if swagger_edge_key not in edge_to_nodes_map:
-                        edge_to_nodes_map[swagger_edge_key] = dict()
+                    if edge_key not in edge_to_nodes_map:
+                        edge_to_nodes_map[edge_key] = dict()
                     for qnode_key in qg.nodes:
-                        edge_to_nodes_map[swagger_edge_key][qnode_key] = neo4j_edge.get(qnode_key)
+                        edge_to_nodes_map[edge_key][qnode_key] = neo4j_edge.get(qnode_key)
 
                     # Finally add the current edge to our answer knowledge graph
-                    final_kg.add_edge(swagger_edge_key, swagger_edge, column_qedge_key)
+                    final_kg.add_edge(edge_key, edge, column_qedge_key)
 
         return final_kg, edge_to_nodes_map
 
-    def _convert_neo4j_node_to_swagger_node(self, neo4j_node: Dict[str, any], kp: str) -> Tuple[str, Node]:
+    def _convert_neo4j_node_to_trapi_node(self, neo4j_node: Dict[str, any], kp: str) -> Tuple[str, Node]:
         if kp == "KG2":
-            return self._convert_kg2_node_to_swagger_node(neo4j_node)
+            return self._convert_kg2_node_to_trapi_node(neo4j_node)
         elif kp == "KG2c":
-            return self._convert_kg2c_node_to_swagger_node(neo4j_node)
+            return self._convert_kg2c_node_to_trapi_node(neo4j_node)
         else:
-            return self._convert_kg1_node_to_swagger_node(neo4j_node)
+            return self._convert_kg1_node_to_trapi_node(neo4j_node)
 
-    def _convert_kg2_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
-        swagger_node = Node()
-        swagger_node_key = neo4j_node.get('id')
-        swagger_node.name = neo4j_node.get('name')
-        swagger_node.category = eu.convert_to_list(neo4j_node.get('category'))
-        # Add all additional properties on KG2 nodes as swagger Attribute objects
+    def _convert_kg2_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
+        node = Node()
+        node_key = neo4j_node.get('id')
+        node.name = neo4j_node.get('name')
+        node.category = eu.convert_to_list(neo4j_node.get('category'))
+        # Add all additional properties on KG2 nodes as TRAPI Attribute objects
         other_properties = ["iri", "full_name", "description", "publications", "synonym", "provided_by",
                             "deprecated", "update_date"]
-        swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
-        return swagger_node_key, swagger_node
+        node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
+        return node_key, node
 
-    def _convert_kg2c_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
-        swagger_node = Node()
-        swagger_node_key = neo4j_node.get('id')
-        swagger_node.name = neo4j_node.get('name')
-        swagger_node.category = eu.convert_to_list(neo4j_node.get('category'))
-        # Add all additional properties on KG2c nodes as swagger Attribute objects
+    def _convert_kg2c_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
+        node = Node()
+        node_key = neo4j_node.get('id')
+        node.name = neo4j_node.get('name')
+        node.category = eu.convert_to_list(neo4j_node.get('category'))
+        # Add all additional properties on KG2c nodes as TRAPI Attribute objects
         other_properties = ["iri", "description", "all_names", "all_categories", "expanded_categories",
                             "equivalent_curies", "publications"]
-        swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
-        return swagger_node_key, swagger_node
+        node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
+        return node_key, node
 
-    def _convert_kg1_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
-        swagger_node = Node()
-        swagger_node_key = neo4j_node.get('id')
-        swagger_node.name = neo4j_node.get('name')
+    def _convert_kg1_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
+        node = Node()
+        node_key = neo4j_node.get('id')
+        node.name = neo4j_node.get('name')
         node_category = neo4j_node.get('category')
-        swagger_node.category = eu.convert_to_list(node_category)
+        node.category = eu.convert_to_list(node_category)
         other_properties = ["symbol", "description", "uri"]
-        swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
-        return swagger_node_key, swagger_node
+        node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
+        return node_key, node
 
-    def _convert_neo4j_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str],
-                                            kg_name: str) -> Tuple[str, Edge]:
+    def _convert_neo4j_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str],
+                                          kg_name: str) -> Tuple[str, Edge]:
         if kg_name == "KG2":
-            return self._convert_kg2_edge_to_swagger_edge(neo4j_edge)
+            return self._convert_kg2_edge_to_trapi_edge(neo4j_edge)
         elif kg_name == "KG2c":
-            return self._convert_kg2c_edge_to_swagger_edge(neo4j_edge)
+            return self._convert_kg2c_edge_to_trapi_edge(neo4j_edge)
         else:
-            return self._convert_kg1_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict)
+            return self._convert_kg1_edge_to_trapi_edge(neo4j_edge, node_uuid_to_curie_dict)
 
-    def _convert_kg2_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Edge:
-        swagger_edge = Edge()
-        swagger_edge_key = f"KG2:{neo4j_edge.get('id')}"
-        swagger_edge.predicate = neo4j_edge.get("predicate")
-        swagger_edge.subject = neo4j_edge.get("subject")
-        swagger_edge.object = neo4j_edge.get("object")
-        swagger_edge.relation = neo4j_edge.get("relation")
-        # Add additional properties on KG2 edges as swagger Attribute objects
+    def _convert_kg2_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any]) -> Edge:
+        edge = Edge()
+        edge_key = f"KG2:{neo4j_edge.get('id')}"
+        edge.predicate = neo4j_edge.get("predicate")
+        edge.subject = neo4j_edge.get("subject")
+        edge.object = neo4j_edge.get("object")
+        edge.relation = neo4j_edge.get("relation")
+        # Add additional properties on KG2 edges as TRAPI Attribute objects
         other_properties = ["provided_by", "negated", "relation_curie", "simplified_relation_curie",
                             "simplified_relation", "edge_label", "publications"]
-        swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
+        edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
         is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2", type=eu.get_attribute_type("is_defined_by"))
-        swagger_edge.attributes.append(is_defined_by_attribute)
-        return swagger_edge_key, swagger_edge
+        edge.attributes.append(is_defined_by_attribute)
+        return edge_key, edge
 
-    def _convert_kg2c_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
-        swagger_edge = Edge()
-        swagger_edge_key = f"KG2c:{neo4j_edge.get('id')}"
-        swagger_edge.predicate = neo4j_edge.get("predicate")
-        swagger_edge.subject = neo4j_edge.get("subject")
-        swagger_edge.object = neo4j_edge.get("object")
+    def _convert_kg2c_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
+        edge = Edge()
+        edge_key = f"KG2c:{neo4j_edge.get('id')}"
+        edge.predicate = neo4j_edge.get("predicate")
+        edge.subject = neo4j_edge.get("subject")
+        edge.object = neo4j_edge.get("object")
         other_properties = ["provided_by", "publications"]
-        swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
+        edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
         is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2c", type=eu.get_attribute_type("is_defined_by"))
-        swagger_edge.attributes.append(is_defined_by_attribute)
-        return swagger_edge_key, swagger_edge
+        edge.attributes.append(is_defined_by_attribute)
+        return edge_key, edge
 
-    def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Tuple[str, Edge]:
-        swagger_edge = Edge()
-        swagger_edge_key = f"KG1:{neo4j_edge.get('id')}"
-        swagger_edge.predicate = neo4j_edge.get("predicate")
-        swagger_edge.subject = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
-        swagger_edge.object = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
-        swagger_edge.relation = neo4j_edge.get("relation")
+    def _convert_kg1_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Tuple[str, Edge]:
+        edge = Edge()
+        edge_key = f"KG1:{neo4j_edge.get('id')}"
+        edge.predicate = neo4j_edge.get("predicate")
+        edge.subject = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
+        edge.object = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
+        edge.relation = neo4j_edge.get("relation")
         other_properties = ["provided_by", "probability"]
-        swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
+        edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
         is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG1", type=eu.get_attribute_type("is_defined_by"))
-        swagger_edge.attributes.append(is_defined_by_attribute)
-        return swagger_edge_key, swagger_edge
+        edge.attributes.append(is_defined_by_attribute)
+        return edge_key, edge
 
     @staticmethod
-    def _create_swagger_attributes(property_names: List[str], neo4j_object: Dict[str, any]) -> List[Attribute]:
+    def _create_trapi_attributes(property_names: List[str], neo4j_object: Dict[str, any]) -> List[Attribute]:
         new_attributes = []
         for property_name in property_names:
             property_value = neo4j_object.get(property_name)
-            # Extract any lists, dicts, and booleans that are stored within strings
-            if type(property_value) is str:
-                if (property_value.startswith('[') and property_value.endswith(']')) or \
-                        (property_value.startswith('{') and property_value.endswith('}')) or \
-                        property_value.lower() == "true" or property_value.lower() == "false":
-                    property_value = ast.literal_eval(property_value)
+            if property_value:
+                # Extract any lists, dicts, and booleans that are stored within strings
+                if type(property_value) is str:
+                    if (property_value.startswith('[') and property_value.endswith(']')) or \
+                            (property_value.startswith('{') and property_value.endswith('}')) or \
+                            property_value.lower() == "true" or property_value.lower() == "false":
+                        property_value = ast.literal_eval(property_value)
 
-            # Create an Attribute for all non-empty values
-            if property_value is not None and property_value != {} and property_value != []:
-                if isinstance(property_value, list):
-                    property_value.sort()  # Alphabetize lists
-                swagger_attribute = Attribute(name=property_name,
-                                              type=eu.get_attribute_type(property_name),
-                                              value=property_value)
-                # Also store this in the 'url' field if it's a URL
+                # Create the actual Attribute object
+                trapi_attribute = Attribute(name=property_name,
+                                            type=eu.get_attribute_type(property_name),
+                                            value=property_value)
+                # Also store this value in Attribute.url if it's a URL
                 if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
-                    swagger_attribute.url = property_value
-                new_attributes.append(swagger_attribute)
+                    trapi_attribute.url = property_value
+
+                new_attributes.append(trapi_attribute)
         return new_attributes
 
     @staticmethod
