@@ -29,22 +29,19 @@ from node_synonymizer import NodeSynonymizer
 
 class CHPQuerier:
 
-    def __init__(self, response_object: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def __init__(self, response_object: ARAXResponse):
         self.response = response_object
         self.synonymizer = NodeSynonymizer()
         self.kp_name = "CHP"
         # Instantiate a client
         self.client = get_client()
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a one-hop (single-edge) query using CHP client.
-        :param query_graph: A Reasoner API standard query graph.
-        :return: A tuple containing:
-            1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
-           results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
-              {'CHP:111221': {'n00': 'ENSEMBL:ENSG00000132155', 'n01': 'CHEMBL.COMPOUND:CHEMBL88'}, 'CHP:111223': {'n00': 'ENSEMBL:ENSG00000141510', 'n01': 'CHEMBL.COMPOUND:CHEMBL88'}}
+        :param query_graph: A TRAPI query graph.
+        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
+                results for the query. (Organized by QG IDs.)
         """
         # Set up the required parameters
         log = self.response
@@ -53,17 +50,15 @@ class CHPQuerier:
         self.allowable_gene_curies = list(allowable_curies['biolink:Gene'].keys())
         self.allowable_drug_curies = [curie_id.replace('CHEMBL:','CHEMBL.COMPOUND:') for curie_id in list(allowable_curies['biolink:Drug'].keys())]
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
 
-        final_kg, edge_to_nodes_map = self._answer_query_using_CHP_client(query_graph, log)
+        final_kg = self._answer_query_using_CHP_client(query_graph, log)
 
-        return final_kg, edge_to_nodes_map
+        return final_kg
 
-    def _answer_query_using_CHP_client(self, query_graph: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_CHP_client(self, query_graph: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using CHP client")
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
         gene_label_list = ['gene']
         drug_label_list = ['drug', 'chemicalsubstance']
         # use for checking the requirement
@@ -81,7 +76,7 @@ class CHPQuerier:
         # check if both ends of edge have no curie
         if (source_qnode.id is None) and (target_qnode.id is None):
             log.error(f"Both ends of edge {qedge_key} are None", error_code="BadEdge")
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         # check if the query nodes are drug or disease
         if source_qnode.id is not None:
@@ -92,7 +87,7 @@ class CHPQuerier:
                 source_pass_nodes = source_qnode.id
             has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
             if has_error:
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
                     source_pass_nodes = pass_nodes
@@ -105,10 +100,10 @@ class CHPQuerier:
                 else:
                     if type(source_qnode.id) is str:
                         log.error(f"The curie id of {source_qnode.id} is not allowable based on CHP client", error_code="NotAllowable")
-                        return final_kg, edge_to_nodes_map
+                        return final_kg
                     else:
                         log.error(f"The curie ids of {source_qnode.id} are not allowable based on CHP client", error_code="NotAllowable")
-                        return final_kg, edge_to_nodes_map
+                        return final_kg
         else:
             category = source_qnode.category.replace('biolink:','').replace('_','').lower()
             source_category = category
@@ -116,7 +111,7 @@ class CHPQuerier:
                 source_category = category
             else:
                 log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be drug/chemical_substance or gene", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
         if target_qnode.id is not None:
 
@@ -126,7 +121,7 @@ class CHPQuerier:
                 target_pass_nodes = target_qnode.id
             has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
             if has_error:
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
                     target_pass_nodes = pass_nodes
@@ -139,10 +134,10 @@ class CHPQuerier:
                 else:
                     if type(target_qnode.id) is str:
                         log.error(f"The curie id of {target_qnode.id} is not allowable based on CHP client", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                        return final_kg
                     else:
                         log.error(f"The curie ids of {target_qnode.id} are not allowable based on CHP client", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                        return final_kg
         else:
             category = target_qnode.category.replace('biolink:','').replace('_','').lower()
             target_category = category
@@ -150,10 +145,10 @@ class CHPQuerier:
                 target_category = category
             else:
                 log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug/chemical_substance or gene", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
         if (source_pass_nodes is None) and (target_pass_nodes is None):
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         elif (source_pass_nodes is not None) and (target_pass_nodes is not None):
             source_dict = dict()
@@ -168,7 +163,7 @@ class CHPQuerier:
                 target_category_temp = 'gene'
             if source_category_temp == target_category_temp:
                 log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 for (source_curie, target_curie) in itertools.product(source_pass_nodes, target_pass_nodes):
 
@@ -198,12 +193,6 @@ class CHPQuerier:
                     source_dict[source_curie] = source_qnode_key
                     target_dict[target_curie] = target_qnode_key
 
-                    # Record which of this edge's nodes correspond to which qnode_key
-                    if swagger_edge_key not in edge_to_nodes_map:
-                        edge_to_nodes_map[swagger_edge_key] = dict()
-                    edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                    edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
-
                     # Finally add the current edge to our answer knowledge graph
                     final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
 
@@ -217,7 +206,7 @@ class CHPQuerier:
                         swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
                         final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
         elif source_pass_nodes is not None:
             source_dict = dict()
@@ -233,7 +222,7 @@ class CHPQuerier:
                 target_category_temp = 'gene'
             if source_category_temp == target_category_temp:
                 log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 if source_category_temp == 'drug':
                     for source_curie in source_pass_nodes:
@@ -261,12 +250,6 @@ class CHPQuerier:
 
                             source_dict[source_curie] = source_qnode_key
                             target_dict[gene] = target_qnode_key
-
-                            # Record which of this edge's nodes correspond to which qnode_key
-                            if swagger_edge_key not in edge_to_nodes_map:
-                                edge_to_nodes_map[swagger_edge_key] = dict()
-                            edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                            edge_to_nodes_map[swagger_edge_key][target_qnode_key] = gene
 
                             # Finally add the current edge to our answer knowledge graph
                             final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
@@ -298,12 +281,6 @@ class CHPQuerier:
                             source_dict[source_curie] = source_qnode_key
                             target_dict[drug] = target_qnode_key
 
-                            # Record which of this edge's nodes correspond to which qnode_key
-                            if swagger_edge_key not in edge_to_nodes_map:
-                                edge_to_nodes_map[swagger_edge_key] = dict()
-                            edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                            edge_to_nodes_map[swagger_edge_key][target_qnode_key] = drug
-
                             # Finally add the current edge to our answer knowledge graph
                             final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
 
@@ -317,7 +294,7 @@ class CHPQuerier:
                         swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
                         final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-                return final_kg, edge_to_nodes_map
+                return final_kg
         else:
             source_dict = dict()
             target_dict = dict()
@@ -332,7 +309,7 @@ class CHPQuerier:
                 source_category_temp = 'gene'
             if source_category_temp == target_category_temp:
                 log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 if target_category_temp == 'drug':
                     for target_curie in target_pass_nodes:
@@ -360,12 +337,6 @@ class CHPQuerier:
 
                             source_dict[gene] = source_qnode_key
                             target_dict[target_curie] = target_qnode_key
-
-                            # Record which of this edge's nodes correspond to which qnode_key
-                            if swagger_edge_key not in edge_to_nodes_map:
-                                edge_to_nodes_map[swagger_edge_key] = dict()
-                            edge_to_nodes_map[swagger_edge_key][source_qnode_key] = gene
-                            edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
 
                             # Finally add the current edge to our answer knowledge graph
                             final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
@@ -398,12 +369,6 @@ class CHPQuerier:
                             source_dict[drug] = source_qnode_key
                             target_dict[target_curie] = target_qnode_key
 
-                            # Record which of this edge's nodes correspond to which qnode_key
-                            if swagger_edge_key not in edge_to_nodes_map:
-                                edge_to_nodes_map[swagger_edge_key] = dict()
-                            edge_to_nodes_map[swagger_edge_key][source_qnode_key] = drug
-                            edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
-
                             # Finally add the current edge to our answer knowledge graph
                             final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
 
@@ -417,7 +382,7 @@ class CHPQuerier:
                         swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
                         final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
     def _check_id(self, qnode_id, log):
 

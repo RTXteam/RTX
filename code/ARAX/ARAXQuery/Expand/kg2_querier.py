@@ -37,15 +37,12 @@ class KG2Querier:
         else:
             self.kg_name = "KG1"
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a one-hop (single-edge) query using either KG1 or KG2.
-        :param query_graph: A Reasoner API standard query graph.
-        :return: A tuple containing:
-            1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
-           results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
-              {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
+        :param query_graph: A TRAPI query graph.
+        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
+                results for the query. (Organized by QG IDs.)
         """
         log = self.response
         enforce_directionality = self.enforce_directionality
@@ -54,17 +51,16 @@ class KG2Querier:
         if kg_name == "KG1":
             query_graph = eu.make_qg_use_old_snake_case_types(query_graph)
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph
         if len(query_graph.edges) != 1:
             log.error(f"answer_one_hop_query() was passed a query graph that is not one-hop: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
-            return final_kg, edge_to_nodes_map
+            return final_kg
         if len(query_graph.nodes) != 2:
             log.error(f"answer_one_hop_query() was passed a query graph with more than two nodes: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
-            return final_kg, edge_to_nodes_map
+            return final_kg
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
 
         # Consider any inverses of our predicate(s) as well
@@ -85,15 +81,15 @@ class KG2Querier:
         # Run the actual query and process results
         cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, log)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+            return final_kg
         neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, kg_name, log)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
-        final_kg, edge_to_nodes_map = self._load_answers_into_kg(neo4j_results, kg_name, query_graph, log)
+            return final_kg
+        final_kg = self._load_answers_into_kg(neo4j_results, kg_name, query_graph, log)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
-        return final_kg, edge_to_nodes_map
+        return final_kg
 
     def answer_single_node_query(self, single_node_qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
         kg_name = self.kg_name
@@ -188,10 +184,9 @@ class KG2Querier:
         return results_from_neo4j
 
     def _load_answers_into_kg(self, neo4j_results: List[Dict[str, List[Dict[str, any]]]], kg_name: str,
-                              qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+                              qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         log.debug(f"Processing query results for edge {next(qedge_key for qedge_key in qg.edges)}")
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
         node_uuid_to_curie_dict = self._build_node_uuid_to_curie_dict(neo4j_results[0]) if kg_name == "KG1" else dict()
 
         results_table = neo4j_results[0]
@@ -208,17 +203,9 @@ class KG2Querier:
                 column_qedge_key = column_name.replace("edges_", "", 1)
                 for neo4j_edge in results_table.get(column_name):
                     edge_key, edge = self._convert_neo4j_edge_to_trapi_edge(neo4j_edge, node_uuid_to_curie_dict, kg_name)
-
-                    # Record which of this edge's nodes correspond to which qnode_key
-                    if edge_key not in edge_to_nodes_map:
-                        edge_to_nodes_map[edge_key] = dict()
-                    for qnode_key in qg.nodes:
-                        edge_to_nodes_map[edge_key][qnode_key] = neo4j_edge.get(qnode_key)
-
-                    # Finally add the current edge to our answer knowledge graph
                     final_kg.add_edge(edge_key, edge, column_qedge_key)
 
-        return final_kg, edge_to_nodes_map
+        return final_kg
 
     def _convert_neo4j_node_to_trapi_node(self, neo4j_node: Dict[str, any], kp: str) -> Tuple[str, Node]:
         if kp == "KG2":

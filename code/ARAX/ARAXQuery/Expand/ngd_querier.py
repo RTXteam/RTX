@@ -32,24 +32,20 @@ class NGDQuerier:
         self.ngd_edge_attribute_type = "EDAM:data_2526"
         self.ngd_edge_attribute_url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a one-hop (single-edge) query using NGD (with the assistance of KG2).
-        :param query_graph: A Reasoner API standard query graph.
-        :return: A tuple containing:
-            1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
-           results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
-              {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
+        :param query_graph: A TRAPI query graph.
+        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
+                results for the query. (Organized by QG IDs.)
         """
         log = self.response
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph
         self._verify_one_hop_query_graph_is_valid(query_graph, log)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         # Find potential answers using KG2
         log.debug(f"Finding potential answers using KG2")
@@ -78,7 +74,7 @@ class NGDQuerier:
         ]
         kg2_response, kg2_message = self._run_arax_query(actions_list, log)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         # Go through those answers from KG2 and calculate ngd for each edge
         log.debug(f"Calculating NGD between each potential node pair")
@@ -116,10 +112,8 @@ class NGDQuerier:
                 final_kg.add_edge(ngd_edge_key, ngd_edge, qedge_key)
                 final_kg.add_node(ngd_source_node_key, ngd_source_node, source_qnode_key)
                 final_kg.add_node(ngd_target_node_key, ngd_target_node, target_qnode_key)
-                edge_to_nodes_map[ngd_edge_key] = {source_qnode_key: ngd_source_node_key,
-                                                   target_qnode_key: ngd_target_node_key}
 
-        return final_kg, edge_to_nodes_map
+        return final_kg
 
     def _create_ngd_edge(self, ngd_value: float, subject: str, object: str, pmid_list: list) -> Tuple[str, Edge]:
         ngd_edge = Edge()
