@@ -181,7 +181,7 @@ class ARAXExpander:
                     "use_synonyms": self.use_synonyms_parameter_info,
                     "CHP_survival_threshold": {
                         "is_required": False,
-                        "examples": [0.8, 0.5],
+                        "examples": [200, 100],
                         "min": 0,
                         "max": 1000000000000,
                         "default": 500,

@@ -110,7 +110,7 @@ class CHPQuerier:
                         log.error(f"The curie ids of {source_qnode.id} are not allowable based on CHP client", error_code="NotAllowable")
                         return final_kg, edge_to_nodes_map
         else:
-            category = source_qnode.category.replace('biolink:','').replace('_','').lower()
+            category = source_qnode.category[0].replace('biolink:','').replace('_','').lower()
             source_category = category
             if (category in drug_label_list) or (category in gene_label_list):
                 source_category = category
@@ -144,7 +144,7 @@ class CHPQuerier:
                         log.error(f"The curie ids of {target_qnode.id} are not allowable based on CHP client", error_code="CategoryError")
                         return final_kg, edge_to_nodes_map
         else:
-            category = target_qnode.category.replace('biolink:','').replace('_','').lower()
+            category = target_qnode.category[0].replace('biolink:','').replace('_','').lower()
             target_category = category
             if (category in drug_label_list) or (category in gene_label_list):
                 target_category = category
@@ -466,7 +466,7 @@ class CHPQuerier:
         swagger_node_key = node_key
         swagger_node.name = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_name']
         swagger_node.description = None
-        swagger_node.category = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_type']
+        swagger_node.category = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category']
 
         return swagger_node_key, swagger_node
 
