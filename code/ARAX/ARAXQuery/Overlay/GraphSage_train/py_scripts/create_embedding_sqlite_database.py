@@ -1,12 +1,19 @@
 import pandas as pd
 import sqlite3
+import argparse
 
-conn = sqlite3.connect('GRAPH.sqlite')
+parser = argparse.ArgumentParser()
+parser.add_argument("-e", "--embfile", type=str, help="The path of .emb file")
+parser.add_argument("-m", "--mapfile", type=str, help="The path of map.txt file")
+parser.add_argument("-o", "--output", type=str, help="The path of output folder")
+args = parser.parse_args()
 
-graph = pd.read_csv('rel_max.emb.gz', sep=' ', skiprows=1, header=None, index_col=None)
+conn = sqlite3.connect(args.output + '/GRAPH_v1.0.sqlite')
+
+graph = pd.read_csv(args.embfile, sep=' ', skiprows=1, header=None, index_col=None)
 graph = graph.sort_values(0).reset_index(drop=True)
-map_df = pd.read_csv('map.txt', sep='\t',index_col=None)
-graph.loc[:,0] = map_df.loc[:,'curie']
+map_df = pd.read_csv(args.mapfile, sep='\t', index_col=None)
+graph.loc[:, 0] = map_df.loc[:, 'curie']
 
 conn.execute(f"DROP TABLE IF EXISTs GRAPH")
 

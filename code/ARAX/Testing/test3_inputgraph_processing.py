@@ -22,7 +22,7 @@ def main():
     #### Fill out a one hop query acetaminophen to proteins
     query = {
         "previous_message_processing_plan": {
-            "previous_message_uris": [ "https://arax.rtx.ai/api/rtx/v1/message/2" ],
+            "previous_message_uris": [ "https://arax.ncats.io/api/rtx/v1/message/2" ],
             "processing_actions": [
                 "filter(maximum_results=10)",
                 "return(message=false,store=false)"
@@ -32,7 +32,7 @@ def main():
 
     #### Run the query and print the result
     message = araxq.query_return_message(query)
-    print(json.dumps(ast.literal_eval(repr(message)),sort_keys=True,indent=2))
+    print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
 
 
 if __name__ == "__main__": main()

@@ -61,23 +61,10 @@ def get_kg2_node_pairs():
         predicate = result.get('e.simplified_edge_label')
         provider = "KG2"
         # NOTE: Have to do some special handling for KG2 edge.provided_by being a list with buggy format
-        sources = convert_strange_provided_by_field_to_list(result.get('e.provided_by'))
+        sources = result.get('e.provided_by')
         for source in sources:
             node_pairs_dict = update_node_pairs_dict(node_pairs_dict, subject_type, object_type, predicate, provider, source)
     return list(node_pairs_dict.values())
-
-
-def convert_strange_provided_by_field_to_list(provided_by_field):
-    provided_by_list = []
-    for item in provided_by_field:
-        if "[" in item:
-            item = item.replace("[", "")
-        if "]" in item:
-            item = item.replace("]", "")
-        if "'" in item:
-            item = item.replace("'", "")
-        provided_by_list.append(item)
-    return provided_by_list
 
 
 def get_node_pair_key(source, subject_type, object_type):

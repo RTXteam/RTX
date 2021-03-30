@@ -129,16 +129,16 @@ class MapCurieToOMOP:
             synonym = synonym.replace('ICD-10', 'ICD10')
         elif vocabulary_id == "ICD-9":
             synonym = synonym.replace('ICD-9', 'ICD9CM')
-        elif vocabulary_id == "MESH":
-            synonym = synonym.replace('MESH', 'MeSH')
-        elif vocabulary_id == "RXNORM":
-            synonym = synonym.replace('RXNORM', 'RxNorm')
+        # elif vocabulary_id == "MESH":
+        #     synonym = synonym.replace('MESH', 'MeSH')
+        # elif vocabulary_id == "RXNORM":
+        #     synonym = synonym.replace('RXNORM', 'RxNorm')
         elif vocabulary_id == "SNOMEDCT":
             synonym = synonym.replace('SNOMEDCT', 'SNOMED')
         elif vocabulary_id == "SNOMEDCT_VET":
             synonym = synonym.replace('SNOMEDCT_VET', 'SNOMED')
-        elif vocabulary_id == "MEDDRA":
-            synonym = synonym.replace('MEDDRA', 'MedDRA')
+        # elif vocabulary_id == "MEDDRA":
+        #     synonym = synonym.replace('MEDDRA', 'MedDRA')
         else:
             pass
 

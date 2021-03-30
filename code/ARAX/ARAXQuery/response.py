@@ -27,6 +27,7 @@ class Response:
         self.n_errors = 0
         self.n_warnings = 0
         self.data = {}
+        self.envelope = {}
 
 
     #### Add a debugging message

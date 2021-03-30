@@ -22,6 +22,9 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance
 
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+
 
 def _run_cypher_query(cypher_query: str, kg='KG2') -> List[Dict[str, any]]:
     rtxc = RTXConfiguration()
@@ -60,7 +63,7 @@ def estimate_percent_nodes_with_mesh_mapping_via_synonymizer(kg: str):
         # Use synonymizer to get their equivalent curies and check for a MESH term
         print(f"    Getting equivalent curies for those random node IDs..")
         synonymizer = NodeSynonymizer()
-        curie_synonym_info = synonymizer.get_equivalent_curies(list(random_node_ids), kg_name='KG2')
+        curie_synonym_info = synonymizer.get_equivalent_curies(list(random_node_ids))
         num_curies_with_mesh_term = 0
         for input_curie, synonym_curies in curie_synonym_info.items():
             if synonym_curies:
@@ -120,7 +123,12 @@ def estimate_percent_nodes_covered_by_backup_method(kg: str):
 
 def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
     print(f"Estimating the percent of {kg} nodes covered by the local NGD system..")
-    curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
+    rtxc = RTXConfiguration()
+    if kg == 'KG2':
+        rtxc.live = "KG2"
+    #curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
+    curie_to_pmids_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
+    curie_to_pmid_db = SqliteDict(f"{curie_to_pmids_path}{os.path.sep}{rtxc.curie_to_pmids_path.sep('/')[-1]}")
     percentages_mapped = []
     num_batches = 20
     batch_size = 4000
@@ -164,7 +172,12 @@ def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
 def report_on_curies_missed_by_local_ngd(kg: str):
     backup_ngd = NormGoogleDistance()
     synonymizer = NodeSynonymizer()
-    curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
+    #curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
+    rtxc = RTXConfiguration()
+    if kg == 'KG2':
+        rtxc.live = "KG2"
+    curie_to_pmids_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
+    curie_to_pmid_db = SqliteDict(f"{curie_to_pmids_path}{os.path.sep}{rtxc.curie_to_pmids_path.sep('/')[-1]}")
     batch_size = 50
 
     # Get random selection of nodes from the KG

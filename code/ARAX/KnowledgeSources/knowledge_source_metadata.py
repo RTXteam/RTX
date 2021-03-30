@@ -7,6 +7,10 @@ import json
 import ast
 import re
 import inspect
+import csv
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
+import Expand.expand_utilities as eu
 
 
 class KnowledgeSourceMetadata:
@@ -37,27 +41,26 @@ class KnowledgeSourceMetadata:
         predicates = {}
         iline = 0
         with open(input_filename) as infile:
-            for line in infile:
+            rows = csv.reader(infile, delimiter=',', quotechar='"')
+            for columns in rows:
                 iline += 1
-
-                # Skip empty or comment lines or first line
-                if len(line) < 3 or line[0] == '#' or iline == 1:
-                    continue
-
-                columns = line.strip().split(',')
 
                 # Ensure there are exactly 3 columns
                 if len(columns) != 3:
-                    eprint(f"ERROR [{method_name}]: input file {input_filename} line '{line} does not have 3 columns")
+                    eprint(f"ERROR [{method_name}]: input file {input_filename} line '{iline} does not have 3 columns")
                     continue
 
-                if columns[0] not in predicates:
-                    predicates[columns[0]] = {}
+                subject_category = columns[0]
+                predicate = columns[1]
+                object_category = columns[2]
 
-                if columns[2] not in predicates[columns[0]]:
-                    predicates[columns[0]][columns[2]] = []
+                if subject_category not in predicates:
+                    predicates[subject_category] = {}
 
-                predicates[columns[0]][columns[2]].append(columns[1])
+                if object_category not in predicates[subject_category]:
+                    predicates[subject_category][object_category] = []
+
+                predicates[subject_category][object_category].append(predicate)
 
         return predicates
 

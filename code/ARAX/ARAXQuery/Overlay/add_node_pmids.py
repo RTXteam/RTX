@@ -6,9 +6,10 @@ import traceback
 import numpy as np
 
 # relative imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
-from swagger_server.models.node_attribute import NodeAttribute
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.attribute import Attribute as NodeAttribute
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
 
@@ -35,12 +36,12 @@ class AddNodePMIDS:
 
         # iterate over KG edges, add the information
         try:
-            for node in self.message.knowledge_graph.nodes:
-                # Make sure the edge_attributes are not None
-                if not node.node_attributes:
-                    node.node_attributes = []  # should be an array, but why not a list?
+            for key, node in self.message.knowledge_graph.nodes.items():
+                # Make sure the attributes are not None
+                if not node.attributes:
+                    node.attributes = []  # should be an array, but why not a list?
                 # now go and actually get the NGD
-                node_curie = node.id
+                node_curie = key
                 node_name = node.name
                 pmids = NGD.get_pmids_for_all([node_curie], [node_name])[0]  # since the function was designed for multiple inputs, but I only want the first
 
@@ -48,7 +49,7 @@ class AddNodePMIDS:
                     pmids = pmids[0:self.parameters['max_num']]
                 value = pmids
                 ngd_edge_attribute = NodeAttribute(type=type, name=name, value=value, url=url)  # populate the NGD edge attribute
-                node.node_attributes.append(ngd_edge_attribute)  # append it to the list of attributes
+                node.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()

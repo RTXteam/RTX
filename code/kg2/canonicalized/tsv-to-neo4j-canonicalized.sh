@@ -33,7 +33,7 @@ else
     test_prefix=""
 fi
 
-tsv_tarball_base=kg2-canonicalized-tsv${test_arg}.tar.gz
+tsv_tarball_base=kg2c-tsv${test_arg}.tar.gz
 tsv_tarball=${tsv_dir}/${tsv_tarball_base}
 
 echo "copying RTX Configuration JSON file from S3"
@@ -78,7 +78,7 @@ mem_gb=`${CODE_DIR}/get-system-memory-gb.sh`
 sudo -u neo4j neo4j-admin import --nodes "${tsv_dir}/${test_prefix}nodes_c_header.tsv,${tsv_dir}/${test_prefix}nodes_c.tsv" \
     --relationships "${tsv_dir}/${test_prefix}edges_c_header.tsv,${tsv_dir}/${test_prefix}edges_c.tsv" \
     --max-memory=${mem_gb}G --multiline-fields=true --delimiter "\009" \
-    --array-delimiter="," --report-file="${tsv_dir}/import.report" \
+    --array-delimiter="ǂ" --report-file="${tsv_dir}/import.report" \
     --database=${database} --ignore-missing-nodes=true
 
 # change read only to false so that indexes and constraints can be added
@@ -99,6 +99,12 @@ sudo service neo4j restart
 sudo sed -i '/dbms.read_only/c\dbms.read_only=true' ${neo4j_config}
 
 sudo service neo4j restart
+
+# create a neo4j dump file for use downstream in building the DTD database
+sudo service neo4j stop
+dump_name=kg2c.dump
+sudo neo4j-admin dump --database=graph.db --to=${BUILD_DIR}/${dump_name}
+sudo service neo4j start
 
 date
 echo "================ script finished ============================"

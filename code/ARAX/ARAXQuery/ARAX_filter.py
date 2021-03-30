@@ -7,7 +7,7 @@ import json
 import ast
 import re
 
-from response import Response
+from ARAX_response import ARAXResponse
 
 
 class ARAXFilter:
@@ -23,7 +23,7 @@ class ARAXFilter:
     def apply(self, input_message, input_parameters):
 
         #### Define a default response
-        response = Response()
+        response = ARAXResponse()
         self.response = response
         self.message = input_message
 
@@ -89,7 +89,7 @@ class ARAXFilter:
         result = query_graph_info.assess(message)
         response.merge(result)
         if result.status != 'OK':
-            print(response.show(level=Response.DEBUG))
+            print(response.show(level=ARAXResponse.DEBUG))
             return response
         print(json.dumps(ast.literal_eval(repr(query_graph_info.node_order)),sort_keys=True,indent=2))
 
@@ -146,7 +146,7 @@ class ARAXFilter:
 def main():
 
     #### Create a response object
-    response = Response()
+    response = ARAXResponse()
 
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
@@ -162,7 +162,7 @@ def main():
     result = actions_parser.parse(actions_list)
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     actions = result.data['actions']
 
@@ -182,12 +182,12 @@ def main():
     result = filter.apply(message,actions[0]['parameters'])
     response.merge(result)
     if result.status != 'OK':
-        print(response.show(level=Response.DEBUG))
+        print(response.show(level=ARAXResponse.DEBUG))
         return response
     response.data = result.data
 
     #### Show the final message
-    print(response.show(level=Response.DEBUG))
+    print(response.show(level=ARAXResponse.DEBUG))
     response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
         'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
     print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))

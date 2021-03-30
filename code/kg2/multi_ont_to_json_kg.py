@@ -126,6 +126,7 @@ def make_kg2(curies_to_categories: dict,
     for ont_source_info_dict in ont_urls_and_files:
         if ont_source_info_dict['download']:
             # get the OWL file onto the local file system and get a full path to it
+            print(ont_source_info_dict["url"])
             local_file_name = kg2_util.download_file_if_not_exist_locally(ont_source_info_dict['url'],
                                                                           ont_source_info_dict['file'])
         else:
@@ -272,7 +273,8 @@ def get_biolink_category_for_node(ontology_node_id: str,
         if len(candidate_categories) == 1:
             ret_category = next(iter(candidate_categories))
         elif len(candidate_categories) > 1:
-            candidate_category_depths = {category: biolink_category_depths.get(kg2_util.convert_snake_case_to_camel_case(category.replace(' ', '_'),
+            candidate_category_depths = {category: biolink_category_depths.get(kg2_util.CURIE_PREFIX_BIOLINK + ':' +
+                                                                               kg2_util.convert_snake_case_to_camel_case(category.replace(' ', '_'),
                                                                                                                          uppercase_first_letter=True), None) for
                                          category in sorted(candidate_categories)}
             keys_remove = {k for k, v in candidate_category_depths.items() if v is None}
@@ -338,7 +340,7 @@ def parse_umls_sver_date(umls_sver: str, sourcename: str):
     return updated_date
 
 
-#===========================================
+# ===========================================
 # These next functions (until make_nodes_dict_from_ontologies_list)
 # are for addressing issue #762 regarding duplicate TUIs
 
@@ -380,7 +382,6 @@ def compare_two_lists_in_reverse(list1: list, list2: list):
     # The most specific category of each list is in [0]
     # So, by comparing them in reverse, once you get to a discrepancy,
     # you go forward back to the last one where they were the same
-
     [shortlist, longlist] = get_shorter_list_first(list1, list2)
     for short_item in reversed(shortlist):
         if short_item not in longlist:
@@ -411,7 +412,7 @@ def split_into_chunks(fulllist: list):
     # Takes a list of TUI categories and splits it into a list
     # of pairs of TUI categories so that the multiple TUI categories can
     # can be handled in pairs
-    # Ex. [molecular entity, chemical substance, chemical substance] -> 
+    # Ex. [molecular entity, chemical substance, chemical substance] ->
     # [[molecular entity, chemical substance], [chemical substance]]
 
     returnlist = []
@@ -450,6 +451,7 @@ def find_common_ancestor(tui_categories: list, biolink_category_tree: dict):
                 path_list2 = []
                 path_list2.append(pair[1])
                 get_path(biolink_category_tree, "named thing", pair[1], path_list2)
+#                print(f"list1: {path_list1!s} list2: {path_list2!s}", file=sys.stderr)
                 tui_split[tui_split.index(pair)] = compare_two_lists_in_reverse(path_list1,
                                                                                 path_list2)
 
@@ -483,7 +485,7 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
     tuis_not_in_mappings_but_in_kg2 = set()
 
     biolink_categories_ontology_depths = None
-    
+
     first_ontology = ontology_info_list[0]['ontology']
 
     assert first_ontology.id == kg2_util.BASE_URL_BIOLINK_ONTOLOGY, "biolink needs to be first in ont-load-inventory.yaml"
@@ -504,8 +506,12 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
         assert iri_of_ontology is not None
 
         ontology_curie_id = uri_to_curie_shortener(iri_of_ontology)
+
         if ontology_curie_id is None or len(ontology_curie_id) == 0:
             ontology_curie_id = iri_of_ontology
+
+        print(f"processing ontology: {ontology_curie_id}", file=sys.stderr)
+
         umls_sver = ontology_info_dict.get('umls-sver', None)
         updated_date = None
         if umls_sver is not None:
@@ -612,6 +618,7 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
             node_tui = None
             node_has_cui = False
             node_tui_category_label = None
+            node_gene_symbol = None
 
             node_meta = onto_node_dict.get('meta', None)
             if node_meta is not None:
@@ -682,12 +689,14 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                                 if node_name is None:
                                     node_name = node_full_name
                         elif bpv_pred_curie == kg2_util.CURIE_ID_SKOS_ALT_LABEL:
+                            if node_curie_id.startswith(kg2_util.CURIE_PREFIX_HGNC + ':') and bpv_val.endswith(' gene'):
+                                node_gene_symbol = bpv_val.replace(' gene', '')
                             node_synonyms.add(bpv_val)
                         elif bpv_pred_curie == kg2_util.CURIE_ID_SKOS_DEFINITION:
                             node_description = kg2_util.strip_html(bpv_val)
                         elif bpv_pred_curie == kg2_util.CURIE_ID_HGNC_GENE_SYMBOL:
-                            node_name = bpv_val
-                            node_synonyms.add(bpv_val)
+                            node_gene_symbol = bpv_val
+                            node_synonyms.add(node_gene_symbol)
                         elif bpv_pred_curie == kg2_util.CURIE_ID_UMLS_HAS_CUI:
                             node_has_cui = True
                     if len(node_tui_list) == 1:
@@ -721,6 +730,9 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
             if node_category_label is None:
                 node_category_label = 'named thing'
                 try:
+                    # This is a fix for #891. It was supposed to be addressed on line 756 ("if node_category_label is None:") 
+                    # and 757 ("node_category_label = node_tui_category_label"), but due to the assignment of the label
+                    # 'named thing', that condition was never triggered. Instead, that is now handled here.
                     if node_tui is not None:
                         node_category_label = mappings_to_categories[node_tui]
                 except KeyError:
@@ -744,10 +756,10 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                                 node_tui_category_label = get_category_for_multiple_tui(biolink_category_tree, node_tui_list, mappings_to_categories)
                                 node_category_label = node_tui_category_label
                         except KeyError:
-                            kg2_util.log_message(message='Node ' + node_curie_id + ' has CUI with multiple associated TUIs: ' + ', '.join(node_tui_list) + ' and could not be mapped',
-                                             ontology_name=iri_of_ontology,
-                                             output_stream=sys.stderr)
-                        
+                            kg2_util.log_message(message='Node ' + node_curie_id + ' has CUI with multiple associated TUIs: ' + ', '.join(node_tui_list) +
+                                                 ' and could not be mapped',
+                                                 ontology_name=iri_of_ontology,
+                                                 output_stream=sys.stderr)
                 else:
                     if node_category_label is None:
                         node_category_label = node_tui_category_label  # override the node category_label if we have a TUI
@@ -781,16 +793,21 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                 node_name = kg2_util.allcaps_to_only_first_letter_capitalized(node_name)
 
             if node_name is not None:
-                if node_name.lower().startswith('obsolete:'):
-                    continue
+                if node_name.lower().startswith('obsolete:') or \
+                   (node_curie_id.startswith(kg2_util.CURIE_PREFIX_GO + ':') and node_name.lower().startswith('obsolete ')):
+                    node_deprecated = True
 
             if node_description is not None:
                 if node_description.lower().startswith('obsolete:') or node_description.lower().startswith('obsolete.'):
-                    continue
+                    node_deprecated = True
 
             provided_by = ontology_curie_id
             if node_category_label == kg2_util.BIOLINK_CATEGORY_ATTRIBUTE:
                 provided_by = kg2_util.CURIE_ID_UMLS_STY
+
+            if node_name is None:
+                if node_gene_symbol is not None:
+                    node_name = node_gene_symbol
 
             node_dict = kg2_util.make_node(node_curie_id,
                                            iri,
@@ -798,7 +815,8 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                                            node_category_label,
                                            node_update_date,
                                            provided_by)
-
+            if node_gene_symbol is not None:
+                node_dict['name'] = node_gene_symbol
             node_dict['full_name'] = node_full_name
             node_dict['description'] = node_description
             node_dict['creation_date'] = node_creation_date      # slot name is not biolink standard

@@ -10,119 +10,138 @@ import ast
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_messenger import ARAXMessenger
+from ARAX_response import ARAXResponse
 
 
 def test_create_message_basic():
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
-    assert message.type == 'translator_reasoner_message'
-    assert message.schema_version == '0.9.3'
+    message = response.envelope.message
+    assert response.envelope.type == 'translator_reasoner_response'
+    assert response.envelope.schema_version == '1.0.0'
 
 
 def test_create_message_node_edge_types():
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
-    assert isinstance(message.knowledge_graph.nodes, list)
-    assert isinstance(message.knowledge_graph.edges, list)
-    assert isinstance(message.query_graph.nodes, list)
-    assert isinstance(message.query_graph.edges, list)
+    message = response.envelope.message
+    assert isinstance(message.knowledge_graph.nodes, dict)
+    assert isinstance(message.knowledge_graph.edges, dict)
+    assert isinstance(message.query_graph.nodes, dict)
+    assert isinstance(message.query_graph.edges, dict)
 
 
 def test_add_qnode_basic():
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
-    response = messenger.add_qnode(message,{})
+    message = response.envelope.message
+    messenger.add_qnode(response,{})
     assert response.status == 'OK'
-    assert isinstance(message.query_graph.nodes, list)
+    assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 1
-    assert message.query_graph.nodes[0].id == 'n00'
+    assert message.query_graph.nodes['n00'].id == None
 
 
 def test_add_qnode_curie_scalar():
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
-    response = messenger.add_qnode(message, { 'curie': 'UniProtKB:P14136' })
+    message = response.envelope.message
+    messenger.add_qnode(response,{ 'id': 'UniProtKB:P14136' })
     assert response.status == 'OK'
-    assert isinstance(message.query_graph.nodes, list)
+    assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 1
-    assert message.query_graph.nodes[0].id == 'n00'
-    assert message.query_graph.nodes[0].curie == 'UniProtKB:P14136'
+    assert message.query_graph.nodes['n00'].id == 'UniProtKB:P14136'
 
 
 def test_add_qnode_curie_list():
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
-    response = messenger.add_qnode(message, { 'curie': ['UniProtKB:P14136','UniProtKB:P35579'] })
+    message = response.envelope.message
+    messenger.add_qnode(response,{ 'id': ['UniProtKB:P14136','UniProtKB:P35579'] })
     assert response.status == 'OK'
-    assert isinstance(message.query_graph.nodes, list)
+    assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 1
-    assert message.query_graph.nodes[0].id == 'n00'
-    assert len(message.query_graph.nodes[0].curie) == 2
+    assert len(message.query_graph.nodes['n00'].id) == 2
 
 
 def test_add_qnode_name():
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
-    response = messenger.add_qnode(message, { 'name': 'acetaminophen' })
+    message = response.envelope.message
+    messenger.add_qnode(response,{ 'name': 'acetaminophen' })
     assert response.status == 'OK'
-    assert isinstance(message.query_graph.nodes, list)
+    assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 1
-    assert message.query_graph.nodes[0].id == 'n00'
-    assert message.query_graph.nodes[0].curie == 'CHEMBL.COMPOUND:CHEMBL112'
+    assert message.query_graph.nodes['n00'].id == 'CHEMBL.COMPOUND:CHEMBL112'
 
 
 def test_add_qnode_type():
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
-    response = messenger.add_qnode(message, { 'type': 'protein' })
+    message = response.envelope.message
+    messenger.add_qnode(response,{ 'category': 'biolink:Protein' })
     assert response.status == 'OK'
-    assert isinstance(message.query_graph.nodes, list)
+    assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 1
-    assert message.query_graph.nodes[0].id == 'n00'
-    assert message.query_graph.nodes[0].type == 'protein'
+    assert message.query_graph.nodes['n00'].category == 'biolink:Protein'
+
+
+def test_add_qnode_group_id_is_set_false():
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    assert response.status == 'OK'
+    message = response.envelope.message
+    messenger.add_qnode(response,{ 'category': 'biolink:Protein', 'is_set' : 'false', 'option_group_id' : '0' })
+    assert response.status == 'ERROR'
+    assert isinstance(message.query_graph.nodes, dict)
+    assert len(message.query_graph.nodes) == 0
+    assert response.error_code == 'InputMismatch'
 
 
 def test_add_qnode_bad_name():
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
-    response = messenger.add_qnode(message, { 'name': 'Big Bird' })
+    message = response.envelope.message
+    messenger.add_qnode(response,{ 'name': 'Big Bird' })
     assert response.status == 'ERROR'
-    assert isinstance(message.query_graph.nodes, list)
+    assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 0
     assert response.error_code == 'UnresolvableNodeName'
 
 
 def test_add_qnode_bad_parameters():
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
     bad_parameters_list = [
-        { 'parameters': [ 'curie', 'PICKLES:123' ], 'error_code': 'ParametersNotDict' },
-        { 'parameters': { 'curie': 'UniProtKB:P14136', 'is_set': 'true' }, 'error_code': 'CurieScalarButIsSetTrue' },
+        { 'parameters': [ 'id', 'PICKLES:123' ], 'error_code': 'ParametersNotDict' },
+        { 'parameters': { 'id': 'UniProtKB:P14136', 'is_set': 'true' }, 'error_code': 'IdScalarButIsSetTrue' },
         { 'parameters': { 'pickles': 'on the side' }, 'error_code': 'UnknownParameter' },
     ]
-    reference_message = copy.deepcopy(message)
+    template_response = copy.deepcopy(response)
     for bad_parameters in bad_parameters_list:
-        message = copy.deepcopy(reference_message)
+        response = copy.deepcopy(template_response)
+        message = response.envelope.message
         print(bad_parameters)
-        response = messenger.add_qnode(message, bad_parameters['parameters'])
+        messenger.add_qnode(response, bad_parameters['parameters'])
         assert response.status == 'ERROR'
         assert len(message.query_graph.nodes) == 0
         assert response.error_code == bad_parameters['error_code']
@@ -130,34 +149,36 @@ def test_add_qnode_bad_parameters():
 
 def test_add_qedge_multitest():
     # Set up a message with two nodes
+    response = ARAXResponse()
     messenger = ARAXMessenger()
-    response = messenger.create_message()
+    messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.data['message']
-    response = messenger.add_qnode(message, { 'name': 'acetaminophen' })
+    message = response.envelope.message
+    messenger.add_qnode(response,{ 'name': 'acetaminophen' })
     assert response.status == 'OK'
-    response = messenger.add_qnode(message, { 'type': 'protein' })
+    messenger.add_qnode(response,{ 'category': 'biolink:Protein' })
     assert response.status == 'OK'
 
     # Set up a list of parameters to feed to add_qedge() and what the result should be
     parameters_list = [
-        { 'status': 'ERROR', 'parameters': [ 'source_id', 'n00' ], 'error_code': 'ParametersNotDict' },
-        { 'status': 'OK', 'parameters': { 'source_id': 'n00', 'target_id': 'n01' }, 'error_code': 'OK' },
-        { 'status': 'OK', 'parameters': { 'source_id': 'n00', 'target_id': 'n01', 'id': 'e99' }, 'error_code': 'OK' },
-        { 'status': 'OK', 'parameters': { 'source_id': 'n00', 'target_id': 'n01', 'id': 'e99', 'type': 'physically_interacts_with' }, 'error_code': 'OK' },
-        { 'status': 'ERROR', 'parameters': { 'source_id': 'n00' }, 'error_code': 'MissingTargetId' },
-        { 'status': 'ERROR', 'parameters': { 'target_id': 'n00' }, 'error_code': 'MissingSourceId' },
-        { 'status': 'ERROR', 'parameters': { 'source_id': 'n99', 'target_id': 'n01' }, 'error_code': 'UnknownSourceId' },
-        { 'status': 'ERROR', 'parameters': { 'source_id': 'n00', 'target_id': 'n99' }, 'error_code': 'UnknownTargetId' },
+        { 'status': 'ERROR', 'parameters': [ 'subject', 'n00' ], 'error_code': 'ParametersNotDict' },
+        { 'status': 'OK', 'parameters': { 'subject': 'n00', 'object': 'n01' }, 'error_code': 'OK' },
+        { 'status': 'OK', 'parameters': { 'subject': 'n00', 'object': 'n01', 'key': 'e99' }, 'error_code': 'OK' },
+        { 'status': 'OK', 'parameters': { 'subject': 'n00', 'object': 'n01', 'key': 'e99', 'predicate': 'physically_interacts_with' }, 'error_code': 'OK' },
+        { 'status': 'ERROR', 'parameters': { 'subject': 'n00' }, 'error_code': 'MissingTargetKey' },
+        { 'status': 'ERROR', 'parameters': { 'object': 'n00' }, 'error_code': 'MissingSourceKey' },
+        { 'status': 'ERROR', 'parameters': { 'subject': 'n99', 'object': 'n01' }, 'error_code': 'UnknownSourceKey' },
+        { 'status': 'ERROR', 'parameters': { 'subject': 'n00', 'object': 'n99' }, 'error_code': 'UnknownTargetKey' },
         { 'status': 'ERROR', 'parameters': { 'pickles': 'on the side' }, 'error_code': 'UnknownParameter' },
     ]
 
     # Loop over all the parameter sets and try to run it
-    reference_message = copy.deepcopy(message)
+    template_response = copy.deepcopy(response)
     for parameters in parameters_list:
-        message = copy.deepcopy(reference_message)
+        response = copy.deepcopy(template_response)
+        message = response.envelope.message
         print(parameters)
-        response = messenger.add_qedge(message, parameters['parameters'])
+        messenger.add_qedge(response, parameters['parameters'])
         assert response.status == parameters['status']
         if parameters['status'] == 'OK':
             assert len(message.query_graph.edges) == 1

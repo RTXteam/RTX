@@ -76,7 +76,7 @@ def check_all_edges_have_same_set(edgekeys_list):
     :param edgekeys_list: A list containing keys for an edge
     """
     # Supported_ls is a list of properties that edges can have
-    supported_ls = ["edge_label",
+    supported_ls = ["relation_label",
                     "negated",
                     "object",
                     "provided_by",
@@ -85,12 +85,12 @@ def check_all_edges_have_same_set(edgekeys_list):
                     "relation",
                     "subject",
                     "update_date",
-                    "simplified_relation",
-                    "simplified_edge_label",
+                    "predicate",
+                    "predicate_label",
                     "has_evidence"]
     for edgelabel in edgekeys_list:
         if edgelabel not in supported_ls:
-            raise ValueError("edge_label not in supported list: " + edgelabel)
+            raise ValueError("relation_label not in supported list: " + edgelabel)
 
 
 def truncate_node_synonyms_if_too_large(node_synonym_field, node_id):
@@ -151,7 +151,7 @@ def nodes(graph, output_file_location):
         single_loop += 1
         if single_loop == 1:
             nodekeys_official = list(sorted(node.keys()))
-            nodekeys_official.append("category_label")
+            nodekeys_official.append("category")
 
     for node in nodes:
         # Inrease node counter by one each loop
@@ -159,7 +159,7 @@ def nodes(graph, output_file_location):
 
         # Add all node property labels to a list in the same order
         nodekeys = list(sorted(node.keys()))
-        nodekeys.append("category_label")
+        nodekeys.append("category")
 
         # Create list for values of node properties to be added to
         vallist = []
@@ -194,7 +194,7 @@ def nodes(graph, output_file_location):
             nodekeys = no_space('id', nodekeys, 'id:ID')
             nodekeys = no_space('publications', nodekeys, "publications:string[]")
             nodekeys = no_space('synonym', nodekeys, "synonym:string[]")
-            nodekeys = no_space('category_label', nodekeys, ':LABEL')
+            nodekeys = no_space('category', nodekeys, ':LABEL')
             tsvwrite_h.writerow(nodekeys)
         tsvwrite.writerow(vallist)
 
@@ -257,9 +257,9 @@ def edges(graph, output_file_location):
         edgekeys = list(sorted(edge.keys()))
         check_all_edges_have_same_set(edgekeys)
 
-        # Add an extra property of "edge_label" to the list so that edge_labels
+        # Add an extra property of "predicate" to the list so that predicates
         # can be a property and a label
-        edgekeys.append('simplified_edge_label')
+        edgekeys.append('predicate')
         edgekeys.append('subject')
         edgekeys.append('object')
 
@@ -274,7 +274,7 @@ def edges(graph, output_file_location):
                 value = limit_publication_info_size(key, value)
             elif key == 'provided_by':
                 value = str(value).replace("', '", "; ").replace("['", "").replace("']", "")
-            elif key == 'edge_label':  # fix for issue number 473 (hyphens in edge_labels)
+            elif key == 'relation_label':  # fix for issue number 473 (hyphens in relation_labels)
                 value = value.replace('-', '_').replace('(', '').replace(')', '')
             elif key == 'publications':
                 value = str(value).replace("', '", "; ").replace("'", "").replace("[", "").replace("]", "")
@@ -286,7 +286,7 @@ def edges(graph, output_file_location):
         # But only for the first edge
         if loop == 1:
             edgekeys = no_space('provided_by', edgekeys, 'provided_by:string[]')
-            edgekeys = no_space('simplified_edge_label', edgekeys, 'edge_label:TYPE')
+            edgekeys = no_space('predicate', edgekeys, 'predicate:TYPE')
             edgekeys = no_space('subject', edgekeys, ':START_ID')
             edgekeys = no_space('object', edgekeys, ':END_ID')
             edgekeys = no_space('publications', edgekeys, "publications:string[]")

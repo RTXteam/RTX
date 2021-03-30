@@ -17,11 +17,12 @@ biomedical reasoning system.
 
 # KG2 team contact information
 
-## Technical Leads
+## KG2 Team
 
-- Stephen Ramsey, Oregon State University (stephen.ramsey@oregonstate.edu)
+- Stephen Ramsey, Oregon State University (ramseyst@oregonstate.edu)
 - Amy Glen, Oregon State University (glena@oregonstate.edu)
 - Erica Wood, Crescent Valley High School
+- Lindsey Kvarfordt, Oregon State University (kvarforl@oregonstate.edu)
 
 ## Bug reports
 
@@ -140,7 +141,12 @@ the directory `tempfile.tempdir` (as referenced in the `tempfile` python module)
 resides, then the file moving operations that are performed by the KG2 build
 software will not be atomic and interruption of `build-kg2.sh` or its
 subprocesses could then leave a source data file in a half-downloaded (i.e.,
-broken) state.
+broken) state. 
+
+**Build Frequency:** Per the discussion in [#1118](/RTXteam/RTX/issues/1118), we
+are currently aiming to build KG2 approximately once per month, to keep it as
+current as feasible given the cost to build and validate KG2 from its upstream
+sources.
 
 ## Setup your computing environment
 
@@ -198,8 +204,8 @@ file `RTXConfiguration-config-EXAMPLE.json` in this repository code directory
 server types in the RTX system; those are not shown in the example file in this
 code directory). The KG1 Neo4j endpoint need not (and in general, won't be)
 hosted in the same EC2 instance that hosts the KG2 build system. Currently, the
-KG1 Neo4j endpoint is hosted in the instance `arax.rtx.ai`; the URI of its Neo4j
-REST HTTP interface is: `http://arax.rtx.ai:7474`.
+KG1 Neo4j endpoint is hosted in the instance `arax.ncats.io`; the URI of its Neo4j
+REST HTTP interface is: `http://arax.ncats.io:7474`.
 
 ## Typical EC2 instance type used for building KG2
 
@@ -351,6 +357,16 @@ regardless of the existence of output files,
 has changed to `-R Finish`, which only forces the rule that failed and the rules that depend on that rule's output
 to run.
 
+At the end of the build process, you should inspect the logfile
+`~/kg2-build/filter_kg_and_remap_predicates.log` to see if there are warnings
+like ``` relation curie is missing from the YAML config file:
+CURIEPREFIX:some_predicate ``` where `CURIEPREFIX` could be any CURIE prefix in
+`curies-to-urls-map.yaml` and `some_predicate` is a snake-case predicate label
+(or in the case of Relation Ontology, a numeric identifier). Any warnings of the
+above format in `filter_kg_and_remap_predicates.log` probably indicates that an
+addition needs to be made to the file `predicate-remap.yaml`, followed by a
+partial rebuild starting with `filter_kg_and_remap_predicates.py`.
+
 #### Note about versioning of KG2
 
 KG2 has semantic versioning with a graph/major/minor release system:
@@ -425,16 +441,19 @@ This option is frequently used in testing/development. Note, you have to have
 previously run an `alltest` build, or else a `test` build will not work.
 
 
-### Build Option 2: build KG2 serially (about 67 hours) directly on an Ubuntu system:
+### Build Option 2: build KG2 serially (about 67 hours) directly on an Ubuntu system (DEPRECATED):
 
+<details>
+	<summary> This method is deprecated. Click here to view steps anyway. </summary>
+	
 (1)-(7) Follow steps (1)-(7) in Build Option 1.
 
 (8) Within the `screen` session, run:
 
-    bash -x ~/kg2-code/build-kg2.sh all
+    bash -x ~/kg2-code/build-kg2-DEPRECATED.sh all
 
 Then exit screen (`ctrl-a d`). Note that there is no need to redirect `stdout`
-or `stderr` to a log file, when executing `build-kg2.sh`; this is because the
+or `stderr` to a log file, when executing `build-kg2-DEPRECATED.sh`; this is because the
 script saves its own `stdout` and `stderr` to a log file `build-kg2.log`. You can 
 watch the progress of your KG2 build by using this command:
 
@@ -448,9 +467,9 @@ to a file `~/kg2-build/build-kg2-ont-stderr.log`.
 Like with the parallel build system, you can run a sequential partial build. To do a partial
 build, in Step (8) above, you would run
 
-    bash -x ~/kg2-code/build-kg2.sh
+    bash -x ~/kg2-code/build-kg2-DEPRECATED.sh
 
-(note the absence of the `all` argument to `build-kg2.sh`). A partial build of KG2
+(note the absence of the `all` argument to `build-kg2-DEPRECATED.sh`). A partial build of KG2
 may take about 40 hours. Note, you have to have previously run an `all` build
 of KG2, or else the partial build will not work.
 
@@ -458,7 +477,7 @@ of KG2, or else the partial build will not work.
 
 To execute a sequential *test* build, in Step (8) above, you would run:
 
-    bash -x ~/kg2-code/build-kg2.sh alltest
+    bash -x ~/kg2-code/build-kg2-DEPRECATED.sh alltest
     
 In the case of a test build, the build log file names are changed:
 
@@ -473,7 +492,9 @@ will have `-test` appended to the filename before the usual filename suffix
 
 To run a partial sequential build of KG2 in "test" mode, the command would be:
 
-    bash -x ~/kg2-code/build-kg2.sh test
+    bash -x ~/kg2-code/build-kg2-DEPRECATED.sh test
+    
+</details>
 
 ### Build Option 3: setup ssh key exchange so you can build KG2 in a remote EC2 instance
 
@@ -535,6 +556,10 @@ Occasionally a build will fail due to a connection error in attempting to
 cURL a file from one of the upstream sources (e.g., SMPDB, and less frequently, 
 UniChem).
 
+Another failure mode is the versioning of ChemBL. Once ChemBL upgrades their dataset, 
+old datasets may become unavailable. This will result in failure when downloading. To 
+fix this, change the version number in `extract-chembl.sh`.
+
 ## The output KG
 
 The `build-kg2.sh` script (run via one of the three methods shown above) creates
@@ -588,7 +613,7 @@ preferred to have `kg2-pubmed.json` generated to match the format of `kg2-simpli
 especially since its predicates do not have to go through the predicate remap process and
 loading `kg2-pubmed.json` into memory takes a lot of memory. UNTESTED.
 
-    ~/kg2-venv/bin/python3 ~/kg2-code/merge_graphs.py --kgFiles ~/kg2-build/kg2.json ~/kg2-build/kg2-pubmed.json --kgFileOrphanEdges ~/kg2-build/kg2-pubmed-merge-orphan-edges.json ~/kg2-build/kg2-with-pubmed.json
+    ~/kg2-venv/bin/python3 ~/kg2-code/merge_graphs.py --kgFileOrphanEdges ~/kg2-build/kg2-pubmed-merge-orphan-edges.json --outputFile ~/kg2-build/kg2-with-pubmed.json ~/kg2-build/kg2.json ~/kg2-build/kg2-pubmed.json
 
 (6) Run the `filter_kg_and_remap_predicates.py` script on this new JSON file (and optionally
 `get_nodes_json_from_kg_json.py` and `report_stats_on_json_kg.py` -- you can't run these in
@@ -695,13 +720,26 @@ the form `kg2endpoint-kg2-X-Y.rtx.ai`, where `X` is the major version number and
 [version history markdown file](kg2-versions.md) with the new build version and
 the numbers of the GitHub issues that are addressed/implemented in the new KG2
 version.
+	- After a build has successfully completed, add a tag with the kg2 version number 
+	- Follow the format "KG2.X.Y", where X is the major version number and Y is the minor version number 
+	```
+	git tag -a KG2.X.Y -m "<name of build host used>"
+	git push --tags
+	```
 - Wherever possible we try to document the name of the build host (EC2 instance)
 used for the KG2 build in `kg2-versions.md` and we try to preserve the `kg2-build`
 directory and its contents on that host, until a new build has superseded the build.
 Having the build directory available on the actual build host is very useful for
-tracking down the source of an unexpected relationship or node property.
+tracking down the source of an unexpected relationship or node property. 
+*Any new data sources in the build or major updates* (e.g., DrugBank, UMLS, or ChEMBL)
+should also be noted in the `kg2-versions.md` file.
 
-# Structure of the JSON KG2
+- One of the key build artifacts that should be inspected in order to assess the
+build quality is the JSON report
+[kg-simplified-report.json](https://rtx-kg2-public.s3-us-west-2.amazonaws.com/kg2-simplified-report.json).
+This file should be inspected as a part of the post-build quality assessment process.
+
+# Schema of the JSON KG2
 
 The file `kg2.json` is an intermediate file that is probably only of use to KG2
 developers.  The file `kg2-simplified.json` is a key artifact of the build
@@ -755,7 +793,7 @@ the following keys:
 
 ## `edges` slot
 - `edges`: a list of edge objects. Each edge object has the following keys:
-  - `edge_label`: a `snake_case` representation of the plain English label for
+  - `relation_label`: a `snake_case` representation of the plain English label for
     the original predicate for the edge provided by the upstream source database
     (see the `relation` field)
   - `negated`: a Boolean field indicating whether or not the edge relationship
@@ -773,10 +811,10 @@ the following keys:
   `publications` field, and whose values are described in the next subsection ("publication_info")
   - `relation`: a CURIE ID for the relation as reported by the upstream
     database source.
-  - `simplified_edge_label`: a `snake_case` representation of the plain English
-    label for the simplified predicate (see the `simplified relation`
+  - `predicate_label`: a `snake_case` representation of the plain English
+    label for the simplified predicate (see the `predicate`
     field); in most cases this is a predicate type from the Biolink model.
-  - `simplified_relation`: a CURIE ID for the simplified relation
+  - `predicate`: a CURIE ID for the simplified relation
   - `subject`: the CURIE ID (`id`) for the KG2 node that is the subject of the
     edge
   - `update_date`: a string identifier of the date in which the information for
@@ -801,13 +839,79 @@ the following name/value pairs:
     with which the subject of the triple was correctly identified; otherwise
     `null`
 
+## Biolink compliance
+
+KG2 aims to comply with the [Biolink knowledge graph format](biolink-kg-schema.md).
+
 # Files generated by the KG2 build system (UNDER DEVELOPMENT)
 
 - `kg2-simplified.json`: This is the main KG2 graph, in JSON format (48 GiB).
-- `kg2.json`
-- `kg2-simplified-report.json`
-- `kg2-slim.json`
-- `kg2-version.txt`
+- `kg2-slim.json`: This is the simplified KG2 graph with a restricted set of node and edge properties included.
+- `kg2.json`: This is the KG2 graph before Biolink predicates are added; it is only of interest to KG2 developers.
+- `kg2-simplified-report.json`: A JSON report giving statistics on the `kg2-simplified.json` knowledge graph.
+- `kg2-version.txt`: Tracks the version of the last build of KG2.
+
+# Frequently asked questions
+
+## Where can I download a pre-built copy of KG2?
+
+Due to licensing restrictions by some of the upstream sources used to build KG2,
+we are unable to publicly host a downloadable copy of the KG2 knowledge graph at
+this time. But for groups that have UMLS and SNOMED CT licenses that are
+up-to-date, we can arrange for private access to a dump of the KG2 knowledge
+graph; please inquire by [email](mailto:ramseyst@oregonstate.edu). 
+
+## What licenses cover KG2?
+
+It's complicated. The KG2 build software is provided free-of-charge via the
+[MIT license](/RTXteam/RTX/blob/master/LICENSE). All documentation for KG2 and
+any downloadable build artifacts hosted on GitHub or S3 are provided
+free-of-charge via the (CC-BY
+license)[https://creativecommons.org/licenses/by/4.0/]. If you are using KG2 in
+your work, we ask that you attribute credit to the KG2 team as follows: *RTX KG2
+development team, github.com/RTXteam*. Our assertion of the CC-BY license covers
+only creative product our team (documentation, reports, and knowledge graph
+formatting); the actual content of the KG2 knowledge graph is encumbered by
+various licenses (e.g., UMLS) that prevent its redistribution.
+
+## Is a manuscript on KG2 forthcoming?
+
+Yes; please check back during Spring 2021.
+
+## What criteria do you use to select sources to include in KG2?
+
+We emphasize knowledge souces that
+
+1. Are available in a flat-file download (e.g., TSV, XML, JSON, DAT, or SQL dump)
+2. Are being maintained and updated periodically
+3. Provide content/knowledge that complements (does not duplicate) what is already in KG2.
+4. Connect concept identifiers that are already in KG2.
+5. Ideally, provide knowledge based on human curation (favored over computational text-mining).
+
+# Troubleshooting (UNDER DEVELOPMENT)
+
+## Errors in `multi_ont_to_json_kg.py`
+
+### Errors in `convert_bpv_predicate_to_curie`
+
+- An error like the following:
+
+```
+File "/home/ubuntu/kg2-code/multi_ont_to_json_kg.py", line 1158, in convert_bpv_predicate_to_curie
+     raise ValueError('unable to expand CURIE: ' + bpv_pred)
+ValueError: unable to expand CURIE: MONARCH:cliqueLeader     
+```
+
+would indicate that the CURIE prefix (in this case, `MONARCH`) needs to be added to the
+`use_for_bidirectional_mapping` section of `curies-to-urls-map.yaml` config file.
+
+## Authentication Error in `tsv-to-neo4j.sh`
+Soemtimes, when hosting KG2 in a Neo4j server on a new AWS instance, the initial password does not get set correctly, which will lead to an Authentication Error in `tsv-to-neo4j.sh`. To fix this, do the following:
+1. Start up Neo4 (sudo service neo4j start)
+2. Wait one minute, then confirm Neo4j is running (sudo service neo4j status)
+3. Use a browser to connect to Neo4j via HTTP on port 7474. You should see a username/password authentication form.
+4. Fill in "neo4j" and "neo4j" for username and password, respectively, and submit the form. You should be immediately prompted to set a new password. At that 	time, type in our "usual" Neo4j password (you'll have to enter it twice).
+5. When you submit the form, Neo4j should be running and it should now have the correct password set.
 
 # For Developers
 
@@ -823,15 +927,19 @@ This section has some guidelines for the development team for the KG2 build syst
 - Please follow PEP8 formatting standards.
 - Please use type hints wherever possible.
 
+# Shell coding standards for KG2
+
+- Use lower-case for variable names except for environment variables.
+- The flags `nounset`, `pipefail`, *and* `errexit` should be set.
+
 ### File naming
 
-- For config files and shell scripts, use kabob-case
-- For python modules, use snake_case.
+- For config files and shell scripts, use `kabob-case`
+- For python modules, use `snake_case`.
 
 # Credits
 
-Thank you to the many people who have contributed to the development of RTX KG2, as described
-in the next three subsections:
+Thank you to the many people who have contributed to the development of RTX KG2:
 
 ## Code
 Stephen Ramsey, Amy Glen, Finn Womack, Erica Wood, Veronica Flores, Deqing Qu, and Lindsey Kvarfordt.

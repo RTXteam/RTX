@@ -1,27 +1,39 @@
 import connexion
 import six
-import ast
 
-from openapi_server.models.message import Message  # noqa: E501
-from openapi_server import util
+# Import to allow streaming of progress information
+from flask import stream_with_context, request, Response
 
-from RTXQuery import RTXQuery
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/ARAXQuery")
+from ARAX_query import ARAXQuery
 
 
-def query(request_body):  # noqa: E501
+def query(request_body, bypass_cache=None):  # noqa: E501
     """Query reasoner via one of several inputs
 
      # noqa: E501
 
     :param request_body: Query information to be submitted
     :type request_body: dict | bytes
+    :param bypass_cache: Set to true in order to bypass any possible cached response and try to answer the query over again 
+    :type bypass_cache: bool
 
-    :rtype: Message
+    :rtype: Response
     """
-    if connexion.request.is_json:
-        query = connexion.request.get_json()
-        rtxq = RTXQuery()
-        message = rtxq.query(query)
-        return(ast.literal_eval(repr(message)))
+
+    # Note that we never even get here if the request_body is not schema-valid JSON
+
+    query = connexion.request.get_json()
+    araxq = ARAXQuery()
+
+    if "asynchronous" in query and query['asynchronous'].lower() == 'stream':
+        # Return a stream of data to let the client know what's going on
+        return Response(araxq.query_return_stream(query),mimetype='text/plain')
+
+    # Else perform the query and return the result
     else:
-        return( { "status": 502, "title": "body content not JSON", "detail": "Required body content is not JSON", "type": "about:blank" }, 502 )
+        envelope = araxq.query_return_message(query)
+        return envelope

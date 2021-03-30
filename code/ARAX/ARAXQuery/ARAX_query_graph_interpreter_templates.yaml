@@ -1,11 +1,11 @@
 ARAX_QG_DSL_mapping: 0.1
 
 # Node templates should have one of the following formats:
-#   n00()                     - a node with no curie or type specified
-#   n00(type)                 - a node with only a type of any kind specified
-#   n00(type=protein)         - a node with a specific type (such as a protein) specified
-#   n00(curie)                - a node with a specific curie specified
-#   n00(curie,type=protein)   - a node with a specific curie of the specified type.
+#   n00()                     - a node with no curie or category specified
+#   n00(category)                 - a node with only a category of any kind specified
+#   n00(category=biolink:Protein)         - a node with a specific category (such as a biolink:Protein) specified
+#   n00(id)                - a node with a specific curie specified
+#   n00(id,category=biolink:Protein)   - a node with a specific curie of the specified category.
 # Edge templates should have the following format:
 #   e00()                     - an edge with no specification
 #
@@ -22,22 +22,22 @@ templates:
     restated_question: What is n00(name)?
     description: A single node question, where the one node has a curie
     template:
-      - n00(curie)
+      - n00(id)
     DSL:
-      - expand(node_id=n00)
+      - expand(node_key=n00,kp=ARAX/KG2)
       - resultify()
 
-  one_node_with_type:
-    name: One node with only a type
-    description: A single node that has no curie but has a type. This could easily generate thousands of things.
-    restated_question: Which n00(type)s are known?
+  one_node_with_category:
+    name: One node with only a category
+    description: A single node that has no curie but has a category. This could easily generate thousands of things.
+    restated_question: Which n00(category)s are known?
     template:
-      - n00(type)
-    error: The input QueryGraph would just lead to thousands of nodes with this type. Not currently supported.
+      - n00(category)
+    error: The input QueryGraph would just lead to thousands of nodes with this category. Not currently supported.
 
-  one_node_with_no_type:
-    name: One node with not even a type
-    description: A single node that has no curie and no type. This is like tell me everything
+  one_node_with_no_category:
+    name: One node with not even a category
+    description: A single node that has no curie and no category. This is like tell me everything
     restated_question: Which biological entities are known?
     template:
       - n00()
@@ -45,119 +45,164 @@ templates:
 
   ####################################################################################################
   #### Two node, one-hop questions
-  one_hop_classic_question_curie2chemical_substance:
-    name: One hop question with one curie and one typed node of type chemical_substance
-    description: Two nodes, one of which has a curie and the other has a type chemical_substance
+  one_hop_classic_question_curie2ChemicalSubstance:
+    name: One hop question with one curie and one category node of category biolink:ChemicalSubstance
+    description: Two nodes, one of which has a curie and the other has a category biolink:ChemicalSubstance
     comment: This is current just for testing. The DSL is the same as the next one
-    restated_question: Which n01(type)s are related to n00(name)?
+    restated_question: Which n01(category)s are related to n00(name)?
     template:
-      - n00(curie)
+      - n00(id)
       - e00()
-      - n01(type=chemical_substance)
+      - n01(category=biolink:ChemicalSubstance)
     DSL:
-      - expand(edge_id=e00)
-      - overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)
+      - expand(kp=ARAX/KG2)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   one_hop_classic_question:
-    name: One hop question with one curie and one typed node
-    description: Two nodes, one of which has a curie and the other has a type
-    restated_question: Which n01(type)s are related to n00(name)?
+    name: One hop question with one curie and one category node
+    description: Two nodes, one of which has a curie and the other has a category
+    restated_question: Which n01(category)s are related to n00(name)?
     template:
-      - n00(curie)
+      - n00(id)
       - e00()
-      - n01(type)
+      - n01(category)
     DSL:
-      - expand(edge_id=e00)
-      - overlay(action=compute_ngd, virtual_relation_label=N1, source_qnode_id=n00, target_qnode_id=n01)
+      - expand(kp=ARAX/KG2)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   one_hop_two_curie_question:
     name: One hop question where both nodes are provided
     description: Two nodes, both of which have a curie
     restated_question: How are n00(name) and n01(name) directly related?
     template:
-      - n00(curie)
+      - n00(id)
       - e00()
-      - n01(curie)
+      - n01(id)
     DSL:
-      - expand(edge_id=e00)
+      - expand(kp=ARAX/KG2)
       - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   one_hop_all_connections:
     name: One hop question with one curie and one totally generic
-    description: Two nodes, one of which has a curie and the other has no type
+    description: Two nodes, one of which has a curie and the other has no category
     restated_question: What is n00(name) related to?
     template:
-      - n00(curie)
+      - n00(id)
       - e00()
       - n01()
     DSL:
-      - expand(edge_id=e00)
+      - expand(kp=ARAX/KG2)
       - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
 
-  one_hop_drug_disease:
+  one_hop_drug_treats_disease:
     name: one hop with start node drug, end node disease
-    description: Two nodes, start has a specific curie, end node has type specified as chemical_substance (or drug?!)
-    restated_question: What n01(type)s may treat n00(name)?
+    description: Two nodes, start has a specific curie, end node has category specified as biolink:ChemicalSubstance (or drug?!)
+    restated_question: What n01(category)s is known to treat n00(name)?
     template:
-      - n00(curie,type=disease)
-      - e00()
-      - n01(type=chemical_substance)
+      - n00(id,category=biolink:Disease)
+      - e00(predicate=treats)
+      - n01(category=biolink:ChemicalSubstance)
     DSL:
-      - expand(edge_id=e00, kp=ARAX/KG2, continue_if_no_results=true)
-      - expand(edge_id=e00, kp=BTE, continue_if_no_results=true)
-      - overlay(action=overlay_clinical_info, observed_expected_ratio=true, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=CP1)
-      - overlay(action=predict_drug_treats_disease, source_qnode_id=n01, target_qnode_id=n00, virtual_relation_label=P1)
-      - filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_id=n01)
-      - overlay(action=compute_ngd, source_qnode_id=n00, target_qnode_id=n01, virtual_relation_label=N1)
+      - expand(kp=ARAX/KG2)
+      - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
+      - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
+
+  one_hop_drug_somehow_related_to_disease:
+    name: one hop with start node drug, end node disease
+    description: Two nodes, start has a specific curie, end node has category specified as biolink:ChemicalSubstance (or drug?!)
+    restated_question: What n01(category)s may treat n00(name)?
+    template:
+      - n00(id,category=biolink:Disease)
+      - e00()
+      - n01(category=biolink:ChemicalSubstance)
+    DSL:
+      - expand(kp=ARAX/KG2, continue_if_no_results=true)
+      - expand(kp=BTE, continue_if_no_results=true)
+      - overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=CP1)
+      - overlay(action=predict_drug_treats_disease, subject_qnode_key=n01, object_qnode_key=n00, virtual_relation_label=P1)
+      - filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)
+      - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
       - resultify(ignore_edge_direction=true)
-      - filter_results(action=limit_number_of_results, max_results=50)
+      - filter_results(action=limit_number_of_results, max_results=100)
+
+  two_hop_drug_disease:
+    name: one hop with start node drug, end node disease
+    description: Two nodes, start has a specific curie, end node has category specified as biolink:ChemicalSubstance (or drug?!)
+    restated_question: What n01(category)s may treat n00(name)?
+    template:
+      - n00(id,category=biolink:Disease)
+      - e00()
+      - n01(category=biolink:Protein)
+      - e01()
+      - n01(category=biolink:ChemicalSubstance)
+    DSL:
+      - expand(kp=ARAX/KG2, continue_if_no_results=true)
+      #- expand(edge_key=[e00,e01], kp=BTE, continue_if_no_results=true)  # this is waaaaaay to slow
+      - expand(edge_key=e00, kp=BTE, continue_if_no_results=true)
+      #- expand(edge_key=e00, kp=GeneticsKP, continue_if_no_results=true)  # Haven't figured out why this doesn't work...
+      - overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)
+      - overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)
+      - overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n01, object_qnode_key=n02)
+      - resultify(ignore_edge_direction=true)
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   ####################################################################################################
   #### Three node, two-hop questions
   two_hop_classic_question:
-    name: Two hop question with one curie and two typed nodes
-    description: Three nodes, one of which has a curie and the other two have a type
-    restated_question: Which n02(type)s share the most n01(type)s in common with n00(name)?
+    name: Two hop question with one curie and two category nodes
+    description: Three nodes, one of which has a curie and the other two have a category
+    restated_question: Which n01(category)s share the most n01(category)s in common with n00(name)?
     template:
-      - n00(curie)
+      - n00(id)
       - e00()
-      - n01(type)
+      - n01(category)
       - e01()
-      - n02(type)
+      - n02(category)
     DSL:
-      - expand(edge_id=[e00,e01])
-      - overlay(action=compute_jaccard, start_node_id=n00, intermediate_node_id=n01, end_node_id=n02, virtual_relation_label=J1)
+      - expand(kp=ARAX/KG2)
+      - overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)
       - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
 
-  two_hop_curie-type-curie_question:
-    name: Two hop question where both end nodes are provided and a type in the middle
+  two_hop_curie-category-curie_question:
+    name: Two hop question where both end nodes are provided and a category in the middle
     description: Three nodes, the two ends of which have a curie
-    restated_question: Which n01(type)s connect n00(name) and n02(name)?
+    restated_question: Which n01(category)s connect n00(name) and n02(name)?
     template:
-      - n00(curie)
+      - n00(id)
       - e00()
-      - n01(type)
+      - n01(category)
       - e01()
-      - n02(curie)
+      - n02(id)
     DSL:
-      - expand(edge_id=[e00,e01])
+      - expand(kp=ARAX/KG2)
       - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
 
   two_hop_two_curie_question:
-    name: Two hop question where both end nodes are provided and no type in the middle
-    description: Three nodes, the two ends of which have a curie and no type in the middle
-    restated_question: which n01(type)s connect n00(name) and n02(name)?
+    name: Two hop question where both end nodes are provided and no category in the middle
+    description: Three nodes, the two ends of which have a curie and no category in the middle
+    restated_question: which n01(category)s connect n00(name) and n02(name)?
     template:
-      - n00(curie)
+      - n00(id)
       - e00()
       - n01()
       - e01()
-      - n02(curie)
+      - n02(id)
     DSL:
-      - expand(edge_id=[e00,e01])
+      - expand(kp=ARAX/KG2)
       - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
 
 
 

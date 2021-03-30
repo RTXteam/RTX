@@ -8,4 +8,17 @@ conda create -n test -c conda-forge -f environment_p2.7.yml
 #### set up environment for python v3.7
 conda create -n test -c conda-forge -f environment_p3.7.yml
 
-After setting up the conda environment, please follow the bash scripts (eg. 1_graphsage_make_data.sh, 2_run_graphsage_unsupervised_train.sh, 3_transform_to_emb_format.sh) to prepare the input files and run GraphSage. The prefix of these scripts is the order of running these scripts. So first run 1_graphsage_make_data.sh to prepare the input files (Note: please use conda environment with python v3.7 to run this script) and then run 2_run_graphsage_unsupervised_train.sh (Note: please use conda environment with python v2.7 to run this script). Once GraphSage is done, please use 3_transform_to_emb_format.sh to transform GraphSage output format to emb format. 
+After setting up the conda environment, please follow the bash scripts (eg. 0_generate_graph_data_and_model_training_data.sh, 1_graphsage_make_data.sh, 2_run_graphsage_unsupervised_train.sh, 3_transform_to_emb_format.sh, 4_build_emb_sqlite_database.sh, 5_build_DTD_probability_database.sh) to train DTD model. The prefix of these scripts is the order of running these scripts. 
+
+0_generate_graph_data_and_model_training_data.sh: This script is used to generate to pull the graph data from Neo4j server and automatically generate the training data.
+
+1_graphsage_make_data.sh: This script is used to prepare the input files. (Note: please use conda environment with python v3.7 to run this script)
+
+2_run_graphsage_unsupervised_train.sh: This script is used to run GraphSage to geneate the embedding vectors. (Note: please use conda environment with python v2.7 to run this script)
+
+3_transform_to_emb_format.sh: This script is used to transform GraphSage output format to emb format. 
+
+4_build_emb_sqlite_database.sh: This script is used to build MySQL database for emb file.
+
+5_build_DTD_probability_database.sh: This script is used to build the drug-treats-disease probability database.
+

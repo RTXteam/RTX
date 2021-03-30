@@ -15,13 +15,13 @@ class TestExampleQuestionsController(BaseTestCase):
     def test_example_questions(self):
         """Test case for example_questions
 
-        Request a list of example questions that RTX can answer
+        Request a list of example questions that ARAX can answer
         """
         headers = { 
             'Accept': 'application/json',
         }
         response = self.client.open(
-            '/api/rtx/v1/exampleQuestions',
+            '/api/arax/v1/exampleQuestions',
             method='GET',
             headers=headers)
         self.assert200(response,
