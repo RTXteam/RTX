@@ -1,5 +1,5 @@
 #!/bin/env python3
-import json
+import ujson
 import sqlite3
 import sys
 import os
@@ -167,7 +167,7 @@ class KG2Querier:
             cursor.execute(sql_query)
             rows = cursor.fetchall()
             for row in rows:
-                node_as_dict = json.loads(row[0])
+                node_as_dict = ujson.loads(row[0])
                 node_key, node = self._convert_neo4j_node_to_trapi_node(node_as_dict, kg_name)
                 answer_kg.add_node(node_key, node, qnode_key)
         log.debug(f"Grabbing {num_nodes} nodes from sqlite and loading into object model took "
@@ -185,7 +185,7 @@ class KG2Querier:
             cursor.execute(sql_query)
             rows = cursor.fetchall()
             for row in rows:
-                edge_as_dict = json.loads(row[0])
+                edge_as_dict = ujson.loads(row[0])
                 edge_key, edge = self._convert_neo4j_edge_to_trapi_edge(edge_as_dict, dict(), kg_name)
                 answer_kg.add_edge(edge_key, edge, qedge_key)
         log.debug(f"Grabbing {num_edges} edges from sqlite and loading into object model took "
