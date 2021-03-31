@@ -1024,6 +1024,15 @@ class ARAXExpander:
     # returns True if at least one possible triple exists in the predicates endpoint response
     @staticmethod
     def _triple_is_in_predicates_response(predicates_dict: dict, subject_list: list, predicate_list: list, object_list: list, log: ARAXResponse)  -> bool:
+        # handle potential emptiness of sub, obj, predicate lists
+        if not subject_list: #any subject
+            subject_list = list(predicates_dict.keys())
+        if not object_list: #any object
+            object_set = set()
+            _ = [object_set.add(obj) for obj_dict in predicates_dict.values() for obj in obj_dict.keys()]
+            object_list = list(object_set)
+        any_predicate = False if predicate_list else True
+
         # handle combinations of subject and objects using cross product
         qg_sub_obj_dict = defaultdict(lambda: set())
         for sub, obj in list(product(subject_list, object_list)):
@@ -1040,7 +1049,7 @@ class ARAXExpander:
               if len(accepted_objs) > 0:
                     # check predicates
                     for obj in accepted_objs:
-                        if set(predicate_list).intersection(set(predicates_dict[sub][obj])):
+                        if any_predicate or set(predicate_list).intersection(set(predicates_dict[sub][obj])):
                                 return True
         return False
                                     
