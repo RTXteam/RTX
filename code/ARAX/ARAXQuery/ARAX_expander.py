@@ -1002,13 +1002,15 @@ class ARAXExpander:
         
         # use /predicates for each possible kp to get available predicates
         # is there a place to get this list instead of hardcoding it?
-        all_kps = ["BTE", "GeneticsKP", "MolePro", "ARAX/KG2"]
-
+        all_kps = list(self.command_definitions.keys())
         kps_to_return = []
         # check each kp response for triple membership
         for kp in all_kps:
             # get predicates dictionary from KP
             kp_endpoint = eu.get_kp_endpoint_url(kp)
+            if kp_endpoint is None:
+                log.debug(f"No endpoint for {kp}. Skipping for now.")
+                continue
             kp_predicates_response = requests.get(f"{kp_endpoint}/predicates", headers={'accept': 'application/json'})
             if kp_predicates_response.status_code != 200:
                 log.warning(f"Unable to access {kp}'s predicates endpoint "
