@@ -1,11 +1,11 @@
 #!/bin/env python3
+import json
 import sys
 import os
 from typing import List, Dict, Tuple, Union, Set, Optional
 from itertools import product
 from collections import defaultdict
-
-import requests
+import urllib.request
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
@@ -1011,12 +1011,12 @@ class ARAXExpander:
             if kp_endpoint is None:
                 log.debug(f"No endpoint for {kp}. Skipping for now.")
                 continue
-            kp_predicates_response = requests.get(f"{kp_endpoint}/predicates", headers={'accept': 'application/json'})
-            if kp_predicates_response.status_code != 200:
+            kp_predicates_response = urllib.request.urlopen(f"{kp_endpoint}/predicates")
+            if kp_predicates_response.status != 200:
                 log.warning(f"Unable to access {kp}'s predicates endpoint "
-                             f"(returned status of {kp_predicates_response.status_code})")
+                             f"(returned status of {kp_predicates_response.status})")
                 continue
-            predicates_dict = kp_predicates_response.json()
+            predicates_dict = json.loads(kp_predicates_response.read())
             if self._triple_is_in_predicates_response(predicates_dict, sub_category_list, predicate_list, obj_category_list, log):
                 kps_to_return.append(kp)
         return kps_to_return
