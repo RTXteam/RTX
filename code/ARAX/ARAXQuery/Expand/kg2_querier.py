@@ -1,9 +1,12 @@
 #!/bin/env python3
+import ujson
+import sqlite3
 import sys
 import os
+import time
 import traceback
 import ast
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Set, Union
 
 import requests
 import yaml
@@ -78,16 +81,18 @@ class KG2Querier:
                 qnode.id = canonical_curies
             qnode.category = []  # Important to clear this, otherwise results are limited (#889)
 
-        # Run the actual query and process results
-        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, log)
-        if log.status != 'OK':
-            return final_kg
-        neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, kg_name, log)
-        if log.status != 'OK':
-            return final_kg
-        final_kg = self._load_answers_into_kg(neo4j_results, kg_name, query_graph, log)
-        if log.status != 'OK':
-            return final_kg
+        if kg_name == "KG2c":
+            # Use Plover to answer KG2c queries
+            plover_answer, response_status = self._answer_query_using_plover(query_graph, log)
+            if response_status == 200:
+                final_kg = self._grab_nodes_and_edges_from_sqlite(plover_answer, kg_name, log)
+            else:
+                # Backup to using neo4j in the event plover failed
+                log.warning(f"Plover returned a {response_status} response, so I'm backing up to Neo4j..")
+                final_kg = self._answer_query_using_neo4j(query_graph, kg_name, qedge_key, enforce_directionality, log)
+        else:
+            # Use Neo4j for KG2 and KG1 queries
+            final_kg = self._answer_query_using_neo4j(query_graph, kg_name, qedge_key, enforce_directionality, log)
 
         return final_kg
 
@@ -97,7 +102,6 @@ class KG2Querier:
         log = self.response
         if kg_name == "KG1":
             single_node_qg = eu.make_qg_use_old_snake_case_types(single_node_qg)
-        final_kg = QGOrganizedKnowledgeGraph()
         qnode_key = next(qnode_key for qnode_key in single_node_qg.nodes)
         qnode = single_node_qg.nodes[qnode_key]
 
@@ -110,9 +114,109 @@ class KG2Querier:
                 qnode.id = eu.get_canonical_curies_list(qnode.id, log)
                 qnode.category = []  # Important to clear this to avoid discrepancies in types for particular concepts
 
+        if kg_name == "KG2c":
+            # Use Plover to answer KG2c queries
+            plover_answer, response_status = self._answer_query_using_plover(single_node_qg, log)
+            if response_status == 200:
+                final_kg = self._grab_nodes_and_edges_from_sqlite(plover_answer, kg_name, log)
+            else:
+                # Backup to using neo4j in the event plover failed
+                log.warning(f"Plover returned a {response_status} response, so I'm backing up to Neo4j..")
+                final_kg = self._answer_single_node_query_using_neo4j(qnode_key, single_node_qg, kg_name, log)
+        else:
+            # Use Neo4j for KG2 and KG1 queries
+            final_kg = self._answer_single_node_query_using_neo4j(qnode_key, single_node_qg, kg_name, log)
+
+        return final_kg
+
+    @staticmethod
+    def _answer_query_using_plover(qg: QueryGraph, log: ARAXResponse) -> Tuple[Dict[str, Dict[str, Set[Union[str, int]]]], int]:
+        rtxc = RTXConfiguration()
+        rtxc.live = "Production"
+        log.debug(f"Sending query to Plover")
+        response = requests.post(f"{rtxc.plover_url}/query", json=qg.to_dict(), headers={'accept': 'application/json'})
+        if response.status_code == 200:
+            log.debug(f"Got response back from Plover")
+            return response.json(), response.status_code
+        else:
+            log.warning(f"Plover returned a status code of {response.status_code}. Response was: {response.text}")
+            return dict(), response.status_code
+
+    def _grab_nodes_and_edges_from_sqlite(self, plover_answer: Dict[str, Dict[str, Set[Union[str, int]]]], kg_name: str,
+                                          log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        # Get connected to the local sqlite database (look up its path using database manager-friendly method)
+        path_list = os.path.realpath(__file__).split(os.path.sep)
+        rtx_index = path_list.index("RTX")
+        rtxc = RTXConfiguration()
+        sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+        sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
+        sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
+        connection = sqlite3.connect(sqlite_file_path)
+        cursor = connection.cursor()
+        answer_kg = QGOrganizedKnowledgeGraph()
+
+        # Grab the node objects from sqlite corresponding to the returned node IDs
+        num_nodes = sum([len(nodes) for nodes in plover_answer["nodes"].values()])
+        start = time.time()
+        for qnode_key, node_keys in plover_answer["nodes"].items():
+            node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
+            sql_query = f"SELECT N.node " \
+                        f"FROM nodes AS N " \
+                        f"WHERE N.id IN ('{node_keys_str}')"
+            log.debug(f"Looking up {len(plover_answer['nodes'][qnode_key])} returned {qnode_key} node IDs in KG2c sqlite")
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            for row in rows:
+                node_as_dict = ujson.loads(row[0])
+                node_key, node = self._convert_neo4j_node_to_trapi_node(node_as_dict, kg_name)
+                answer_kg.add_node(node_key, node, qnode_key)
+        log.debug(f"Grabbing {num_nodes} nodes from sqlite and loading into object model took "
+                  f"{round(time.time() - start, 2)} seconds")
+
+        # Grab the edge objects from sqlite corresponding to the returned edge IDs
+        num_edges = sum([len(edges) for edges in plover_answer["edges"].values()])
+        start = time.time()
+        for qedge_key, edge_keys in plover_answer["edges"].items():
+            edge_keys_str = ",".join(str(edge_key) for edge_key in edge_keys)  # SQL wants (1, 2) format int lists
+            sql_query = f"SELECT E.edge " \
+                        f"FROM edges AS E " \
+                        f"WHERE E.id IN ({edge_keys_str})"
+            log.debug(f"Looking up {len(plover_answer['edges'][qedge_key])} returned {qedge_key} edge IDs in KG2c sqlite")
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            for row in rows:
+                edge_as_dict = ujson.loads(row[0])
+                edge_key, edge = self._convert_neo4j_edge_to_trapi_edge(edge_as_dict, dict(), kg_name)
+                answer_kg.add_edge(edge_key, edge, qedge_key)
+        log.debug(f"Grabbing {num_edges} edges from sqlite and loading into object model took "
+                  f"{round(time.time() - start, 2)} seconds")
+
+        cursor.close()
+        connection.close()
+        return answer_kg
+
+    def _answer_query_using_neo4j(self, qg: QueryGraph, kg_name: str, qedge_key: str, enforce_directionality: bool,
+                                  log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        answer_kg = QGOrganizedKnowledgeGraph()
+        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(qg, enforce_directionality, log)
+        if log.status != 'OK':
+            return answer_kg
+        neo4j_results = self._send_query_to_neo4j(cypher_query, qedge_key, kg_name, log)
+        if log.status != 'OK':
+            return answer_kg
+        answer_kg = self._load_answers_into_kg(neo4j_results, kg_name, qg, log)
+        if log.status != 'OK':
+            return answer_kg
+
+        return answer_kg
+
+    def _answer_single_node_query_using_neo4j(self, qnode_key: str, qg: QueryGraph, kg_name: str, log: ARAXResponse):
+        qnode = qg.nodes[qnode_key]
+        answer_kg = QGOrganizedKnowledgeGraph()
+
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
-        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, single_node_qg)} WHERE {where_clause} RETURN {qnode_key}"
+        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, qg)} WHERE {where_clause} RETURN {qnode_key}"
         log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
 
@@ -120,9 +224,9 @@ class KG2Querier:
         for result in results:
             neo4j_node = result.get(qnode_key)
             node_key, node = self._convert_neo4j_node_to_trapi_node(neo4j_node, kg_name)
-            final_kg.add_node(node_key, node, qnode_key)
+            answer_kg.add_node(node_key, node, qnode_key)
 
-        return final_kg
+        return answer_kg
 
     def _convert_one_hop_query_graph_to_cypher_query(self, qg: QueryGraph, enforce_directionality: bool,
                                                      log: ARAXResponse) -> str:
@@ -174,7 +278,7 @@ class KG2Querier:
             log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
             return ""
 
-    def _answer_query_using_neo4j(self, cypher_query: str, qedge_key: str, kg_name: str, log: ARAXResponse) -> List[Dict[str, List[Dict[str, any]]]]:
+    def _send_query_to_neo4j(self, cypher_query: str, qedge_key: str, kg_name: str, log: ARAXResponse) -> List[Dict[str, List[Dict[str, any]]]]:
         log.info(f"Sending cypher query for edge {qedge_key} to {kg_name} neo4j")
         results_from_neo4j = self._run_cypher_query(cypher_query, kg_name, log)
         if log.status == 'OK':
