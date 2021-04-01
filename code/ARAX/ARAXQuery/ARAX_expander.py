@@ -12,6 +12,7 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
+from director import Director
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
@@ -349,6 +350,7 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
 
+                director = Director(log)
                 kps_to_query = self._get_kps_for_single_hop_qg(one_hop_qg, log)
                 log.debug(f"List of KPs to query is: {kps_to_query}")
                 for kp_to_use in kps_to_query:
