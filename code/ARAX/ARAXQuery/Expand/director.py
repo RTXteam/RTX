@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import sys
+from typing import List
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
@@ -20,10 +21,10 @@ class Director:
         if self._need_to_regenerate_meta_map():
             self._regenerate_meta_map()
         # Load our map now that we know it's up to date
-        with open(self.meta_map_path) as meta_map_file:
-            self.meta_map = json.load(meta_map_file)
+        with open(self.meta_map_path) as map_file:
+            self.meta_map = json.load(map_file)
 
-    def get_kps_for_single_hop_qg(self, qg: QueryGraph):
+    def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> List[str]:
         # TODO: Copy over Lindsey's work from ARAX_expander.py that does this (but have it look at self.meta_map)
         pass
 
