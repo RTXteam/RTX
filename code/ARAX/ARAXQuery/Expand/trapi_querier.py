@@ -3,7 +3,7 @@ import json
 import sys
 import os
 import requests
-from typing import List, Dict, Tuple, Set, Union
+from typing import List, Dict, Set, Union
 
 import Expand.expand_utilities as eu
 from Expand.expand_utilities import QGOrganizedKnowledgeGraph
@@ -15,7 +15,6 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
-from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.result import Result
 
 
@@ -32,37 +31,33 @@ class TRAPIQuerier:
         self.kp_supports_none_for_category = eu.kp_supports_none_for_category(kp_name)
         self.kp_supports_none_for_predicate = eu.kp_supports_none_for_predicate(kp_name)
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a one-hop (single-edge) query using the specified KP.
         :param query_graph: A TRAPI query graph.
-        :return: A tuple containing:
-            1. An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
-           results for the query. (Organized by QG IDs.)
-            2. A map of which nodes fulfilled which qnode_keys for each edge. Example:
-              {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
+        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
+                results for the query. (Organized by QG IDs.)
         """
         log = self.log
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
         qg_copy = eu.copy_qg(query_graph)  # Create a copy so we don't modify the original
 
         # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
         self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+            return final_kg
         qg_copy = self._preprocess_query_graph(qg_copy)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+            return final_kg
         if not self.kp_name.endswith("KG2"):  # Skip for KG2 for now since predicates/ isn't symmetric yet
             self._verify_qg_is_accepted_by_kp(qg_copy)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         # Answer the query using the KP and load its answers into our object model
         if self.kp_name.endswith("KG2"):
             # Our KPs can handle batch queries (where qnode.id is a list of curies)
-            final_kg, edge_to_nodes_map = self._answer_query_using_kp(qg_copy)
+            final_kg = self._answer_query_using_kp(qg_copy)
         else:
             # Otherwise we need to search for curies one-by-one (until TRAPI includes a batch querying method)
             qedge = next(qedge for qedge in qg_copy.edges.values())
@@ -79,13 +74,12 @@ class TRAPIQuerier:
                 qg_copy.nodes[qedge.object].id = object_curie
                 self.log.debug(f"Current curie pair is: subject: {subject_curie}, object: {object_curie}")
                 if self.kp_supports_category_lists and self.kp_supports_predicate_lists:
-                    sub_kg, sub_edge_to_nodes_map = self._answer_query_using_kp(qg_copy)
+                    sub_kg = self._answer_query_using_kp(qg_copy)
                 else:
-                    sub_kg, sub_edge_to_nodes_map = self._answer_query_for_kps_who_dont_like_lists(qg_copy)
-                edge_to_nodes_map.update(sub_edge_to_nodes_map)
+                    sub_kg = self._answer_query_for_kps_who_dont_like_lists(qg_copy)
                 final_kg = eu.merge_two_kgs(sub_kg, final_kg)
 
-        return final_kg, edge_to_nodes_map
+        return final_kg
 
     def answer_single_node_query(self, single_node_qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -107,7 +101,7 @@ class TRAPIQuerier:
             return final_kg
 
         # Answer the query using the KP and load its answers into our object model
-        final_kg, _ = self._answer_query_using_kp(qg_copy)
+        final_kg = self._answer_query_using_kp(qg_copy)
         return final_kg
 
     def _verify_is_one_hop_query_graph(self, query_graph: QueryGraph):
@@ -244,25 +238,8 @@ class TRAPIQuerier:
                     qedge_key_mappings[kg_id].add(qedge_key)
         return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}
 
-    def _create_edge_to_nodes_map(self, kg_to_qg_mappings: Dict[str, Dict[str, Set[str]]], kg: KnowledgeGraph, qedge: QEdge) -> Dict[str, Dict[str, str]]:
-        """
-        This function creates an 'edge_to_nodes_map' that indicates which of an edge's nodes (subject or object) is
-        fulfilling which qnode ID (since edge.subject does not necessarily fulfill qedge.subject).
-        Example: {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:12'}}
-        """
-        edge_to_nodes_map = dict()
-        node_to_qnode_map = kg_to_qg_mappings["nodes"]
-        for edge_key, edge in kg.edges.items():
-            arax_edge_key = self._get_arax_edge_key(edge)  # We use edge keys guaranteed to be unique across KPs
-            if qedge.subject in node_to_qnode_map[edge.subject] and qedge.object in node_to_qnode_map[edge.object]:
-                edge_to_nodes_map[arax_edge_key] = {qedge.subject: edge.subject, qedge.object: edge.object}
-            else:
-                edge_to_nodes_map[arax_edge_key] = {qedge.subject: edge.object, qedge.object: edge.subject}
-        return edge_to_nodes_map
-
-    def _answer_query_using_kp(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_kp(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         answer_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
         # Strip non-essential and 'empty' properties off of our qnodes and qedges
         stripped_qnodes = {qnode_key: self._strip_empty_properties(qnode)
                            for qnode_key, qnode in query_graph.nodes.items()}
@@ -296,17 +273,13 @@ class TRAPIQuerier:
                 for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
                     for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
                         answer_kg.add_node(returned_node_key, returned_node, qnode_key)
-                # Build a map that indicates which of an edge's nodes fulfill which qnode
-                if query_graph.edges:
-                    qedge = next(qedge for qedge in query_graph.edges.values())
-                    edge_to_nodes_map = self._create_edge_to_nodes_map(kg_to_qg_mappings, kp_message.knowledge_graph, qedge)
         else:
             self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. Response from KP was:"
                              f" {json.dumps(json_response, indent=4)}")
 
-        return answer_kg, edge_to_nodes_map
+        return answer_kg
 
-    def _answer_query_for_kps_who_dont_like_lists(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_for_kps_who_dont_like_lists(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
         TRAPI 1.0 says qnode.category and qedge.predicate can both be strings OR lists, but many KPs don't support
         them being lists. So this function pings such KPs one by one for each possible
@@ -322,7 +295,6 @@ class TRAPIQuerier:
         possible_triples = [(subject_category, predicate, object_category) for subject_category in subject_categories
                             for predicate in predicates for object_category in object_categories]
         answer_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
         for possible_triple in possible_triples:
             current_subject_category = possible_triple[0]
             current_predicate = possible_triple[1]
@@ -332,12 +304,11 @@ class TRAPIQuerier:
             qg_copy.nodes[qedge.object].category = current_object_category
             qg_copy.edges[qedge_key].predicate = current_predicate
             self.log.debug(f"Current triple is: {current_subject_category}--{current_predicate}--{current_object_category}")
-            sub_kg, sub_edge_to_nodes_map = self._answer_query_using_kp(qg_copy)
+            sub_kg = self._answer_query_using_kp(qg_copy)
             # Merge the answers for this triple into our answers received thus far
-            edge_to_nodes_map.update(sub_edge_to_nodes_map)
             answer_kg = eu.merge_two_kgs(sub_kg, answer_kg)
 
-        return answer_kg, edge_to_nodes_map
+        return answer_kg
 
     @staticmethod
     def _strip_empty_properties(qnode_or_qedge: Union[QNode, QEdge]) -> Dict[str, any]:

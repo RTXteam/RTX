@@ -5,6 +5,13 @@ import numpy as np
 import sqlite3
 import pickle
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-c", "--cohd", action='store_true')
+parser.add_argument("-d", "--dtd", action='store_true')
+arguments = parser.parse_args()
+
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
@@ -13,15 +20,43 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer/']))
 from node_synonymizer import NodeSynonymizer ##Note: For different version of kg2, use corresponding nodesynonymizer
 
+# Get the file paths for the databases
+dtd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
+cohd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
+
+# Import RTX config
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+
+RTXConfig = RTXConfiguration()
+
 ########## paramters ###############
-database = 'COHD' # 'DTD' or 'COHD'
+#database = 'COHD' # 'DTD' or 'COHD'
+if arguments.cohd:
+    database = 'COHD'
+elif arguments.dtd:
+    database = 'DTD'
+else:
+    print(f'Neither --dtd not --cohd supplied defaulting to cohd...')
+    database = 'COHD'
 ## if database = 'DTD', provide the path of following database files, default is None
-db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/GRAPH_v1.0_KG2.3.4.sqlite
-DTD_prob_db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/DTD_probability_database_v1.0_KG2.3.4.db
+#db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/GRAPH_v1.0_KG2.3.4.sqlite
+#DTD_prob_db_file = None ## example: RTX/code/ARAX/KnowledgeSources/Prediction/DTD_probability_database_v1.0_KG2.3.4.db
+## FW: below is an exampe of how you would do the dtd and graph databases
+db_file = f"{dtd_filepath}{os.path.sep}{RTXConfig.graph_database_path.split('/')[-1]}"
+DTD_prob_db_file = f"{dtd_filepath}{os.path.sep}{RTXConfig.dtd_prob_path.split('/')[-1]}"
 ## if database = 'COHD', provide the path of following database files, default is None
-cohd_file = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db' ##  example: RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db
-output_folder = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/' ## os.getcwd()
-DSL_queries = [
+#cohd_file = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db' ##  example: RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v2.0_KG2.3.4.db
+cohd_file = f"{cohd_filepath}{os.path.sep}{RTXConfig.cohd_database_path.split('/')[-1]}"
+#output_folder = '/home/cqm5886/work/RTX/code/ARAX/KnowledgeSources/COHD_local/data/' ## os.getcwd()
+cohd_output_folder = f"{cohd_filepath}{os.path.sep}"
+dtd_output_folder = f"{dtd_filepath}{os.path.sep}"
+if database == 'COHD':
+    output_folder = cohd_output_folder
+elif database == 'DTD':
+    output_folder = dtd_output_folder
+
+cohd_DSL_queries = [
 {"operations": {"actions": [
         "add_qnode(id=UMLS:C0015967, key=n00)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
@@ -214,99 +249,99 @@ DSL_queries = [
 ]
 
 ## Below queries are for DTD
-# [
-# {"operations": {"actions": [
-#         "add_qnode(name=acetaminophen, key=n0)",
-#         "add_qnode(name=Sotos syndrome, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-# "add_qnode(name=acetaminophen, key=n0)",
-#         "add_qnode(category=disease, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(id=DOID:9008, key=n0, category=biolink:Disease)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=ARAX/KG1)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
-#         "resultify()",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(id=DOID:9008, key=n0)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=ARAX/KG1)",
-#         "overlay(action=predict_drug_treats_disease)",
-#         "resultify()",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(id=DOID:9008, key=n0)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=ARAX/KG1)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
-#         "resultify()",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(id=UniProtKB:Q13627, key=n0)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
-#         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=ARAX/KG1)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
-#         "resultify()",
-#         "return(message=true, store=false)",
-#     ]}},
-# {"operations": {"actions": [
-#         "add_qnode(id=DOID:11830, category=disease, key=n00)",
-#         "add_qnode(category=biolink:Gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
-#         "add_qedge(subject=n00, object=n01, key=e00)",
-#         "add_qedge(subject=n01, object=n02, key=e01)",
-#         "expand(kp=BTE)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
-#         "resultify(ignore_edge_direction=true)",
-#         "return(message=true, store=false)"
-#     ]}},
-# {"operations": {"actions": [
-#         "create_message",
-#         "add_qnode(name=DOID:14330, key=n00)",
-#         "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-#         "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
-#         "add_qedge(subject=n00, object=n01, key=e00)",
-#         "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
-#         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
-#         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
-#         "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
-#         "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-#         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
-#         "return(message=true, store=false)",
-#     ]}},
-# {"operations": {"actions": [
-#             "create_message",
-#             f"add_qnode(id=DOID:11830, key=n00, category=biolink:Disease)",
-#             "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
-#             "add_qedge(subject=n00, object=n01, key=e00)",
-#             "expand(edge_key=e00, kp=ARAX/KG2)",
-#             "expand(edge_key=e00, kp=BTE)",
-#             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-#             "overlay(action=predict_drug_treats_disease)",
-#             "return(message=true, store=false)",
-#         ]}}
-# ]
-## example:
+dtd_DSL_queries = [
+{"operations": {"actions": [
+        "add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(name=Sotos syndrome, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+"add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(category=disease, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=DOID:9008, key=n0, category=biolink:Disease)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=DOID:9008, key=n0)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "overlay(action=predict_drug_treats_disease)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=DOID:9008, key=n0)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=UniProtKB:Q13627, key=n0)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
+        "resultify()",
+        "return(message=true, store=false)",
+    ]}},
+{"operations": {"actions": [
+        "add_qnode(id=DOID:11830, category=biolink:Disease, key=n00)",
+        "add_qnode(category=biolink:Gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01)",
+        "expand(kp=BTE)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
+        "resultify(ignore_edge_direction=true)",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=DOID:14330, key=n00)",
+        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
+        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
+        "return(message=true, store=false)",
+    ]}},
+{"operations": {"actions": [
+            "create_message",
+            f"add_qnode(id=DOID:11830, key=n00, category=biolink:Disease)",
+            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "expand(edge_key=e00, kp=ARAX/KG2)",
+            "expand(edge_key=e00, kp=BTE)",
+            "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+            "overlay(action=predict_drug_treats_disease)",
+            "return(message=true, store=false)",
+        ]}}
+]
+# # example:
 # [{"operations": {"actions": [
 #         "add_qnode(name=acetaminophen, key=n0)",
 #         "add_qnode(name=Sotos syndrome, key=n1)",
@@ -334,6 +369,11 @@ DSL_queries = [
 # ]
 
 #####################################
+
+if database == 'COHD':
+    DSL_queries = cohd_DSL_queries
+elif database == 'DTD':
+    DSL_queries = dtd_DSL_queries
 
 ########### Below is the main code to run script ##################
 araxq = ARAXQuery()
@@ -366,14 +406,15 @@ if database == 'DTD':
             con = sqlite3.connect(DTD_prob_db_file)
             table = pd.read_sql_query("SELECT * from DTD_PROBABILITY", con)
             con.close()
-            drug_list = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] for curie in target_curie_list if synonymizer.get_canonical_curies(curie)[curie] is not None and synonymizer.get_canonical_curies(curie)[curie]['preferred_type'] in ['drug','chemical_substance']]
-            disease_list = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] for curie in target_curie_list if synonymizer.get_canonical_curies(curie)[curie] is not None and synonymizer.get_canonical_curies(curie)[curie]['preferred_type'] in ['disease','disease_or_phenotypic_feature','phenotypic_feature']]
+            drug_list = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] for curie in target_curie_list if synonymizer.get_canonical_curies(curie)[curie] is not None and synonymizer.get_canonical_curies(curie)[curie]['preferred_category'] in ['drug','chemical_substance','biolink:Drug','biolink:ChemicalSubstance']]
+            disease_list = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] for curie in target_curie_list if synonymizer.get_canonical_curies(curie)[curie] is not None and synonymizer.get_canonical_curies(curie)[curie]['preferred_category'] in ['disease','disease_or_phenotypic_feature','phenotypic_feature', 'biolink:Disease','biolink:DiseaseOrPhenotypicFeature','biolink:PhenotypicFeature']]
             table = table.loc[table.disease.isin(disease_list) & table.drug.isin(drug_list),:]
             for col in table.columns:
                 table[col] = table[col].astype(str)
             databasefile = list(table.to_records(index=False))
             print(f"Start building the slim version of DTD_probability_database_slim.db", flush=True)
-            con = sqlite3.connect(os.path.join(output_folder, 'DTD_probability_database_slim.db'))
+            #con = sqlite3.connect(os.path.join(output_folder, 'DTD_probability_database_slim.db'))
+            con = sqlite3.connect(DTD_prob_db_file.replace(".db", "_slim.db"))
             con.execute(f"DROP TABLE IF EXISTs DTD_PROBABILITY")
             con.execute(f"CREATE TABLE DTD_PROBABILITY( disease VARCHAR(255), drug VARCHAR(255), probability FLOAT )")
             insert_command = "INSERT INTO DTD_PROBABILITY VALUES (?, ?, ?)"
@@ -415,7 +456,8 @@ if database == 'DTD':
             databasefile = list(table.to_records(index=False))
             con.close()
             print(f"Start building the slim version of GRAPH_slim.db", flush=True)
-            con = sqlite3.connect(os.path.join(output_folder, 'GRAPH_slim.sqlite'))
+            #con = sqlite3.connect(os.path.join(output_folder, 'GRAPH_slim.sqlite'))
+            con = sqlite3.connect(db_file.replace(".sqlite", "_slim.sqlite"))
             insert_command1 = f"CREATE TABLE GRAPH(curie VARCHAR(255)"
             for num in range(1,table.shape[1]):
                 insert_command1 = insert_command1 + f", col{num} INT"
@@ -463,18 +505,34 @@ elif database == 'COHD':
         # print(target_curie_list)
         if os.path.isfile(cohd_file):
             con = sqlite3.connect(cohd_file)
-            curie_to_omop_mapping = pd.read_sql_query("SELECT * from CURIE_TO_OMOP_MAPPING", con)
-            curie_to_omop_mapping = curie_to_omop_mapping.loc[curie_to_omop_mapping.preferred_curie.isin(target_curie_list),:].reset_index(drop=True)
-            single_concept_counts = pd.read_sql_query("SELECT * from SINGLE_CONCEPT_COUNTS", con)
-            single_concept_counts = single_concept_counts.loc[single_concept_counts.concept_id.isin(list(curie_to_omop_mapping.concept_id)),:].reset_index(drop=True)
-            concepts = pd.read_sql_query("SELECT * from CONCEPTS", con)
-            concepts = concepts.loc[concepts.concept_id.isin(list(curie_to_omop_mapping.concept_id)),:].reset_index(drop=True)
+            curie_to_omop_mapping = con.execute(f"select * from CURIE_TO_OMOP_MAPPING where preferred_curie in {tuple(target_curie_list)}")
+            curie_to_omop_mapping = pd.DataFrame(curie_to_omop_mapping)
+            cursor = con.execute(f"select * from CURIE_TO_OMOP_MAPPING")
+            names = list(map(lambda x: x[0], cursor.description))
+            curie_to_omop_mapping.columns = names
+
+            single_concept_counts = con.execute(f"select * from SINGLE_CONCEPT_COUNTS where concept_id in {tuple(list(curie_to_omop_mapping.concept_id))}")
+            single_concept_counts = pd.DataFrame(single_concept_counts)
+            cursor = con.execute(f"select * from SINGLE_CONCEPT_COUNTS")
+            names = list(map(lambda x: x[0], cursor.description))
+            single_concept_counts.columns = names
+
+            concepts = con.execute(f"select * from CONCEPTS where concept_id in {tuple(list(curie_to_omop_mapping.concept_id))}")
+            concepts = pd.DataFrame(concepts)
+            cursor = con.execute(f"select * from CONCEPTS")
+            names = list(map(lambda x: x[0], cursor.description))
+            concepts.columns = names
+
             patient_count = pd.read_sql_query("SELECT * from PATIENT_COUNT", con)
             dataset = pd.read_sql_query("SELECT * from DATASET", con)
             domain_concept_counts = pd.read_sql_query("SELECT * from DOMAIN_CONCEPT_COUNTS", con)
             domain_pair_concept_counts = pd.read_sql_query("SELECT * from DOMAIN_PAIR_CONCEPT_COUNTS", con)
-            paired_concept_counts_associations = pd.read_sql_query("SELECT * from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS", con)
-            paired_concept_counts_associations = paired_concept_counts_associations.loc[paired_concept_counts_associations.concept_id_1.isin(list(curie_to_omop_mapping.concept_id)) & paired_concept_counts_associations.concept_id_2.isin(list(curie_to_omop_mapping.concept_id)),:].reset_index(drop=True)
+
+            paired_concept_counts_associations = con.execute(f"select * from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(list(curie_to_omop_mapping.concept_id))} and concept_id_2 in {tuple(list(curie_to_omop_mapping.concept_id))}")
+            paired_concept_counts_associations = pd.DataFrame(paired_concept_counts_associations)
+            cursor = con.execute(f"select * from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS")
+            names = list(map(lambda x: x[0], cursor.description))
+            paired_concept_counts_associations.columns = names
             con.close()
             all_tables = [curie_to_omop_mapping, single_concept_counts, concepts, patient_count, dataset, domain_concept_counts, domain_pair_concept_counts, paired_concept_counts_associations]
             all_table_names = ['CURIE_TO_OMOP_MAPPING', 'SINGLE_CONCEPT_COUNTS', 'CONCEPTS', 'PATIENT_COUNT', 'DATASET', 'DOMAIN_CONCEPT_COUNTS', 'DOMAIN_PAIR_CONCEPT_COUNTS', 'PAIRED_CONCEPT_COUNTS_ASSOCIATIONS']
@@ -483,7 +541,8 @@ elif database == 'COHD':
             #     pickle.dump(data, outfile)
             #################################################
             print(f"Start building the slim version of COHDdatabase.db", flush=True)
-            con = sqlite3.connect(os.path.join(output_folder, 'COHDdatabase_slim.db'))
+            #con = sqlite3.connect(os.path.join(output_folder, 'COHDdatabase_slim.db'))
+            con = sqlite3.connect(cohd_file.replace(".db", "_slim.db"))
             con.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
             con.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
             con.execute(f"DROP TABLE IF EXISTS SINGLE_CONCEPT_COUNTS")

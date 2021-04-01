@@ -34,7 +34,7 @@ from RTXConfiguration import RTXConfiguration
 
 class DTDQuerier:
 
-    def __init__(self, response_object: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def __init__(self, response_object: ARAXResponse):
         self.RTXConfig = RTXConfiguration()
         self.response = response_object
         self.synonymizer = NodeSynonymizer()
@@ -65,15 +65,12 @@ class DTDQuerier:
         else:
             os.system(f"scp {self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path} " + self.DTD_prob_db_file)
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a one-hop (single-edge) query using DTD database.
-        :param query_graph: A Reasoner API standard query graph.
-        :return: A tuple containing:
-            1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
-           results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
-              {'DTD:111221': {'n00': 'MONDO:0006082', 'n01': 'CHEBI:9428'}, 'DTD:111223': {'n00': 'MONDO:0006082', 'n01': 'CHEBI:116605'}}
+        :param query_graph: A TRAPI query graph.
+        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
+                results for the query. (Organized by QG IDs.)
         """
         # Set up the required parameters
         log = self.response
@@ -81,7 +78,6 @@ class DTDQuerier:
         self.DTD_threshold = float(self.response.data['parameters']['DTD_threshold'])
         DTD_slow_mode = self.response.data['parameters']['DTD_slow_mode']
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
         # Switch QG back to old style where category/predicate can be strings OR lists
         query_graph = eu.switch_back_to_str_or_list_types(query_graph)
 
@@ -96,7 +92,7 @@ class DTDQuerier:
                     log.error(tb, error_code=error_type.__name__)
                     log.error(f"Internal Error encountered connecting to the local DTD prediction database while expanding edges with kp=DTD.", error_code="DatabaseError")
 
-                final_kg, edge_to_nodes_map = self._answer_query_using_DTD_database(query_graph, log)
+                final_kg = self._answer_query_using_DTD_database(query_graph, log)
             else:
                 # Use DTD model
                 try:
@@ -114,7 +110,7 @@ class DTDQuerier:
                     self.response.error(tb, error_code=error_type.__name__)
                     self.response.error(f"Internal Error encountered connecting to the local graph database file while expanding edges with kp=DTD.")
 
-                final_kg, edge_to_nodes_map = self._answer_query_using_DTD_model(query_graph, log)
+                final_kg = self._answer_query_using_DTD_model(query_graph, log)
 
         elif 0 <= self.DTD_threshold < 0.8:
             if not DTD_slow_mode:
@@ -137,18 +133,17 @@ class DTDQuerier:
                 self.response.error(tb, error_code=error_type.__name__)
                 self.response.error(f"Internal Error encountered connecting to the local graph database file while expanding edges with kp=DTD.")
 
-            final_kg, edge_to_nodes_map = self._answer_query_using_DTD_model(query_graph, log)
+            final_kg = self._answer_query_using_DTD_model(query_graph, log)
         else:
             log.error("The 'DTD_threshold' in Expander should be between 0 and 1", error_code="ParameterError")
 
 
-        return final_kg, edge_to_nodes_map
+        return final_kg
 
-    def _answer_query_using_DTD_database(self, query_graph: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_DTD_database(self, query_graph: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD database")
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
         drug_label_list = ['chemicalSubstance', 'drug']
         disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature']
         # use for checking the requirement
@@ -166,7 +161,7 @@ class DTDQuerier:
         # check if both ends of edge have no curie
         if (source_qnode.id is None) and (target_qnode.id is None):
             log.error(f"Both ends of edge {qedge_key} are None", error_code="BadEdge")
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         # check if the query nodes are drug or disease
         if source_qnode.id is not None:
@@ -177,7 +172,7 @@ class DTDQuerier:
                 source_pass_nodes = source_qnode.id
             has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
             if has_error:
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
                     source_pass_nodes = pass_nodes
@@ -190,10 +185,10 @@ class DTDQuerier:
                 else:
                     if type(source_qnode.id) is str:
                         log.error(f"All potential categories of {source_qnode.id} don't contain drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                        return final_kg
                     else:
                         log.error(f"All potential categories of {source_qnode.id} don't contain drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                        return final_kg
         else:
             category = source_qnode.category.replace('biolink:','').replace('_','').lower()
             source_category = category
@@ -201,7 +196,7 @@ class DTDQuerier:
                 source_category = category
             else:
                 log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be drug or disase", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
         if target_qnode.id is not None:
 
@@ -211,7 +206,7 @@ class DTDQuerier:
                 target_pass_nodes = target_qnode.id
             has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
             if has_error:
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 if len(not_pass_nodes)==0 and len(pass_nodes)!=0:
                     target_pass_nodes = pass_nodes
@@ -224,10 +219,10 @@ class DTDQuerier:
                 else:
                     if type(target_qnode.id) is str:
                         log.error(f"All potential categories of {target_qnode.id} don't contain drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                        return final_kg
                     else:
                         log.error(f"All potential categories of {target_qnode.id} don't contain drug or disease", error_code="CategoryError")
-                        return final_kg, edge_to_nodes_map
+                        return final_kg
         else:
             category = target_qnode.category.replace('biolink:','').replace('_','').lower()
             target_category = category
@@ -235,10 +230,10 @@ class DTDQuerier:
                 target_category = category
             else:
                 log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug or disase", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
         if (source_pass_nodes is None) and (target_pass_nodes is None):
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         elif (source_pass_nodes is not None) and (target_pass_nodes is not None):
             source_dict = dict()
@@ -257,7 +252,7 @@ class DTDQuerier:
                 target_category_temp = 'disease'
             if source_category_temp == target_category_temp:
                 log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 for (source_curie, target_curie) in itertools.product(source_pass_nodes, target_pass_nodes):
 
@@ -290,12 +285,6 @@ class DTDQuerier:
                         source_dict[source_curie] = source_qnode_key
                         target_dict[target_curie] = target_qnode_key
 
-                        # Record which of this edge's nodes correspond to which qnode_key
-                        if swagger_edge_key not in edge_to_nodes_map:
-                            edge_to_nodes_map[swagger_edge_key] = dict()
-                        edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                        edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
-
                         # Finally add the current edge to our answer knowledge graph
                         final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
                     else:
@@ -311,7 +300,7 @@ class DTDQuerier:
                         swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
                         final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
         elif source_pass_nodes is not None:
             source_dict = dict()
@@ -329,7 +318,7 @@ class DTDQuerier:
                 target_category_temp = 'disease'
             if source_category_temp == target_category_temp:
                 log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 if source_category_temp == 'drug':
                     for source_curie in source_pass_nodes:
@@ -343,12 +332,6 @@ class DTDQuerier:
 
                                 source_dict[source_curie] = source_qnode_key
                                 target_dict[row[0]] = target_qnode_key
-
-                                # Record which of this edge's nodes correspond to which qnode_key
-                                if swagger_edge_key not in edge_to_nodes_map:
-                                    edge_to_nodes_map[swagger_edge_key] = dict()
-                                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[0]
 
                                 # Finally add the current edge to our answer knowledge graph
                                 final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
@@ -365,12 +348,6 @@ class DTDQuerier:
                                 source_dict[source_curie] = source_qnode_key
                                 target_dict[row[1]] = target_qnode_key
 
-                                # Record which of this edge's nodes correspond to which qnode_key
-                                if swagger_edge_key not in edge_to_nodes_map:
-                                    edge_to_nodes_map[swagger_edge_key] = dict()
-                                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
-
                                 # Finally add the current edge to our answer knowledge graph
                                 final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
 
@@ -384,7 +361,7 @@ class DTDQuerier:
                         swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
                         final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-                return final_kg, edge_to_nodes_map
+                return final_kg
         else:
             source_dict = dict()
             target_dict = dict()
@@ -401,7 +378,7 @@ class DTDQuerier:
                 source_category_temp = 'disease'
             if source_category_temp == target_category_temp:
                 log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg, edge_to_nodes_map
+                return final_kg
             else:
                 if target_category_temp == 'drug':
                     for target_curie in target_pass_nodes:
@@ -415,12 +392,6 @@ class DTDQuerier:
 
                                 source_dict[row[0]] = source_qnode_key
                                 target_dict[target_curie] = target_qnode_key
-
-                                # Record which of this edge's nodes correspond to which qnode_key
-                                if swagger_edge_key not in edge_to_nodes_map:
-                                    edge_to_nodes_map[swagger_edge_key] = dict()
-                                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
-                                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
 
                                 # Finally add the current edge to our answer knowledge graph
                                 final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
@@ -437,12 +408,6 @@ class DTDQuerier:
                                 source_dict[row[1]] = source_qnode_key
                                 target_dict[target_curie] = target_qnode_key
 
-                                # Record which of this edge's nodes correspond to which qnode_key
-                                if swagger_edge_key not in edge_to_nodes_map:
-                                    edge_to_nodes_map[swagger_edge_key] = dict()
-                                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[1]
-                                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
-
                                 # Finally add the current edge to our answer knowledge graph
                                 final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
 
@@ -456,14 +421,13 @@ class DTDQuerier:
                         swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
                         final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
 
-    def _answer_query_using_DTD_model(self, query_graph: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def _answer_query_using_DTD_model(self, query_graph: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD model")
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
         drug_label_list = ['chemicalsubstance','drug']
         disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
         # use for checking the requirement
@@ -481,7 +445,7 @@ class DTDQuerier:
         # check if both ends of edge have no curie
         if (source_qnode.id is None) and (target_qnode.id is None):
             log.error(f"Both ends of edge {qedge_key} are None", error_code="BadEdge")
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         # check if the query nodes are drug or disease
         if source_qnode.id is not None:
@@ -557,7 +521,7 @@ class DTDQuerier:
             #     return final_kg, edge_to_nodes_map
 
         if (source_pass_nodes is None) and (target_pass_nodes is None):
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         elif (source_pass_nodes is not None) and (target_pass_nodes is not None):
             source_dict = dict()
@@ -610,12 +574,6 @@ class DTDQuerier:
                     source_dict[source_curie] = source_qnode_key
                     target_dict[target_curie] = target_qnode_key
 
-                    # Record which of this edge's nodes correspond to which qnode_key
-                    if swagger_edge_key not in edge_to_nodes_map:
-                        edge_to_nodes_map[swagger_edge_key] = dict()
-                    edge_to_nodes_map[swagger_edge_key][source_qnode_key] = source_curie
-                    edge_to_nodes_map[swagger_edge_key][target_qnode_key] = target_curie
-
                     # Finally add the current edge to our answer knowledge graph
                     final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
                 else:
@@ -631,7 +589,7 @@ class DTDQuerier:
                     swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
                     final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         elif source_pass_nodes is not None:
             source_dict = dict()
@@ -654,10 +612,10 @@ class DTDQuerier:
             # else:
             cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, log)
             if log.status != 'OK':
-                return final_kg, edge_to_nodes_map
+                return final_kg
             neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, "KG2c", log)
             if log.status != 'OK':
-                return final_kg, edge_to_nodes_map
+                return final_kg
             results_table = neo4j_results[0]
             column_names = [column_name for column_name in results_table]
             res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
@@ -667,9 +625,9 @@ class DTDQuerier:
                     res, all_probabilities = all_probabilities
                     res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
                 else:
-                    return final_kg, edge_to_nodes_map
+                    return final_kg
             else:
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
             # if source_category_temp == 'drug':
             for row in res:
@@ -677,12 +635,6 @@ class DTDQuerier:
 
                 source_dict[row[0]] = source_qnode_key
                 target_dict[row[1]] = target_qnode_key
-
-                # Record which of this edge's nodes correspond to which qnode_key
-                if swagger_edge_key not in edge_to_nodes_map:
-                    edge_to_nodes_map[swagger_edge_key] = dict()
-                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
-                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
 
                 # Finally add the current edge to our answer knowledge graph
                 final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
@@ -712,7 +664,7 @@ class DTDQuerier:
                     swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
                     final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-            return final_kg, edge_to_nodes_map
+            return final_kg
         else:
             source_dict = dict()
             target_dict = dict()
@@ -734,10 +686,10 @@ class DTDQuerier:
             # else:
             cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, log)
             if log.status != 'OK':
-                return final_kg, edge_to_nodes_map
+                return final_kg
             neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, "KG2c", log)
             if log.status != 'OK':
-                return final_kg, edge_to_nodes_map
+                return final_kg
             results_table = neo4j_results[0]
             column_names = [column_name for column_name in results_table]
             res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
@@ -747,9 +699,9 @@ class DTDQuerier:
                     res, all_probabilities = all_probabilities
                     res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
                 else:
-                    return final_kg, edge_to_nodes_map
+                    return final_kg
             else:
-                return final_kg, edge_to_nodes_map
+                return final_kg
 
                 # if target_category_temp == 'drug':
                 #     for row in res:
@@ -773,12 +725,6 @@ class DTDQuerier:
                 source_dict[row[0]] = source_qnode_key
                 target_dict[row[1]] = target_qnode_key
 
-                # Record which of this edge's nodes correspond to which qnode_key
-                if swagger_edge_key not in edge_to_nodes_map:
-                    edge_to_nodes_map[swagger_edge_key] = dict()
-                edge_to_nodes_map[swagger_edge_key][source_qnode_key] = row[0]
-                edge_to_nodes_map[swagger_edge_key][target_qnode_key] = row[1]
-
                 # Finally add the current edge to our answer knowledge graph
                 final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
 
@@ -792,7 +738,7 @@ class DTDQuerier:
                     swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
                     final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
 
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
 
     def _check_id(self, qnode_id, log):
