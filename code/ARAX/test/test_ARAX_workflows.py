@@ -136,6 +136,7 @@ def test_example_2():
     _virtual_tester(message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
 
 
+@pytest.mark.slow
 def test_example_3():
     query = {"operations": {"actions": [
         "add_qnode(name=DOID:9406, key=n00)",
@@ -143,7 +144,7 @@ def test_example_3():
         "add_qnode(category=biolink:Protein, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_key=n01)",
         "filter_kg(action=remove_orphaned_nodes, node_category=biolink:Protein)",
