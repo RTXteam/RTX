@@ -1,9 +1,12 @@
 #!/bin/env python3
+import ujson
+import sqlite3
 import sys
 import os
+import time
 import traceback
 import ast
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Set, Union
 
 import requests
 import yaml
@@ -37,15 +40,12 @@ class KG2Querier:
         else:
             self.kg_name = "KG1"
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a one-hop (single-edge) query using either KG1 or KG2.
-        :param query_graph: A Reasoner API standard query graph.
-        :return: A tuple containing:
-            1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
-           results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
-              {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
+        :param query_graph: A TRAPI query graph.
+        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
+                results for the query. (Organized by QG IDs.)
         """
         log = self.response
         enforce_directionality = self.enforce_directionality
@@ -54,17 +54,16 @@ class KG2Querier:
         if kg_name == "KG1":
             query_graph = eu.make_qg_use_old_snake_case_types(query_graph)
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph
         if len(query_graph.edges) != 1:
             log.error(f"answer_one_hop_query() was passed a query graph that is not one-hop: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
-            return final_kg, edge_to_nodes_map
+            return final_kg
         if len(query_graph.nodes) != 2:
             log.error(f"answer_one_hop_query() was passed a query graph with more than two nodes: "
                       f"{query_graph.to_dict()}", error_code="InvalidQuery")
-            return final_kg, edge_to_nodes_map
+            return final_kg
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
 
         # Consider any inverses of our predicate(s) as well
@@ -82,18 +81,20 @@ class KG2Querier:
                 qnode.id = canonical_curies
             qnode.category = []  # Important to clear this, otherwise results are limited (#889)
 
-        # Run the actual query and process results
-        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, enforce_directionality, log)
-        if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
-        neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, kg_name, log)
-        if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
-        final_kg, edge_to_nodes_map = self._load_answers_into_kg(neo4j_results, kg_name, query_graph, log)
-        if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+        if kg_name == "KG2c":
+            # Use Plover to answer KG2c queries
+            plover_answer, response_status = self._answer_query_using_plover(query_graph, log)
+            if response_status == 200:
+                final_kg = self._grab_nodes_and_edges_from_sqlite(plover_answer, kg_name, log)
+            else:
+                # Backup to using neo4j in the event plover failed
+                log.warning(f"Plover returned a {response_status} response, so I'm backing up to Neo4j..")
+                final_kg = self._answer_query_using_neo4j(query_graph, kg_name, qedge_key, enforce_directionality, log)
+        else:
+            # Use Neo4j for KG2 and KG1 queries
+            final_kg = self._answer_query_using_neo4j(query_graph, kg_name, qedge_key, enforce_directionality, log)
 
-        return final_kg, edge_to_nodes_map
+        return final_kg
 
     def answer_single_node_query(self, single_node_qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
         kg_name = self.kg_name
@@ -101,7 +102,6 @@ class KG2Querier:
         log = self.response
         if kg_name == "KG1":
             single_node_qg = eu.make_qg_use_old_snake_case_types(single_node_qg)
-        final_kg = QGOrganizedKnowledgeGraph()
         qnode_key = next(qnode_key for qnode_key in single_node_qg.nodes)
         qnode = single_node_qg.nodes[qnode_key]
 
@@ -114,19 +114,119 @@ class KG2Querier:
                 qnode.id = eu.get_canonical_curies_list(qnode.id, log)
                 qnode.category = []  # Important to clear this to avoid discrepancies in types for particular concepts
 
+        if kg_name == "KG2c":
+            # Use Plover to answer KG2c queries
+            plover_answer, response_status = self._answer_query_using_plover(single_node_qg, log)
+            if response_status == 200:
+                final_kg = self._grab_nodes_and_edges_from_sqlite(plover_answer, kg_name, log)
+            else:
+                # Backup to using neo4j in the event plover failed
+                log.warning(f"Plover returned a {response_status} response, so I'm backing up to Neo4j..")
+                final_kg = self._answer_single_node_query_using_neo4j(qnode_key, single_node_qg, kg_name, log)
+        else:
+            # Use Neo4j for KG2 and KG1 queries
+            final_kg = self._answer_single_node_query_using_neo4j(qnode_key, single_node_qg, kg_name, log)
+
+        return final_kg
+
+    @staticmethod
+    def _answer_query_using_plover(qg: QueryGraph, log: ARAXResponse) -> Tuple[Dict[str, Dict[str, Set[Union[str, int]]]], int]:
+        rtxc = RTXConfiguration()
+        rtxc.live = "Production"
+        log.debug(f"Sending query to Plover")
+        response = requests.post(f"{rtxc.plover_url}/query", json=qg.to_dict(), headers={'accept': 'application/json'})
+        if response.status_code == 200:
+            log.debug(f"Got response back from Plover")
+            return response.json(), response.status_code
+        else:
+            log.warning(f"Plover returned a status code of {response.status_code}. Response was: {response.text}")
+            return dict(), response.status_code
+
+    def _grab_nodes_and_edges_from_sqlite(self, plover_answer: Dict[str, Dict[str, Set[Union[str, int]]]], kg_name: str,
+                                          log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        # Get connected to the local sqlite database (look up its path using database manager-friendly method)
+        path_list = os.path.realpath(__file__).split(os.path.sep)
+        rtx_index = path_list.index("RTX")
+        rtxc = RTXConfiguration()
+        sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+        sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
+        sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
+        connection = sqlite3.connect(sqlite_file_path)
+        cursor = connection.cursor()
+        answer_kg = QGOrganizedKnowledgeGraph()
+
+        # Grab the node objects from sqlite corresponding to the returned node IDs
+        num_nodes = sum([len(nodes) for nodes in plover_answer["nodes"].values()])
+        start = time.time()
+        for qnode_key, node_keys in plover_answer["nodes"].items():
+            node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
+            sql_query = f"SELECT N.node " \
+                        f"FROM nodes AS N " \
+                        f"WHERE N.id IN ('{node_keys_str}')"
+            log.debug(f"Looking up {len(plover_answer['nodes'][qnode_key])} returned {qnode_key} node IDs in KG2c sqlite")
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            for row in rows:
+                node_as_dict = ujson.loads(row[0])
+                node_key, node = self._convert_neo4j_node_to_trapi_node(node_as_dict, kg_name)
+                answer_kg.add_node(node_key, node, qnode_key)
+        log.debug(f"Grabbing {num_nodes} nodes from sqlite and loading into object model took "
+                  f"{round(time.time() - start, 2)} seconds")
+
+        # Grab the edge objects from sqlite corresponding to the returned edge IDs
+        num_edges = sum([len(edges) for edges in plover_answer["edges"].values()])
+        start = time.time()
+        for qedge_key, edge_keys in plover_answer["edges"].items():
+            edge_keys_str = ",".join(str(edge_key) for edge_key in edge_keys)  # SQL wants (1, 2) format int lists
+            sql_query = f"SELECT E.edge " \
+                        f"FROM edges AS E " \
+                        f"WHERE E.id IN ({edge_keys_str})"
+            log.debug(f"Looking up {len(plover_answer['edges'][qedge_key])} returned {qedge_key} edge IDs in KG2c sqlite")
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            for row in rows:
+                edge_as_dict = ujson.loads(row[0])
+                edge_key, edge = self._convert_neo4j_edge_to_trapi_edge(edge_as_dict, dict(), kg_name)
+                answer_kg.add_edge(edge_key, edge, qedge_key)
+        log.debug(f"Grabbing {num_edges} edges from sqlite and loading into object model took "
+                  f"{round(time.time() - start, 2)} seconds")
+
+        cursor.close()
+        connection.close()
+        return answer_kg
+
+    def _answer_query_using_neo4j(self, qg: QueryGraph, kg_name: str, qedge_key: str, enforce_directionality: bool,
+                                  log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        answer_kg = QGOrganizedKnowledgeGraph()
+        cypher_query = self._convert_one_hop_query_graph_to_cypher_query(qg, enforce_directionality, log)
+        if log.status != 'OK':
+            return answer_kg
+        neo4j_results = self._send_query_to_neo4j(cypher_query, qedge_key, kg_name, log)
+        if log.status != 'OK':
+            return answer_kg
+        answer_kg = self._load_answers_into_kg(neo4j_results, kg_name, qg, log)
+        if log.status != 'OK':
+            return answer_kg
+
+        return answer_kg
+
+    def _answer_single_node_query_using_neo4j(self, qnode_key: str, qg: QueryGraph, kg_name: str, log: ARAXResponse):
+        qnode = qg.nodes[qnode_key]
+        answer_kg = QGOrganizedKnowledgeGraph()
+
         # Build and run a cypher query to get this node/nodes
         where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
-        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, single_node_qg)} WHERE {where_clause} RETURN {qnode_key}"
+        cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, qg)} WHERE {where_clause} RETURN {qnode_key}"
         log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
 
-        # Load the results into swagger object model and add to our answer knowledge graph
+        # Load the results into API object model and add to our answer knowledge graph
         for result in results:
             neo4j_node = result.get(qnode_key)
-            swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-            final_kg.add_node(swagger_node_key, swagger_node, qnode_key)
+            node_key, node = self._convert_neo4j_node_to_trapi_node(neo4j_node, kg_name)
+            answer_kg.add_node(node_key, node, qnode_key)
 
-        return final_kg
+        return answer_kg
 
     def _convert_one_hop_query_graph_to_cypher_query(self, qg: QueryGraph, enforce_directionality: bool,
                                                      log: ARAXResponse) -> str:
@@ -178,7 +278,7 @@ class KG2Querier:
             log.error(f"Problem generating cypher for query. {tb}", error_code=error_type.__name__)
             return ""
 
-    def _answer_query_using_neo4j(self, cypher_query: str, qedge_key: str, kg_name: str, log: ARAXResponse) -> List[Dict[str, List[Dict[str, any]]]]:
+    def _send_query_to_neo4j(self, cypher_query: str, qedge_key: str, kg_name: str, log: ARAXResponse) -> List[Dict[str, List[Dict[str, any]]]]:
         log.info(f"Sending cypher query for edge {qedge_key} to {kg_name} neo4j")
         results_from_neo4j = self._run_cypher_query(cypher_query, kg_name, log)
         if log.status == 'OK':
@@ -188,10 +288,9 @@ class KG2Querier:
         return results_from_neo4j
 
     def _load_answers_into_kg(self, neo4j_results: List[Dict[str, List[Dict[str, any]]]], kg_name: str,
-                              qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+                              qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         log.debug(f"Processing query results for edge {next(qedge_key for qedge_key in qg.edges)}")
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
         node_uuid_to_curie_dict = self._build_node_uuid_to_curie_dict(neo4j_results[0]) if kg_name == "KG1" else dict()
 
         results_table = neo4j_results[0]
@@ -201,137 +300,128 @@ class KG2Querier:
             if column_name.startswith('nodes'):  # Example column name: 'nodes_n00'
                 column_qnode_key = column_name.replace("nodes_", "", 1)
                 for neo4j_node in results_table.get(column_name):
-                    swagger_node_key, swagger_node = self._convert_neo4j_node_to_swagger_node(neo4j_node, kg_name)
-                    final_kg.add_node(swagger_node_key, swagger_node, column_qnode_key)
+                    node_key, node = self._convert_neo4j_node_to_trapi_node(neo4j_node, kg_name)
+                    final_kg.add_node(node_key, node, column_qnode_key)
             # Load answer edges into our knowledge graph
             elif column_name.startswith('edges'):  # Example column name: 'edges_e01'
                 column_qedge_key = column_name.replace("edges_", "", 1)
                 for neo4j_edge in results_table.get(column_name):
-                    swagger_edge_key, swagger_edge = self._convert_neo4j_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict, kg_name)
+                    edge_key, edge = self._convert_neo4j_edge_to_trapi_edge(neo4j_edge, node_uuid_to_curie_dict, kg_name)
+                    final_kg.add_edge(edge_key, edge, column_qedge_key)
 
-                    # Record which of this edge's nodes correspond to which qnode_key
-                    if swagger_edge_key not in edge_to_nodes_map:
-                        edge_to_nodes_map[swagger_edge_key] = dict()
-                    for qnode_key in qg.nodes:
-                        edge_to_nodes_map[swagger_edge_key][qnode_key] = neo4j_edge.get(qnode_key)
+        return final_kg
 
-                    # Finally add the current edge to our answer knowledge graph
-                    final_kg.add_edge(swagger_edge_key, swagger_edge, column_qedge_key)
-
-        return final_kg, edge_to_nodes_map
-
-    def _convert_neo4j_node_to_swagger_node(self, neo4j_node: Dict[str, any], kp: str) -> Tuple[str, Node]:
+    def _convert_neo4j_node_to_trapi_node(self, neo4j_node: Dict[str, any], kp: str) -> Tuple[str, Node]:
         if kp == "KG2":
-            return self._convert_kg2_node_to_swagger_node(neo4j_node)
+            return self._convert_kg2_node_to_trapi_node(neo4j_node)
         elif kp == "KG2c":
-            return self._convert_kg2c_node_to_swagger_node(neo4j_node)
+            return self._convert_kg2c_node_to_trapi_node(neo4j_node)
         else:
-            return self._convert_kg1_node_to_swagger_node(neo4j_node)
+            return self._convert_kg1_node_to_trapi_node(neo4j_node)
 
-    def _convert_kg2_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
-        swagger_node = Node()
-        swagger_node_key = neo4j_node.get('id')
-        swagger_node.name = neo4j_node.get('name')
-        swagger_node.category = eu.convert_to_list(neo4j_node.get('category'))
-        # Add all additional properties on KG2 nodes as swagger Attribute objects
+    def _convert_kg2_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
+        node = Node()
+        node_key = neo4j_node.get('id')
+        node.name = neo4j_node.get('name')
+        node.category = eu.convert_to_list(neo4j_node.get('category'))
+        # Add all additional properties on KG2 nodes as TRAPI Attribute objects
         other_properties = ["iri", "full_name", "description", "publications", "synonym", "provided_by",
                             "deprecated", "update_date"]
-        swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
-        return swagger_node_key, swagger_node
+        node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
+        return node_key, node
 
-    def _convert_kg2c_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
-        swagger_node = Node()
-        swagger_node_key = neo4j_node.get('id')
-        swagger_node.name = neo4j_node.get('name')
-        swagger_node.category = eu.convert_to_list(neo4j_node.get('category'))
-        # Add all additional properties on KG2c nodes as swagger Attribute objects
+    def _convert_kg2c_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
+        node = Node()
+        node_key = neo4j_node.get('id')
+        node.name = neo4j_node.get('name')
+        node.category = eu.convert_to_list(neo4j_node.get('category'))
+        # Add all additional properties on KG2c nodes as TRAPI Attribute objects
         other_properties = ["iri", "description", "all_names", "all_categories", "expanded_categories",
                             "equivalent_curies", "publications"]
-        swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
-        return swagger_node_key, swagger_node
+        node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
+        return node_key, node
 
-    def _convert_kg1_node_to_swagger_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
-        swagger_node = Node()
-        swagger_node_key = neo4j_node.get('id')
-        swagger_node.name = neo4j_node.get('name')
+    def _convert_kg1_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
+        node = Node()
+        node_key = neo4j_node.get('id')
+        node.name = neo4j_node.get('name')
         node_category = neo4j_node.get('category')
-        swagger_node.category = eu.convert_to_list(node_category)
+        node.category = eu.convert_to_list(node_category)
         other_properties = ["symbol", "description", "uri"]
-        swagger_node.attributes = self._create_swagger_attributes(other_properties, neo4j_node)
-        return swagger_node_key, swagger_node
+        node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
+        return node_key, node
 
-    def _convert_neo4j_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str],
-                                            kg_name: str) -> Tuple[str, Edge]:
+    def _convert_neo4j_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str],
+                                          kg_name: str) -> Tuple[str, Edge]:
         if kg_name == "KG2":
-            return self._convert_kg2_edge_to_swagger_edge(neo4j_edge)
+            return self._convert_kg2_edge_to_trapi_edge(neo4j_edge)
         elif kg_name == "KG2c":
-            return self._convert_kg2c_edge_to_swagger_edge(neo4j_edge)
+            return self._convert_kg2c_edge_to_trapi_edge(neo4j_edge)
         else:
-            return self._convert_kg1_edge_to_swagger_edge(neo4j_edge, node_uuid_to_curie_dict)
+            return self._convert_kg1_edge_to_trapi_edge(neo4j_edge, node_uuid_to_curie_dict)
 
-    def _convert_kg2_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Edge:
-        swagger_edge = Edge()
-        swagger_edge_key = f"KG2:{neo4j_edge.get('id')}"
-        swagger_edge.predicate = neo4j_edge.get("predicate")
-        swagger_edge.subject = neo4j_edge.get("subject")
-        swagger_edge.object = neo4j_edge.get("object")
-        swagger_edge.relation = neo4j_edge.get("relation")
-        # Add additional properties on KG2 edges as swagger Attribute objects
+    def _convert_kg2_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any]) -> Edge:
+        edge = Edge()
+        edge_key = f"KG2:{neo4j_edge.get('id')}"
+        edge.predicate = neo4j_edge.get("predicate")
+        edge.subject = neo4j_edge.get("subject")
+        edge.object = neo4j_edge.get("object")
+        edge.relation = neo4j_edge.get("relation")
+        # Add additional properties on KG2 edges as TRAPI Attribute objects
         other_properties = ["provided_by", "negated", "relation_curie", "simplified_relation_curie",
                             "simplified_relation", "edge_label", "publications"]
-        swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
+        edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
         is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2", type=eu.get_attribute_type("is_defined_by"))
-        swagger_edge.attributes.append(is_defined_by_attribute)
-        return swagger_edge_key, swagger_edge
+        edge.attributes.append(is_defined_by_attribute)
+        return edge_key, edge
 
-    def _convert_kg2c_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
-        swagger_edge = Edge()
-        swagger_edge_key = f"KG2c:{neo4j_edge.get('id')}"
-        swagger_edge.predicate = neo4j_edge.get("predicate")
-        swagger_edge.subject = neo4j_edge.get("subject")
-        swagger_edge.object = neo4j_edge.get("object")
+    def _convert_kg2c_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
+        edge = Edge()
+        edge_key = f"KG2c:{neo4j_edge.get('id')}"
+        edge.predicate = neo4j_edge.get("predicate")
+        edge.subject = neo4j_edge.get("subject")
+        edge.object = neo4j_edge.get("object")
         other_properties = ["provided_by", "publications"]
-        swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
+        edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
         is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2c", type=eu.get_attribute_type("is_defined_by"))
-        swagger_edge.attributes.append(is_defined_by_attribute)
-        return swagger_edge_key, swagger_edge
+        edge.attributes.append(is_defined_by_attribute)
+        return edge_key, edge
 
-    def _convert_kg1_edge_to_swagger_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Tuple[str, Edge]:
-        swagger_edge = Edge()
-        swagger_edge_key = f"KG1:{neo4j_edge.get('id')}"
-        swagger_edge.predicate = neo4j_edge.get("predicate")
-        swagger_edge.subject = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
-        swagger_edge.object = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
-        swagger_edge.relation = neo4j_edge.get("relation")
+    def _convert_kg1_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Tuple[str, Edge]:
+        edge = Edge()
+        edge_key = f"KG1:{neo4j_edge.get('id')}"
+        edge.predicate = neo4j_edge.get("predicate")
+        edge.subject = node_uuid_to_curie_dict[neo4j_edge.get("source_node_uuid")]
+        edge.object = node_uuid_to_curie_dict[neo4j_edge.get("target_node_uuid")]
+        edge.relation = neo4j_edge.get("relation")
         other_properties = ["provided_by", "probability"]
-        swagger_edge.attributes = self._create_swagger_attributes(other_properties, neo4j_edge)
+        edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
         is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG1", type=eu.get_attribute_type("is_defined_by"))
-        swagger_edge.attributes.append(is_defined_by_attribute)
-        return swagger_edge_key, swagger_edge
+        edge.attributes.append(is_defined_by_attribute)
+        return edge_key, edge
 
     @staticmethod
-    def _create_swagger_attributes(property_names: List[str], neo4j_object: Dict[str, any]) -> List[Attribute]:
+    def _create_trapi_attributes(property_names: List[str], neo4j_object: Dict[str, any]) -> List[Attribute]:
         new_attributes = []
         for property_name in property_names:
             property_value = neo4j_object.get(property_name)
-            # Extract any lists, dicts, and booleans that are stored within strings
-            if type(property_value) is str:
-                if (property_value.startswith('[') and property_value.endswith(']')) or \
-                        (property_value.startswith('{') and property_value.endswith('}')) or \
-                        property_value.lower() == "true" or property_value.lower() == "false":
-                    property_value = ast.literal_eval(property_value)
+            if property_value:
+                # Extract any lists, dicts, and booleans that are stored within strings
+                if type(property_value) is str:
+                    if (property_value.startswith('[') and property_value.endswith(']')) or \
+                            (property_value.startswith('{') and property_value.endswith('}')) or \
+                            property_value.lower() == "true" or property_value.lower() == "false":
+                        property_value = ast.literal_eval(property_value)
 
-            # Create an Attribute for all non-empty values
-            if property_value is not None and property_value != {} and property_value != []:
-                if isinstance(property_value, list):
-                    property_value.sort()  # Alphabetize lists
-                swagger_attribute = Attribute(name=property_name,
-                                              type=eu.get_attribute_type(property_name),
-                                              value=property_value)
-                # Also store this in the 'url' field if it's a URL
+                # Create the actual Attribute object
+                trapi_attribute = Attribute(name=property_name,
+                                            type=eu.get_attribute_type(property_name),
+                                            value=property_value)
+                # Also store this value in Attribute.url if it's a URL
                 if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
-                    swagger_attribute.url = property_value
-                new_attributes.append(swagger_attribute)
+                    trapi_attribute.url = property_value
+
+                new_attributes.append(trapi_attribute)
         return new_attributes
 
     @staticmethod

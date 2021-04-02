@@ -40,13 +40,18 @@ class ARAXDatabaseManager:
         if not  os.path.exists(synonymizer_filepath):
             os.system(f"mkdir -p {synonymizer_filepath}")
 
+        kg2c_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+        if not os.path.exists(kg2c_filepath):
+            os.system(f"mkdir -p {kg2c_filepath}")
+
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
             'log_model': f"{pred_filepath}{os.path.sep}{self.RTXConfig.log_model_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
-            'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
+            'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}",
+            'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}"
         }
         # user, host, and paths to databases on remote server
         self.remote_locations = {
@@ -55,7 +60,8 @@ class ARAXDatabaseManager:
             'log_model': f"{self.RTXConfig.log_model_username}@{self.RTXConfig.log_model_host}:{self.RTXConfig.log_model_path}",
             'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_username}@{self.RTXConfig.curie_to_pmids_host}:{self.RTXConfig.curie_to_pmids_path}",
             'node_synonymizer': f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:{self.RTXConfig.node_synonymizer_path}",
-            'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}"
+            'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}",
+            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_username}@{self.RTXConfig.kg2c_sqlite_host}:{self.RTXConfig.kg2c_sqlite_path}"
         }
         # database locations if inside rtx1 docker container
         self.docker_paths = {
@@ -64,7 +70,8 @@ class ARAXDatabaseManager:
             'log_model': f"{self.RTXConfig.log_model_path.replace('/translator/','/mnt/')}",
             'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_path.replace('/translator/','/mnt/')}",
             'node_synonymizer': f"{self.RTXConfig.node_synonymizer_path.replace('/translator/','/mnt/')}",
-            'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace('/translator/','/mnt/')}"
+            'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace('/translator/','/mnt/')}",
+            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace('/translator/', '/mnt/')}"
         }
 
         # database local paths + version numbers
@@ -92,6 +99,10 @@ class ARAXDatabaseManager:
             'dtd_prob': {
                 'path': self.local_paths['dtd_prob'],
                 'version': self.RTXConfig.dtd_prob_version
+            },
+            'kg2c_sqlite': {
+                'path': self.local_paths['kg2c_sqlite'],
+                'version': self.RTXConfig.kg2c_sqlite_version
             }
         }
 
