@@ -121,7 +121,7 @@ def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
             if qnode.category:
-                assert qnode.category in node.category  # Could have additional categories if it has multiple qnode keys
+                assert set(eu.convert_to_list(qnode.category)).issubset(set(node.category))  # Could have additional categories if it has multiple qnode keys
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
