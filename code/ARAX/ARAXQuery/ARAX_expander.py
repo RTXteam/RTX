@@ -3,9 +3,6 @@ import json
 import sys
 import os
 from typing import List, Dict, Tuple, Union, Set, Optional
-from itertools import product
-from collections import defaultdict
-import urllib.request
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse

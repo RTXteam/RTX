@@ -70,13 +70,13 @@ class Director:
 
         # check for objects
         for sub in accepted_subs:
-              kp_allowed_objs = set(predicates_dict[sub].keys())
-              accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub])
-              if len(accepted_objs) > 0:
-                    # check predicates
-                    for obj in accepted_objs:
-                        if any_predicate or set(predicate_list).intersection(set(predicates_dict[sub][obj])):
-                                return True
+            kp_allowed_objs = set(predicates_dict[sub].keys())
+            accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub])
+            if len(accepted_objs) > 0:
+                # check predicates
+                for obj in accepted_objs:
+                    if any_predicate or set(predicate_list).intersection(set(predicates_dict[sub][obj])):
+                        return True
         return False
 
     def _need_to_regenerate_meta_map(self) -> bool:
@@ -106,11 +106,13 @@ class Director:
                 continue
             predicates_dict = json.loads(kp_predicates_response.read())
             self.meta_map[kp] = predicates_dict
-
         # Save our big combined metamap to a local json file
         with open(self.meta_map_path, "w+") as map_file:
             json.dump(self.meta_map, map_file)
 
     def _get_non_api_kps_meta_info(self):
         # TODO: Hardcode info for our KPs that don't have APIs here... (then include when building meta map)
+        # Need to hardcode DTD and NGD
+        # For NGD, should we just use KG2's predicate info?
+        # For DTD, my best guess is subjects = Drug, ChemicalSubstance, objects = Disease, but that feels likely incomplete
         pass
