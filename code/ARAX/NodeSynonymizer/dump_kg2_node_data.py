@@ -1,6 +1,7 @@
 """
 This script dumps KG2 node data to three files: one containing node ID, name, full_name, type for all KG2 nodes,
-another containing node synonyms, and another containing pairs of equivalent nodes (connected by same_as edges in KG2).
+another containing node synonyms, and another containing pairs of equivalent nodes (connected by same_as/synonym edges
+in KG2).
 These output files are used in the NodeSynonymizer build process.
 Usage: python3 dump_kg2_node_data.py [--test]
 """
@@ -81,8 +82,8 @@ def _run_cypher_query(cypher_query: str) -> List[Dict[str, any]]:
 
 
 def dump_kg2_equivalencies(output_file_name: str, is_test: bool):
-	# This function creates a TSV file of node pairs linked by a 'same_as' relationship in KG2
-	cypher_query = f"match (n1)-[:`biolink:same_as`]->(n2) return distinct n1.id, n2.id {'limit 20' if is_test else ''}"
+	# This function creates a TSV file of node pairs linked by a 'same_as' or 'synonym' relationship in KG2
+	cypher_query = f"match (n1)-[:`biolink:same_as`|:`biolink:synonym`]->(n2) return distinct n1.id, n2.id {'limit 20' if is_test else ''}"
 	equivalent_node_pairs = _run_cypher_query(cypher_query)
 	if equivalent_node_pairs:
 		with open(output_file_name, "w+") as output_file:
