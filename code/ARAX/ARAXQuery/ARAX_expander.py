@@ -351,7 +351,7 @@ class ARAXExpander:
                     return response
 
                 director = Director(log)
-                kps_to_query = self._get_kps_for_single_hop_qg(one_hop_qg, log)
+                kps_to_query = director._get_kps_for_single_hop_qg(one_hop_qg, log, list(self.command_definitions.keys()))
                 log.debug(f"List of KPs to query is: {kps_to_query}")
                 for kp_to_use in kps_to_query:
                     answer_kg = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results, use_synonyms, mode, log)
@@ -1002,70 +1002,6 @@ class ARAXExpander:
         else:
             return ""
 
-    def _get_kps_for_single_hop_qg(self, qg: QueryGraph, log: ARAXResponse) -> list:
-        # confirm that the qg is one hop
-        if len(qg.edges) > 1:
-            log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.", error_code="UnexpectedQG")
-            return
-        # isolate possible subject predicate object from qg
-        qedge = list(qg.edges.values())[0]
-        sub_category_list = eu.convert_to_list(qg.nodes[qedge.subject].category)
-        obj_category_list = eu.convert_to_list(qg.nodes[qedge.object].category)
-        predicate_list = eu.convert_to_list(qedge.predicate)
-        
-        # use /predicates for each possible kp to get available predicates
-        # is there a place to get this list instead of hardcoding it?
-        all_kps = list(self.command_definitions.keys())
-        kps_to_return = []
-        # check each kp response for triple membership
-        for kp in all_kps:
-            # get predicates dictionary from KP
-            kp_endpoint = eu.get_kp_endpoint_url(kp)
-            if kp_endpoint is None:
-                log.debug(f"No endpoint for {kp}. Skipping for now.")
-                continue
-            kp_predicates_response = urllib.request.urlopen(f"{kp_endpoint}/predicates")
-            if kp_predicates_response.status != 200:
-                log.warning(f"Unable to access {kp}'s predicates endpoint "
-                             f"(returned status of {kp_predicates_response.status})")
-                continue
-            predicates_dict = json.loads(kp_predicates_response.read())
-            if self._triple_is_in_predicates_response(predicates_dict, sub_category_list, predicate_list, obj_category_list, log):
-                kps_to_return.append(kp)
-        return kps_to_return
-
-    # returns True if at least one possible triple exists in the predicates endpoint response
-    @staticmethod
-    def _triple_is_in_predicates_response(predicates_dict: dict, subject_list: list, predicate_list: list, object_list: list, log: ARAXResponse)  -> bool:
-        # handle potential emptiness of sub, obj, predicate lists
-        if not subject_list: #any subject
-            subject_list = list(predicates_dict.keys())
-        if not object_list: #any object
-            object_set = set()
-            _ = [object_set.add(obj) for obj_dict in predicates_dict.values() for obj in obj_dict.keys()]
-            object_list = list(object_set)
-        any_predicate = False if predicate_list else True
-
-        # handle combinations of subject and objects using cross product
-        qg_sub_obj_dict = defaultdict(lambda: set())
-        for sub, obj in list(product(subject_list, object_list)):
-            qg_sub_obj_dict[sub].add(obj)
-
-        # check for subjects
-        kp_allowed_subs = set(predicates_dict.keys())
-        accepted_subs = kp_allowed_subs.intersection(set(qg_sub_obj_dict.keys()))
-
-        # check for objects
-        for sub in accepted_subs:
-              kp_allowed_objs = set(predicates_dict[sub].keys())
-              accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub])
-              if len(accepted_objs) > 0:
-                    # check predicates
-                    for obj in accepted_objs:
-                        if any_predicate or set(predicate_list).intersection(set(predicates_dict[sub][obj])):
-                                return True
-        return False
-                                    
 
 def main():
     # Note that most of this is just manually doing what ARAXQuery() would normally do for you
