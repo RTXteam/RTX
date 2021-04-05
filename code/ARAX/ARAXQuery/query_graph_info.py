@@ -85,7 +85,7 @@ class QueryGraphInfo:
                     else:
                         curies_list = [ qnode.id ]
 
-                    canonical_curies = synonymizer.get_canonical_curies(curies=curies_list, return_all_types=True)
+                    canonical_curies = synonymizer.get_canonical_curies(curies=curies_list, return_all_categories=True)
                     if curie in canonical_curies and 'preferred_type' in canonical_curies[curie]:
                         node_info[key]['has_category'] = True
                         node_info[key]['category'] = canonical_curies[curie]['preferred_type']

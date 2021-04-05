@@ -508,82 +508,40 @@ async function sendSyn() {
 	    table.appendChild(tr);
 	}
 
-	if (allweknow[word].type) {
+	if (allweknow[word].synonyms) {
 	    tr = document.createElement("tr");
 	    tr.className = 'hoverable';
 	    td = document.createElement("td")
 	    td.style.fontWeight = 'bold';
-	    td.appendChild(document.createTextNode('type (all)'));
+	    td.appendChild(document.createTextNode('synonyms (all)'));
 	    tr.appendChild(td);
 	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(allweknow[word].type));
+	    var comma = '';
+	    for (var syn in allweknow[word].synonyms) {
+		td.appendChild(document.createTextNode(comma + syn + " (" +allweknow[word].synonyms[syn] + ")"));
+		comma = ", ";
+	    }
 	    tr.appendChild(td);
 	    table.appendChild(tr);
 	}
 
-	div.appendChild(table);
-    }
-
-    if (allweknow[word].synonyms) {
-	text = document.createElement("h3");
-	text.className = "qprob p5";
-	//text.appendChild(document.createTextNode('\u25BA Synonyms'));
-	text.appendChild(document.createTextNode('Synonyms'));
-	div.appendChild(text);
-
-	table = document.createElement("table");
-	table.className = 'sumtab';
-        tr = document.createElement("tr");
-	for (var head of ["Label","Source"] ) {
-	    td = document.createElement("th")
-	    td.appendChild(document.createTextNode(head));
-	    tr.appendChild(td);
-	}
-        table.appendChild(tr);
-	for (var syn of allweknow[word].synonyms) {
-            tr = document.createElement("tr");
-	    tr.className = 'hoverable';
-	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.label));
-	    tr.appendChild(td);
-	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.source));
-	    tr.appendChild(td);
-	    table.appendChild(tr);
-	}
-	div.appendChild(table);
-    }
-
-    if (allweknow[word].equivalent_identifiers) {
-	text = document.createElement("h3");
-        text.className = "qprob p5";
-	text.appendChild(document.createTextNode('Equivalent Identifiers'));
-	div.appendChild(text);
-
-	table = document.createElement("table");
-	table.className = 'sumtab';
-	tr = document.createElement("tr");
-	for (var head of ["Identifier","Source","Type"] ) {
-	    td = document.createElement("th")
-	    td.appendChild(document.createTextNode(head));
-	    tr.appendChild(td);
-	}
-	table.appendChild(tr);
-	for (var syn of allweknow[word].equivalent_identifiers) {
+	if (allweknow[word].categories) {
 	    tr = document.createElement("tr");
 	    tr.className = 'hoverable';
 	    td = document.createElement("td")
-	    td.appendChild(link_to_identifiers_dot_org(syn.identifier));
-	    td.appendChild(document.createTextNode(syn.identifier));
+	    td.style.fontWeight = 'bold';
+	    td.appendChild(document.createTextNode('categories (all)'));
 	    tr.appendChild(td);
 	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.source));
-	    tr.appendChild(td);
-	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.type));
+	    var comma = '';
+	    for (var cat in allweknow[word].categories) {
+		td.appendChild(document.createTextNode(comma + cat + " (" +allweknow[word].categories[cat] + ")"));
+		comma = ", ";
+	    }
 	    tr.appendChild(td);
 	    table.appendChild(tr);
 	}
+
 	div.appendChild(table);
     }
 
@@ -596,7 +554,7 @@ async function sendSyn() {
 	table = document.createElement("table");
 	table.className = 'sumtab';
 	tr = document.createElement("tr");
-	for (var head of ["Identifier","Label","Original Label","Type"] ) {
+	for (var head of ["Identifier","Label","Original Label","Category"] ) {
 	    td = document.createElement("th")
 	    td.appendChild(document.createTextNode(head));
 	    tr.appendChild(td);
@@ -616,12 +574,80 @@ async function sendSyn() {
 	    td.appendChild(document.createTextNode(syn.original_label));
 	    tr.appendChild(td);
 	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.type));
+	    td.appendChild(document.createTextNode(syn.category));
 	    tr.appendChild(td);
 	    table.appendChild(tr);
 	}
 	div.appendChild(table);
     }
+
+    if (allweknow[word].equivalent_identifiers) {
+	text = document.createElement("h3");
+        text.className = "qprob p5";
+	text.appendChild(document.createTextNode('Equivalent Identifiers'));
+	div.appendChild(text);
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+	tr = document.createElement("tr");
+	for (var head of ["Identifier","Category","Source"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+	table.appendChild(tr);
+	for (var syn of allweknow[word].equivalent_identifiers) {
+	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.appendChild(link_to_identifiers_dot_org(syn.identifier));
+	    td.appendChild(document.createTextNode(syn.identifier));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.category));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.source));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+    }
+
+    if (allweknow[word].synonym_provenance) {
+	text = document.createElement("h3");
+	text.className = "qprob p5";
+	//text.appendChild(document.createTextNode('\u25BA Synonym Provenance'));
+	text.appendChild(document.createTextNode('Synonym Provenance'));
+	div.appendChild(text);
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+        tr = document.createElement("tr");
+	for (var head of ["Name","Curie","Source"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+        table.appendChild(tr);
+	for (var syn in allweknow[word].synonym_provenance) {
+            tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(allweknow[word].synonym_provenance[syn].name));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+            td.appendChild(link_to_identifiers_dot_org(allweknow[word].synonym_provenance[syn].uc_curie));
+	    td.appendChild(document.createTextNode(allweknow[word].synonym_provenance[syn].uc_curie));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(allweknow[word].synonym_provenance[syn].source));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+    }
+
     div.appendChild(document.createElement("br"));
     syndiv.appendChild(div);
 }
@@ -1705,27 +1731,15 @@ function add_cyto(i) {
 	div.innerHTML = "";
 
         var fields = [ "name","id", "category" ];
-	if (this.data('description') !== 'UNKNOWN' && this.data('description') !== 'None')
-	    fields.push("description");
-
 	for (var field of fields) {
-	    if (this.data(field)) {
-		var span = document.createElement("span");
-		span.className = "fieldname";
-		span.appendChild(document.createTextNode(field+": "));
-		div.appendChild(span);
-		if (field == "uri") { //iri?//
-		    var link = document.createElement("a");
-		    link.href = this.data(field);
-		    link.target = "nodeuri";
-		    link.appendChild(document.createTextNode(this.data(field)));
-		    div.appendChild(link);
-		}
-		else {
-		    div.appendChild(document.createTextNode(this.data(field)));
-		}
-		div.appendChild(document.createElement("br"));
-	    }
+	    if (this.data(field) == null) continue;
+
+	    var span = document.createElement("span");
+	    span.className = "fieldname";
+	    span.appendChild(document.createTextNode(field+": "));
+	    div.appendChild(span);
+	    div.appendChild(document.createTextNode(this.data(field)));
+	    div.appendChild(document.createElement("br"));
 	}
 
 	show_attributes(div, this.data('attributes'));
@@ -1744,35 +1758,7 @@ function add_cyto(i) {
 	div.appendChild(document.createTextNode(" "+this.data('target')));
         div.appendChild(document.createElement("br"));
 
-	var tmpArr = [];
-	if (!(Array.isArray(this.data('provided_by'))))
-	    tmpArr.push(this.data('provided_by'));
-	else
-	    tmpArr = this.data('provided_by');
-
-        for (var prov of tmpArr) {
-	    if (prov == null) continue;
-
-	    span = document.createElement("span");
-	    span.className = "fieldname";
-	    span.appendChild(document.createTextNode("Provenance: "));
-	    div.appendChild(span);
-
-	    if (prov.startsWith("http")) {
-		var provlink = document.createElement("a");
-		provlink.href = prov;
-		provlink.target = "prov";
-		provlink.appendChild(document.createTextNode(prov));
-		div.appendChild(provlink);
-	    }
-	    else {
-                div.appendChild(document.createTextNode(prov));
-	    }
-            div.appendChild(document.createElement("br"));
-	}
-
-	var fields = [ "confidence","weight","evidence_type","qualifiers","negated",
-		       "relation","is_defined_by","defined_datetime","id","qedge_id" ];
+	var fields = [ "relation","id" ];
 	for (var field of fields) {
 	    if (this.data(field) == null) continue;
 
@@ -1780,10 +1766,7 @@ function add_cyto(i) {
 	    span.className = "fieldname";
 	    span.appendChild(document.createTextNode(field+": "));
 	    div.appendChild(span);
-	    if (field == "confidence" || field == "weight") {
-		div.appendChild(document.createTextNode(Number(this.data(field)).toPrecision(3)));
-	    }
-            else if (this.data(field).toString().startsWith("http")) {
+	    if (this.data(field).toString().startsWith("http")) {
 		var link = document.createElement("a");
 		link.href = this.data(field);
 		link.target = "nodeuri";
@@ -1792,33 +1775,6 @@ function add_cyto(i) {
 	    }
 	    else {
 		div.appendChild(document.createTextNode(this.data(field)));
-	    }
-	    div.appendChild(document.createElement("br"));
-	}
-
-        tmpArr = [];
-	if (!(Array.isArray(this.data('publications'))))
-	    tmpArr.push(this.data('publications'));
-	else
-	    tmpArr = this.data('publications');
-
-	for (var pub of tmpArr) {
-	    if (pub == null) continue;
-
-	    span = document.createElement("span");
-	    span.className = "fieldname";
-	    span.appendChild(document.createTextNode("Publication: "));
-	    div.appendChild(span);
-
-	    if (pub.startsWith("PMID:")) {
-		var publink = document.createElement("a");
-		publink.href = "https://www.ncbi.nlm.nih.gov/pubmed/" + pub.split(":")[1];
-		publink.target = "pubmed";
-		publink.appendChild(document.createTextNode(pub));
-		div.appendChild(publink);
-	    }
-	    else {
-		div.appendChild(document.createTextNode(pub));
 	    }
 	    div.appendChild(document.createElement("br"));
 	}
@@ -1853,6 +1809,7 @@ function show_attributes(html_div, atts) {
 
 
 	if (att.value != null) {
+	    var fixit = true;
 	    if (att.name == "normalized_google_distance" ||
 		att.name == "fisher_exact_test_p-value"  ||
 		att.name == "probability_drug_treats"    ||
@@ -1867,6 +1824,7 @@ function show_attributes(html_div, atts) {
 		att.name == "pValue"                     ||
 		att.name == "ngd") {
 		snippet += Number(att.value).toPrecision(3);
+		fixit = false;
 	    }
             else if (Array.isArray(att.value))
 		for (var val of att.value) {
@@ -1887,11 +1845,19 @@ function show_attributes(html_div, atts) {
 			snippet += val;
 		    }
 		}
-	    else if (typeof att.value === 'object')
+	    else if (typeof att.value === 'object') {
 		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
+
+		fixit = false;
+	    }
 	    else
 		snippet += att.value;
 
+	    if (fixit) {
+		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
+		snippet = snippet.toString().replace(/---/g,'<br>---');
+		snippet = snippet.toString().replace( /;;/g,'<br>;;');
+	    }
 	}
 	else if (att.url != null)
 	    snippet += att.url;
@@ -2842,49 +2808,144 @@ function display_list(listId) {
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
     //check_entities();
     check_entities_batch(99);
-    compare_lists();
+    compare_lists(false);
 }
 
-function compare_lists() {
-    // only assume listA and listB, for now...
 
+function compare_lists(uniqueonly) {
+    if (!uniqueonly || uniqueonly == "false")
+	uniqueonly = false;
+    else
+	uniqueonly = true;
+
+    // assume only listA and listB, for now...
     var keysA = Object.keys(listItems['A']);
     var keysB = Object.keys(listItems['B']);
     compare_tsv = [];
 
+    var comparediv = document.getElementById("comparelists");
+    comparediv.innerHTML = "";
+
     if (keysA.length == 0 || keysB.length == 0) {
-	document.getElementById("comparelists").innerHTML = "<br>Items in lists A and B will be automatically displayed side-by-side for ease of comparison.<br><br>At least one item is required in each list.<br><br>";
+	comparediv.appendChild(document.createElement("br"));
+	comparediv.appendChild(document.createTextNode("Items in lists A and B will be automatically displayed side-by-side for ease of comparison."));
+        comparediv.appendChild(document.createElement("br"));
+	comparediv.appendChild(document.createElement("br"));
+	comparediv.appendChild(document.createTextNode("At least one item is required in each list."));
+        comparediv.appendChild(document.createElement("br"));
+	comparediv.appendChild(document.createElement("br"));
 	return;
     }
 
-    var comparehtml = "<input class='questionBox button' type='button' name='action' title='Get tab-separated values of this table to paste into Excel etc' value='Copy Comparison Table to clipboard (TSV)' onclick='copyTSVToClipboard(this,compare_tsv);'><br><br>";
-
-    comparehtml += "<table class='sumtab'><tr><th></th><th>List A</th><th></th><th>List B</th></tr>";
     compare_tsv.push("List A\tList B");
+    var button = document.createElement("input");
+    button.className = 'questionBox button';
+    button.type = 'button';
+    button.name = 'action';
+    button.title = 'Get tab-separated values of this table to paste into Excel etc';
+    button.value = 'Copy Comparison Table to clipboard (TSV)';
+    button.setAttribute('onclick', 'copyTSVToClipboard(this,compare_tsv);');
+    comparediv.appendChild(button);
+
+    var span = document.createElement("span");
+    span.className = 'qgselect';
+    span.style.marginLeft = "100px";
+
+    var sel = document.createElement('select');
+    sel.setAttribute('onchange', 'compare_lists(this.value);');
+    var opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = "false";
+    if (!uniqueonly) opt.selected = true;
+    opt.innerHTML = "Show all items in lists";
+    sel.appendChild(opt);
+    opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = "true";
+    if (uniqueonly) opt.selected = true;
+    opt.innerHTML = "Show only unique items";
+    sel.appendChild(opt);
+    span.appendChild(sel);
+    comparediv.appendChild(span);
+
+    comparediv.appendChild(document.createElement("br"));
+    comparediv.appendChild(document.createElement("br"));
+
+    var comptable = document.createElement("table");
+    comptable.className = 'sumtab';
+    var tr = document.createElement("tr");
+    var td = document.createElement("th");
+    tr.appendChild(td);
+    td = document.createElement("th");
+    td.appendChild(document.createTextNode("List A"));
+    tr.appendChild(td);
+    td = document.createElement("th");
+    tr.appendChild(td);
+    td = document.createElement("th");
+    td.appendChild(document.createTextNode("List B"));
+    tr.appendChild(td);
+    comptable.appendChild(tr);
+
+    if (uniqueonly) {
+	var onlyA = keysA.filter(x => !keysB.includes(x));
+	keysB = keysB.filter(x => !keysA.includes(x));
+	keysA = onlyA;
+    }
 
     var maxkeys = (keysA.length > keysB.length) ? keysA : keysB;
     for (var idx in maxkeys) {
-	comparehtml += "<tr class='hoverable'><td><span class='explevel ";
-	if (keysA[idx] == keysB[idx])
-	    comparehtml += "p9'>&check;";
-	else if (listItems['B'][keysA[idx]])
-	    comparehtml += "p5'>&check;";
-	else
-	    comparehtml += "p1'>&cross;";
-	comparehtml += "</span></td><td>" + (keysA[idx]?keysA[idx]:'--n/a--') + "</td><td><span class='explevel ";
-        if (keysA[idx] == keysB[idx])
-	    comparehtml += "p9'>&check;";
-	else if (listItems['A'][keysB[idx]])
-	    comparehtml += "p5'>&check;";
-	else
-	    comparehtml += "p1'>&cross;";
-	comparehtml += "</span></td><td>" + (keysB[idx]?keysB[idx]:'--n/a--') + "</td></tr>";
+	tr = document.createElement("tr");
+	tr.className = 'hoverable';
+
+	td = document.createElement("td");
+	span = document.createElement("span");
+        if (keysA[idx] == keysB[idx]) {
+	    span.className = "explevel p9";
+	    span.innerHTML = "&check;";
+	}
+        else if (listItems['B'][keysA[idx]]) {
+	    span.className = "explevel p5";
+	    span.innerHTML = "&check;";
+	}
+	else {
+            span.className = "explevel p1";
+	    span.innerHTML = "&cross;";
+	}
+        td.appendChild(span);
+        tr.appendChild(td);
+        td = document.createElement("td");
+	td.innerHTML = keysA[idx]?keysA[idx]:'--n/a--';
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+	span = document.createElement("span");
+	if (keysA[idx] == keysB[idx]) {
+	    span.className = "explevel p9";
+	    span.innerHTML = "&check;";
+	}
+	else if (listItems['A'][keysB[idx]]) {
+	    span.className = "explevel p5";
+	    span.innerHTML = "&check;";
+	}
+	else {
+	    span.className = "explevel p1";
+	    span.innerHTML = "&cross;";
+	}
+	td.appendChild(span);
+	tr.appendChild(td);
+	td = document.createElement("td");
+	td.innerHTML = keysB[idx]?keysB[idx]:'--n/a--';
+	tr.appendChild(td);
+
+	comptable.appendChild(tr);
 	compare_tsv.push(keysA[idx]+"\t"+keysB[idx]);
     }
 
-    comparehtml += "</table><br><br>";
-    document.getElementById("comparelists").innerHTML = comparehtml;
+    comparediv.appendChild(comptable);
+    comparediv.appendChild(document.createElement("br"));
+    comparediv.appendChild(document.createElement("br"));
 }
+
 
 function get_list_as_string(listId) {
     var liststring = '[';
@@ -2974,10 +3035,10 @@ function check_entities_batch(batchsize) {
 	    .then(data => {
 		add_to_dev_info("ENTITIES:"+batch,data);
 		for (var entity in data) {
-                    if (entities[entity] && data[entity] && data[entity].id && data[entity].id.kg2_best_curie) {
-			entities[entity].curie = data[entity].id.kg2_best_curie;
-			entities[entity].name  = data[entity].id.label;
-			entities[entity].type  = data[entity].id.type;
+                    if (entities[entity] && data[entity] && data[entity].id && data[entity].id.identifier) {
+			entities[entity].curie = data[entity].id.identifier;
+			entities[entity].name  = data[entity].id.name;
+			entities[entity].type  = data[entity].id.category;
 			//entities[entity].name = data[entity].id.label.replace(/['"]/g, '&apos;');  // might need this?
 
 			entities[entity].isvalid   = true;
@@ -3020,10 +3081,10 @@ function check_entities() {
 	    .then(data => {
                 add_to_dev_info("ENTITIES:"+entity,data);
 
-		if (data[entity] && data[entity].id && data[entity].id.kg2_best_curie) {
-		    entities[entity].curie = data[entity].id.kg2_best_curie;
-		    entities[entity].name  = data[entity].id.label;
-		    entities[entity].type  = data[entity].id.type;
+		if (data[entity] && data[entity].id && data[entity].id.identifier) {
+		    entities[entity].curie = data[entity].id.identifier;
+		    entities[entity].name  = data[entity].id.name;
+		    entities[entity].type  = data[entity].id.category;
 		    //entities[entity].name = data[entity].id.label.replace(/['"]/g, '&apos;');  // might need this?
 
 		    entities[entity].isvalid   = true;
@@ -3089,9 +3150,9 @@ async function check_entity(term,wantall) {
 	else if (!fulldata[term].id)
 	    return ent; // contains found=false
 
-	data.curie = fulldata[term].id.kg2_best_curie;
-	data.name  = fulldata[term].id.label;
-	data.type  = fulldata[term].id.type;
+	data.curie = fulldata[term].id.identifier;
+	data.name  = fulldata[term].id.name;
+	data.type  = fulldata[term].id.category;
     }
 
     ent.found = true;

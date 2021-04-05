@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/rtx-travis-tester/RTX.svg?branch=master)](https://travis-ci.com/rtx-travis-tester/RTX)
+
 # Table of contents
 
 - [About the Translator project, Team Expander Agent, and ARAX](#about-the-translator-project-team-expander-agent-and-arax)

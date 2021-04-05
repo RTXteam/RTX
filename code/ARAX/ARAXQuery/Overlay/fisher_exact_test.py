@@ -347,6 +347,7 @@ class ComputeFTEST:
                     self.response.debug(f"ARAX/KG1 and cypher query were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
                     self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category} was found in ARAX/KG1")
                 else:
+                    print(f'######## {subject_node_category} ######', flush=True)
                     size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category, use_cypher_command=False, kg='KG2') ## If cypher query fails, then try kgNodeIndex
                     if size_of_total==0:
                         self.response.error(f"Both KG1 and KG2 have 0 node with the same type of subject node with qnode key {subject_qnode_key}")
@@ -721,7 +722,8 @@ class ComputeFTEST:
             self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
             return size_of_total
 
-        node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:','')) # TODO: This is a temporary path, it will be removed once we stich to KG2-5-1.
+        node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:',''))
+        node_type = ComputeFTEST.convert_string_biolinkformat(node_type)
 
         if kg == 'KG1':
             if use_cypher_command:
@@ -791,3 +793,26 @@ class ComputeFTEST:
             return snake_string
         else:
             return input_string.lower()
+
+    @staticmethod
+    def convert_string_biolinkformat(input_string: str) -> str:
+
+        if 'biolink' in input_string:
+            return input_string
+        else:
+            if len(input_string) > 1:
+                modified_string = input_string[0].upper()
+                make_upper = False
+                for letter in input_string[1:]:
+                    if letter == '_':
+                        make_upper = True
+                        next
+                    else:
+                        if make_upper is True:
+                            modified_string += letter.upper()
+                            make_upper = False
+                        else:
+                            modified_string += letter
+                return 'biolink:'+ modified_string
+            else:
+                return input_string

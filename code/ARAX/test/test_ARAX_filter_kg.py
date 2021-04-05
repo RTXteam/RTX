@@ -67,8 +67,8 @@ def test_error():
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
-            "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=ARAX/KG1)",
+            "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:contraindicated_for)",
+            "expand(edge_key=e00, kp=ARAX/KG2)",
             "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:contraindicated_for, remove_connected_nodes=t)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"

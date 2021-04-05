@@ -70,11 +70,13 @@ class RTXConfiguration:
             self.neo4j_database = None
             self.neo4j_username = None
             self.neo4j_password = None
+            self.plover_url = None
         else:
             self.neo4j_bolt = self.config["Contextual"][self.live]["neo4j"]["bolt"]
             self.neo4j_database = self.config["Contextual"][self.live]["neo4j"]["database"]
             self.neo4j_username = self.config["Contextual"][self.live]["neo4j"]["username"]
             self.neo4j_password = self.config["Contextual"][self.live]["neo4j"]["password"]
+            self.plover_url = self.config["Contextual"][self.live]["plover"]["url"]
         
         self.cohd_database_host = self.config["Global"]["cohd_database"]["host"]
         self.cohd_database_username = self.config["Global"]["cohd_database"]["username"]
@@ -101,20 +103,15 @@ class RTXConfiguration:
         self.node_synonymizer_path = self.config["Contextual"][self.live]["node_synonymizer"]["path"]
         self.node_synonymizer_version = self.config["Contextual"][self.live]["node_synonymizer"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
 
-        self.rel_max_host = self.config["Global"]["rel_max"]["host"]
-        self.rel_max_username = self.config["Global"]["rel_max"]["username"]
-        self.rel_max_path = self.config["Contextual"][self.live]["rel_max"]["path"]
-        self.rel_max_version = self.config["Contextual"][self.live]["rel_max"]["path"].split('/')[-1].split('_v')[-1].replace('.emb.gz','')
-
-        self.map_txt_host = self.config["Global"]["map_txt"]["host"]
-        self.map_txt_username = self.config["Global"]["map_txt"]["username"]
-        self.map_txt_path = self.config["Contextual"][self.live]["map_txt"]["path"]
-        self.map_txt_version = self.config["Contextual"][self.live]["map_txt"]["path"].split('/')[-1].split('_v')[-1].replace('.txt','')
-
         self.dtd_prob_host = self.config["Global"]["dtd_prob"]["host"]
         self.dtd_prob_username = self.config["Global"]["dtd_prob"]["username"]
         self.dtd_prob_path = self.config["Contextual"][self.live]["dtd_prob"]["path"]
         self.dtd_prob_version = self.config["Contextual"][self.live]["dtd_prob"]["path"].split('/')[-1].split('_v')[-1].replace('.db','')
+
+        self.kg2c_sqlite_host = self.config["Global"]["kg2c_sqlite"]["host"]
+        self.kg2c_sqlite_username = self.config["Global"]["kg2c_sqlite"]["username"]
+        self.kg2c_sqlite_path = self.config["Contextual"][self.live]["kg2c_sqlite"]["path"]
+        self.kg2c_sqlite_version = self.config["Contextual"][self.live]["kg2c_sqlite"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
 
         self.mysql_feedback_host = self.config["Global"]["mysql_feedback"]["host"]
         self.mysql_feedback_port = self.config["Global"]["mysql_feedback"]["port"]
@@ -185,6 +182,14 @@ class RTXConfiguration:
     @neo4j_password.setter
     def neo4j_password(self, password: str):
         self._neo4j_password = password
+
+    @property
+    def plover_url(self) -> str:
+        return self._plover_url
+
+    @plover_url.setter
+    def plover_url(self, url: str):
+        self._plover_url = url
 
     @property
     def mysql_feedback_host(self) -> str:
@@ -292,6 +297,7 @@ def main():
     print("neo4j databse: %s" % rtxConfig.neo4j_database)
     print("neo4j username: %s" % rtxConfig.neo4j_username)
     print("neo4j password: %s" % rtxConfig.neo4j_password)
+    print("plover url: %s" % rtxConfig.plover_url)
     print("mysql feedback host: %s" % rtxConfig.mysql_feedback_host)
     print("mysql feedback port: %s" % rtxConfig.mysql_feedback_port)
     print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)

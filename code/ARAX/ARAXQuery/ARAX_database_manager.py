@@ -40,15 +40,18 @@ class ARAXDatabaseManager:
         if not  os.path.exists(synonymizer_filepath):
             os.system(f"mkdir -p {synonymizer_filepath}")
 
+        kg2c_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+        if not os.path.exists(kg2c_filepath):
+            os.system(f"mkdir -p {kg2c_filepath}")
+
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
             'log_model': f"{pred_filepath}{os.path.sep}{self.RTXConfig.log_model_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
-            'rel_max': f"{pred_filepath}{os.path.sep}{self.RTXConfig.rel_max_path.split('/')[-1]}",
-            'map_txt': f"{pred_filepath}{os.path.sep}{self.RTXConfig.map_txt_path.split('/')[-1]}",
-            'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
+            'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}",
+            'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}"
         }
         # user, host, and paths to databases on remote server
         self.remote_locations = {
@@ -57,9 +60,8 @@ class ARAXDatabaseManager:
             'log_model': f"{self.RTXConfig.log_model_username}@{self.RTXConfig.log_model_host}:{self.RTXConfig.log_model_path}",
             'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_username}@{self.RTXConfig.curie_to_pmids_host}:{self.RTXConfig.curie_to_pmids_path}",
             'node_synonymizer': f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:{self.RTXConfig.node_synonymizer_path}",
-            'rel_max': f"{self.RTXConfig.rel_max_username}@{self.RTXConfig.rel_max_host}:{self.RTXConfig.rel_max_path}",
-            'map_txt': f"{self.RTXConfig.map_txt_username}@{self.RTXConfig.map_txt_host}:{self.RTXConfig.map_txt_path}",
-            'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}"
+            'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}",
+            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_username}@{self.RTXConfig.kg2c_sqlite_host}:{self.RTXConfig.kg2c_sqlite_path}"
         }
         # database locations if inside rtx1 docker container
         self.docker_paths = {
@@ -68,9 +70,8 @@ class ARAXDatabaseManager:
             'log_model': f"{self.RTXConfig.log_model_path.replace('/translator/','/mnt/')}",
             'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_path.replace('/translator/','/mnt/')}",
             'node_synonymizer': f"{self.RTXConfig.node_synonymizer_path.replace('/translator/','/mnt/')}",
-            'rel_max': f"{self.RTXConfig.rel_max_path.replace('/translator/','/mnt/')}",
-            'map_txt': f"{self.RTXConfig.map_txt_path.replace('/translator/','/mnt/')}",
-            'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace('/translator/','/mnt/')}"
+            'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace('/translator/','/mnt/')}",
+            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace('/translator/', '/mnt/')}"
         }
 
         # database local paths + version numbers
@@ -95,17 +96,13 @@ class ARAXDatabaseManager:
                 'path': self.local_paths['node_synonymizer'],
                 'version': self.RTXConfig.node_synonymizer_version
             },
-            'rel_max': {
-                'path': self.local_paths['rel_max'],
-                'version': self.RTXConfig.rel_max_version
-            },
-            'map_txt': {
-                'path': self.local_paths['map_txt'],
-                'version': self.RTXConfig.map_txt_version
-            },
             'dtd_prob': {
                 'path': self.local_paths['dtd_prob'],
                 'version': self.RTXConfig.dtd_prob_version
+            },
+            'kg2c_sqlite': {
+                'path': self.local_paths['kg2c_sqlite'],
+                'version': self.RTXConfig.kg2c_sqlite_version
             }
         }
 
@@ -123,7 +120,7 @@ class ARAXDatabaseManager:
                 elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']: # If database is present but wrong version
                     if debug:
                         print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
-                        prinf("downloading remote version...")
+                        print("downloading remote version...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
@@ -216,13 +213,30 @@ class ARAXDatabaseManager:
         verbose = ""
         if debug:
             verbose = "vv"
-        os.system(f"rsync -hzc{verbose} --progress {remote_location} {local_path}")
+        os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
 
     def force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
             if debug:
                 print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
             self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
+    
+    def download_slim(self, debug=False):
+        for database_name in self.remote_locations.keys():
+            if debug:
+                print(f"Downloading slim {self.remote_locations[database_name].split('/')[-1]}...")
+            if database_name in ["node_synonymizer", "curie_to_pmids", "log_model"]:
+                self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
+            elif database_name in ["cohd_database", "dtd_prob", "graph_database"]:
+                self.download_database(remote_location=self.remote_locations[database_name].replace(".sqlite","_slim.sqlite").replace(".db","_slim.db"), local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
+            else:
+                if debug:
+                    print("Making fake database...")
+                os.system(f"touch {self.local_paths[database_name]}")
+        with open(versions_path,"w") as fid:
+            if debug:
+                print("Saving new version file...")
+            json.dump(self.db_versions, fid)
 
     def check_all(self, max_days=31, debug=False):
         update_flag = False
@@ -260,11 +274,14 @@ def main():
     parser.add_argument("-c", "--check_local", action='store_true')
     parser.add_argument("-f", "--force_download", action='store_true')
     parser.add_argument("-l", "--live", type=str, help="Live parameter for RTXConfiguration", default="Production", required=False)
+    parser.add_argument("-s", "--slim", action='store_true')
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager(arguments.live)
     if arguments.check_local:
         if not DBManager.check_versions(debug=True):
             print("All local versions are up to date")
+    elif arguments.slim:
+        DBManager.download_slim(debug=True)
     elif arguments.force_download:
         DBManager.force_download_all(debug=True)
     else:

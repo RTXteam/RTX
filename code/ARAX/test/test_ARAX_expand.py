@@ -121,7 +121,7 @@ def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
             if qnode.category:
-                assert qnode.category in node.category  # Could have additional categories if it has multiple qnode keys
+                assert set(eu.convert_to_list(qnode.category)).issubset(set(node.category))  # Could have additional categories if it has multiple qnode keys
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
@@ -525,7 +525,7 @@ def test_987_override_node_categories():
 
 
 @pytest.mark.slow
-def test_COHD_expand_paired_concept_freq():
+def test_cohd_expand_paired_concept_freq():
     actions_list = [
         "add_qnode(id=UMLS:C0015967, key=n00)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
@@ -541,7 +541,7 @@ def test_COHD_expand_paired_concept_freq():
 
 
 @pytest.mark.slow
-def test_COHD_expand_observed_expected_ratio():
+def test_cohd_expand_observed_expected_ratio():
     actions_list = [
         "add_qnode(id=DOID:10718, key=n00)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
@@ -556,9 +556,9 @@ def test_COHD_expand_observed_expected_ratio():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
-def test_COHD_expand_chi_square():
+def test_cohd_expand_chi_square():
     actions_list = [
-        "add_qnode(id=DOID:5844, key=n00)",
+        "add_qnode(id=DOID:1588, key=n00)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_percentile=95)",
@@ -571,7 +571,7 @@ def test_COHD_expand_chi_square():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
-def test_DTD_expand_1():
+def test_dtd_expand_1():
     actions_list = [
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(name=Sotos syndrome, key=n1)",
@@ -585,8 +585,9 @@ def test_DTD_expand_1():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].type == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
+
 @pytest.mark.slow
-def test_DTD_expand_2():
+def test_dtd_expand_2():
     actions_list = [
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(category=disease, key=n1)",
@@ -600,6 +601,7 @@ def test_DTD_expand_2():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].type == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
+
 def test_ngd_expand():
     actions_list = [
         "add_qnode(name=DOID:14330, key=n00)",
@@ -609,6 +611,36 @@ def test_ngd_expand():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_chp_expand_1():
+    actions_list = [
+        "add_qnode(id=ENSEMBL:ENSG00000162419, key=n00)",
+        "add_qnode(category=biolink:Drug, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00, kp=CHP, CHP_survival_threshold=500)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:paired_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].name == "paired_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].type == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "https://github.com/di2ag/chp_client" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+
+
+def test_chp_expand_2():
+    actions_list = [
+        "add_qnode(id=[ENSEMBL:ENSG00000124532,ENSEMBL:ENSG00000075975,ENSEMBL:ENSG00000104774], key=n00)",
+        "add_qnode(category=biolink:Drug, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00, kp=CHP, CHP_survival_threshold=500)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:paired_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].name == "paired_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].type == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "https://github.com/di2ag/chp_client" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
 def test_genetics_kp_simple():
@@ -650,7 +682,7 @@ def test_genetics_kp_2_hop():
 @pytest.mark.slow
 def test_genetics_kp_multi_kp():
     actions_list = [
-        "add_qnode(key=n0, name=AMYLIN, category=biolink:ChemicalSubstance)",
+        "add_qnode(key=n0, name=ertugliflozin, category=biolink:ChemicalSubstance)",
         "add_qnode(key=n1, category=biolink:Disease, is_set=true)",
         "add_qnode(key=n2, category=biolink:Protein)",
         "add_qedge(key=e0, subject=n0, object=n1)",
@@ -860,6 +892,18 @@ def test_issue_1212():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
+
+
+def test_issue_1314():
+    # KG2 should return answers for "treated_by" (even though it only contains "treats" edges)
+    actions_list = [
+        "add_qnode(key=n0, id=DRUGBANK:DB00394, category=biolink:Drug)",
+        "add_qnode(key=n1, category=biolink:Disease)",
+        "add_qedge(key=e0, subject=n1, object=n0, predicate=biolink:treated_by)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
 if __name__ == "__main__":
