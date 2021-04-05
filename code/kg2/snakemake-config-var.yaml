@@ -70,6 +70,9 @@ reactome_output_file: ${BUILD_DIR}/kg2-reactome.json
 mirbase_input_file: ${BUILD_DIR}/miRNA.dat
 mirbase_output_file: ${BUILD_DIR}/kg2-mirbase${test_suffix}.json
 
+jensenlab_dir: ${BUILD_DIR}/jensenlab
+jensenlab_output_file: ${BUILD_DIR}/kg2-jensenlab${test_suffix}.json
+
 drugcentral_dir: ${BUILD_DIR}/drugcentral
 drugcentral_input_file: ${drugcentral_dir}/drugcentral_psql_json.json
 drugcentral_output_file: ${BUILD_DIR}/kg2-drugcentral${test_suffix}.json
