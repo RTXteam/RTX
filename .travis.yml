@@ -5,23 +5,12 @@ python:
   - "3.7"
 services:
   - mysql
-#  - docker
-# command to setup sql feedback docker container
 before_install:
   - mkdir -p ~/.ssh && echo "Host araxconfig.rtx.ai" > ~/.ssh/config && echo "    StrictHostKeyChecking no" >> ~/.ssh/config
   - echo "Host arax.ncats.io" >> ~/.ssh/config && echo "    StrictHostKeyChecking no" >> ~/.ssh/config
   - echo -e "${TRAVIS_KEY//_/\\n}" > ~/.ssh/id_rsa
-#   - echo -e "${TRAVIS_KEY_PUB//_/\\n}" > ~/.ssh/id_rsa.pub
   - chmod og-rwx ~/.ssh/id_rsa
-#   - chmod og-rwx ~/.ssh/id_rsa.pub
   - eval "scp ${CONFIG_HOST}:configv2.json ${TRAVIS_BUILD_DIR}/code/configv2.json"
-#  - bash ./code/kg2/install-docker-ubuntu18.sh
-# cache directories
-# cache:
-#   directories:
-#   - ./code/ARAX/KnowledgeSources/NormalizedGoogleDistance
-#   - ./code/ARAX/KnowledgeSources/Prediction
-#   - ./code/ARAX/KnowledgeSources/COHD_local/data
 # command to install python dependencies
 install:
   - pip install -r requirements.txt
