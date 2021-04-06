@@ -604,9 +604,9 @@ def test_dtd_expand_2():
 
 def test_ngd_expand():
     actions_list = [
-        "add_qnode(name=DOID:14330, key=n00)",
+        "add_qnode(name=MONDO:0015766, key=n00)",
         "add_qnode(category=biolink:PhenotypicFeature, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicate=biolink:has_phenotype, key=e00)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=NGD)",
         "return(message=true, store=false)"
     ]
