@@ -27,7 +27,8 @@ class NGDQuerier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
-        self.ngd_edge_type = "biolink:has_normalized_google_distance_with"
+        self.ngd_edge_predicate = "biolink:has_normalized_google_distance_with"
+        self.accepted_qedge_predicates = {"biolink:has_normalized_google_distance_with", "biolink:related_to"}
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
         self.ngd_edge_attribute_url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
@@ -46,19 +47,23 @@ class NGDQuerier:
         self._verify_one_hop_query_graph_is_valid(query_graph, log)
         if log.status != 'OK':
             return final_kg
+        qedge_key = next(qedge_key for qedge_key in query_graph.edges)
+        qedge = query_graph.edges[qedge_key]
+        if qedge.predicate and not set(eu.convert_to_list(qedge.predicate)).intersection(self.accepted_qedge_predicates):
+            log.error(f"NGD can only expand qedges with these predicates: {self.accepted_qedge_predicates}. QEdge"
+                      f" {qedge_key}'s predicate is: {qedge.predicate}", error_code="UnsupportedQG")
+            return final_kg
 
         # Find potential answers using KG2
         log.debug(f"Finding potential answers using KG2")
-        qedge_key = next(qedge_key for qedge_key in query_graph.edges)
-        qedge = query_graph.edges[qedge_key]
+
         source_qnode_key = qedge.subject
         target_qnode_key = qedge.object
         source_qnode = query_graph.nodes[source_qnode_key]
         target_qnode = query_graph.nodes[target_qnode_key]
         qedge_params_str = ", ".join(list(filter(None, [f"key={qedge_key}",
                                                         f"subject={source_qnode_key}",
-                                                        f"object={target_qnode_key}",
-                                                        self._get_dsl_qedge_type_str(qedge)])))
+                                                        f"object={target_qnode_key}"])))
         source_params_str = ", ".join(list(filter(None, [f"key={source_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(source_qnode),
                                                          self._get_dsl_qnode_category_str(source_qnode)])))
@@ -117,7 +122,7 @@ class NGDQuerier:
 
     def _create_ngd_edge(self, ngd_value: float, subject: str, object: str, pmid_list: list) -> Tuple[str, Edge]:
         ngd_edge = Edge()
-        ngd_edge.predicate = self.ngd_edge_type
+        ngd_edge.predicate = self.ngd_edge_predicate
         ngd_edge.subject = subject
         ngd_edge.object = object
         ngd_edge_key = f"NGD:{subject}--{ngd_edge.predicate}--{object}"
@@ -160,15 +165,6 @@ class NGDQuerier:
             return f"category={qnode.category[0]}"
         else:
             return f"category=[{', '.join(qnode.category)}]"
-
-    @staticmethod
-    def _get_dsl_qedge_type_str(qedge: QEdge) -> str:
-        if len(qedge.predicate) == 0:
-            return ""
-        elif len(qedge.predicate) == 1:
-            return f"predicate={qedge.predicate[0]}"
-        else:
-            return f"predicate=[{', '.join(qedge.predicate)}]"
 
     @staticmethod
     def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):

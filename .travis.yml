@@ -1,6 +1,7 @@
 # use ubuntu 18.04
 dist: bionic
 language: python
+# using python version 3.7
 python:
   - "3.7"
 services:
