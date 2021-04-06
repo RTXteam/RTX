@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/rtx-travis-tester/RTX.svg?branch=master)](https://travis-ci.com/rtx-travis-tester/RTX)
+[![Build Status](https://travis-ci.com/RTXteam/RTX.svg?branch=master)](https://travis-ci.com/RTXteam/RTX)
 
 # Table of contents
 
