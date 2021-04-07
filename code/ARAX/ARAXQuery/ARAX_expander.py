@@ -16,6 +16,7 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
+from openapi_server.models.message import Message
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -259,7 +260,6 @@ class ARAXExpander:
         # Create global slots to store some info that needs to persist between expand() calls
         if not hasattr(message, "encountered_kryptonite_edges_info"):
             message.encountered_kryptonite_edges_info = dict()
-        encountered_kryptonite_edges_info = message.encountered_kryptonite_edges_info
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -338,25 +338,11 @@ class ARAXExpander:
                 else:
                     kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
+
                 # Send this query to each KP selected to answer it TODO: do this in parallel
                 for kp_to_use in kps_to_query:
-                    response.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
-                    answer_kg = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results, use_synonyms, mode, log)
-                    if log.status != 'OK':
-                        return response
-                    elif mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
-                        self._store_kryptonite_edge_info(answer_kg, qedge_key, query_graph, encountered_kryptonite_edges_info, log)
-                    else:
-                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, log)
-                    if log.status != 'OK':
-                        return response
-
-                    # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
-                    if mode == "ARAX":
-                        self._apply_any_kryptonite_edges(overarching_kg, query_graph, encountered_kryptonite_edges_info, log)
-                        self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, log)
-                        if log.status != 'OK':
-                            return response
+                    self._answer_one_hop_query_using_kp(kp_to_use, one_hop_qg, query_sub_graph, input_parameters,
+                                                        mode, overarching_kg, message, response)
 
                 # Make sure we found at least SOME answers for this edge (unless we're continuing if no results)
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
@@ -395,6 +381,37 @@ class ARAXExpander:
                      f"({eu.get_printable_counts_by_qg_id(overarching_kg)})")
 
         return response
+
+    def _answer_one_hop_query_using_kp(self, kp_to_use: str, one_hop_qg: QueryGraph,
+                                       query_sub_graph: QueryGraph, input_parameters: Dict[str, any], mode: str,
+                                       overarching_kg: QGOrganizedKnowledgeGraph, message: Message,
+                                       response: ARAXResponse):
+        qedge_key = next(qedge_key for qedge_key in one_hop_qg.edges)
+        qedge = one_hop_qg.edges[qedge_key]
+        # Make sure we have all default parameters set specific to the KP we'll be using
+        response.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, response)
+        continue_if_no_results = response.data["parameters"].get("continue_if_no_results")
+        use_synonyms = response.data["parameters"].get("use_synonyms")
+
+        # Actually get answers to this one-hop query using the KP
+        answer_kg = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results, use_synonyms, mode, response)
+        if response.status != 'OK':
+            return
+        elif mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
+            self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
+                                             message.encountered_kryptonite_edges_info, response)
+        else:
+            self._merge_answer_into_message_kg(answer_kg, overarching_kg, response)
+        if response.status != 'OK':
+            return
+
+        # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
+        if mode == "ARAX":
+            self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
+                                             message.encountered_kryptonite_edges_info, response)
+            self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, response)
+            if response.status != 'OK':
+                return
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, continue_if_no_results: bool, use_synonyms: bool,
                      mode: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
