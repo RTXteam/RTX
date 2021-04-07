@@ -332,14 +332,14 @@ class ARAXExpander:
                     return response
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
-                director = Director(log, set(self.command_definitions.keys()))
-                if parameters["kp"]:
-                    kps_to_query = {parameters["kp"]}
-                else:
+                if not parameters["kp"]:
+                    director = Director(log, set(self.command_definitions.keys()))
                     kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
+                else:
+                    kps_to_query = {parameters["kp"]}
 
-                # Send this query to each KP selected to answer it in parallel
+                # Send this query to each KP selected to answer it (in parallel)
                 if len(kps_to_query) > 1:
                     num_threads = multiprocessing.cpu_count()
                     pool = multiprocessing.Pool(num_threads)
