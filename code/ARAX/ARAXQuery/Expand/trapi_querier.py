@@ -275,8 +275,7 @@ class TRAPIQuerier:
                     f"No 'message' was included in the response from {self.kp_name}. Response from KP was: "
                     f"{json.dumps(json_response, indent=4)}")
             elif not json_response["message"].get("results"):
-                self.log.warning(f"No 'results' were returned from {self.kp_name}. Response from KP was: "
-                                 f"{json.dumps(json_response, indent=4)}")
+                self.log.debug(f"No 'results' were returned from {self.kp_name}.")
                 json_response["message"]["results"] = []  # Setting this to empty list helps downstream processing
             else:
                 kp_message = ARAXMessenger().from_dict(json_response["message"])
