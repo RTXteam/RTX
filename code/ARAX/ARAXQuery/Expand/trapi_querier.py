@@ -6,6 +6,7 @@ import requests
 from typing import List, Dict, Set, Union
 
 import Expand.expand_utilities as eu
+import requests_cache
 from Expand.expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
@@ -30,6 +31,8 @@ class TRAPIQuerier:
         self.kp_supports_predicate_lists = eu.kp_supports_predicate_lists(kp_name)
         self.kp_supports_none_for_category = eu.kp_supports_none_for_category(kp_name)
         self.kp_supports_none_for_predicate = eu.kp_supports_none_for_predicate(kp_name)
+        self.predicates_timeout = 5
+        self.query_timeout = 120
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -142,11 +145,18 @@ class TRAPIQuerier:
         return query_graph
 
     def _verify_qg_is_accepted_by_kp(self, query_graph: QueryGraph):
-        kp_predicates_response = requests.get(f"{self.kp_endpoint}/predicates", headers={'accept': 'application/json'})
-        if kp_predicates_response.status_code != 200:
-            self.log.warning(f"Unable to access {self.kp_name}'s predicates endpoint "
-                             f"(returned status of {kp_predicates_response.status_code})")
+        try:
+            with requests_cache.disabled():
+                kp_predicates_response = requests.get(f"{self.kp_endpoint}/predicates", timeout=self.predicates_timeout)
+        except Exception:
+            self.log.warning(f"Timed out trying to hit {self.kp_name}'s /predicates endpoint "
+                             f"(waited {self.predicates_timeout} seconds)")
         else:
+            if kp_predicates_response.status_code != 200:
+                self.log.warning(f"Unable to access {self.kp_name}'s predicates endpoint "
+                                 f"(returned status of {kp_predicates_response.status_code})")
+                return
+
             predicates_dict = kp_predicates_response.json()
             qnodes = query_graph.nodes
             qedge_key = next(qedge_key for qedge_key in query_graph.edges)
@@ -249,9 +259,17 @@ class TRAPIQuerier:
         # Send the query to the KP's API
         body = {'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}}
         self.log.debug(f"Sending query to {self.kp_name} API")
-        kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'})
-        json_response = kp_response.json()
+        try:
+            with requests_cache.disabled():
+                kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'},
+                                            timeout=self.query_timeout)
+        except Exception:
+            self.log.warning(f"Query to {self.kp_name}'s API timed out after {self.query_timeout} seconds")
+            return answer_kg
+
+        # Load the results into the object model
         if kp_response.status_code == 200:
+            json_response = kp_response.json()
             if not json_response.get("message"):
                 self.log.warning(
                     f"No 'message' was included in the response from {self.kp_name}. Response from KP was: "
@@ -275,7 +293,7 @@ class TRAPIQuerier:
                         answer_kg.add_node(returned_node_key, returned_node, qnode_key)
         else:
             self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. Response from KP was:"
-                             f" {json.dumps(json_response, indent=4)}")
+                             f" {kp_response.text}")
 
         return answer_kg
 
