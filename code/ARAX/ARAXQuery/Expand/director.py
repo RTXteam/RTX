@@ -6,7 +6,7 @@ import pathlib
 import sys
 import urllib.request
 import expand_utilities as eu
-from typing import Set
+from typing import Set, Dict, List
 from collections import defaultdict
 from itertools import product
 
@@ -43,7 +43,7 @@ class Director:
         # use metamap to check kp for predicate triple
         accepting_kps = set()
         for kp, predicates_dict in self.meta_map.items():
-            if self._triple_is_in_predicates_response(predicates_dict, sub_category_list, predicate_list, obj_category_list):
+            if self._triple_is_in_predicates_response(kp, predicates_dict, sub_category_list, predicate_list, obj_category_list):
                 accepting_kps.add(kp)
 
         kps_to_return = self._select_best_kps(accepting_kps, qg)
@@ -51,15 +51,15 @@ class Director:
 
     # returns True if at least one possible triple exists in the predicates endpoint response
     @staticmethod
-    def _triple_is_in_predicates_response(predicates_dict: dict, subject_list: list, predicate_list: list, object_list: list)  -> bool:
+    def _triple_is_in_predicates_response(kp: str, predicates_dict: dict, subject_list: list, predicate_list: list, object_list: list)  -> bool:
         # handle potential emptiness of sub, obj, predicate lists
-        if not subject_list: # any subject
+        if not subject_list and eu.kp_supports_none_for_category(kp): # any subject
             subject_list = list(predicates_dict.keys())
-        if not object_list: # any object
+        if not object_list and eu.kp_supports_none_for_category(kp): # any object
             object_set = set()
             _ = [object_set.add(obj) for obj_dict in predicates_dict.values() for obj in obj_dict.keys()]
             object_list = list(object_set)
-        any_predicate = False if predicate_list else True
+        any_predicate = False if predicate_list or not eu.kp_supports_none_for_predicate(kp) else True
 
         # handle combinations of subject and objects using cross product
         qg_sub_obj_dict = defaultdict(lambda: set())
@@ -88,8 +88,8 @@ class Director:
         # If a qnode has a lot of curies, only use KG2 for now (wait for TRAPI batch querying to use other KPs)
         if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.id)) > 50):
             chosen_kps = chosen_kps.intersection({"ARAX/KG2"})
-        # Temporarily avoid using CHP (until error is fixed) TODO
-        chosen_kps = chosen_kps.difference({"CHP"})
+        # Temporarily avoid using local KPs (until errors are fixed) TODO
+        chosen_kps = chosen_kps.difference({"CHP", "COHD", "DTD"})
 
         return chosen_kps
 
@@ -133,13 +133,34 @@ class Director:
                     continue
                 predicates_dict = json.loads(kp_predicates_response.read())
                 meta_map[kp] = predicates_dict
+
+        # Merge what we found with our hard-coded info for API-less KPs
+        non_api_kps_meta_info = self._get_non_api_kps_meta_info()
+        meta_map.update(non_api_kps_meta_info)
+
         # Save our big combined metamap to a local json file
         with open(self.meta_map_path, "w+") as map_file:
             json.dump(meta_map, map_file)
 
-    def _get_non_api_kps_meta_info(self):
+    @staticmethod
+    def _get_non_api_kps_meta_info() -> Dict[str, Dict[str, Dict[str, List[str]]]]:
         # TODO: Hardcode info for our KPs that don't have APIs here... (then include when building meta map)
         # Need to hardcode DTD and NGD
         # For NGD, should we just use KG2's predicate info?
         # For DTD, my best guess is subjects = Drug, ChemicalSubstance, objects = Disease, but that feels likely incomplete
-        pass
+        dtd_predicates = ["biolink:treats", "biolink:treated_by"]
+        non_api_predicates_info = {
+            "DTD": {"biolink:Drug": {"biolink:Disease": dtd_predicates,
+                                     "biolink:PhenotypicFeature": dtd_predicates,
+                                     "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
+                    "biolink:ChemicalSubstance": {"biolink:Disease": dtd_predicates,
+                                                  "biolink:PhenotypicFeature": dtd_predicates,
+                                                  "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
+                    "biolink:Disease": {"biolink:Drug": dtd_predicates,
+                                        "biolink:ChemicalSubstance": dtd_predicates},
+                    "biolink:PhenotypicFeature": {"biolink:Drug": dtd_predicates,
+                                                  "biolink:ChemicalSubstance": dtd_predicates},
+                    "biolink:DiseaseOrPhenotypicFeature": {"biolink:Drug": dtd_predicates,
+                                                           "biolink:ChemicalSubstance": dtd_predicates}}
+        }
+        return non_api_predicates_info

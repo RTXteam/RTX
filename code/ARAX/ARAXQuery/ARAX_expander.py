@@ -337,9 +337,11 @@ class ARAXExpander:
                     kps_to_query = {parameters["kp"]}
                 else:
                     kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
-                    log.debug(f"KPs Expand decided to query are: {kps_to_query}")
+                    log.debug(f"KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 # Send this query to each KP selected to answer it TODO: do this in parallel
                 for kp_to_use in kps_to_query:
+                    response.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
+                    log.debug(response.data["parameters"])
                     answer_kg = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results, use_synonyms, mode, log)
                     if log.status != 'OK':
                         return response
