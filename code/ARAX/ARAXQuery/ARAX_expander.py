@@ -340,13 +340,20 @@ class ARAXExpander:
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
 
                 # Send this query to each KP selected to answer it in parallel
-                num_threads = multiprocessing.cpu_count()
-                pool = multiprocessing.Pool(num_threads)
-                answer_kgs = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                              use_synonyms, mode, response] for kp_to_use in
-                                                              kps_to_query])
+                if len(kps_to_query) > 1:
+                    num_threads = multiprocessing.cpu_count()
+                    pool = multiprocessing.Pool(num_threads)
+                    answer_kgs = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
+                                                                  use_synonyms, mode, response] for kp_to_use in
+                                                                  kps_to_query])
+                else:
+                    # Don't bother creating separate processes if we only selected one KP
+                    kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
+                    answer_kgs = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, use_synonyms, mode,
+                                                    response)]
                 if response.status != 'OK':
                     return overarching_kg
+
                 # Post-process all the KPs' answers and merge into our overarching KG
                 for answer_kg in answer_kgs:
                     if mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():

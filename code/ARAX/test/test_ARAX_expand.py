@@ -915,7 +915,7 @@ def test_issue_1236():
         "expand()",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
     actions_list_kg2_only = [
         "add_qnode(id=NCBIGene:1803, category=biolink:Gene, key=n00)",

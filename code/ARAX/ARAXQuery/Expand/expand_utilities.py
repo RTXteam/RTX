@@ -246,9 +246,10 @@ def kp_supports_none_for_predicate(kp_name: str) -> bool:
                        "MolePro": True,
                        "GeneticsKP": False,
                        "BTE": True,
-                       "DTD": False,
-                       "CHP": False,
-                       "COHD": False}
+                       "DTD": True,
+                       "CHP": True,
+                       "COHD": True,
+                       "NGD": False}
     return none_predicates.get(kp_name, True)
 
 
@@ -260,7 +261,8 @@ def kp_supports_none_for_category(kp_name: str) -> bool:
                        "BTE": True,
                        "DTD": False,
                        "CHP": False,
-                       "COHD": False}
+                       "COHD": False,
+                       "NGD": True}
     return none_categories.get(kp_name, True)
 
 

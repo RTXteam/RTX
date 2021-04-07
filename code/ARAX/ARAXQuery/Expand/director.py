@@ -135,7 +135,7 @@ class Director:
                 meta_map[kp] = predicates_dict
 
         # Merge what we found with our hard-coded info for API-less KPs
-        non_api_kps_meta_info = self._get_non_api_kps_meta_info()
+        non_api_kps_meta_info = self._get_non_api_kps_meta_info(meta_map)
         meta_map.update(non_api_kps_meta_info)
 
         # Save our big combined metamap to a local json file
@@ -143,24 +143,34 @@ class Director:
             json.dump(meta_map, map_file)
 
     @staticmethod
-    def _get_non_api_kps_meta_info() -> Dict[str, Dict[str, Dict[str, List[str]]]]:
+    def _get_non_api_kps_meta_info(meta_map: Dict[str, Dict[str, Dict[str, List[str]]]]) -> Dict[str, Dict[str, Dict[str, List[str]]]]:
         # TODO: Hardcode info for our KPs that don't have APIs here... (then include when building meta map)
         # Need to hardcode DTD and NGD
         # For NGD, should we just use KG2's predicate info?
         # For DTD, my best guess is subjects = Drug, ChemicalSubstance, objects = Disease, but that feels likely incomplete
+
         dtd_predicates = ["biolink:treats", "biolink:treated_by"]
+        dtd_predicates_dict = {"biolink:Drug": {"biolink:Disease": dtd_predicates,
+                                                "biolink:PhenotypicFeature": dtd_predicates,
+                                                "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
+                               "biolink:ChemicalSubstance": {"biolink:Disease": dtd_predicates,
+                                                             "biolink:PhenotypicFeature": dtd_predicates,
+                                                             "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
+                               "biolink:Disease": {"biolink:Drug": dtd_predicates,
+                                                   "biolink:ChemicalSubstance": dtd_predicates},
+                               "biolink:PhenotypicFeature": {"biolink:Drug": dtd_predicates,
+                                                             "biolink:ChemicalSubstance": dtd_predicates},
+                               "biolink:DiseaseOrPhenotypicFeature": {"biolink:Drug": dtd_predicates,
+                                                                      "biolink:ChemicalSubstance": dtd_predicates}}
+
+        # NGD should have same subject/object combinations as KG2, but only a single predicate for now
+        ngd_predicates = ["biolink:has_normalized_google_distance_with"]
+        ngd_predicates_dict = dict()
+        for subject_category, objects_dict in meta_map.get("ARAX/KG2").items():
+            ngd_predicates_dict[subject_category] = {object_category: ngd_predicates for object_category in objects_dict}
+
         non_api_predicates_info = {
-            "DTD": {"biolink:Drug": {"biolink:Disease": dtd_predicates,
-                                     "biolink:PhenotypicFeature": dtd_predicates,
-                                     "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
-                    "biolink:ChemicalSubstance": {"biolink:Disease": dtd_predicates,
-                                                  "biolink:PhenotypicFeature": dtd_predicates,
-                                                  "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
-                    "biolink:Disease": {"biolink:Drug": dtd_predicates,
-                                        "biolink:ChemicalSubstance": dtd_predicates},
-                    "biolink:PhenotypicFeature": {"biolink:Drug": dtd_predicates,
-                                                  "biolink:ChemicalSubstance": dtd_predicates},
-                    "biolink:DiseaseOrPhenotypicFeature": {"biolink:Drug": dtd_predicates,
-                                                           "biolink:ChemicalSubstance": dtd_predicates}}
+            "DTD": dtd_predicates_dict,
+            "NGD": ngd_predicates_dict
         }
         return non_api_predicates_info
