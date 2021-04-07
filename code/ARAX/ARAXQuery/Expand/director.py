@@ -6,7 +6,7 @@ import pathlib
 import sys
 import urllib.request
 import expand_utilities as eu
-from typing import List
+from typing import Set
 from collections import defaultdict
 from itertools import product
 
@@ -18,7 +18,7 @@ from openapi_server.models.query_graph import QueryGraph
 
 class Director:
 
-    def __init__(self, log: ARAXResponse, all_kps: List[str]):
+    def __init__(self, log: ARAXResponse, all_kps: Set[str]):
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map.json"
         self.log = log
         self.all_kps = all_kps
@@ -29,7 +29,7 @@ class Director:
         with open(self.meta_map_path) as map_file:
             self.meta_map = json.load(map_file)
 
-    def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> List[str]:
+    def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Set[str]:
         # confirm that the qg is one hop
         if len(qg.edges) > 1:
             self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.", error_code="UnexpectedQG")
@@ -41,12 +41,14 @@ class Director:
         predicate_list = eu.convert_to_list(qedge.predicate)
         
         # use metamap to check kp for predicate triple
-        kps_to_return = []
+        accepting_kps = set()
         for kp, predicates_dict in self.meta_map.items():
             if self._triple_is_in_predicates_response(predicates_dict, sub_category_list, predicate_list, obj_category_list):
-                kps_to_return.append(kp)
+                accepting_kps.add(kp)
+
+        kps_to_return = self._select_best_kps(accepting_kps, qg)
         return kps_to_return
-    
+
     # returns True if at least one possible triple exists in the predicates endpoint response
     @staticmethod
     def _triple_is_in_predicates_response(predicates_dict: dict, subject_list: list, predicate_list: list, object_list: list)  -> bool:
@@ -79,6 +81,18 @@ class Director:
                         return True
         return False
 
+    @staticmethod
+    def _select_best_kps(possible_kps: Set[str], qg: QueryGraph) -> Set[str]:
+        # Apply some special rules to filter down the KPs we'll use for this QG
+        chosen_kps = possible_kps
+        # If a qnode has a lot of curies, only use KG2 for now (wait for TRAPI batch querying to use other KPs)
+        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.id)) > 50):
+            chosen_kps = chosen_kps.intersection({"ARAX/KG2"})
+        # Temporarily avoid using CHP (until error is fixed) TODO
+        chosen_kps = chosen_kps.difference({"CHP"})
+
+        return chosen_kps
+
     def _need_to_regenerate_meta_map(self) -> bool:
         # Check if file doesn't exist or if it hasn't been modified in the last day
         meta_map_file = pathlib.Path(self.meta_map_path)
@@ -109,7 +123,7 @@ class Director:
                 self.log.debug(f"No endpoint for {kp}. Skipping for now.")
                 continue
             try:
-                kp_predicates_response = urllib.request.urlopen(f"{kp_endpoint}/predicates", timeout=5)
+                kp_predicates_response = urllib.request.urlopen(f"{kp_endpoint}/predicates", timeout=10)
             except Exception:
                 self.log.warning(f"Timed out when trying to hit {kp}'s /predicates endpoint")
             else:

@@ -906,5 +906,28 @@ def test_issue_1314():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+def test_issue_1236():
+    # Test that multiple KPs are used for expansion when no KP is specified in DSL
+    actions_list = [
+        "add_qnode(id=NCBIGene:1803, category=biolink:Gene, key=n00)",
+        "add_qnode(category=biolink:Disease, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:gene_associated_with_condition)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+
+    actions_list_kg2_only = [
+        "add_qnode(id=NCBIGene:1803, category=biolink:Gene, key=n00)",
+        "add_qnode(category=biolink:Disease, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:gene_associated_with_condition)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id_kg2_only, edges_by_qg_id_kg2_only = _run_query_and_do_standard_testing(actions_list_kg2_only)
+
+    assert len(nodes_by_qg_id["n01"]) > len(nodes_by_qg_id_kg2_only["n01"])
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

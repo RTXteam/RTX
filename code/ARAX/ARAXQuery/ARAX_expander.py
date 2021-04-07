@@ -24,7 +24,6 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXExpander:
 
     def __init__(self):
-        self.default_kp = "ARAX/KG2"
         self.protein_category = "biolink:Protein"
         self.gene_category = "biolink:Gene"
         self.edge_key_parameter_info = {
@@ -267,29 +266,15 @@ class ARAXExpander:
             log.error("Provided parameters is not a dict", error_code="ParametersNotDict")
             return response
 
-        # Define a complete set of allowed parameters and their defaults
-        kp = input_parameters.get("kp", self.default_kp)
-        if kp not in self.command_definitions:
+        # Define a complete set of allowed parameters and their defaults (if the user specified a particular KP to use)
+        kp = input_parameters.get("kp")
+        if kp and kp not in self.command_definitions:
             log.error(f"Invalid KP. Options are: {set(self.command_definitions)}", error_code="InvalidKP")
             return response
-        parameters = {"kp": kp}
-        for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
-            if info_dict["type"] == "boolean":
-                parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
-            else:
-                parameters[kp_parameter_name] = info_dict.get("default", None)
-
-        # Override default values for any parameters passed in
-        parameter_names_for_all_kps = {param for kp_documentation in self.command_definitions.values() for param in kp_documentation["parameters"]}
-        for param_name, value in input_parameters.items():
-            if param_name and param_name not in parameters:
-                kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
-                log.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}", error_code="InvalidParameter")
-            else:
-                parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
+        parameters = self._set_and_validate_parameters(kp, input_parameters, log)
 
         # Handle situation where 'ARAX/KG2c' is entered as the kp (technically invalid, but we won't error out)
-        if parameters['kp'].upper() == "ARAX/KG2C":
+        if kp and parameters['kp'].upper() == "ARAX/KG2C":
             parameters['kp'] = "ARAX/KG2"
             if not parameters['use_synonyms']:
                 log.warning(f"KG2c is only used when use_synonyms=true; overriding use_synonyms to True")
@@ -317,7 +302,6 @@ class ARAXExpander:
         log.debug(f"Applying Expand to Message with parameters {parameters}")
         input_qedge_keys = eu.convert_to_list(parameters['edge_key'])
         input_qnode_keys = eu.convert_to_list(parameters['node_key'])
-        kp_to_use = parameters['kp']
         continue_if_no_results = parameters['continue_if_no_results']
         use_synonyms = parameters['use_synonyms']
 
@@ -347,9 +331,14 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
 
-                director = Director(log, list(self.command_definitions.keys()))
-                kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
-                log.debug(f"List of KPs to query is: {kps_to_query}")
+                director = Director(log, set(self.command_definitions.keys()))
+                # Use the KP the user specified, or otherwise figure out which KPs would be best if no KP was specified
+                if parameters["kp"]:
+                    kps_to_query = {parameters["kp"]}
+                else:
+                    kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
+                    log.debug(f"KPs Expand decided to query are: {kps_to_query}")
+                # Send this query to each KP selected to answer it TODO: do this in parallel
                 for kp_to_use in kps_to_query:
                     answer_kg = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results, use_synonyms, mode, log)
                     if log.status != 'OK':
@@ -368,14 +357,23 @@ class ARAXExpander:
                         if log.status != 'OK':
                             return response
 
+                # Make sure we found at least SOME answers for this edge (unless we're continuing if no results)
+                if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
+                    if continue_if_no_results:
+                        log.warning(f"No paths were found in {kps_to_query} satisfying qedge {qedge_key}")
+                    else:
+                        log.error(f"No paths were found in {kps_to_query} satisfying qedge {qedge_key}",
+                                  error_code="NoResults")
+                        return response
+
         # Expand any specified nodes
         if input_qnode_keys:
+            kp_to_use = parameters["kp"] if parameters["kp"] else "ARAX/KG2"  # Only really KG2 does single-node queries
             for qnode_key in input_qnode_keys:
                 answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms,
                                               mode, log)
                 if log.status != 'OK':
                     return response
-
                 self._merge_answer_into_message_kg(answer_kg, overarching_kg, log)
                 if log.status != 'OK':
                     return response
@@ -390,7 +388,7 @@ class ARAXExpander:
         kg = message.knowledge_graph
         only_kryptonite_qedges_expanded = all([query_graph.edges[qedge_key].exclude for qedge_key in input_qedge_keys])
         if not kg.nodes and not continue_if_no_results and not only_kryptonite_qedges_expanded:
-            log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
+            log.error(f"No paths were found satisfying this query graph", error_code="NoResults")
         else:
             log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
                      f"({eu.get_printable_counts_by_qg_id(overarching_kg)})")
@@ -449,13 +447,6 @@ class ARAXExpander:
                 answer_kg = self._deduplicate_nodes(answer_kg, log)
             if eu.qg_is_fulfilled(edge_qg, answer_kg):
                 answer_kg = self._remove_self_edges(answer_kg, qedge_key, qedge, log)
-
-            # Make sure our query has been fulfilled (unless we're continuing if no results)
-            if not eu.qg_is_fulfilled(edge_qg, answer_kg) and not qedge.exclude and not qedge.option_group_id:
-                if continue_if_no_results:
-                    log.warning(f"No paths were found in {kp_to_use} satisfying qedge {qedge_key}")
-                else:
-                    log.error(f"No paths were found in {kp_to_use} satisfying qedge {qedge_key}", error_code="NoResults")
 
             return answer_kg
 
@@ -930,6 +921,29 @@ class ARAXExpander:
 
         log.debug(f"After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
+
+    def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], log: ARAXResponse) -> Dict[str, any]:
+        parameters = {"kp": kp}
+        if not kp:
+            kp = "ARAX/KG2"  # We'll use a standard set of parameters (like for KG2)
+        for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
+            if info_dict["type"] == "boolean":
+                parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
+            else:
+                parameters[kp_parameter_name] = info_dict.get("default", None)
+
+        # Override default values for any parameters passed in
+        parameter_names_for_all_kps = {param for kp_documentation in self.command_definitions.values() for param in
+                                       kp_documentation["parameters"]}
+        for param_name, value in input_parameters.items():
+            if param_name and param_name not in parameters:
+                kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
+                log.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}",
+                          error_code="InvalidParameter")
+            else:
+                parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
+
+        return parameters
 
     @staticmethod
     def _override_node_categories(kg: KnowledgeGraph, qg: QueryGraph):
