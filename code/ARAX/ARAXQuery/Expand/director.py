@@ -86,7 +86,7 @@ class Director:
         # Apply some special rules to filter down the KPs we'll use for this QG
         chosen_kps = possible_kps
         # If a qnode has a lot of curies, only use KG2 for now (wait for TRAPI batch querying to use other KPs)
-        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.id)) > 50):
+        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.id)) > 20):
             chosen_kps = chosen_kps.intersection({"ARAX/KG2"})
         # Temporarily avoid using local KPs (until errors are fixed) TODO
         chosen_kps = chosen_kps.difference({"CHP", "COHD", "DTD"})

@@ -32,7 +32,6 @@ class TRAPIQuerier:
         self.kp_supports_none_for_category = eu.kp_supports_none_for_category(kp_name)
         self.kp_supports_none_for_predicate = eu.kp_supports_none_for_predicate(kp_name)
         self.predicates_timeout = 5
-        self.query_timeout = 120
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -75,7 +74,7 @@ class TRAPIQuerier:
                 object_curie = curie_combination[1]
                 qg_copy.nodes[qedge.subject].id = subject_curie
                 qg_copy.nodes[qedge.object].id = object_curie
-                self.log.debug(f"Current curie pair is: subject: {subject_curie}, object: {object_curie}")
+                self.log.debug(f"{self.kp_name}: Current curie pair is: subject: {subject_curie}, object: {object_curie}")
                 if self.kp_supports_category_lists and self.kp_supports_predicate_lists:
                     sub_kg = self._answer_query_using_kp(qg_copy)
                 else:
@@ -149,11 +148,11 @@ class TRAPIQuerier:
             with requests_cache.disabled():
                 kp_predicates_response = requests.get(f"{self.kp_endpoint}/predicates", timeout=self.predicates_timeout)
         except Exception:
-            self.log.warning(f"Timed out trying to hit {self.kp_name}'s /predicates endpoint "
+            self.log.warning(f"{self.kp_name}: Timed out trying to hit {self.kp_name}'s /predicates endpoint "
                              f"(waited {self.predicates_timeout} seconds)")
         else:
             if kp_predicates_response.status_code != 200:
-                self.log.warning(f"Unable to access {self.kp_name}'s predicates endpoint "
+                self.log.warning(f"{self.kp_name}: Unable to access {self.kp_name}'s predicates endpoint "
                                  f"(returned status of {kp_predicates_response.status_code})")
                 return
 
@@ -219,9 +218,9 @@ class TRAPIQuerier:
                     desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{preferred_prefix}:")]
                     if desired_curies:
                         qnode.id = desired_curies if len(desired_curies) > 1 else desired_curies[0]
-                        self.log.debug(f"Converted qnode {qnode_key} curie to {qnode.id}")
+                        self.log.debug(f"{self.kp_name}: Converted qnode {qnode_key} curie to {qnode.id}")
                     else:
-                        self.log.warning(f"Could not convert qnode {qnode_key} curie(s) to preferred prefix "
+                        self.log.warning(f"{self.kp_name}: Could not convert qnode {qnode_key} curie(s) to preferred prefix "
                                          f"({self.kp_preferred_prefixes[qnode.category[0]]})")
         return query_graph
 
@@ -256,26 +255,28 @@ class TRAPIQuerier:
         stripped_qedges = {qedge_key: self._strip_empty_properties(qedge)
                            for qedge_key, qedge in query_graph.edges.items()}
 
+        # Figure out what an appropriate timeout point is given how many curies are in this query
+        query_timeout = self._get_query_timeout_length(query_graph)
+
         # Send the query to the KP's API
         body = {'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}}
-        self.log.debug(f"Sending query to {self.kp_name} API")
+        self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
         try:
             with requests_cache.disabled():
                 kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'},
-                                            timeout=self.query_timeout)
+                                            timeout=query_timeout)
         except Exception:
-            self.log.warning(f"Query to {self.kp_name}'s API timed out after {self.query_timeout} seconds")
+            self.log.warning(f"{self.kp_name}: Query timed out (waited {query_timeout} seconds)")
             return answer_kg
 
         # Load the results into the object model
         if kp_response.status_code == 200:
             json_response = kp_response.json()
             if not json_response.get("message"):
-                self.log.warning(
-                    f"No 'message' was included in the response from {self.kp_name}. Response from KP was: "
-                    f"{json.dumps(json_response, indent=4)}")
+                self.log.warning(f"{self.kp_name}: No 'message' was included in the response from {self.kp_name}. "
+                                 f"Response was: {json.dumps(json_response, indent=4)}")
             elif not json_response["message"].get("results"):
-                self.log.debug(f"No 'results' were returned from {self.kp_name}.")
+                self.log.debug(f"{self.kp_name}: No 'results' were returned from {self.kp_name}.")
                 json_response["message"]["results"] = []  # Setting this to empty list helps downstream processing
             else:
                 kp_message = ARAXMessenger().from_dict(json_response["message"])
@@ -320,7 +321,7 @@ class TRAPIQuerier:
             qg_copy.nodes[qedge.subject].category = current_subject_category
             qg_copy.nodes[qedge.object].category = current_object_category
             qg_copy.edges[qedge_key].predicate = current_predicate
-            self.log.debug(f"Current triple is: {current_subject_category}--{current_predicate}--{current_object_category}")
+            self.log.debug(f"{self.kp_name}: Current triple is: {current_subject_category}--{current_predicate}--{current_object_category}")
             sub_kg = self._answer_query_using_kp(qg_copy)
             # Merge the answers for this triple into our answers received thus far
             answer_kg = eu.merge_two_kgs(sub_kg, answer_kg)
@@ -336,3 +337,18 @@ class TRAPIQuerier:
 
     def _get_arax_edge_key(self, edge: Edge) -> str:
         return f"{self.kp_name}:{edge.subject}-{edge.predicate}-{edge.object}"
+
+    @staticmethod
+    def _get_query_timeout_length(qg: QueryGraph) -> int:
+        # Returns the number of seconds we should wait for a response based on the number of curies in the QG
+        num_total_curies = sum([len(eu.convert_to_list(qnode.id)) for qnode in qg.nodes.values()])
+        if num_total_curies < 5:
+            return 10
+        elif num_total_curies < 50:
+            return 15
+        elif num_total_curies < 1000:
+            return 30
+        elif num_total_curies < 10000:
+            return 60
+        else:
+            return 120

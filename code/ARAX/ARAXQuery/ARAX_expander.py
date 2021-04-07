@@ -357,13 +357,13 @@ class ARAXExpander:
                     if response.status != 'OK':
                         return overarching_kg
 
-                    # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
-                    if mode == "ARAX":
-                        self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
-                                                         message.encountered_kryptonite_edges_info, response)
-                        self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, response)
-                        if response.status != 'OK':
-                            return overarching_kg
+                # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
+                if mode == "ARAX":
+                    self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
+                                                     message.encountered_kryptonite_edges_info, response)
+                    self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, response)
+                    if response.status != 'OK':
+                        return overarching_kg
 
                 # Make sure we found at least SOME answers for this edge (unless we're continuing if no results)
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
@@ -451,13 +451,13 @@ class ARAXExpander:
             answer_kg = kp_querier.answer_one_hop_query(edge_qg)
             if log.status != 'OK':
                 return answer_kg
-            log.debug(f"{kp_to_use} query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+            log.debug(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
-                answer_kg = self._deduplicate_nodes(answer_kg, log)
+                answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
             if eu.qg_is_fulfilled(edge_qg, answer_kg):
-                answer_kg = self._remove_self_edges(answer_kg, qedge_key, qedge, log)
+                answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
 
             return answer_kg
 
@@ -494,7 +494,7 @@ class ARAXExpander:
                     return answer_kg
 
             if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
-                answer_kg = self._deduplicate_nodes(answer_kg, log)
+                answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
             return answer_kg
         else:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options for single-node queries are "
@@ -550,8 +550,8 @@ class ARAXExpander:
         return edge_qg
 
     @staticmethod
-    def _deduplicate_nodes(answer_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        log.debug(f"Deduplicating nodes")
+    def _deduplicate_nodes(answer_kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        log.debug(f"{kp_name}: Deduplicating nodes")
         deduplicated_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in answer_kg.nodes_by_qg_id},
                                                     edges={qedge_key: dict() for qedge_key in answer_kg.edges_by_qg_id})
         curie_mappings = dict()
@@ -560,7 +560,7 @@ class ARAXExpander:
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
             # Load preferred curie info from NodeSynonymizer for nodes we haven't seen before
             unmapped_node_keys = set(nodes).difference(set(curie_mappings))
-            log.debug(f"Getting preferred curies for {qnode_key} nodes returned in this step")
+            log.debug(f"{kp_name}: Getting preferred curies for {qnode_key} nodes returned in this step")
             canonicalized_nodes = eu.get_canonical_curies_dict(list(unmapped_node_keys), log) if unmapped_node_keys else dict()
             if log.status != 'OK':
                 return deduplicated_kg
@@ -594,11 +594,11 @@ class ARAXExpander:
                 edge.subject = curie_mappings.get(edge.subject)
                 edge.object = curie_mappings.get(edge.object)
                 if not edge.subject or not edge.object:
-                    log.error(f"Could not find preferred curie mappings for edge {edge_key}'s node(s)")
+                    log.error(f"{kp_name}: Could not find preferred curie mappings for edge {edge_key}'s node(s)")
                     return deduplicated_kg
                 deduplicated_kg.add_edge(edge_key, edge, qedge_key)
 
-        log.debug(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
+        log.debug(f"{kp_name}: After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg
 
     @staticmethod
@@ -910,8 +910,8 @@ class ARAXExpander:
             return False
 
     @staticmethod
-    def _remove_self_edges(kg: QGOrganizedKnowledgeGraph, qedge_key: str, qedge: QEdge, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        log.debug(f"Removing any self-edges from the answer KG")
+    def _remove_self_edges(kg: QGOrganizedKnowledgeGraph, kp_name: str, qedge_key: str, qedge: QEdge, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        log.debug(f"{kp_name}: Removing any self-edges from the answer KG")
         # Remove any self-edges (subject is same as object)
         edges_to_remove = []
         for edge_key, edge in kg.edges_by_qg_id[qedge_key].items():
@@ -930,7 +930,7 @@ class ARAXExpander:
                 kg.nodes_by_qg_id[qedge.subject].pop(node_key, None)
                 kg.nodes_by_qg_id[qedge.object].pop(node_key, None)
 
-        log.debug(f"After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
+        log.debug(f"{kp_name}: After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
 
     def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], log: ARAXResponse) -> Dict[str, any]:
