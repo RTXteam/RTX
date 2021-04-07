@@ -144,7 +144,7 @@ class DTDQuerier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD database")
         final_kg = QGOrganizedKnowledgeGraph()
-        drug_label_list = ['chemicalSubstance', 'drug']
+        drug_label_list = ['chemicalsubstance', 'drug']
         disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature']
         # use for checking the requirement
         source_pass_nodes = None
