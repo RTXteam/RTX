@@ -347,8 +347,8 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
 
-                director = Director(log)
-                kps_to_query = director._get_kps_for_single_hop_qg(one_hop_qg, log, list(self.command_definitions.keys()))
+                director = Director(log, list(self.command_definitions.keys()))
+                kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
                 log.debug(f"List of KPs to query is: {kps_to_query}")
                 for kp_to_use in kps_to_query:
                     answer_kg = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results, use_synonyms, mode, log)

@@ -49,7 +49,7 @@ class Director:
     
     # returns True if at least one possible triple exists in the predicates endpoint response
     @staticmethod
-    def _triple_is_in_predicates_response(self, predicates_dict: dict, subject_list: list, predicate_list: list, object_list: list)  -> bool:
+    def _triple_is_in_predicates_response(predicates_dict: dict, subject_list: list, predicate_list: list, object_list: list)  -> bool:
         # handle potential emptiness of sub, obj, predicate lists
         if not subject_list: # any subject
             subject_list = list(predicates_dict.keys())
@@ -92,23 +92,36 @@ class Director:
     def _regenerate_meta_map(self):
         # Create an up to date version of the meta map
         self.log.debug(f"Regenerating combined meta map for all KPs")
-        self.meta_map = dict()
+
+        # First load whatever pre-existing meta-map we might already have (could use this info in case an API fails)
+        meta_map_file = pathlib.Path(self.meta_map_path)
+        if meta_map_file.exists():
+            with open(self.meta_map_path, "r") as existing_meta_map_file:
+                meta_map = json.load(existing_meta_map_file)
+        else:
+            meta_map = dict()
+
+        # Then (try to) get updated info from each KPs /predicates endpoint
         for kp in self.all_kps:
             # get predicates dictionary from KP
             kp_endpoint = eu.get_kp_endpoint_url(kp)
             if kp_endpoint is None:
                 self.log.debug(f"No endpoint for {kp}. Skipping for now.")
                 continue
-            kp_predicates_response = urllib.request.urlopen(f"{kp_endpoint}/predicates")
-            if kp_predicates_response.status != 200:
-                self.log.warning(f"Unable to access {kp}'s predicates endpoint "
-                             f"(returned status of {kp_predicates_response.status})")
-                continue
-            predicates_dict = json.loads(kp_predicates_response.read())
-            self.meta_map[kp] = predicates_dict
+            try:
+                kp_predicates_response = urllib.request.urlopen(f"{kp_endpoint}/predicates", timeout=5)
+            except Exception:
+                self.log.warning(f"Timed out when trying to hit {kp}'s /predicates endpoint")
+            else:
+                if kp_predicates_response.status != 200:
+                    self.log.warning(f"Unable to access {kp}'s predicates endpoint "
+                                 f"(returned status of {kp_predicates_response.status})")
+                    continue
+                predicates_dict = json.loads(kp_predicates_response.read())
+                meta_map[kp] = predicates_dict
         # Save our big combined metamap to a local json file
         with open(self.meta_map_path, "w+") as map_file:
-            json.dump(self.meta_map, map_file)
+            json.dump(meta_map, map_file)
 
     def _get_non_api_kps_meta_info(self):
         # TODO: Hardcode info for our KPs that don't have APIs here... (then include when building meta map)
