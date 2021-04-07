@@ -321,7 +321,12 @@ class predictor():
         if self.use_prob_db is True:
             cursor = self.connection.cursor()
 
-            row = cursor.execute(f"select * from DTD_PROBABILITY where drug in {tuple(set(drug_id_list))}")
+            if len(drug_id_list) == 0:
+                return None
+            elif len(drug_id_list) == 1:
+                row = cursor.execute(f"select * from DTD_PROBABILITY where drug='{drug_id_list[0]}'")
+            else:
+                row = cursor.execute(f"select * from DTD_PROBABILITY where drug in {tuple(set(drug_id_list))}")
             res = row.fetchall()
             if len(res)!=0:
                 return res
