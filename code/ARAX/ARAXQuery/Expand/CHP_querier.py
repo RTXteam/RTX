@@ -99,10 +99,10 @@ class CHPQuerier:
                         log.warning(f"The curie ids of these nodes {not_pass_nodes} are not allowable based on CHP client")
                 else:
                     if type(source_qnode.id) is str:
-                        log.error(f"The curie id of {source_qnode.id} is not allowable based on CHP client", error_code="NotAllowable")
+                        log.warning(f"The curie id of {source_qnode.id} is not allowable based on CHP client")
                         return final_kg
                     else:
-                        log.error(f"The curie ids of {source_qnode.id} are not allowable based on CHP client", error_code="NotAllowable")
+                        log.warning(f"The curie ids of {source_qnode.id} are not allowable based on CHP client")
                         return final_kg
         else:
             category = source_qnode.category[0].replace('biolink:','').replace('_','').lower()

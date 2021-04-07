@@ -144,7 +144,7 @@ class DTDQuerier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD database")
         final_kg = QGOrganizedKnowledgeGraph()
-        drug_label_list = ['chemicalSubstance', 'drug']
+        drug_label_list = ['chemicalsubstance', 'drug']
         disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature']
         # use for checking the requirement
         source_pass_nodes = None
@@ -238,13 +238,13 @@ class DTDQuerier:
         elif (source_pass_nodes is not None) and (target_pass_nodes is not None):
             source_dict = dict()
             target_dict = dict()
-            normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
+            normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0], return_all_categories=True)
             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[source_pass_nodes[0]]['all_categories'].keys())]
             if len(set(drug_label_list).intersection(set(all_types))) > 0:
                 source_category_temp = 'drug'
             else:
                 source_category_temp = 'disease'
-            normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
+            normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0], return_all_categories=True)
             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[target_pass_nodes[0]]['all_categories'].keys())]
             if len(set(drug_label_list).intersection(set(all_types))) > 0:
                 target_category_temp = 'drug'
@@ -306,7 +306,7 @@ class DTDQuerier:
             source_dict = dict()
             target_dict = dict()
 
-            normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0])
+            normalizer_result = self.synonymizer.get_canonical_curies(source_pass_nodes[0], return_all_categories=True)
             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[source_pass_nodes[0]]['all_categories'].keys())]
             if len(set(drug_label_list).intersection(set(all_types))) > 0:
                 source_category_temp = 'drug'
@@ -325,7 +325,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[source_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and target_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0])[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and target_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, row[0], "probability_treats", row[2])
@@ -340,7 +340,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[source_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and target_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0])[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and target_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], source_curie, "probability_treats", row[2])
@@ -366,7 +366,7 @@ class DTDQuerier:
             source_dict = dict()
             target_dict = dict()
 
-            normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0])
+            normalizer_result = self.synonymizer.get_canonical_curies(target_pass_nodes[0], return_all_categories=True)
             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[target_pass_nodes[0]]['all_categories'].keys())]
             if len(set(drug_label_list).intersection(set(all_types))) > 0:
                 target_category_temp = 'drug'
@@ -385,7 +385,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[target_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and source_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0])[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and source_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, row[0], "probability_treats", row[2])
@@ -400,7 +400,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[target_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and source_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0])[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and source_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], target_curie, "probability_treats", row[2])
