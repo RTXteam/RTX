@@ -137,3 +137,33 @@ rule miRBase:
         config['BUILD_DIR'] + "/extract-mirbase" + config['TEST_SUFFIX'] + ".log"
     shell:
         "bash -x " + config['CODE_DIR'] + "/extract-mirbase.sh {output} > {log} 2>&1"
+
+rule JensenLab:
+    input:
+        config['BUILD_DIR'] + "/validation-placeholder.empty"
+    output:
+        placeholder = config['BUILD_DIR'] + "/jensenlab-placeholder.empty"
+    log:
+        config['BUILD_DIR'] + "/extract-jensenlab" + config['TEST_SUFFIX'] + ".log"
+    shell:
+        "bash -x " + config['CODE_DIR'] + "/extract-jensenlab.sh > {log} 2>&1 && touch {output.placeholder}"
+
+rule DrugCentral:
+    input:
+        config['VALIDATION_PLACEHOLDER']
+    output:
+        config['DRUGCENTRAL_INPUT_FILE']
+    log:
+        config['BUILD_DIR'] + "/extract-drugcentral" + config['TEST_SUFFIX'] + ".log"
+    shell:
+        "bash -x " + config['CODE_DIR'] + "/extract-drugcentral.sh {output} " + config['DRUGCENTRAL_DIR'] + " > {log} 2>&1"
+
+rule IntAct:
+    input:
+        config['VALIDATION_PLACEHOLDER']
+    output:
+        config['INTACT_INPUT_FILE']
+    log:
+        config['BUILD_DIR'] + "/extract-intact" + config['TEST_SUFFIX'] + ".log"
+    shell:
+        "bash -x " + config['CODE_DIR'] + "/extract-intact.sh {output} > {log} 2>&1"

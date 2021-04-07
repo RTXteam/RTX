@@ -161,10 +161,11 @@ running **Ubuntu 18.04**.  Your build environment should have the following
 
 ## The KG2 build system assumes there is no MySQL database already present
 
-The target Ubuntu system in which you will run the KG2 build should *not* have MySQL
-installed; if MySQL is installed, you will need to delete it using the following
-`bash` command, which requires `curl`: (WARNING! Please don't run this command
-without first making a backup image of your system, such as an AMI):
+The target Ubuntu system in which you will run the KG2 build should *not* have
+MySQL installed; if MySQL is already installed, you will need to delete it,
+which you can do using the following `bash` command, which requires `curl`:
+(WARNING! Please don't run this command without first making a backup image of
+your system, such as an AMI):
 
     source <(curl -s https://raw.githubusercontent.com/RTXteam/RTX/master/code/kg2/delete-mysql-ubuntu.sh)
 
@@ -744,7 +745,9 @@ This file should be inspected as a part of the post-build quality assessment pro
 The file `kg2.json` is an intermediate file that is probably only of use to KG2
 developers.  The file `kg2-simplified.json` is a key artifact of the build
 process that feeds into several downstream artifacts and may be of direct use to
-application developers. The `kg2-simplified.json` JSON data structure is a
+application developers. Newlines, carriage returns, linefeed characters, or hard
+tabs are not allowed in any string property or in any string scalar within a
+list property in KG2. The `kg2-simplified.json` JSON data structure is a
 name-value pair object (i.e., dictionary) with the following keys:
 
 ## `build` slot
@@ -786,7 +789,12 @@ the following keys:
   - `synonym`: a list of strings with synonyms for the node; if the node is a
   gene, the first entry in the list should be the official gene symbol; other
   types of information can for certain node types be found in this list, such as
-  protein sequence information for UniProt protein nodes.
+  protein sequence information for UniProt protein nodes. The entries in the
+  node synonym property (which is of type list) are not guaranteed to be `id`
+  fields of actual nodes in KG2. Also, they are not comprehensive; if node Y is
+  related to node X by a `biolink:same_as` relation type, there is no guarantee
+  that Y will be in the synonym property list for X (in most cases, it won't
+  be). 
   - `update date`: a string identifier of the date in which the information for
   this node object was last updated in the upstream source database; it has (at
   present) no consitent format, unfortunately; it is usually not `null`.

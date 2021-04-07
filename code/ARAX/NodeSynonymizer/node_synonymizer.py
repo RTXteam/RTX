@@ -158,7 +158,7 @@ class NodeSynonymizer:
     def import_exceptions(self):
 
         #### Open the exceptions file
-        with open('Exceptions.txt') as infile:
+        with open( self.databaseLocation + '/Exceptions.txt' ) as infile:
             for line in infile:
                 line = line.rstrip()
                 if len(line) == 0:

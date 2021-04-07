@@ -337,12 +337,12 @@ class ARAXExpander:
                 return response
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
-            # Expand the query graph edge by edge (much faster for neo4j queries, and allows easy integration with BTE)
+            # Expand the query graph edge-by-edge
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
 
             for qedge_key in ordered_qedge_keys_to_expand:
                 qedge = query_graph.edges[qedge_key]
-                # Create a query graph for this edge (that uses synonyms as well as curies found in prior steps)
+                # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
                 if log.status != 'OK':
                     return response
@@ -354,17 +354,19 @@ class ARAXExpander:
                     answer_kg = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results, use_synonyms, mode, log)
                     if log.status != 'OK':
                         return response
-                    elif qedge.exclude and not answer_kg.is_empty():
+                    elif mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, query_graph, encountered_kryptonite_edges_info, log)
                     else:
                         self._merge_answer_into_message_kg(answer_kg, overarching_kg, log)
                     if log.status != 'OK':
                         return response
 
-                    self._apply_any_kryptonite_edges(overarching_kg, query_graph, encountered_kryptonite_edges_info, log)
-                    self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, log)
-                    if log.status != 'OK':
-                        return response
+                    # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
+                    if mode == "ARAX":
+                        self._apply_any_kryptonite_edges(overarching_kg, query_graph, encountered_kryptonite_edges_info, log)
+                        self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, log)
+                        if log.status != 'OK':
+                            return response
 
         # Expand any specified nodes
         if input_qnode_keys:
@@ -383,15 +385,9 @@ class ARAXExpander:
 
         # Override node types so that they match what was asked for in the query graph (where applicable) #987
         self._override_node_categories(message.knowledge_graph, message.query_graph)
-        
-        # Make sure we don't have any orphan edges
-        kg = message.knowledge_graph
-        node_keys = set(kg.nodes)
-        for edge_key, edge in kg.edges.items():
-            if edge.subject not in node_keys or edge.object not in node_keys:
-                kg.edges.remove(edge_key)
 
         # Return the response and done
+        kg = message.knowledge_graph
         only_kryptonite_qedges_expanded = all([query_graph.edges[qedge_key].exclude for qedge_key in input_qedge_keys])
         if not kg.nodes and not continue_if_no_results and not only_kryptonite_qedges_expanded:
             log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
@@ -399,9 +395,6 @@ class ARAXExpander:
             log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
                      f"({eu.get_printable_counts_by_qg_id(overarching_kg)})")
 
-        for node_key, node in kg.nodes.items():
-            if not isinstance(node.category, list):
-                log.warning(f"Node {node_key}'s category is not a list': {node.category} (mode is {mode}).")
         return response
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, continue_if_no_results: bool, use_synonyms: bool,

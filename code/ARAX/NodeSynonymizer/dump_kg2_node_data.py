@@ -1,6 +1,7 @@
 """
 This script dumps KG2 node data to three files: one containing node ID, name, full_name, type for all KG2 nodes,
-another containing node synonyms, and another containing pairs of equivalent nodes (connected by same_as edges in KG2).
+another containing node synonyms, and another containing pairs of equivalent nodes (connected by same_as edges
+in KG2).
 These output files are used in the NodeSynonymizer build process.
 Usage: python3 dump_kg2_node_data.py [--test]
 """

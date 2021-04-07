@@ -121,7 +121,7 @@ def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
             if qnode.category:
-                assert qnode.category in node.category  # Could have additional categories if it has multiple qnode keys
+                assert set(eu.convert_to_list(qnode.category)).issubset(set(node.category))  # Could have additional categories if it has multiple qnode keys
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
@@ -604,9 +604,9 @@ def test_dtd_expand_2():
 
 def test_ngd_expand():
     actions_list = [
-        "add_qnode(name=DOID:14330, key=n00)",
+        "add_qnode(name=MONDO:0015766, key=n00)",
         "add_qnode(category=biolink:PhenotypicFeature, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicate=biolink:has_phenotype, key=e00)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=NGD)",
         "return(message=true, store=false)"
     ]

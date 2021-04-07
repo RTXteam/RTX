@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """ An interface to the SRI Node and Edge Normalizer https://nodenormalization-sri.renci.org/apidocs/
     e.g.:  https://nodenormalization-sri.renci.org/get_normalized_nodes?curie=CHEMBL.COMPOUND:CHEMBL76729
+    Report problems here: https://github.com/TranslatorSRI/NodeNormalization/issues
 """
 
 import sys
