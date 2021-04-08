@@ -773,7 +773,7 @@ class DTDQuerier:
             pass_nodes_drug_temp = list()
             pass_nodes_disease_temp = list()
             not_pass_nodes = list()
-            normalizer_result = self.synonymizer.get_canonical_curies(curies=[qnode_id], return_all_categories=True)
+            normalizer_result = self.synonymizer.get_canonical_curies(curies=qnode_id, return_all_categories=True)
             for curie in qnode_id:
                 if normalizer_result[curie] is not None:
                     all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[curie]['all_categories'].keys())]
