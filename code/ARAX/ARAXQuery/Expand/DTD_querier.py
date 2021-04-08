@@ -190,8 +190,11 @@ class DTDQuerier:
                         log.error(f"All potential categories of {source_qnode.id} don't contain drug or disease", error_code="CategoryError")
                         return final_kg
         else:
-            category = source_qnode.category.replace('biolink:','').replace('_','').lower()
-            source_category = category
+            try:
+                category = source_qnode.category.replace('biolink:','').replace('_','').lower()
+            except AttributeError:
+                log.error(f"The category of query node {source_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
+                return final_kg
             if (category in drug_label_list) or (category in disease_label_list):
                 source_category = category
             else:
@@ -224,8 +227,11 @@ class DTDQuerier:
                         log.error(f"All potential categories of {target_qnode.id} don't contain drug or disease", error_code="CategoryError")
                         return final_kg
         else:
-            category = target_qnode.category.replace('biolink:','').replace('_','').lower()
-            target_category = category
+            try:
+                category = target_qnode.category.replace('biolink:','').replace('_','').lower()
+            except AttributeError:
+                log.error(f"The category of query node {target_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
+                return final_kg
             if (category in drug_label_list) or (category in disease_label_list):
                 target_category = category
             else:
@@ -475,8 +481,11 @@ class DTDQuerier:
             #             log.error(f"The preferred labels of {source_qnode.id} are not drug or disease", error_code="CategoryError")
             #             return final_kg, edge_to_nodes_map
         else:
-            category = source_qnode.category.replace('biolink:','').replace('_','').lower()
-            source_category = category
+            pass
+            # try:
+            #     category = source_qnode.category.replace('biolink:','').replace('_','').lower()
+            # except AttributeError:
+            #     log.error(f"The category of query node {source_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
             # *The code below was commented because we don't need to check the type of input nodes #issue1240
             # if (category in drug_label_list) or (category in disease_label_list):
             #     source_category = category
@@ -511,9 +520,12 @@ class DTDQuerier:
             #             log.error(f"The preferred labels of {target_qnode.id} are not drug or disease", error_code="CategoryError")
             #             return final_kg, edge_to_nodes_map
         else:
-            category = target_qnode.category.replace('biolink:','').replace('_','').lower()
-            target_category = category
-            # *The code below was commented because we don't need to check the type of input nodes #issue1240
+            pass
+            # try:
+            #     category = target_qnode.category.replace('biolink:','').replace('_','').lower()
+            # except AttributeError:
+            #     log.error(f"The category of query node {target_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
+            # # *The code below was commented because we don't need to check the type of input nodes #issue1240
             # if (category in drug_label_list) or (category in disease_label_list):
             #     target_category = category
             # else:
