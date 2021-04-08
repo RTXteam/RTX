@@ -246,9 +246,9 @@ def kp_supports_none_for_predicate(kp_name: str) -> bool:
                        "MolePro": True,
                        "GeneticsKP": False,
                        "BTE": True,
-                       "DTD": True,
-                       "CHP": True,
-                       "COHD": True,
+                       "DTD": False,
+                       "CHP": False,
+                       "COHD": False,
                        "NGD": False}
     return none_predicates.get(kp_name, True)
 
@@ -267,8 +267,8 @@ def kp_supports_none_for_category(kp_name: str) -> bool:
 
 
 def get_kps_that_support_curie_lists() -> Set[str]:
-    # This information isn't really a standard in TRAPI yet, but some KPs can do it
-    return {"ARAX/KG2"}
+    # This isn't really a standard in TRAPI yet, but some KPs can do it
+    return {"ARAX/KG2", "NGD"}
 
 
 def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
@@ -422,9 +422,7 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "BTE": "https://api.bte.ncats.io/v1",
         "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.0",
         "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
-        "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.0",
-        "CHP" : "http://chp.thayer.dartmouth.edu",
-        "COHD" : "http://tr-kp-clinical.ncats.io/api"
+        "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.0"
     }
     return endpoint_map.get(kp_name)
 

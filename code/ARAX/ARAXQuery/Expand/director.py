@@ -92,8 +92,6 @@ class Director:
         if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.id)) > 10):
             chosen_kps = chosen_kps.intersection(eu.get_kps_that_support_curie_lists())
 
-        # Temporarily skip using these local KPs for now until some issues with /predicates and etc. are smoothed out
-        chosen_kps = chosen_kps.difference({"DTD", "CHP", "COHD"})
         # Always hit up KG2 for now (until its /predicates is made more comprehensive. it fails fast anyway)
         chosen_kps.add("ARAX/KG2")
 
@@ -173,8 +171,27 @@ class Director:
         for subject_category, objects_dict in meta_map.get("ARAX/KG2").items():
             ngd_predicates_dict[subject_category] = {object_category: ngd_predicates for object_category in objects_dict}
 
+        # CHP Expand can only answer a subset of what's in their /predicates endpoint, so we'll hardcode it here
+        chp_predicates = ["biolink:pairs_with"]
+        chp_predicates_dict = {"biolink:Gene": {"biolink:Drug": chp_predicates},
+                               "biolink:Drug": {"biolink:Gene": chp_predicates}}
+
+        # COHD Expand can only answer a subset of what's in their /predicates endpoint, so we'll hardcode it here
+        cohd_predicates = ["biolink:correlated_with"]
+        cohd_predicates_dict = {"biolink:ChemicalSubstance": {"biolink:ChemicalSubstance": cohd_predicates,
+                                                              "biolink:DiseaseOrPhenotypicFeature": cohd_predicates,
+                                                              "biolink:Drug": cohd_predicates},
+                                "biolink:DiseaseOrPhenotypicFeature": {"biolink:ChemicalSubstance": cohd_predicates,
+                                                                       "biolink:DiseaseOrPhenotypicFeature": cohd_predicates,
+                                                                       "biolink:Drug": cohd_predicates},
+                                "biolink:Drug": {"biolink:ChemicalSubstance": cohd_predicates,
+                                                 "biolink:DiseaseOrPhenotypicFeature": cohd_predicates,
+                                                 "biolink:Drug": cohd_predicates}}
+
         non_api_predicates_info = {
             "DTD": dtd_predicates_dict,
-            "NGD": ngd_predicates_dict
+            "NGD": ngd_predicates_dict,
+            "CHP": chp_predicates_dict,
+            "COHD": cohd_predicates_dict
         }
         return non_api_predicates_info

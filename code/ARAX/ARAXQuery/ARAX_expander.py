@@ -343,10 +343,10 @@ class ARAXExpander:
                 # Send this query to each KP selected to answer it (in parallel)
                 if len(kps_to_query) > 1:
                     num_threads = multiprocessing.cpu_count()
-                    pool = multiprocessing.Pool(num_threads)
-                    answer_kgs = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                  use_synonyms, mode, user_specified_kp, response]
-                                                                  for kp_to_use in kps_to_query])
+                    with multiprocessing.Pool(num_threads) as pool:
+                        answer_kgs = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
+                                                                      use_synonyms, mode, user_specified_kp, response]
+                                                                      for kp_to_use in kps_to_query])
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
