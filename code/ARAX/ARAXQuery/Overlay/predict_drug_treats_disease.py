@@ -216,7 +216,14 @@ class PredictDrugTreatsDisease:
                         # else:
                         #     continue
 
-                    probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+                    count, probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+
+                    if count != 0:
+                        if count == 1:
+                            self.response.warning(f"Total {count} curie was not found from DTD database")
+                        else:
+                            self.response.warning(f"Total {count} curie were not found from DTD database")
+
                     if probability is not None:
                         probability = probability[0]
                         if np.isfinite(probability):
@@ -323,7 +330,14 @@ class PredictDrugTreatsDisease:
                                 if np.isfinite(probability):
                                     max_probability = probability
                         else:
-                            probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+                            count, probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+
+                            if count != 0:
+                                if count == 1:
+                                    self.response.warning(f"Total {count} curie was not found from DTD database")
+                                else:
+                                    self.response.warning(f"Total {count} curie were not found from DTD database")
+
                             if probability is not None:
                                 probability = probability[0]
                                 if np.isfinite(probability):
@@ -367,7 +381,14 @@ class PredictDrugTreatsDisease:
                                 if np.isfinite(probability):
                                     max_probability = probability
                         else:
-                            probability = self.pred.prob_single(converted_target_curie, converted_source_curie)
+                            count, probability = self.pred.prob_single(converted_target_curie, converted_source_curie)
+
+                            if count != 0:
+                                if count == 1:
+                                    self.response.warning(f"Total {count} curie was not found from DTD database")
+                                else:
+                                    self.response.warning(f"Total {count} curie were not found from DTD database")
+
                             if probability is not None:
                                 probability = probability[0]
                                 if np.isfinite(probability):

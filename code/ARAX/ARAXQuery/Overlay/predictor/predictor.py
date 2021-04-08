@@ -65,7 +65,7 @@ class predictor():
         row = self.graph_cur.execute(f"select * from GRAPH where curie='{curie_name}'")
         res = row.fetchone()
         if res is None:
-            print(f"No curie named '{curie_name}' was found from database")
+            # print(f"No curie named '{curie_name}' was found from database")
             return None
         res = list(res)
         res.pop(0)
@@ -91,21 +91,33 @@ class predictor():
             if file is not None:
                 data = pd.read_csv(file, index_col=None)
 
-                map_dict = {}
                 X_list = []
                 drop_list = []
+                count = 0
                 for row in range(len(data)):
                     source_curie = data['source'][row]
                     target_curie = data['target'][row]
                     source_feature = self.get_feature(source_curie)
                     target_feature = self.get_feature(target_curie)
 
-                    if source_feature is not None and target_feature is not None:
+                    if source_feature is None:
+                        count += 1
+                    if target_feature is None:
+                        count += 1
+
+                    if source_feature is not None and target_feature:
                         X_list += [[a * b for a, b in zip(source_feature, target_feature)]]  # use 'Hadamard product' method instead of 'Concatenate' method
                         #X_list += [list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])]
                     else:
                         drop_list += [row]
 
+                if count == 0:
+                    pass
+                else:
+                    if count == 1:
+                        print(f"Warning: Total 1 curie was not found from DTD database")
+                    else:
+                        print(f"Warning: Total {count} curies were not found from DTD database")
                 self.X = np.array(X_list)
                 self.data = data.drop(data.index[drop_list]).reset_index(drop=True)
                 self.dropped_data = data.iloc[drop_list].reset_index(drop=True)
@@ -165,12 +177,19 @@ class predictor():
             if self.graph_cur is None:
                 self.import_file(None)
 
+            count = 0
             source_feature = self.get_feature(source_curie)
             target_feature = self.get_feature(target_curie)
+
+            if source_feature is None:
+                count += 1
+            if target_feature is None:
+                count += 1
+
             if source_feature is not None and target_feature is not None:
                 X = np.array([[a*b for a,b in zip(source_feature, target_feature)]]) # use 'Hadamard product' method instead of 'Concatenate' method
                 #X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
-                return self.predict(X)
+                return [count, self.predict(X)]
             elif source_feature is not None:
                 pass
                 # print(target_curie + ' was not in the largest connected component of graph.')
@@ -180,7 +199,7 @@ class predictor():
             else:
                 # print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
                 pass
-            return None
+            return [count, None]
 
     def predict_all(self, source_target_curie_list):
         """
@@ -195,10 +214,16 @@ class predictor():
             if isinstance(source_target_curie_list, list):
 
                 X_list = []
+                count = 0
                 for (equiv_source_curie, equiv_target_curie) in source_target_curie_list:
 
                     source_feature = self.get_feature(equiv_source_curie)
                     target_feature = self.get_feature(equiv_target_curie)
+
+                    if source_feature is None:
+                        count += 1
+                    if target_feature is None:
+                        count += 1
 
                     if source_feature is not None and target_feature is not None:
                         X_list += [[a * b for a, b in zip(source_feature, target_feature)]]
@@ -207,12 +232,12 @@ class predictor():
 
                 if len(X_list) != 0:
                     X = np.array(X_list)
-                    return list(self.predict(X))
+                    return [count, list(self.predict(X))]
                 else:
-                    return None
+                    return [count, None]
             else:
 
-                return None
+                return [0, None]
 
     def prob_single(self, source_curie, target_curie):
         """
@@ -225,12 +250,19 @@ class predictor():
             if self.graph_cur is None:
                 self.import_file(None)
 
+            count = 0
             source_feature = self.get_feature(source_curie)
             target_feature = self.get_feature(target_curie)
+
+            if source_feature is None:
+                count += 1
+            if target_feature is None:
+                count += 1
+
             if source_feature is not None and target_feature is not None:
                 X = np.array([[a * b for a, b in zip(source_feature, target_feature)]])  # use 'Hadamard product' method instead of 'Concatenate' method
                 # X = np.array([list(self.graph.iloc[source_id, 1:]) + list(self.graph.iloc[target_id, 1:])])
-                return self.prob(X)[:, 1]
+                return [count, self.prob(X)[:, 1]]
             elif source_feature is not None:
                 # print(target_curie + ' was not in the largest connected component of graph.')
                 pass
@@ -240,7 +272,7 @@ class predictor():
             else:
                 # print(source_curie + ' and ' + target_curie + ' were not in the largest connected component of graph.')
                 pass
-            return None
+            return [count, None]
 
     def prob_all(self, source_target_curie_list):
         """
@@ -256,10 +288,16 @@ class predictor():
 
                 X_list = []
                 out_source_target_curie_list = list()
+                count = 0
                 for (equiv_source_curie, equiv_target_curie) in source_target_curie_list:
 
                     source_feature = self.get_feature(equiv_source_curie)
                     target_feature = self.get_feature(equiv_target_curie)
+
+                    if source_feature is None:
+                        count += 1
+                    if target_feature is None:
+                        count += 1
 
                     if source_feature is not None and target_feature is not None:
                         out_source_target_curie_list += [(equiv_source_curie, equiv_target_curie)]
@@ -268,11 +306,11 @@ class predictor():
                         continue
                 if len(X_list)!=0:
                     X = np.array(X_list)
-                    return [out_source_target_curie_list, list(self.prob(X)[:, 1])]
+                    return [count, out_source_target_curie_list, list(self.prob(X)[:, 1])]
                 else:
-                    return None
+                    return [count, None, None]
             else:
-                return None
+                return [0, None, None]
 
     def get_prob_from_DTD_db(self, source_curie, target_curie):
         """
