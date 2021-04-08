@@ -305,6 +305,7 @@ class ARAXExpander:
         input_qnode_keys = eu.convert_to_list(parameters['node_key'])
         continue_if_no_results = parameters['continue_if_no_results']
         use_synonyms = parameters['use_synonyms']
+        user_specified_kp = True if parameters['kp'] else False
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
@@ -332,7 +333,7 @@ class ARAXExpander:
                     return response
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
-                if not parameters["kp"]:
+                if not user_specified_kp:
                     director = Director(log, set(self.command_definitions.keys()))
                     kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
@@ -344,13 +345,13 @@ class ARAXExpander:
                     num_threads = multiprocessing.cpu_count()
                     pool = multiprocessing.Pool(num_threads)
                     answer_kgs = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                  use_synonyms, mode, response] for kp_to_use in
-                                                                  kps_to_query])
+                                                                  use_synonyms, mode, user_specified_kp, response]
+                                                                  for kp_to_use in kps_to_query])
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
                     answer_kgs = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, use_synonyms, mode,
-                                                    response)]
+                                                    user_specified_kp, response)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
@@ -386,10 +387,10 @@ class ARAXExpander:
 
         # Expand any specified nodes
         if input_qnode_keys:
-            kp_to_use = parameters["kp"] if parameters["kp"] else "ARAX/KG2"  # Only really KG2 does single-node queries
+            kp_to_use = parameters["kp"] if user_specified_kp else "ARAX/KG2"  # Only KG2 does single-node queries
             for qnode_key in input_qnode_keys:
                 answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms,
-                                              mode, log)
+                                              mode, user_specified_kp, log)
                 if log.status != 'OK':
                     return response
                 self._merge_answer_into_message_kg(answer_kg, overarching_kg, log)
@@ -414,7 +415,7 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], use_synonyms: bool,
-                     mode: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
@@ -455,7 +456,7 @@ class ARAXExpander:
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp)
 
             # Actually answer the query using the Querier we identified above
             answer_kg = kp_querier.answer_one_hop_query(edge_qg)
@@ -472,7 +473,7 @@ class ARAXExpander:
             return answer_kg
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
-                     use_synonyms: bool, mode: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     use_synonyms: bool, mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -492,7 +493,7 @@ class ARAXExpander:
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 

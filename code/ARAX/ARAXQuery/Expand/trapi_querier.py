@@ -21,9 +21,10 @@ from openapi_server.models.result import Result
 
 class TRAPIQuerier:
 
-    def __init__(self, response_object: ARAXResponse, kp_name: str):
+    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool):
         self.log = response_object
         self.kp_name = kp_name
+        self.user_specified_kp = user_specified_kp
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.node_category_overrides_for_kp = eu.get_node_category_overrides_for_kp(kp_name)
         self.kp_preferred_prefixes = eu.get_kp_preferred_prefixes(kp_name)
@@ -51,7 +52,7 @@ class TRAPIQuerier:
         qg_copy = self._preprocess_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg
-        if not self.kp_name.endswith("KG2"):  # Skip for KG2 for now since predicates/ isn't symmetric yet
+        if self.user_specified_kp and not self.kp_name.endswith("KG2"):  # Skip for KG2 for now since predicates/ isn't symmetric yet
             self._verify_qg_is_accepted_by_kp(qg_copy)
         if log.status != 'OK':
             return final_kg
@@ -339,15 +340,12 @@ class TRAPIQuerier:
     def _get_arax_edge_key(self, edge: Edge) -> str:
         return f"{self.kp_name}:{edge.subject}-{edge.predicate}-{edge.object}"
 
-    @staticmethod
-    def _get_query_timeout_length(qg: QueryGraph) -> int:
+    def _get_query_timeout_length(self, qg: QueryGraph) -> int:
         # Returns the number of seconds we should wait for a response based on the number of curies in the QG
         num_total_curies = sum([len(eu.convert_to_list(qnode.id)) for qnode in qg.nodes.values()])
-        if num_total_curies < 5:
-            return 10
-        elif num_total_curies < 50:
-            return 30
-        elif num_total_curies < 1000:
-            return 60
+        if self.user_specified_kp or self.kp_name == "ARAX/KG2":
+            return 600
+        elif num_total_curies < 10:
+            return 15
         else:
             return 120
