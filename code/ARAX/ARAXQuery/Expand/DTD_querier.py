@@ -532,8 +532,6 @@ class DTDQuerier:
             #     log.error(f"The category of query node {target_qnode_key} is unsatisfiable", error_code="CategoryError")
             #     return final_kg, edge_to_nodes_map
 
-        print(f"######### {(source_pass_nodes, target_pass_nodes)} ##############", flush=True)
-
         if (source_pass_nodes is None) and (target_pass_nodes is None):
             return final_kg
 
