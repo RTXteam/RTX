@@ -635,7 +635,10 @@ class DTDQuerier:
                 all_probabilities = self.pred.prob_all(res)
                 if all_probabilities is not None:
                     res, all_probabilities = all_probabilities
-                    res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    temp = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    if len(temp) == 0:
+                        temp = [(res[index][1],res[index][0],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    res = temp
                 else:
                     return final_kg
             else:
@@ -709,7 +712,10 @@ class DTDQuerier:
                 all_probabilities = self.pred.prob_all(res)
                 if all_probabilities is not None:
                     res, all_probabilities = all_probabilities
-                    res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    temp = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    if len(temp) == 0:
+                        temp = [(res[index][1],res[index][0],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    res = temp
                 else:
                     return final_kg
             else:
@@ -773,7 +779,7 @@ class DTDQuerier:
             pass_nodes_drug_temp = list()
             pass_nodes_disease_temp = list()
             not_pass_nodes = list()
-            normalizer_result = self.synonymizer.get_canonical_curies(curies=[qnode_id], return_all_categories=True)
+            normalizer_result = self.synonymizer.get_canonical_curies(curies=qnode_id, return_all_categories=True)
             for curie in qnode_id:
                 if normalizer_result[curie] is not None:
                     all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[curie]['all_categories'].keys())]
