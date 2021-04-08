@@ -571,7 +571,14 @@ class DTDQuerier:
                 #     converted_source_curie = converted_target_curie['preferred_curie']
                 #     converted_target_curie = temp
                 # probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
-                probability = self.pred.prob_single(converted_source_curie['preferred_curie'], converted_target_curie['preferred_curie'])
+                count, probability = self.pred.prob_single(converted_source_curie['preferred_curie'], converted_target_curie['preferred_curie'])
+
+                if count != 0:
+                    if count == 1:
+                        log.warning(f"Total {count} curie was not found from DTD database")
+                    else:
+                        log.warning(f"Total {count} curie were not found from DTD database")
+
                 if probability is not None:
                     probability = probability[0]
                     if np.isfinite(probability):
@@ -632,9 +639,15 @@ class DTDQuerier:
             column_names = [column_name for column_name in results_table]
             res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
             if len(res) != 0:
-                all_probabilities = self.pred.prob_all(res)
+                count, res, all_probabilities = self.pred.prob_all(res)
+
+                if count != 0:
+                    if count == 1:
+                        log.warning(f"Total {count} curie was not found from DTD database")
+                    else:
+                        log.warning(f"Total {count} curie were not found from DTD database")
+
                 if all_probabilities is not None:
-                    res, all_probabilities = all_probabilities
                     temp = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
                     if len(temp) == 0:
                         temp = [(res[index][1],res[index][0],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
@@ -709,9 +722,15 @@ class DTDQuerier:
             column_names = [column_name for column_name in results_table]
             res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
             if len(res) != 0:
-                all_probabilities = self.pred.prob_all(res)
+                count, res, all_probabilities = self.pred.prob_all(res)
+
+                if count != 0:
+                    if count == 1:
+                        log.warning(f"Total {count} curie was not found from DTD database")
+                    else:
+                        log.warning(f"Total {count} curie were not found from DTD database")
+
                 if all_probabilities is not None:
-                    res, all_probabilities = all_probabilities
                     temp = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
                     if len(temp) == 0:
                         temp = [(res[index][1],res[index][0],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
