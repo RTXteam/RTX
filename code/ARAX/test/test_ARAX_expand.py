@@ -929,5 +929,16 @@ def test_issue_1236():
     assert len(nodes_by_qg_id["n01"]) > len(nodes_by_qg_id_kg2_only["n01"])
 
 
+def test_issue_1236_a():
+    actions_list = [
+        "add_qnode(id=DOID:14330, category=biolink:Disease, key=n00)",
+        "add_qnode(category=biolink:Protein, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:condition_associated_with_gene)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

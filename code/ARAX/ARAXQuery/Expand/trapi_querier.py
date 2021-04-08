@@ -57,8 +57,8 @@ class TRAPIQuerier:
             return final_kg
 
         # Answer the query using the KP and load its answers into our object model
-        if self.kp_name.endswith("KG2"):
-            # Our KPs can handle batch queries (where qnode.id is a list of curies)
+        if self.kp_name in eu.get_kps_that_support_curie_lists():
+            # Only certain KPs can handle batch queries currently (where qnode.id is a list of curies)
             final_kg = self._answer_query_using_kp(qg_copy)
         else:
             # Otherwise we need to search for curies one-by-one (until TRAPI includes a batch querying method)
@@ -276,9 +276,10 @@ class TRAPIQuerier:
                 self.log.warning(f"{self.kp_name}: No 'message' was included in the response from {self.kp_name}. "
                                  f"Response was: {json.dumps(json_response, indent=4)}")
             elif not json_response["message"].get("results"):
-                self.log.debug(f"{self.kp_name}: No 'results' were returned from {self.kp_name}.")
+                self.log.debug(f"{self.kp_name}: No 'results' were returned.")
                 json_response["message"]["results"] = []  # Setting this to empty list helps downstream processing
             else:
+                self.log.debug(f"{self.kp_name}: Got results from {self.kp_name}.")
                 kp_message = ARAXMessenger().from_dict(json_response["message"])
                 # Build a map that indicates which qnodes/qedges a given node/edge fulfills
                 kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
@@ -345,10 +346,8 @@ class TRAPIQuerier:
         if num_total_curies < 5:
             return 10
         elif num_total_curies < 50:
-            return 15
-        elif num_total_curies < 1000:
             return 30
-        elif num_total_curies < 10000:
+        elif num_total_curies < 1000:
             return 60
         else:
             return 120

@@ -346,13 +346,16 @@ class ARAXExpander:
                     answer_kgs = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
                                                                   use_synonyms, mode, response] for kp_to_use in
                                                                   kps_to_query])
-                else:
+                elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
                     answer_kgs = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, use_synonyms, mode,
                                                     response)]
+                else:
+                    log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
+                    return response
                 if response.status != 'OK':
-                    return overarching_kg
+                    return response
 
                 # Post-process all the KPs' answers and merge into our overarching KG
                 for answer_kg in answer_kgs:
@@ -362,7 +365,7 @@ class ARAXExpander:
                     else:
                         self._merge_answer_into_message_kg(answer_kg, overarching_kg, response)
                     if response.status != 'OK':
-                        return overarching_kg
+                        return response
 
                 # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
                 if mode == "ARAX":
@@ -370,7 +373,7 @@ class ARAXExpander:
                                                      message.encountered_kryptonite_edges_info, response)
                     self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, response)
                     if response.status != 'OK':
-                        return overarching_kg
+                        return response
 
                 # Make sure we found at least SOME answers for this edge (unless we're continuing if no results)
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
@@ -458,7 +461,7 @@ class ARAXExpander:
             answer_kg = kp_querier.answer_one_hop_query(edge_qg)
             if log.status != 'OK':
                 return answer_kg
-            log.debug(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+            log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated

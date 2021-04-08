@@ -45,6 +45,9 @@ class Director:
         for kp, predicates_dict in self.meta_map.items():
             if self._triple_is_in_predicates_response(kp, predicates_dict, sub_category_list, predicate_list, obj_category_list):
                 accepting_kps.add(kp)
+            # Also check the reverse direction for KG2, since it actually ignores edge direction
+            elif kp == "ARAX/KG2" and self._triple_is_in_predicates_response(kp, predicates_dict, obj_category_list, predicate_list, sub_category_list):
+                accepting_kps.add(kp)
 
         kps_to_return = self._select_best_kps(accepting_kps, qg)
         return kps_to_return
@@ -85,11 +88,16 @@ class Director:
     def _select_best_kps(possible_kps: Set[str], qg: QueryGraph) -> Set[str]:
         # Apply some special rules to filter down the KPs we'll use for this QG
         chosen_kps = possible_kps
-        # If a qnode has a lot of curies, only use KG2 for now (wait for TRAPI batch querying to use other KPs)
-        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.id)) > 20):
-            chosen_kps = chosen_kps.intersection({"ARAX/KG2"})
-        # Temporarily avoid using local KPs (until errors are fixed) TODO
-        chosen_kps = chosen_kps.difference({"CHP", "COHD", "DTD"})
+        # If a qnode has a lot of curies, only use KPs that support batch querying (no TRAPI standard yet)
+        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.id)) > 10):
+            chosen_kps = chosen_kps.intersection(eu.get_kps_that_support_curie_lists())
+
+        # Temporarily skip using these local KPs for now until some issues with /predicates and etc. are smoothed out
+        chosen_kps = chosen_kps.difference({"DTD", "CHP", "COHD"})
+        # Always hit up KG2 for now (until its /predicates is made more comprehensive. it fails fast anyway)
+        chosen_kps.add("ARAX/KG2")
+
+        # TODO: keep a record of which KPs have been timing out recently, and skip them?
 
         return chosen_kps
 
@@ -144,11 +152,7 @@ class Director:
 
     @staticmethod
     def _get_non_api_kps_meta_info(meta_map: Dict[str, Dict[str, Dict[str, List[str]]]]) -> Dict[str, Dict[str, Dict[str, List[str]]]]:
-        # TODO: Hardcode info for our KPs that don't have APIs here... (then include when building meta map)
-        # Need to hardcode DTD and NGD
-        # For NGD, should we just use KG2's predicate info?
-        # For DTD, my best guess is subjects = Drug, ChemicalSubstance, objects = Disease, but that feels likely incomplete
-
+        # This is where we can hardcode our 'local' (non-TRAPI) KPs' /predicates info
         dtd_predicates = ["biolink:treats", "biolink:treated_by"]
         dtd_predicates_dict = {"biolink:Drug": {"biolink:Disease": dtd_predicates,
                                                 "biolink:PhenotypicFeature": dtd_predicates,
