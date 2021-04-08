@@ -532,6 +532,8 @@ class DTDQuerier:
             #     log.error(f"The category of query node {target_qnode_key} is unsatisfiable", error_code="CategoryError")
             #     return final_kg, edge_to_nodes_map
 
+        print(f"######### {(source_pass_nodes, target_pass_nodes)} ##############", flush=True)
+
         if (source_pass_nodes is None) and (target_pass_nodes is None):
             return final_kg
 
@@ -635,7 +637,10 @@ class DTDQuerier:
                 all_probabilities = self.pred.prob_all(res)
                 if all_probabilities is not None:
                     res, all_probabilities = all_probabilities
-                    res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    temp = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    if len(temp) == 0:
+                        temp = [(res[index][1],res[index][0],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in source_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    res = temp
                 else:
                     return final_kg
             else:
@@ -709,7 +714,10 @@ class DTDQuerier:
                 all_probabilities = self.pred.prob_all(res)
                 if all_probabilities is not None:
                     res, all_probabilities = all_probabilities
-                    res = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    temp = [(res[index][0],res[index][1],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][1] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    if len(temp) == 0:
+                        temp = [(res[index][1],res[index][0],all_probabilities[index]) for index in range(len(all_probabilities)) if np.isfinite(all_probabilities[index]) and res[index][0] in target_pass_nodes and all_probabilities[index] >= self.DTD_threshold]
+                    res = temp
                 else:
                     return final_kg
             else:
