@@ -165,15 +165,26 @@ class PredictDrugTreatsDisease:
                         all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_source_curie['all_categories'].keys())]
                         if (len(set(self.drug_label_list).intersection(set(all_types))) > 0):
                             converted_source_curie = converted_source_curie['preferred_curie']
-                        else:
-                            continue
-                    converted_target_curie = self.convert_to_trained_curies(target_curie)
-                    if converted_target_curie is None:
-                        continue
-                    else:
-                        all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_target_curie['all_categories'].keys())]
-                        if (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
-                            converted_target_curie = converted_target_curie['preferred_curie']
+                            converted_target_curie = self.convert_to_trained_curies(target_curie)
+                            if converted_target_curie is None:
+                                continue
+                            else:
+                                all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_target_curie['all_categories'].keys())]
+                                if (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
+                                    converted_target_curie = converted_target_curie['preferred_curie']
+                                else:
+                                    continue
+                        elif (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
+                            converted_target_curie = converted_source_curie['preferred_curie']
+                            converted_source_curie = self.convert_to_trained_curies(target_curie)
+                            if converted_source_curie is None:
+                                continue
+                            else:
+                                all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_source_curie['all_categories'].keys())]
+                                if (len(set(self.drug_label_list).intersection(set(all_types))) > 0):
+                                    converted_source_curie = converted_source_curie['preferred_curie']
+                                else:
+                                    continue
                         else:
                             continue
 
@@ -205,7 +216,14 @@ class PredictDrugTreatsDisease:
                         # else:
                         #     continue
 
-                    probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+                    count, probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+
+                    if count != 0:
+                        if count == 1:
+                            self.response.warning(f"Total {count} curie was not found from DTD database")
+                        else:
+                            self.response.warning(f"Total {count} curie were not found from DTD database")
+
                     if probability is not None:
                         probability = probability[0]
                         if np.isfinite(probability):
@@ -312,7 +330,14 @@ class PredictDrugTreatsDisease:
                                 if np.isfinite(probability):
                                     max_probability = probability
                         else:
-                            probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+                            count, probability = self.pred.prob_single(converted_source_curie, converted_target_curie)
+
+                            if count != 0:
+                                if count == 1:
+                                    self.response.warning(f"Total {count} curie was not found from DTD database")
+                                else:
+                                    self.response.warning(f"Total {count} curie were not found from DTD database")
+
                             if probability is not None:
                                 probability = probability[0]
                                 if np.isfinite(probability):
@@ -356,7 +381,14 @@ class PredictDrugTreatsDisease:
                                 if np.isfinite(probability):
                                     max_probability = probability
                         else:
-                            probability = self.pred.prob_single(converted_target_curie, converted_source_curie)
+                            count, probability = self.pred.prob_single(converted_target_curie, converted_source_curie)
+
+                            if count != 0:
+                                if count == 1:
+                                    self.response.warning(f"Total {count} curie was not found from DTD database")
+                                else:
+                                    self.response.warning(f"Total {count} curie were not found from DTD database")
+
                             if probability is not None:
                                 probability = probability[0]
                                 if np.isfinite(probability):

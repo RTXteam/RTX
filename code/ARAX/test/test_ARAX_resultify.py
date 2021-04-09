@@ -1287,7 +1287,7 @@ def test_issue1119_e():
         "add_qedge(key=e00, subject=n00, object=n01, predicate=biolink:related_to)",
         "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=biolink:affects)",
         "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicate=biolink:physically_interacts_with)",
-        "expand()",
+        "expand(kp=ARAX/KG2)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1306,7 +1306,7 @@ def test_issue1119_e():
         "add_qedge(key=group1_e1, subject=n0, object=group1_n1, option_group_id=1, predicate=biolink:affects)",
         "add_qedge(key=group1_e2, subject=group1_n1, object=n1, option_group_id=1, predicate=biolink:physically_interacts_with)",
         "add_qedge(key=group1_ex, subject=group1_n2, object=group1_n1, option_group_id=1, exclude=True)",
-        "expand()",
+        "expand(kp=ARAX/KG2)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1329,7 +1329,7 @@ def test_issue1119_f():
         "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=biolink:affects)",
         "add_qedge(key=e02, subject=n02, object=n03, option_group_id=1)",
         "add_qedge(key=e03, subject=n03, object=n01, option_group_id=1)",
-        "expand()",
+        "expand(kp=ARAX/KG2)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1349,7 +1349,7 @@ def test_issue1119_f():
         "add_qedge(key=e02, subject=n02, object=n03, option_group_id=1)",
         "add_qedge(key=e03, subject=n03, object=n01, option_group_id=1)",
         "add_qedge(key=e0x, subject=n02, object=n00, option_group_id=1, predicate=biolink:prevents, exclude=True)",
-        "expand()",
+        "expand(kp=ARAX/KG2)",
         "resultify()",
         "return(message=true, store=false)"
     ]
