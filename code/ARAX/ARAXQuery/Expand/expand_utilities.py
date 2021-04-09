@@ -245,7 +245,11 @@ def kp_supports_none_for_predicate(kp_name: str) -> bool:
     none_predicates = {"ARAX/KG2": True,
                        "MolePro": True,
                        "GeneticsKP": False,
-                       "BTE": True}
+                       "BTE": True,
+                       "DTD": False,
+                       "CHP": False,
+                       "COHD": False,
+                       "NGD": False}
     return none_predicates.get(kp_name, True)
 
 
@@ -254,8 +258,17 @@ def kp_supports_none_for_category(kp_name: str) -> bool:
     none_categories = {"ARAX/KG2": True,
                        "MolePro": False,
                        "GeneticsKP": False,
-                       "BTE": True}
+                       "BTE": False,
+                       "DTD": False,
+                       "CHP": False,
+                       "COHD": False,
+                       "NGD": True}
     return none_categories.get(kp_name, True)
+
+
+def get_kps_that_support_curie_lists() -> Set[str]:
+    # This isn't really a standard in TRAPI yet, but some KPs can do it
+    return {"ARAX/KG2", "NGD"}
 
 
 def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:

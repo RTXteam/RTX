@@ -24,7 +24,7 @@ templates:
     template:
       - n00(id)
     DSL:
-      - expand(node_key=n00,kp=ARAX/KG2)
+      - expand(node_key=n00)
       - resultify()
 
   one_node_with_category:
@@ -55,7 +55,7 @@ templates:
       - e00()
       - n01(category=biolink:ChemicalSubstance)
     DSL:
-      - expand(kp=ARAX/KG2)
+      - expand()
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
@@ -69,7 +69,7 @@ templates:
       - e00()
       - n01(category)
     DSL:
-      - expand(kp=ARAX/KG2)
+      - expand()
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
@@ -83,7 +83,7 @@ templates:
       - e00()
       - n01(id)
     DSL:
-      - expand(kp=ARAX/KG2)
+      - expand()
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
 
@@ -96,7 +96,7 @@ templates:
       - e00()
       - n01()
     DSL:
-      - expand(kp=ARAX/KG2)
+      - expand()
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
 
@@ -109,7 +109,7 @@ templates:
       - e00(predicate=treats)
       - n01(category=biolink:ChemicalSubstance)
     DSL:
-      - expand(kp=ARAX/KG2)
+      - expand()
       - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
@@ -123,8 +123,7 @@ templates:
       - e00()
       - n01(category=biolink:ChemicalSubstance)
     DSL:
-      - expand(kp=ARAX/KG2, continue_if_no_results=true)
-      - expand(kp=BTE, continue_if_no_results=true)
+      - expand()
       - overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=CP1)
       - overlay(action=predict_drug_treats_disease, subject_qnode_key=n01, object_qnode_key=n00, virtual_relation_label=P1)
       - filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)
@@ -143,10 +142,7 @@ templates:
       - e01()
       - n01(category=biolink:ChemicalSubstance)
     DSL:
-      - expand(kp=ARAX/KG2, continue_if_no_results=true)
-      #- expand(edge_key=[e00,e01], kp=BTE, continue_if_no_results=true)  # this is waaaaaay to slow
-      - expand(edge_key=e00, kp=BTE, continue_if_no_results=true)
-      #- expand(edge_key=e00, kp=GeneticsKP, continue_if_no_results=true)  # Haven't figured out why this doesn't work...
+      - expand()
       - overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)
       - overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)
       - overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n02)
@@ -169,7 +165,7 @@ templates:
       - e01()
       - n02(category)
     DSL:
-      - expand(kp=ARAX/KG2)
+      - expand()
       - overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
@@ -185,7 +181,7 @@ templates:
       - e01()
       - n02(id)
     DSL:
-      - expand(kp=ARAX/KG2)
+      - expand()
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
 
@@ -200,7 +196,7 @@ templates:
       - e01()
       - n02(id)
     DSL:
-      - expand(kp=ARAX/KG2)
+      - expand()
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
 

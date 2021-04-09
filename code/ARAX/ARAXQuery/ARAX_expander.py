@@ -1,4 +1,6 @@
 #!/bin/env python3
+import json
+import multiprocessing
 import sys
 import os
 from typing import List, Dict, Tuple, Union, Set, Optional
@@ -8,12 +10,14 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
+from director import Director
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
+from openapi_server.models.message import Message
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -22,7 +26,6 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXExpander:
 
     def __init__(self):
-        self.default_kp = "ARAX/KG2"
         self.protein_category = "biolink:Protein"
         self.gene_category = "biolink:Gene"
         self.edge_key_parameter_info = {
@@ -258,36 +261,21 @@ class ARAXExpander:
         # Create global slots to store some info that needs to persist between expand() calls
         if not hasattr(message, "encountered_kryptonite_edges_info"):
             message.encountered_kryptonite_edges_info = dict()
-        encountered_kryptonite_edges_info = message.encountered_kryptonite_edges_info
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
             log.error("Provided parameters is not a dict", error_code="ParametersNotDict")
             return response
 
-        # Define a complete set of allowed parameters and their defaults
-        kp = input_parameters.get("kp", self.default_kp)
-        if kp not in self.command_definitions:
+        # Define a complete set of allowed parameters and their defaults (if the user specified a particular KP to use)
+        kp = input_parameters.get("kp")
+        if kp and kp not in self.command_definitions:
             log.error(f"Invalid KP. Options are: {set(self.command_definitions)}", error_code="InvalidKP")
             return response
-        parameters = {"kp": kp}
-        for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
-            if info_dict["type"] == "boolean":
-                parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
-            else:
-                parameters[kp_parameter_name] = info_dict.get("default", None)
-
-        # Override default values for any parameters passed in
-        parameter_names_for_all_kps = {param for kp_documentation in self.command_definitions.values() for param in kp_documentation["parameters"]}
-        for param_name, value in input_parameters.items():
-            if param_name and param_name not in parameters:
-                kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
-                log.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}", error_code="InvalidParameter")
-            else:
-                parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
+        parameters = self._set_and_validate_parameters(kp, input_parameters, log)
 
         # Handle situation where 'ARAX/KG2c' is entered as the kp (technically invalid, but we won't error out)
-        if parameters['kp'].upper() == "ARAX/KG2C":
+        if kp and parameters['kp'].upper() == "ARAX/KG2C":
             parameters['kp'] = "ARAX/KG2"
             if not parameters['use_synonyms']:
                 log.warning(f"KG2c is only used when use_synonyms=true; overriding use_synonyms to True")
@@ -315,9 +303,9 @@ class ARAXExpander:
         log.debug(f"Applying Expand to Message with parameters {parameters}")
         input_qedge_keys = eu.convert_to_list(parameters['edge_key'])
         input_qnode_keys = eu.convert_to_list(parameters['node_key'])
-        kp_to_use = parameters['kp']
         continue_if_no_results = parameters['continue_if_no_results']
         use_synonyms = parameters['use_synonyms']
+        user_specified_kp = True if parameters['kp'] else False
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
@@ -337,7 +325,6 @@ class ARAXExpander:
 
             # Expand the query graph edge-by-edge
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
-
             for qedge_key in ordered_qedge_keys_to_expand:
                 qedge = query_graph.edges[qedge_key]
                 # Create a query graph for this edge (that uses curies found in prior steps)
@@ -345,33 +332,67 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
 
-                # TODO: Get list of KPs that can answer this 1-hop QG (e.g., kps = self._get_kps_supporting_qg(one_hop_qg))
-                # TODO: Then loop through those KPs here
-                answer_kg = self._expand_edge(one_hop_qg, kp_to_use, continue_if_no_results, use_synonyms, mode, log)
-                if log.status != 'OK':
-                    return response
-                elif mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
-                    self._store_kryptonite_edge_info(answer_kg, qedge_key, query_graph, encountered_kryptonite_edges_info, log)
+                # Figure out which KPs would be best to expand this edge with (if no KP was specified)
+                if not user_specified_kp:
+                    director = Director(log, set(self.command_definitions.keys()))
+                    kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
+                    log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
-                    self._merge_answer_into_message_kg(answer_kg, overarching_kg, log)
-                if log.status != 'OK':
+                    kps_to_query = {parameters["kp"]}
+
+                # Send this query to each KP selected to answer it (in parallel)
+                if len(kps_to_query) > 1:
+                    num_threads = multiprocessing.cpu_count()
+                    with multiprocessing.Pool(num_threads) as pool:
+                        answer_kgs = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
+                                                                      use_synonyms, mode, user_specified_kp, response]
+                                                                      for kp_to_use in kps_to_query])
+                elif len(kps_to_query) == 1:
+                    # Don't bother creating separate processes if we only selected one KP
+                    kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
+                    answer_kgs = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, use_synonyms, mode,
+                                                    user_specified_kp, response)]
+                else:
+                    log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
+                if response.status != 'OK':
+                    return response
+
+                # Post-process all the KPs' answers and merge into our overarching KG
+                for answer_kg in answer_kgs:
+                    if mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
+                        self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
+                                                         message.encountered_kryptonite_edges_info, response)
+                    else:
+                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, response)
+                    if response.status != 'OK':
+                        return response
 
                 # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
                 if mode == "ARAX":
-                    self._apply_any_kryptonite_edges(overarching_kg, query_graph, encountered_kryptonite_edges_info, log)
-                    self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, log)
-                    if log.status != 'OK':
+                    self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
+                                                     message.encountered_kryptonite_edges_info, response)
+                    self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, response)
+                    if response.status != 'OK':
+                        return response
+
+                # Make sure we found at least SOME answers for this edge (unless we're continuing if no results)
+                if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
+                    if continue_if_no_results:
+                        log.warning(f"No paths were found in {kps_to_query} satisfying qedge {qedge_key}")
+                    else:
+                        log.error(f"No paths were found in {kps_to_query} satisfying qedge {qedge_key}",
+                                  error_code="NoResults")
                         return response
 
         # Expand any specified nodes
         if input_qnode_keys:
+            kp_to_use = parameters["kp"] if user_specified_kp else "ARAX/KG2"  # Only KG2 does single-node queries
             for qnode_key in input_qnode_keys:
                 answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms,
-                                              mode, log)
+                                              mode, user_specified_kp, log)
                 if log.status != 'OK':
                     return response
-
                 self._merge_answer_into_message_kg(answer_kg, overarching_kg, log)
                 if log.status != 'OK':
                     return response
@@ -386,20 +407,23 @@ class ARAXExpander:
         kg = message.knowledge_graph
         only_kryptonite_qedges_expanded = all([query_graph.edges[qedge_key].exclude for qedge_key in input_qedge_keys])
         if not kg.nodes and not continue_if_no_results and not only_kryptonite_qedges_expanded:
-            log.error(f"No paths were found in {kp_to_use} satisfying this query graph", error_code="NoResults")
+            log.error(f"No paths were found satisfying this query graph", error_code="NoResults")
         else:
             log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
                      f"({eu.get_printable_counts_by_qg_id(overarching_kg)})")
 
         return response
 
-    def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, continue_if_no_results: bool, use_synonyms: bool,
-                     mode: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+    def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], use_synonyms: bool,
+                     mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
+
+        # Make sure we have all default parameters set specific to the KP we'll be using
+        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
 
         # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.id):
@@ -432,31 +456,24 @@ class ARAXExpander:
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp)
 
             # Actually answer the query using the Querier we identified above
             answer_kg = kp_querier.answer_one_hop_query(edge_qg)
             if log.status != 'OK':
                 return answer_kg
-            log.debug(f"Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+            log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
             if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
-                answer_kg = self._deduplicate_nodes(answer_kg, log)
+                answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
             if eu.qg_is_fulfilled(edge_qg, answer_kg):
-                answer_kg = self._remove_self_edges(answer_kg, qedge_key, qedge, log)
-
-            # Make sure our query has been fulfilled (unless we're continuing if no results)
-            if not eu.qg_is_fulfilled(edge_qg, answer_kg) and not qedge.exclude and not qedge.option_group_id:
-                if continue_if_no_results:
-                    log.warning(f"No paths were found in {kp_to_use} satisfying qedge {qedge_key}")
-                else:
-                    log.error(f"No paths were found in {kp_to_use} satisfying qedge {qedge_key}", error_code="NoResults")
+                answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
 
             return answer_kg
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
-                     use_synonyms: bool, mode: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     use_synonyms: bool, mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -476,7 +493,7 @@ class ARAXExpander:
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
@@ -488,7 +505,7 @@ class ARAXExpander:
                     return answer_kg
 
             if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
-                answer_kg = self._deduplicate_nodes(answer_kg, log)
+                answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
             return answer_kg
         else:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options for single-node queries are "
@@ -544,8 +561,8 @@ class ARAXExpander:
         return edge_qg
 
     @staticmethod
-    def _deduplicate_nodes(answer_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        log.debug(f"Deduplicating nodes")
+    def _deduplicate_nodes(answer_kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        log.debug(f"{kp_name}: Deduplicating nodes")
         deduplicated_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in answer_kg.nodes_by_qg_id},
                                                     edges={qedge_key: dict() for qedge_key in answer_kg.edges_by_qg_id})
         curie_mappings = dict()
@@ -554,7 +571,7 @@ class ARAXExpander:
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
             # Load preferred curie info from NodeSynonymizer for nodes we haven't seen before
             unmapped_node_keys = set(nodes).difference(set(curie_mappings))
-            log.debug(f"Getting preferred curies for {qnode_key} nodes returned in this step")
+            log.debug(f"{kp_name}: Getting preferred curies for {qnode_key} nodes returned in this step")
             canonicalized_nodes = eu.get_canonical_curies_dict(list(unmapped_node_keys), log) if unmapped_node_keys else dict()
             if log.status != 'OK':
                 return deduplicated_kg
@@ -588,11 +605,11 @@ class ARAXExpander:
                 edge.subject = curie_mappings.get(edge.subject)
                 edge.object = curie_mappings.get(edge.object)
                 if not edge.subject or not edge.object:
-                    log.error(f"Could not find preferred curie mappings for edge {edge_key}'s node(s)")
+                    log.error(f"{kp_name}: Could not find preferred curie mappings for edge {edge_key}'s node(s)")
                     return deduplicated_kg
                 deduplicated_kg.add_edge(edge_key, edge, qedge_key)
 
-        log.debug(f"After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
+        log.debug(f"{kp_name}: After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg
 
     @staticmethod
@@ -904,8 +921,8 @@ class ARAXExpander:
             return False
 
     @staticmethod
-    def _remove_self_edges(kg: QGOrganizedKnowledgeGraph, qedge_key: str, qedge: QEdge, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        log.debug(f"Removing any self-edges from the answer KG")
+    def _remove_self_edges(kg: QGOrganizedKnowledgeGraph, kp_name: str, qedge_key: str, qedge: QEdge, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        log.debug(f"{kp_name}: Removing any self-edges from the answer KG")
         # Remove any self-edges (subject is same as object)
         edges_to_remove = []
         for edge_key, edge in kg.edges_by_qg_id[qedge_key].items():
@@ -924,8 +941,31 @@ class ARAXExpander:
                 kg.nodes_by_qg_id[qedge.subject].pop(node_key, None)
                 kg.nodes_by_qg_id[qedge.object].pop(node_key, None)
 
-        log.debug(f"After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
+        log.debug(f"{kp_name}: After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
+
+    def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], log: ARAXResponse) -> Dict[str, any]:
+        parameters = {"kp": kp}
+        if not kp:
+            kp = "ARAX/KG2"  # We'll use a standard set of parameters (like for KG2)
+        for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
+            if info_dict["type"] == "boolean":
+                parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
+            else:
+                parameters[kp_parameter_name] = info_dict.get("default", None)
+
+        # Override default values for any parameters passed in
+        parameter_names_for_all_kps = {param for kp_documentation in self.command_definitions.values() for param in
+                                       kp_documentation["parameters"]}
+        for param_name, value in input_parameters.items():
+            if param_name and param_name not in parameters:
+                kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
+                log.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}",
+                          error_code="InvalidParameter")
+            else:
+                parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
+
+        return parameters
 
     @staticmethod
     def _override_node_categories(kg: KnowledgeGraph, qg: QueryGraph):
