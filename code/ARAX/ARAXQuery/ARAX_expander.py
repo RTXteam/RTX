@@ -342,24 +342,25 @@ class ARAXExpander:
 
                 # Send this query to each KP selected to answer it (in parallel)
                 if len(kps_to_query) > 1:
-                    num_threads = multiprocessing.cpu_count()
-                    with multiprocessing.Pool(num_threads) as pool:
-                        answer_kgs = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                      use_synonyms, mode, user_specified_kp, response]
+                    num_cpus = multiprocessing.cpu_count()
+                    with multiprocessing.Pool(num_cpus) as pool:
+                        kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
+                                                                       use_synonyms, mode, user_specified_kp]
                                                                       for kp_to_use in kps_to_query])
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
-                    answer_kgs = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, use_synonyms, mode,
-                                                    user_specified_kp, response)]
+                    kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, use_synonyms, mode,
+                                                    user_specified_kp)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
-                if response.status != 'OK':
-                    return response
 
                 # Post-process all the KPs' answers and merge into our overarching KG
-                for answer_kg in answer_kgs:
+                for answer_kg, kp_log in kp_answers:
+                    log.merge(kp_log)  # Processes can't share the main log, so we merge their individual logs here
+                    if response.status != 'OK':
+                        return response
                     if mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
@@ -415,10 +416,11 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], use_synonyms: bool,
-                     mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     mode: str, user_specified_kp: bool) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
+        log = ARAXResponse()  # Create a log for use only within this edge expansion (important for multiprocessing)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
 
@@ -429,14 +431,14 @@ class ARAXExpander:
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.id):
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
-            return answer_kg
+            return answer_kg, log
 
         # Route this query to the proper place depending on the KP
         allowable_kps = set(self.command_definitions.keys())
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
-            return answer_kg
+            return answer_kg, log
         else:
             if kp_to_use == 'COHD':
                 from Expand.COHD_querier import COHDQuerier
@@ -461,7 +463,7 @@ class ARAXExpander:
             # Actually answer the query using the Querier we identified above
             answer_kg = kp_querier.answer_one_hop_query(edge_qg)
             if log.status != 'OK':
-                return answer_kg
+                return answer_kg, log
             log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
             # Do some post-processing (deduplicate nodes, remove self-edges..)
@@ -470,7 +472,7 @@ class ARAXExpander:
             if eu.qg_is_fulfilled(edge_qg, answer_kg):
                 answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
 
-            return answer_kg
+            return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
                      use_synonyms: bool, mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
