@@ -11,7 +11,8 @@ info:
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   x-translator:
     component: ARA
-    team: Expander Agent
+    team:
+      - Expander Agent
 externalDocs:
   description: >-
     Documentation for the NCATS Biomedical Translator Reasoners web services
