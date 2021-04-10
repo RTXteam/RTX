@@ -11,8 +11,9 @@ info:
   title: RTX KG2
   version: 2.3.4
   x-translator:
-    component: ARA
-    team: Expander Agent
+    component: KP
+    team:
+    - Expander Agent
   x-trapi:
     version: 1.0.0
 externalDocs:
@@ -22,7 +23,7 @@ servers:
 - description: RTX KG2.3.4 API
   url: https://arax.ncats.io/api/rtxkg2/v1.0
 tags:
-- description: Get supported relationships by source and target
+- description: Get all supported relationships by source and target
   externalDocs:
     description: Documentation for the reasoner predicates function
     url: http://arax.ncats.io/overview.html#predicates
@@ -33,8 +34,8 @@ tags:
     url: http://arax.ncats.io/overview.html#query
   name: query
 - name: translator
-- name: reasoner
-- description: Return identifier and type of some entity in the knowledge graph
+- name: trapi
+- description: Return extensive information about entities in the knowledge graph
   externalDocs:
     description: Documentation for the reasoner entity function
     url: https://arax.ncats.io/overview.html#entity
@@ -203,6 +204,25 @@ components:
       required:
       - message
       type: object
+      example:
+        bypass_cache: "true"
+        page_number: 1
+        asynchronous: "false"
+        max_results: 100
+        message:
+          query_graph:
+            edges:
+              e00:
+                subject: n00
+                object: n01
+                predicate: biolink:physically_interacts_with
+            nodes:
+              n00:
+                id: CHEMBL.COMPOUND:CHEMBL112
+                category: biolink:ChemicalSubstance
+              n01:
+                category: biolink:Protein
+        page_size: 50
       x-body-name: request_body
     Response:
       additionalProperties: true

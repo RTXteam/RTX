@@ -10,8 +10,9 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   x-translator:
-    component: ARA
-    team: Expander Agent
+    component: KP
+    team:
+      - Expander Agent
   x-trapi:
     version: 1.0.0
 externalDocs:
