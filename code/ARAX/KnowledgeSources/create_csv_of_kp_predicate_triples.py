@@ -16,6 +16,7 @@ import os
 import csv
 import time
 import pandas as pd
+import json
 
 from neo4j import GraphDatabase
 
@@ -90,6 +91,68 @@ def get_kg2c_predicate_triples():
         triples_dict['predicate'].append(predicate)
     return pd.DataFrame(triples_dict)
 
+def get_kg2_predicate_triples_examples():
+    cypher = 'match (n)-[r]->(m) with distinct labels(n) as n1s, type(r) as rel, labels(m) as n2s ' +\
+                'unwind n1s as n1 unwind n2s as n2 with distinct n1 as node1, rel as relationship, ' +\
+                'n2 as node2 where node1 <> "Base" and node2 <> "Base" CALL ' +\
+                "apoc.cypher.run('match (n2:`' + node1 + '`)-[r2:`' + relationship + '`]->(m2:`' + node2 + '`) " +\
+                "return n2.id as subject, m2.id as object limit 1', {}) YIELD value return node1, relationship, " +\
+                "node2, value.subject as subject, value.object as object"
+    results = run_neo4j_query(cypher, "KG2", "predicate triples")
+    triples_dict = {"subject":[], "predicate":[], "object":[]}
+    examples_json = {"url": "https://arax.ncats.io/kg2/api/rtxkg2/v1.0/ui/",
+                    "TRAPI": True,
+                    "edges": []}
+    for result in results:
+        subject_type = result.get('node1')
+        object_type = result.get('node2')
+        predicate = result.get('relationship')
+        subject_example = result.get('subject')
+        object_example = result.get('object')
+        triples_dict['subject'].append(subject_type)
+        triples_dict['object'].append(object_type)
+        triples_dict['predicate'].append(predicate)
+        example = {
+            "subject_category": subject_type,
+            "object_category": object_type,
+            "predicate": predicate,
+            "subject": subject_example,
+            "object": object_example
+        }
+        examples_json['edges'].append(example)
+    return pd.DataFrame(triples_dict).drop_duplicates(ignore_index=True), examples_json
+
+def get_kg2c_predicate_triples_examples():
+    cypher = 'match (n)-[r]->(m) with distinct labels(n) as n1s, type(r) as rel, labels(m) as n2s ' +\
+                'unwind n1s as n1 unwind n2s as n2 with distinct n1 as node1, rel as relationship, ' +\
+                'n2 as node2 where node1 <> "Base" and node2 <> "Base" CALL ' +\
+                "apoc.cypher.run('match (n2:`' + node1 + '`)-[r2:`' + relationship + '`]->(m2:`' + node2 + '`) " +\
+                "return n2.id as subject, m2.id as object limit 1', {}) YIELD value return node1, relationship, " +\
+                "node2, value.subject as subject, value.object as object"
+    results = run_neo4j_query(cypher, "KG2c", "predicate triples")
+    triples_dict = {"subject":[], "predicate":[], "object":[]}
+    examples_json = {"url": "https://arax.ncats.io/kg2/api/rtxkg2/v1.0/ui/",
+                    "TRAPI": True,
+                    "edges": []}
+    for result in results:
+        subject_type = result.get('node1')
+        object_type = result.get('node2')
+        predicate = result.get('relationship')
+        subject_example = result.get('subject')
+        object_example = result.get('object')
+        triples_dict['subject'].append(subject_type)
+        triples_dict['object'].append(object_type)
+        triples_dict['predicate'].append(predicate)
+        example = {
+            "subject_category": subject_type,
+            "object_category": object_type,
+            "predicate": predicate,
+            "subject": subject_example,
+            "object": object_example
+        }
+        examples_json['edges'].append(example)
+    return pd.DataFrame(triples_dict).drop_duplicates(ignore_index=True), examples_json
+
 def get_kg1_node_labels():
     cypher = 'call db.labels()'
     results = run_neo4j_query(cypher, "KG1", "node labels")
@@ -149,11 +212,15 @@ def main():
     print("----- starting script -----")
     
     kg1_triple_df = get_kg1_predicate_triples()
-    kg2_triple_df = get_kg2_predicate_triples()
-    kg2c_triple_df = get_kg2c_predicate_triples()
+    kg2_triple_df, KG2_examples_json = get_kg2_predicate_triples_examples()
+    kg2c_triple_df, KG2c_examples_json = get_kg2c_predicate_triples_examples()
     kg1_triple_df.to_csv("KG1_allowed_predicate_triples.csv", index=False)
     kg2_triple_df.to_csv("KG2_allowed_predicate_triples.csv", index=False)
+    with open('RTX_KG2_Data.json','w') as fid:
+        json.dump(KG2_examples_json, fid, indent=4)
     kg2c_triple_df.to_csv("KG2c_allowed_predicate_triples.csv", index=False)
+    with open('RTX_KG2c_Data.json','w') as fid:
+        json.dump(KG2c_examples_json, fid, indent=4)
 
     kg1_labels_df = get_kg1_node_labels()
     kg2_labels_df = get_kg2_node_labels()
