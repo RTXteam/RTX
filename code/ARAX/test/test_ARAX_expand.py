@@ -940,5 +940,19 @@ def test_issue_1236_a():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+def test_kg2_predicate_hierarchy_reasoning():
+    actions_list = [
+        "add_qnode(id=CHEMBL.COMPOUND:CHEMBL112, category=biolink:Drug, key=n00)",
+        "add_qnode(category=biolink:Protein, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:interacts_with)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:physically_interacts_with")
+    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:molecularly_interacts_with")
+    assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
