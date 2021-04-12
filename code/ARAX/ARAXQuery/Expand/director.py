@@ -95,6 +95,10 @@ class Director:
         # Always hit up KG2 for now (until its /predicates is made more comprehensive. it fails fast anyway)
         chosen_kps.add("ARAX/KG2")
 
+        # Don't use BTE if this is a curie-to-curie query (they have a bug with such queries currently)
+        if all(qnode.id for qnode in qg.nodes.values()):
+            chosen_kps = chosen_kps.difference({"BTE"})
+
         # TODO: keep a record of which KPs have been timing out recently, and skip them?
 
         return chosen_kps

@@ -48,6 +48,7 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_format(nodes_by_qg_id, edges_by_qg_id)
     _check_node_categories(message.knowledge_graph.nodes, message.query_graph)
+    _check_counts_of_curie_qnodes(nodes_by_qg_id, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
 
@@ -952,17 +953,6 @@ def test_kg2_predicate_hierarchy_reasoning():
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:physically_interacts_with")
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:molecularly_interacts_with")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
-
-
-def test_issue_1368():
-    actions_list = [
-        "add_qnode(key=N0, id=MONDO:0005301, category=biolink:Disease)",
-        "add_qnode(key=N1, id=MONDO:0017611, category=biolink:Disease)",
-        "add_qedge(key=E0, subject=N0, object=N1)",
-        "expand(kp=BTE)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
 if __name__ == "__main__":
