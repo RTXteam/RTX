@@ -48,7 +48,10 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
         # FIXME: EWD: there's a problem here, but I'm baffled by what this is supposed to be doing
         for edge_binding in edge_binding_list:
             kg_edge = kg_edge_id_to_edge[edge_binding.id]
-            kg_edge_attributes = {x.name:x.value for x in kg_edge.attributes}
+            if kg_edge.attributes is not None:
+                kg_edge_attributes = {x.name:x.value for x in kg_edge.attributes}
+            else:
+                kg_edge_attributes = {}
             kg_edge_conf = kg_edge.confidence
             #kg_edge_conf = kg_edge_attributes["confidence"]
             qedge_keys = kg_edge.qedge_keys
@@ -548,7 +551,10 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
         for edge_key,edge in message.knowledge_graph.edges.items():
-            edge_attributes = {x.name:x.value for x in edge.attributes}
+            if edge.attributes is not None:
+                edge_attributes = {x.name:x.value for x in edge.attributes}
+            else:
+                edge_attributes = {}
             if edge_attributes.get("confidence", None) is not None:
             #if False:       # FIXME: there is no longer such an attribute. Stored as a generic attribute?
             #if edge.confidence is not None:
