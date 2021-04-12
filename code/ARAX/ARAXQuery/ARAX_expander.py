@@ -570,14 +570,13 @@ class ARAXExpander:
 
         # First deduplicate the nodes
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
-            # Load preferred curie info from NodeSynonymizer for nodes we haven't seen before
-            unmapped_node_keys = set(nodes).difference(set(curie_mappings))
+            # Load preferred curie info from NodeSynonymizer
             log.debug(f"{kp_name}: Getting preferred curies for {qnode_key} nodes returned in this step")
-            canonicalized_nodes = eu.get_canonical_curies_dict(list(unmapped_node_keys), log) if unmapped_node_keys else dict()
+            canonicalized_nodes = eu.get_canonical_curies_dict(list(nodes), log) if nodes else dict()
             if log.status != 'OK':
                 return deduplicated_kg
 
-            for node_key in unmapped_node_keys:
+            for node_key in nodes:
                 # Figure out the preferred curie/name for this node
                 node = nodes.get(node_key)
                 canonicalized_node = canonicalized_nodes.get(node_key)

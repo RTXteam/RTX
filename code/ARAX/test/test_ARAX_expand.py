@@ -48,7 +48,6 @@ def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_inc
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_format(nodes_by_qg_id, edges_by_qg_id)
     _check_node_categories(message.knowledge_graph.nodes, message.query_graph)
-    _check_counts_of_curie_qnodes(nodes_by_qg_id, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
 
@@ -125,6 +124,7 @@ def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
+    # Note: Can't really use this function anymore since KPs can respond with multiple curies per 1 qg curie now...
     qnodes_with_single_curie = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id and isinstance(qnode.id, str)]
     for qnode_key in qnodes_with_single_curie:
         if qnode_key in nodes_by_qg_id:
@@ -948,10 +948,21 @@ def test_kg2_predicate_hierarchy_reasoning():
         "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:physically_interacts_with")
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:molecularly_interacts_with")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
+
+
+def test_issue_1368():
+    actions_list = [
+        "add_qnode(key=N0, id=MONDO:0005301, category=biolink:Disease)",
+        "add_qnode(key=N1, id=MONDO:0017611, category=biolink:Disease)",
+        "add_qedge(key=E0, subject=N0, object=N1)",
+        "expand(kp=BTE)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
 if __name__ == "__main__":
