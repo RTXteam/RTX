@@ -640,6 +640,32 @@ def test_FET_ranking():
             for diff in [abs(x - y) for i,x in enumerate(conf_list) for j,y in enumerate(conf_list) if i < j]:
                 assert diff == 0
 
+def test_genetics_kp_ranking():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=type 2 diabetes mellitus, category=biolink:Disease, key=n0)",
+        "add_qnode(category=biolink:Gene, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0, predicate=biolink:condition_associated_with_gene)",
+        "expand(edge_key=e0,kp=GeneticsKP)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    gen_kp_ranking_value = {}
+    for result in message.results:
+        for key, edge_bindings in result.edge_bindings.items():
+            for edge in edge_bindings:
+                if edge.id.startswith('GeneticsKP'):
+                    if message.knowledge_graph.edges[edge.id].attributes is not None:
+                        for attribute in message.knowledge_graph.edges[edge.id].attributes:
+                            if attribute.name == "pValue":
+                                if str(result.confidence) in gen_kp_ranking_value:
+                                    gen_kp_ranking_value[str(result.confidence)].append(float(attribute.value))
+                                else:
+                                    gen_kp_ranking_value[str(result.confidence)] = [float(attribute.value)]
+    assert len(gen_kp_ranking_value) > 0
 
 
 

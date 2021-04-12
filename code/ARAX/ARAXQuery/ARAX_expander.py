@@ -1,5 +1,4 @@
 #!/bin/env python3
-import json
 import multiprocessing
 import sys
 import os
@@ -17,7 +16,6 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
-from openapi_server.models.message import Message
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -236,7 +234,7 @@ class ARAXExpander:
         """
         return list(self.command_definitions.values())
 
-    def apply(self, response, input_parameters, mode="ARAX"):
+    def apply(self, response, input_parameters, mode="ARAX", force_local=False):
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
@@ -345,13 +343,13 @@ class ARAXExpander:
                     num_cpus = multiprocessing.cpu_count()
                     with multiprocessing.Pool(num_cpus) as pool:
                         kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                       use_synonyms, mode, user_specified_kp]
+                                                                       use_synonyms, mode, user_specified_kp, force_local]
                                                                       for kp_to_use in kps_to_query])
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
                     kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, use_synonyms, mode,
-                                                    user_specified_kp)]
+                                                    user_specified_kp, force_local)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
@@ -416,13 +414,14 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], use_synonyms: bool,
-                     mode: str, user_specified_kp: bool) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     mode: str, user_specified_kp: bool, force_local: bool) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
         log = ARAXResponse()  # Create a log for use only within this edge expansion (important for multiprocessing)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
+        mode = "RTXKG2" if force_local else mode
 
         # Make sure we have all default parameters set specific to the KP we'll be using
         log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
@@ -571,14 +570,13 @@ class ARAXExpander:
 
         # First deduplicate the nodes
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
-            # Load preferred curie info from NodeSynonymizer for nodes we haven't seen before
-            unmapped_node_keys = set(nodes).difference(set(curie_mappings))
+            # Load preferred curie info from NodeSynonymizer
             log.debug(f"{kp_name}: Getting preferred curies for {qnode_key} nodes returned in this step")
-            canonicalized_nodes = eu.get_canonical_curies_dict(list(unmapped_node_keys), log) if unmapped_node_keys else dict()
+            canonicalized_nodes = eu.get_canonical_curies_dict(list(nodes), log) if nodes else dict()
             if log.status != 'OK':
                 return deduplicated_kg
 
-            for node_key in unmapped_node_keys:
+            for node_key in nodes:
                 # Figure out the preferred curie/name for this node
                 node = nodes.get(node_key)
                 canonicalized_node = canonicalized_nodes.get(node_key)

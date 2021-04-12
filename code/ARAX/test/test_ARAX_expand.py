@@ -125,6 +125,7 @@ def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
+    # Note: Can't really use this function anymore since KPs can respond with multiple curies per 1 qg curie now...
     qnodes_with_single_curie = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id and isinstance(qnode.id, str)]
     for qnode_key in qnodes_with_single_curie:
         if qnode_key in nodes_by_qg_id:
@@ -938,6 +939,20 @@ def test_issue_1236_a():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_kg2_predicate_hierarchy_reasoning():
+    actions_list = [
+        "add_qnode(id=CHEMBL.COMPOUND:CHEMBL112, category=biolink:Drug, key=n00)",
+        "add_qnode(category=biolink:Protein, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:interacts_with)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:physically_interacts_with")
+    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:molecularly_interacts_with")
+    assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
 
 if __name__ == "__main__":
