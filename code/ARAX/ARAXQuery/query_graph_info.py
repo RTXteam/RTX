@@ -98,10 +98,6 @@ class QueryGraphInfo:
                 response.error("QueryGraph has a node with null key. This is not permitted", error_code="QueryGraphNodeWithNoId")
                 return response
 
-            #### Remap the node categorys from unsupported to supported
-            if qnode.category is not None:
-                qnode.category = self.remap_node_category(qnode.category)
-
             #### Store lookup of categorys
             warning_counter = 0
             if qnode.category is None or ( isinstance(qnode.category,list) and len(qnode.category) == 0 ):
@@ -343,17 +339,6 @@ class QueryGraphInfo:
 
         #### Return the response
         return response
-
-
-    ##########################################################################################
-    #### Remap node categorys from the new TRAPI 1.0 style to the older TRAPI 0.9.x style
-    #### No longer needed. FIXME
-    def remap_node_category(self, node_category):
-        #match = re.match(r'biolink:(.+)', node_category)
-        #if match:
-        #    node_category = match.group(1)
-        #    node_category = re.sub(r'(?<!^)(?=[A-Z])', '_', node_category).lower()
-        return node_category
 
 
 ##########################################################################################
