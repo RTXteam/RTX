@@ -94,7 +94,7 @@ def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
 # "rank"), where ties have the same (average) rank (the reason for using scipy.stats
 # here is specifically in order to handle ties correctly)
 def _quantile_rank_list(x: List[float]) -> np.array:
-    y = scipy.stats.rankdata(x)
+    y = scipy.stats.rankdata(x, method='min')
     return y/len(y)
 
 
