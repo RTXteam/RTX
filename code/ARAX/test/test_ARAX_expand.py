@@ -231,17 +231,6 @@ def test_bte_protein_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_bte_without_synonyms():
-    actions_list = [
-        "add_qnode(id=UniProtKB:P16471, category=biolink:Protein, key=n00)",
-        "add_qnode(category=biolink:Cell, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=BTE, use_synonyms=false)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
 @pytest.mark.slow
 def test_bte_using_list_of_curies():
     actions_list = [
