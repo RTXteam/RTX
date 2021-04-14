@@ -62,7 +62,7 @@ class ARAXExpander:
             "type": "boolean",
             "description": "Whether to consider curie synonyms and merge synonymous nodes."
         }
-        self.command_definitions = {
+        self.kp_command_definitions = {
             "ARAX/KG1": {
                 "dsl_command": "expand(kp=ARAX/KG1)",
                 "description": "This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths "
@@ -232,7 +232,24 @@ class ARAXExpander:
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
-        return list(self.command_definitions.values())
+        considered_kps = sorted(list(set(self.kp_command_definitions).difference({"ARAX/KG1"})))
+        kp_less = {
+                "dsl_command": "expand()",
+                "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
+                               f"fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: "
+                               f"{', '.join(considered_kps)}. It selects KPs based on the meta information provided by "
+                               f"their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick "
+                               f"but useful answers. For each QEdge, it queries the selected KPs in parallel; it will "
+                               f"timeout for a particular KP if it decides it's taking too long to respond.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "enforce_directionality": self.enforce_directionality_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info
+                }
+            }
+        return [kp_less] + list(self.kp_command_definitions.values())
 
     def apply(self, response, input_parameters, mode="ARAX", force_local=False):
         message = response.envelope.message
@@ -267,8 +284,8 @@ class ARAXExpander:
 
         # Define a complete set of allowed parameters and their defaults (if the user specified a particular KP to use)
         kp = input_parameters.get("kp")
-        if kp and kp not in self.command_definitions:
-            log.error(f"Invalid KP. Options are: {set(self.command_definitions)}", error_code="InvalidKP")
+        if kp and kp not in self.kp_command_definitions:
+            log.error(f"Invalid KP. Options are: {set(self.kp_command_definitions)}", error_code="InvalidKP")
             return response
         parameters = self._set_and_validate_parameters(kp, input_parameters, log)
 
@@ -332,7 +349,7 @@ class ARAXExpander:
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
-                    director = Director(log, set(self.command_definitions.keys()))
+                    director = Director(log, set(self.kp_command_definitions.keys()))
                     kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
@@ -433,7 +450,7 @@ class ARAXExpander:
             return answer_kg, log
 
         # Route this query to the proper place depending on the KP
-        allowable_kps = set(self.command_definitions.keys())
+        allowable_kps = set(self.kp_command_definitions.keys())
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
@@ -948,14 +965,14 @@ class ARAXExpander:
         parameters = {"kp": kp}
         if not kp:
             kp = "ARAX/KG2"  # We'll use a standard set of parameters (like for KG2)
-        for kp_parameter_name, info_dict in self.command_definitions[kp]["parameters"].items():
+        for kp_parameter_name, info_dict in self.kp_command_definitions[kp]["parameters"].items():
             if info_dict["type"] == "boolean":
                 parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
             else:
                 parameters[kp_parameter_name] = info_dict.get("default", None)
 
         # Override default values for any parameters passed in
-        parameter_names_for_all_kps = {param for kp_documentation in self.command_definitions.values() for param in
+        parameter_names_for_all_kps = {param for kp_documentation in self.kp_command_definitions.values() for param in
                                        kp_documentation["parameters"]}
         for param_name, value in input_parameters.items():
             if param_name and param_name not in parameters:
