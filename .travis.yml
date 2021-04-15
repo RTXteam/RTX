@@ -19,6 +19,6 @@ install:
   - python ./code/ARAX/ARAXQuery/ARAX_database_manager.py --slim
 # command to run tests
 script:
-  - pytest -v ./code/ARAX/test/ --disable-pytest-warnings
+#  - pytest -v ./code/ARAX/test/ --disable-pytest-warnings
   - bash -x ./code/kg2/setup-kg2-build.sh travisci
   - bash -x ./code/kg2/run-validation-tests.sh
