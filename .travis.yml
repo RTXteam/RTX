@@ -20,5 +20,6 @@ install:
 # command to run tests
 script:
 #  - pytest -v ./code/ARAX/test/ --disable-pytest-warnings
-  - bash -x ./code/kg2/setup-kg2-build.sh travisci
-  - bash -x ./code/kg2/run-validation-tests.sh
+  - cd ~
+  - bash -x ~/RTX/code/kg2/setup-kg2-build.sh travisci
+  - bash -x ~/RTX/code/kg2/run-validation-tests.sh
