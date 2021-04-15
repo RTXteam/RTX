@@ -12,6 +12,7 @@ before_install:
   - echo -e "${TRAVIS_KEY//_/\\n}" > ~/.ssh/id_rsa
   - chmod og-rwx ~/.ssh/id_rsa
   - eval "scp ${CONFIG_HOST}:configv2.json ${TRAVIS_BUILD_DIR}/code/configv2.json"
+  - export PATH=$PATH:~/kg2-build/
 # command to install python dependencies
 install:
   - pip install -r requirements.txt
