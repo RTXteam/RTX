@@ -130,8 +130,9 @@ class KG2Querier:
         rtxc = RTXConfiguration()
         rtxc.live = "Production"
         log.debug(f"Sending query to Plover")
-        qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)
-        response = requests.post(f"{rtxc.plover_url}/query", json=qg.to_dict(), headers={'accept': 'application/json'})
+        dict_qg = qg.to_dict()
+        dict_qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)
+        response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, headers={'accept': 'application/json'})
         if response.status_code == 200:
             log.debug(f"Got response back from Plover")
             return response.json(), response.status_code
@@ -152,8 +153,8 @@ class KG2Querier:
                 num_nodes = len(nodes)
                 log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model")
                 start = time.time()
-                for node_as_dict in nodes.values():
-                    node_key, node = self._convert_kg2c_node_to_trapi_node(node_as_dict)
+                for node_key, node_as_dict in nodes.items():
+                    node = self._convert_kg2c_plover_node_to_trapi_node(node_as_dict)
                     answer_kg.add_node(node_key, node, qnode_key)
                 log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model took "
                           f"{round(time.time() - start, 2)} seconds")
@@ -371,6 +372,10 @@ class KG2Querier:
                             "equivalent_curies", "publications"]
         node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
         return node_key, node
+
+    def _convert_kg2c_plover_node_to_trapi_node(self, node_dict: Dict[str, any]) -> Tuple[str, Node]:
+        node = Node(name=node_dict.get("name"), category=eu.convert_to_list(node_dict.get("category")))
+        return node
 
     def _convert_kg1_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         node = Node()
