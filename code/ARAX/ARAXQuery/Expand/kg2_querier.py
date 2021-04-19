@@ -132,7 +132,8 @@ class KG2Querier:
         log.debug(f"Sending query to Plover")
         dict_qg = qg.to_dict()
         dict_qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)
-        response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, headers={'accept': 'application/json'})
+        response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, timeout=30,
+                                 headers={'accept': 'application/json'})
         if response.status_code == 200:
             log.debug(f"Got response back from Plover")
             return response.json(), response.status_code
@@ -153,8 +154,8 @@ class KG2Querier:
                 num_nodes = len(nodes)
                 log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model")
                 start = time.time()
-                for node_key, node_as_dict in nodes.items():
-                    node = self._convert_kg2c_plover_node_to_trapi_node(node_as_dict)
+                for node_key, node_tuple in nodes.items():
+                    node = self._convert_kg2c_plover_node_to_trapi_node(node_tuple)
                     answer_kg.add_node(node_key, node, qnode_key)
                 log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model took "
                           f"{round(time.time() - start, 2)} seconds")
@@ -164,8 +165,8 @@ class KG2Querier:
                 num_edges = len(edges)
                 log.debug(f"Loading {num_edges} edges into TRAPI object model")
                 start = time.time()
-                for edge_as_dict in edges.values():
-                    edge_key, edge = self._convert_kg2c_edge_to_trapi_edge(edge_as_dict)
+                for edge_key, edge_tuple in edges.items():
+                    edge = self._convert_kg2c_plover_edge_to_trapi_edge(edge_tuple)
                     answer_kg.add_edge(edge_key, edge, qedge_key)
                 log.debug(f"Loading {num_edges} {qedge_key} edges into TRAPI object model took "
                           f"{round(time.time() - start, 2)} seconds")
@@ -373,9 +374,25 @@ class KG2Querier:
         node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
         return node_key, node
 
-    def _convert_kg2c_plover_node_to_trapi_node(self, node_dict: Dict[str, any]) -> Tuple[str, Node]:
-        node = Node(name=node_dict.get("name"), category=eu.convert_to_list(node_dict.get("category")))
+    @staticmethod
+    def _convert_kg2c_plover_node_to_trapi_node(node_tuple: list) -> Node:
+        node = Node(name=node_tuple[0], category=eu.convert_to_list(node_tuple[1]))
         return node
+
+    @staticmethod
+    def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
+        edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
+        provided_by = edge_tuple[3]
+        publications = edge_tuple[4]
+        if provided_by:
+            edge.attributes.append(Attribute(name="provided_by",
+                                             type=eu.get_attribute_type("provided_by"),
+                                             value=provided_by))
+        if publications:
+            edge.attributes.append(Attribute(name="publications",
+                                             type=eu.get_attribute_type("publications"),
+                                             value=publications))
+        return edge
 
     def _convert_kg1_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         node = Node()
