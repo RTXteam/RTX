@@ -208,18 +208,6 @@ def test_720_multiple_qg_ids_in_different_results():
 
 
 @pytest.mark.slow
-def test_bte_acetaminophen_query():
-    actions_list = [
-        "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL112, category=biolink:ChemicalSubstance)",
-        "add_qnode(key=n01, category=biolink:Disease)",
-        "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(edge_key=e00, kp=BTE)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
 def test_bte_protein_query():
     actions_list = [
         "add_qnode(id=UniProtKB:P16471, category=biolink:Protein, key=n00)",
@@ -229,19 +217,6 @@ def test_bte_protein_query():
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
-def test_bte_using_list_of_curies():
-    actions_list = [
-        "add_qnode(key=n00, id=[CHEMBL.COMPOUND:CHEMBL112, CHEMBL.COMPOUND:CHEMBL521], category=biolink:ChemicalSubstance)",
-        "add_qnode(key=n01, category=biolink:Disease)",
-        "add_qedge(key=e00, subject=n01, object=n00)",
-        "expand(kp=BTE)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) > 1
 
 
 def test_single_node_query_with_synonyms():
