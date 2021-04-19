@@ -358,22 +358,25 @@ class ARAXExpander:
                 # Send this query to each KP selected to answer it (in parallel)
                 if len(kps_to_query) > 1:
                     num_cpus = multiprocessing.cpu_count()
+                    empty_log = ARAXResponse()  # We'll have to merge processes' logs together afterwards
                     with multiprocessing.Pool(num_cpus) as pool:
                         kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                       use_synonyms, mode, user_specified_kp, force_local]
+                                                                       use_synonyms, mode, user_specified_kp,
+                                                                       force_local, empty_log]
                                                                       for kp_to_use in kps_to_query])
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
                     kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, use_synonyms, mode,
-                                                    user_specified_kp, force_local)]
+                                                    user_specified_kp, force_local, log)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
 
                 # Post-process all the KPs' answers and merge into our overarching KG
                 for answer_kg, kp_log in kp_answers:
-                    log.merge(kp_log)  # Processes can't share the main log, so we merge their individual logs here
+                    if len(kps_to_query) > 1:
+                        log.merge(kp_log)  # Processes can't share the main log, so we merge their individual logs here
                     if response.status != 'OK':
                         return response
                     if mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
@@ -431,11 +434,10 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], use_synonyms: bool,
-                     mode: str, user_specified_kp: bool, force_local: bool) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     mode: str, user_specified_kp: bool, force_local: bool, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
-        log = ARAXResponse()  # Create a log for use only within this edge expansion (important for multiprocessing)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
         mode = "RTXKG2" if force_local else mode
