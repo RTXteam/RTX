@@ -738,12 +738,16 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                     #'subject_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if x.category == "chemical_substance"]),
                                     'subject_qnode_key': set([node_key for node_key in qg_nodes.keys()]),  # allow any query node type, will be handled by predict_drug_treats_disease.py
                                     #'object_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if (x.category == "disease" or x.category == "phenotypic_feature")])
-                                    'object_qnode_key': set([node_key for node_key in qg_nodes.keys()])  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    'object_qnode_key': set([node_key for node_key in qg_nodes.keys()]),
+                                    'threshold': [None, int(),float()],  # allow any query node type, will be handled by predict_drug_treats_disease.py
+                                    'slow_mode': ["true", "false", "True", "False", "t", "f", "T", "F"]
                                     }
         else:
             allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
                                     'subject_qnode_key': {'optional: a specific subject query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'object_qnode_key': {'optional: a specific object query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'}
+                                    'object_qnode_key': {'optional: a specific object query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+                                    'threshold': {'optional: What cut-off/threshold to use for DTD probability (default is 0.8)'},
+                                    'slow_mode': {'optional: Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability (default is False)'}
                                     }
 
         # A little function to describe what this thing does
