@@ -23,8 +23,7 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXDecorator:
 
     def __init__(self):
-        self.core_node_properties = {"name", "category"}
-        self.first_tier_attributes = {"description", "iri"}
+        self.core_node_properties = {"id", "name", "category"}  # These don't belong in TRAPI Attributes
 
     def apply(self, response: ARAXResponse) -> ARAXResponse:
         message = response.envelope.message
@@ -58,17 +57,14 @@ class ARAXDecorator:
             kg2c_node_as_dict = ujson.loads(row[0])
             node_id = kg2c_node_as_dict["id"]
             trapi_node = message.knowledge_graph.nodes[node_id]
-            if trapi_node.attributes:
-                # Only add the critical attributes if this node already has some attributes (prob. came from another KP)
-                attributes_to_add = self.first_tier_attributes
-                trapi_attributes = self._create_trapi_attributes(attributes_to_add, kg2c_node_as_dict)
-                trapi_node.attributes += trapi_attributes
-            else:
-                # Add all additional info from KG2c if this node doesn't already have any attributes
-                kg2c_node_properties = set(kg2c_node_as_dict)
-                attributes_to_add = kg2c_node_properties.difference(self.core_node_properties)
-                trapi_attributes = self._create_trapi_attributes(attributes_to_add, kg2c_node_as_dict)
-                trapi_node.attributes = trapi_attributes
+            existing_attributes = {attribute.name for attribute in trapi_node.attributes} if trapi_node.attributes else set()
+            kg2c_node_attributes = set(kg2c_node_as_dict).difference(self.core_node_properties)
+            attributes_to_add = kg2c_node_attributes.difference(existing_attributes)
+            new_attribute_objects = self._create_trapi_attributes(attributes_to_add, kg2c_node_as_dict)
+            if new_attribute_objects:
+                if trapi_node.attributes is None:
+                    trapi_node.attributes = []
+                trapi_node.attributes += new_attribute_objects
 
         return response
 
