@@ -565,6 +565,7 @@ def test_issue_892():
     _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 10)
 
 
+@pytest.mark.external
 def test_overlay_exposures_data_virtual():
     query = {"operations": {"actions": [
         "add_qnode(name=CHEMBL.COMPOUND:CHEMBL635, key=n0)",
@@ -577,9 +578,10 @@ def test_overlay_exposures_data_virtual():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show())
-    _virtual_tester(message, 'biolink:has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1, 0)
+    _virtual_tester(message, 'biolink:has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1)
 
 
+@pytest.mark.external
 def test_overlay_exposures_data_attribute():
     query = {"operations": {"actions": [
         "add_qnode(name=MONDO:0012607, key=n0)",
@@ -593,7 +595,7 @@ def test_overlay_exposures_data_attribute():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show())
-    _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1, 0)
+    _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1)
 
 
 @pytest.mark.slow
