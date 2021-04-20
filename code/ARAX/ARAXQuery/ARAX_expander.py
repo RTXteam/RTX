@@ -2,6 +2,7 @@
 import multiprocessing
 import sys
 import os
+from collections import defaultdict
 from typing import List, Dict, Tuple, Union, Set, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
@@ -384,7 +385,7 @@ class ARAXExpander:
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
                     else:
-                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, response)
+                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, response)
                     if response.status != 'OK':
                         return response
 
@@ -413,7 +414,7 @@ class ARAXExpander:
                                               mode, user_specified_kp, log)
                 if log.status != 'OK':
                     return response
-                self._merge_answer_into_message_kg(answer_kg, overarching_kg, log)
+                self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, log)
                 if log.status != 'OK':
                     return response
 
@@ -672,12 +673,25 @@ class ARAXExpander:
         return sub_query_graph
 
     @staticmethod
-    def _merge_answer_into_message_kg(answer_kg: QGOrganizedKnowledgeGraph, overarching_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse):
+    def _merge_answer_into_message_kg(answer_kg: QGOrganizedKnowledgeGraph, overarching_kg: QGOrganizedKnowledgeGraph,
+                                      overarching_qg: QueryGraph, log: ARAXResponse):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
+        pinned_curies_map = defaultdict(set)
+        for qnode_key, qnode in overarching_qg.nodes.items():
+            if qnode.id:
+                curies = eu.convert_to_list(qnode.id)
+                for curie in curies:
+                    pinned_curies_map[curie].add(qnode_key)
+
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
             for node_key, node in nodes.items():
-                overarching_kg.add_node(node_key, node, qnode_key)
+                # Exclude nodes that correspond to a 'pinned' curie in the QG but are fulfilling a different qnode
+                if node_key in pinned_curies_map:
+                    if qnode_key in pinned_curies_map[node_key]:
+                        overarching_kg.add_node(node_key, node, qnode_key)
+                else:
+                    overarching_kg.add_node(node_key, node, qnode_key)
         for qedge_key, edges_dict in answer_kg.edges_by_qg_id.items():
             for edge_key, edge in edges_dict.items():
                 overarching_kg.add_edge(edge_key, edge, qedge_key)

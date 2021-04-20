@@ -330,7 +330,7 @@ def test_query_that_expands_same_edge_twice():
     assert any(edge for edge in edges_by_qg_id['e00'].values() if
                any(attr for attr in edge.attributes if attr.name == "is_defined_by" and attr.value == "ARAX/KG1"))
     assert any(edge for edge in edges_by_qg_id['e00'].values() if
-               any(attr for attr in edge.attributes if attr.name == "is_defined_by" and attr.value == "ARAX/KG2c"))
+               any(attr for attr in edge.attributes if attr.name == "is_defined_by" and attr.value.startswith("ARAX/KG2")))
 
 
 def test_771_continue_if_no_results_query():
@@ -864,6 +864,20 @@ def test_kg2_predicate_hierarchy_reasoning():
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:physically_interacts_with")
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:molecularly_interacts_with")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
+
+
+def test_issue_1373_pinned_curies():
+    actions_list = [
+        "add_qnode(id=CHEMBL.COMPOUND:CHEMBL2108129, key=n00)",
+        "add_qnode(category=biolink:Protein, key=n01)",
+        "add_qnode(category=biolink:Drug, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:physically_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert "CHEMBL.COMPOUND:CHEMBL2108129" not in nodes_by_qg_id["n02"]
 
 
 if __name__ == "__main__":
