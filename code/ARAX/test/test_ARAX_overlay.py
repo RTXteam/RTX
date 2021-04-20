@@ -546,6 +546,7 @@ def test_issue_840_non_drug():
             assert attribute.name != 'paired_concept_frequency'
 
 
+@pytest.mark.external
 @pytest.mark.slow
 def test_issue_892():
     query = {"operations": {"actions": [
