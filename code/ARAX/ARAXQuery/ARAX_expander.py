@@ -6,6 +6,7 @@ from typing import List, Dict, Tuple, Union, Set, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
+from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -421,6 +422,11 @@ class ARAXExpander:
 
         # Override node types so that they match what was asked for in the query graph (where applicable) #987
         self._override_node_categories(message.knowledge_graph, message.query_graph)
+
+        # Decorate all nodes with additional attributes info from KG2c (iri, description, etc.)
+        if mode == "ARAX":  # Skip doing this for KG2 (until can pass minimal_metadata param)
+            decorator = ARAXDecorator()
+            decorator.apply(response)
 
         # Return the response and done
         kg = message.knowledge_graph
