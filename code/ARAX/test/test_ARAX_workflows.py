@@ -525,6 +525,7 @@ def test_two_hop_based_on_types_1():
         assert len(message.results) > 1
 
 
+@pytest.mark.external
 @pytest.mark.slow
 def test_one_hop_based_on_types_1():
     """
@@ -640,6 +641,8 @@ def test_FET_ranking():
             for diff in [abs(x - y) for i,x in enumerate(conf_list) for j,y in enumerate(conf_list) if i < j]:
                 assert diff == 0
 
+
+@pytest.mark.external
 def test_genetics_kp_ranking():
     query = {"operations": {"actions": [
         "create_message",

@@ -207,8 +207,8 @@ def test_720_multiple_qg_ids_in_different_results():
     assert any(set(node.qnode_keys) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
 
 
-@pytest.mark.slow
-def test_bte_protein_query():
+@pytest.mark.external
+def test_bte_query():
     actions_list = [
         "add_qnode(id=UniProtKB:P16471, category=biolink:Protein, key=n00)",
         "add_qnode(category=biolink:Cell, key=n01)",
@@ -608,7 +608,8 @@ def test_chp_expand_2():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "https://github.com/di2ag/chp_client" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
-def test_genetics_kp_simple():
+@pytest.mark.external
+def test_genetics_kp():
     actions_list = [
         "add_qnode(id=NCBIGene:1803, category=biolink:Gene, key=n00)",
         "add_qnode(category=biolink:Disease, key=n01)",
@@ -619,61 +620,7 @@ def test_genetics_kp_simple():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_genetics_kp_all_scores():
-    actions_list = [
-        "add_qnode(name=type 2 diabetes mellitus, category=biolink:Disease, key=n00)",
-        "add_qnode(category=biolink:Protein, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:condition_associated_with_gene)",
-        "expand(kp=GeneticsKP)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
-def test_genetics_kp_2_hop():
-    actions_list = [
-        "add_qnode(id=UniProtKB:Q99712, key=n00, category=biolink:Protein)",
-        "add_qnode(category=biolink:Disease, key=n01)",
-        "add_qnode(category=biolink:Gene, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:gene_associated_with_condition)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:condition_associated_with_gene)",
-        "expand(kp=GeneticsKP)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
-def test_genetics_kp_multi_kp():
-    actions_list = [
-        "add_qnode(key=n0, name=ertugliflozin, category=biolink:ChemicalSubstance)",
-        "add_qnode(key=n1, category=biolink:Disease, is_set=true)",
-        "add_qnode(key=n2, category=biolink:Protein)",
-        "add_qedge(key=e0, subject=n0, object=n1)",
-        "add_qedge(key=e1, subject=n1, object=n2, predicate=biolink:condition_associated_with_gene)",
-        "expand(kp=ARAX/KG2, edge_key=e0)",
-        "expand(kp=GeneticsKP, edge_key=e1)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
-def test_multi_kp_two_hop_query():
-    actions_list = [
-        "add_qnode(id=MONDO:0005737, key=n00, category=biolink:Disease)",
-        "add_qnode(category=biolink:Protein, key=n01)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=ARAX/KG2, edge_key=[e00,e01], continue_if_no_results=true)",
-        "expand(kp=ARAX/KG1, edge_key=e01, continue_if_no_results=true)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
+@pytest.mark.external
 def test_molepro_query():
     actions_list = [
         "add_qnode(id=HGNC:9379, category=biolink:Gene, key=n00)",
