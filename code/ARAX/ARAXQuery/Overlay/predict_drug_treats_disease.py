@@ -74,10 +74,11 @@ class PredictDrugTreatsDisease:
         #     os.system("scp rtxconfig@arax.ncats.io:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
 
         # check the input parameters
-        self.threshold = float(parameters['threshold'])
-        if parameters['slow_mode'].upper() == 'T' or parameters['slow_mode'].upper() == 'TRUE':
+        self.threshold = float(parameters['threshold']) if 'threshold' in parameters else 0.8
+        self.slow_mode = parameters['slow_mode'] if 'slow_mode' in parameters else "False"
+        if self.slow_mode.upper() == 'T' or self.slow_mode.upper() == 'TRUE':
             self.slow_mode = True
-        elif parameters['slow_mode'].upper() == 'F' or parameters['slow_mode'].upper() == 'FALSE':
+        elif self.slow_mode.upper() == 'F' or self.slow_mode.upper() == 'FALSE':
             self.slow_mode = False
 
         if 0.8 <= self.threshold <=1:
