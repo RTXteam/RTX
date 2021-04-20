@@ -132,7 +132,7 @@ class KG2Querier:
         log.debug(f"Sending query to Plover")
         dict_qg = qg.to_dict()
         dict_qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)
-        response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, timeout=30,
+        response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, timeout=60,
                                  headers={'accept': 'application/json'})
         if response.status_code == 200:
             log.debug(f"Got response back from Plover")
