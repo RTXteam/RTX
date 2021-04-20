@@ -17,6 +17,7 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
+from openapi_server.models.attribute import Attribute
 
 
 class TRAPIQuerier:
@@ -288,6 +289,11 @@ class TRAPIQuerier:
                 # Populate our final KG with the returned nodes and edges
                 for returned_edge_key, returned_edge in kp_message.knowledge_graph.edges.items():
                     arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
+                    if not returned_edge.attributes:
+                        returned_edge.attributes = []
+                    returned_edge.attributes.append(Attribute(name="is_defined_by",
+                                                              type=eu.get_attribute_type("is_defined_by"),
+                                                              value=self.kp_name))
                     for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
                         answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
                 for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
