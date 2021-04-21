@@ -349,8 +349,10 @@ class TRAPIQuerier:
     def _get_query_timeout_length(self, qg: QueryGraph) -> int:
         # Returns the number of seconds we should wait for a response based on the number of curies in the QG
         num_total_curies = sum([len(eu.convert_to_list(qnode.id)) for qnode in qg.nodes.values()])
-        if self.user_specified_kp or self.kp_name == "ARAX/KG2":
+        if self.kp_name == "ARAX/KG2":
             return 600
+        elif self.user_specified_kp:  # This can be smaller since we don't send multi-curie queries to other KPs yet
+            return 60
         elif num_total_curies < 10:
             return 15
         else:
