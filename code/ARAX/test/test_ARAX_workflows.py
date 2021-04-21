@@ -123,7 +123,7 @@ def test_example_2():
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
         "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1, threshold=0)",
         "resultify(ignore_edge_direction=true)",
         "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
         "return(message=true, store=false)",
@@ -525,6 +525,7 @@ def test_two_hop_based_on_types_1():
         assert len(message.results) > 1
 
 
+@pytest.mark.external
 @pytest.mark.slow
 def test_one_hop_based_on_types_1():
     """
@@ -640,6 +641,8 @@ def test_FET_ranking():
             for diff in [abs(x - y) for i,x in enumerate(conf_list) for j,y in enumerate(conf_list) if i < j]:
                 assert diff == 0
 
+
+@pytest.mark.external
 def test_genetics_kp_ranking():
     query = {"operations": {"actions": [
         "create_message",
