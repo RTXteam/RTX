@@ -175,31 +175,16 @@ def test_acetaminophen_example_enforcing_directionality():
 
 
 @pytest.mark.slow
-def test_720_ambitious_query_causing_multiple_qnode_keys_error():
-    actions_list = [
-        "add_qnode(id=DOID:14330, key=n00)",
-        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(category=biolink:Disease, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=ARAX/KG1, edge_key=[e00, e01])",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert set(nodes_by_qg_id['n00']).intersection(set(nodes_by_qg_id['n02']))
-
-
-@pytest.mark.slow
 def test_720_multiple_qg_ids_in_different_results():
     actions_list = [
-        "add_qnode(key=n00, id=DOID:14330)",
+        "add_qnode(key=n00, id=MONDO:0014324)",
         "add_qnode(key=n01, category=biolink:Protein)",
         "add_qnode(key=n02, category=biolink:ChemicalSubstance)",
-        "add_qnode(key=n03, category=biolink:Protein, id=UniProtKB:P37840)",
+        "add_qnode(key=n03, category=biolink:Protein)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "add_qedge(key=e01, subject=n01, object=n02)",
-        "add_qedge(key=e02, subject=n02, object=n03)",
-        "expand(kp=ARAX/KG1)",
+        "add_qedge(key=e01, subject=n01, object=n02, predicate=biolink:molecularly_interacts_with)",
+        "add_qedge(key=e02, subject=n02, object=n03, predicate=biolink:molecularly_interacts_with)",
+        "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -878,6 +863,21 @@ def test_issue_1373_pinned_curies():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert "CHEMBL.COMPOUND:CHEMBL2108129" not in nodes_by_qg_id["n02"]
+
+
+@pytest.mark.slow
+def test_issue_1373_pinned_curies_longer():
+    actions_list = [
+        "add_qnode(key=N0,id=chembl.compound:CHEMBL787)",
+        "add_qnode(key=N1,category=biolink:Protein)",
+        "add_qedge(key=E0,subject=N0,object=N1,predicate=biolink:physically_interacts_with)",
+        "add_qnode(key=N2,category=biolink:ChemicalSubstance)",
+        "add_qedge(key=E2,subject=N1,object=N2)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert "CHEMBL.COMPOUND:CHEMBL787" not in nodes_by_qg_id["N2"]
 
 
 if __name__ == "__main__":

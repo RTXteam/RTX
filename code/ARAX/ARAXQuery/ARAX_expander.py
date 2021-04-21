@@ -385,7 +385,7 @@ class ARAXExpander:
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
                     else:
-                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, response)
+                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, response)
                     if response.status != 'OK':
                         return response
 
@@ -414,7 +414,7 @@ class ARAXExpander:
                                               mode, user_specified_kp, log)
                 if log.status != 'OK':
                     return response
-                self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, log)
+                self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, log)
                 if log.status != 'OK':
                     return response
 
@@ -674,13 +674,14 @@ class ARAXExpander:
 
     @staticmethod
     def _merge_answer_into_message_kg(answer_kg: QGOrganizedKnowledgeGraph, overarching_kg: QGOrganizedKnowledgeGraph,
-                                      overarching_qg: QueryGraph, log: ARAXResponse):
+                                      overarching_qg: QueryGraph, use_synonyms: bool, log: ARAXResponse):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
         pinned_curies_map = defaultdict(set)
         for qnode_key, qnode in overarching_qg.nodes.items():
             if qnode.id:
-                curies = eu.convert_to_list(qnode.id)
+                # Get canonicalized versions of any curies in the QG, as appropriate
+                curies = eu.get_canonical_curies_list(qnode.id, log) if use_synonyms else eu.convert_to_list(qnode.id)
                 for curie in curies:
                     pinned_curies_map[curie].add(qnode_key)
 
@@ -690,6 +691,9 @@ class ARAXExpander:
                 if node_key in pinned_curies_map:
                     if qnode_key in pinned_curies_map[node_key]:
                         overarching_kg.add_node(node_key, node, qnode_key)
+                    else:
+                        log.debug(f"Not letting node {node_key} fulfill qnode {qnode_key} because it's a pinned curie "
+                                  f"for {pinned_curies_map[node_key]}")
                 else:
                     overarching_kg.add_node(node_key, node, qnode_key)
         for qedge_key, edges_dict in answer_kg.edges_by_qg_id.items():
