@@ -621,6 +621,44 @@ def test_overlay_clinical_info_no_ids():
     _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
 
+@pytest.mark.slow
+def test_missing_ngd_pmids():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=UniProtKB:P52788, key=n0)",
+        "add_qnode(category=[biolink:Protein,biolink:Gene], key=n1, is_set=true)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "add_qnode(category=[biolink:ChemicalSubstance,biolink:Drug], key=n2)",
+        "add_qedge(subject=n1, object=n2, key=e1)",
+        "expand(kp=ARAX/KG2)",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
+        "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
+        "overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n0, object_qnode_key=n2)",
+        "overlay(action=compute_jaccard, start_node_key=n0, intermediate_node_key=n1, end_node_key=n2, virtual_relation_label=J1)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    ngd_publications = {}
+    for edge_key, edge in message.knowledge_graph.edges.items():
+        if edge.attributes is not None:
+            for attribute in edge.attributes:
+                if attribute.name == 'normalized_google_distance':
+                    if edge_key not in ngd_publications:
+                        ngd_publications[edge_key] = {}
+                    ngd_publications[edge_key]['ngd'] = attribute.value
+                elif attribute.name == 'publications':
+                    if edge_key not in ngd_publications:
+                        ngd_publications[edge_key] = {}
+                    ngd_publications[edge_key]['pubs'] = attribute.value
+
+    for edge_dict in ngd_publications.values():
+        if 'ngd' in edge_dict and 'pubs' in edge_dict:
+            if edge_dict['pubs'] == []:
+                assert edge_dict['ngd'] == 'inf'
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
