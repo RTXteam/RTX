@@ -326,7 +326,8 @@ class QueryGraphInfo:
             self.query_graph_templates['simple'] += template_part
 
             # Since queries with intermediate nodes that are not is_set=true tend to blow up, for now, make them is_set=true unless explicitly set to false
-            if node_index > 0 and node_index < (self.n_nodes - 1 ):
+            # Disabled 2021-04-22 due to #1398
+            if False and node_index > 0 and node_index < (self.n_nodes - 1 ):
                 if 'is_set' not in node or node['is_set'] is None:
                     node['node_object'].is_set = True
                     response.warning(f"Setting unspecified is_set to true for {node['key']} because this will probably lead to a happier result")
