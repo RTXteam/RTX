@@ -8,6 +8,7 @@ from typing import List, Dict, Tuple, Union, Set, Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_decorator import ARAXDecorator
+from ARAX_query import ARAXQuery
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -253,7 +254,8 @@ class ARAXExpander:
             }
         return [kp_less] + list(self.kp_command_definitions.values())
 
-    def apply(self, response, input_parameters, mode="ARAX", force_local=False):
+    def apply(self, response, input_parameters, mode="ARAX"):
+        force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
@@ -447,7 +449,6 @@ class ARAXExpander:
         qedge = edge_qg.edges[qedge_key]
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
-        mode = "RTXKG2" if force_local else mode
 
         # Make sure we have all default parameters set specific to the KP we'll be using
         log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
@@ -457,14 +458,20 @@ class ARAXExpander:
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
-
-        # Route this query to the proper place depending on the KP
+        # Make sure the specified KP is a valid option
         allowable_kps = set(self.kp_command_definitions.keys())
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
             return answer_kg, log
+
+        # Avoid calling the KG2 TRAPI API if the 'force_local' flag is set (used only for testing)
+        if force_local and mode == 'ARAX' and kp_to_use == 'ARAX/KG2':
+            arax_query = ARAXQuery()
+            kg2_response = arax_query.query({'message': {'query_graph': edge_qg.to_dict()}}, mode='RTXKG2')
+            answer_kg = eu.convert_standard_kg_to_qg_organized_kg(kg2_response.envelope.message.knowledge_graph)
         else:
+            # Route this query to the proper place depending on the KP
             if kp_to_use == 'COHD':
                 from Expand.COHD_querier import COHDQuerier
                 kp_querier = COHDQuerier(log)
@@ -487,17 +494,18 @@ class ARAXExpander:
 
             # Actually answer the query using the Querier we identified above
             answer_kg = kp_querier.answer_one_hop_query(edge_qg)
-            if log.status != 'OK':
-                return answer_kg, log
-            log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
-            # Do some post-processing (deduplicate nodes, remove self-edges..)
-            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
-                answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
-            if eu.qg_is_fulfilled(edge_qg, answer_kg):
-                answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
-
+        if log.status != 'OK':
             return answer_kg, log
+        log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+
+        # Do some post-processing (deduplicate nodes, remove self-edges..)
+        if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
+            answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
+        if eu.qg_is_fulfilled(edge_qg, answer_kg):
+            answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
+
+        return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
                      use_synonyms: bool, mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
