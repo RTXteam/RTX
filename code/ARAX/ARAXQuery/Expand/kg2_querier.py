@@ -81,7 +81,7 @@ class KG2Querier:
             # Use Plover to answer KG2c queries
             plover_answer, response_status = self._answer_query_using_plover(query_graph, log)
             if response_status == 200:
-                final_kg = self._grab_nodes_and_edges_from_sqlite(plover_answer, kg_name, log)
+                final_kg = self._load_plover_answer_into_object_model(plover_answer, log)
             else:
                 # Backup to using neo4j in the event plover failed
                 log.warning(f"Plover returned a {response_status} response, so I'm backing up to Neo4j..")
@@ -114,7 +114,7 @@ class KG2Querier:
             # Use Plover to answer KG2c queries
             plover_answer, response_status = self._answer_query_using_plover(single_node_qg, log)
             if response_status == 200:
-                final_kg = self._grab_nodes_and_edges_from_sqlite(plover_answer, kg_name, log)
+                final_kg = self._load_plover_answer_into_object_model(plover_answer, log)
             else:
                 # Backup to using neo4j in the event plover failed
                 log.warning(f"Plover returned a {response_status} response, so I'm backing up to Neo4j..")
@@ -126,11 +126,14 @@ class KG2Querier:
         return final_kg
 
     @staticmethod
-    def _answer_query_using_plover(qg: QueryGraph, log: ARAXResponse) -> Tuple[Dict[str, Dict[str, Set[Union[str, int]]]], int]:
+    def _answer_query_using_plover(qg: QueryGraph, log: ARAXResponse) -> Tuple[Dict[str, Dict[str, Union[set, dict]]], int]:
         rtxc = RTXConfiguration()
         rtxc.live = "Production"
         log.debug(f"Sending query to Plover")
-        response = requests.post(f"{rtxc.plover_url}/query", json=qg.to_dict(), headers={'accept': 'application/json'})
+        dict_qg = qg.to_dict()
+        dict_qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)
+        response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, timeout=60,
+                                 headers={'accept': 'application/json'})
         if response.status_code == 200:
             log.debug(f"Got response back from Plover")
             return response.json(), response.status_code
@@ -138,7 +141,41 @@ class KG2Querier:
             log.warning(f"Plover returned a status code of {response.status_code}. Response was: {response.text}")
             return dict(), response.status_code
 
-    def _grab_nodes_and_edges_from_sqlite(self, plover_answer: Dict[str, Dict[str, Set[Union[str, int]]]], kg_name: str,
+    def _load_plover_answer_into_object_model(self, plover_answer: Dict[str, Dict[str, Union[set, dict]]],
+                                              log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        # Figure out whether this response returned only node/edge IDs or node/edge objects themselves
+        first_nodes_entry = next(nodes for nodes in plover_answer["nodes"].values())
+        response_includes_metadata = True if isinstance(first_nodes_entry, dict) else False
+        if response_includes_metadata:
+            answer_kg = QGOrganizedKnowledgeGraph()
+
+            # Load returned nodes into TRAPI object model
+            for qnode_key, nodes in plover_answer["nodes"].items():
+                num_nodes = len(nodes)
+                log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model")
+                start = time.time()
+                for node_key, node_tuple in nodes.items():
+                    node = self._convert_kg2c_plover_node_to_trapi_node(node_tuple)
+                    answer_kg.add_node(node_key, node, qnode_key)
+                log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model took "
+                          f"{round(time.time() - start, 2)} seconds")
+
+            # Load returned edges into TRAPI object model
+            for qedge_key, edges in plover_answer["edges"].items():
+                num_edges = len(edges)
+                log.debug(f"Loading {num_edges} edges into TRAPI object model")
+                start = time.time()
+                for edge_key, edge_tuple in edges.items():
+                    edge = self._convert_kg2c_plover_edge_to_trapi_edge(edge_tuple)
+                    answer_kg.add_edge(edge_key, edge, qedge_key)
+                log.debug(f"Loading {num_edges} {qedge_key} edges into TRAPI object model took "
+                          f"{round(time.time() - start, 2)} seconds")
+
+            return answer_kg
+        else:
+            return self._grab_nodes_and_edges_from_sqlite(plover_answer, log)
+
+    def _grab_nodes_and_edges_from_sqlite(self, plover_answer: Dict[str, Dict[str, Set[Union[str, int]]]],
                                           log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # Get connected to the local sqlite database (look up its path using database manager-friendly method)
         path_list = os.path.realpath(__file__).split(os.path.sep)
@@ -164,7 +201,7 @@ class KG2Querier:
             rows = cursor.fetchall()
             for row in rows:
                 node_as_dict = ujson.loads(row[0])
-                node_key, node = self._convert_neo4j_node_to_trapi_node(node_as_dict, kg_name)
+                node_key, node = self._convert_kg2c_node_to_trapi_node(node_as_dict)
                 answer_kg.add_node(node_key, node, qnode_key)
         log.debug(f"Grabbing {num_nodes} nodes from sqlite and loading into object model took "
                   f"{round(time.time() - start, 2)} seconds")
@@ -182,7 +219,7 @@ class KG2Querier:
             rows = cursor.fetchall()
             for row in rows:
                 edge_as_dict = ujson.loads(row[0])
-                edge_key, edge = self._convert_neo4j_edge_to_trapi_edge(edge_as_dict, dict(), kg_name)
+                edge_key, edge = self._convert_kg2c_edge_to_trapi_edge(edge_as_dict)
                 answer_kg.add_edge(edge_key, edge, qedge_key)
         log.debug(f"Grabbing {num_edges} edges from sqlite and loading into object model took "
                   f"{round(time.time() - start, 2)} seconds")
@@ -337,6 +374,26 @@ class KG2Querier:
         node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
         return node_key, node
 
+    @staticmethod
+    def _convert_kg2c_plover_node_to_trapi_node(node_tuple: list) -> Node:
+        node = Node(name=node_tuple[0], category=eu.convert_to_list(node_tuple[1]))
+        return node
+
+    @staticmethod
+    def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
+        edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
+        provided_by = edge_tuple[3]
+        publications = edge_tuple[4]
+        if provided_by:
+            edge.attributes.append(Attribute(name="provided_by",
+                                             type=eu.get_attribute_type("provided_by"),
+                                             value=provided_by))
+        if publications:
+            edge.attributes.append(Attribute(name="publications",
+                                             type=eu.get_attribute_type("publications"),
+                                             value=publications))
+        return edge
+
     def _convert_kg1_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
         node = Node()
         node_key = neo4j_node.get('id')
@@ -373,10 +430,10 @@ class KG2Querier:
 
     def _convert_kg2c_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
         edge = Edge()
-        edge_key = f"KG2c:{neo4j_edge.get('id')}"
         edge.predicate = neo4j_edge.get("predicate")
         edge.subject = neo4j_edge.get("subject")
         edge.object = neo4j_edge.get("object")
+        edge_key = f"KG2c:{edge.subject}-{edge.predicate}-{edge.object}"
         other_properties = ["provided_by", "publications"]
         edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
         is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2c", type=eu.get_attribute_type("is_defined_by"))

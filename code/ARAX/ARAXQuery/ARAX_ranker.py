@@ -499,6 +499,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         Does everything in place (no result returned)
         """
         self.response = response
+        response.debug(f"Starting to rank results")
         message = response.envelope.message
         self.message = message
 
@@ -610,6 +611,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         # Re-sort the final results
         message.results.sort(key=lambda result: result.confidence, reverse=True)
+        response.debug("Results have been ranked and sorted")
 
 
 

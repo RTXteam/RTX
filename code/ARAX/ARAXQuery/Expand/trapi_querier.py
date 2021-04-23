@@ -11,20 +11,23 @@ from Expand.expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
+from ARAX_query import ARAXQuery
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
+from openapi_server.models.attribute import Attribute
 
 
 class TRAPIQuerier:
 
-    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool):
+    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, force_local: bool = False):
         self.log = response_object
         self.kp_name = kp_name
         self.user_specified_kp = user_specified_kp
+        self.force_local = force_local
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.node_category_overrides_for_kp = eu.get_node_category_overrides_for_kp(kp_name)
         self.kp_preferred_prefixes = eu.get_kp_preferred_prefixes(kp_name)
@@ -259,43 +262,60 @@ class TRAPIQuerier:
         # Figure out what an appropriate timeout point is given how many curies are in this query
         query_timeout = self._get_query_timeout_length(query_graph)
 
-        # Send the query to the KP's API
+        # Send the query to the KP
         body = {'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}}
-        self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
-        try:
-            with requests_cache.disabled():
-                kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'},
-                                            timeout=query_timeout)
-        except Exception:
-            self.log.warning(f"{self.kp_name}: Query timed out (waited {query_timeout} seconds)")
-            return answer_kg
+        # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
+        if self.force_local and self.kp_name == 'ARAX/KG2':
+            self.log.debug(f"{self.kp_name}: Pretending to send query to KG2 API (really it will be run locally)")
+            arax_query = ARAXQuery()
+            kg2_araxquery_response = arax_query.query(body, mode='RTXKG2')
+            json_response = kg2_araxquery_response.envelope.to_dict()
+        # Otherwise send the query graph to the KP's TRAPI API
+        else:
+            self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
+            try:
+                with requests_cache.disabled():
+                    kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'},
+                                                timeout=query_timeout)
+            except Exception:
+                self.log.warning(f"{self.kp_name}: Query timed out (waited {query_timeout} seconds)")
+                return answer_kg
+            if kp_response.status_code != 200:
+                self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. "
+                                 f"Response from KP was: {kp_response.text}")
+                return answer_kg
+            else:
+                json_response = kp_response.json()
 
         # Load the results into the object model
-        if kp_response.status_code == 200:
-            json_response = kp_response.json()
-            if not json_response.get("message"):
-                self.log.warning(f"{self.kp_name}: No 'message' was included in the response from {self.kp_name}. "
-                                 f"Response was: {json.dumps(json_response, indent=4)}")
-            elif not json_response["message"].get("results"):
-                self.log.debug(f"{self.kp_name}: No 'results' were returned.")
-                json_response["message"]["results"] = []  # Setting this to empty list helps downstream processing
-            else:
-                self.log.debug(f"{self.kp_name}: Got results from {self.kp_name}.")
-                kp_message = ARAXMessenger().from_dict(json_response["message"])
-                # Build a map that indicates which qnodes/qedges a given node/edge fulfills
-                kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
-
-                # Populate our final KG with the returned nodes and edges
-                for returned_edge_key, returned_edge in kp_message.knowledge_graph.edges.items():
-                    arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
-                    for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
-                        answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
-                for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
-                    for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
-                        answer_kg.add_node(returned_node_key, returned_node, qnode_key)
+        if not json_response.get("message"):
+            self.log.warning(f"{self.kp_name}: No 'message' was included in the response from {self.kp_name}. "
+                             f"Response was: {json.dumps(json_response, indent=4)}")
+            return answer_kg
+        elif not json_response["message"].get("results"):
+            self.log.debug(f"{self.kp_name}: No 'results' were returned.")
+            json_response["message"]["results"] = []  # Setting this to empty list helps downstream processing
+            return answer_kg
         else:
-            self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. Response from KP was:"
-                             f" {kp_response.text}")
+            self.log.debug(f"{self.kp_name}: Got results from {self.kp_name}.")
+            kp_message = ARAXMessenger().from_dict(json_response["message"])
+
+        # Build a map that indicates which qnodes/qedges a given node/edge fulfills
+        kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
+
+        # Populate our final KG with the returned nodes and edges
+        for returned_edge_key, returned_edge in kp_message.knowledge_graph.edges.items():
+            arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
+            if not returned_edge.attributes:
+                returned_edge.attributes = []
+            returned_edge.attributes.append(Attribute(name="is_defined_by",
+                                                      type=eu.get_attribute_type("is_defined_by"),
+                                                      value=self.kp_name))
+            for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
+                answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
+        for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
+            for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
+                answer_kg.add_node(returned_node_key, returned_node, qnode_key)
 
         return answer_kg
 
@@ -343,8 +363,10 @@ class TRAPIQuerier:
     def _get_query_timeout_length(self, qg: QueryGraph) -> int:
         # Returns the number of seconds we should wait for a response based on the number of curies in the QG
         num_total_curies = sum([len(eu.convert_to_list(qnode.id)) for qnode in qg.nodes.values()])
-        if self.user_specified_kp or self.kp_name == "ARAX/KG2":
+        if self.kp_name == "ARAX/KG2":
             return 600
+        elif self.user_specified_kp:  # This can be smaller since we don't send multi-curie queries to other KPs yet
+            return 60
         elif num_total_curies < 10:
             return 15
         else:

@@ -64,7 +64,7 @@ class ComputeNGD:
                            f"co-occurrence frequency in PubMed abstracts")
         name = "normalized_google_distance"
         type = "EDAM:data_2526"
-        value = self.parameters['default_value']
+        default_value = self.parameters['default_value']
         url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
         qg = self.message.query_graph
         kg = self.message.knowledge_graph
@@ -88,8 +88,10 @@ class ComputeNGD:
                 canonical_object_curie = canonicalized_curie_lookup.get(object_curie, object_curie)
                 ngd_value, pmid_set = self.calculate_ngd_fast(canonical_subject_curie, canonical_object_curie)
                 if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
-                    value = ngd_value
-                edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
+                    edge_value = ngd_value
+                else:
+                    edge_value = default_value
+                edge_attribute = EdgeAttribute(type=type, name=name, value=str(edge_value), url=url)  # populate the NGD edge attribute
                 pmid_attribute = EdgeAttribute(type="biolink:publications", name="publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
                 if edge_attribute:
                     added_flag = True
@@ -167,8 +169,10 @@ class ComputeNGD:
                     canonical_object_curie = canonicalized_curie_map.get(object_curie, object_curie)
                     ngd_value, pmid_set = self.calculate_ngd_fast(canonical_subject_curie, canonical_object_curie)
                     if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
-                        value = ngd_value
-                    ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the NGD edge attribute
+                        edge_value = ngd_value
+                    else:
+                        edge_value = default_value
+                    ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(edge_value), url=url)  # populate the NGD edge attribute
                     pmid_edge_attribute = EdgeAttribute(type="biolink:publications", name="ngd_publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
                     edge.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
                     edge.attributes.append(pmid_edge_attribute)

@@ -73,7 +73,35 @@ class PredictDrugTreatsDisease:
         # else:
         #     os.system("scp rtxconfig@arax.ncats.io:/home/ubuntu/drug_repurposing_model_retrain/map.txt " + map_file)
 
-        self.use_prob_db = True
+        # check the input parameters
+        self.threshold = float(parameters['threshold']) if 'threshold' in parameters else 0.8
+        self.slow_mode = parameters['slow_mode'] if 'slow_mode' in parameters else "False"
+        if self.slow_mode.upper() == 'T' or self.slow_mode.upper() == 'TRUE':
+            self.slow_mode = True
+        elif self.slow_mode.upper() == 'F' or self.slow_mode.upper() == 'FALSE':
+            self.slow_mode = False
+
+        if 0.8 <= self.threshold <=1:
+            if not self.slow_mode:
+                # Use DTD database
+                self.response.debug(f"The 'predict_drug_treats_disease' action uses DTD database")
+                self.use_prob_db = True
+            else:
+                # Use DTD model
+                self.response.debug(f"The 'predict_drug_treats_disease' action uses DTD model")
+                self.use_prob_db = False
+
+        elif 0 <= self.threshold < 0.8:
+            if not self.slow_mode:
+                self.response.warning(f"Since threshold < 0.8, DTD_slow_mode=true is automatically set to call DTD model. Calling DTD model will be quite time-consuming.")
+            else:
+                pass
+            # Use DTD model
+            self.response.debug(f"The 'predict_drug_treats_disease' action uses DTD model")
+            self.use_prob_db = False
+        else:
+            self.response.error("The 'threshold' in Expander should be between 0 and 1", error_code="ParameterError")
+
         if self.use_prob_db is True:
             try:
                 self.pred = predictor(DTD_prob_file=DTD_prob_db_file, use_prob_db=True)
@@ -190,7 +218,7 @@ class PredictDrugTreatsDisease:
 
                     probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
                     if probability is not None:
-                        if np.isfinite(probability):
+                        if np.isfinite(probability) and probability >= self.threshold:
                             max_probability = probability
 
                 else:
@@ -226,7 +254,7 @@ class PredictDrugTreatsDisease:
 
                     if probability is not None:
                         probability = probability[0]
-                        if np.isfinite(probability):
+                        if np.isfinite(probability) and probability >= self.threshold:
                             max_probability = probability
                 # if len(res) != 0:
                 #     all_probabilities = self.pred.prob_all(res)
@@ -340,7 +368,7 @@ class PredictDrugTreatsDisease:
 
                             if probability is not None:
                                 probability = probability[0]
-                                if np.isfinite(probability):
+                                if np.isfinite(probability) and probability >= self.threshold:
                                     max_probability = probability
                         # res = list(itertools.product(converted_source_curie, converted_target_curie))
                         # if len(res) != 0:
@@ -391,7 +419,7 @@ class PredictDrugTreatsDisease:
 
                             if probability is not None:
                                 probability = probability[0]
-                                if np.isfinite(probability):
+                                if np.isfinite(probability) and probability >= self.threshold:
                                     max_probability = probability
                         # res = list(itertools.product(converted_target_curie, converted_source_curie))
                         # if len(res) != 0:

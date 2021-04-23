@@ -153,7 +153,7 @@ function pasteQuestion(question) {
 }
 function pasteExample(type) {
     if (type == "DSL") {
-	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, key=n0)\nadd_qnode(category=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand(edge_key=e0,kp=ARAX/KG2)\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
+	document.getElementById("dslText").value = '# This program creates two query nodes and a query edge between them, looks for matching edges in the KG,\n# overlays NGD metrics, and returns the top 30 results\nadd_qnode(name=acetaminophen, key=n0)\nadd_qnode(category=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand()\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
     }
     else {
 	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicate": "biolink:physically_interacts_with"\n      }\n   },\n   "nodes": {\n      "n00": {\n         "id":        "CHEMBL.COMPOUND:CHEMBL112",\n         "category":  "biolink:ChemicalSubstance"\n      },\n      "n01": {\n         "category":  "biolink:Protein"\n      }\n   }\n}\n';
@@ -464,7 +464,7 @@ async function sendSyn() {
     div.className = "statushead";
     div.appendChild(document.createTextNode("Synonym Results"));
     text = document.createElement("a");
-    text.target = '_new';
+    text.target = '_blank';
     text.title = 'link to this synonym entry';
     text.href = "http://"+ window.location.hostname + window.location.pathname + "?term=" + word;
     text.innerHTML = "[ Direct link to this entry ]";
@@ -657,7 +657,7 @@ function link_to_identifiers_dot_org(thing) {
 
     var link = document.createElement("a");
     link.style.marginRight = "5px";
-    link.target = 'ARAXidentifiers';
+    link.target = '_blank';
     link.title = 'look up '+thing+' in identifiers.org';
     link.href = "http://identifiers.org/resolve?query=" + thing;
     var img = document.createElement('img');
@@ -908,7 +908,7 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 		devdiv.appendChild(document.createElement("br"));
 		devdiv.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE REQUEST::"));
 		var link = document.createElement("a");
-		link.target = '_NEW';
+		link.target = '_blank';
 		link.href = resp_url;
 		link.style.position = "relative";
 		link.style.left = "30px";
@@ -1769,7 +1769,7 @@ function add_cyto(i) {
 	    if (this.data(field).toString().startsWith("http")) {
 		var link = document.createElement("a");
 		link.href = this.data(field);
-		link.target = "nodeuri";
+		link.target = "_blank";
 		link.appendChild(document.createTextNode(this.data(field)));
 		div.appendChild(link);
 	    }
@@ -1805,7 +1805,7 @@ function show_attributes(html_div, atts) {
 	    snippet += ": ";
 	}
 	if (att.url != null)
-	    snippet += "<a target='araxext' href='" + att.url + "'>";
+	    snippet += "<a target='_blank' href='" + att.url + "'>";
 
 
 	if (att.value != null) {
@@ -1829,17 +1829,20 @@ function show_attributes(html_div, atts) {
             else if (Array.isArray(att.value))
 		for (var val of att.value) {
                     snippet += "<br>&nbsp;&nbsp;&nbsp;";
-		    if (val.toString().startsWith("PMID:")) {
+		    if (val == null) {
+			snippet += "--NULL--";
+		    }
+		    else if (val.toString().startsWith("PMID:")) {
 			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
-			snippet += " target='pubmed'>" + val + "</a>";
+			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
 		    }
 		    else if (val.toString().startsWith("DOI:")) {
 			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
-			snippet += " target='pubmed'>" + val + "</a>";
+			snippet += " title='View in doi.org' target='_blank'>" + val + "</a>";
 		    }
 		    else if (val.toString().startsWith("http")) {
                         snippet += "<a href='" + val + "'";
-                        snippet += " target='araxuri'>" + val + "</a>";
+                        snippet += " target='_blank'>" + val + "</a>";
 		    }
 		    else {
 			snippet += val;
@@ -3188,7 +3191,7 @@ function display_session() {
     for (var li in listItems[listId]) {
         if (listItems[listId].hasOwnProperty(li) && !li.startsWith("qtext_")) {
             numitems++;
-            listhtml += "<tr><td>"+li+".</td><td><a target='_new' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname;
+            listhtml += "<tr><td>"+li+".</td><td><a target='_blank' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname;
 	    if (listItems[listId][li].startsWith("source")) // hacky
 		listhtml += "?"+listItems[listId][li];
 	    else
