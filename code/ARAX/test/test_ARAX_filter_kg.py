@@ -174,6 +174,41 @@ def test_default_top_n():
     assert len(vals) == 50
     assert sum([x == 1 for x in vals]) == 8
 
+def test_remove_property_known_attributes():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=CHEBI:17754, category=biolink:ChemicalSubstance, key=n0)",
+        "add_qnode(category=biolink:Gene, key=n1)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicate=biolink:negatively_regulates_entity_to_entity)",
+        "expand(kp=ARAX/KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
+        "filter_kg(action=remove_edges_by_property,edge_property=provided_by,property_value=SEMMEDDB:,remove_connected_nodes=false)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
+@pytest.mark.slow
+def  test_remove_attribute_known_attributes():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=DOID:14330, key=n00)",
+        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
+        "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
+        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
+        "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
+        "resultify(ignore_edge_direction=true)",
+        "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
 
 if __name__ == "__main__":
     pytest.main(['-v'])
