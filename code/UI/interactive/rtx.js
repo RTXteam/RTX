@@ -153,7 +153,7 @@ function pasteQuestion(question) {
 }
 function pasteExample(type) {
     if (type == "DSL") {
-	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, key=n0)\nadd_qnode(category=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand(edge_key=e0,kp=ARAX/KG2)\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
+	document.getElementById("dslText").value = '# This program creates two query nodes and a query edge between them, looks for matching edges in the KG,\n# overlays NGD metrics, and returns the top 30 results\nadd_qnode(name=acetaminophen, key=n0)\nadd_qnode(category=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand()\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
     }
     else {
 	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicate": "biolink:physically_interacts_with"\n      }\n   },\n   "nodes": {\n      "n00": {\n         "id":        "CHEMBL.COMPOUND:CHEMBL112",\n         "category":  "biolink:ChemicalSubstance"\n      },\n      "n01": {\n         "category":  "biolink:Protein"\n      }\n   }\n}\n';
@@ -1834,11 +1834,11 @@ function show_attributes(html_div, atts) {
 		    }
 		    else if (val.toString().startsWith("PMID:")) {
 			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
-			snippet += " target='_blank'>" + val + "</a>";
+			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
 		    }
 		    else if (val.toString().startsWith("DOI:")) {
 			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
-			snippet += " target='_blank'>" + val + "</a>";
+			snippet += " title='View in doi.org' target='_blank'>" + val + "</a>";
 		    }
 		    else if (val.toString().startsWith("http")) {
                         snippet += "<a href='" + val + "'";
