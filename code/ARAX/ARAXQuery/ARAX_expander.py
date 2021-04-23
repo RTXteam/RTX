@@ -385,7 +385,7 @@ class ARAXExpander:
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
                     else:
-                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, response)
+                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, mode, response)
                     if response.status != 'OK':
                         return response
 
@@ -414,7 +414,7 @@ class ARAXExpander:
                                               mode, user_specified_kp, log)
                 if log.status != 'OK':
                     return response
-                self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, log)
+                self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, mode, log)
                 if log.status != 'OK':
                     return response
 
@@ -674,7 +674,7 @@ class ARAXExpander:
 
     @staticmethod
     def _merge_answer_into_message_kg(answer_kg: QGOrganizedKnowledgeGraph, overarching_kg: QGOrganizedKnowledgeGraph,
-                                      overarching_qg: QueryGraph, use_synonyms: bool, log: ARAXResponse):
+                                      overarching_qg: QueryGraph, use_synonyms: bool, mode: str, log: ARAXResponse):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
         pinned_curies_map = defaultdict(set)
@@ -688,7 +688,7 @@ class ARAXExpander:
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
             for node_key, node in nodes.items():
                 # Exclude nodes that correspond to a 'pinned' curie in the QG but are fulfilling a different qnode
-                if node_key in pinned_curies_map:
+                if mode == "ARAX" and node_key in pinned_curies_map:
                     if qnode_key in pinned_curies_map[node_key]:
                         overarching_kg.add_node(node_key, node, qnode_key)
                     else:
