@@ -8,7 +8,6 @@ from typing import List, Dict, Tuple, Union, Set, Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_decorator import ARAXDecorator
-from ARAX_query import ARAXQuery
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -465,35 +464,29 @@ class ARAXExpander:
                       error_code="InvalidKP")
             return answer_kg, log
 
-        # Avoid calling the KG2 TRAPI API if the 'force_local' flag is set (used only for testing)
-        if force_local and mode == 'ARAX' and kp_to_use == 'ARAX/KG2':
-            arax_query = ARAXQuery()
-            kg2_response = arax_query.query({'message': {'query_graph': edge_qg.to_dict()}}, mode='RTXKG2')
-            answer_kg = eu.convert_standard_kg_to_qg_organized_kg(kg2_response.envelope.message.knowledge_graph)
+        # Route this query to the proper place depending on the KP
+        if kp_to_use == 'COHD':
+            from Expand.COHD_querier import COHDQuerier
+            kp_querier = COHDQuerier(log)
+        elif kp_to_use == 'DTD':
+            from Expand.DTD_querier import DTDQuerier
+            kp_querier = DTDQuerier(log)
+        elif kp_to_use == 'CHP':
+            from Expand.CHP_querier import CHPQuerier
+            kp_querier = CHPQuerier(log)
+        elif kp_to_use == 'NGD':
+            from Expand.ngd_querier import NGDQuerier
+            kp_querier = NGDQuerier(log)
+        elif (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
+            from Expand.kg2_querier import KG2Querier
+            kp_querier = KG2Querier(log, kp_to_use)
         else:
-            # Route this query to the proper place depending on the KP
-            if kp_to_use == 'COHD':
-                from Expand.COHD_querier import COHDQuerier
-                kp_querier = COHDQuerier(log)
-            elif kp_to_use == 'DTD':
-                from Expand.DTD_querier import DTDQuerier
-                kp_querier = DTDQuerier(log)
-            elif kp_to_use == 'CHP':
-                from Expand.CHP_querier import CHPQuerier
-                kp_querier = CHPQuerier(log)
-            elif kp_to_use == 'NGD':
-                from Expand.ngd_querier import NGDQuerier
-                kp_querier = NGDQuerier(log)
-            elif (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
-                from Expand.kg2_querier import KG2Querier
-                kp_querier = KG2Querier(log, kp_to_use)
-            else:
-                # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
-                from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp)
+            # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
+            from Expand.trapi_querier import TRAPIQuerier
+            kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, force_local)
 
-            # Actually answer the query using the Querier we identified above
-            answer_kg = kp_querier.answer_one_hop_query(edge_qg)
+        # Actually answer the query using the Querier we identified above
+        answer_kg = kp_querier.answer_one_hop_query(edge_qg)
 
         if log.status != 'OK':
             return answer_kg, log
