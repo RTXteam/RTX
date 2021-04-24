@@ -347,6 +347,7 @@ class ComputeFTEST:
                     self.response.debug(f"ARAX/KG1 and cypher query were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
                     self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category} was found in ARAX/KG1")
                 else:
+                    print(f'######## {subject_node_category} ######', flush=True)
                     size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category, use_cypher_command=False, kg='KG2') ## If cypher query fails, then try kgNodeIndex
                     if size_of_total==0:
                         self.response.error(f"Both KG1 and KG2 have 0 node with the same type of subject node with qnode key {subject_qnode_key}")
@@ -421,14 +422,14 @@ class ComputeFTEST:
 
                 edge_attribute_list =  [
                     EdgeAttribute(type="EDAM:data_1669", name="fisher_exact_test_p-value", value=str(value[1]), url=None),
-                    EdgeAttribute(name="is_defined_by", value="ARAX"),
-                    EdgeAttribute(name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-                    EdgeAttribute(name="provided_by", value="ARAX"),
-                    EdgeAttribute(name="confidence", value=None),
-                    EdgeAttribute(name="weight", value=None)
+                    EdgeAttribute(name="is_defined_by", value="ARAX", type="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), type="metatype:Datetime"),
+                    EdgeAttribute(name="provided_by", value="ARAX", type="biolink:provided_by"),
+                    #EdgeAttribute(name="confidence", value=None, type="biolink:ConfidenceLevel"),
+                    #EdgeAttribute(name="weight", value=None, type="metatype:Float")
                 ]
                 edge_id = f"{value[0]}_{index}"
-                edge = Edge(predicate='has_fisher_exact_test_p-value_with', subject=value[2], object=value[3], relation=value[0],
+                edge = Edge(predicate='biolink:has_fisher_exact_test_p-value_with', subject=value[2], object=value[3], relation=value[0],
                             attributes=edge_attribute_list)
                 edge.qedge_keys = [value[0]]
 
@@ -441,7 +442,7 @@ class ComputeFTEST:
             # add the virtual edge to message QG
             if count > 0:
                 self.response.debug(f"Adding virtual edge to message QG")
-                edge_type = "has_fisher_exact_test_p-value_with"
+                edge_type = "biolink:has_fisher_exact_test_p-value_with"
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                           self.message.query_graph, self.response)
                 qedge_id = virtual_relation_label
@@ -721,6 +722,9 @@ class ComputeFTEST:
             self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
             return size_of_total
 
+        node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:',''))
+        node_type = ComputeFTEST.convert_string_biolinkformat(node_type)
+
         if kg == 'KG1':
             if use_cypher_command:
                 rtxConfig = RTXConfiguration()
@@ -776,3 +780,39 @@ class ComputeFTEST:
             error_message.append((tb, error_type.__name__))
             error_message.append(f"Something went wrong for target node {node} to calculate FET p-value")
             return error_message
+
+    @staticmethod
+    def convert_string_to_snake_case(input_string: str) -> str:
+        # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
+        if len(input_string) > 1:
+            snake_string = input_string[0].lower()
+            for letter in input_string[1:]:
+                if letter.isupper():
+                    snake_string += "_"
+                snake_string += letter.lower()
+            return snake_string
+        else:
+            return input_string.lower()
+
+    @staticmethod
+    def convert_string_biolinkformat(input_string: str) -> str:
+
+        if 'biolink' in input_string:
+            return input_string
+        else:
+            if len(input_string) > 1:
+                modified_string = input_string[0].upper()
+                make_upper = False
+                for letter in input_string[1:]:
+                    if letter == '_':
+                        make_upper = True
+                        next
+                    else:
+                        if make_upper is True:
+                            modified_string += letter.upper()
+                            make_upper = False
+                        else:
+                            modified_string += letter
+                return 'biolink:'+ modified_string
+            else:
+                return input_string

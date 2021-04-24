@@ -6,9 +6,10 @@ import traceback
 import numpy as np
 
 # relative imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
 
@@ -133,7 +134,7 @@ class RemoveEdges:
                     for attribute in edge.attributes:
                         if attribute.name not in edge_dict:
                             edge_dict[attribute.name] = attribute.value
-                if type(edge_dict[edge_params['edge_property']]) == list:
+                if type(edge_dict[edge_params['edge_property']]) == list or type(edge_dict[edge_params['edge_property']]) == set:
                     if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
                         edges_to_remove.add(key)
                         if edge_params['remove_connected_nodes']:

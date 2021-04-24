@@ -5,6 +5,7 @@
 <link rel="stylesheet" type="text/css" href="rtx.css">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
+<script src="config.js"></script>
 <script src="rtx.js"></script>
 <script src="araxi.js"></script>
 
@@ -22,21 +23,23 @@
 <div class="menuleft">
 <br><br><br>
 &nbsp;Input<br>
-<div onclick="openSection(this,'queryDiv');" class="menucurrent">Query</div>
-<div onclick="openSection(this,'listaDiv');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
-<div onclick="openSection(this,'listbDiv');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
-<div onclick="openSection(this,'compareDiv');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
+<div id="queryMenu" onclick="openSection('query');" class="menucurrent">Query</div>
+<div id="listaMenu" onclick="openSection('lista');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
+<div id="listbMenu" onclick="openSection('listb');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
+<div id="compareMenu" onclick="openSection('compare');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
 <br>
-<div onclick="openSection(this,'historyDiv');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
-<!-- div onclick="openSection(this,'statusDiv');" class="menuleftitem">Status</div -->
+<div id="historyMenu" onclick="openSection('history');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
+<!-- div onclick="openSection('status');" class="menuleftitem">Status</div -->
 <br>
 &nbsp;Output<br>
-<div onclick="openSection(this,'summaryDiv');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
-<div onclick="openSection(this,'kgDiv');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge<br>Graph</div>
-<div onclick="openSection(this,'resultsDiv');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
-<div onclick="openSection(this,'messagesDiv');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
+<div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
+<div id="kgMenu" onclick="openSection('kg');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge<br>Graph</div>
+<div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
+<div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
 <br><br>
-<div onclick="openSection(this,'devDiv');" class="menuleftitem">Dev Info</div>
+&nbsp;Tools<br>
+<div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
+<div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
 <br><br><br><br>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
 </div>
@@ -44,7 +47,7 @@
 <div class="banner" banner-bg-text="ARAX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a href="api/arax/v1.0/ui/">TRAPI 1.0.0</a>
+<a id="menuapiurl" href="api/arax/v1.0/ui/">TRAPI 1.0.0</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
@@ -61,10 +64,11 @@
 <div class="pagesection" id="queryDiv">
   <h3 style="margin:0px;">Choose Query Type:</h3>
   &nbsp;&nbsp;&nbsp;
-  <img src="qtxt.png"  class="slink" onclick="selectInput(this,'qtext_input');"  title="Enter Query using Natural Language"/>
-  <img src="qg.png"    class="slink" onclick="selectInput(this,'qgraph_input');" title="Enter Query Graph"/>
-  <img src="qjson.png" class="slink" onclick="selectInput(this,'qjson_input');"  title="Enter JSON representation of Query Graph"/>
-  <img src="qdsl.png"  class="slink" onclick="selectInput(this,'qdsl_input');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
+<!--  <img src="qtxt.png"  class="slink" id="qtext_link" onclick="selectInput('qtext');"  title="Enter Query using Natural Language"/> -->
+  <img src="qg.png"    class="slink" id="qgraph_link" onclick="selectInput('qgraph');" title="Enter Query Graph"/>
+  <img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/>
+  <img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
+  <img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/>
 
   <div class="inputsection" id="qtext_input">
     <h3 style="display:inline;">Enter question:</h3>
@@ -79,7 +83,7 @@
       </select>
     </div>
 
-    <form id="questionForm" name="questionForm" method="post" action="sendQuestion();">
+    <form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion();">
       <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="typeInput questionBox" id="questionText" name="questionText" size="100" maxlength="1000"/>
 
       <input type="button" class="questionBox button" name="action" value="ASK" onClick="sendQuestion();"/>
@@ -104,7 +108,7 @@
       <span title="remove all elements from query graph" class="clq" onclick="clear_qg(1);">&#9587;</span>
     </span><br><br>
     <div class="cytograph_q">
-      <div style="height: 100%; width: 100%" id="cy999"></div>
+      <div style="height: 100%; width: 100%" id="cy99999"></div>
     </div>
     <div id="qg_items"></div>
 
@@ -175,7 +179,25 @@
       <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL');">
     </form>
   </div>
-  
+
+  <div class="inputsection" id="qid_input">
+    <h3 style="display:inline;">Enter a TRAPI Response identifier to load:</h3>
+    <div class="sampleqs">
+      <select id="qid" onchange="pasteId(this.value);">
+	<option style="border-bottom:1px solid black;" value="">Example Ids&nbsp;&nbsp;&nbsp;&#8675;</option>
+	<option value="507">ARAX example: 507</option>
+	<option value="4a2fe25a-bfba-40a8-91a7-2db4076144b7">ARS example: 4a2fe25a-bfba-40a8-91a7-2db4076144b7</option>
+      </select>
+    </div>
+
+    <form id="idForm" name="idForm" method="post" action="javascript:sendId();">
+      <input type="text" autocomplete="off" class="questionBox" id="idText" name="idText" size="100" maxlength="100"/>
+      <input type="button" class="questionBox button" name="action" value="LOAD" onClick="sendId();"/>
+      <span title="clear id" class="clq" onclick="pasteId('');">&#9587;</span>
+    </form>
+    <br>
+  </div>
+
   <br><br>
 
   <div id="status_container"></div>
@@ -226,6 +248,15 @@
 
 <div class="pagesection" id="messagesDiv">
   <div id="messages_container"></div>
+</div>
+
+<div class="pagesection" id="synonymDiv">
+  <h3 style="display:inline;">Synonym Lookup:</h3>
+  <br>
+  <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newsynonym" name="newsynonym" onkeydown="enter_synonym(this);" size="100" maxlength="1000"/>
+  <input type="button" class="questionBox button" name="action" value="Look Up" onClick="sendSyn();"/>
+  <span title="clear" class="clq" onclick="pasteSyn('');">&#9587;</span>
+  <div id="synonym_result_container"></div>
 </div>
 
 

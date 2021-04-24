@@ -48,9 +48,12 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
         # FIXME: EWD: there's a problem here, but I'm baffled by what this is supposed to be doing
         for edge_binding in edge_binding_list:
             kg_edge = kg_edge_id_to_edge[edge_binding.id]
-            kg_edge_attributes = {x.name:x.value for x in kg_edge.attributes}
-            #kg_edge_conf = kg_edge.confidence
-            kg_edge_conf = kg_edge_attributes["confidence"]
+            if kg_edge.attributes is not None:
+                kg_edge_attributes = {x.name:x.value for x in kg_edge.attributes}
+            else:
+                kg_edge_attributes = {}
+            kg_edge_conf = kg_edge.confidence
+            #kg_edge_conf = kg_edge_attributes["confidence"]
             qedge_keys = kg_edge.qedge_keys
             for qedge_key in qedge_keys:
                 qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
@@ -91,7 +94,7 @@ def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
 # "rank"), where ties have the same (average) rank (the reason for using scipy.stats
 # here is specifically in order to handle ties correctly)
 def _quantile_rank_list(x: List[float]) -> np.array:
-    y = scipy.stats.rankdata(x)
+    y = scipy.stats.rankdata(x, method='min')
     return y/len(y)
 
 
@@ -173,8 +176,8 @@ class ARAXRanker:
         # edge attributes we know about
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
                                  'probability_treats', 'paired_concept_frequency',
-                                 'observed_expected_ratio', 'chi_square', 'MAGMA-pvalue', 'Genetics-quantile',
-                                 'fisher_exact_test_p-value','Richards-effector-genes'}
+                                 'observed_expected_ratio', 'chi_square', 'chi_square_pvalue', 'MAGMA-pvalue', 'Genetics-quantile',
+                                 'pValue', 'fisher_exact_test_p-value','Richards-effector-genes'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
@@ -183,8 +186,10 @@ class ARAXRanker:
                                           'paired_concept_frequency': 0.5,
                                           'observed_expected_ratio': 0.8,
                                           'chi_square': 0.8,
+                                          'chi_square_pvalue': 0.8,
                                           'MAGMA-pvalue': 1.0,
                                           'Genetics-quantile': 1.0,
+                                          'pValue': 1.0,
                                           'fisher_exact_test_p-value': 0.8,
                                           'Richards-effector-genes': 0.5,
                                           }
@@ -230,9 +235,9 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 # TODO: replace this with the more intelligent function
                 # here we are just multiplying the edge confidences
                 # --- to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
-                #result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
-                kg_edge_attributes = {x.name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
-                result_confidence *= kg_edge_attributes["confidence"]
+                result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
+                #kg_edge_attributes = {x.name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
+                #result_confidence *= kg_edge_attributes["confidence"]
             result.confidence = result_confidence
         else:
             # consider each pair of nodes in the QG, then somehow combine that information
@@ -253,13 +258,30 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         """
         # Currently a dead simple "just multiply them all together"
         edge_confidence = 1
+        edge_attribute_dict = {}
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
+                edge_attribute_dict[edge_attribute.name] = edge_attribute.value
                 normalized_score = self.edge_attribute_score_normalizer(edge_attribute.name, edge_attribute.value)
                 if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
                     edge_confidence *= normalized_score
+        if edge_attribute_dict.get("provided_by", None) is not None:
+            if "SEMMEDDB:" in edge_attribute_dict["provided_by"]:
+                if edge_attribute_dict.get("publications", None) is not None:
+                    n_publications = len(edge_attribute_dict["publications"])
+                else:
+                    n_publications = 0
+                if n_publications == 0:
+                    pub_value = 0.01
+                else:
+                    pub_value = np.log(n_publications)
+                    max_value = 1.0
+                    curve_steepness = 3.16993
+                    logistic_midpoint = 1.38629
+                    pub_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
+                edge_confidence *= pub_value
         return edge_confidence
 
     def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value) -> float:
@@ -408,8 +430,23 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # print(f"value: {value}, normalized: {normalized_value}")
         return normalized_value
 
+    def __normalize_chi_square_pvalue(self, value):
+        return self.__normalize_chi_square(value)
 
     def __normalize_MAGMA_pvalue(self, value):
+        """
+        For Genetics Provider MAGMA p-value: Convert provided p-value to a number between 0 and 1
+        with 1 being best. Estimated conversion from SAR and DMK 2020-09-22
+        """
+
+        value = -np.log(value)
+        max_value = 1.0
+        curve_steepness = 0.849
+        logistic_midpoint = 4.97
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        return normalized_value
+
+    def __normalize_pValue(self, value):
         """
         For Genetics Provider MAGMA p-value: Convert provided p-value to a number between 0 and 1
         with 1 being best. Estimated conversion from SAR and DMK 2020-09-22
@@ -462,6 +499,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         Does everything in place (no result returned)
         """
         self.response = response
+        response.debug(f"Starting to rank results")
         message = response.envelope.message
         self.message = message
 
@@ -509,20 +547,25 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         if no_non_inf_float_flag:
             response.warning(
-                        f"No non-infinate value was encountered in any edge attribute in the knowledge graph.")
+                        f"No non-infinite value was encountered in any edge attribute in the knowledge graph.")
         response.info(f"Summary of available edge metrics: {score_stats}")
 
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
         for edge_key,edge in message.knowledge_graph.edges.items():
-            edge_attributes = {x.name:x.value for x in edge.attributes}
+            if edge.attributes is not None:
+                edge_attributes = {x.name:x.value for x in edge.attributes}
+            else:
+                edge_attributes = {}
             if edge_attributes.get("confidence", None) is not None:
             #if False:       # FIXME: there is no longer such an attribute. Stored as a generic attribute?
             #if edge.confidence is not None:
                 # don't touch the confidence, since apparently someone already knows what the confidence should be
-                continue
+                edge.confidence = edge_attributes['confidence']
+                #continue
             else:
                 confidence = self.edge_attribute_score_combiner(edge)
-                edge.attributes.append(Attribute(name="confidence", value=confidence))
+                #edge.attributes.append(Attribute(name="confidence", value=confidence))
+                edge.confidence = confidence
 
         # Now that each edge has a confidence attached to it based on it's attributes, we can now:
         # 1. consider edge types of the results
@@ -568,6 +611,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         # Re-sort the final results
         message.results.sort(key=lambda result: result.confidence, reverse=True)
+        response.debug("Results have been ranked and sorted")
 
 
 

@@ -7,6 +7,7 @@
     - [add_qnode()](#add_qnode)
     - [add_qedge()](#add_qedge)
   - [ARAX_expander](#arax_expander)
+    - [expand()](#expand)
     - [expand(kp=ARAX/KG1)](#expandkparaxkg1)
     - [expand(kp=ARAX/KG2)](#expandkparaxkg2)
     - [expand(kp=BTE)](#expandkpbte)
@@ -14,14 +15,16 @@
     - [expand(kp=GeneticsKP)](#expandkpgeneticskp)
     - [expand(kp=MolePro)](#expandkpmolepro)
     - [expand(kp=NGD)](#expandkpngd)
+    - [expand(kp=CHP)](#expandkpchp)
+    - [expand(kp=DTD)](#expandkpdtd)
   - [ARAX_overlay](#arax_overlay)
     - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
     - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
-    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
-    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_attribute)](#filter_kgactionremove_edges_by_attribute)
@@ -213,6 +216,73 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
     - `true` and `false` are all possible valid inputs.
 
 ## ARAX_expander
+### expand()
+This command will expand (aka, answer/fill) your query graph in an edge-by-edge fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: ARAX/KG2, BTE, CHP, COHD, DTD, GeneticsKP, MolePro, NGD. It selects KPs based on the meta information provided by their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick but useful answers. For each QEdge, it queries the selected KPs in parallel; it will timeout for a particular KP if it decides it's taking too long to respond.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### continue_if_no_results
+
+    - Whether to continue execution if no paths are found matching the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### enforce_directionality
+
+    - Whether to obey (vs. ignore) edge directions in the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### use_synonyms
+
+    - Whether to consider curie synonyms and merge synonymous nodes.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be true. 
+
 ### expand(kp=ARAX/KG1)
 This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths that satisfy the query graph.
 
@@ -496,7 +566,7 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
     - If not specified the default input will be 99. 
 
 ### expand(kp=GeneticsKP)
-This command reaches out to the Genetics Provider to find all bioentity subpaths that satisfy the query graph. It currently can answer questions involving the following node types: gene, protein, disease, phenotypic_feature, pathway. QNode types are required for GeneticsKP queries and it is sensitive to the use of disease vs. phenotypic_feature. Note that QEdge types are irrelevant for GeneticsKP queries, since GeneticsKP only outputs edges with a type of 'associated' (so Expand always uses that as the QEdge type behind the scenes). Only MAGMA p-value edges are added by default, but setting 'include_all_scores=true' will return all edges/scores the GeneticsKP returns, including genetics-quantile scores.
+This command reaches out to the Genetics Provider to find all bioentity subpaths that satisfy the query graph.
 
 #### parameters: 
 
@@ -548,22 +618,8 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 
     - If not specified the default input will be true. 
 
-* ##### include_all_scores
-
-    - Whether to return all scores/edges returned from the GeneticsKP (including genetics-quantile edges) or only MAGMA p-value edges.
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
-
-    - If not specified the default input will be false. 
-
 ### expand(kp=MolePro)
-This command reaches out to MolePro (the Molecular Provider) to find all bioentity subpaths that satisfy the query graph. It currently can answer questions involving the following node types: gene, protein, disease, chemical_substance. QNode types are required for MolePro queries. Generally you should not specify a QEdge type for MolePro queries (Expand uses 'correlated_with' by default behind the scenes, which is the primary edge type of interest for ARAX in MolePro).
+This command reaches out to MolePro (the Molecular Provider) to find all bioentity subpaths that satisfy the query graph.
 
 #### parameters: 
 
@@ -668,6 +724,154 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
     - If not specified the default input will be true. 
 
+### expand(kp=CHP)
+This command reaches out to CHP (the Connections Hypothesis Provider) to query the probability of the form P(Outcome | Gene Mutations, Disease, Therapeutics, ...). It currently can answer a question like 'Given a gene or a batch of genes, what is the probability that the survival time (day) >= a given threshold for this gene paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### continue_if_no_results
+
+    - Whether to continue execution if no paths are found matching the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### use_synonyms
+
+    - Whether to consider curie synonyms and merge synonymous nodes.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be true. 
+
+* ##### CHP_survival_threshold
+
+    - What cut-off/threshold for surivial time (day) to estimate probability.
+
+    - Acceptable input types: int.
+
+    - This is not a required parameter and may be omitted.
+
+    - `200` and `100` are examples of valid inputs.
+
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of 1000000000000.
+
+    - If not specified the default input will be 500. 
+
+### expand(kp=DTD)
+This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand a query graph; it returns edges between nodes with an DTD probability above a certain threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to to call DTD model to do a real-time calculation.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### continue_if_no_results
+
+    - Whether to continue execution if no paths are found matching the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### use_synonyms
+
+    - Whether to consider curie synonyms and merge synonymous nodes.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be true. 
+
+* ##### DTD_threshold
+
+    - What cut-off/threshold to use for expanding the DTD virtual edges.
+
+    - Acceptable input types: float.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0.8` and `0.5` are examples of valid inputs.
+
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of 1.
+
+    - If not specified the default input will be 0.8. 
+
+* ##### DTD_slow_mode
+
+    - Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
 ## ARAX_overlay
 ### overlay(action=fisher_exact_test)
 
@@ -770,6 +974,106 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - If not specified the default input will be None. 
 
+### overlay(action=compute_jaccard)
+
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
+The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
+This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
+This can be used for downstream filtering to concentrate on relevant bioentities.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### start_node_key
+
+    - A curie id specifying the starting node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### intermediate_node_key
+
+    - A curie id specifying the intermediate node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### end_node_key
+
+    - A curie id specifying the ending node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
+
+### overlay(action=predict_drug_treats_disease)
+
+`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
+Use cases include:
+
+* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
+* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
 ### overlay(action=overlay_exposures_data)
 
 `overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
@@ -810,29 +1114,6 @@ This can be applied to an arbitrary knowledge graph (i.e. not just those created
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
 
 ### overlay(action=overlay_clinical_info)
 
@@ -962,105 +1243,28 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `n00` and `n01` are examples of valid inputs.
 
-### overlay(action=predict_drug_treats_disease)
+### overlay(action=add_node_pmids)
 
-`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
-For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-Use cases include:
-
-* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
-* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
 #### parameters: 
 
-* ##### virtual_relation_label
+* ##### max_num
 
-    - An optional label to help identify the virtual edge in the relation field.
+    - The maximum number of values to return. Enter 'all' to return everything
 
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
+    - Acceptable input types: int or string.
 
     - This is not a required parameter and may be omitted.
 
-    - `n00` and `n01` are examples of valid inputs.
+    - `all`, `5`, and `50` are examples of valid inputs.
 
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=compute_jaccard)
-
-`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
-The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
-This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
-This can be used for downstream filtering to concentrate on relevant bioentities.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### start_node_key
-
-    - A curie id specifying the starting node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### intermediate_node_key
-
-    - A curie id specifying the intermediate node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### end_node_key
-
-    - A curie id specifying the ending node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `N1`, `J2`, and `FET` are examples of valid inputs.
+    - If not specified the default input will be 100. 
 
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_predicate)

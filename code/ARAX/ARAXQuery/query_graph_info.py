@@ -12,6 +12,9 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
 from node_synonymizer import NodeSynonymizer
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.query_graph import QueryGraph
+
 
 class QueryGraphInfo:
 
@@ -45,8 +48,12 @@ class QueryGraphInfo:
 
         #### Get shorter handles
         query_graph = message.query_graph
-        nodes = query_graph.nodes
-        edges = query_graph.edges
+        nodes = {}
+        if query_graph.nodes is not None:
+            nodes = query_graph.nodes
+        edges = {}
+        if query_graph.edges is not None:
+            edges = query_graph.edges
 
         #### Store number of nodes and edges
         self.n_nodes = len(nodes)
@@ -60,14 +67,17 @@ class QueryGraphInfo:
         if self.n_nodes == 1 and self.n_edges > 0:
             response.error("QueryGraph may not have edges if there is only one node", error_code="QueryGraphTooManyEdges")
             return response
-        #if self.n_nodes == 2 and self.n_edges > 1:
-        #    response.error("QueryGraph may not have more than 1 edge if there are only 2 nodes", error_code="QueryGraphTooManyEdges")
-        #    return response
+
 
         #### Loop through nodes computing some stats
         node_info = {}
         self.node_category_map = {}
         for key,qnode in nodes.items():
+
+            if key is None:
+                response.error("QueryGraph has a node with null key. This is not permitted", error_code="QueryGraphNodeWithNoId")
+                return response
+
             node_info[key] = { 'key': key, 'node_object': qnode, 'has_id': False, 'category': qnode.category, 'has_category': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
             if qnode.id is not None:
                 node_info[key]['has_id'] = True
@@ -75,52 +85,75 @@ class QueryGraphInfo:
                 #### If the user did not specify a category, but there is a curie, try to figure out the category
                 if node_info[key]['category'] is None:
                     synonymizer = NodeSynonymizer()
-                    canonical_curies = synonymizer.get_canonical_curies(curies=[qnode.id], return_all_types=True)
-                    if qnode.id in canonical_curies and 'preferred_type' in canonical_curies[qnode.id]:
+                    curie = qnode.id
+                    curies_list = qnode.id
+                    if isinstance(qnode.id,list):
+                        curie = qnode.id[0]
+                    else:
+                        curies_list = [ qnode.id ]
+
+                    canonical_curies = synonymizer.get_canonical_curies(curies=curies_list, return_all_categories=True)
+                    if curie in canonical_curies and 'preferred_type' in canonical_curies[curie]:
                         node_info[key]['has_category'] = True
-                        node_info[key]['category'] = canonical_curies[qnode.id]['preferred_type']
+                        node_info[key]['category'] = canonical_curies[curie]['preferred_type']
 
             if qnode.category is not None:
                 node_info[key]['has_category'] = True
 
             #if qnode.is_set is not None: node_info[key]['is_set'] = True
-            if key is None:
-                response.error("QueryGraph has a node with null key. This is not permitted", error_code="QueryGraphNodeWithNoId")
-                return response
-
-            #### Remap the node categorys from unsupported to supported
-            if qnode.category is not None:
-                qnode.category = self.remap_node_category(qnode.category)
 
             #### Store lookup of categorys
             warning_counter = 0
-            if qnode.category is None:
+            if qnode.category is None or ( isinstance(qnode.category,list) and len(qnode.category) == 0 ):
                 if warning_counter == 0:
-                    response.debug("QueryGraph has nodes with no category. This may cause problems with results inference later")
+                    #response.debug("QueryGraph has nodes with no category. This may cause problems with results inference later")
+                    pass
                 warning_counter += 1
                 self.node_category_map['unknown'] = key
             else:
-                self.node_category_map[qnode.category] = key
+                category = qnode.category
+                if isinstance(qnode.category,list):
+                    category = qnode.category[0]                # FIXME this is a hack prior to proper list handling
+                self.node_category_map[category] = key
+
+
+        #### Ignore special informationational edges for now.
+        virtual_edge_predicates = {
+            'biolink:has_normalized_google_distance_with': 1,
+            'biolink:has_fisher_exact_test_p-value_with': 1,
+            'biolink:has_jaccard_index_with': 1,
+            'biolink:probably_treats': 1,
+            'biolink:has_paired_concept_frequency_with': 1,
+            'biolink:has_observed_expected_ratio_with': 1,
+            'biolink:has_chi_square_with': 1
+            }
+
 
         #### Loop through edges computing some stats
         edge_info = {}
         self.edge_predicate_map = {}
         unique_links = {}
+
         for key,qedge in edges.items():
 
-            #### Ignore special informationational edges for now.
-            virtual_edge_predicates = {'has_normalized_google_distance_with': 1, 'has_fisher_exact_test_p-value_with': 1,
-                                  'has_jaccard_index_with': 1, 'probably_treats': 1,
-                                  'has_paired_concept_frequency_with': 1,
-                                  'has_observed_expected_ratio_with': 1, 'has_chi_square_with': 1}
-            if qedge.predicate is not None and qedge.predicate in virtual_edge_predicates:
+            predicate = qedge.predicate
+            if isinstance(predicate,list):
+                if len(predicate) == 0:
+                    predicate = None
+                else:
+                    predicate = predicate[0]                       # FIXME Hack before dealing with predicates as lists!
+
+            if predicate is not None and predicate in virtual_edge_predicates:
                 continue
 
-            edge_info[key] = { 'key': key, 'has_predicate': False, 'subject': qedge.subject, 'object': qedge.object, 'predicate': None }
-            #if qnode.predicate is not None:
-            if qedge.predicate is not None:
+            edge_info[key] = { 'key': key, 'has_predicate': False, 'subject': qedge.subject, 'object': qedge.object, 'predicate': None, 'exclude': False }
+
+            if qedge.exclude is not None:
+                edge_info[key]['exclude'] = qedge.exclude
+
+            if predicate is not None:
                 edge_info[key]['has_predicate'] = True
-                edge_info[key]['predicate'] = qedge.predicate
+                edge_info[key]['predicate'] = predicate
 
             if key is None:
                 response.error("QueryGraph has a edge with null key. This is not permitted", error_code="QueryGraphEdgeWithNoKey")
@@ -148,17 +181,18 @@ class QueryGraphInfo:
             #### Store lookup of predicates
             warning_counter = 0
             edge_predicate = 'any'
-            if qedge.predicate is None:
+            if predicate is None:
                 if warning_counter == 0:
                     response.debug("QueryGraph has edges with no predicate. This may cause problems with results inference later")
                 warning_counter += 1
             else:
-                edge_predicate = qedge.predicate
+                edge_predicate = predicate
 
             #### It's not clear yet whether we need to store the whole sentence or just the predicate
             #predicate_encoding = f"{node_info[qedge.subject]['predicate']}---{edge_predicate}---{node_info[qedge.object]['predicate']}"
             predicate_encoding = edge_predicate
             self.edge_predicate_map[predicate_encoding] = key
+
 
         #### Loop through the nodes again, trying to identify the start_node and the end_node
         singletons = []
@@ -198,26 +232,40 @@ class QueryGraphInfo:
                 start_node = singletons[0]
         #### Hmm, that's not very robust against odd graphs. This needs work. FIXME
 
+        #### Store results into the object
         self.node_info = node_info
         self.edge_info = edge_info
         self.start_node = start_node
 
 
+        #### Set up state for computing the node order
         current_node = start_node
         node_order = [ start_node ]
         edge_order = [ ]
         edges = current_node['edges']
-        while 1:
-            #tmp = { 'astate': '1', 'current_node': current_node, 'node_order': node_order, 'edge_order': edge_order, 'edges': edges }
-            #print(json.dumps(ast.literal_eval(repr(tmp)),sort_keys=True,indent=2))
-            #print('==================================================================================')
-            #tmp = input()
+        debug = False
+        loop_counter = 0
 
+        #### Starting with the start node, loop until we run out of nodes to create node_order
+        while 1:
+
+            if debug:
+                tmp = { 'astate': '1', 'current_node': current_node, 'node_order': node_order, 'edge_order': edge_order, 'edges': edges }
+                print('==================================================================================')
+                print(json.dumps(ast.literal_eval(repr(tmp)),sort_keys=True,indent=2))
+                #tmp = input()
+
+            #### Ensure that we don't get stuck in an infinite loop
+            loop_counter += 1
+            if loop_counter > 20:
+                response.error(f"Reached loop max: {loop_counter}", error_code="InteralError_F260")
+                return response
+
+            #### If we arrive at a node that has no more edges going out, then we're done
             if len(edges) == 0:
                 break
-            if len(edges) > 1:
-                response.error("Help, two edges at A583. Don't know what to do", error_code="InteralErrorA583")
-                return response
+
+            #### If there are multiple edges here, then we just take the first one. FIXME ignore the rest
             edge_order.append(edges[0])
             previous_node = current_node
             if edges[0]['subject'] == current_node['key']:
@@ -252,11 +300,13 @@ class QueryGraphInfo:
         self.node_order = node_order
         self.edge_order = edge_order
 
-        # Create a text rendering of the QueryGraph geometry for matching against a template
+
+        #### Loop over the ordered list of nodes,
+        #### creating a text rendering of the QueryGraph geometry for matching against a template
         self.query_graph_templates = { 'simple': '', 'detailed': { 'n_nodes': len(node_order), 'components': [] } }
         node_index = 0
         edge_index = 0
-        #print(json.dumps(ast.literal_eval(repr(node_order)),sort_keys=True,indent=2))
+
         for node in node_order:
             component_id = f"n{node_index:02}"
             content = ''
@@ -265,7 +315,10 @@ class QueryGraphInfo:
             if node['has_id']:
                 content = 'id'
             elif node['has_category'] and node['node_object'].category is not None:
-                content = f"category={node['node_object'].category}"
+                category = node['node_object'].category
+                if isinstance(category,list):
+                    category = category[0]                                      # FIXME: Can we be smarter than just taking the first?
+                content = f"category={category}"
                 component['category_value'] = node['node_object'].category
             elif node['has_category']:
                 content = 'category'
@@ -273,6 +326,7 @@ class QueryGraphInfo:
             self.query_graph_templates['simple'] += template_part
 
             # Since queries with intermediate nodes that are not is_set=true tend to blow up, for now, make them is_set=true unless explicitly set to false
+            # Disabled 2021-04-22 due to #1398. But then re-enabled because this is not the right fix
             if node_index > 0 and node_index < (self.n_nodes - 1 ):
                 if 'is_set' not in node or node['is_set'] is None:
                     node['node_object'].is_set = True
@@ -319,19 +373,119 @@ class QueryGraphInfo:
         return response
 
 
-    ##########################################################################################
-    #### Remap node categorys from the new TRAPI 1.0 style to the older TRAPI 0.9.x style
-    #### No longer needed. FIXME
-    def remap_node_category(self, node_category):
-        #match = re.match(r'biolink:(.+)', node_category)
-        #if match:
-        #    node_category = match.group(1)
-        #    node_category = re.sub(r'(?<!^)(?=[A-Z])', '_', node_category).lower()
-        return node_category
+##########################################################################################
+def test_example1():
+
+    test_query_graphs = [
+        { "description": "Two nodes, one edge linking them, 1 CURIE",
+          "nodes": {
+            "n00": { "id": [ "MONDO:0001627" ] },
+            "n01": { "category": [ "biolink:ChemicalSubstance" ] } },
+          "edges": {
+            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] } } },
+
+        { "description": "Two nodes, two edges linking them, 1 CURIE, one of which is excluded",
+          "nodes": {
+            "n00": { "id": [ "MONDO:0001627" ] },
+            "n01": { "category": [ "biolink:ChemicalSubstance" ] } },
+          "edges": {
+            "e00": { "subject": "n00", "object": "n01" },
+            "e01": { "subject": "n00", "object":"n01", "predicate": [ "biolink:contraindicated_for" ], "exclude": True } } },
+
+        { "description": "Two nodes, one edge linking them, both nodes are CURIEs",
+          "nodes": {
+            "n00": { "id": [ "MONDO:0001627" ] },
+            "n01": { "id": [ "CHEMBL.COMPOUND:CHEMBL112" ] } },
+          "edges": {
+            "e00": { "subject": "n00", "object": "n01" } } },
+
+        { "description": "Three nodes, 2 edges, 1 CURIE, simple linear chain",
+          "nodes": {
+            "n00": { "id": [ "MONDO:0001627" ] },
+            "n01": { "category": [ "biolink:ChemicalSubstance" ] },
+            "n02": { "category": [ "biolink:Protein" ] } },
+          "edges": {
+            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] },
+            "e01": { "subject": "n01", "object": "n02" } } },
+
+        { "description": "Three nodes, 2 edges, but the CURIE is in the middle. What does that even mean?",
+          "nodes": {
+            "n00": { "category": [ "biolink:ChemicalSubstance" ] },
+            "n01": { "id": [ "MONDO:0001627" ] },
+            "n02": { "category": [ "biolink:Protein" ] } },
+          "edges": {
+            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] },
+            "e01": { "subject": "n01", "object": "n02" } } },
+
+        { "description": "Four nodes, 3 edges, 1 CURIE, simple linear chain",
+          "nodes": {
+            "n00": { "id": [ "MONDO:0001627" ] },
+            "n01": { "category": [ "biolink:ChemicalSubstance" ] },
+            "n02": { "category": [ "biolink:Protein" ] },
+            "n03": { "category": [ "biolink:Disease" ] } },
+          "edges": {
+            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] },
+            "e01": { "subject": "n01", "object": "n02" },
+            "e02": { "subject": "n02", "object": "n03" } } },
+
+        { "description": "Two nodes, one edge linking them, 0 CURIEs",
+          "nodes": {
+            "n00": { "category": [ "biolink:Drug" ] },
+            "n01": { "category": [ "biolink:ChemicalSubstance" ] } },
+          "edges": {
+            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] } } },
+
+        { "description": "One node only",
+          "nodes": {
+            "n00": { "id": [ "MONDO:0001627" ] } },
+          "edges": {} },
+
+        ]
+
+    from ARAX_messenger import ARAXMessenger
+
+    for test_query_graph in test_query_graphs:
+        response = ARAXResponse()
+        messenger = ARAXMessenger()
+        messenger.create_envelope(response)
+
+        print('==================================================================')
+        description = test_query_graph['description']
+        del test_query_graph['description']
+        print(f"Query Graph '{description}'")
+
+        response.envelope.message.query_graph = QueryGraph().from_dict(test_query_graph)
+
+        query_graph_info = QueryGraphInfo()
+        result = query_graph_info.assess(response.envelope.message)
+        response.merge(result)
+        if result.status != 'OK':
+            print(response.show(level=ARAXResponse.DEBUG))
+            return response
+
+        query_graph_info_dict = {
+            'n_nodes': query_graph_info.n_nodes,
+            'n_edges': query_graph_info.n_edges,
+            'is_bifurcated_graph': query_graph_info.is_bifurcated_graph,
+            'start_node': query_graph_info.start_node['key'],
+            'simple_query_graph_template': query_graph_info.query_graph_templates['simple'],
+            #'start_node': query_graph_info.start_node,
+            #'node_info': query_graph_info.node_info,
+            #'edge_info': query_graph_info.edge_info,
+            #'node_order': query_graph_info.node_order,
+            #'edge_order': query_graph_info.edge_order,
+            #'node_category_map': query_graph_info.node_category_map,
+            #'edge_predicate_map': query_graph_info.edge_predicate_map,
+        }
+        print(json.dumps(ast.literal_eval(repr(query_graph_info_dict)),sort_keys=True,indent=2))
+
 
 
 ##########################################################################################
 def main():
+
+    test_example1()
+    return
 
     #### Create a response object
     response = ARAXResponse()

@@ -36,7 +36,7 @@ class OverlayExposuresData:
         self.synonyms_dict = self._get_node_synonyms(self.message.knowledge_graph)
         self.icees_attribute_name = "icees_p-value"
         self.icees_attribute_type = "EDAM:data_1669"
-        self.icees_edge_type = "has_icees_p-value_with"
+        self.icees_edge_type = "biolink:has_icees_p-value_with"
         self.icees_knowledge_graph_overlay_url = "https://icees.renci.org:16340/knowledge_graph_overlay"
         self.virtual_relation_label = self.parameters.get('virtual_relation_label')
 
@@ -159,7 +159,7 @@ class OverlayExposuresData:
         if self.icees_known_curies:
             return self.icees_known_curies.intersection(formatted_synonyms)
         else:
-            return formatted_synonyms
+            return set(list(formatted_synonyms)[:5])  # Only use first few equivalent curies if we don't know which they like
 
     def _get_icees_p_value_for_edge(self, qedge, log):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
@@ -207,8 +207,8 @@ class OverlayExposuresData:
         #             attributes=[self._create_icees_edge_attribute(p_value)])
         edge_attribute_list = [
             self._create_icees_edge_attribute(p_value),
-            EdgeAttribute(name="is_defined_by", value="ARAX"),
-            EdgeAttribute(name="provided_by", value="ICEES+"),
+            EdgeAttribute(name="is_defined_by", value="ARAX", type="ARAX_TYPE_PLACEHOLDER"),
+            EdgeAttribute(name="provided_by", value="ICEES+", type="biolink:provided_by"),
             #EdgeAttribute(name="qedge_ids", value=[self.virtual_relation_label])
         ]
         edge = Edge(predicate=self.icees_edge_type, subject=subject_curie, object=object_curie,
@@ -230,7 +230,7 @@ class OverlayExposuresData:
     def _get_node_synonyms(knowledge_graph):
         synonymizer = NodeSynonymizer()
         node_keys = {key for key in knowledge_graph.nodes.keys()}
-        equivalent_curie_info = synonymizer.get_equivalent_nodes(node_keys, kg_name='KG2')
+        equivalent_curie_info = synonymizer.get_equivalent_nodes(node_keys)
         return {node_key: set(equivalent_curies_dict) for node_key, equivalent_curies_dict in equivalent_curie_info.items()}
 
     @staticmethod

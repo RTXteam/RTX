@@ -4,41 +4,77 @@ var cyobj = [];
 var cytodata = [];
 var predicates = {};
 var all_predicates = {};
-var response_id = null;
+var all_nodes = {};
 var summary_table_html = '';
 var summary_tsv = [];
 var compare_tsv = [];
 var columnlist = [];
 var UIstate = {};
 
-var baseAPI = "";
-//var baseAPI = "http://localhost:5001/devED/";
+// defaults
+var base = "";
+var baseAPI = base + "api/arax/v1.0";
+
+// possibly imported by calling page (e.g. index.html)
+if (typeof config !== 'undefined') {
+    if (config.base)
+	base = config.base;
+    if (config.baseAPI)
+	baseAPI = config.baseAPI;
+}
+
+var providers = {
+    "ARAX" : { "url" : baseAPI + "/response/" },
+    "ARS"  : { "url" : baseAPI + "/response/" }
+};
+
 
 function main() {
+    document.getElementById("menuapiurl").href = baseAPI + "/ui/";
+
     get_example_questions();
     load_nodes_and_predicates();
     populate_dsl_commands();
     display_list('A');
     display_list('B');
     add_status_divs();
-    cytodata[999] = 'dummy';
+    cytodata[99999] = 'dummy';
     UIstate.nodedd = 1;
+    UIstate.hasNodeArray = false;
 
-    response_id = getQueryVariable("r") || null;
+    var tab = getQueryVariable("tab") || "query";
+    var syn = getQueryVariable("term") || null;
+    var response_id = getQueryVariable("r") || null;
+    var provider_id = getQueryVariable("source") || "ARAX";
+    var rurl = null;
     if (response_id) {
+	provider_id = "ARAX";
+        rurl = providers[provider_id].url;
+    }
+    else if (provider_id) {
+	rurl = providers[provider_id].url;
+	response_id = getQueryVariable("id") || null;
+    }
+
+    if (rurl && response_id) {
 	var statusdiv = document.getElementById("statusdiv");
 	statusdiv.innerHTML = '';
-	statusdiv.appendChild(document.createTextNode("You have requested ARAX response id = " + response_id));
+	statusdiv.appendChild(document.createTextNode("You have requested "+provider_id+" response id = " + response_id));
 	statusdiv.appendChild(document.createElement("br"));
 
-	document.getElementById("devdiv").innerHTML =  "Requested ARAX response id = " + response_id + "<br>";
-	retrieve_response();
-	openSection(null,'queryDiv');
+	document.getElementById("devdiv").innerHTML =  "Requested "+provider_id+" response id = " + response_id + "<br>";
+	retrieve_response(provider_id,rurl+response_id,response_id,"all");
     }
     else {
-	openSection(null,'queryDiv');
-	add_cyto();
-   }
+	add_cyto(99999);
+	add_cyto(0);
+    }
+
+    if (syn) {
+	tab = "synonym";
+	lookup_synonym(syn,false);
+    }
+    openSection(tab);
 }
 
 function sesame(head,content) {
@@ -63,34 +99,35 @@ function sesame(head,content) {
 }
 
 
-function openSection(obj, sect) {
-    if (obj != null) {
-	var e = document.getElementsByClassName("menucurrent");
-	e[0].className = "menuleftitem";
-	obj.className = "menucurrent";
-    }
+function openSection(sect) {
+    if (!document.getElementById(sect+"Menu") || !document.getElementById(sect+"Div"))
+	sect = "query";
+
+    var e = document.getElementsByClassName("menucurrent");
+    if (e) e[0].className = "menuleftitem";
+    document.getElementById(sect+"Menu").className = "menucurrent";
 
     for (var e of document.getElementsByClassName("pagesection")) {
         e.style.maxHeight = null;
         e.style.visibility = 'hidden';
     }
-    document.getElementById(sect).style.maxHeight = "none";
-    document.getElementById(sect).style.visibility = 'visible';
+    document.getElementById(sect+"Div").style.maxHeight = "none";
+    document.getElementById(sect+"Div").style.visibility = 'visible';
     window.scrollTo(0,0);
 }
 
 // somehow merge with above?  eh...
-function selectInput (obj, input_id) {
+function selectInput (input_id) {
     var e = document.getElementsByClassName("slink_on");
     if (e[0]) { e[0].classList.remove("slink_on"); }
-    obj.classList.add("slink_on");
+    document.getElementById(input_id+"_link").classList.add("slink_on");
 
-    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input']) {
+    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qid_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
-    document.getElementById(input_id).style.maxHeight = "100%";
-    document.getElementById(input_id).style.visibility = 'visible';
+    document.getElementById(input_id+"_input").style.maxHeight = "100%";
+    document.getElementById(input_id+"_input").style.visibility = 'visible';
 }
 
 
@@ -101,6 +138,14 @@ function clearDSL() {
     document.getElementById("dslText").value = '';
 }
 
+function pasteSyn(word) {
+    document.getElementById("newsynonym").value = word;
+}
+function pasteId(id) {
+    document.getElementById("idForm").elements["idText"].value = id;
+    document.getElementById("qid").value = '';
+    document.getElementById("qid").blur();
+}
 function pasteQuestion(question) {
     document.getElementById("questionForm").elements["questionText"].value = question;
     document.getElementById("qqq").value = '';
@@ -108,7 +153,7 @@ function pasteQuestion(question) {
 }
 function pasteExample(type) {
     if (type == "DSL") {
-	document.getElementById("dslText").value = 'add_qnode(name=acetaminophen, key=n0)\nadd_qnode(category=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand(edge_key=e0,kp=ARAX/KG2)\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
+	document.getElementById("dslText").value = '# This program creates two query nodes and a query edge between them, looks for matching edges in the KG,\n# overlays NGD metrics, and returns the top 30 results\nadd_qnode(name=acetaminophen, key=n0)\nadd_qnode(category=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand()\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
     }
     else {
 	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicate": "biolink:physically_interacts_with"\n      }\n   },\n   "nodes": {\n      "n00": {\n         "id":        "CHEMBL.COMPOUND:CHEMBL112",\n         "category":  "biolink:ChemicalSubstance"\n      },\n      "n01": {\n         "category":  "biolink:Protein"\n      }\n   }\n}\n';
@@ -126,9 +171,12 @@ function reset_vars() {
     document.getElementById("menunumresults").className = "numold menunum";
     summary_table_html = '';
     summary_tsv = [];
+    columnlist = [];
+    all_nodes = {};
     cyobj = [];
     cytodata = [];
     UIstate.nodedd = 1;
+    UIstate.hasNodeArray = false;
 }
 
 
@@ -244,7 +292,7 @@ function postQuery(qtype) {
     sesame('openmax',statusdiv);
 
     add_to_dev_info("Posted to QUERY",queryObj);
-    fetch(baseAPI + "api/arax/v1.0/query", {
+    fetch(baseAPI + "/query", {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -385,10 +433,283 @@ function postQuery(qtype) {
 	});
 }
 
+function enter_synonym(ele) {
+    if (event.key === 'Enter')
+	sendSyn();
+}
+
+function lookup_synonym(syn,open) {
+    document.getElementById("newsynonym").value = syn.trim();
+    sendSyn();
+    if (open)
+	openSection("synonym");
+}
+
+async function sendSyn() {
+    var word = document.getElementById("newsynonym").value.trim();
+    if (!word) return;
+
+    var syndiv = document.getElementById("synonym_result_container");
+    syndiv.innerHTML = "";
+    var allweknow = await check_entity(word,true);
+
+    if (0) { // set to 1 if you just want full JSON dump instead of html tables
+	syndiv.innerHTML = "<pre>"+JSON.stringify(allweknow,null,2)+"</pre>";
+	return;
+    }
+
+    var div, text, table, tr, td;
+
+    div = document.createElement("div");
+    div.className = "statushead";
+    div.appendChild(document.createTextNode("Synonym Results"));
+    text = document.createElement("a");
+    text.target = '_blank';
+    text.title = 'link to this synonym entry';
+    text.href = "http://"+ window.location.hostname + window.location.pathname + "?term=" + word;
+    text.innerHTML = "[ Direct link to this entry ]";
+    text.style.float = "right";
+    div.appendChild(text);
+    syndiv.appendChild(div);
+
+    div = document.createElement("div");
+    div.className = "status";
+    text = document.createElement("h2");
+    text.className = "qprob p9";
+    text.appendChild(document.createTextNode(word));
+    div.appendChild(text);
+    //div.appendChild(document.createElement("br"));
+
+    if (!allweknow[word]) {
+	text.className = "qprob p1";
+	div.appendChild(document.createElement("br"));
+	div.appendChild(document.createTextNode("Entity not found."));
+	div.appendChild(document.createElement("br"));
+	div.appendChild(document.createElement("br"));
+	syndiv.appendChild(div);
+	return;
+    }
+
+    if (allweknow[word].id) {
+	table = document.createElement("table");
+	table.className = 'sumtab';
+	for (var syn in allweknow[word].id) {
+	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.style.fontWeight = 'bold';
+	    td.appendChild(document.createTextNode(syn));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    if (syn == "identifier")
+		td.appendChild(link_to_identifiers_dot_org(allweknow[word].id[syn]));
+	    td.appendChild(document.createTextNode(allweknow[word].id[syn]));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+
+	if (allweknow[word].synonyms) {
+	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.style.fontWeight = 'bold';
+	    td.appendChild(document.createTextNode('synonyms (all)'));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    var comma = '';
+	    for (var syn in allweknow[word].synonyms) {
+		td.appendChild(document.createTextNode(comma + syn + " (" +allweknow[word].synonyms[syn] + ")"));
+		comma = ", ";
+	    }
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+
+	if (allweknow[word].categories) {
+	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.style.fontWeight = 'bold';
+	    td.appendChild(document.createTextNode('categories (all)'));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    var comma = '';
+	    for (var cat in allweknow[word].categories) {
+		td.appendChild(document.createTextNode(comma + cat + " (" +allweknow[word].categories[cat] + ")"));
+		comma = ", ";
+	    }
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+
+	div.appendChild(table);
+    }
+
+    if (allweknow[word].nodes) {
+	text = document.createElement("h3");
+        text.className = "qprob p5";
+	text.appendChild(document.createTextNode('Nodes'));
+	div.appendChild(text);
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+	tr = document.createElement("tr");
+	for (var head of ["Identifier","Label","Original Label","Category"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+	table.appendChild(tr);
+	for (var syn of allweknow[word].nodes) {
+	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.appendChild(link_to_identifiers_dot_org(syn.identifier));
+	    td.appendChild(document.createTextNode(syn.identifier));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.label));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.original_label));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.category));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+    }
+
+    if (allweknow[word].equivalent_identifiers) {
+	text = document.createElement("h3");
+        text.className = "qprob p5";
+	text.appendChild(document.createTextNode('Equivalent Identifiers'));
+	div.appendChild(text);
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+	tr = document.createElement("tr");
+	for (var head of ["Identifier","Category","Source"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+	table.appendChild(tr);
+	for (var syn of allweknow[word].equivalent_identifiers) {
+	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.appendChild(link_to_identifiers_dot_org(syn.identifier));
+	    td.appendChild(document.createTextNode(syn.identifier));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.category));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.source));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+    }
+
+    if (allweknow[word].synonym_provenance) {
+	text = document.createElement("h3");
+	text.className = "qprob p5";
+	//text.appendChild(document.createTextNode('\u25BA Synonym Provenance'));
+	text.appendChild(document.createTextNode('Synonym Provenance'));
+	div.appendChild(text);
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+        tr = document.createElement("tr");
+	for (var head of ["Name","Curie","Source"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+        table.appendChild(tr);
+	for (var syn in allweknow[word].synonym_provenance) {
+            tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(allweknow[word].synonym_provenance[syn].name));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+            td.appendChild(link_to_identifiers_dot_org(allweknow[word].synonym_provenance[syn].uc_curie));
+	    td.appendChild(document.createTextNode(allweknow[word].synonym_provenance[syn].uc_curie));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(allweknow[word].synonym_provenance[syn].source));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+    }
+
+    div.appendChild(document.createElement("br"));
+    syndiv.appendChild(div);
+}
+
+function link_to_identifiers_dot_org(thing) {
+    if (!thing) return;
+
+    var link = document.createElement("a");
+    link.style.marginRight = "5px";
+    link.target = '_blank';
+    link.title = 'look up '+thing+' in identifiers.org';
+    link.href = "http://identifiers.org/resolve?query=" + thing;
+    var img = document.createElement('img');
+    img.src = 'id_org.png';
+    img.width  = "15";
+    img.height = "15";
+    link.appendChild(img);
+
+    return link;
+}
+
+
+function getIdStats(id) {
+    if (document.getElementById("numresults_"+id)) {
+	document.getElementById("numresults_"+id).innerHTML = '';
+	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
+	var wait = document.createElement("span");
+	wait.className = 'loading_cell';
+	var waitbar = document.createElement("span");
+	waitbar.className = 'loading_bar';
+	wait.appendChild(waitbar);
+	document.getElementById("numresults_"+id).appendChild(wait);
+    }
+    retrieve_response("ARS",providers["ARS"].url+id,id,"stats");
+}
+
+function sendId() {
+    var id = document.getElementById("idText").value.trim();
+    if (!id) return;
+
+    reset_vars();
+    if (cyobj[99999]) {cyobj[99999].elements().remove();}
+    input_qg = { "edges": [], "nodes": [] };
+
+    if (document.getElementById("numresults_"+id)) {
+	document.getElementById("numresults_"+id).innerHTML = '';
+	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
+	var wait = document.createElement("span");
+	wait.className = 'loading_cell';
+	var waitbar = document.createElement("span");
+	waitbar.className = 'loading_bar';
+	wait.appendChild(waitbar);
+	document.getElementById("numresults_"+id).appendChild(wait);
+    }
+
+    retrieve_response("ARS",providers["ARS"].url+id,id,"all");
+    openSection('query');
+}
 
 function sendQuestion(e) {
     reset_vars();
-    if (cyobj[999]) {cyobj[999].elements().remove();}
+    if (cyobj[99999]) {cyobj[99999].elements().remove();}
     input_qg = { "edges": [], "nodes": [] };
 
     var bypass_cache = "true";
@@ -412,7 +733,7 @@ function sendQuestion(e) {
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
-    xhr.open("post", baseAPI + "api/arax/v1.0/translate", true);
+    xhr.open("post", baseAPI + "/translate", true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
     // send the collected data as JSON
@@ -428,10 +749,12 @@ function sendQuestion(e) {
 
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post",  baseAPI + "api/arax/v1.0/query", true);
+		xhr2.open("post",  baseAPI + "/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
-                var queryObj = { "message" : jsonObj };
+                //var queryObj = { "message" : jsonObj };
+                var queryObj = jsonObj;
+                queryObj["message"] = { };
                 queryObj.bypass_cache = bypass_cache;
                 queryObj.max_results = 100;
 
@@ -482,20 +805,126 @@ function sendQuestion(e) {
 }
 
 
-function retrieve_response() {
+function process_ars_message(ars_msg, level) {
+    if (level > 5)
+	return; // stopgap
+    var table, tr, td;
+    if (level == 0) {
+	if (document.getElementById('ars_message_list'))
+	    document.getElementById('ars_message_list').remove();
+	var div = document.createElement("div");
+	div.id = 'ars_message_list';
+
+        var div2 = document.createElement("div");
+	div2.className = "statushead";
+        div2.appendChild(document.createTextNode("Collection Results"));
+        div.appendChild(div2);
+
+	var div2 = document.createElement("div");
+	div2.className = "status";
+	table = document.createElement("table");
+	table.id = 'ars_message_list_table';
+	table.className = 'sumtab';
+
+	tr = document.createElement("tr");
+	for (var head of ["","Agent","Status","Message Id","N_Results","TRAPI 1.0?"] ) {
+	    td = document.createElement("th")
+	    td.appendChild(document.createTextNode(head));
+	    tr.appendChild(td);
+	}
+	table.appendChild(tr);
+
+	div2.appendChild(document.createElement("br"));
+	div2.appendChild(table);
+        div2.appendChild(document.createElement("br"));
+        div.appendChild(div2);
+	document.getElementById('qid_input').appendChild(div);
+    }
+    else
+	table = document.getElementById('ars_message_list_table');
+
+    tr = document.createElement("tr");
+    tr.className = 'hoverable';
+    td = document.createElement("td");
+    td.appendChild(document.createTextNode('\u25BA'.repeat(level)));
+    tr.appendChild(td);
+    td = document.createElement("td");
+    td.appendChild(document.createTextNode(ars_msg.actor.agent));
+    tr.appendChild(td);
+    td = document.createElement("td");
+    td.appendChild(document.createTextNode(ars_msg.status));
+    tr.appendChild(td);
+    td = document.createElement("td");
+
+    var link;
+    var go = false;
+    if (ars_msg.status == "Running")
+	link = document.createTextNode(ars_msg.message);
+    else {
+	link = document.createElement("a");
+	link.title='view this response';
+	link.style.cursor = "pointer";
+	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId();');
+	link.appendChild(document.createTextNode(ars_msg.message));
+	if (!ars_msg["children"] || ars_msg["children"].length == 0)
+	    go = true;
+    }
+    td.appendChild(link);
+    tr.appendChild(td);
+    td = document.createElement("td");
+    td.id = "numresults_"+ars_msg.message;
+    tr.appendChild(td);
+    td = document.createElement("td");
+    td.id = "istrapi_"+ars_msg.message;
+    tr.appendChild(td);
+    table.appendChild(tr);
+
+    if (go)
+	getIdStats(ars_msg.message);
+
+    level++;
+    for (let child of ars_msg["children"])
+	process_ars_message(child, level);
+}
+
+
+function retrieve_response(provider, resp_url, resp_id, type) {
+    if (type == null) type = "all";
     var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("Retrieving ARAX response id = " + response_id));
+    statusdiv.appendChild(document.createTextNode("Retrieving "+provider+" response id = " + resp_id));
     statusdiv.appendChild(document.createElement("hr"));
     sesame('openmax',statusdiv);
 
     var xhr = new XMLHttpRequest();
-    xhr.open("get",  baseAPI + "api/arax/v1.0/response/" + response_id, true);
+    xhr.open("get",  resp_url, true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr.send(null);
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
 	    var jsonObj2 = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================ RESPONSE REQUEST::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
+
+	    if (type == "all") {
+		var devdiv = document.getElementById("devdiv");
+		devdiv.appendChild(document.createElement("br"));
+		devdiv.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE REQUEST::"));
+		var link = document.createElement("a");
+		link.target = '_blank';
+		link.href = resp_url;
+		link.style.position = "relative";
+		link.style.left = "30px";
+		link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
+		devdiv.appendChild(link);
+		var pre = document.createElement("pre");
+		pre.id = 'responseJSON';
+		pre.textContent = JSON.stringify(jsonObj2,null,2);
+		devdiv.appendChild(pre);
+	    }
+
+            if (jsonObj2["children"]) {
+		process_ars_message(jsonObj2,0);
+		selectInput("qid");
+		return;
+	    }
 
 	    if (jsonObj2["restated_question"]) {
 		statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
@@ -504,17 +933,59 @@ function retrieve_response() {
 	    else {
 		document.getElementById("questionForm").elements["questionText"].value = "";
 	    }
-	    statusdiv.innerHTML += "<br><i>"+jsonObj2["description"]+"</i><br>";
+
+	    jsonObj2.araxui_provider = provider;
+	    jsonObj2.araxui_response = resp_id;
+
+	    if (jsonObj2.description) {
+		var nr = document.createElement("span");
+		if (jsonObj2.description.startsWith("ERROR")) {
+		    if (type == "all")
+			statusdiv.innerHTML += "<br><span class='error'>"+jsonObj2.description+"</span><br>";
+		    nr.innerHTML = '&cross;';
+		    nr.className = 'explevel p1';
+		}
+		else {
+                    if (type == "all")
+			statusdiv.innerHTML += "<br><i>"+jsonObj2.description+"</i><br>";
+		    nr.innerHTML = '&check;';
+		    nr.className = 'explevel p9';
+		}
+
+	        if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
+		    document.getElementById("istrapi_"+jsonObj2.araxui_response).innerHTML = '';
+		    document.getElementById("istrapi_"+jsonObj2.araxui_response).appendChild(nr);
+		}
+	    }
 	    sesame('openmax',statusdiv);
 
-	    render_response(jsonObj2,true);
+	    if (type == "stats")
+		render_response_stats(jsonObj2);
+	    else
+		render_response(jsonObj2,true);
 	}
 	else if ( xhr.status == 404 ) {
-	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+response_id+"</span> was not found.";
+	    if (document.getElementById("numresults_"+resp_id)) {
+		document.getElementById("numresults_"+resp_id).innerHTML = '';
+                document.getElementById("istrapi_"+resp_id).innerHTML = '';
+		var nr = document.createElement("span");
+		nr.className = 'explevel p0';
+		nr.innerHTML = '&nbsp;N/A&nbsp;';
+		document.getElementById("numresults_"+resp_id).appendChild(nr);
+	    }
+	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
 	}
 	else {
+            if (document.getElementById("numresults_"+resp_id)) {
+		document.getElementById("numresults_"+resp_id).innerHTML = '';
+		document.getElementById("istrapi_"+resp_id).innerHTML = '';
+		var nr = document.createElement("span");
+		nr.className = 'explevel p0';
+		nr.innerHTML = '&nbsp;Error&nbsp;';
+		document.getElementById("numresults_"+resp_id).appendChild(nr);
+	    }
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
@@ -524,47 +995,6 @@ function retrieve_response() {
 
 }
 
-
-function DELETE_retrieve_message() {
-    var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("Retrieving ARAX message id = " + message_id));
-    statusdiv.appendChild(document.createElement("hr"));
-    sesame('openmax',statusdiv);
-
-    var xhr = new XMLHttpRequest();
-    xhr.open("get",  baseAPI + "api/arax/v1.0/message/" + message_id, true);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-    xhr.send(null);
-    xhr.onloadend = function() {
-	if ( xhr.status == 200 ) {
-	    var jsonObj2 = JSON.parse(xhr.responseText);
-	    document.getElementById("devdiv").innerHTML += "<br>================================================================= RESPONSE REQUEST::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
-
-	    if (jsonObj2["restated_question"].length > 2) {
-		statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
-		document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
-	    }
-	    else {
-		document.getElementById("questionForm").elements["questionText"].value = "";
-	    }
-	    statusdiv.innerHTML += "<br><i>"+jsonObj2["code_description"]+"</i><br>";
-	    sesame('openmax',statusdiv);
-
-	    render_message(jsonObj2,true);
-	}
-	else if ( xhr.status == 404 ) {
-	    statusdiv.innerHTML += "<br>Message with id=<span class='error'>"+message_id+"</span> was not found.";
-	    sesame('openmax',statusdiv);
-	    there_was_an_error();
-	}
-	else {
-	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
-	    sesame('openmax',statusdiv);
-            there_was_an_error();
-	}
-    };
-}
 
 
 // DELETE_LATER::
@@ -575,13 +1005,36 @@ function render_message(respObj,dispjson) {
 }
 
 
+function render_response_stats(respObj) {
+    if (!document.getElementById("numresults_"+respObj.araxui_response)) return;
+
+    var nr = document.createElement("span");
+    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
+
+    if ( respObj.message["results"] ) {
+	if (respObj.description && respObj.description.startsWith("ERROR"))
+	    nr.className = 'explevel p1';
+	else if (respObj.message.results.length > 0)
+	    nr.className = 'explevel p9';
+	else
+	    nr.className = 'explevel p5';
+	nr.innerHTML = '&nbsp;'+respObj.message.results.length+'&nbsp;';
+    }
+    else {
+	nr.className = 'explevel p0';
+	nr.innerHTML = '&nbsp;n/a&nbsp;';
+    }
+
+    document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
+}
+
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("Rendering message..."));
     sesame('openmax',statusdiv);
 
     if (respObj.id) {
-	response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
+	var response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 	document.title = "ARAX-UI ["+response_id+"]";
 
 	if (respObj.restated_question) {
@@ -594,32 +1047,15 @@ function render_response(respObj,dispjson) {
 	}
 	history.pushState({ id: 'ARAX_UI' }, 'ARAX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
     }
-    else {
+    else if (respObj.araxui_provider) {
+        document.title = "ARAX-UI ["+respObj.araxui_provider+" : "+respObj.araxui_response+"]";
+        add_to_session('source='+respObj.araxui_provider+"&id="+respObj.araxui_response,"["+respObj.araxui_provider+"] id="+respObj.araxui_response);
+	history.pushState({ id: 'ARAX_UI' }, 'ARAX | source='+respObj.araxui_provider+"&id="+respObj.araxui_response, "//"+ window.location.hostname + window.location.pathname + '?source='+respObj.araxui_provider+"&id="+respObj.araxui_response);
+    }
+    else if (respObj.restated_question)
         document.title = "ARAX-UI [no response_id]: "+respObj.restated_question+"?";
-    }
-
-    if ( respObj["table_column_names"] )
-	add_to_summary(respObj["table_column_names"],0);
-
-    if ( respObj.message["results"] ) {
-	if (!respObj.message["knowledge_graph"] ) {
-            document.getElementById("result_container").innerHTML  += "<h2 class='error'>Knowledge Graph missing in response; cannot process results.</h2>";
-	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
-	}
-	else {
-            document.getElementById("result_container").innerHTML += "<h2>" + respObj.message.results.length + " results</h2>";
-            document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
-            document.getElementById("menunumresults").classList.add("numnew");
-	    document.getElementById("menunumresults").classList.remove("numold");
-
-	    process_graph(respObj.message["knowledge_graph"],0);
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"]);
-	}
-    }
-    else {
-        document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
-        document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
-    }
+    else
+	document.title = "ARAX-UI [no response_id]";
 
 
     if (respObj.message["query_graph"]) {
@@ -640,13 +1076,69 @@ function render_response(respObj,dispjson) {
 	    }
 	    document.getElementById("jsonText").value = JSON.stringify(respObj.message["query_graph"],null,2);
 	}
-	process_graph(respObj.message["query_graph"],999);
+	process_graph(respObj.message["query_graph"],99999);
     }
     else
-	cytodata[999] = 'dummy'; // this enables query graph editing
+	cytodata[99999] = 'dummy'; // this enables query graph editing
 
 
-    if (respObj["table_column_names"]) {
+    if (respObj["operations"])
+	process_q_options(respObj["operations"]);
+
+
+    if (respObj["logs"])
+	process_log(respObj["logs"]);
+    else
+        document.getElementById("logdiv").innerHTML = "<h2 style='margin-left:20px;'>No log messages in this response</h2>";
+
+    // Do this *before* processing results
+    if ( respObj["table_column_names"] )
+	add_to_summary(respObj["table_column_names"],0);
+    else
+	add_to_summary(["'Guessence'"],0);
+
+    if ( respObj.message["results"] ) {
+	if (!respObj.message["knowledge_graph"] ) {
+            document.getElementById("result_container").innerHTML  += "<h2 class='error'>Knowledge Graph missing in response; cannot process results.</h2>";
+	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
+	}
+	else {
+	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
+	    document.getElementById("result_container").innerHTML += "<h2>" + respObj.message.results.length + rtext + "</h2>";
+            document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
+            document.getElementById("menunumresults").classList.add("numnew");
+	    document.getElementById("menunumresults").classList.remove("numold");
+	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
+		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
+		var nr = document.createElement("span");
+		if (respObj.description && respObj.description.startsWith("ERROR"))
+		    nr.className = 'explevel p1';
+		else if (respObj.message.results.length > 0)
+		    nr.className = 'explevel p9';
+		else
+		    nr.className = 'explevel p5';
+		nr.innerHTML = '&nbsp;'+respObj.message.results.length+'&nbsp;';
+		document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
+	    }
+
+	    process_graph(respObj.message["knowledge_graph"],0);
+	    process_results(respObj.message["results"],respObj.message["knowledge_graph"]);
+	}
+    }
+    else {
+        document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
+        document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
+        if (document.getElementById("numresults_"+respObj.araxui_response)) {
+	    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
+	    var nr = document.createElement("span");
+	    nr.className = 'explevel p0';
+	    nr.innerHTML = '&nbsp;n/a&nbsp;';
+	    document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
+	}
+    }
+
+    // table was (potentially) populated in process_results
+    if (summary_tsv.length > 1) {
 	var div = document.createElement("div");
 	div.className = 'statushead';
 	div.appendChild(document.createTextNode("Summary"));
@@ -681,18 +1173,15 @@ function render_response(respObj,dispjson) {
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
-// UPDATE THIS :: operations->actions !!?
-    if (respObj["operations"])
-	process_q_options(respObj["operations"]);
-
-
-    if (respObj["logs"])
-	process_log(respObj["logs"]);
-    else
-        document.getElementById("logdiv").innerHTML = "<h2 style='margin-left:20px;'>No log messages in this response</h2>";
-
-    add_cyto();
+    add_cyto(0);
+    if (!UIstate.hasNodeArray)
+	add_cyto(99999);
     statusdiv.appendChild(document.createTextNode("done."));
+    statusdiv.appendChild(document.createElement("br"));
+    var nr = document.createElement("span");
+    nr.className = 'essence';
+    nr.appendChild(document.createTextNode("Click on Results, Summary, or Knowledge Graph links on the left to explore results."));
+    statusdiv.appendChild(nr);
     sesame('openmax',statusdiv);
 }
 
@@ -701,7 +1190,8 @@ function process_q_options(q_opts) {
     if (q_opts.actions) {
 	clearDSL();
 	for (var act of q_opts.actions) {
-	    document.getElementById("dslText").value += act + "\n";
+	    if (act.length > 1) // skip blank lines
+		document.getElementById("dslText").value += act + "\n";
 	}
     }
 }
@@ -880,20 +1370,36 @@ function process_graph(gne,gid) {
 
 	gnode.parentdivnum = gid; // helps link node to div when displaying node info on click
 
+        if (!gnode.fulltextname) {
+	    if (gnode.name)
+		gnode.fulltextname = gnode.name;
+	    else
+		gnode.fulltextname = id;
+	}
 
 	// NEED THIS??
 	if (gnode.node_id) // deal with QueryGraphNode (QNode)
 	    gnode.id = gnode.node_id;
 
-	if (!gnode.id)
-	    gnode.id = id;
+	//if (!gnode.id)
+	//gnode.id = id;
 
-	if (gnode.id) {
+        if (gnode.id) {
+	    if (Array.isArray(gnode.id)) {
+		if (gnode.id.length == 1)
+		    gnode.id = gnode.id[0];
+		else
+		    UIstate.hasNodeArray = true;
+	    }
+
 	    if (gnode.name)
 		gnode.name += " ("+gnode.id+")";
 	    else
 		gnode.name = gnode.id;
 	}
+
+        gnode.id = id;
+
 	if (!gnode.name) {
 	    if (gnode.category)
 		gnode.name = gnode.category + "s?";
@@ -920,7 +1426,7 @@ function process_graph(gne,gid) {
     }
 
 
-    if (gid == 999) {
+    if (gid == 99999) {
 	for (var id in gne.nodes) {
 	    var gnode = gne.nodes[id];
 
@@ -955,36 +1461,177 @@ function process_graph(gne,gid) {
 
 }
 
+// a watered-down essence, if you will...
+function eau_du_essence(result) {
+    var guessence = 'n/a';
+    for (var nbid in result.node_bindings)
+	for (var node of result.node_bindings[nbid])
+	    if (all_nodes[node.id] < all_nodes[guessence])
+		guessence = node.id;
+    return guessence;
+}
 
 function process_results(reslist,kg) {
+    if (Object.keys(all_nodes).length === 0 && all_nodes.constructor === Object) {
+	for (var result of reslist)
+            for (var nbid in result.node_bindings)
+		for (var node of result.node_bindings[nbid]) {
+		    if (all_nodes[node.id])
+			all_nodes[node.id]++;
+		    else
+			all_nodes[node.id] = 1;
+		    //console.log(node.id+" :: "+all_nodes[node.id]);
+		}
+    }
+    all_nodes['n/a'] = 10000; // for eau_du_essence
+
     var num = 0;
     for (var result of reslist) {
 	num++;
 
-        if ( result.row_data )
-            add_to_summary(result.row_data, num);
-
 	var ess = '';
 	if (result.essence)
 	    ess = result.essence;
+	else {
+	    ess = eau_du_essence(result);
+	    if (ess != 'n/a')
+		ess = kg.nodes[ess].fulltextname;
+	}
+
+        if (result.row_data)
+            add_to_summary(result.row_data, num);
+	else
+            add_to_summary([ess], num);
 
 	var cnf = 0;
 	if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
 	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : "p1";
 
-	var rsrc = '';
+	var rsrc = 'n/a';
 	if (result.reasoner_id)
 	    rsrc = result.reasoner_id;
 	var rscl = (rsrc=="ARAX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
 
-	
-        document.getElementById("result_container").innerHTML += "<div onclick='sesame(this,a"+num+"_div);' id='h"+num+"_div' title='Click to expand / collapse result "+num+"' class='accordion'>Result "+num+" :: <b>"+ess+"</b><span class='r100'><span title='confidence="+cnf+"' class='"+pcl+" qprob'>"+cnf+"</span><span title='source="+rsrc+"' class='"+rscl+" qprob'>"+rsrc+"</span></span></div>";
+	var result_container = document.getElementById("result_container");
 
-	document.getElementById("result_container").innerHTML += "<div id='a"+num+"_div' class='panel'><table class='t100'><tr><td class='textanswer'>"+result.description+"</td><td class='cytograph_controls'><a title='reset zoom and center' onclick='cyobj["+num+"].reset();'>&#8635;</a><br><a title='breadthfirst layout' onclick='cylayout("+num+",\"breadthfirst\");'>B</a><br><a title='force-directed layout' onclick='cylayout("+num+",\"cose\");'>F</a><br><a title='circle layout' onclick='cylayout("+num+",\"circle\");'>C</a><br><a title='random layout' onclick='cylayout("+num+",\"random\");'>R</a>	</td><td class='cytograph'><div style='height: 100%; width: 100%' id='cy"+num+"'></div></td></tr><tr><td>&nbsp;</td><td></td><td><div id='d"+num+"_div'><i>Click on a node or edge to get details</i></div></td></tr></table></div>";
+        var div = document.createElement("div");
+        div.id = 'h'+num+'_div';
+	div.title = 'Click to expand / collapse result '+num;
+        div.className = 'accordion';
+	div.setAttribute('onclick', 'add_cyto('+num+');sesame(this,a'+num+'_div);');
+	div.appendChild(document.createTextNode("Result "+num));
+	if (ess)
+	    div.innerHTML += " :: <b>"+ess+"</b>"; // meh...
+
+	var span100 = document.createElement("span");
+	span100.className = 'r100';
+
+        var span = document.createElement("span");
+        span.className = pcl+' qprob';
+	span.title = "confidence="+cnf;
+        span.appendChild(document.createTextNode(cnf));
+	span100.appendChild(span);
+
+        span = document.createElement("span");
+	span.className = rscl+' qprob';
+	span.title = "source="+rsrc;
+	span.appendChild(document.createTextNode(rsrc));
+	span100.appendChild(span);
+
+	div.appendChild(span100);
+	result_container.appendChild(div);
+
+        div = document.createElement("div");
+        div.id = 'a'+num+'_div';
+        div.className = 'panel';
+
+        var table = document.createElement("table");
+        table.className = 't100';
+
+        var tr = document.createElement("tr");
+	var td = document.createElement("td");
+        td.className = 'textanswer';
+	if (result.description)
+	    td.appendChild(document.createTextNode(result.description));
+	else
+	    td.appendChild(document.createTextNode('No description'));
+        tr.appendChild(td);
+
+        td = document.createElement("td");
+        td.className = 'cytograph_controls';
+
+	var link = document.createElement("a");
+	link.title='reset zoom and center';
+        link.setAttribute('onclick', 'cyobj['+num+'].reset();');
+        link.appendChild(document.createTextNode("\u21BB"));
+        td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+	tr.appendChild(td);
+
+        link = document.createElement("a");
+	link.title='breadthfirst layout';
+	link.setAttribute('onclick', 'cylayout('+num+',"breadthfirst");');
+	link.appendChild(document.createTextNode("B"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+	link.title='force-directed layout';
+	link.setAttribute('onclick', 'cylayout('+num+',"cose");');
+	link.appendChild(document.createTextNode("F"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+	link.title='circle layout';
+	link.setAttribute('onclick', 'cylayout('+num+',"circle");');
+	link.appendChild(document.createTextNode("C"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+	link.title='random layout';
+	link.setAttribute('onclick', 'cylayout('+num+',"random");');
+	link.appendChild(document.createTextNode("R"));
+	td.appendChild(link);
+
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+	td.className = 'cytograph';
+        var div2 = document.createElement("div");
+	div2.id = 'cy'+num;
+	div2.style.height = '100%';
+	div2.style.width  = '100%';
+	td.appendChild(div2);
+        tr.appendChild(td);
+        table.appendChild(tr);
+
+
+        tr = document.createElement("tr");
+	td = document.createElement("td");
+        tr.appendChild(td);
+	td = document.createElement("td");
+	tr.appendChild(td);
+
+	td = document.createElement("td");
+        div2 = document.createElement("div");
+	div2.id = 'd'+num+'_div';
+	div2.className = 'panel';
+        link = document.createElement("i");
+        link.appendChild(document.createTextNode("Click on a node or edge to get details"));
+        div2.appendChild(link);
+	td.appendChild(div2);
+	tr.appendChild(td);
+
+        table.appendChild(tr);
+
+	div.appendChild(table);
+	result_container.appendChild(div);
+
 
         cytodata[num] = [];
-
 	//console.log("=================== CYTO num:"+num+"  #nb:"+result.node_bindings.length);
 
         for (var nbid in result.node_bindings) {
@@ -1011,214 +1658,144 @@ function process_results(reslist,kg) {
 }
 
 
-function add_cyto() {
-    for (var i in cytodata) {
-	if (cytodata[i] == null) continue;
+function add_cyto(i) {
+    if (cytodata[i] == null) return;
 
-	var num = Number(i);// + 1;
+    var num = Number(i);// + 1;
 
-	//console.log("---------------cyto i="+i);
-	cyobj[i] = cytoscape({
-	    container: document.getElementById('cy'+num),
-	    style: cytoscape.stylesheet()
-		.selector('node')
-		.css({
-		    'background-color': function(ele) { return mapNodeColor(ele); } ,
-		    'shape': function(ele) { return mapNodeShape(ele); } ,
-		    'border-color' : '#000',
-		    'border-width' : '2',
-		    'width': '20',
-		    'height': '20',
-		    'content': 'data(name)'
-		})
-		.selector('edge')
-		.css({
-		    'curve-style' : 'bezier',
-		    'line-color': function(ele) { return mapEdgeColor(ele); } ,
-		    'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
-		    'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
-		    'target-arrow-shape': 'triangle',
-		    'opacity': 0.8,
-		    'content': function(ele) { if ((ele.data().parentdivnum > 900) && ele.data().type) { return ele.data().type; } return '';}
-		})
-		.selector(':selected')
-		.css({
-		    'background-color': '#ff0',
-		    'border-color': '#f80',
-		    'line-color': '#f80',
-		    'target-arrow-color': '#f80',
-		    'source-arrow-color': '#f80',
-		    'opacity': 1
-		})
-		.selector('.faded')
-		.css({
-		    'opacity': 0.25,
-		    'text-opacity': 0
-		}),
+    //console.log("---------------cyto i="+i);
+    cyobj[i] = cytoscape({
+	container: document.getElementById('cy'+num),
+	style: cytoscape.stylesheet()
+	    .selector('node')
+	    .css({
+		'background-color': function(ele) { return mapNodeColor(ele); } ,
+		'shape': function(ele) { return mapNodeShape(ele); } ,
+		'border-color' : '#000',
+		'border-width' : '2',
+		'width': '20',
+		'height': '20',
+		'content': 'data(name)'
+	    })
+	    .selector('edge')
+	    .css({
+		'curve-style' : 'bezier',
+		'line-color': function(ele) { return mapEdgeColor(ele); } ,
+		'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
+		'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
+		'target-arrow-shape': 'triangle',
+		'opacity': 0.8,
+		'content': function(ele) { if ((ele.data().parentdivnum > 99998) && ele.data().type) { return ele.data().type; } return '';}
+	    })
+	    .selector(':selected')
+	    .css({
+		'background-color': '#ff0',
+		'border-color': '#f80',
+		'line-color': '#f80',
+		'target-arrow-color': '#f80',
+		'source-arrow-color': '#f80',
+		'opacity': 1
+	    })
+	    .selector('.faded')
+	    .css({
+		'opacity': 0.25,
+		'text-opacity': 0
+	    }),
 
-	    elements: cytodata[i],
+	elements: cytodata[i],
 
-	    wheelSensitivity: 0.2,
+	wheelSensitivity: 0.2,
 
-	    layout: {
-		name: 'breadthfirst',
-		padding: 10
-	    },
+	layout: {
+	    name: 'breadthfirst',
+	    padding: 10
+	},
 
-	    ready: function() {
-		// ready 1
-	    }
-	});
-
-	if (i > 900) {
-	    cyobj[i].on('tap','node', function() {
-		document.getElementById('qg_edge_n'+UIstate.nodedd).value = this.data('id');
-		UIstate.nodedd = 3 - UIstate.nodedd;
-		get_possible_edges();
-	    });
-
-	    return;
+	ready: function() {
+	    // ready 1
 	}
+    });
 
+    if (i > 99998) {
 	cyobj[i].on('tap','node', function() {
-	    var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
-	    div.innerHTML = "";
-
-            var fields = [ "name","id", "category" ];
-	    if (this.data('description') !== 'UNKNOWN' && this.data('description') !== 'None')
-		fields.push("description");
-
-	    for (var field of fields) {
-		if (this.data(field)) {
-		    var span = document.createElement("span");
-		    span.className = "fieldname";
-		    span.appendChild(document.createTextNode(field+": "));
-		    div.appendChild(span);
-		    if (field == "uri") {
-			var link = document.createElement("a");
-			link.href = this.data(field);
-			link.target = "nodeuri";
-			link.appendChild(document.createTextNode(this.data(field)));
-			div.appendChild(link);
-		    }
-		    else {
-			div.appendChild(document.createTextNode(this.data(field)));
-		    }
-		    div.appendChild(document.createElement("br"));
-		}
-	    }
-
-	    show_attributes(div, this.data('attributes'));
-
-	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
+	    document.getElementById('qg_edge_n'+UIstate.nodedd).value = this.data('id');
+	    UIstate.nodedd = 3 - UIstate.nodedd;
+	    get_possible_edges();
 	});
 
-	cyobj[i].on('tap','edge', function() {
-            var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
-	    div.innerHTML = "";
-
-            div.appendChild(document.createTextNode(this.data('source')+" "));
-            var span = document.createElement("b");
-	    span.appendChild(document.createTextNode(this.data('predicate')));
-            div.appendChild(span);
-	    div.appendChild(document.createTextNode(" "+this.data('target')));
-            div.appendChild(document.createElement("br"));
-
-	    var tmpArr = [];
-	    if (!(Array.isArray(this.data('provided_by'))))
-		tmpArr.push(this.data('provided_by'));
-	    else
-		tmpArr = this.data('provided_by');
-
-            for (var prov of tmpArr) {
-		if (prov == null) continue;
-
-		span = document.createElement("span");
-		span.className = "fieldname";
-		span.appendChild(document.createTextNode("Provenance: "));
-		div.appendChild(span);
-
-		if (prov.startsWith("http")) {
-		    var provlink = document.createElement("a");
-		    provlink.href = prov;
-		    provlink.target = "prov";
-		    provlink.appendChild(document.createTextNode(prov));
-		    div.appendChild(provlink);
-		}
-		else {
-                    div.appendChild(document.createTextNode(prov));
-		}
-                div.appendChild(document.createElement("br"));
-	    }
-
-
-	    var fields = [ "confidence","weight","evidence_type","qualifiers","negated",
-			   "relation","is_defined_by","defined_datetime","id","qedge_id" ];
-	    for (var field of fields) {
-		if (this.data(field) == null) continue;
-
-		span = document.createElement("span");
-		span.className = "fieldname";
-		span.appendChild(document.createTextNode(field+": "));
-		div.appendChild(span);
-		if (field == "confidence" || field == "weight") {
-		    div.appendChild(document.createTextNode(Number(this.data(field)).toPrecision(3)));
-		}
-                else if (this.data(field).toString().startsWith("http")) {
-		    var link = document.createElement("a");
-		    link.href = this.data(field);
-		    link.target = "nodeuri";
-		    link.appendChild(document.createTextNode(this.data(field)));
-		    div.appendChild(link);
-		}
-		else {
-		    div.appendChild(document.createTextNode(this.data(field)));
-		}
-		div.appendChild(document.createElement("br"));
-	    }
-
-            tmpArr = [];
-	    if (!(Array.isArray(this.data('publications'))))
-		tmpArr.push(this.data('publications'));
-	    else
-		tmpArr = this.data('publications');
-
-	    for (var pub of tmpArr) {
-		if (pub == null) continue;
-
-		span = document.createElement("span");
-		span.className = "fieldname";
-		span.appendChild(document.createTextNode("Publication: "));
-		div.appendChild(span);
-
-		if (pub.startsWith("PMID:")) {
-		    var publink = document.createElement("a");
-		    publink.href = "https://www.ncbi.nlm.nih.gov/pubmed/" + pub.split(":")[1];
-		    publink.target = "pubmed";
-		    publink.appendChild(document.createTextNode(pub));
-		    div.appendChild(publink);
-		}
-		else {
-		    div.appendChild(document.createTextNode(pub));
-		}
-		div.appendChild(document.createElement("br"));
-	    }
-
-	    show_attributes(div, this.data('attributes'));
-
-	    sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
-	});
-
+	return;
     }
 
+    cyobj[i].on('tap','node', function() {
+	var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
+	div.innerHTML = "";
+
+        var fields = [ "name","id", "category" ];
+	for (var field of fields) {
+	    if (this.data(field) == null) continue;
+
+	    var span = document.createElement("span");
+	    span.className = "fieldname";
+	    span.appendChild(document.createTextNode(field+": "));
+	    div.appendChild(span);
+	    div.appendChild(document.createTextNode(this.data(field)));
+	    div.appendChild(document.createElement("br"));
+	}
+
+	show_attributes(div, this.data('attributes'));
+
+	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
+    });
+
+    cyobj[i].on('tap','edge', function() {
+        var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
+	div.innerHTML = "";
+
+        div.appendChild(document.createTextNode(this.data('source')+" "));
+        var span = document.createElement("b");
+	span.appendChild(document.createTextNode(this.data('predicate')));
+        div.appendChild(span);
+	div.appendChild(document.createTextNode(" "+this.data('target')));
+        div.appendChild(document.createElement("br"));
+
+	var fields = [ "relation","id" ];
+	for (var field of fields) {
+	    if (this.data(field) == null) continue;
+
+	    span = document.createElement("span");
+	    span.className = "fieldname";
+	    span.appendChild(document.createTextNode(field+": "));
+	    div.appendChild(span);
+	    if (this.data(field).toString().startsWith("http")) {
+		var link = document.createElement("a");
+		link.href = this.data(field);
+		link.target = "_blank";
+		link.appendChild(document.createTextNode(this.data(field)));
+		div.appendChild(link);
+	    }
+	    else {
+		div.appendChild(document.createTextNode(this.data(field)));
+	    }
+	    div.appendChild(document.createElement("br"));
+	}
+
+	show_attributes(div, this.data('attributes'));
+
+	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
+    });
+    cytodata[i] = null;
 }
+
 
 function show_attributes(html_div, atts) {
     if (atts == null)  { return; }
 
     var linebreak = "<hr>";
 
-    for (var att of atts) {
+    // always display iri first
+    var iri = atts.filter(a => a.name == "iri");
+
+    for (var att of iri.concat(atts.filter(a => a.name != "iri"))) {
 	var snippet = linebreak;
 
 	if (att.name != null) {
@@ -1228,10 +1805,11 @@ function show_attributes(html_div, atts) {
 	    snippet += ": ";
 	}
 	if (att.url != null)
-	    snippet += "<a target='araxext' href='" + att.url + "'>";
+	    snippet += "<a target='_blank' href='" + att.url + "'>";
 
 
 	if (att.value != null) {
+	    var fixit = true;
 	    if (att.name == "normalized_google_distance" ||
 		att.name == "fisher_exact_test_p-value"  ||
 		att.name == "probability_drug_treats"    ||
@@ -1239,17 +1817,50 @@ function show_attributes(html_div, atts) {
 		att.name == "paired_concept_frequency"   ||
 		att.name == "paired_concept_freq"        ||
 		att.name == "jaccard_index"              ||
+		att.name == "Contribution"               ||
 		att.name == "probability"                ||
 		att.name == "confidence"                 ||
 		att.name == "chi_square"                 ||
+		att.name == "pValue"                     ||
 		att.name == "ngd") {
 		snippet += Number(att.value).toPrecision(3);
+		fixit = false;
 	    }
             else if (Array.isArray(att.value))
-		for (var val of att.value) snippet += "<br>&nbsp;&nbsp;&nbsp;"+val;
+		for (var val of att.value) {
+                    snippet += "<br>&nbsp;&nbsp;&nbsp;";
+		    if (val == null) {
+			snippet += "--NULL--";
+		    }
+		    else if (val.toString().startsWith("PMID:")) {
+			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
+			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
+		    }
+		    else if (val.toString().startsWith("DOI:")) {
+			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
+			snippet += " title='View in doi.org' target='_blank'>" + val + "</a>";
+		    }
+		    else if (val.toString().startsWith("http")) {
+                        snippet += "<a href='" + val + "'";
+                        snippet += " target='_blank'>" + val + "</a>";
+		    }
+		    else {
+			snippet += val;
+		    }
+		}
+	    else if (typeof att.value === 'object') {
+		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
+
+		fixit = false;
+	    }
 	    else
 		snippet += att.value;
 
+	    if (fixit) {
+		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
+		snippet = snippet.toString().replace(/---/g,'<br>---');
+		snippet = snippet.toString().replace( /;;/g,'<br>;;');
+	    }
 	}
 	else if (att.url != null)
 	    snippet += att.url;
@@ -1289,7 +1900,7 @@ function cylayout(index,layname) {
     layout.run();
 }
 
-function mapNodeShape (ele) {
+function mapNodeShape(ele) {
     var ntype = ele.data().category ? ele.data().category[0] : "NA";
     if (ntype.endsWith("microRNA"))           { return "hexagon";} //??
     if (ntype.endsWith("Metabolite"))         { return "heptagon";}
@@ -1305,7 +1916,7 @@ function mapNodeShape (ele) {
     return "rectangle";
 }
 
-function mapNodeColor (ele) {
+function mapNodeColor(ele) {
     var ntype = ele.data().category;
     if (ntype == "microRNA")           { return "orange";}
     if (ntype == "metabolite")         { return "aqua";}
@@ -1321,8 +1932,8 @@ function mapNodeColor (ele) {
     return "#04c";
 }
 
-function mapEdgeColor (ele) {
-    var etype = ele.data().predicate;
+function mapEdgeColor(ele) {
+    var etype = ele.data().predicate ? ele.data().predicate : "NA";
     if (etype == "contraindicated_for")       { return "red";}
     if (etype == "indicated_for")             { return "green";}
     if (etype == "physically_interacts_with") { return "green";}
@@ -1330,8 +1941,8 @@ function mapEdgeColor (ele) {
 }
 
 function edit_qg() {
-    cytodata[999] = [];
-    if (cyobj[999]) {cyobj[999].elements().remove();}
+    cytodata[99999] = [];
+    if (cyobj[99999]) {cyobj[99999].elements().remove();}
 
     for (var gnode of input_qg.nodes) {
 	var name = "";
@@ -1341,28 +1952,28 @@ function edit_qg() {
 	else if (gnode.type)  { name = gnode.type + "s?";}
 	else                  { name = "(Any)";}
 
-        cyobj[999].add( {
+        cyobj[99999].add( {
 	    "data" : {
 		"id"   : gnode.id,
 		"name" : name,
 		"type" : gnode.type,
-		"parentdivnum" : 999 },
+		"parentdivnum" : 99999 },
 //	    "position" : {x:100*(qgid-nn), y:50+nn*50}
 	} );
     }
 
     for (var gedge of input_qg.edges) {
-	cyobj[999].add( {
+	cyobj[99999].add( {
 	    "data" : {
 		"id"     : gedge.id,
 		"source" : gedge.source_id,
 		"target" : gedge.target_id,
 		"type"   : gedge.type,
-		"parentdivnum" : 999 }
+		"parentdivnum" : 99999 }
 	} );
     }
 
-    cylayout(999,"breadthfirst");
+    cylayout(99999,"breadthfirst");
     document.getElementById('qg_form').style.visibility = 'visible';
     document.getElementById('qg_form').style.maxHeight = "100%";
     update_kg_edge_input();
@@ -1411,7 +2022,7 @@ function display_query_graph_items() {
         td = document.createElement("td");
 	var link = document.createElement("a");
 	link.href = 'javascript:remove_node_from_query_graph(\"'+result.id+'\")';
-	link.appendChild(document.createTextNode(" Remove "));
+	link.appendChild(document.createTextNode("Remove"));
 	td.appendChild(link);
         tr.appendChild(td);
 
@@ -1441,7 +2052,7 @@ function display_query_graph_items() {
         td = document.createElement("td");
 	var link = document.createElement("a");
 	link.href = 'javascript:remove_edge_from_query_graph(\"'+result.id+'\")';
-	link.appendChild(document.createTextNode(" Remove "));
+	link.appendChild(document.createTextNode("Remove"));
 	td.appendChild(link);
 	tr.appendChild(td);
 
@@ -1470,14 +2081,14 @@ function add_edge_to_query_graph() {
 
     if (et=='NONSPECIFIC') { et = null; }
 
-    cyobj[999].add( {
+    cyobj[99999].add( {
 	"data" : { "id"     : qgid,
 		   "source" : n1,
 		   "target" : n2,
 		   "type"   : et,
-		   "parentdivnum" : 999 }
+		   "parentdivnum" : 99999 }
     } );
-    cylayout(999,"breadthfirst");
+    cylayout(99999,"breadthfirst");
 
     var tmpdata = { "id"       : qgid,
 		    "negated"  : null,
@@ -1639,15 +2250,15 @@ function add_nodetype_to_query_graph(nodetype) {
 
     var nt = nodetype;
 
-    cyobj[999].add( {
+    cyobj[99999].add( {
         "data" : { "id"   : qgid,
 		   "name" : nodetype+"s",
 		   "type" : nt,
-		   "parentdivnum" : 999 },
+		   "parentdivnum" : 99999 },
 //        "position" : {x:100*qgid, y:50}
     } );
-    cyobj[999].reset();
-    cylayout(999,"breadthfirst");
+    cyobj[99999].reset();
+    cylayout(99999,"breadthfirst");
 
     if (nodetype=='NONSPECIFIC') { nt = null; }
     var tmpdata = { "id"     : qgid,
@@ -1667,14 +2278,14 @@ function add_nodelist_to_query_graph(nodetype) {
     document.getElementById("statusdiv").innerHTML = "<p>Added a set of nodes from list <i>"+list+"</i></p>";
     var qgid = get_qg_id();
 
-    cyobj[999].add( {
+    cyobj[99999].add( {
         "data" : { "id"   : qgid,
 		   "name" : nodetype,
 		   "type" : "set",
-		   "parentdivnum" : 999 }
+		   "parentdivnum" : 99999 }
     } );
-    cyobj[999].reset();
-    cylayout(999,"breadthfirst");
+    cyobj[99999].reset();
+    cylayout(99999,"breadthfirst");
 
     var tmpdata = { "id"     : qgid,
 		    "is_set" : true,
@@ -1702,7 +2313,7 @@ async function add_node_to_query_graph() {
 	return;
     }
 
-    var bestthing = await check_entity(thing);
+    var bestthing = await check_entity(thing,false);
     document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
 
     if (bestthing.found) {
@@ -1711,11 +2322,11 @@ async function add_node_to_query_graph() {
 
 	var qgid = get_qg_id();
 
-	cyobj[999].add( {
+	cyobj[99999].add( {
 	    "data" : { "id"   : qgid,
 		       "name" : bestthing.name,
 		       "type" : bestthing.type,
-		       "parentdivnum" : 999 },
+		       "parentdivnum" : 99999 },
 	    //		"position" : {x:100*(qgid-nn), y:50+nn*50}
 	} );
 
@@ -1729,8 +2340,8 @@ async function add_node_to_query_graph() {
 	document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + bestthing.curie + "<br>";
 	input_qg.nodes.push(tmpdata);
 
-	cyobj[999].reset();
-	cylayout(999,"breadthfirst");
+	cyobj[99999].reset();
+	cylayout(99999,"breadthfirst");
 
 	update_kg_edge_input();
 	display_query_graph_items();
@@ -1743,7 +2354,7 @@ async function add_node_to_query_graph() {
 
 
 function remove_edge_from_query_graph(edgeid) {
-    cyobj[999].remove("#"+edgeid);
+    cyobj[99999].remove("#"+edgeid);
 
     input_qg.edges.forEach(function(result, index) {
 	if (result["id"] == edgeid) {
@@ -1760,7 +2371,7 @@ function remove_edge_from_query_graph(edgeid) {
 }
 
 function remove_node_from_query_graph(nodeid) {
-    cyobj[999].remove("#"+nodeid);
+    cyobj[99999].remove("#"+nodeid);
 
     input_qg.nodes.forEach(function(result, index) {
 	if (result["id"] == nodeid) {
@@ -1788,7 +2399,7 @@ function remove_node_from_query_graph(nodeid) {
 }
 
 function clear_qg(m) {
-    if (cyobj[999]) { cyobj[999].elements().remove(); }
+    if (cyobj[99999]) { cyobj[99999].elements().remove(); }
     input_qg = { "edges": [], "nodes": [] };
     update_kg_edge_input();
     get_possible_edges();
@@ -1971,8 +2582,36 @@ function add_dsl_command(command) {
 	command += comma + p.id.split("__param__")[1]+"="+p.value;
 	comma = ",";
     }
-    command += ")";
-    document.getElementById("dslText").value += command+"\n";
+    command += ")\n";
+
+
+    //document.getElementById("dslText").value += command;
+
+    var dslbox = document.getElementById("dslText");
+    var dslval = dslbox.value;
+    var doc = dslbox.ownerDocument;
+
+    if (typeof dslbox.selectionStart == "number" &&
+	typeof dslbox.selectionEnd   == "number") {
+	var endIndex = dslbox.selectionEnd;
+
+	while (endIndex>0) {
+	    if (dslval.slice(endIndex-1, endIndex) == "\n")
+		break;
+	    endIndex--;
+	}
+
+	dslbox.value = dslval.slice(0, endIndex) + command + dslval.slice(endIndex);
+	dslbox.selectionStart = dslbox.selectionEnd = endIndex + command.length;
+    }
+    else if (doc.selection != "undefined" && doc.selection.createRange) {
+	dslbox.focus();
+	var range = doc.selection.createRange();
+	range.collapse(false);
+	range.text = command;
+	range.select();
+    }
+
     abort_dsl();
 }
 
@@ -1982,10 +2621,10 @@ function abort_dsl() {
 
 
 function get_example_questions() {
-    fetch(baseAPI + "api/arax/v1.0/exampleQuestions")
+    fetch(baseAPI + "/exampleQuestions")
         .then(response => response.json())
         .then(data => {
-	    add_to_dev_info("EXAMPLE Qs",data);
+	    //add_to_dev_info("EXAMPLE Qs",data);
 
 	    var qqq = document.getElementById("qqq");
 	    qqq.innerHTML = '';
@@ -2012,13 +2651,13 @@ function load_nodes_and_predicates() {
     var allnodes_node = document.getElementById("allnodetypes");
     allnodes_node.innerHTML = '';
 
-    fetch(baseAPI + "api/arax/v1.0/predicates")
+    fetch(baseAPI + "/predicates")
 	.then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong');
 	})
         .then(data => {
-	    add_to_dev_info("PREDICATES",data);
+	    //add_to_dev_info("PREDICATES",data);
 	    predicates = data;
 
 	    var opt = document.createElement('option');
@@ -2119,20 +2758,27 @@ function display_list(listId) {
 
 	    if (entities.hasOwnProperty(li)) {
 		listhtml += "<td>"+entities[li].checkHTML+"</td>";
+		listhtml += "<td title='view ARAX synonyms' class='clq' onclick='lookup_synonym(this.nextSibling.innerHTML,true);'>\u2139</td>";
 		listhtml += "<td>"+entities[li].name+"</td>";
+		if (entities[li].isvalid)
+		    listhtml += "<td title='view ARAX synonyms' class='clq' onclick='lookup_synonym(this.nextSibling.innerHTML,true);'>\u2139</td>";
+		else
+		    listhtml += "<td></td>";
 		listhtml += "<td>"+entities[li].curie+"</td>";
 		listhtml += "<td>"+entities[li].type+"</td>";
 	    }
 	    else {
 		listhtml += "<td id='list"+listId+"_entitycheck_"+li+"'>--</td>";
+		listhtml += "<td title='view ARAX synonyms' class='clq' onclick='lookup_synonym(this.nextSibling.innerHTML,true);'>\u2139</td>";
 		listhtml += "<td id='list"+listId+"_entityname_"+li+"'>"+li+"</td>";
+		listhtml += "<td title='view ARAX synonyms' class='clq' onclick='lookup_synonym(this.nextSibling.innerHTML,true);'>\u2139</td>";
 		listhtml += "<td id='list"+listId+"_entitycurie_"+li+"'>looking up...</td>";
 		listhtml += "<td id='list"+listId+"_entitytype_"+li+"'>looking up...</td>";
 		entities[li] = {};
 		entities[li].checkHTML = '--';
 	    }
 
-	    listhtml += "<td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+	    listhtml += "<td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/>Remove</a></td></tr>";
 	}
     }
 
@@ -2144,7 +2790,7 @@ function display_list(listId) {
 	document.getElementById("nodeset"+listId).innerHTML = "List [" + listId + "] -- (" + numitems + " items)";
 
     if (numitems > 0) {
-	listhtml = "<table class='sumtab'><tr><th></th><th>Name</th><th>Item</th><th>Type</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
+	listhtml = "<table class='sumtab'><tr><th></th><th></th><th>Name</th><th></th><th>Item</th><th>Type</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
 	document.getElementById("menunumlistitems"+listId).classList.add("numnew");
 	document.getElementById("menunumlistitems"+listId).classList.remove("numold");
     }
@@ -2158,55 +2804,151 @@ function display_list(listId) {
 //    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
     if (numitems > 0)
-    	listhtml += "<a style='margin-left:20px;' href='javascript:delete_list(\""+listId+"\");'/> Delete List </a>";
+	listhtml += "<a style='margin-left:20px;' href='javascript:delete_list(\""+listId+"\");'/>Delete List</a>";
 
     listhtml += "<br><br>";
 
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
-    check_entities();
-    compare_lists();
+    //check_entities();
+    check_entities_batch(99);
+    compare_lists(false);
 }
 
-function compare_lists() {
-    // only assume listA and listB, for now...
 
+function compare_lists(uniqueonly) {
+    if (!uniqueonly || uniqueonly == "false")
+	uniqueonly = false;
+    else
+	uniqueonly = true;
+
+    // assume only listA and listB, for now...
     var keysA = Object.keys(listItems['A']);
     var keysB = Object.keys(listItems['B']);
     compare_tsv = [];
 
+    var comparediv = document.getElementById("comparelists");
+    comparediv.innerHTML = "";
+
     if (keysA.length == 0 || keysB.length == 0) {
-	document.getElementById("comparelists").innerHTML = "<br>Items in lists A and B will be automatically displayed side-by-side for ease of comparison.<br><br>At least one item is required in each list.<br><br>";
+	comparediv.appendChild(document.createElement("br"));
+	comparediv.appendChild(document.createTextNode("Items in lists A and B will be automatically displayed side-by-side for ease of comparison."));
+        comparediv.appendChild(document.createElement("br"));
+	comparediv.appendChild(document.createElement("br"));
+	comparediv.appendChild(document.createTextNode("At least one item is required in each list."));
+        comparediv.appendChild(document.createElement("br"));
+	comparediv.appendChild(document.createElement("br"));
 	return;
     }
 
-    var comparehtml = "<input class='questionBox button' type='button' name='action' title='Get tab-separated values of this table to paste into Excel etc' value='Copy Comparison Table to clipboard (TSV)' onclick='copyTSVToClipboard(this,compare_tsv);'><br><br>";
-
-    comparehtml += "<table class='sumtab'><tr><th></th><th>List A</th><th></th><th>List B</th></tr>";
     compare_tsv.push("List A\tList B");
+    var button = document.createElement("input");
+    button.className = 'questionBox button';
+    button.type = 'button';
+    button.name = 'action';
+    button.title = 'Get tab-separated values of this table to paste into Excel etc';
+    button.value = 'Copy Comparison Table to clipboard (TSV)';
+    button.setAttribute('onclick', 'copyTSVToClipboard(this,compare_tsv);');
+    comparediv.appendChild(button);
+
+    var span = document.createElement("span");
+    span.className = 'qgselect';
+    span.style.marginLeft = "100px";
+
+    var sel = document.createElement('select');
+    sel.setAttribute('onchange', 'compare_lists(this.value);');
+    var opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = "false";
+    if (!uniqueonly) opt.selected = true;
+    opt.innerHTML = "Show all items in lists";
+    sel.appendChild(opt);
+    opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = "true";
+    if (uniqueonly) opt.selected = true;
+    opt.innerHTML = "Show only unique items";
+    sel.appendChild(opt);
+    span.appendChild(sel);
+    comparediv.appendChild(span);
+
+    comparediv.appendChild(document.createElement("br"));
+    comparediv.appendChild(document.createElement("br"));
+
+    var comptable = document.createElement("table");
+    comptable.className = 'sumtab';
+    var tr = document.createElement("tr");
+    var td = document.createElement("th");
+    tr.appendChild(td);
+    td = document.createElement("th");
+    td.appendChild(document.createTextNode("List A"));
+    tr.appendChild(td);
+    td = document.createElement("th");
+    tr.appendChild(td);
+    td = document.createElement("th");
+    td.appendChild(document.createTextNode("List B"));
+    tr.appendChild(td);
+    comptable.appendChild(tr);
+
+    if (uniqueonly) {
+	var onlyA = keysA.filter(x => !keysB.includes(x));
+	keysB = keysB.filter(x => !keysA.includes(x));
+	keysA = onlyA;
+    }
 
     var maxkeys = (keysA.length > keysB.length) ? keysA : keysB;
     for (var idx in maxkeys) {
-	comparehtml += "<tr class='hoverable'><td><span class='explevel ";
-	if (keysA[idx] == keysB[idx])
-	    comparehtml += "p9'>&check;";
-	else if (listItems['B'][keysA[idx]])
-	    comparehtml += "p5'>&check;";
-	else
-	    comparehtml += "p1'>&cross;";
-	comparehtml += "</span></td><td>" + keysA[idx] + "</td><td><span class='explevel ";
-        if (keysA[idx] == keysB[idx])
-	    comparehtml += "p9'>&check;";
-	else if (listItems['A'][keysB[idx]])
-	    comparehtml += "p5'>&check;";
-	else
-	    comparehtml += "p1'>&cross;";
-	comparehtml += "</span></td><td>" + keysB[idx] + "</td></tr>";
+	tr = document.createElement("tr");
+	tr.className = 'hoverable';
+
+	td = document.createElement("td");
+	span = document.createElement("span");
+        if (keysA[idx] == keysB[idx]) {
+	    span.className = "explevel p9";
+	    span.innerHTML = "&check;";
+	}
+        else if (listItems['B'][keysA[idx]]) {
+	    span.className = "explevel p5";
+	    span.innerHTML = "&check;";
+	}
+	else {
+            span.className = "explevel p1";
+	    span.innerHTML = "&cross;";
+	}
+        td.appendChild(span);
+        tr.appendChild(td);
+        td = document.createElement("td");
+	td.innerHTML = keysA[idx]?keysA[idx]:'--n/a--';
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+	span = document.createElement("span");
+	if (keysA[idx] == keysB[idx]) {
+	    span.className = "explevel p9";
+	    span.innerHTML = "&check;";
+	}
+	else if (listItems['A'][keysB[idx]]) {
+	    span.className = "explevel p5";
+	    span.innerHTML = "&check;";
+	}
+	else {
+	    span.className = "explevel p1";
+	    span.innerHTML = "&cross;";
+	}
+	td.appendChild(span);
+	tr.appendChild(td);
+	td = document.createElement("td");
+	td.innerHTML = keysB[idx]?keysB[idx]:'--n/a--';
+	tr.appendChild(td);
+
+	comptable.appendChild(tr);
 	compare_tsv.push(keysA[idx]+"\t"+keysB[idx]);
     }
 
-    comparehtml += "</table><br><br>";
-    document.getElementById("comparelists").innerHTML = comparehtml;
+    comparediv.appendChild(comptable);
+    comparediv.appendChild(document.createElement("br"));
+    comparediv.appendChild(document.createElement("br"));
 }
+
 
 function get_list_as_string(listId) {
     var liststring = '[';
@@ -2273,24 +3015,84 @@ function delete_list(listId) {
 }
 
 
+function check_entities_batch(batchsize) {
+    var batches = [];
+    var thisbatch = '';
+    var items = 0;
+    for (var entity in entities) {
+	if (entities[entity].checkHTML != '--') continue;
+	if (items == batchsize) {
+	    batches.push(thisbatch);
+	    thisbatch = '';
+	    items = 0;
+	}
+	thisbatch += "&q="+entity;
+	items++;
+    }
+    // last one
+    if (thisbatch) batches.push(thisbatch);
+
+    for (let batch of batches) {
+        fetch(baseAPI + "/entity?output_mode=minimal" + batch)
+	    .then(response => response.json())
+	    .then(data => {
+		add_to_dev_info("ENTITIES:"+batch,data);
+		for (var entity in data) {
+                    if (entities[entity] && data[entity] && data[entity].id && data[entity].id.identifier) {
+			entities[entity].curie = data[entity].id.identifier;
+			entities[entity].name  = data[entity].id.name;
+			entities[entity].type  = data[entity].id.category;
+			//entities[entity].name = data[entity].id.label.replace(/['"]/g, '&apos;');  // might need this?
+
+			entities[entity].isvalid   = true;
+			entities[entity].checkHTML = "<span class='explevel p9'>&check;</span>&nbsp;";
+			document.getElementById("devdiv").innerHTML += data[entity].id.type+"<br>";
+		    }
+		    else if (entities[entity]) {
+			entities[entity].curie = "<span class='error'>unknown</span>";
+			entities[entity].name  = entity;
+			entities[entity].type  = "<span class='error'>unknown</span>";
+			entities[entity].isvalid   = false;
+			entities[entity].checkHTML = "<span class='explevel p1'>&cross;</span>&nbsp;";
+		    }
+		    else {
+			console.warn("Could not find entity: "+entity);
+		    }
+		    // in case of a 404...?? entstr = "<span class='explevel p0'>&quest;</span>&nbsp;n/a";
+
+		    for (var elem of document.querySelectorAll("[id$='_entitycurie_"+entity+"']"))
+			elem.innerHTML = entities[entity].curie;
+		    for (var elem of document.querySelectorAll("[id$='_entityname_"+entity+"']"))
+			elem.innerHTML = entities[entity].name;
+		    for (var elem of document.querySelectorAll("[id$='_entitytype_"+entity+"']"))
+			elem.innerHTML = entities[entity].type;
+		    for (var elem of document.querySelectorAll("[id$='_entitycheck_"+entity+"']"))
+			elem.innerHTML = entities[entity].checkHTML;
+		}
+	    });
+    }
+}
+
+
+
 function check_entities() {
     for (let entity in entities) {
 	if (entities[entity].checkHTML != '--') continue;
 
-	fetch(baseAPI + "api/arax/v1.0/entity/" + entity)
+	fetch(baseAPI + "/entity?q=" + entity)
 	    .then(response => response.json())
 	    .then(data => {
                 add_to_dev_info("ENTITIES:"+entity,data);
 
-		if (data.curie) {
-		    entities[entity].curie = data.curie;
-		    entities[entity].name  = data.name;
-		    entities[entity].type  = data.type;
-		    //entities[entity].name = data.name.replace(/['"]/g, '&apos;');  // might need this?
+		if (data[entity] && data[entity].id && data[entity].id.identifier) {
+		    entities[entity].curie = data[entity].id.identifier;
+		    entities[entity].name  = data[entity].id.name;
+		    entities[entity].type  = data[entity].id.category;
+		    //entities[entity].name = data[entity].id.label.replace(/['"]/g, '&apos;');  // might need this?
 
 		    entities[entity].isvalid   = true;
 		    entities[entity].checkHTML = "<span class='explevel p9'>&check;</span>&nbsp;";
-		    document.getElementById("devdiv").innerHTML += data.type+"<br>";
+		    document.getElementById("devdiv").innerHTML += data[entity].id.type+"<br>";
 		}
 		else {
 		    entities[entity].curie = "<span class='error'>unknown</span>";
@@ -2324,30 +3126,36 @@ function check_entities() {
 		    elem.innerHTML = entities[entity].typecheckHTML;
                 for (var elem of document.querySelectorAll("[id$='_entitycheck_"+entity+"']"))
 		    elem.innerHTML = entities[entity].checkHTML;
-
+		console.log(error);
 	    });
     }
 }
 
 
-async function check_entity(term) {
-    var data;
-    var ent = {};
+async function check_entity(term,wantall) {
+    var data = {};
+    var ent  = {};
     ent.found = false;
 
-    if (entities[term]) {
+    if (!wantall && entities[term]) {
         if (!entities[term].isvalid)
             return ent; // contains found=false
 
 	data = entities[term];
     }
     else {
-	var response = await fetch(baseAPI + "api/arax/v1.0/entity/" + term);
-	data = await response.json();
+	var response = await fetch(baseAPI + "/entity?q=" + term);
+	var fulldata = await response.json();
 
-	add_to_dev_info("ENTITY:"+term,data);
-	if (!data.curie)
+	add_to_dev_info("ENTITY:"+term,fulldata);
+	if (wantall)
+	    return fulldata;
+	else if (!fulldata[term].id)
 	    return ent; // contains found=false
+
+	data.curie = fulldata[term].id.identifier;
+	data.name  = fulldata[term].id.name;
+	data.type  = fulldata[term].id.category;
     }
 
     ent.found = true;
@@ -2383,7 +3191,13 @@ function display_session() {
     for (var li in listItems[listId]) {
         if (listItems[listId].hasOwnProperty(li) && !li.startsWith("qtext_")) {
             numitems++;
-            listhtml += "<tr><td>"+li+".</td><td><a target='_new' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname + "?r="+listItems[listId][li]+"'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/> Remove </a></td></tr>";
+            listhtml += "<tr><td>"+li+".</td><td><a target='_blank' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname;
+	    if (listItems[listId][li].startsWith("source")) // hacky
+		listhtml += "?"+listItems[listId][li];
+	    else
+		listhtml += "?r="+listItems[listId][li];
+
+	    listhtml +="'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/>Remove</a></td></tr>";
         }
     }
     if (numitems > 0) {
@@ -2412,7 +3226,7 @@ function copyJSON(ele) {
 	range.moveToElementText(document.getElementById(containerid));
 	range.select().createTextRange();
 	document.execCommand("copy");
-	addCheckBox(ele);
+	addCheckBox(ele,true);
     }
     else if (window.getSelection) {
 	var range = document.createRange();
@@ -2420,7 +3234,7 @@ function copyJSON(ele) {
         window.getSelection().removeAllRanges();
 	window.getSelection().addRange(range);
 	document.execCommand("copy");
-	addCheckBox(ele);
+	addCheckBox(ele,true);
 	//alert("text copied")
     }
 }
@@ -2435,14 +3249,15 @@ function copyTSVToClipboard(ele,tsv) {
     document.execCommand("copy");
     document.body.removeChild(dummy);
 
-    addCheckBox(ele);
+    addCheckBox(ele,true);
 }
 
-function addCheckBox(ele) {
+function addCheckBox(ele,remove) {
     var check = document.createElement("span");
     check.className = 'explevel p9';
     check.innerHTML = '&check;';
     ele.parentNode.insertBefore(check, ele.nextSibling);
 
-    var timeout = setTimeout(function() { check.remove(); }, 1500 );
+    if (remove)
+	var timeout = setTimeout(function() { check.remove(); }, 1500 );
 }

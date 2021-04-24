@@ -27,6 +27,7 @@ from ARAX_messenger import ARAXMessenger
 from ARAX_ranker import ARAXRanker
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.response import Response
 from openapi_server.models.message import Message
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
@@ -42,13 +43,13 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
-from ParseQuestion import ParseQuestion
-from Q0Solution import Q0
-#import ReasoningUtilities
-from QueryGraphReasoner import QueryGraphReasoner
+#from ParseQuestion import ParseQuestion
+#from QueryGraphReasoner import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
+
+from ARAX_database_manager import ARAXDatabaseManager
 
 
 class ARAXQuery:
@@ -58,11 +59,17 @@ class ARAXQuery:
         self.response = None
         self.message = None
         self.rtxConfig = RTXConfiguration()
+        
+        self.DBManager = ARAXDatabaseManager(live = "Production")
+        if self.DBManager.check_versions():
+            self.response = ARAXResponse()
+            self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
+            self.response = self.DBManager.update_databases(True, response=self.response)
 
 
-    def query_return_stream(self,query):
+    def query_return_stream(self,query, mode='ARAX'):
 
-        main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,))
+        main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,mode,))
         main_query_thread.start()
 
         if self.response is None or "DONE" not in self.response.status:
@@ -98,14 +105,14 @@ class ARAXQuery:
         return { 'DONE': True }
 
 
-    def asynchronous_query(self,query):
+    def asynchronous_query(self,query, mode='ARAX'):
 
         #### Define a new response object if one does not yet exist
         if self.response is None:
             self.response = ARAXResponse()
 
         #### Execute the query
-        self.query(query)
+        self.query(query, mode=mode)
 
         #### Do we still need all this cruft?
         #result = self.query(query)
@@ -122,29 +129,35 @@ class ARAXQuery:
         return
 
 
-    def query_return_message(self,query):
+    def query_return_message(self,query, mode='ARAX'):
 
-        self.query(query)
+        self.query(query, mode=mode)
         response = self.response
         return response.envelope
 
 
-    def query(self,query):
+    def query(self,query, mode='ARAX'):
 
         #### Create the skeleton of the response
         response = ARAXResponse()
         self.response = response
+
+        #### Announce the launch of query()
+        #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
+        ARAXResponse.output = 'STDERR'
+        response.info(f"{mode} Query launching on incoming Query")
+
+        #### Create an empty envelope
         messenger = ARAXMessenger()
         messenger.create_envelope(response)
 
-        ARAXResponse.output = 'STDERR'
-        response.info(f"ARAXQuery launching on incoming Query")
-
         #### Determine a plan for what to do based on the input
-        result = self.examine_incoming_query(query)
+        #eprint(json.dumps(query, indent=2, sort_keys=True))
+        result = self.examine_incoming_query(query, mode=mode)
         if result.status != 'OK':
             return response
         query_attributes = result.data
+
 
         # #### If we have a query_graph in the input query
         if "have_query_graph" in query_attributes:
@@ -155,36 +168,53 @@ class ARAXQuery:
                 query['message'] = ARAXMessenger().from_dict(query['message'])
                 pass
             else:
-                response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
-                interpreter = ARAXQueryGraphInterpreter()
+                response.debug(f"Deserializing message")
                 query['message'] = ARAXMessenger().from_dict(query['message'])
-                print(response.__dict__)
+                #eprint(json.dumps(query['message'].__dict__, indent=2, sort_keys=True))
+                #print(response.__dict__)
+                response.debug(f"Storing deserializing message")
                 response.envelope.message.query_graph = query['message'].query_graph
-                interpreter.translate_to_araxi(response)
-                if response.status != 'OK':
-                    return response
-                query['operations'] = {}
-                query['operations']['actions'] = result.data['araxi_commands']
+                response.debug(f"Logging query_graph")
+                eprint(json.dumps(ast.literal_eval(repr(response.envelope.message.query_graph)), indent=2, sort_keys=True))
+
+                if mode == 'ARAX':
+                    response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                    interpreter = ARAXQueryGraphInterpreter()
+                    interpreter.translate_to_araxi(response)
+                    if response.status != 'OK':
+                        return response
+                    query['operations'] = {}
+                    query['operations']['actions'] = result.data['araxi_commands']
+                else:
+                    response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
+                    if len(response.envelope.message.query_graph.nodes) > 2:
+                        response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
+                        return response
+                    query['operations'] = {}
+                    query['operations']['actions'] = [ 'expand(kp=ARAX/KG2)', 'resultify()', 'return(store=false)' ]
+
                 query_attributes['have_operations'] = True
 
 
         #### If we have operations, handle that
         if "have_operations" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
-            result = self.executeProcessingPlan(query)
+            result = self.execute_processing_plan(query, mode=mode)
             return response
 
         #### Otherwise extract the id and the terms from the incoming parameters
         else:
             response.info(f"Found id and terms from canned query")
-            id = query["message"]["query_type_id"]
-            terms = query["message"]["terms"]
+            eprint(json.dumps(query,sort_keys=True,indent=2))
+            id = query["query_type_id"]
+            terms = query["terms"]
 
         #### Create an RTX Feedback management object
-        response.info(f"Try to find a cached message for this canned query")
+        #response.info(f"Try to find a cached message for this canned query")
         #rtxFeedback = RTXFeedback()
         #rtxFeedback.connect()
         #cachedMessage = rtxFeedback.getCachedMessage(query)
+        cachedMessage = None
 
         #### If we can find a cached message for this query and this version of RTX, then return the cached message
         if ( cachedMessage is not None ):
@@ -282,7 +312,7 @@ class ARAXQuery:
 
 
 
-    def examine_incoming_query(self,query):
+    def examine_incoming_query(self, query, mode='ARAX'):
 
         response = self.response
         response.info(f"Examine input query for needed information for dispatch")
@@ -330,6 +360,12 @@ class ARAXQuery:
         # #### FIXME Need to do more validation and tidying of the incoming message here or somewhere
 
 
+        # RTXKG2 does not support operations
+        if mode == 'RTXKG2' and "have_operations" in response.data:
+            response.error("RTXKG2 does not support operations in Query", error_code="OperationsNotSupported")
+            return response
+
+
         #### If we got this far, then everything seems to be good enough to proceed
         return response
 
@@ -371,17 +407,20 @@ class ARAXQuery:
 
     ############################################################################################
     #### Given an input query with a processing plan, execute that processing plan on the input
-    def executeProcessingPlan(self,input_operations_dict):
+    def execute_processing_plan(self,input_operations_dict, mode='ARAX'):
 
         response = self.response
-        response.debug(f"Entering executeProcessingPlan")
+        response.debug(f"Entering execute_processing_plan")
         messages = []
         message = None
 
         # If there is already a message (perhaps with a query_graph) already in the query, preserve it
         if 'message' in input_operations_dict and input_operations_dict['message'] is not None:
-            message = input_operations_dict['message']    # FIXME is a dict not an object??
-            messages = [ message ]
+            incoming_message = input_operations_dict['message']
+            if isinstance(incoming_message,dict):
+                incoming_message = Message.from_dict(incoming_message)
+            eprint(f"TESTING: incoming_test is a {type(incoming_message)}")
+            messages = [ incoming_message ]
 
         #### Pull out the main processing plan
         operations = Operations.from_dict(input_operations_dict["operations"])
@@ -400,19 +439,39 @@ class ARAXQuery:
                 response.debug(f"    messageURI={uri}")
                 matchResult = re.match( r'http[s]://arax.ncats.io/.*api/arax/.+/response/(\d+)',uri,re.M|re.I )
                 if matchResult:
-                    referenced_message_id = matchResult.group(1)
-                    response.debug(f"Found local RTX identifier corresponding to respond_id {referenced_message_id}")
-                    response.debug(f"Loading message_id {referenced_message_id}")
-                    referenced_message = rtxFeedback.getMessage(referenced_message_id)
-                    #eprint(type(message))
-                    if not isinstance(referenced_message,tuple):
-                        referenced_message = ARAXMessenger().from_dict(referenced_message)
-                        response.debug(f"Original question was: {referenced_message.original_question}")
-                        messages.append(referenced_message)
-                        message_id = referenced_message_id
-                        query = { "query_type_id": referenced_message.query_type_id, "restated_question": referenced_message.restated_question, "terms": referenced_message.terms }
+                    referenced_response_id = matchResult.group(1)
+                    response.debug(f"Found local ARAX identifier corresponding to response_id {referenced_response_id}")
+                    response.debug(f"Loading response_id {referenced_response_id}")
+                    referenced_envelope = response_cache.get_response(referenced_response_id)
+
+                    if False:
+                        #### Hack to get it to work
+                        for node_key,node in referenced_envelope["message"]["knowledge_graph"]["nodes"].items():
+                            if 'attributes' in node and node['attributes'] is not None:
+                                new_attrs = []
+                                for attr in node['attributes']:
+                                    if attr['type'] is not None:
+                                        new_attrs.append(attr)
+                                if len(new_attrs) < len(node['attributes']):
+                                    node['attributes'] = new_attrs
+
+                        #### Hack to get it to work
+                        for node_key,node in referenced_envelope["message"]["knowledge_graph"]["edges"].items():
+                            if 'attributes' in node and node['attributes'] is not None:
+                                new_attrs = []
+                                for attr in node['attributes']:
+                                    if attr['type'] is not None:
+                                        new_attrs.append(attr)
+                                if len(new_attrs) < len(node['attributes']):
+                                    node['attributes'] = new_attrs
+
+                    if isinstance(referenced_envelope,dict):
+                        referenced_envelope = Response().from_dict(referenced_envelope)
+                        #messages.append(referenced_message)
+                        messages = [ referenced_envelope.message ]
+                        #eprint(json.dumps(referenced_envelope.message.results,indent=2))
                     else:
-                        response.error(f"Unable to load message_id {referenced_message_id}", error_code="CannotLoadMessageById")
+                        response.error(f"Unable to load response_id {referenced_response_id}", error_code="CannotLoadPreviousResponseById")
                         return response
 
         #### If there are one or more messages embedded in the POST, process them
@@ -458,6 +517,7 @@ class ARAXQuery:
         elif n_messages == 1:
             response.debug(f"A single Message is ready and in hand")
             message = messages[0]
+            response.envelope.message = message
 
         #### Multiple messages unsupported
         else:
@@ -529,7 +589,7 @@ class ARAXQuery:
                         messenger.add_qedge(response,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        expander.apply(response,action['parameters'])
+                        expander.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'filter':
                         filter.apply(response,action['parameters'])
@@ -543,7 +603,8 @@ class ARAXQuery:
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         filter_kg.apply(response, action['parameters'])
 
-                    elif action['command'] == 'filter_results':  # recognize the filter_kg command
+                    elif action['command'] == 'filter_results':  # recognize the filter_results command
+                        response.debug(f"Before filtering, there are {len(response.envelope.message.results)} results")
                         filter_results.apply(response, action['parameters'])
 
                     elif action['command'] == 'query_graph_reasoner':
@@ -606,6 +667,10 @@ class ARAXQuery:
                     return_action['parameters']['response'] = 'false'
 
             #print(json.dumps(ast.literal_eval(repr(response.__dict__)), sort_keys=True, indent=2))
+            #for node_key, node in response.envelope.message.knowledge_graph.nodes.items():
+            #    if node.attributes is not None:
+            #        for attr in node.attributes:
+            #            eprint(f"  - {node_key}.{attr.name} is {type(attr.value)}")
 
             # Fill out the message with data
             response.envelope.status = response.error_code
@@ -632,10 +697,12 @@ class ARAXQuery:
 
             #### Else just the id is returned
             else:
+                n_results = len(message.results)
+                response.info(f"Processing is complete and resulted in {n_results} results.")
                 if response_id is None:
                     response_id = 0
-                n_results = len(message.results)
-                response.info(f"Processing is complete. Resulting Message id is {response_id} and is available to fetch via /response endpoint.")
+                else:
+                    response.info(f"Resulting Message id is {response_id} and is available to fetch via /response endpoint.")
 
                 servername = 'localhost'
                 if self.rtxConfig.is_production_server:

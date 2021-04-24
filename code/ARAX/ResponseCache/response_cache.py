@@ -14,6 +14,8 @@ import hashlib
 import collections
 import requests
 import json
+import requests
+import requests_cache
 from flask import Flask,redirect
 
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
@@ -24,11 +26,13 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 from sqlalchemy import inspect
 
+from reasoner_validator import validate_Response, ValidationError
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.response import Response
+from openapi_server.models.response import Response as Envelope
 
 
 
@@ -206,21 +210,120 @@ class ResponseCache:
         if response_id is None:
             return( { "status": 400, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 400)
 
-        #### Find the response
-        stored_response = session.query(Response).filter(Response.response_id==int(response_id)).first()
-        if stored_response is not None:
-            response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
-            response_filename = f"{stored_response.response_id}.json"
-            response_path = f"{response_dir}/{response_filename}"
+        response_id = str(response_id)
+
+        #### Check to see if this is an integer. If so, it is a local response id
+        match = re.match(r'\d+\s*$',response_id)
+        if match:
+            #### Find the response
+            stored_response = session.query(Response).filter(Response.response_id==int(response_id)).first()
+            if stored_response is not None:
+                response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
+                response_filename = f"{stored_response.response_id}.json"
+                response_path = f"{response_dir}/{response_filename}"
+                try:
+                    with open(response_path) as infile:
+                        return json.load(infile)
+                except:
+                    eprint(f"ERROR: Unable to read response from file '{response_path}'")
+                    return
+
+            else:
+                return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+        #### Otherwise, see if it is an ARS style response_id
+        if len(response_id) > 30:
+            with requests_cache.disabled():
+                response_content = requests.get('https://ars.transltr.io/ars/api/messages/'+response_id, headers={'accept': 'application/json'})
+            status_code = response_content.status_code
+
+            if status_code != 200:
+                return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+            #### Unpack the response content into a dict
             try:
-                with open(response_path) as infile:
-                    return json.load(infile)
+                response_dict = response_content.json()
             except:
-                eprint(f"ERROR: Unable to read response from file '{response_path}'")
+                return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
-        else:
-            return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+            if 'fields' in response_dict and 'actor' in response_dict['fields'] and str(response_dict['fields']['actor']) == '9':
+                response_content = requests.get('https://ars.transltr.io/ars/api/messages/' + response_id + '?trace=y', headers={'accept': 'application/json'})
+                status_code = response_content.status_code
 
+                if status_code != 200:
+                    return( { "status": 404, "title": "Response not found", "detail": "Failed attempting to fetch trace=y from ARS with response_id="+str(response_id), "type": "about:blank" }, 404)
+
+                #### Unpack the response content into a dict and dump
+                try:
+                    response_dict = response_content.json()
+                except:
+                    return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
+
+                return response_dict
+
+            if 'fields' in response_dict and 'data' in response_dict['fields']:
+                envelope = response_dict['fields']['data']
+                if envelope is None:
+                    envelope = {}
+                    return envelope
+
+                #### Actor lookup
+                actor_lookup = { 
+                    '1': 'Aragorn',
+                    '2': 'ARAX',
+                    '3': 'BTE',
+                    '4': 'NCATS',
+                    '5': 'Robokop',
+                    '6': 'Unsecret',
+                    '7': 'Genetics',
+                    '8': 'MolePro',
+                    '10': 'Explanatory',
+                    '11': 'ImProving',
+                    '12': 'Cam',
+                    '13': 'TextMining'
+                }
+
+                #Remove warning code hack
+                #if 'logs' in envelope and envelope['logs'] is not None:
+                #    for log in envelope['logs']:
+                #        if isinstance(log,dict):
+                #            if 'code' in log and log['code'] is None:
+                #                log['code'] = '-'
+
+
+                #### Perform a validation on it
+                try:
+                    validate_Response(envelope)
+                    if 'description' not in envelope or envelope['description'] is None:
+                        envelope['description'] = 'reasoner-validator: PASS'
+
+                except ValidationError as error:
+                    timestamp = str(datetime.now().isoformat())
+                    if 'logs' not in envelope or envelope['logs'] is None:
+                        envelope['logs'] = []
+                    envelope['logs'].append( { "code": 'InvalidTRAPI', "level": "ERROR", "message": "TRAPI validator reported an error: " + str(error),
+                        "timestamp": timestamp } )
+                    if 'description' not in envelope or envelope['description'] is None:
+                        envelope['description'] = ''
+                    envelope['description'] = 'ERROR: TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description']
+
+                #### Try to add the reasoner_id
+                if 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
+                    actor = str(response_dict['fields']['actor'])
+                    if actor in actor_lookup:
+                        if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:
+                            for result in envelope['message']['results']:
+                                if 'reasoner_id' in result and result['reasoner_id'] is not None:
+                                    pass
+                                else:
+                                    result['reasoner_id'] = actor_lookup[actor]
+
+
+                return envelope
+            return( { "status": 404, "title": "Cannot find Response (in 'fields' and 'data') in ARS response packet", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
+
+
+        return( { "status": 404, "title": "UnrecognizedResponse_idFormat", "detail": "Unrecognized response_id format", "type": "about:blank" }, 404)
 
 
 ############################################ Main ############################################################
@@ -232,7 +335,7 @@ def main():
     import argparse
     argparser = argparse.ArgumentParser(description='CLI testing of the ResponseCache class')
     argparser.add_argument('--verbose', action='count', help='If set, print more information about ongoing processing' )
-    argparser.add_argument('response_id', type=int, nargs='*', help='Integer number of a response to read and display')
+    argparser.add_argument('response_id', type=str, nargs='*', help='Integer number of a response to read and display')
     params = argparser.parse_args()
 
     #### Create a new ResponseStore object
@@ -250,7 +353,56 @@ def main():
     else:
         print(f"Content of response_id {params.response_id[0]}:")
         envelope = response_cache.get_response(params.response_id[0])
-        print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+
+        #print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+        print(json.dumps(envelope, sort_keys=True, indent=2))
+        return
+        #print(json.dumps(envelope['logs'], sort_keys=True, indent=2))
+
+    try:
+        validate_Message(envelope['message'])
+        print('- Message is valid')
+    except ValidationError as error:
+        print(f"- Message INVALID: {error}")
+
+    return
+
+    for component in [ 'query_graph', 'knowledge_graph', 'results' ]:
+        if component in envelope['message']:
+            try:
+                validate_Message(envelope['message'][component])
+                print(f"  - {component} is valid")
+            except ValidationError:
+                print(f"  - {component} INVALID")
+        else:
+            print(f"  - {component} is not present")
+
+    for result in envelope['message']['results']:
+        try:
+            validate_Result(result)
+            print(f"    - result is valid")
+        except ValidationError:
+            print(f"    - result INVALID")
+
+        for key,node_binding_list in result['node_bindings'].items():
+            for node_binding in node_binding_list:
+                try:
+                    validate_NodeBinding(node_binding)
+                    print(f"      - node_binding {key} is valid")
+                except ValidationError:
+                    print(f"      - node_binding {key} INVALID")
+
+        for key,edge_binding_list in result['edge_bindings'].items():
+            for edge_binding in edge_binding_list:
+                print(json.dumps(edge_binding, sort_keys=True, indent=2))
+                try:
+                    validate_EdgeBinding(edge_binding)
+                    print(f"      - edge_binding {key} is valid")
+                except ValidationError:
+                    print(f"      - edge_binding {key} INVALID")
+
+
+
 
 
 if __name__ == "__main__": main()

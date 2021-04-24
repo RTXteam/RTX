@@ -27,42 +27,43 @@ class NGDQuerier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
-        self.ngd_edge_type = "has_normalized_google_distance_with"
+        self.ngd_edge_predicate = "biolink:has_normalized_google_distance_with"
+        self.accepted_qedge_predicates = {"biolink:has_normalized_google_distance_with", "biolink:related_to"}
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
         self.ngd_edge_attribute_url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
 
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> Tuple[QGOrganizedKnowledgeGraph, Dict[str, Dict[str, str]]]:
+    def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a one-hop (single-edge) query using NGD (with the assistance of KG2).
-        :param query_graph: A Reasoner API standard query graph.
-        :return: A tuple containing:
-            1. an (almost) Reasoner API standard knowledge graph containing all of the nodes and edges returned as
-           results for the query. (Dictionary version, organized by QG IDs.)
-            2. a map of which nodes fulfilled which qnode_keys for each edge. Example:
-              {'KG1:111221': {'n00': 'DOID:111', 'n01': 'HP:124'}, 'KG1:111223': {'n00': 'DOID:111', 'n01': 'HP:126'}}
+        :param query_graph: A TRAPI query graph.
+        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
+                results for the query. (Organized by QG IDs.)
         """
         log = self.response
         final_kg = QGOrganizedKnowledgeGraph()
-        edge_to_nodes_map = dict()
 
         # Verify this is a valid one-hop query graph
         self._verify_one_hop_query_graph_is_valid(query_graph, log)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+            return final_kg
+        qedge_key = next(qedge_key for qedge_key in query_graph.edges)
+        qedge = query_graph.edges[qedge_key]
+        if qedge.predicate and not set(eu.convert_to_list(qedge.predicate)).intersection(self.accepted_qedge_predicates):
+            log.error(f"NGD can only expand qedges with these predicates: {self.accepted_qedge_predicates}. QEdge"
+                      f" {qedge_key}'s predicate is: {qedge.predicate}", error_code="UnsupportedQG")
+            return final_kg
 
         # Find potential answers using KG2
         log.debug(f"Finding potential answers using KG2")
-        qedge_key = next(qedge_key for qedge_key in query_graph.edges)
-        qedge = query_graph.edges[qedge_key]
+
         source_qnode_key = qedge.subject
         target_qnode_key = qedge.object
         source_qnode = query_graph.nodes[source_qnode_key]
         target_qnode = query_graph.nodes[target_qnode_key]
         qedge_params_str = ", ".join(list(filter(None, [f"key={qedge_key}",
                                                         f"subject={source_qnode_key}",
-                                                        f"object={target_qnode_key}",
-                                                        self._get_dsl_qedge_type_str(qedge)])))
+                                                        f"object={target_qnode_key}"])))
         source_params_str = ", ".join(list(filter(None, [f"key={source_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(source_qnode),
                                                          self._get_dsl_qnode_category_str(source_qnode)])))
@@ -78,7 +79,7 @@ class NGDQuerier:
         ]
         kg2_response, kg2_message = self._run_arax_query(actions_list, log)
         if log.status != 'OK':
-            return final_kg, edge_to_nodes_map
+            return final_kg
 
         # Go through those answers from KG2 and calculate ngd for each edge
         log.debug(f"Calculating NGD between each potential node pair")
@@ -98,8 +99,8 @@ class NGDQuerier:
             else:
                 ngd_subject = kg2_node_2_key
                 ngd_object = kg2_node_1_key
-            ngd_value = cngd.calculate_ngd_fast(ngd_subject, ngd_object)
-            kg2_edge_ngd_map[kg2_edge_key] = {"ngd_value": ngd_value, "subject": ngd_subject, "object": ngd_object}
+            ngd_value, pmid_set = cngd.calculate_ngd_fast(ngd_subject, ngd_object)
+            kg2_edge_ngd_map[kg2_edge_key] = {"ngd_value": ngd_value, "subject": ngd_subject, "object": ngd_object, "pmids": [f"PMID:{pmid}" for pmid in pmid_set]}
 
         # Create edges for those from KG2 found to have a low enough ngd value
         threshold = 0.5
@@ -109,20 +110,19 @@ class NGDQuerier:
             if ngd_value is not None and ngd_value < threshold:  # TODO: Make determination of the threshold much more sophisticated
                 subject = ngd_info_dict["subject"]
                 object = ngd_info_dict["object"]
-                ngd_edge_key, ngd_edge = self._create_ngd_edge(ngd_value, subject, object)
+                pmid_list = ngd_info_dict["pmids"]
+                ngd_edge_key, ngd_edge = self._create_ngd_edge(ngd_value, subject, object, pmid_list)
                 ngd_source_node_key, ngd_source_node = self._create_ngd_node(ngd_edge.subject, kg2_answer_kg.nodes.get(ngd_edge.subject))
                 ngd_target_node_key, ngd_target_node = self._create_ngd_node(ngd_edge.object, kg2_answer_kg.nodes.get(ngd_edge.object))
                 final_kg.add_edge(ngd_edge_key, ngd_edge, qedge_key)
                 final_kg.add_node(ngd_source_node_key, ngd_source_node, source_qnode_key)
                 final_kg.add_node(ngd_target_node_key, ngd_target_node, target_qnode_key)
-                edge_to_nodes_map[ngd_edge_key] = {source_qnode_key: ngd_source_node_key,
-                                                   target_qnode_key: ngd_target_node_key}
 
-        return final_kg, edge_to_nodes_map
+        return final_kg
 
-    def _create_ngd_edge(self, ngd_value: float, subject: str, object: str) -> Tuple[str, Edge]:
+    def _create_ngd_edge(self, ngd_value: float, subject: str, object: str, pmid_list: list) -> Tuple[str, Edge]:
         ngd_edge = Edge()
-        ngd_edge.predicate = self.ngd_edge_type
+        ngd_edge.predicate = self.ngd_edge_predicate
         ngd_edge.subject = subject
         ngd_edge.object = object
         ngd_edge_key = f"NGD:{subject}--{ngd_edge.predicate}--{object}"
@@ -130,8 +130,9 @@ class NGDQuerier:
                                          type=self.ngd_edge_attribute_type,
                                          value=ngd_value,
                                          url=self.ngd_edge_attribute_url)]
-        ngd_edge.attributes += [Attribute(name="provided_by", value="ARAX"),
-                                Attribute(name="is_defined_by", value="ARAX")]
+        ngd_edge.attributes += [Attribute(name="provided_by", value="ARAX", type=eu.get_attribute_type("provided_by")),
+                                Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by")),
+                                Attribute(name="publications", value=pmid_list, type=eu.get_attribute_type("publications"))]
         return ngd_edge_key, ngd_edge
 
     @staticmethod
@@ -140,6 +141,7 @@ class NGDQuerier:
         ngd_node_key = kg2_node_key
         ngd_node.name = kg2_node.name
         ngd_node.category = kg2_node.category
+        ngd_node.attributes = [attribute for attribute in kg2_node.attributes if attribute.name in {"iri", "description"}]
         return ngd_node_key, ngd_node
 
     @staticmethod
@@ -157,13 +159,12 @@ class NGDQuerier:
 
     @staticmethod
     def _get_dsl_qnode_category_str(qnode: QNode) -> str:
-        # Use only the first type if there are multiple (which ARAXExpander adds for cases like "gene"/"protein")
-        type_str = qnode.category[0] if isinstance(qnode.category, list) else qnode.category
-        return f"category={type_str}" if qnode.category else ""
-
-    @staticmethod
-    def _get_dsl_qedge_type_str(qedge: QEdge) -> str:
-        return f"predicate={qedge.predicate}" if qedge.predicate else ""
+        if len(qnode.category) == 0:
+            return ""
+        elif len(qnode.category) == 1:
+            return f"category={qnode.category[0]}"
+        else:
+            return f"category=[{', '.join(qnode.category)}]"
 
     @staticmethod
     def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):

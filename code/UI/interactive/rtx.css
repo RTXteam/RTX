@@ -336,6 +336,28 @@ hr {
     background-color: #b00;
 }
 
+.loading_cell {
+    display: inline-block;
+    overflow: hidden;
+    padding: 0;
+    height: 16px;
+    margin: 0;
+    width: 100%;
+    border: 1px solid #000;
+    background-color: #ccd8e2;
+}
+.loading_bar {
+    display: inline-block;
+    background-color: #5596d0;
+    border: 1px solid #3d6d98;
+    width: 50%;
+    height: 100%;
+    animation: 1s left-right linear infinite;
+}
+@keyframes left-right {
+    0%   { transform:translateX(-100%); }
+    100% { transform:translateX(300%); }
+}
 
 .p9, .msgINFO    { background-color: #291; }
 .p7              { background-color: #7b4; }

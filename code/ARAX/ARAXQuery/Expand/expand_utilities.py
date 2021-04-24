@@ -77,6 +77,11 @@ def copy_qnode(old_qnode: QNode) -> QNode:
     return new_qnode
 
 
+def copy_qg(qg: QueryGraph) -> QueryGraph:
+    return QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
+                      edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+
+
 def convert_string_to_pascal_case(input_string: str) -> str:
     # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
     if not input_string:
@@ -103,7 +108,7 @@ def convert_string_to_snake_case(input_string: str) -> str:
         return input_string.lower()
 
 
-def convert_string_or_list_to_list(string_or_list: Union[str, List[str]]) -> List[str]:
+def convert_to_list(string_or_list: Union[str, List[str], None]) -> List[str]:
     if isinstance(string_or_list, str):
         return [string_or_list]
     elif isinstance(string_or_list, list):
@@ -128,7 +133,7 @@ def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
 def get_printable_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> str:
     counts_by_qg_id = get_counts_by_qg_id(dict_kg)
     counts_string = ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
-    return counts_string if counts_string else "none found"
+    return counts_string if counts_string else "no answers"
 
 
 def get_qg_without_kryptonite_portion(qg: QueryGraph) -> QueryGraph:
@@ -151,6 +156,16 @@ def get_required_portion_of_qg(query_graph: QueryGraph) -> QueryGraph:
 
 def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -> Union[QEdge, Edge]:
     return {edge_a.subject, edge_a.object} == {edge_b.subject, edge_b.object}
+
+
+def merge_two_kgs(kg_a: QGOrganizedKnowledgeGraph, kg_b: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
+    for qnode_key, nodes in kg_a.nodes_by_qg_id.items():
+        for node_key, node in nodes.items():
+            kg_b.add_node(node_key, node, qnode_key)
+    for qedge_key, edges in kg_a.edges_by_qg_id.items():
+        for edge_key, edge in edges.items():
+            kg_b.add_edge(edge_key, edge, qedge_key)
+    return kg_b
 
 
 def convert_standard_kg_to_qg_organized_kg(standard_kg: KnowledgeGraph) -> QGOrganizedKnowledgeGraph:
@@ -189,32 +204,79 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
     return standard_kg
 
 
-def convert_curie_to_arax_format(curie: str) -> str:
-    prefix = get_curie_prefix(curie)
-    local_id = get_curie_local_id(curie)
-    if prefix == "Reactome":
-        prefix = "REACT"
-    elif prefix == "UNIPROTKB":
-        prefix = "UniProtKB"
-    return prefix + ':' + local_id
+def get_node_category_overrides_for_kp(kp_name: str) -> Union[Dict[str, str], None]:
+    overrides = {"MolePro": {"biolink:Protein": "biolink:Gene"},
+                 "GeneticsKP": {"biolink:Protein": "biolink:Gene"}}
+    return overrides.get(kp_name)
 
 
-def convert_curie_to_bte_format(curie: str) -> str:
-    prefix = get_curie_prefix(curie)
-    local_id = get_curie_local_id(curie)
-    if prefix == "REACT":
-        prefix = "Reactome"
-    elif prefix == "UniProtKB":
-        prefix = prefix.upper()
-    return prefix + ':' + local_id
+def get_kp_preferred_prefixes(kp_name: str) -> Union[Dict[str, str], None]:
+    # TODO: Dynamically determine these down the road once meta_knowledge_map endpoint is added to TRAPI
+    preferred_prefixes = {"MolePro": {"biolink:ChemicalSubstance": "CHEMBL.COMPOUND",
+                                      "biolink:Gene": "HGNC",
+                                      "biolink:Disease": "MONDO"},
+                          "GeneticsKP": {"biolink:Gene": "NCBIGene",
+                                         "biolink:Pathway": "GO",
+                                         "biolink:PhenotypicFeature": "EFO",
+                                         "biolink:Disease": "EFO"}}
+    return preferred_prefixes.get(kp_name)
+
+
+def kp_supports_category_lists(kp_name: str) -> bool:
+    # TRAPI 1.0 specifies qnode.category can be a list, but not all KPs support that
+    list_support = {"ARAX/KG2": True,
+                    "MolePro": False,
+                    "GeneticsKP": False,
+                    "BTE": False}
+    return list_support.get(kp_name, True)
+
+
+def kp_supports_predicate_lists(kp_name: str) -> bool:
+    # TRAPI 1.0 specifies qedge.predicate can be a list, but not all KPs support that
+    list_support = {"ARAX/KG2": True,
+                    "MolePro": False,
+                    "GeneticsKP": False,
+                    "BTE": False}
+    return list_support.get(kp_name, True)
+
+
+def kp_supports_none_for_predicate(kp_name: str) -> bool:
+    # This information isn't captured in TRAPI anywhere currently, so hardcoding it
+    none_predicates = {"ARAX/KG2": True,
+                       "MolePro": True,
+                       "GeneticsKP": False,
+                       "BTE": True,
+                       "DTD": False,
+                       "CHP": False,
+                       "COHD": False,
+                       "NGD": False}
+    return none_predicates.get(kp_name, True)
+
+
+def kp_supports_none_for_category(kp_name: str) -> bool:
+    # This information isn't captured in TRAPI anywhere currently, so hardcoding it
+    none_categories = {"ARAX/KG2": True,
+                       "MolePro": False,
+                       "GeneticsKP": False,
+                       "BTE": False,
+                       "DTD": False,
+                       "CHP": False,
+                       "COHD": False,
+                       "NGD": True}
+    return none_categories.get(kp_name, True)
+
+
+def get_kps_that_support_curie_lists() -> Set[str]:
+    # This isn't really a standard in TRAPI yet, but some KPs can do it
+    return {"ARAX/KG2", "NGD"}
 
 
 def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
-    curies = convert_string_or_list_to_list(curie)
+    curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
-        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies, kg_name="KG2")
+        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
         log.debug(f"Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
@@ -236,7 +298,7 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[
 
 
 def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, Dict[str, str]]:
-    curies = convert_string_or_list_to_list(curie)
+    curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
@@ -259,7 +321,7 @@ def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -
 
 
 def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
-    curies = convert_string_or_list_to_list(curie)
+    curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
@@ -277,6 +339,10 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
             if unrecognized_curies:
                 log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
             canonical_curies = {canonical_curies_dict[recognized_curie].get('preferred_curie') for recognized_curie in recognized_input_curies}
+            # Include any original curies we weren't able to find a canonical version for
+            canonical_curies.update(unrecognized_curies)
+            if not canonical_curies:
+                log.error(f"Final list of canonical curies is empty. This shouldn't happen!", error_code="CanonicalCurieIssue")
             return list(canonical_curies)
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
@@ -325,20 +391,68 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
     return "", set()
 
 
-def switch_kg_to_arax_curie_format(dict_kg: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
-    converted_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in dict_kg.nodes_by_qg_id},
-                                             edges={qedge_key: dict() for qedge_key in dict_kg.edges_by_qg_id})
-    for qnode_key, nodes in dict_kg.nodes_by_qg_id.items():
-        for node_key, node in nodes.items():
-            node_key = convert_curie_to_arax_format(node_key)
-            converted_kg.add_node(node_key, node, qnode_key)
-    for qedge_key, edges in dict_kg.edges_by_qg_id.items():
-        for edge_key, edge in edges.items():
-            edge.subject = convert_curie_to_arax_format(edge.subject)
-            edge.object = convert_curie_to_arax_format(edge.object)
-            converted_kg.add_edge(edge_key, edge, qedge_key)
-    return converted_kg
-
-
 def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
+
+
+def get_attribute_type(attribute_name: str) -> str:
+    # These are placeholder types for attributes (plan is to discuss such types in API working group #1192)
+    attribute_type_map = {
+        "all_names": "biolink:synonym",
+        "deprecated": "biolink:Unknown",
+        "equivalent_curies": "biolink:synonym",
+        "full_name": "biolink:full_name",
+        "is_defined_by": "biolink:Unknown",
+        "negated": "biolink:negated",
+        "probability": "biolink:p_value",
+        "provided_by": "biolink:provided_by",
+        "publications": "biolink:publications",
+        "relation": "biolink:relation",
+        "symbol": "biolink:symbol",
+        "synonym": "biolink:synonym",
+        "update_date": "metatype:Datetime",
+        "uri": "metatype:Uri",
+        "iri": "biolink:IriType"
+    }
+    return attribute_type_map.get(attribute_name, "biolink:Unknown")
+
+
+def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
+    endpoint_map = {
+        "BTE": "https://api.bte.ncats.io/v1",
+        "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.0",
+        "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
+        "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.0"
+    }
+    return endpoint_map.get(kp_name)
+
+
+def switch_back_to_str_or_list_types(qg: QueryGraph) -> QueryGraph:
+    # Switches QG back to old style where qnode.category and qedge.predicate can be strings OR lists (vs. always lists)
+    for qnode in qg.nodes.values():
+        if not qnode.category:
+            qnode.category = None
+        elif len(qnode.category) == 1:
+            qnode.category = qnode.category[0]
+    for qedge in qg.edges.values():
+        if not qedge.predicate:
+            qedge.predicate = None
+        elif len(qedge.predicate) == 1:
+            qedge.predicate = qedge.predicate[0]
+    return qg
+
+
+def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
+    # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
+    qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
+                         edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+    for qnode in qg_copy.nodes.values():
+        if qnode.category:
+            categories = convert_to_list(qnode.category)
+            prefixless_categories = [category.split(":")[-1] for category in categories]
+            qnode.category = [convert_string_to_snake_case(category) for category in prefixless_categories]
+    for qedge in qg_copy.edges.values():
+        if qedge.predicate:
+            predicates = convert_to_list(qedge.predicate)
+            qedge.predicate = [predicate.split(":")[-1] for predicate in predicates]
+    return qg_copy

@@ -374,6 +374,61 @@ def QGI_test2():
     print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
     #sys.exit(1)
 
+##########################################################################################
+
+def QGI_test3():
+
+    input_query_graph = { "message": { "query_graph": 
+        {
+        "nodes": {
+            "n00": {
+            "id": "MONDO:0002715"
+            },
+            "n01": {
+            "category": "biolink:ChemicalSubstance"
+            },
+            "n02": {
+            "category": "biolink:Gene"
+            }
+        },
+        "edges": {
+            "e00": {
+            "predicate": "biolink:correlated_with",
+            "subject": "n00",
+            "object": "n01"
+            },
+            "e01": {
+            "predicate": "biolink:related_to",
+            "subject": "n01",
+            "object": "n02"
+            }
+        }
+        }
+    } }
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    print('-------------------------')
+    print(response.show(level=ARAXResponse.DEBUG))
+    print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+    #sys.exit(1)
+
 
 
 
@@ -389,6 +444,8 @@ def main():
     #print(params.test_number)
     if params.test_number[0] == '2':
         QGI_test2()
+    if params.test_number[0] == '3':
+        QGI_test3()
     else:
         QGI_test1()
 

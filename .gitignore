@@ -16,3 +16,6 @@
 
 # config.json
 **/config.json
+
+# Expand's KP meta map
+meta_map.json

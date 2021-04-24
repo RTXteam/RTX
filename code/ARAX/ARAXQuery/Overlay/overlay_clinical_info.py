@@ -16,8 +16,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-f
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
-from QueryCOHD import QueryCOHD as COHD
 # FIXME:^ this should be pulled from a YAML file pointing to the parser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../KnowledgeSources/COHD_local/scripts/")
 from COHDIndex import COHDIndex
@@ -34,7 +32,8 @@ class OverlayClinicalInfo:
         self.response = response
         self.message = message
         self.parameters = params
-        self.who_knows_about_what = {'COHD': ['chemical_substance', 'phenotypic_feature', 'disease']}  # FIXME: replace this with information about the KP's, KS's, and their API's
+        self.who_knows_about_what = {'COHD': ['chemical_substance', 'phenotypic_feature', 'disease', 'drug',
+                                                'biolink:ChemicalSubstance', 'biolink:PhenotypicFeature', 'biolink:Disease', 'biolink:Drug']}  # FIXME: replace this with information about the KP's, KS's, and their API's
         self.node_curie_to_type = dict()
         self.global_iter = 0
         try:
@@ -285,7 +284,7 @@ class OverlayClinicalInfo:
 
                 # edge properties
                 now = datetime.now()
-                edge_type = f"has_{name}_with"
+                edge_type = f"biolink:has_{name}_with"
                 qedge_keys = [parameters['virtual_relation_label']]
                 relation = parameters['virtual_relation_label']
                 is_defined_by = "ARAX"
@@ -305,11 +304,11 @@ class OverlayClinicalInfo:
                 self.global_iter += 1
                 edge_attribute_list = [
                     edge_attribute,
-                    EdgeAttribute(name="is_defined_by", value=is_defined_by),
-                    EdgeAttribute(name="defined_datetime", value=defined_datetime),
-                    EdgeAttribute(name="provided_by", value=provided_by),
-                    EdgeAttribute(name="confidence", value=confidence),
-                    EdgeAttribute(name="weight", value=weight),
+                    EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
+                    EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
+                    #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
+                    #EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
                     #EdgeAttribute(name="qedge_ids", value=qedge_ids)
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key,
@@ -324,7 +323,7 @@ class OverlayClinicalInfo:
 
         # Now add a q_edge the query_graph since I've added an extra edge to the KG
         if added_flag:
-            edge_type = f"has_{name}_with"
+            edge_type = f"biolink:has_{name}_with"
             relation = parameters['virtual_relation_label']
             qedge_keys = [parameters['virtual_relation_label']]
             subject_qnode_key = parameters['subject_qnode_key']

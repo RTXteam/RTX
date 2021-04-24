@@ -19,17 +19,16 @@ from ARAX_response import ARAXResponse
 
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
-from swagger_server.models.edge import Edge
-from swagger_server.models.node import Node
-from swagger_server.models.q_edge import QEdge
-from swagger_server.models.q_node import QNode
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.knowledge_graph import KnowledgeGraph
-from swagger_server.models.node_binding import NodeBinding
-from swagger_server.models.edge_binding import EdgeBinding
-from swagger_server.models.biolink_entity import BiolinkEntity
-from swagger_server.models.result import Result
-from swagger_server.models.message import Message
+from openapi_server.models.edge import Edge
+from openapi_server.models.node import Node
+from openapi_server.models.q_edge import QEdge
+from openapi_server.models.q_node import QNode
+from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.node_binding import NodeBinding
+from openapi_server.models.edge_binding import EdgeBinding
+from openapi_server.models.result import Result
+from openapi_server.models.message import Message
 
 
 def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
@@ -69,7 +68,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     """
     Tests overlay functions that add virtual edges
     message: returned from _do_arax_query
-    edge_predicate: the name of the virtual edge (eg. has_jaccard_index_with)
+    edge_predicate: the name of the virtual edge (eg. biolink:has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
     attribute_type: the attribute type (eg. 'EDAM:data_1234')
@@ -96,10 +95,10 @@ def test_jaccard():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:14717, key=n00)",
-        "add_qnode(category=protein, is_set=true, key=n01)",
-        "add_qnode(category=chemical_substance, key=n02)",
+        "add_qnode(category=biolink:biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicate=physically_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "resultify(ignore_edge_direction=true, debug=true)",
@@ -109,7 +108,7 @@ def test_jaccard():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_jaccard_index_with' in edge_predicates_in_kg
+    assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
     jaccard_edges = [x for x in message.knowledge_graph.edges.values() if x.relation == "J1"]
     for edge in jaccard_edges:
         assert hasattr(edge, 'attributes')
@@ -122,7 +121,7 @@ def test_add_node_pmids():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:384, key=n00)",
-        "add_qnode(category=chemical_substance, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
         "overlay(action=add_node_pmids, max_num=15)",
@@ -154,7 +153,7 @@ def test_compute_ngd_virtual():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:384, key=n00)",
-        "add_qnode(category=chemical_substance, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
         "overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)",
@@ -165,12 +164,15 @@ def test_compute_ngd_virtual():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_normalized_google_distance_with' in edge_predicates_in_kg
+    assert 'biolink:has_normalized_google_distance_with' in edge_predicates_in_kg
     ngd_edges = [x for x in message.knowledge_graph.edges.values() if x.relation == "N1"]
     assert len(ngd_edges) > 0
     for edge in ngd_edges:
         assert hasattr(edge, 'attributes')
         assert edge.attributes
+        attribute_names = {attribute.name: attribute.value for attribute in edge.attributes}
+        assert "publications" in attribute_names
+        assert len(attribute_names["publications"]) <= 30
         assert edge.attributes[0].name == 'normalized_google_distance'
         assert float(edge.attributes[0].value) >= 0
 
@@ -179,7 +181,7 @@ def test_compute_ngd_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:384, key=n00)",
-        "add_qnode(category=chemical_substance, is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=ARAX/KG1)",
         "overlay(action=compute_ngd)",
@@ -198,6 +200,10 @@ def test_compute_ngd_attribute():
                     assert float(attr.value) >= 0
                     assert attr.type == 'EDAM:data_2526'
     assert len(ngd_edges) > 0
+    for edge in ngd_edges:
+        attribute_names = {attribute.name: attribute.value for attribute in edge.attributes}
+        assert "ngd_publications" in attribute_names
+        assert len(attribute_names["ngd_publications"]) <= 30
 
 
 def test_FET_ex1():
@@ -210,7 +216,7 @@ def test_FET_ex1():
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n01)",
         "add_qnode(category=chemical_substance, is_set=true, key=n02)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicate=physically_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
         "expand(edge_key=e01, kp=ARAX/KG1)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01, filter_type=cutoff, value=0.05)",
         "resultify()",
@@ -220,7 +226,7 @@ def test_FET_ex1():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 2
@@ -242,7 +248,7 @@ def test_FET_ex1():
     assert len(query_node_keys) == 3
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicate')
-        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert query_edge.predicate == 'biolink:has_fisher_exact_test_p-value_with'
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -264,7 +270,7 @@ def test_FET_ex2():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation and x.relation.find("FET") != -1]
     assert len(FET_edges) >= 2
     FET_edge_labels = set([edge.relation for edge in FET_edges])
@@ -283,7 +289,7 @@ def test_FET_ex2():
     assert len(query_node_keys) == 2
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicate')
-        assert query_edge.predicate == 'has_fisher_exact_test_p-value_with'
+        assert query_edge.predicate == 'biolink:has_fisher_exact_test_p-value_with'
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -294,7 +300,7 @@ def test_paired_concept_frequency_virtual():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
@@ -304,7 +310,7 @@ def test_paired_concept_frequency_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.slow
@@ -312,7 +318,7 @@ def test_paired_concept_frequency_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, COHD_method=paired_concept_frequency)",
@@ -330,7 +336,7 @@ def test_observed_expected_ratio_virtual():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info,observed_expected_ratio=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
@@ -340,7 +346,7 @@ def test_observed_expected_ratio_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.slow
@@ -348,7 +354,7 @@ def test_observed_expected_ratio_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio)",
@@ -366,7 +372,7 @@ def test_chi_square_virtual():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
@@ -376,7 +382,7 @@ def test_chi_square_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_chi_square_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_chi_square_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.slow
@@ -384,7 +390,7 @@ def test_chi_square_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, COHD_method=chi_square)",
@@ -400,8 +406,8 @@ def test_chi_square_attribute():
 def test_predict_drug_treats_disease_virtual():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(id=DOID:9008, key=n0, category=disease)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(id=DOID:9008, key=n0, category=biolink:Disease)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
@@ -411,14 +417,14 @@ def test_predict_drug_treats_disease_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
 
 
 def test_predict_drug_treats_disease_attribute():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=DOID:9008, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease)",
@@ -435,7 +441,7 @@ def test_issue_832():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=DOID:9008, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
@@ -445,14 +451,14 @@ def test_issue_832():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
 
 
 def test_issue_832_non_drug():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(id=UniProtKB:Q13627, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
@@ -472,7 +478,7 @@ def test_issue_840():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
@@ -482,13 +488,13 @@ def test_issue_840():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'has_paired_concept_frequency_with', 'V1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'V1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
     # And for the non-virtual test
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -506,7 +512,7 @@ def test_issue_840_non_drug():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=UniProtKB:Q13627, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
@@ -524,7 +530,7 @@ def test_issue_840_non_drug():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=UniProtKB:Q13627, key=n0)",
-        "add_qnode(category=chemical_substance, key=n1)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=ARAX/KG1)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -540,12 +546,13 @@ def test_issue_840_non_drug():
             assert attribute.name != 'paired_concept_frequency'
 
 
+@pytest.mark.external
 @pytest.mark.slow
 def test_issue_892():
     query = {"operations": {"actions": [
-        "add_qnode(id=DOID:11830, category=disease, key=n00)",
-        "add_qnode(category=gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
-        "add_qnode(category=chemical_substance, key=n02)",
+        "add_qnode(id=DOID:11830, category=biolink:Disease, key=n00)",
+        "add_qnode(category=biolink:Gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
+        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(kp=BTE)",
@@ -556,9 +563,10 @@ def test_issue_892():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 10)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 10)
 
 
+@pytest.mark.external
 def test_overlay_exposures_data_virtual():
     query = {"operations": {"actions": [
         "add_qnode(name=CHEMBL.COMPOUND:CHEMBL635, key=n0)",
@@ -571,9 +579,10 @@ def test_overlay_exposures_data_virtual():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show())
-    _virtual_tester(message, 'has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1, 0)
+    _virtual_tester(message, 'biolink:has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1)
 
 
+@pytest.mark.external
 def test_overlay_exposures_data_attribute():
     query = {"operations": {"actions": [
         "add_qnode(name=MONDO:0012607, key=n0)",
@@ -587,7 +596,68 @@ def test_overlay_exposures_data_attribute():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show())
-    _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1, 0)
+    _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1)
+
+
+@pytest.mark.slow
+def test_overlay_clinical_info_no_ids():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(name=Sotos syndrome, key=n1)",
+        "expand(kp=ARAX/KG2)",
+        "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
+        "overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=C2,subject_qnode_key=n0,object_qnode_key=n1)",
+        "overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=C3,subject_qnode_key=n0,object_qnode_key=n1)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
+    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
+    _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
+
+@pytest.mark.slow
+def test_missing_ngd_pmids():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(id=UniProtKB:P52788, key=n0)",
+        "add_qnode(category=[biolink:Protein,biolink:Gene], key=n1, is_set=true)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "add_qnode(category=[biolink:ChemicalSubstance,biolink:Drug], key=n2)",
+        "add_qedge(subject=n1, object=n2, key=e1)",
+        "expand(kp=ARAX/KG2)",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
+        "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
+        "overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n0, object_qnode_key=n2)",
+        "overlay(action=compute_jaccard, start_node_key=n0, intermediate_node_key=n1, end_node_key=n2, virtual_relation_label=J1)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    ngd_publications = {}
+    for edge_key, edge in message.knowledge_graph.edges.items():
+        if edge.attributes is not None:
+            for attribute in edge.attributes:
+                if attribute.name == 'normalized_google_distance':
+                    if edge_key not in ngd_publications:
+                        ngd_publications[edge_key] = {}
+                    ngd_publications[edge_key]['ngd'] = attribute.value
+                elif attribute.name == 'publications':
+                    if edge_key not in ngd_publications:
+                        ngd_publications[edge_key] = {}
+                    ngd_publications[edge_key]['pubs'] = attribute.value
+
+    for edge_dict in ngd_publications.values():
+        if 'ngd' in edge_dict and 'pubs' in edge_dict:
+            if edge_dict['pubs'] == []:
+                assert edge_dict['ngd'] == 'inf'
 
 
 if __name__ == "__main__":
