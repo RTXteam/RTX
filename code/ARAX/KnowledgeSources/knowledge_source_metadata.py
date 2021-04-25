@@ -65,7 +65,7 @@ class KnowledgeSourceMetadata:
         method_name = inspect.stack()[0][3]
 
         # We always furnish KG2C results
-        kg_prefix = 'RTX_KG2C'
+        kg_prefix = 'RTX_KG2c'
 
 
         # Verify that the source data file exists
