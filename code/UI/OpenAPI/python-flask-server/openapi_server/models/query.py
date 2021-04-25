@@ -6,11 +6,15 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from openapi_server.models.base_model_ import Model
+from openapi_server.models.log_level import LogLevel
 from openapi_server.models.message import Message
+from openapi_server.models.one_of_filter_results_top_n import OneOfFilterResultsTopN
 from openapi_server.models.operations import Operations
 from openapi_server import util
 
+from openapi_server.models.log_level import LogLevel  # noqa: E501
 from openapi_server.models.message import Message  # noqa: E501
+from openapi_server.models.one_of_filter_results_top_n import OneOfFilterResultsTopN  # noqa: E501
 from openapi_server.models.operations import Operations  # noqa: E501
 
 class Query(Model):
@@ -19,55 +23,70 @@ class Query(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, message=None, bypass_cache=None, asynchronous=None, max_results=None, page_size=None, page_number=None, reasoner_ids=None, operations=None):  # noqa: E501
+    def __init__(self, message=None, log_level=None, workflow=None, bypass_cache=False, stream_progress=False, enforce_edge_directionality=False, return_minimal_metadata=False, max_results=100, page_size=100, page_number=1, operations=None):  # noqa: E501
         """Query - a model defined in OpenAPI
 
         :param message: The message of this Query.  # noqa: E501
         :type message: Message
+        :param log_level: The log_level of this Query.  # noqa: E501
+        :type log_level: LogLevel
+        :param workflow: The workflow of this Query.  # noqa: E501
+        :type workflow: List[OneOfFilterResultsTopN]
         :param bypass_cache: The bypass_cache of this Query.  # noqa: E501
-        :type bypass_cache: str
-        :param asynchronous: The asynchronous of this Query.  # noqa: E501
-        :type asynchronous: str
+        :type bypass_cache: bool
+        :param stream_progress: The stream_progress of this Query.  # noqa: E501
+        :type stream_progress: bool
+        :param enforce_edge_directionality: The enforce_edge_directionality of this Query.  # noqa: E501
+        :type enforce_edge_directionality: bool
+        :param return_minimal_metadata: The return_minimal_metadata of this Query.  # noqa: E501
+        :type return_minimal_metadata: bool
         :param max_results: The max_results of this Query.  # noqa: E501
         :type max_results: int
         :param page_size: The page_size of this Query.  # noqa: E501
         :type page_size: int
         :param page_number: The page_number of this Query.  # noqa: E501
         :type page_number: int
-        :param reasoner_ids: The reasoner_ids of this Query.  # noqa: E501
-        :type reasoner_ids: List[str]
         :param operations: The operations of this Query.  # noqa: E501
         :type operations: Operations
         """
         self.openapi_types = {
             'message': Message,
-            'bypass_cache': str,
-            'asynchronous': str,
+            'log_level': LogLevel,
+            'workflow': List[OneOfFilterResultsTopN],
+            'bypass_cache': bool,
+            'stream_progress': bool,
+            'enforce_edge_directionality': bool,
+            'return_minimal_metadata': bool,
             'max_results': int,
             'page_size': int,
             'page_number': int,
-            'reasoner_ids': List[str],
             'operations': Operations
         }
 
         self.attribute_map = {
             'message': 'message',
+            'log_level': 'log_level',
+            'workflow': 'workflow',
             'bypass_cache': 'bypass_cache',
-            'asynchronous': 'asynchronous',
+            'stream_progress': 'stream_progress',
+            'enforce_edge_directionality': 'enforce_edge_directionality',
+            'return_minimal_metadata': 'return_minimal_metadata',
             'max_results': 'max_results',
             'page_size': 'page_size',
             'page_number': 'page_number',
-            'reasoner_ids': 'reasoner_ids',
             'operations': 'operations'
         }
 
         self._message = message
+        self._log_level = log_level
+        self._workflow = workflow
         self._bypass_cache = bypass_cache
-        self._asynchronous = asynchronous
+        self._stream_progress = stream_progress
+        self._enforce_edge_directionality = enforce_edge_directionality
+        self._return_minimal_metadata = return_minimal_metadata
         self._max_results = max_results
         self._page_size = page_size
         self._page_number = page_number
-        self._reasoner_ids = reasoner_ids
         self._operations = operations
 
     @classmethod
@@ -85,7 +104,6 @@ class Query(Model):
     def message(self):
         """Gets the message of this Query.
 
-        The query Message is a serialization of the user request. Content of the Message object depends on the intended TRAPI operation. For example, the fill operation requires a non-empty query_graph field as part of the Message, whereas other operations, e.g. overlay, require non-empty results and knowledge_graph fields.  # noqa: E501
 
         :return: The message of this Query.
         :rtype: Message
@@ -96,7 +114,6 @@ class Query(Model):
     def message(self, message):
         """Sets the message of this Query.
 
-        The query Message is a serialization of the user request. Content of the Message object depends on the intended TRAPI operation. For example, the fill operation requires a non-empty query_graph field as part of the Message, whereas other operations, e.g. overlay, require non-empty results and knowledge_graph fields.  # noqa: E501
 
         :param message: The message of this Query.
         :type message: Message
@@ -107,13 +124,59 @@ class Query(Model):
         self._message = message
 
     @property
+    def log_level(self):
+        """Gets the log_level of this Query.
+
+        The least critical level of logs to return  # noqa: E501
+
+        :return: The log_level of this Query.
+        :rtype: LogLevel
+        """
+        return self._log_level
+
+    @log_level.setter
+    def log_level(self, log_level):
+        """Sets the log_level of this Query.
+
+        The least critical level of logs to return  # noqa: E501
+
+        :param log_level: The log_level of this Query.
+        :type log_level: LogLevel
+        """
+
+        self._log_level = log_level
+
+    @property
+    def workflow(self):
+        """Gets the workflow of this Query.
+
+        A list of operations to be applied  # noqa: E501
+
+        :return: The workflow of this Query.
+        :rtype: List[OneOfFilterResultsTopN]
+        """
+        return self._workflow
+
+    @workflow.setter
+    def workflow(self, workflow):
+        """Sets the workflow of this Query.
+
+        A list of operations to be applied  # noqa: E501
+
+        :param workflow: The workflow of this Query.
+        :type workflow: List[OneOfFilterResultsTopN]
+        """
+
+        self._workflow = workflow
+
+    @property
     def bypass_cache(self):
         """Gets the bypass_cache of this Query.
 
-        Set to true in order to bypass any possible cached message and try to answer the query over again  # noqa: E501
+        Set to true in order to bypass any possible cached response and try to answer the query from scratch  # noqa: E501
 
         :return: The bypass_cache of this Query.
-        :rtype: str
+        :rtype: bool
         """
         return self._bypass_cache
 
@@ -121,36 +184,82 @@ class Query(Model):
     def bypass_cache(self, bypass_cache):
         """Sets the bypass_cache of this Query.
 
-        Set to true in order to bypass any possible cached message and try to answer the query over again  # noqa: E501
+        Set to true in order to bypass any possible cached response and try to answer the query from scratch  # noqa: E501
 
         :param bypass_cache: The bypass_cache of this Query.
-        :type bypass_cache: str
+        :type bypass_cache: bool
         """
 
         self._bypass_cache = bypass_cache
 
     @property
-    def asynchronous(self):
-        """Gets the asynchronous of this Query.
+    def stream_progress(self):
+        """Gets the stream_progress of this Query.
 
-        Set to true in order to receive an incomplete message_id if the query will take a while. Client can then periodically request that message_id for a status update and eventual complete message  # noqa: E501
+        Set to true in order to receive a stream of LogEntry objects as the query is progressing  # noqa: E501
 
-        :return: The asynchronous of this Query.
-        :rtype: str
+        :return: The stream_progress of this Query.
+        :rtype: bool
         """
-        return self._asynchronous
+        return self._stream_progress
 
-    @asynchronous.setter
-    def asynchronous(self, asynchronous):
-        """Sets the asynchronous of this Query.
+    @stream_progress.setter
+    def stream_progress(self, stream_progress):
+        """Sets the stream_progress of this Query.
 
-        Set to true in order to receive an incomplete message_id if the query will take a while. Client can then periodically request that message_id for a status update and eventual complete message  # noqa: E501
+        Set to true in order to receive a stream of LogEntry objects as the query is progressing  # noqa: E501
 
-        :param asynchronous: The asynchronous of this Query.
-        :type asynchronous: str
+        :param stream_progress: The stream_progress of this Query.
+        :type stream_progress: bool
         """
 
-        self._asynchronous = asynchronous
+        self._stream_progress = stream_progress
+
+    @property
+    def enforce_edge_directionality(self):
+        """Gets the enforce_edge_directionality of this Query.
+
+        Set to true in order to enforce edge directionality during queries. By default, edge directionality can be reversed without penalty.  # noqa: E501
+
+        :return: The enforce_edge_directionality of this Query.
+        :rtype: bool
+        """
+        return self._enforce_edge_directionality
+
+    @enforce_edge_directionality.setter
+    def enforce_edge_directionality(self, enforce_edge_directionality):
+        """Sets the enforce_edge_directionality of this Query.
+
+        Set to true in order to enforce edge directionality during queries. By default, edge directionality can be reversed without penalty.  # noqa: E501
+
+        :param enforce_edge_directionality: The enforce_edge_directionality of this Query.
+        :type enforce_edge_directionality: bool
+        """
+
+        self._enforce_edge_directionality = enforce_edge_directionality
+
+    @property
+    def return_minimal_metadata(self):
+        """Gets the return_minimal_metadata of this Query.
+
+        Set to true in order to return only the most minimal metadata. By default, rich metadata for nodes and edges are supplied, which may cause a very large and slower Response.  # noqa: E501
+
+        :return: The return_minimal_metadata of this Query.
+        :rtype: bool
+        """
+        return self._return_minimal_metadata
+
+    @return_minimal_metadata.setter
+    def return_minimal_metadata(self, return_minimal_metadata):
+        """Sets the return_minimal_metadata of this Query.
+
+        Set to true in order to return only the most minimal metadata. By default, rich metadata for nodes and edges are supplied, which may cause a very large and slower Response.  # noqa: E501
+
+        :param return_minimal_metadata: The return_minimal_metadata of this Query.
+        :type return_minimal_metadata: bool
+        """
+
+        self._return_minimal_metadata = return_minimal_metadata
 
     @property
     def max_results(self):
@@ -202,7 +311,7 @@ class Query(Model):
     def page_number(self):
         """Gets the page_number of this Query.
 
-        Page number of results when the number of results exceeds the page_size  # noqa: E501
+        Page number of results when the number of results exceeds the page_size, with page 1 as the first page  # noqa: E501
 
         :return: The page_number of this Query.
         :rtype: int
@@ -213,36 +322,13 @@ class Query(Model):
     def page_number(self, page_number):
         """Sets the page_number of this Query.
 
-        Page number of results when the number of results exceeds the page_size  # noqa: E501
+        Page number of results when the number of results exceeds the page_size, with page 1 as the first page  # noqa: E501
 
         :param page_number: The page_number of this Query.
         :type page_number: int
         """
 
         self._page_number = page_number
-
-    @property
-    def reasoner_ids(self):
-        """Gets the reasoner_ids of this Query.
-
-        List of reasoners to consult for the query  # noqa: E501
-
-        :return: The reasoner_ids of this Query.
-        :rtype: List[str]
-        """
-        return self._reasoner_ids
-
-    @reasoner_ids.setter
-    def reasoner_ids(self, reasoner_ids):
-        """Sets the reasoner_ids of this Query.
-
-        List of reasoners to consult for the query  # noqa: E501
-
-        :param reasoner_ids: The reasoner_ids of this Query.
-        :type reasoner_ids: List[str]
-        """
-
-        self._reasoner_ids = reasoner_ids
 
     @property
     def operations(self):

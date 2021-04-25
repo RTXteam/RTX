@@ -8,11 +8,13 @@ from typing import List, Dict  # noqa: F401
 from openapi_server.models.base_model_ import Model
 from openapi_server.models.log_entry import LogEntry
 from openapi_server.models.message import Message
+from openapi_server.models.one_of_filter_results_top_n import OneOfFilterResultsTopN
 from openapi_server.models.operations import Operations
 from openapi_server import util
 
 from openapi_server.models.log_entry import LogEntry  # noqa: E501
 from openapi_server.models.message import Message  # noqa: E501
+from openapi_server.models.one_of_filter_results_top_n import OneOfFilterResultsTopN  # noqa: E501
 from openapi_server.models.operations import Operations  # noqa: E501
 
 class Response(Model):
@@ -21,7 +23,7 @@ class Response(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, message=None, status=None, description=None, logs=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_type_id=None, terms=None, query_options=None, context=None, type=None, id=None):  # noqa: E501
+    def __init__(self, message=None, status=None, description=None, logs=None, workflow=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_options=None, context=None, type=None, id=None):  # noqa: E501
         """Response - a model defined in OpenAPI
 
         :param message: The message of this Response.  # noqa: E501
@@ -32,6 +34,8 @@ class Response(Model):
         :type description: str
         :param logs: The logs of this Response.  # noqa: E501
         :type logs: List[LogEntry]
+        :param workflow: The workflow of this Response.  # noqa: E501
+        :type workflow: List[OneOfFilterResultsTopN]
         :param operations: The operations of this Response.  # noqa: E501
         :type operations: Operations
         :param reasoner_id: The reasoner_id of this Response.  # noqa: E501
@@ -48,10 +52,6 @@ class Response(Model):
         :type original_question: str
         :param restated_question: The restated_question of this Response.  # noqa: E501
         :type restated_question: str
-        :param query_type_id: The query_type_id of this Response.  # noqa: E501
-        :type query_type_id: str
-        :param terms: The terms of this Response.  # noqa: E501
-        :type terms: Dict[str, object]
         :param query_options: The query_options of this Response.  # noqa: E501
         :type query_options: object
         :param context: The context of this Response.  # noqa: E501
@@ -66,6 +66,7 @@ class Response(Model):
             'status': str,
             'description': str,
             'logs': List[LogEntry],
+            'workflow': List[OneOfFilterResultsTopN],
             'operations': Operations,
             'reasoner_id': str,
             'tool_version': str,
@@ -74,8 +75,6 @@ class Response(Model):
             'table_column_names': List[str],
             'original_question': str,
             'restated_question': str,
-            'query_type_id': str,
-            'terms': Dict[str, object],
             'query_options': object,
             'context': str,
             'type': str,
@@ -87,6 +86,7 @@ class Response(Model):
             'status': 'status',
             'description': 'description',
             'logs': 'logs',
+            'workflow': 'workflow',
             'operations': 'operations',
             'reasoner_id': 'reasoner_id',
             'tool_version': 'tool_version',
@@ -95,8 +95,6 @@ class Response(Model):
             'table_column_names': 'table_column_names',
             'original_question': 'original_question',
             'restated_question': 'restated_question',
-            'query_type_id': 'query_type_id',
-            'terms': 'terms',
             'query_options': 'query_options',
             'context': 'context',
             'type': 'type',
@@ -107,6 +105,7 @@ class Response(Model):
         self._status = status
         self._description = description
         self._logs = logs
+        self._workflow = workflow
         self._operations = operations
         self._reasoner_id = reasoner_id
         self._tool_version = tool_version
@@ -115,8 +114,6 @@ class Response(Model):
         self._table_column_names = table_column_names
         self._original_question = original_question
         self._restated_question = restated_question
-        self._query_type_id = query_type_id
-        self._terms = terms
         self._query_options = query_options
         self._context = context
         self._type = type
@@ -137,7 +134,6 @@ class Response(Model):
     def message(self):
         """Gets the message of this Response.
 
-        Contains the knowledge of the response (query graph, knowledge graph, and results).  # noqa: E501
 
         :return: The message of this Response.
         :rtype: Message
@@ -148,7 +144,6 @@ class Response(Model):
     def message(self, message):
         """Sets the message of this Response.
 
-        Contains the knowledge of the response (query graph, knowledge graph, and results).  # noqa: E501
 
         :param message: The message of this Response.
         :type message: Message
@@ -226,6 +221,29 @@ class Response(Model):
         """
 
         self._logs = logs
+
+    @property
+    def workflow(self):
+        """Gets the workflow of this Response.
+
+        A list of operations that were applied  # noqa: E501
+
+        :return: The workflow of this Response.
+        :rtype: List[OneOfFilterResultsTopN]
+        """
+        return self._workflow
+
+    @workflow.setter
+    def workflow(self, workflow):
+        """Sets the workflow of this Response.
+
+        A list of operations that were applied  # noqa: E501
+
+        :param workflow: The workflow of this Response.
+        :type workflow: List[OneOfFilterResultsTopN]
+        """
+
+        self._workflow = workflow
 
     @property
     def operations(self):
@@ -410,52 +428,6 @@ class Response(Model):
         """
 
         self._restated_question = restated_question
-
-    @property
-    def query_type_id(self):
-        """Gets the query_type_id of this Response.
-
-        The query type id if one is known for the query/message (as defined in a shared manner)  # noqa: E501
-
-        :return: The query_type_id of this Response.
-        :rtype: str
-        """
-        return self._query_type_id
-
-    @query_type_id.setter
-    def query_type_id(self, query_type_id):
-        """Sets the query_type_id of this Response.
-
-        The query type id if one is known for the query/message (as defined in a shared manner)  # noqa: E501
-
-        :param query_type_id: The query_type_id of this Response.
-        :type query_type_id: str
-        """
-
-        self._query_type_id = query_type_id
-
-    @property
-    def terms(self):
-        """Gets the terms of this Response.
-
-        Dict of terms needed by the specific query type  # noqa: E501
-
-        :return: The terms of this Response.
-        :rtype: Dict[str, object]
-        """
-        return self._terms
-
-    @terms.setter
-    def terms(self, terms):
-        """Sets the terms of this Response.
-
-        Dict of terms needed by the specific query type  # noqa: E501
-
-        :param terms: The terms of this Response.
-        :type terms: Dict[str, object]
-        """
-
-        self._terms = terms
 
     @property
     def query_options(self):

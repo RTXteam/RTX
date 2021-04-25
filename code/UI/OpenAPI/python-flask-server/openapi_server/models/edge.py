@@ -112,7 +112,7 @@ class Edge(Model):
     def subject(self):
         """Gets the subject of this Edge.
 
-        Corresponds to the map key CURIE of the subject concept node of this relationship edge.  # noqa: E501
+        A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
         :return: The subject of this Edge.
         :rtype: str
@@ -123,7 +123,7 @@ class Edge(Model):
     def subject(self, subject):
         """Sets the subject of this Edge.
 
-        Corresponds to the map key CURIE of the subject concept node of this relationship edge.  # noqa: E501
+        A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
         :param subject: The subject of this Edge.
         :type subject: str
@@ -137,7 +137,7 @@ class Edge(Model):
     def object(self):
         """Gets the object of this Edge.
 
-        Corresponds to the map key CURIE of the object concept node of this relationship edge.  # noqa: E501
+        A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
         :return: The object of this Edge.
         :rtype: str
@@ -148,7 +148,7 @@ class Edge(Model):
     def object(self, object):
         """Sets the object of this Edge.
 
-        Corresponds to the map key CURIE of the object concept node of this relationship edge.  # noqa: E501
+        A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
         :param object: The object of this Edge.
         :type object: str
