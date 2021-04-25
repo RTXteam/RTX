@@ -67,7 +67,7 @@ def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
 def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
-            print(f"{qnode_key}: {node.category}, {node_key}, {node.name}, {node.qnode_keys}")
+            print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}")
 
 
 def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -107,7 +107,7 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
             assert node_key and isinstance(node_key, str)
             assert isinstance(node.name, str) or node.name is None
             assert node.qnode_keys and isinstance(node.qnode_keys, list)
-            assert node.category and isinstance(node.category, list)
+            assert node.categories and isinstance(node.categories, list)
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             assert edge_key and isinstance(edge_key, str)
@@ -120,21 +120,21 @@ def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
     for node in nodes.values():
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
-            if qnode.category:
-                assert set(eu.convert_to_list(qnode.category)).issubset(set(node.category))  # Could have additional categories if it has multiple qnode keys
+            if qnode.categories:
+                assert set(qnode.categories).issubset(set(node.categories))  # Could have additional categories if it has multiple qnode keys
 
 
 def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
     # Note: Can't really use this function anymore since KPs can respond with multiple curies per 1 qg curie now...
-    qnodes_with_single_curie = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id and isinstance(qnode.id, str)]
+    qnodes_with_single_curie = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.ids and len(qnode.ids) == 1]
     for qnode_key in qnodes_with_single_curie:
         if qnode_key in nodes_by_qg_id:
             assert len(nodes_by_qg_id[qnode_key]) == 1
-    qnodes_with_multiple_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id and isinstance(qnode.id, list)]
+    qnodes_with_multiple_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.ids and len(qnode.ids) > 1]
     for qnode_key in qnodes_with_multiple_curies:
         qnode = query_graph.nodes[qnode_key]
         if qnode_key in nodes_by_qg_id:
-            assert 1 <= len(nodes_by_qg_id[qnode_key]) <= len(qnode.id)
+            assert 1 <= len(nodes_by_qg_id[qnode_key]) <= len(qnode.ids)
 
 
 @pytest.mark.slow
@@ -404,7 +404,7 @@ def test_987_override_node_categories():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all('biolink:PhenotypicFeature' in node.category for node in nodes_by_qg_id['n01'].values())
+    assert all('biolink:PhenotypicFeature' in node.categories for node in nodes_by_qg_id['n01'].values())
 
 
 @pytest.mark.slow
@@ -705,7 +705,7 @@ def test_category_and_predicate_format():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
-            assert all(category.startswith("biolink:") for category in node.category)
+            assert all(category.startswith("biolink:") for category in node.categories)
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             assert edge.predicate.startswith("biolink:")

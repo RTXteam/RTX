@@ -354,7 +354,7 @@ class KG2Querier:
         node = Node()
         node_key = neo4j_node.get('id')
         node.name = neo4j_node.get('name')
-        node.category = eu.convert_to_list(neo4j_node.get('category'))
+        node.categories = eu.convert_to_list(neo4j_node.get('category'))
         # Add all additional properties on KG2 nodes as TRAPI Attribute objects
         other_properties = ["iri", "full_name", "description", "publications", "synonym", "provided_by",
                             "deprecated", "update_date"]
@@ -365,7 +365,7 @@ class KG2Querier:
         node = Node()
         node_key = neo4j_node.get('id')
         node.name = neo4j_node.get('name')
-        node.category = eu.convert_to_list(neo4j_node.get('category'))
+        node.categories = eu.convert_to_list(neo4j_node.get('category'))
         # Add all additional properties on KG2c nodes as TRAPI Attribute objects
         other_properties = ["iri", "description", "all_names", "all_categories", "expanded_categories",
                             "equivalent_curies", "publications"]
@@ -397,7 +397,7 @@ class KG2Querier:
         node_key = neo4j_node.get('id')
         node.name = neo4j_node.get('name')
         node_category = neo4j_node.get('category')
-        node.category = eu.convert_to_list(node_category)
+        node.categories = eu.convert_to_list(node_category)
         other_properties = ["symbol", "description", "uri"]
         node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
         return node_key, node

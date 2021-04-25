@@ -141,7 +141,7 @@ class NGDQuerier:
         ngd_node = Node()
         ngd_node_key = kg2_node_key
         ngd_node.name = kg2_node.name
-        ngd_node.category = kg2_node.category
+        ngd_node.categories = kg2_node.categories
         ngd_node.attributes = [attribute for attribute in kg2_node.attributes if attribute.original_attribute_name in {"iri", "description"}]
         return ngd_node_key, ngd_node
 

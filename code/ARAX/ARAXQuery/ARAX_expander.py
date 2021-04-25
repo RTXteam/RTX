@@ -605,20 +605,21 @@ class ARAXExpander:
                 if canonicalized_node:
                     preferred_curie = canonicalized_node.get('preferred_curie', node_key)
                     preferred_name = canonicalized_node.get('preferred_name', node.name)
-                    preferred_category = eu.convert_to_list(canonicalized_node.get('preferred_type', node.category))
+                    preferred_type = canonicalized_node.get('preferred_type')
+                    preferred_categories = eu.convert_to_list(preferred_type) if preferred_type else node.categories
                     curie_mappings[node_key] = preferred_curie
                 else:
                     # Means the NodeSynonymizer didn't recognize this curie
                     preferred_curie = node_key
                     preferred_name = node.name
-                    preferred_category = eu.convert_to_list(node.category)
+                    preferred_categories = node.categories
                     curie_mappings[node_key] = preferred_curie
 
                 # Add this node into our deduplicated KG as necessary
                 if preferred_curie not in deduplicated_kg.nodes_by_qg_id[qnode_key]:
                     node_key = preferred_curie
                     node.name = preferred_name
-                    node.category = preferred_category
+                    node.categories = preferred_categories
                     deduplicated_kg.add_node(node_key, node, qnode_key)
 
         # Then update the edges to reflect changes made to the nodes
@@ -1013,7 +1014,7 @@ class ARAXExpander:
             corresponding_qnode_categories = {category for qnode_key in node.qnode_keys for category in
                                               eu.convert_to_list(qg.nodes[qnode_key].categories)}
             if corresponding_qnode_categories:
-                node.category = list(corresponding_qnode_categories)
+                node.categories = list(corresponding_qnode_categories)
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):

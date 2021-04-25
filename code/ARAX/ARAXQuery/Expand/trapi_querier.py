@@ -297,12 +297,7 @@ class TRAPIQuerier:
         else:
             self.log.debug(f"{self.kp_name}: Got results from {self.kp_name}.")
             # Temporarily convert any old attributes from KPs to new form (patch during 1.0 -> 1.1 transition)
-            for edge in json_response["message"]["knowledge_graph"]["edges"].values():
-                if edge.get("attributes"):
-                    edge["attributes"] = self._convert_old_attributes_to_new(edge["attributes"])
-            for node in json_response["message"]["knowledge_graph"]["nodes"].values():
-                if node.get("attributes"):
-                    node["attributes"] = self._convert_old_attributes_to_new(node["attributes"])
+            self._convert_trapi_1_0_kg_to_1_1(json_response["message"]["knowledge_graph"])
             kp_message = ARAXMessenger().from_dict(json_response["message"])
 
         # Build a map that indicates which qnodes/qedges a given node/edge fulfills
@@ -402,10 +397,19 @@ class TRAPIQuerier:
         # This is a temporary patch until we're using KPs' TRAPI 1.1 endpoints
         if attributes:
             for attribute in attributes:
-                print(attribute)
                 if not attribute.get("original_attribute_name"):
                     attribute["original_attribute_name"] = attribute.get("name")
                 if not attribute.get("attribute_type_id"):
                     attribute["attribute_type_id"] = attribute.get("type")
-                print(attribute)
         return attributes
+
+    def _convert_trapi_1_0_kg_to_1_1(self, kg: Dict[str, Dict[str, any]]):
+        # This is a temporary patch until we're using KPs' TRAPI 1.1 endpoints
+        for node in kg["nodes"].values():
+            if node.get("category"):
+                node["categories"] = eu.convert_to_list(node["category"])
+            if node.get("attributes"):
+                node["attributes"] = self._convert_old_attributes_to_new(node["attributes"])
+        for edge in kg["edges"].values():
+            if edge.get("attributes"):
+                edge["attributes"] = self._convert_old_attributes_to_new(edge["attributes"])
