@@ -163,9 +163,9 @@ class TRAPIQuerier:
             qg_triples = [[qnodes[qedge.subject].categories, qedge.predicates, qnodes[qedge.object].categories]
                           for qedge in query_graph.edges.values()]
             for triple in qg_triples:
-                query_subject_categories = set(triple[0])
-                query_predicates = set(triple[1])
-                query_object_categories = set(triple[2])
+                query_subject_categories = set(triple[0]) if triple[0] else set()
+                query_predicates = set(triple[1]) if triple[1] else set()
+                query_object_categories = set(triple[2]) if triple[2] else set()
 
                 # Make sure the subject qnode's category(s) are accepted by the KP
                 allowed_subj_categories = set(predicates_dict)
