@@ -57,7 +57,7 @@ class ARAXDecorator:
             kg2c_node_as_dict = ujson.loads(row[0])
             node_id = kg2c_node_as_dict["id"]
             trapi_node = message.knowledge_graph.nodes[node_id]
-            existing_attributes = {attribute.name for attribute in trapi_node.attributes} if trapi_node.attributes else set()
+            existing_attributes = {attribute.original_attribute_name for attribute in trapi_node.attributes} if trapi_node.attributes else set()
             kg2c_node_attributes = set(kg2c_node_as_dict).difference(self.core_node_properties)
             attributes_to_add = kg2c_node_attributes.difference(existing_attributes)
             new_attribute_objects = self._create_trapi_attributes(attributes_to_add, kg2c_node_as_dict)
@@ -79,12 +79,12 @@ class ARAXDecorator:
                     if property_value.lower() == "true" or property_value.lower() == "false":
                         property_value = ast.literal_eval(property_value)
                 # Create the actual Attribute object
-                trapi_attribute = Attribute(name=property_name,
-                                            type=eu.get_attribute_type(property_name),
+                trapi_attribute = Attribute(original_attribute_name=property_name,
+                                            attribute_type_id=eu.get_attribute_type(property_name),
                                             value=property_value)
                 # Also store this value in Attribute.url if it's a URL
                 if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
-                    trapi_attribute.url = property_value
+                    trapi_attribute.value_url = property_value
 
                 new_attributes.append(trapi_attribute)
         return new_attributes

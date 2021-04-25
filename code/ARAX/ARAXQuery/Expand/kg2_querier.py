@@ -422,8 +422,6 @@ class KG2Querier:
         other_properties = ["provided_by", "negated", "relation_curie", "simplified_relation_curie",
                             "simplified_relation", "edge_label", "publications"]
         edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2", type=eu.get_attribute_type("is_defined_by"))
-        edge.attributes.append(is_defined_by_attribute)
         return edge_key, edge
 
     def _convert_kg2c_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
@@ -434,8 +432,6 @@ class KG2Querier:
         edge_key = f"KG2c:{edge.subject}-{edge.predicate}-{edge.object}"
         other_properties = ["provided_by", "publications"]
         edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2c", type=eu.get_attribute_type("is_defined_by"))
-        edge.attributes.append(is_defined_by_attribute)
         return edge_key, edge
 
     def _convert_kg1_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Tuple[str, Edge]:
@@ -447,7 +443,8 @@ class KG2Querier:
         edge.relation = neo4j_edge.get("relation")
         other_properties = ["provided_by", "probability"]
         edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG1", type=eu.get_attribute_type("is_defined_by"))
+        is_defined_by_attribute = Attribute(original_attribute_name="is_defined_by", value="ARAX/KG1",
+                                            attribute_type_id=eu.get_attribute_type("is_defined_by"))
         edge.attributes.append(is_defined_by_attribute)
         return edge_key, edge
 
@@ -457,20 +454,17 @@ class KG2Querier:
         for property_name in property_names:
             property_value = neo4j_object.get(property_name)
             if property_value:
-                # Extract any lists, dicts, and booleans that are stored within strings
+                # Extract any booleans that are stored within strings
                 if type(property_value) is str:
-                    if (property_value.startswith('[') and property_value.endswith(']')) or \
-                            (property_value.startswith('{') and property_value.endswith('}')) or \
-                            property_value.lower() == "true" or property_value.lower() == "false":
+                    if property_value.lower() == "true" or property_value.lower() == "false":
                         property_value = ast.literal_eval(property_value)
-
                 # Create the actual Attribute object
-                trapi_attribute = Attribute(name=property_name,
-                                            type=eu.get_attribute_type(property_name),
+                trapi_attribute = Attribute(original_attribute_name=property_name,
+                                            attribute_type_id=eu.get_attribute_type(property_name),
                                             value=property_value)
                 # Also store this value in Attribute.url if it's a URL
                 if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
-                    trapi_attribute.url = property_value
+                    trapi_attribute.value_url = property_value
 
                 new_attributes.append(trapi_attribute)
         return new_attributes

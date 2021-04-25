@@ -31,7 +31,6 @@ class NGDQuerier:
         self.accepted_qedge_predicates = {"biolink:has_normalized_google_distance_with", "biolink:related_to"}
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
-        self.ngd_edge_attribute_url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -126,13 +125,15 @@ class NGDQuerier:
         ngd_edge.subject = subject
         ngd_edge.object = object
         ngd_edge_key = f"NGD:{subject}--{ngd_edge.predicate}--{object}"
-        ngd_edge.attributes = [Attribute(name=self.ngd_edge_attribute_name,
-                                         type=self.ngd_edge_attribute_type,
-                                         value=ngd_value,
-                                         url=self.ngd_edge_attribute_url)]
-        ngd_edge.attributes += [Attribute(name="provided_by", value="ARAX", type=eu.get_attribute_type("provided_by")),
-                                Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by")),
-                                Attribute(name="publications", value=pmid_list, type=eu.get_attribute_type("publications"))]
+        ngd_edge.attributes = [Attribute(original_attribute_name=self.ngd_edge_attribute_name,
+                                         attribute_type_id=self.ngd_edge_attribute_type,
+                                         value=ngd_value)]
+        ngd_edge.attributes += [Attribute(original_attribute_name="provided_by", value="ARAX",
+                                          attribute_type_id=eu.get_attribute_type("provided_by")),
+                                Attribute(original_attribute_name="is_defined_by", value="ARAX",
+                                          attribute_type_id=eu.get_attribute_type("is_defined_by")),
+                                Attribute(original_attribute_name="publications", value=pmid_list,
+                                          attribute_type_id=eu.get_attribute_type("publications"))]
         return ngd_edge_key, ngd_edge
 
     @staticmethod
@@ -141,7 +142,7 @@ class NGDQuerier:
         ngd_node_key = kg2_node_key
         ngd_node.name = kg2_node.name
         ngd_node.category = kg2_node.category
-        ngd_node.attributes = [attribute for attribute in kg2_node.attributes if attribute.name in {"iri", "description"}]
+        ngd_node.attributes = [attribute for attribute in kg2_node.attributes if attribute.original_attribute_name in {"iri", "description"}]
         return ngd_node_key, ngd_node
 
     @staticmethod

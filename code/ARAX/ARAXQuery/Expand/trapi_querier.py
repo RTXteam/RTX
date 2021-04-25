@@ -296,6 +296,13 @@ class TRAPIQuerier:
             return answer_kg
         else:
             self.log.debug(f"{self.kp_name}: Got results from {self.kp_name}.")
+            # Temporarily convert any old attributes from KPs to new form (patch during 1.0 -> 1.1 transition)
+            for edge in json_response["message"]["knowledge_graph"]["edges"].values():
+                if edge.get("attributes"):
+                    edge["attributes"] = self._convert_old_attributes_to_new(edge["attributes"])
+            for node in json_response["message"]["knowledge_graph"]["nodes"].values():
+                if node.get("attributes"):
+                    node["attributes"] = self._convert_old_attributes_to_new(node["attributes"])
             kp_message = ARAXMessenger().from_dict(json_response["message"])
 
         # Build a map that indicates which qnodes/qedges a given node/edge fulfills
@@ -306,8 +313,8 @@ class TRAPIQuerier:
             arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
             if not returned_edge.attributes:
                 returned_edge.attributes = []
-            returned_edge.attributes.append(Attribute(name="is_defined_by",
-                                                      type=eu.get_attribute_type("is_defined_by"),
+            returned_edge.attributes.append(Attribute(original_attribute_name="is_defined_by",
+                                                      attribute_type_id=eu.get_attribute_type("is_defined_by"),
                                                       value=self.kp_name))
             for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
                 answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
@@ -389,3 +396,16 @@ class TRAPIQuerier:
                 qedge["predicate"] = qedge["predicates"]
                 del qedge["predicates"]
         return dict_qg
+
+    @staticmethod
+    def _convert_old_attributes_to_new(attributes: List[Dict[str, any]]) -> List[Dict[str, any]]:
+        # This is a temporary patch until we're using KPs' TRAPI 1.1 endpoints
+        if attributes:
+            for attribute in attributes:
+                print(attribute)
+                if not attribute.get("original_attribute_name"):
+                    attribute["original_attribute_name"] = attribute.get("name")
+                if not attribute.get("attribute_type_id"):
+                    attribute["attribute_type_id"] = attribute.get("type")
+                print(attribute)
+        return attributes
