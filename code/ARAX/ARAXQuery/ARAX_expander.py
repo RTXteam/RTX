@@ -306,11 +306,6 @@ class ARAXExpander:
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = eu.copy_qg(message.query_graph)
-        # Convert all qnode categories and qedge predicates to lists (easier than supporting string AND list)
-        for qnode in query_graph.nodes.values():
-            qnode.category = eu.convert_to_list(qnode.category)
-        for qedge in query_graph.edges.values():
-            qedge.predicate = eu.convert_to_list(qedge.predicate)
 
         if response.status != 'OK':
             return response
@@ -682,7 +677,7 @@ class ARAXExpander:
         for qnode_key, qnode in overarching_qg.nodes.items():
             if qnode.id:
                 # Get canonicalized versions of any curies in the QG, as appropriate
-                curies = eu.get_canonical_curies_list(qnode.id, log) if use_synonyms else eu.convert_to_list(qnode.id)
+                curies = eu.get_canonical_curies_list(qnode.id, log) if use_synonyms else qnode.id
                 for curie in curies:
                     pinned_curies_map[curie].add(qnode_key)
 
@@ -1055,18 +1050,10 @@ class ARAXExpander:
             return bool_string
 
     @staticmethod
-    def _get_number_of_curies(qnode: QNode) -> int:
-        if qnode.id and isinstance(qnode.id, list):
-            return len(qnode.id)
-        elif qnode.id and isinstance(qnode.id, str):
-            return 1
-        else:
-            return 0
-
-    def _get_qnode_curie_summary(self, qnode: QNode) -> str:
-        num_curies = self._get_number_of_curies(qnode)
+    def _get_qnode_curie_summary(qnode: QNode) -> str:
+        num_curies = len(qnode.id) if qnode.id else 0
         if num_curies == 1:
-            return f" {qnode.id if isinstance(qnode.id, str) else qnode.id[0]}"
+            return f" {qnode.id}"
         elif num_curies > 1:
             return f" [{num_curies} curies]"
         else:

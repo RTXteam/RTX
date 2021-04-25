@@ -75,7 +75,7 @@ class KG2Querier:
                 canonical_curies = eu.get_canonical_curies_list(qnode.id, log)
                 log.debug(f"Using {len(canonical_curies)} curies as canonical curies for qnode {qnode_key}")
                 qnode.id = canonical_curies
-            qnode.category = []  # Important to clear this, otherwise results are limited (#889)
+            qnode.category = None  # Important to clear this, otherwise results are limited (#889)
 
         if kg_name == "KG2c":
             # Use Plover to answer KG2c queries
@@ -105,10 +105,10 @@ class KG2Querier:
         if qnode.id:
             if use_synonyms and kg_name == "KG1":
                 qnode.id = eu.get_curie_synonyms(qnode.id, log)
-                qnode.category = []  # Important to clear this, otherwise results are limited (#889)
+                qnode.category = None  # Important to clear this, otherwise results are limited (#889)
             elif kg_name == "KG2c":
                 qnode.id = eu.get_canonical_curies_list(qnode.id, log)
-                qnode.category = []  # Important to clear this to avoid discrepancies in types for particular concepts
+                qnode.category = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         if kg_name == "KG2c":
             # Use Plover to answer KG2c queries
@@ -248,7 +248,7 @@ class KG2Querier:
         answer_kg = QGOrganizedKnowledgeGraph()
 
         # Build and run a cypher query to get this node/nodes
-        where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
+        where_clause = f"{qnode_key}.id='{qnode.id}'" if len(qnode.id) == 1 else f"{qnode_key}.id in {qnode.id}"
         cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, qg)} WHERE {where_clause} RETURN {qnode_key}"
         log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
@@ -279,15 +279,13 @@ class KG2Querier:
             where_fragments = []
             for qnode_key in [subject_qnode_key, object_qnode_key]:
                 qnode = qg.nodes[qnode_key]
-                if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
+                if qnode.id and len(qnode.id) > 1:
                     where_fragments.append(f"{qnode_key}.id in {qnode.id}")
-                if qnode.category:
-                    qnode.category = eu.convert_to_list(qnode.category)
-                    if len(qnode.category) > 1:
-                        # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
-                        category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.category]
-                        category_where_fragment = f"({' OR '.join(category_sub_fragments)})"
-                        where_fragments.append(category_where_fragment)
+                if qnode.category and len(qnode.category) > 1:
+                    # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
+                    category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.category]
+                    category_where_fragment = f"({' OR '.join(category_sub_fragments)})"
+                    where_fragments.append(category_where_fragment)
             where_clause = f"WHERE {' AND '.join(where_fragments)}" if where_fragments else ""
 
             # Build the with clause
@@ -517,9 +515,8 @@ class KG2Querier:
         qnode = qg.nodes[qnode_key]
         # Add in node label if there's only one category
         category_cypher = f":`{qnode.category[0]}`" if len(qnode.category) == 1 else ""
-        if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
-            curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
-            curie_cypher = f" {{id:'{curie}'}}"
+        if qnode.id and len(qnode.id) == 1:
+            curie_cypher = f" {{id:'{qnode.id[0]}'}}"
         else:
             curie_cypher = ""
         qnode_cypher = f"({qnode_key}{category_cypher}{curie_cypher})"

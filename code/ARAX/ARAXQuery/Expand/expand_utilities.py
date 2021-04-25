@@ -448,11 +448,9 @@ def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
                          edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
     for qnode in qg_copy.nodes.values():
         if qnode.category:
-            categories = convert_to_list(qnode.category)
-            prefixless_categories = [category.split(":")[-1] for category in categories]
+            prefixless_categories = [category.split(":")[-1] for category in qnode.category]
             qnode.category = [convert_string_to_snake_case(category) for category in prefixless_categories]
     for qedge in qg_copy.edges.values():
         if qedge.predicate:
-            predicates = convert_to_list(qedge.predicate)
-            qedge.predicate = [predicate.split(":")[-1] for predicate in predicates]
+            qedge.predicate = [predicate.split(":")[-1] for predicate in qedge.predicate]
     return qg_copy

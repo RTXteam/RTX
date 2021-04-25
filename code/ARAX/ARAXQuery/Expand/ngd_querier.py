@@ -154,12 +154,12 @@ class NGDQuerier:
 
     @staticmethod
     def _get_dsl_qnode_curie_str(qnode: QNode) -> str:
-        curie_str = f"[{', '.join(qnode.id)}]" if isinstance(qnode.id, list) else qnode.id
-        return f"id={curie_str}" if qnode.id else ""
+        curie_str = f"[{', '.join(qnode.id)}]" if qnode.id else None
+        return f"id={curie_str}" if curie_str else ""
 
     @staticmethod
     def _get_dsl_qnode_category_str(qnode: QNode) -> str:
-        if len(qnode.category) == 0:
+        if not qnode.category:
             return ""
         elif len(qnode.category) == 1:
             return f"category={qnode.category[0]}"

@@ -221,7 +221,7 @@ class TRAPIQuerier:
                 if preferred_prefix:
                     desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{preferred_prefix}:")]
                     if desired_curies:
-                        qnode.id = desired_curies if len(desired_curies) > 1 else desired_curies[0]
+                        qnode.id = desired_curies
                         self.log.debug(f"{self.kp_name}: Converted qnode {qnode_key} curie to {qnode.id}")
                     else:
                         self.log.warning(f"{self.kp_name}: Could not convert qnode {qnode_key} curie(s) to preferred prefix "
@@ -354,7 +354,7 @@ class TRAPIQuerier:
     def _strip_empty_properties(qnode_or_qedge: Union[QNode, QEdge]) -> Dict[str, any]:
         dict_version_of_object = qnode_or_qedge.to_dict()
         stripped_dict = {property_name: value for property_name, value in dict_version_of_object.items()
-                         if dict_version_of_object.get(property_name) is not None}
+                         if dict_version_of_object.get(property_name) not in {None, []}}
         return stripped_dict
 
     def _get_arax_edge_key(self, edge: Edge) -> str:
