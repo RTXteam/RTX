@@ -13,7 +13,7 @@ var UIstate = {};
 
 // defaults
 var base = "";
-var baseAPI = base + "api/arax/v1.0";
+var baseAPI = base + "api/arax/v1.1";
 
 // possibly imported by calling page (e.g. index.html)
 if (typeof config !== 'undefined') {
@@ -827,7 +827,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status","Message Id","N_Results","TRAPI 1.0?"] ) {
+	for (var head of ["","Agent","Status","Message Id","N_Results","TRAPI 1.1?"] ) {
 	    td = document.createElement("th")
 	    td.appendChild(document.createTextNode(head));
 	    tr.appendChild(td);
