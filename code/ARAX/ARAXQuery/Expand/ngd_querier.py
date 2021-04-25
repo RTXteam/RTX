@@ -65,10 +65,10 @@ class NGDQuerier:
                                                         f"object={target_qnode_key}"])))
         source_params_str = ", ".join(list(filter(None, [f"key={source_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(source_qnode),
-                                                         self._get_dsl_qnode_category_str(source_qnode)])))
+                                                         self._get_dsl_qnode_categories_str(source_qnode)])))
         target_params_str = ", ".join(list(filter(None, [f"key={target_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(target_qnode),
-                                                         self._get_dsl_qnode_category_str(target_qnode)])))
+                                                         self._get_dsl_qnode_categories_str(target_qnode)])))
         actions_list = [
             f"add_qnode({source_params_str})",
             f"add_qnode({target_params_str})",
@@ -156,16 +156,16 @@ class NGDQuerier:
     @staticmethod
     def _get_dsl_qnode_curie_str(qnode: QNode) -> str:
         curie_str = f"[{', '.join(qnode.ids)}]" if qnode.ids else None
-        return f"id={curie_str}" if curie_str else ""
+        return f"ids={curie_str}" if curie_str else ""
 
     @staticmethod
-    def _get_dsl_qnode_category_str(qnode: QNode) -> str:
+    def _get_dsl_qnode_categories_str(qnode: QNode) -> str:
         if not qnode.categories:
             return ""
         elif len(qnode.categories) == 1:
-            return f"category={qnode.categories[0]}"
+            return f"categories={qnode.categories[0]}"
         else:
-            return f"category=[{', '.join(qnode.categories)}]"
+            return f"categories=[{', '.join(qnode.categories)}]"
 
     @staticmethod
     def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):

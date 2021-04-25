@@ -284,8 +284,8 @@ class KG2Querier:
                 if qnode.categories and len(qnode.categories) > 1:
                     # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
                     category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.categories]
-                    category_where_fragment = f"({' OR '.join(category_sub_fragments)})"
-                    where_fragments.append(category_where_fragment)
+                    categories_where_fragment = f"({' OR '.join(category_sub_fragments)})"
+                    where_fragments.append(categories_where_fragment)
             where_clause = f"WHERE {' AND '.join(where_fragments)}" if where_fragments else ""
 
             # Build the with clause
@@ -374,7 +374,7 @@ class KG2Querier:
 
     @staticmethod
     def _convert_kg2c_plover_node_to_trapi_node(node_tuple: list) -> Node:
-        node = Node(name=node_tuple[0], category=eu.convert_to_list(node_tuple[1]))
+        node = Node(name=node_tuple[0], categories=eu.convert_to_list(node_tuple[1]))
         return node
 
     @staticmethod
@@ -508,7 +508,7 @@ class KG2Querier:
     def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph) -> str:
         qnode = qg.nodes[qnode_key]
         # Add in node label if there's only one category
-        category_cypher = f":`{qnode.categories[0]}`" if len(qnode.categories) == 1 else ""
+        category_cypher = f":`{qnode.categories[0]}`" if qnode.categories and len(qnode.categories) == 1 else ""
         if qnode.ids and len(qnode.ids) == 1:
             curie_cypher = f" {{id:'{qnode.ids[0]}'}}"
         else:
