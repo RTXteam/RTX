@@ -519,7 +519,7 @@ class KG2Querier:
     @staticmethod
     def _get_cypher_for_query_edge(qedge_key: str, qg: QueryGraph, enforce_directionality: bool) -> str:
         qedge = qg.edges[qedge_key]
-        predicate_cypher = "|".join([f":`{predicate}`" for predicate in qedge.predicates])
+        predicate_cypher = "|".join([f":`{predicate}`" for predicate in qedge.predicates]) if qedge.predicates else ""
         full_qedge_cypher = f"-[{qedge_key}{predicate_cypher}]-"
         if enforce_directionality:
             full_qedge_cypher += ">"
