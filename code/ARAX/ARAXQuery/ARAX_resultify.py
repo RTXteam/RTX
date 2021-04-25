@@ -274,7 +274,7 @@ def _make_edge_key(node1_id: str,
 
 def _is_specific_query_node(qnode_key: str, qnode: QNode):
     return (qnode_key is not None and ':' in qnode_key) or \
-        (qnode.id is not None and ':' in qnode.id)
+        (qnode.id is not None and len(qnode.id) == 1)
 
 
 def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
