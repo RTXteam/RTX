@@ -302,8 +302,7 @@ components:
           description: A list of operations that were applied
           type: array
           items:
-            oneOf:
-              - $ref: '#/components/schemas/FilterResultsTopN'
+            type: object
         operations:
           description: >-
             Container for one or more Message objects or identifiers for one or

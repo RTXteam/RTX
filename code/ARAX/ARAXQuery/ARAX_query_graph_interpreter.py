@@ -87,22 +87,22 @@ class ARAXQueryGraphInterpreter:
             if component['component_type'] == 'node':
 
                 # Go through the list of possible things it could be and those or lesser possible next steps
-                if component['has_id'] and component['has_category'] and component['category_value']:
-                    possible_next_steps.append( { 'content': f"id,category={component['category_value']}", 'score': 10000 } )
-                    possible_next_steps.append( { 'content': 'id', 'score': 1000 } )
+                if component['has_ids'] and component['has_categories'] and component['categories_value']:
+                    possible_next_steps.append( { 'content': f"ids,categories={component['categories_value']}", 'score': 10000 } )
+                    possible_next_steps.append( { 'content': 'ids', 'score': 1000 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_id']:
-                    possible_next_steps.append( { 'content': 'id', 'score': 1000 } )
+                elif component['has_ids']:
+                    possible_next_steps.append( { 'content': 'ids', 'score': 1000 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_category'] and component['category_value']:
-                    possible_next_steps.append( { 'content': f"category={component['category_value']}", 'score': 100 } )
-                    possible_next_steps.append( { 'content': 'category', 'score': 10 } )
+                elif component['has_categories'] and component['categories_value']:
+                    possible_next_steps.append( { 'content': f"categories={component['categories_value']}", 'score': 100 } )
+                    possible_next_steps.append( { 'content': 'categories', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_category']:
-                    possible_next_steps.append( { 'content': 'category', 'score': 10 } )
+                elif component['has_categories']:
+                    possible_next_steps.append( { 'content': 'categories', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
                 else:
@@ -111,13 +111,13 @@ class ARAXQueryGraphInterpreter:
             # Else it's an edge. Don't do anything with those currently
             else:
                 # Go through the list of possible things it could be and those or lesser possible next steps
-                if component['has_predicate'] and component['predicate_value']:
-                    possible_next_steps.append( { 'content': f"predicate={component['predicate_value']}", 'score': 90 } )
-                    possible_next_steps.append( { 'content': 'predicate', 'score': 10 } )
+                if component['has_predicates'] and component['predicates_value']:
+                    possible_next_steps.append( { 'content': f"predicates={component['predicates_value']}", 'score': 90 } )
+                    possible_next_steps.append( { 'content': 'predicates', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_predicate']:
-                    possible_next_steps.append( { 'content': 'predicate', 'score': 10 } )
+                elif component['has_predicates']:
+                    possible_next_steps.append( { 'content': 'predicates', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
                 else:
@@ -216,12 +216,12 @@ class ARAXQueryGraphInterpreter:
             self.response.error(f"Missing version number in QueryGraphInterpreter templates file {template_file}", error_code="MissingQueryGraphInterpreterTemplateFileVersion")
             self.query_graph_templates = None
             return self.response
-        if self.query_graph_templates['ARAX_QG_DSL_mapping'] != 0.1:
+        if self.query_graph_templates['ARAX_QG_DSL_mapping'] != 0.2:
             self.response.error(f"Incorrect version number in QueryGraphInterpreter templates file {template_file}", error_code="BadQueryGraphInterpreterTemplateFileVersion")
             self.query_graph_templates = None
             return self.response
 
-        # We will create dict lookup table of all the template string [e.g. 'n00(id)-e00()-n01(category)' -> template_name]
+        # We will create dict lookup table of all the template string [e.g. 'n00(ids)-e00()-n01(categories)' -> template_name]
         self.query_graph_templates['template_strings'] = {}
 
         # We will also create dict tree of all templates organized by the number of nodes and then by each component
@@ -347,8 +347,8 @@ def QGI_test2():
     input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "category": "chemical_substance" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "predicate": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
     # TRAPI 1.0.0
     input_query_graph = { "message": { "query_graph": { 
-        "nodes": { "n1": { "category": "biolink:ChemicalSubstance" }, "n2": { "id": "UMLS:C0002395" } },
-        "edges": { "e1": { "predicate": "clinically_tested_approved_unknown_phase", "subject": "n1", "object": "n2" } }
+        "nodes": { "n1": { "categories": [ "biolink:ChemicalSubstance" ] }, "n2": { "ids": [ "UMLS:C0002395" ] } },
+        "edges": { "e1": { "predicates": "clinically_tested_approved_unknown_phase", "subject": "n1", "object": "n2" } }
         } } }
 
     #### Create a template Message
@@ -382,23 +382,23 @@ def QGI_test3():
         {
         "nodes": {
             "n00": {
-            "id": "MONDO:0002715"
+            "ids": [ "MONDO:0002715" ]
             },
             "n01": {
-            "category": "biolink:ChemicalSubstance"
+            "categories": [ "biolink:ChemicalSubstance" ]
             },
             "n02": {
-            "category": "biolink:Gene"
+            "categories": [ "biolink:Gene" ]
             }
         },
         "edges": {
             "e00": {
-            "predicate": "biolink:correlated_with",
+            "predicates": [ "biolink:correlated_with" ],
             "subject": "n00",
             "object": "n01"
             },
             "e01": {
-            "predicate": "biolink:related_to",
+            "predicates": [ "biolink:related_to" ],
             "subject": "n01",
             "object": "n02"
             }
