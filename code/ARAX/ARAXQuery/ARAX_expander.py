@@ -407,7 +407,7 @@ class ARAXExpander:
             kp_to_use = parameters["kp"] if user_specified_kp else "ARAX/KG2"  # Only KG2 does single-node queries
             for qnode_key in input_qnode_keys:
                 answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms,
-                                              mode, user_specified_kp, log)
+                                              mode, user_specified_kp, force_local, log)
                 if log.status != 'OK':
                     return response
                 self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, mode, log)
@@ -496,7 +496,7 @@ class ARAXExpander:
         return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
-                     use_synonyms: bool, mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     use_synonyms: bool, mode: str, user_specified_kp: bool, force_local: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -516,7 +516,7 @@ class ARAXExpander:
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, force_local)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 

@@ -144,7 +144,8 @@ class KG2Querier:
     def _load_plover_answer_into_object_model(self, plover_answer: Dict[str, Dict[str, Union[set, dict]]],
                                               log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # Figure out whether this response returned only node/edge IDs or node/edge objects themselves
-        first_nodes_entry = next(nodes for nodes in plover_answer["nodes"].values())
+        nodes_entries = [nodes for nodes in plover_answer["nodes"].values()]
+        first_nodes_entry = nodes_entries[0] if nodes_entries else dict()
         response_includes_metadata = True if isinstance(first_nodes_entry, dict) else False
         if response_includes_metadata:
             answer_kg = QGOrganizedKnowledgeGraph()
