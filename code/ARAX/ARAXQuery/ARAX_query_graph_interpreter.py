@@ -347,8 +347,13 @@ def QGI_test2():
     input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "category": "chemical_substance" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "predicate": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
     # TRAPI 1.0.0
     input_query_graph = { "message": { "query_graph": { 
+        "nodes": { "n1": { "category": "biolink:ChemicalSubstance" }, "n2": { "id": "UMLS:C0002395" } },
+        "edges": { "e1": { "predicate": "clinically_tested_approved_unknown_phase", "subject": "n1", "object": "n2" } }
+        } } }
+    # TRAPI 1.1.0
+    input_query_graph = { "message": { "query_graph": { 
         "nodes": { "n1": { "categories": [ "biolink:ChemicalSubstance" ] }, "n2": { "ids": [ "UMLS:C0002395" ] } },
-        "edges": { "e1": { "predicates": "clinically_tested_approved_unknown_phase", "subject": "n1", "object": "n2" } }
+        "edges": { "e1": { "predicates": [ "biolink:clinically_tested_approved_unknown_phase" ], "subject": "n1", "object": "n2" } }
         } } }
 
     #### Create a template Message
@@ -372,7 +377,7 @@ def QGI_test2():
     print('-------------------------')
     print(response.show(level=ARAXResponse.DEBUG))
     print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
-    #sys.exit(1)
+
 
 ##########################################################################################
 
@@ -444,7 +449,7 @@ def main():
     #print(params.test_number)
     if params.test_number[0] == '2':
         QGI_test2()
-    if params.test_number[0] == '3':
+    elif params.test_number[0] == '3':
         QGI_test3()
     else:
         QGI_test1()
