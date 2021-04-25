@@ -78,8 +78,6 @@ class DTDQuerier:
         self.DTD_threshold = float(self.response.data['parameters']['DTD_threshold'])
         DTD_slow_mode = self.response.data['parameters']['DTD_slow_mode']
         final_kg = QGOrganizedKnowledgeGraph()
-        # Switch QG back to old style where category/predicate can be strings OR lists
-        query_graph = eu.switch_back_to_str_or_list_types(query_graph)
 
         if 0.8 <= self.DTD_threshold <=1:
             if not DTD_slow_mode:

@@ -49,7 +49,7 @@ class NGDQuerier:
             return final_kg
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         qedge = query_graph.edges[qedge_key]
-        if qedge.predicate and not set(eu.convert_to_list(qedge.predicate)).intersection(self.accepted_qedge_predicates):
+        if qedge.predicate and not set(qedge.predicate).intersection(self.accepted_qedge_predicates):
             log.error(f"NGD can only expand qedges with these predicates: {self.accepted_qedge_predicates}. QEdge"
                       f" {qedge_key}'s predicate is: {qedge.predicate}", error_code="UnsupportedQG")
             return final_kg

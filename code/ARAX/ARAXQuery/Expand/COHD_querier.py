@@ -46,8 +46,6 @@ class COHDQuerier:
         COHD_method = self.response.data['parameters']['COHD_method']
         COHD_method_percentile = self.response.data['parameters']['COHD_method_percentile']
         final_kg = QGOrganizedKnowledgeGraph()
-        # Switch QG back to old style where category/predicate can be strings OR lists
-        query_graph = eu.switch_back_to_str_or_list_types(query_graph)
 
         if COHD_method_percentile == 99:
             pass

@@ -427,21 +427,6 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     return endpoint_map.get(kp_name)
 
 
-def switch_back_to_str_or_list_types(qg: QueryGraph) -> QueryGraph:
-    # Switches QG back to old style where qnode.category and qedge.predicate can be strings OR lists (vs. always lists)
-    for qnode in qg.nodes.values():
-        if not qnode.category:
-            qnode.category = None
-        elif len(qnode.category) == 1:
-            qnode.category = qnode.category[0]
-    for qedge in qg.edges.values():
-        if not qedge.predicate:
-            qedge.predicate = None
-        elif len(qedge.predicate) == 1:
-            qedge.predicate = qedge.predicate[0]
-    return qg
-
-
 def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
     # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
     qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
