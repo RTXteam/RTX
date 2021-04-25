@@ -11,15 +11,13 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../../A
 from ARAX_query import ARAXQuery
 
 
-def query(request_body, bypass_cache=None):  # noqa: E501
+def query(request_body):  # noqa: E501
     """Query reasoner via one of several inputs
 
      # noqa: E501
 
     :param request_body: Query information to be submitted
-    :type request_body: dict | bytes
-    :param bypass_cache: Set to true in order to bypass any possible cached response and try to answer the query over again 
-    :type bypass_cache: bool
+    :type request_body: Dict[str, ]
 
     :rtype: Response
     """
@@ -29,7 +27,7 @@ def query(request_body, bypass_cache=None):  # noqa: E501
     query = connexion.request.get_json()
     araxq = ARAXQuery()
 
-    if "asynchronous" in query and query['asynchronous'].lower() == 'stream':
+    if "stream_progress" in query and query['stream_progress'] is true:
         # Return a stream of data to let the client know what's going on
         return Response(araxq.query_return_stream(query, mode='RTXKG2'),mimetype='text/plain')
 
