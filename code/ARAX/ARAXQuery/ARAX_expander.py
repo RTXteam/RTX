@@ -325,9 +325,9 @@ class ARAXExpander:
         # Consider both protein and gene if qnode's category is one of those (since KPs handle these differently)
         protein_gene_categories = {self.protein_category, self.gene_category}
         for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.category and set(qnode.category).intersection(protein_gene_categories):
-                qnode.category = list(set(qnode.category).union(protein_gene_categories))
-                log.debug(f"Will consider qnode {qnode_key}'s category to be {qnode.category}")
+            if qnode.categories and set(qnode.categories).intersection(protein_gene_categories):
+                qnode.categories = list(set(qnode.categories).union(protein_gene_categories))
+                log.debug(f"Will consider qnode {qnode_key}'s category to be {qnode.categories}")
 
         # Expand any specified edges
         if input_qedge_keys:
@@ -448,7 +448,7 @@ class ARAXExpander:
         log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
 
         # Make sure at least one of the qnodes has a curie specified
-        if not any(qnode for qnode in edge_qg.nodes.values() if qnode.id):
+        if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
@@ -504,7 +504,7 @@ class ARAXExpander:
         answer_kg = QGOrganizedKnowledgeGraph()
         if log.status != 'OK':
             return answer_kg
-        if not qnode.id:
+        if not qnode.ids:
             log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
 
@@ -554,24 +554,24 @@ class ARAXExpander:
             qnode_copy = eu.copy_qnode(qnode)
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
             qnode_already_fulfilled = qnode_key in overarching_kg.nodes_by_qg_id
-            if qnode_already_fulfilled and not qnode_copy.id:
+            if qnode_already_fulfilled and not qnode_copy.ids:
                 existing_curies_for_this_qnode_key = list(overarching_kg.nodes_by_qg_id[qnode_key])
                 if qedge_has_already_been_expanded:
                     # Feed in curies only for 'input' qnodes if we're re-expanding this edge (i.e., with another KP)
                     if self._is_input_qnode(qnode_key, qedge_key, full_qg, log):
-                        qnode_copy.id = existing_curies_for_this_qnode_key
+                        qnode_copy.ids = existing_curies_for_this_qnode_key
                 elif qedge_is_required:
                     # Only feed in curies to required qnodes if it was expansion of a REQUIRED qedge that grabbed them
                     qedge_keys_connected_to_qnode = eu.get_connected_qedge_keys(qnode_key, full_qg)
                     was_populated_by_required_edge = qedge_keys_connected_to_qnode.intersection(required_qedge_keys, expanded_qedge_keys)
                     if was_populated_by_required_edge:
-                        qnode_copy.id = existing_curies_for_this_qnode_key
+                        qnode_copy.ids = existing_curies_for_this_qnode_key
                 else:
-                    qnode_copy.id = existing_curies_for_this_qnode_key
+                    qnode_copy.ids = existing_curies_for_this_qnode_key
             edge_qg.nodes[qnode_key] = qnode_copy
 
         # Display a summary of what the modified query graph for this edge looks like
-        qnodes_with_curies = [qnode_key for qnode_key, qnode in edge_qg.nodes.items() if qnode.id]
+        qnodes_with_curies = [qnode_key for qnode_key, qnode in edge_qg.nodes.items() if qnode.ids]
         qnodes_without_curies = [qnode_key for qnode_key in edge_qg.nodes if qnode_key not in qnodes_with_curies]
         input_qnode_key = qnodes_with_curies[0] if qnodes_with_curies else qnodes_without_curies[0]
         output_qnode_key = list(set(edge_qg.nodes).difference({input_qnode_key}))[0]
@@ -579,8 +579,8 @@ class ARAXExpander:
         output_qnode = edge_qg.nodes[output_qnode_key]
         input_curie_summary = self._get_qnode_curie_summary(input_qnode)
         output_curie_summary = self._get_qnode_curie_summary(output_qnode)
-        log.debug(f"Modified QG for this qedge is ({input_qnode_key}:{input_qnode.category}{input_curie_summary})-"
-                  f"{qedge.predicate if qedge.predicate else ''}-({output_qnode_key}:{output_qnode.category}{output_curie_summary})")
+        log.debug(f"Modified QG for this qedge is ({input_qnode_key}:{input_qnode.categories}{input_curie_summary})-"
+                  f"{qedge.predicates if qedge.predicates else ''}-({output_qnode_key}:{output_qnode.categories}{output_curie_summary})")
         return edge_qg
 
     @staticmethod
@@ -675,9 +675,9 @@ class ARAXExpander:
         log.debug("Merging answer into Message.KnowledgeGraph")
         pinned_curies_map = defaultdict(set)
         for qnode_key, qnode in overarching_qg.nodes.items():
-            if qnode.id:
+            if qnode.ids:
                 # Get canonicalized versions of any curies in the QG, as appropriate
-                curies = eu.get_canonical_curies_list(qnode.id, log) if use_synonyms else qnode.id
+                curies = eu.get_canonical_curies_list(qnode.ids, log) if use_synonyms else qnode.ids
                 for curie in curies:
                     pinned_curies_map[curie].add(qnode_key)
 
@@ -1011,7 +1011,7 @@ class ARAXExpander:
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
         for node in kg.nodes.values():
             corresponding_qnode_categories = {category for qnode_key in node.qnode_keys for category in
-                                              eu.convert_to_list(qg.nodes[qnode_key].category)}
+                                              eu.convert_to_list(qg.nodes[qnode_key].categories)}
             if corresponding_qnode_categories:
                 node.category = list(corresponding_qnode_categories)
 
@@ -1024,7 +1024,7 @@ class ARAXExpander:
     @staticmethod
     def _get_qedges_with_curie_qnode(query_graph: QueryGraph) -> List[str]:
         return [qedge_key for qedge_key, qedge in query_graph.edges.items()
-                if query_graph.nodes[qedge.subject].id or query_graph.nodes[qedge.object].id]
+                if query_graph.nodes[qedge.subject].ids or query_graph.nodes[qedge.object].ids]
 
     @staticmethod
     def _find_connected_qedge(qedge_choices: List[QEdge], qedge: QEdge) -> QEdge:
@@ -1051,9 +1051,9 @@ class ARAXExpander:
 
     @staticmethod
     def _get_qnode_curie_summary(qnode: QNode) -> str:
-        num_curies = len(qnode.id) if qnode.id else 0
+        num_curies = len(qnode.ids) if qnode.ids else 0
         if num_curies == 1:
-            return f" {qnode.id}"
+            return f" {qnode.ids}"
         elif num_curies > 1:
             return f" [{num_curies} curies]"
         else:

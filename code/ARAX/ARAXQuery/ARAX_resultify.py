@@ -274,7 +274,7 @@ def _make_edge_key(node1_id: str,
 
 def _is_specific_query_node(qnode_key: str, qnode: QNode):
     return (qnode_key is not None and ':' in qnode_key) or \
-        (qnode.id is not None and len(qnode.id) == 1)
+        (qnode.ids is not None and len(qnode.ids) == 1)
 
 
 def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
@@ -595,7 +595,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                 symbol_attribute = symbol_attributes[0] if symbol_attributes else None
                 if symbol_attribute and symbol_attribute.value is not None:
                     result.essence += " (" + str(symbol_attribute.value) + ")"
-            result.essence_category = str(essence_qnode.category) if essence_qnode else None
+            result.essence_category = str(essence_qnode.categories) if essence_qnode else None
         elif len(essence_kg_node_key_set) == 0:
             result.essence = cast(str, None)
             result.essence_category = cast(str, None)

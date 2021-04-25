@@ -67,17 +67,17 @@ class TRAPIQuerier:
         else:
             # Otherwise we need to search for curies one-by-one (until TRAPI includes a batch querying method)
             qedge = next(qedge for qedge in qg_copy.edges.values())
-            subject_qnode_curies = eu.convert_to_list(qg_copy.nodes[qedge.subject].id)
+            subject_qnode_curies = eu.convert_to_list(qg_copy.nodes[qedge.subject].ids)
             subject_qnode_curies = subject_qnode_curies if subject_qnode_curies else [None]
-            object_qnode_curies = eu.convert_to_list(qg_copy.nodes[qedge.object].id)
+            object_qnode_curies = eu.convert_to_list(qg_copy.nodes[qedge.object].ids)
             object_qnode_curies = object_qnode_curies if object_qnode_curies else [None]
             curie_combinations = [(curie_subj, curie_obj) for curie_subj in subject_qnode_curies for curie_obj in object_qnode_curies]
             # Query KP for all pairs of subject/object curies (pairs look like ("curie1", None) if one has no curies)
             for curie_combination in curie_combinations:
                 subject_curie = curie_combination[0]
                 object_curie = curie_combination[1]
-                qg_copy.nodes[qedge.subject].id = subject_curie
-                qg_copy.nodes[qedge.object].id = object_curie
+                qg_copy.nodes[qedge.subject].ids = subject_curie
+                qg_copy.nodes[qedge.object].ids = object_curie
                 self.log.debug(f"{self.kp_name}: Current curie pair is: subject: {subject_curie}, object: {object_curie}")
                 if self.kp_supports_category_lists and self.kp_supports_predicate_lists:
                     sub_kg = self._answer_query_using_kp(qg_copy)
@@ -127,11 +127,6 @@ class TRAPIQuerier:
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
 
     def _preprocess_query_graph(self, query_graph: QueryGraph):
-        # Make sure category and predicate are always lists
-        for qnode_key, qnode in query_graph.nodes.items():
-            qnode.category = eu.convert_to_list(qnode.category)
-        for qedge_key, qedge in query_graph.edges.items():
-            qedge.predicate = eu.convert_to_list(qedge.predicate)
         # Make any overrides of categories that are needed (e.g., consider 'proteins' to be 'genes', etc.)
         if self.node_category_overrides_for_kp:
             query_graph = self._override_qnode_types_as_needed(query_graph)
@@ -142,9 +137,10 @@ class TRAPIQuerier:
 
     def _override_qnode_types_as_needed(self, query_graph: QueryGraph) -> QueryGraph:
         for qnode_key, qnode in query_graph.nodes.items():
-            overriden_categories = {self.node_category_overrides_for_kp.get(qnode_category, qnode_category)
-                                    for qnode_category in qnode.category}
-            qnode.category = list(overriden_categories)
+            if qnode.categories:
+                overriden_categories = {self.node_category_overrides_for_kp.get(qnode_category, qnode_category)
+                                        for qnode_category in qnode.categories}
+                qnode.categories = list(overriden_categories)
         return query_graph
 
     def _verify_qg_is_accepted_by_kp(self, query_graph: QueryGraph):
@@ -164,7 +160,7 @@ class TRAPIQuerier:
             qnodes = query_graph.nodes
             qedge_key = next(qedge_key for qedge_key in query_graph.edges)
             qedge = query_graph.edges[qedge_key]
-            qg_triples = [[qnodes[qedge.subject].category, qedge.predicate, qnodes[qedge.object].category]
+            qg_triples = [[qnodes[qedge.subject].categories, qedge.predicates, qnodes[qedge.object].categories]
                           for qedge in query_graph.edges.values()]
             for triple in qg_triples:
                 query_subject_categories = set(triple[0])
@@ -214,18 +210,18 @@ class TRAPIQuerier:
 
     def _convert_to_accepted_curie_prefixes(self, query_graph: QueryGraph) -> QueryGraph:
         for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.id:
-                equivalent_curies = eu.get_curie_synonyms(qnode.id, self.log)
+            if qnode.ids:
+                equivalent_curies = eu.get_curie_synonyms(qnode.ids, self.log)
                 # TODO: Right to take first category here?
-                preferred_prefix = self.kp_preferred_prefixes.get(qnode.category[0]) if qnode.category else None
+                preferred_prefix = self.kp_preferred_prefixes.get(qnode.categories[0]) if qnode.categories else None
                 if preferred_prefix:
                     desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{preferred_prefix}:")]
                     if desired_curies:
-                        qnode.id = desired_curies
-                        self.log.debug(f"{self.kp_name}: Converted qnode {qnode_key} curie to {qnode.id}")
+                        qnode.ids = desired_curies
+                        self.log.debug(f"{self.kp_name}: Converted qnode {qnode_key} curie to {qnode.ids}")
                     else:
                         self.log.warning(f"{self.kp_name}: Could not convert qnode {qnode_key} curie(s) to preferred prefix "
-                                         f"({self.kp_preferred_prefixes[qnode.category[0]]})")
+                                         f"({self.kp_preferred_prefixes[qnode.categories[0]]})")
         return query_graph
 
     @staticmethod
@@ -263,7 +259,9 @@ class TRAPIQuerier:
         query_timeout = self._get_query_timeout_length(query_graph)
 
         # Send the query to the KP
-        body = {'message': {'query_graph': {'nodes': stripped_qnodes, 'edges': stripped_qedges}}}
+        query_graph = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
+        qg_with_singular_property_names = self._switch_qg_to_singular_property_names(query_graph)
+        body = {'message': {'query_graph': qg_with_singular_property_names}}
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
         if self.force_local and self.kp_name == 'ARAX/KG2':
             self.log.debug(f"{self.kp_name}: Pretending to send query to KG2 API (really it will be run locally)")
@@ -329,9 +327,9 @@ class TRAPIQuerier:
         qnodes = qg_copy.nodes
         qedge_key = next(qedge_key for qedge_key in qg_copy.edges)
         qedge = qg_copy.edges[qedge_key]
-        subject_categories = qnodes[qedge.subject].category if qnodes[qedge.subject].category else [None]
-        object_categories = qnodes[qedge.object].category if qnodes[qedge.object].category else [None]
-        predicates = qedge.predicate if qedge.predicate else [None]
+        subject_categories = qnodes[qedge.subject].categories if qnodes[qedge.subject].categories else [None]
+        object_categories = qnodes[qedge.object].categories if qnodes[qedge.object].categories else [None]
+        predicates = qedge.predicates if qedge.predicates else [None]
         possible_triples = [(subject_category, predicate, object_category) for subject_category in subject_categories
                             for predicate in predicates for object_category in object_categories]
         answer_kg = QGOrganizedKnowledgeGraph()
@@ -340,9 +338,9 @@ class TRAPIQuerier:
             current_predicate = possible_triple[1]
             current_object_category = possible_triple[2]
             # Modify the QG so it's asking only for the current category--predicate--category triple
-            qg_copy.nodes[qedge.subject].category = current_subject_category
-            qg_copy.nodes[qedge.object].category = current_object_category
-            qg_copy.edges[qedge_key].predicate = current_predicate
+            qg_copy.nodes[qedge.subject].categories = current_subject_category
+            qg_copy.nodes[qedge.object].categories = current_object_category
+            qg_copy.edges[qedge_key].predicates = current_predicate
             self.log.debug(f"{self.kp_name}: Current triple is: {current_subject_category}--{current_predicate}--{current_object_category}")
             sub_kg = self._answer_query_using_kp(qg_copy)
             # Merge the answers for this triple into our answers received thus far
@@ -354,7 +352,7 @@ class TRAPIQuerier:
     def _strip_empty_properties(qnode_or_qedge: Union[QNode, QEdge]) -> Dict[str, any]:
         dict_version_of_object = qnode_or_qedge.to_dict()
         stripped_dict = {property_name: value for property_name, value in dict_version_of_object.items()
-                         if dict_version_of_object.get(property_name) not in {None, []}}
+                         if dict_version_of_object.get(property_name) not in [None, []]}
         return stripped_dict
 
     def _get_arax_edge_key(self, edge: Edge) -> str:
@@ -362,7 +360,7 @@ class TRAPIQuerier:
 
     def _get_query_timeout_length(self, qg: QueryGraph) -> int:
         # Returns the number of seconds we should wait for a response based on the number of curies in the QG
-        num_total_curies = sum([len(eu.convert_to_list(qnode.id)) for qnode in qg.nodes.values()])
+        num_total_curies = sum([len(qnode.ids) for qnode in qg.nodes.values() if qnode.ids])
         if self.kp_name == "ARAX/KG2":
             return 600
         elif self.user_specified_kp:  # This can be smaller since we don't send multi-curie queries to other KPs yet
@@ -371,3 +369,23 @@ class TRAPIQuerier:
             return 15
         else:
             return 120
+
+    @staticmethod
+    def _switch_qg_to_singular_property_names(dict_qg: Dict[str, Dict[str, any]]) -> Dict[str, Dict[str, any]]:
+        # This is a temporary patch for use until we start using KPs' TRAPI 1.1 endpoints
+        qnode_keys = set(dict_qg["nodes"])
+        for qnode_key in qnode_keys:
+            qnode = dict_qg["nodes"][qnode_key]
+            if "ids" in qnode:
+                qnode["id"] = qnode["ids"]
+                del qnode["ids"]
+            if "categories" in qnode:
+                qnode["category"] = qnode["categories"]
+                del qnode["categories"]
+        qedge_keys = set(dict_qg["edges"])
+        for qedge_key in qedge_keys:
+            qedge = dict_qg["edges"][qedge_key]
+            if "predicates" in qedge:
+                qedge["predicate"] = qedge["predicates"]
+                del qedge["predicates"]
+        return dict_qg

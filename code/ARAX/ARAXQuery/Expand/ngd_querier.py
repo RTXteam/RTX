@@ -49,9 +49,9 @@ class NGDQuerier:
             return final_kg
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         qedge = query_graph.edges[qedge_key]
-        if qedge.predicate and not set(qedge.predicate).intersection(self.accepted_qedge_predicates):
+        if qedge.predicates and not set(qedge.predicates).intersection(self.accepted_qedge_predicates):
             log.error(f"NGD can only expand qedges with these predicates: {self.accepted_qedge_predicates}. QEdge"
-                      f" {qedge_key}'s predicate is: {qedge.predicate}", error_code="UnsupportedQG")
+                      f" {qedge_key}'s predicate is: {qedge.predicates}", error_code="UnsupportedQG")
             return final_kg
 
         # Find potential answers using KG2
@@ -154,17 +154,17 @@ class NGDQuerier:
 
     @staticmethod
     def _get_dsl_qnode_curie_str(qnode: QNode) -> str:
-        curie_str = f"[{', '.join(qnode.id)}]" if qnode.id else None
+        curie_str = f"[{', '.join(qnode.ids)}]" if qnode.ids else None
         return f"id={curie_str}" if curie_str else ""
 
     @staticmethod
     def _get_dsl_qnode_category_str(qnode: QNode) -> str:
-        if not qnode.category:
+        if not qnode.categories:
             return ""
-        elif len(qnode.category) == 1:
-            return f"category={qnode.category[0]}"
+        elif len(qnode.categories) == 1:
+            return f"category={qnode.categories[0]}"
         else:
-            return f"category=[{', '.join(qnode.category)}]"
+            return f"category=[{', '.join(qnode.categories)}]"
 
     @staticmethod
     def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):

@@ -66,16 +66,16 @@ class KG2Querier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        qnode_keys_with_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id]
+        qnode_keys_with_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.ids]
         for qnode_key in qnode_keys_with_curies:
             qnode = query_graph.nodes[qnode_key]
             if use_synonyms and kg_name == "KG1":
-                qnode.id = eu.get_curie_synonyms(qnode.id, log)
+                qnode.ids = eu.get_curie_synonyms(qnode.ids, log)
             elif kg_name == "KG2c":
-                canonical_curies = eu.get_canonical_curies_list(qnode.id, log)
+                canonical_curies = eu.get_canonical_curies_list(qnode.ids, log)
                 log.debug(f"Using {len(canonical_curies)} curies as canonical curies for qnode {qnode_key}")
-                qnode.id = canonical_curies
-            qnode.category = None  # Important to clear this, otherwise results are limited (#889)
+                qnode.ids = canonical_curies
+            qnode.categories = None  # Important to clear this, otherwise results are limited (#889)
 
         if kg_name == "KG2c":
             # Use Plover to answer KG2c queries
@@ -102,13 +102,13 @@ class KG2Querier:
         qnode = single_node_qg.nodes[qnode_key]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        if qnode.id:
+        if qnode.ids:
             if use_synonyms and kg_name == "KG1":
-                qnode.id = eu.get_curie_synonyms(qnode.id, log)
-                qnode.category = None  # Important to clear this, otherwise results are limited (#889)
+                qnode.ids = eu.get_curie_synonyms(qnode.ids, log)
+                qnode.categories = None  # Important to clear this, otherwise results are limited (#889)
             elif kg_name == "KG2c":
-                qnode.id = eu.get_canonical_curies_list(qnode.id, log)
-                qnode.category = None  # Important to clear this to avoid discrepancies in types for particular concepts
+                qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
+                qnode.categories = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         if kg_name == "KG2c":
             # Use Plover to answer KG2c queries
@@ -248,7 +248,7 @@ class KG2Querier:
         answer_kg = QGOrganizedKnowledgeGraph()
 
         # Build and run a cypher query to get this node/nodes
-        where_clause = f"{qnode_key}.id='{qnode.id}'" if len(qnode.id) == 1 else f"{qnode_key}.id in {qnode.id}"
+        where_clause = f"{qnode_key}.id='{qnode.ids}'" if len(qnode.ids) == 1 else f"{qnode_key}.id in {qnode.ids}"
         cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, qg)} WHERE {where_clause} RETURN {qnode_key}"
         log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
@@ -279,11 +279,11 @@ class KG2Querier:
             where_fragments = []
             for qnode_key in [subject_qnode_key, object_qnode_key]:
                 qnode = qg.nodes[qnode_key]
-                if qnode.id and len(qnode.id) > 1:
-                    where_fragments.append(f"{qnode_key}.id in {qnode.id}")
-                if qnode.category and len(qnode.category) > 1:
+                if qnode.ids and len(qnode.ids) > 1:
+                    where_fragments.append(f"{qnode_key}.id in {qnode.ids}")
+                if qnode.categories and len(qnode.categories) > 1:
                     # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
-                    category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.category]
+                    category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.categories]
                     category_where_fragment = f"({' OR '.join(category_sub_fragments)})"
                     where_fragments.append(category_where_fragment)
             where_clause = f"WHERE {' AND '.join(where_fragments)}" if where_fragments else ""
@@ -514,9 +514,9 @@ class KG2Querier:
     def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph) -> str:
         qnode = qg.nodes[qnode_key]
         # Add in node label if there's only one category
-        category_cypher = f":`{qnode.category[0]}`" if len(qnode.category) == 1 else ""
-        if qnode.id and len(qnode.id) == 1:
-            curie_cypher = f" {{id:'{qnode.id[0]}'}}"
+        category_cypher = f":`{qnode.categories[0]}`" if len(qnode.categories) == 1 else ""
+        if qnode.ids and len(qnode.ids) == 1:
+            curie_cypher = f" {{id:'{qnode.ids[0]}'}}"
         else:
             curie_cypher = ""
         qnode_cypher = f"({qnode_key}{category_cypher}{curie_cypher})"
@@ -525,7 +525,7 @@ class KG2Querier:
     @staticmethod
     def _get_cypher_for_query_edge(qedge_key: str, qg: QueryGraph, enforce_directionality: bool) -> str:
         qedge = qg.edges[qedge_key]
-        predicate_cypher = "|".join([f":`{predicate}`" for predicate in qedge.predicate])
+        predicate_cypher = "|".join([f":`{predicate}`" for predicate in qedge.predicates])
         full_qedge_cypher = f"-[{qedge_key}{predicate_cypher}]-"
         if enforce_directionality:
             full_qedge_cypher += ">"
