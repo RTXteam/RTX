@@ -20,7 +20,7 @@ def get_entity(q):  # noqa: E501
     :rtype: object
     """
     synonymizer = NodeSynonymizer()
-    response = synonymizer.get_normalizer_results(q,kg_name='KG2')
+    response = synonymizer.get_normalizer_results(q)
 
     return response
 
