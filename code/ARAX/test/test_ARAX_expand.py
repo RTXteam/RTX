@@ -671,7 +671,7 @@ def test_option_group_query_one_hop():
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:positively_regulates)",
-        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:correlated_with, option_group_ids=1)",
+        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:correlated_with, option_group_id=1)",
         "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
@@ -684,10 +684,10 @@ def test_option_group_query_no_results():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, ids=CHEBI:48607)",
-        "add_qnode(key=n02, categories=biolink:Protein, option_group_ids=1, is_set=true)",
+        "add_qnode(key=n02, categories=biolink:Protein, option_group_id=1, is_set=true)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:related_to)",
-        "add_qedge(key=e01, subject=n00, object=n02, option_group_ids=1, predicates=biolink:overlaps)",
-        "add_qedge(key=e02, subject=n02, object=n01, option_group_ids=1, predicates=biolink:affects)",
+        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicates=biolink:overlaps)",
+        "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicates=biolink:affects)",
         "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
