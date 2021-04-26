@@ -81,10 +81,10 @@ class ComputeFTEST:
                 for node_key in self.message.query_graph.nodes:
                     if node_key == subject_qnode_key:
                         subject_node_exist = True
-                        subject_node_category = self.message.query_graph.nodes[node_key].category
+                        subject_node_category = self.message.query_graph.nodes[node_key].categories
                     elif node_key == object_qnode_key:
                         object_node_exist = True
-                        object_node_category = self.message.query_graph.nodes[node_key].category
+                        object_node_category = self.message.query_graph.nodes[node_key].categories
                     else:
                         pass
             else:
@@ -145,7 +145,7 @@ class ComputeFTEST:
         try:
             count = 0
             for node_key, node in self.message.knowledge_graph.nodes.items():
-                nodes_info[node_key] = {'count': count, 'qnode_keys': node.qnode_keys, 'category': self.message.knowledge_graph.nodes[node_key].category, 'edge_index': []}
+                nodes_info[node_key] = {'count': count, 'qnode_keys': node.qnode_keys, 'category': self.message.knowledge_graph.nodes[node_key].categories[0], 'edge_index': []}
                 count = count + 1
         except:
             tb = traceback.format_exc()
@@ -159,7 +159,7 @@ class ComputeFTEST:
             count = 0
             for edge_key, edge in self.message.knowledge_graph.edges.items():
 
-                edge_attribute_dict = {x.name:x.value for x in self.message.knowledge_graph.edges[edge_key].attributes}
+                edge_attribute_dict = {x.original_attribute_name:x.value for x in self.message.knowledge_graph.edges[edge_key].attributes}
                 if edge_attribute_dict['is_defined_by'] != 'ARAX':
 
                     nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['edge_index'].append(count)
@@ -262,13 +262,13 @@ class ComputeFTEST:
 
         ## Print out some information used to calculate FET
         if len(subject_node_list) == 1:
-            self.response.debug(f"{len(subject_node_list)} subject node with qnode key {subject_qnode_key} and node type {subject_node_category} was found in message KG and used to calculate Fisher's Exact Test")
+            self.response.debug(f"{len(subject_node_list)} subject node with qnode key {subject_qnode_key} and node type {subject_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
         else:
-            self.response.debug(f"{len(subject_node_list)} subject nodes with qnode key {subject_qnode_key} and node type {subject_node_category} was found in message KG and used to calculate Fisher's Exact Test")
+            self.response.debug(f"{len(subject_node_list)} subject nodes with qnode key {subject_qnode_key} and node type {subject_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
         if len(object_node_dict) == 1:
-            self.response.debug(f"{len(object_node_dict)} object node with qnode key {object_qnode_key} and node type {object_node_category} was found in message KG and used to calculate Fisher's Exact Test")
+            self.response.debug(f"{len(object_node_dict)} object node with qnode key {object_qnode_key} and node type {object_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
         else:
-            self.response.debug(f"{len(object_node_dict)} object nodes with qnode key {object_qnode_key} and node type {object_node_category} was found in message KG and used to calculate Fisher's Exact Test")
+            self.response.debug(f"{len(object_node_dict)} object nodes with qnode key {object_qnode_key} and node type {object_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
 
 
         # find all nodes with the same type of 'subject_qnode_key' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
@@ -279,14 +279,14 @@ class ComputeFTEST:
             if rel_edge_key:
                 if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
                     self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total object nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category, adjacent_type=subject_node_category, kp = kp, rel_type=list(rel_edge_type)[0], use_cypher_command=False)
+                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp = kp, rel_type=list(rel_edge_type)[0], use_cypher_command=False)
                 else:  # if the edge with rel_edge_key has more than one type, we ignore the edge predicate and use all categories to find all subject nodes in KP
                     self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
                     self.response.debug(f"{kp} was used to calculate total object nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category, adjacent_type=subject_node_category, kp=kp, rel_type=None, use_cypher_command=False)
+                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp=kp, rel_type=None, use_cypher_command=False)
             else:  # if no rel_edge_key is specified, we ignore the edge predicate and use all categories to find all subject nodes in KP
                 self.response.debug(f"{kp} was used to calculate total object nodes in Fisher's Exact Test")
-                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category, adjacent_type=subject_node_category, kp=kp, rel_type=None, use_cypher_command=False)
+                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp=kp, rel_type=None, use_cypher_command=False)
 
             if result is None:
                 return self.response ## Something wrong happened for querying the adjacent nodes
@@ -307,14 +307,14 @@ class ComputeFTEST:
             if rel_edge_key:
                 if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
                     self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parameter_list = [(node, object_node_category, subject_node_category, kp, list(rel_edge_type)[0]) for node in list(object_node_dict.keys())]
+                    parameter_list = [(node, object_node_category[0], subject_node_category[0], kp, list(rel_edge_type)[0]) for node in list(object_node_dict.keys())]
                 else:  # if the edge with rel_edge_key has more than one type, we ignore the edge type and use all types to find all source nodes in KP
                     self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
                     self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parameter_list = [(node, object_node_category, subject_node_category, kp, None) for node in list(object_node_dict.keys())]
+                    parameter_list = [(node, object_node_category[0], subject_node_category[0], kp, None) for node in list(object_node_dict.keys())]
             else:  # if no rel_edge_key is specified, we ignore the edge type and use all types to find all source nodes in KP
                 self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                parameter_list = [(node, object_node_category, subject_node_category, kp, None) for node in list(object_node_dict.keys())]
+                parameter_list = [(node, object_node_category[0], subject_node_category[0], kp, None) for node in list(object_node_dict.keys())]
 
             ## get the count of all nodes with the type of 'subject_qnode_key' nodes in KP for each target node in parallel
             try:
@@ -342,25 +342,24 @@ class ComputeFTEST:
         if len(object_node_dict) != 0:
             ## Based on KP detected in message KG, find the total number of node with the same type of source node
             if kp=='ARAX/KG1':
-                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category, use_cypher_command=False, kg='KG1')
+                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], use_cypher_command=False, kg='KG1')
                 if size_of_total != 0:
                     self.response.debug(f"ARAX/KG1 and cypher query were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                    self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category} was found in ARAX/KG1")
+                    self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in ARAX/KG1")
                 else:
-                    print(f'######## {subject_node_category} ######', flush=True)
-                    size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category, use_cypher_command=False, kg='KG2') ## If cypher query fails, then try kgNodeIndex
+                    size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], use_cypher_command=False, kg='KG2') ## If cypher query fails, then try kgNodeIndex
                     if size_of_total==0:
                         self.response.error(f"Both KG1 and KG2 have 0 node with the same type of subject node with qnode key {subject_qnode_key}")
                         return self.response
                     else:
-                        self.response.debug(f"Since KG1 can't find the any nodes with node category {subject_node_category}, ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                        self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category} was found in ARAX/KG2C")
+                        self.response.debug(f"Since KG1 can't find the any nodes with node category {subject_node_category[0]}, ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
+                        self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in ARAX/KG2C")
 
             elif kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
                 ## check KG1 first as KG2 might have many duplicates. If KG1 is 0, then check KG2
-                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category, use_cypher_command=False, kg='KG2') ## Try cypher query first
+                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], use_cypher_command=False, kg='KG2') ## Try cypher query first
                 self.response.debug(f"ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category} was found in ARAX/KG2C")
+                self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in ARAX/KG2C")
 
             else:
                 self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
@@ -421,12 +420,12 @@ class ComputeFTEST:
             for index, value in enumerate([(virtual_relation_label, output[adj], node, adj) for adj in object_node_dict if adj in output.keys() for node in object_node_dict[adj]], 1):
 
                 edge_attribute_list =  [
-                    EdgeAttribute(type="EDAM:data_1669", name="fisher_exact_test_p-value", value=str(value[1]), url=None),
-                    EdgeAttribute(name="is_defined_by", value="ARAX", type="ARAX_TYPE_PLACEHOLDER"),
-                    EdgeAttribute(name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), type="metatype:Datetime"),
-                    EdgeAttribute(name="provided_by", value="ARAX", type="biolink:provided_by"),
-                    #EdgeAttribute(name="confidence", value=None, type="biolink:ConfidenceLevel"),
-                    #EdgeAttribute(name="weight", value=None, type="metatype:Float")
+                    EdgeAttribute(attribute_type_id="EDAM:data_1669", original_attribute_name="fisher_exact_test_p-value", value=str(value[1]), value_url=None),
+                    EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
+                    EdgeAttribute(original_attribute_name="provided_by", value="ARAX", attribute_type_id="biolink:provided_by"),
+                    #EdgeAttribute(original_attribute_name="confidence", value=None, type="biolink:ConfidenceLevel"),
+                    #EdgeAttribute(original_attribute_name="weight", value=None, type="metatype:Float")
                 ]
                 edge_id = f"{value[0]}_{index}"
                 edge = Edge(predicate='biolink:has_fisher_exact_test_p-value_with', subject=value[2], object=value[3], relation=value[0],
@@ -442,11 +441,11 @@ class ComputeFTEST:
             # add the virtual edge to message QG
             if count > 0:
                 self.response.debug(f"Adding virtual edge to message QG")
-                edge_type = "biolink:has_fisher_exact_test_p-value_with"
+                edge_type = ["biolink:has_fisher_exact_test_p-value_with"]
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                           self.message.query_graph, self.response)
                 qedge_id = virtual_relation_label
-                q_edge = QEdge(predicate=edge_type, relation=virtual_relation_label,
+                q_edge = QEdge(predicates=edge_type, relation=virtual_relation_label,
                                subject=subject_qnode_key, object=object_qnode_key,
                                option_group_id=option_group_id)
                 self.message.query_graph.edges[qedge_id] = q_edge
@@ -564,9 +563,9 @@ class ComputeFTEST:
             if rel_type:
                 query = {"operations": {"actions": [
                     "create_message",
-                    f"add_qnode(id={query_node_curie}, category={source_type}, key=FET_n00)",
-                    f"add_qnode(category={adjacent_type}, key=FET_n01)",
-                    f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicate={rel_type})",
+                    f"add_qnode(ids={query_node_curie}, categories={source_type}, key=FET_n00)",
+                    f"add_qnode(categories={adjacent_type}, key=FET_n01)",
+                    f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicates={rel_type})",
                     f"expand(edge_key=FET_e00,kp={kp})",
                     #"resultify()",
                     "return(message=true, store=false)"
@@ -574,8 +573,8 @@ class ComputeFTEST:
             else:
                 query = {"operations": {"actions": [
                     "create_message",
-                    f"add_qnode(id={query_node_curie}, category={source_type}, key=FET_n00)",
-                    f"add_qnode(category={adjacent_type}, key=FET_n01)",
+                    f"add_qnode(ids={query_node_curie}, categories={source_type}, key=FET_n00)",
+                    f"add_qnode(categories={adjacent_type}, key=FET_n01)",
                     f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00)",
                     f"expand(edge_key=FET_e00,kp={kp})",
                     #"resultify()",
@@ -667,9 +666,9 @@ class ComputeFTEST:
         if rel_type:
             query = {"operations": {"actions": [
                 "create_message",
-                f"add_qnode(id={node_curie}, category={source_type}, key=FET_n00)",
-                f"add_qnode(category={adjacent_type}, key=FET_n01)",
-                f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicate={rel_type})",
+                f"add_qnode(ids={node_curie}, categories={source_type}, key=FET_n00)",
+                f"add_qnode(categories={adjacent_type}, key=FET_n01)",
+                f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicates={rel_type})",
                 f"expand(edge_key=FET_e00,kp={kp})",
                 #"resultify()",
                 "return(message=true, store=false)"
@@ -677,8 +676,8 @@ class ComputeFTEST:
         else:
             query = {"operations": {"actions": [
                 "create_message",
-                f"add_qnode(id={node_curie}, category={source_type}, key=FET_n00)",
-                f"add_qnode(category={adjacent_type}, key=FET_n01)",
+                f"add_qnode(ids={node_curie}, categories={source_type}, key=FET_n00)",
+                f"add_qnode(categories={adjacent_type}, key=FET_n01)",
                 f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00)",
                 f"expand(edge_key=FET_e00,kp={kp})",
                 #"resultify()",
