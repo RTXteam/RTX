@@ -54,7 +54,7 @@ class OverlayClinicalInfo:
         self.response.info("Converting CURIE identifiers to human readable names")
         try:
             for key, node in self.message.knowledge_graph.nodes.items():
-                self.node_curie_to_type[key] = node.category  # WARNING: this is a list
+                self.node_curie_to_type[key] = node.categories[0]  # WARNING: this is a list
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -241,7 +241,7 @@ class OverlayClinicalInfo:
                             value = minimum_pvalue
 
                 # create the edge attribute
-                edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
+                edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url)  # populate the edge attribute # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
                 return edge_attribute
             else:
                 return None
@@ -304,9 +304,9 @@ class OverlayClinicalInfo:
                 self.global_iter += 1
                 edge_attribute_list = [
                     edge_attribute,
-                    EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
-                    EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
-                    EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
+                    EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                    EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:provided_by"),
                     #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
                     #EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
                     #EdgeAttribute(name="qedge_ids", value=qedge_ids)
@@ -333,7 +333,7 @@ class OverlayClinicalInfo:
             # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
             #                subject_key=subject_qnode_key, object_key=object_qnode_key,
             #                option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
-            q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key,
+            q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
             self.message.query_graph.edges[relation]=q_edge
 
