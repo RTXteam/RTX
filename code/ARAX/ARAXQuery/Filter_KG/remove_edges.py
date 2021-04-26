@@ -50,7 +50,7 @@ class RemoveEdges:
                 edge_qid_dict[key] = {'subject':q_edge.subject, 'object':q_edge.object}
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():
-                if edge_params['edge_predicate'] in edge.predicates:
+                if edge_params['edge_predicate'] == edge.predicate:
                     edges_to_remove.add(key)
                     if edge_params['remove_connected_nodes']:
                         for qedge_key in edge.qedge_keys:

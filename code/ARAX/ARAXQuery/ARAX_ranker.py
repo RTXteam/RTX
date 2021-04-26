@@ -49,7 +49,7 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
         for edge_binding in edge_binding_list:
             kg_edge = kg_edge_id_to_edge[edge_binding.id]
             if kg_edge.attributes is not None:
-                kg_edge_attributes = {x.name:x.value for x in kg_edge.attributes}
+                kg_edge_attributes = {x.original_attribute_name:x.value for x in kg_edge.attributes}
             else:
                 kg_edge_attributes = {}
             kg_edge_conf = kg_edge.confidence
@@ -236,7 +236,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 # here we are just multiplying the edge confidences
                 # --- to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
                 result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
-                #kg_edge_attributes = {x.name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
+                #kg_edge_attributes = {x.original_attribute_name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
                 #result_confidence *= kg_edge_attributes["confidence"]
             result.confidence = result_confidence
         else:
@@ -553,7 +553,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
         for edge_key,edge in message.knowledge_graph.edges.items():
             if edge.attributes is not None:
-                edge_attributes = {x.name:x.value for x in edge.attributes}
+                edge_attributes = {x.original_attribute_name:x.value for x in edge.attributes}
             else:
                 edge_attributes = {}
             if edge_attributes.get("confidence", None) is not None:

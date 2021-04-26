@@ -446,7 +446,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'remove_edges_by_predicate'},
-                                    'edge_predicate': set([y for x in self.message.knowledge_graph.edges.values() for y in x.predicates]),
+                                    'edge_predicate': set([x.predicate for x in self.message.knowledge_graph.edges.values()]),
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_key': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
                                 }
