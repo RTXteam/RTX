@@ -91,8 +91,8 @@ class ComputeNGD:
                     edge_value = ngd_value
                 else:
                     edge_value = default_value
-                edge_attribute = EdgeAttribute(type=type, name=name, value=str(edge_value), url=url)  # populate the NGD edge attribute
-                pmid_attribute = EdgeAttribute(type="biolink:publications", name="publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
+                edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url)  # populate the NGD edge attribute
+                pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
                 if edge_attribute:
                     added_flag = True
                     # make the edge, add the attribute
@@ -120,12 +120,12 @@ class ComputeNGD:
                     edge_attribute_list = [
                         edge_attribute,
                         pmid_attribute,
-                        EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
-                        EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
-                        EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
-                        #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
-                        #EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
-                        #EdgeAttribute(name="qedge_keys", value=qedge_keys)
+                        EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="ARAX_TYPE_PLACEHOLDER"),
+                        EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                        EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:provided_by"),
+                        #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
+                        #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
+                        #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)
                     ]
                     # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key,
                     #             object_key=object_key,
@@ -146,7 +146,7 @@ class ComputeNGD:
                 # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
                 #                subject_key=subject_qnode_key, object_key=object_qnode_key,
                 #                option_group_id=option_group_id)
-                q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key,
+                q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
                 self.message.query_graph.edges[relation]=q_edge
 
@@ -172,8 +172,8 @@ class ComputeNGD:
                         edge_value = ngd_value
                     else:
                         edge_value = default_value
-                    ngd_edge_attribute = EdgeAttribute(type=type, name=name, value=str(edge_value), url=url)  # populate the NGD edge attribute
-                    pmid_edge_attribute = EdgeAttribute(type="biolink:publications", name="ngd_publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
+                    ngd_edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url)  # populate the NGD edge attribute
+                    pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
                     edge.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
                     edge.attributes.append(pmid_edge_attribute)
             except:
