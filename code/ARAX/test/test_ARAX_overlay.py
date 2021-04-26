@@ -248,7 +248,7 @@ def test_FET_ex1():
     assert len(query_node_keys) == 3
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicates')
-        assert query_edge.predicates == 'biolink:has_fisher_exact_test_p-value_with'
+        assert 'biolink:has_fisher_exact_test_p-value_with' in query_edge.predicates
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -289,7 +289,7 @@ def test_FET_ex2():
     assert len(query_node_keys) == 2
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicates')
-        assert query_edge.predicates == 'biolink:has_fisher_exact_test_p-value_with'
+        assert 'biolink:has_fisher_exact_test_p-value_with' in query_edge.predicates
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
