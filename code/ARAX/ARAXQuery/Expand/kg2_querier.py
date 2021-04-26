@@ -384,12 +384,12 @@ class KG2Querier:
         provided_by = edge_tuple[3]
         publications = edge_tuple[4]
         if provided_by:
-            edge.attributes.append(Attribute(name="provided_by",
-                                             type=eu.get_attribute_type("provided_by"),
+            edge.attributes.append(Attribute(original_attribute_name="provided_by",
+                                             attribute_type_id=eu.get_attribute_type("provided_by"),
                                              value=provided_by))
         if publications:
-            edge.attributes.append(Attribute(name="publications",
-                                             type=eu.get_attribute_type("publications"),
+            edge.attributes.append(Attribute(original_attribute_name="publications",
+                                             attribute_type_id=eu.get_attribute_type("publications"),
                                              value=publications))
         return edge
 
