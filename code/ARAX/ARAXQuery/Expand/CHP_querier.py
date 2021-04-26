@@ -74,18 +74,18 @@ class CHPQuerier:
         target_qnode = query_graph.nodes[target_qnode_key]
 
         # check if both ends of edge have no curie
-        if (source_qnode.id is None) and (target_qnode.id is None):
+        if (source_qnode.ids is None) and (target_qnode.ids is None):
             log.error(f"Both ends of edge {qedge_key} are None", error_code="BadEdge")
             return final_kg
 
         # check if the query nodes are drug or disease
-        if source_qnode.id is not None:
+        if source_qnode.ids is not None:
 
-            if type(source_qnode.id) is str:
-                source_pass_nodes = [source_qnode.id]
+            if type(source_qnode.ids) is str:
+                source_pass_nodes = [source_qnode.ids]
             else:
-                source_pass_nodes = source_qnode.id
-            has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
+                source_pass_nodes = source_qnode.ids
+            has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.ids, log)
             if has_error:
                 return final_kg
             else:
@@ -98,14 +98,14 @@ class CHPQuerier:
                     else:
                         log.warning(f"The curie ids of these nodes {not_pass_nodes} are not allowable based on CHP client")
                 else:
-                    if type(source_qnode.id) is str:
-                        log.warning(f"The curie id of {source_qnode.id} is not allowable based on CHP client")
+                    if type(source_qnode.ids) is str:
+                        log.warning(f"The curie id of {source_qnode.ids} is not allowable based on CHP client")
                         return final_kg
                     else:
-                        log.warning(f"The curie ids of {source_qnode.id} are not allowable based on CHP client")
+                        log.warning(f"The curie ids of {source_qnode.ids} are not allowable based on CHP client")
                         return final_kg
         else:
-            category = source_qnode.category[0].replace('biolink:','').replace('_','').lower()
+            category = source_qnode.categories[0].replace('biolink:','').replace('_','').lower()
             source_category = category
             if (category in drug_label_list) or (category in gene_label_list):
                 source_category = category
@@ -113,13 +113,13 @@ class CHPQuerier:
                 log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be drug/chemical_substance or gene", error_code="CategoryError")
                 return final_kg
 
-        if target_qnode.id is not None:
+        if target_qnode.ids is not None:
 
-            if type(target_qnode.id) is str:
-                target_pass_nodes = [target_qnode.id]
+            if type(target_qnode.ids) is str:
+                target_pass_nodes = [target_qnode.ids]
             else:
-                target_pass_nodes = target_qnode.id
-            has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
+                target_pass_nodes = target_qnode.ids
+            has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.ids, log)
             if has_error:
                 return final_kg
             else:
@@ -132,14 +132,14 @@ class CHPQuerier:
                     else:
                         log.warning(f"The curie ids of these nodes {not_pass_nodes} are not allowable based on CHP client")
                 else:
-                    if type(target_qnode.id) is str:
-                        log.error(f"The curie id of {target_qnode.id} is not allowable based on CHP client", error_code="CategoryError")
+                    if type(target_qnode.ids) is str:
+                        log.error(f"The curie id of {target_qnode.ids} is not allowable based on CHP client", error_code="CategoryError")
                         return final_kg
                     else:
-                        log.error(f"The curie ids of {target_qnode.id} are not allowable based on CHP client", error_code="CategoryError")
+                        log.error(f"The curie ids of {target_qnode.ids} are not allowable based on CHP client", error_code="CategoryError")
                         return final_kg
         else:
-            category = target_qnode.category[0].replace('biolink:','').replace('_','').lower()
+            category = target_qnode.categories[0].replace('biolink:','').replace('_','').lower()
             target_category = category
             if (category in drug_label_list) or (category in gene_label_list):
                 target_category = category
@@ -421,9 +421,9 @@ class CHPQuerier:
         type = "EDAM:data_0951"
         url = "https://github.com/di2ag/chp_client"
 
-        swagger_edge.attributes = [Attribute(type=type, name=name, value=str(value), url=url),
-                                   Attribute(name="provided_by", value=self.kp_name, type=eu.get_attribute_type("provided_by")),
-                                   Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by"))]
+        swagger_edge.attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
+                                   Attribute(original_attribute_name="provided_by", value=self.kp_name, attribute_type_id=eu.get_attribute_type("provided_by")),
+                                   Attribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id=eu.get_attribute_type("is_defined_by"))]
         return swagger_edge_key, swagger_edge
 
     def _convert_to_swagger_node(self, node_key: str) -> Tuple[str, Node]:
@@ -431,7 +431,10 @@ class CHPQuerier:
         swagger_node_key = node_key
         swagger_node.name = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_name']
         swagger_node.description = None
-        swagger_node.category = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category']
+        if self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category'] is not None:
+            swagger_node.categories = [self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category']]
+        else:
+            swagger_node.categories = None
 
         return swagger_node_key, swagger_node
 
