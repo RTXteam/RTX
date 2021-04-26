@@ -49,7 +49,7 @@ def test_warning():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
@@ -66,8 +66,8 @@ def test_error():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
-            "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:contraindicated_for)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:contraindicated_for)",
             "expand(edge_key=e00, kp=ARAX/KG2)",
             "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:contraindicated_for, remove_connected_nodes=t)",
             "resultify(ignore_edge_direction=true)",
@@ -81,8 +81,8 @@ def test_default_std_dev():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
-        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
@@ -92,14 +92,14 @@ def test_default_std_dev():
         "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
-    all_vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
+    all_vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.original_attribute_name == 'jaccard_index']
     comp_val = np.mean(all_vals) + np.std(all_vals)
     comp_len = len([x for x in all_vals if x > comp_val])
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
-        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
@@ -110,7 +110,7 @@ def test_default_std_dev():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
+    vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.original_attribute_name == 'jaccard_index']
     assert len(vals) == comp_len
     assert np.min(vals) > comp_val
 
@@ -118,8 +118,8 @@ def test_std_dev():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
-        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
@@ -130,15 +130,15 @@ def test_std_dev():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    all_vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
+    all_vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.original_attribute_name == 'jaccard_index']
     assert len(all_vals) > 0
     comp_val = np.mean(all_vals) - 0.25*np.std(all_vals)
     comp_len = len([x for x in all_vals if x < comp_val])
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
-        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
@@ -149,7 +149,7 @@ def test_std_dev():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
+    vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.original_attribute_name == 'jaccard_index']
     assert len(vals) == comp_len
     assert len([x for x in vals if x == 1]) == 0
     assert np.max(vals) < comp_val
@@ -158,8 +158,8 @@ def test_default_top_n():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:5199, key=n00)",
-        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
@@ -170,16 +170,16 @@ def test_default_top_n():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.name == 'jaccard_index']
+    vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.original_attribute_name == 'jaccard_index']
     assert len(vals) == 50
     assert sum([x == 1 for x in vals]) == 8
 
 def test_remove_property_known_attributes():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(id=CHEBI:17754, category=biolink:ChemicalSubstance, key=n0)",
-        "add_qnode(category=biolink:Gene, key=n1)",
-        "add_qedge(subject=n1, object=n0, key=e0,predicate=biolink:negatively_regulates_entity_to_entity)",
+        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
+        "add_qnode(categories=biolink:Gene, key=n1)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
         "expand(kp=ARAX/KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
         "filter_kg(action=remove_edges_by_property,edge_property=provided_by,property_value=SEMMEDDB:,remove_connected_nodes=false)",
         "resultify()",
@@ -194,10 +194,10 @@ def  test_remove_attribute_known_attributes():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:14330, key=n00)",
-        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",

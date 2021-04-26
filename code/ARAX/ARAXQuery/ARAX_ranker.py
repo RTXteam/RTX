@@ -261,8 +261,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         edge_attribute_dict = {}
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
-                edge_attribute_dict[edge_attribute.name] = edge_attribute.value
-                normalized_score = self.edge_attribute_score_normalizer(edge_attribute.name, edge_attribute.value)
+                edge_attribute_dict[edge_attribute.original_attribute_name] = edge_attribute.value
+                normalized_score = self.edge_attribute_score_normalizer(edge_attribute.original_attribute_name, edge_attribute.value)
                 if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
@@ -529,7 +529,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             if edge.attributes is not None:
                 for edge_attribute in edge.attributes:
                     for attribute_name in self.known_attributes:
-                        if edge_attribute.name == attribute_name:
+                        if edge_attribute.original_attribute_name == attribute_name:
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf|NaN
                             value = float(edge_attribute.value)

@@ -49,7 +49,7 @@ def test_n_results():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=add_node_pmids, max_num=15)",
@@ -65,7 +65,7 @@ def test_no_results():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=add_node_pmids, max_num=15)",
@@ -80,7 +80,7 @@ def test_prune():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=add_node_pmids, max_num=15)",
@@ -92,7 +92,7 @@ def test_prune():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=add_node_pmids, max_num=15)",
@@ -122,7 +122,7 @@ def test_warning():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=add_node_pmids, max_num=15)",
@@ -139,7 +139,7 @@ def test_sort():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=add_node_pmids, max_num=15)",
