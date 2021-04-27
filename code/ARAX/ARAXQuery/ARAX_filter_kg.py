@@ -9,6 +9,7 @@ import numpy as np
 from ARAX_response import ARAXResponse
 import traceback
 from collections import Counter
+from collections.abc import Hashable
 
 class ARAXFilterKG:
 
@@ -520,8 +521,14 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 if hasattr(edge, 'attributes'):
                     if edge.attributes:
                         for attribute in edge.attributes:
-                            known_attributes.add(attribute.name)
-                            known_values.add(attribute.value)
+                            if isinstance(attribute.value, Hashable):
+                                known_attributes.add(attribute.name)
+                                known_values.add(attribute.value)
+                            elif isinstance(attribute.value, list) or isinstance(attribute.value, set):
+                                known_attributes.add(attribute.name)
+                                for val in attribute.value:
+                                    known_values.add(val)
+
             allowable_parameters = {'action': {'remove_edges_by_property'},
                                     'edge_property': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]).union(known_attributes),
                                     'property_value': known_values,

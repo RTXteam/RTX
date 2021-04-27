@@ -134,7 +134,7 @@ class RemoveEdges:
                     for attribute in edge.attributes:
                         if attribute.name not in edge_dict:
                             edge_dict[attribute.name] = attribute.value
-                if type(edge_dict[edge_params['edge_property']]) == list:
+                if type(edge_dict[edge_params['edge_property']]) == list or type(edge_dict[edge_params['edge_property']]) == set:
                     if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
                         edges_to_remove.add(key)
                         if edge_params['remove_connected_nodes']:

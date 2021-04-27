@@ -2,10 +2,12 @@
 import multiprocessing
 import sys
 import os
+from collections import defaultdict
 from typing import List, Dict, Tuple, Union, Set, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
+from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -251,7 +253,8 @@ class ARAXExpander:
             }
         return [kp_less] + list(self.kp_command_definitions.values())
 
-    def apply(self, response, input_parameters, mode="ARAX", force_local=False):
+    def apply(self, response, input_parameters, mode="ARAX"):
+        force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
@@ -358,29 +361,32 @@ class ARAXExpander:
                 # Send this query to each KP selected to answer it (in parallel)
                 if len(kps_to_query) > 1:
                     num_cpus = multiprocessing.cpu_count()
+                    empty_log = ARAXResponse()  # We'll have to merge processes' logs together afterwards
                     with multiprocessing.Pool(num_cpus) as pool:
                         kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                       use_synonyms, mode, user_specified_kp, force_local]
+                                                                       use_synonyms, mode, user_specified_kp,
+                                                                       force_local, empty_log]
                                                                       for kp_to_use in kps_to_query])
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
                     kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, use_synonyms, mode,
-                                                    user_specified_kp, force_local)]
+                                                    user_specified_kp, force_local, log)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
 
                 # Post-process all the KPs' answers and merge into our overarching KG
                 for answer_kg, kp_log in kp_answers:
-                    log.merge(kp_log)  # Processes can't share the main log, so we merge their individual logs here
+                    if len(kps_to_query) > 1:
+                        log.merge(kp_log)  # Processes can't share the main log, so we merge their individual logs here
                     if response.status != 'OK':
                         return response
                     if mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
                     else:
-                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, response)
+                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, mode, response)
                     if response.status != 'OK':
                         return response
 
@@ -409,7 +415,7 @@ class ARAXExpander:
                                               mode, user_specified_kp, log)
                 if log.status != 'OK':
                     return response
-                self._merge_answer_into_message_kg(answer_kg, overarching_kg, log)
+                self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, mode, log)
                 if log.status != 'OK':
                     return response
 
@@ -418,6 +424,11 @@ class ARAXExpander:
 
         # Override node types so that they match what was asked for in the query graph (where applicable) #987
         self._override_node_categories(message.knowledge_graph, message.query_graph)
+
+        # Decorate all nodes with additional attributes info from KG2c (iri, description, etc.)
+        if mode == "ARAX":  # Skip doing this for KG2 (until can pass minimal_metadata param)
+            decorator = ARAXDecorator()
+            decorator.apply(response)
 
         # Return the response and done
         kg = message.knowledge_graph
@@ -431,14 +442,12 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], use_synonyms: bool,
-                     mode: str, user_specified_kp: bool, force_local: bool) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     mode: str, user_specified_kp: bool, force_local: bool, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
-        log = ARAXResponse()  # Create a log for use only within this edge expansion (important for multiprocessing)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
-        mode = "RTXKG2" if force_local else mode
 
         # Make sure we have all default parameters set specific to the KP we'll be using
         log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
@@ -448,47 +457,48 @@ class ARAXExpander:
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
-
-        # Route this query to the proper place depending on the KP
+        # Make sure the specified KP is a valid option
         allowable_kps = set(self.kp_command_definitions.keys())
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
             return answer_kg, log
+
+        # Route this query to the proper place depending on the KP
+        if kp_to_use == 'COHD':
+            from Expand.COHD_querier import COHDQuerier
+            kp_querier = COHDQuerier(log)
+        elif kp_to_use == 'DTD':
+            from Expand.DTD_querier import DTDQuerier
+            kp_querier = DTDQuerier(log)
+        elif kp_to_use == 'CHP':
+            from Expand.CHP_querier import CHPQuerier
+            kp_querier = CHPQuerier(log)
+        elif kp_to_use == 'NGD':
+            from Expand.ngd_querier import NGDQuerier
+            kp_querier = NGDQuerier(log)
+        elif (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
+            from Expand.kg2_querier import KG2Querier
+            kp_querier = KG2Querier(log, kp_to_use)
         else:
-            if kp_to_use == 'COHD':
-                from Expand.COHD_querier import COHDQuerier
-                kp_querier = COHDQuerier(log)
-            elif kp_to_use == 'DTD':
-                from Expand.DTD_querier import DTDQuerier
-                kp_querier = DTDQuerier(log)
-            elif kp_to_use == 'CHP':
-                from Expand.CHP_querier import CHPQuerier
-                kp_querier = CHPQuerier(log)
-            elif kp_to_use == 'NGD':
-                from Expand.ngd_querier import NGDQuerier
-                kp_querier = NGDQuerier(log)
-            elif (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
-                from Expand.kg2_querier import KG2Querier
-                kp_querier = KG2Querier(log, kp_to_use)
-            else:
-                # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
-                from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp)
+            # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
+            from Expand.trapi_querier import TRAPIQuerier
+            kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, force_local)
 
-            # Actually answer the query using the Querier we identified above
-            answer_kg = kp_querier.answer_one_hop_query(edge_qg)
-            if log.status != 'OK':
-                return answer_kg, log
-            log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+        # Actually answer the query using the Querier we identified above
+        answer_kg = kp_querier.answer_one_hop_query(edge_qg)
 
-            # Do some post-processing (deduplicate nodes, remove self-edges..)
-            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
-                answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
-            if eu.qg_is_fulfilled(edge_qg, answer_kg):
-                answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
-
+        if log.status != 'OK':
             return answer_kg, log
+        log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+
+        # Do some post-processing (deduplicate nodes, remove self-edges..)
+        if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
+            answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
+        if eu.qg_is_fulfilled(edge_qg, answer_kg):
+            answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
+
+        return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
                      use_synonyms: bool, mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
@@ -664,12 +674,29 @@ class ARAXExpander:
         return sub_query_graph
 
     @staticmethod
-    def _merge_answer_into_message_kg(answer_kg: QGOrganizedKnowledgeGraph, overarching_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse):
+    def _merge_answer_into_message_kg(answer_kg: QGOrganizedKnowledgeGraph, overarching_kg: QGOrganizedKnowledgeGraph,
+                                      overarching_qg: QueryGraph, use_synonyms: bool, mode: str, log: ARAXResponse):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
+        pinned_curies_map = defaultdict(set)
+        for qnode_key, qnode in overarching_qg.nodes.items():
+            if qnode.id:
+                # Get canonicalized versions of any curies in the QG, as appropriate
+                curies = eu.get_canonical_curies_list(qnode.id, log) if use_synonyms else eu.convert_to_list(qnode.id)
+                for curie in curies:
+                    pinned_curies_map[curie].add(qnode_key)
+
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
             for node_key, node in nodes.items():
-                overarching_kg.add_node(node_key, node, qnode_key)
+                # Exclude nodes that correspond to a 'pinned' curie in the QG but are fulfilling a different qnode
+                if mode == "ARAX" and node_key in pinned_curies_map:
+                    if qnode_key in pinned_curies_map[node_key]:
+                        overarching_kg.add_node(node_key, node, qnode_key)
+                    else:
+                        log.debug(f"Not letting node {node_key} fulfill qnode {qnode_key} because it's a pinned curie "
+                                  f"for {pinned_curies_map[node_key]}")
+                else:
+                    overarching_kg.add_node(node_key, node, qnode_key)
         for qedge_key, edges_dict in answer_kg.edges_by_qg_id.items():
             for edge_key, edge in edges_dict.items():
                 overarching_kg.add_edge(edge_key, edge, qedge_key)

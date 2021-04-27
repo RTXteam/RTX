@@ -1317,50 +1317,6 @@ def test_issue1119_e():
     assert len(intermediate_proteins_in_result) > len(intermediate_proteins_in_result_x)
 
 
-@pytest.mark.slow
-def test_issue1119_f():
-    # Test (curie)--(curie) query where required portion is one-hop and there's one 3-hop optional group
-    actions = [
-        "add_qnode(key=n00, id=DOID:3312)",
-        "add_qnode(key=n01, id=CHEBI:48607)",
-        "add_qnode(key=n02, category=biolink:Protein, option_group_id=1, is_set=true)",
-        "add_qnode(key=n03, category=biolink:Gene, option_group_id=1, is_set=true)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicate=biolink:related_to)",
-        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=biolink:affects)",
-        "add_qedge(key=e02, subject=n02, object=n03, option_group_id=1)",
-        "add_qedge(key=e03, subject=n03, object=n01, option_group_id=1)",
-        "expand(kp=ARAX/KG2)",
-        "resultify()",
-        "return(message=true, store=false)"
-    ]
-    response, message = _do_arax_query(actions)
-    assert response.status == 'OK'
-    assert len(message.results) == 1
-    n02_proteins = {node_binding.id for node_binding in message.results[0].node_bindings["n02"]}
-
-    # Then introduce a not edge going from the option group to the required (start) node
-    actions = [
-        "add_qnode(key=n00, id=DOID:3312)",
-        "add_qnode(key=n01, id=CHEBI:48607)",
-        "add_qnode(key=n02, category=biolink:Protein, option_group_id=1, is_set=true)",
-        "add_qnode(key=n03, category=biolink:Gene, option_group_id=1, is_set=true)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicate=biolink:related_to)",
-        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=biolink:affects)",
-        "add_qedge(key=e02, subject=n02, object=n03, option_group_id=1)",
-        "add_qedge(key=e03, subject=n03, object=n01, option_group_id=1)",
-        "add_qedge(key=e0x, subject=n02, object=n00, option_group_id=1, predicate=biolink:prevents, exclude=True)",
-        "expand(kp=ARAX/KG2)",
-        "resultify()",
-        "return(message=true, store=false)"
-    ]
-    response_x, message_x = _do_arax_query(actions)
-    assert response_x.status == 'OK'
-    assert len(message_x.results) == 1
-    # Make sure this time we have fewer proteins included in our option group
-    n02_proteins_x = {node_binding.id for node_binding in message_x.results[0].node_bindings["n02"]}
-    assert len(n02_proteins_x) < len(n02_proteins)
-
-
 def test_issue1146_a():
     actions = [
         "add_qnode(key=n0, id=MONDO:0001475, category=biolink:Disease)",

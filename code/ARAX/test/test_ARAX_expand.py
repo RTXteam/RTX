@@ -137,69 +137,17 @@ def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], qu
             assert 1 <= len(nodes_by_qg_id[qnode_key]) <= len(qnode.id)
 
 
-def test_erics_first_kg1_synonym_test_without_synonyms():
-    actions_list = [
-        "add_qnode(id=REACT:R-HSA-2160456, key=n00)",
-        "add_qnode(key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=ARAX/KG1, use_synonyms=false)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-def test_erics_first_kg1_synonym_test_with_synonyms():
-    actions_list = [
-        "add_qnode(id=REACT:R-HSA-2160456, key=n00)",
-        "add_qnode(key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=ARAX/KG1)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n01']) > 20
-
-
-def test_acetaminophen_example_enforcing_directionality():
-    actions_list = [
-        "add_qnode(id=CHEMBL.COMPOUND:CHEMBL112, key=n00)",
-        "add_qnode(category=biolink:Disease, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG1, edge_key=e00, enforce_directionality=true)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    for edge_key, edge in edges_by_qg_id['e00'].items():
-        assert edge.subject in nodes_by_qg_id['n00']
-        assert edge.object in nodes_by_qg_id['n01']
-
-
-@pytest.mark.slow
-def test_720_ambitious_query_causing_multiple_qnode_keys_error():
-    actions_list = [
-        "add_qnode(id=DOID:14330, key=n00)",
-        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(category=biolink:Disease, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=ARAX/KG1, edge_key=[e00, e01])",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert set(nodes_by_qg_id['n00']).intersection(set(nodes_by_qg_id['n02']))
-
-
 @pytest.mark.slow
 def test_720_multiple_qg_ids_in_different_results():
     actions_list = [
-        "add_qnode(key=n00, id=DOID:14330)",
+        "add_qnode(key=n00, id=MONDO:0014324)",
         "add_qnode(key=n01, category=biolink:Protein)",
         "add_qnode(key=n02, category=biolink:ChemicalSubstance)",
-        "add_qnode(key=n03, category=biolink:Protein, id=UniProtKB:P37840)",
+        "add_qnode(key=n03, category=biolink:Protein)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "add_qedge(key=e01, subject=n01, object=n02)",
-        "add_qedge(key=e02, subject=n02, object=n03)",
-        "expand(kp=ARAX/KG1)",
+        "add_qedge(key=e01, subject=n01, object=n02, predicate=biolink:molecularly_interacts_with)",
+        "add_qedge(key=e02, subject=n02, object=n03, predicate=biolink:molecularly_interacts_with)",
+        "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -207,20 +155,8 @@ def test_720_multiple_qg_ids_in_different_results():
     assert any(set(node.qnode_keys) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
 
 
-@pytest.mark.slow
-def test_bte_acetaminophen_query():
-    actions_list = [
-        "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL112, category=biolink:ChemicalSubstance)",
-        "add_qnode(key=n01, category=biolink:Disease)",
-        "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(edge_key=e00, kp=BTE)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
-def test_bte_protein_query():
+@pytest.mark.external
+def test_bte_query():
     actions_list = [
         "add_qnode(id=UniProtKB:P16471, category=biolink:Protein, key=n00)",
         "add_qnode(category=biolink:Cell, key=n01)",
@@ -231,23 +167,10 @@ def test_bte_protein_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-@pytest.mark.slow
-def test_bte_using_list_of_curies():
-    actions_list = [
-        "add_qnode(key=n00, id=[CHEMBL.COMPOUND:CHEMBL112, CHEMBL.COMPOUND:CHEMBL521], category=biolink:ChemicalSubstance)",
-        "add_qnode(key=n01, category=biolink:Disease)",
-        "add_qedge(key=e00, subject=n01, object=n00)",
-        "expand(kp=BTE)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) > 1
-
-
 def test_single_node_query_with_synonyms():
     actions_list = [
         "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL1771)",
-        "expand(node_key=n00, kp=ARAX/KG1)",
+        "expand(node_key=n00, kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -256,7 +179,7 @@ def test_single_node_query_with_synonyms():
 def test_single_node_query_without_synonyms():
     actions_list = [
         "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL1276308)",
-        "expand(kp=ARAX/KG1, use_synonyms=false)",
+        "expand(kp=ARAX/KG2, use_synonyms=false)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -265,7 +188,7 @@ def test_single_node_query_without_synonyms():
 def test_single_node_query_with_no_results():
     actions_list = [
         "add_qnode(key=n00, id=FAKE:curie)",
-        "expand(kp=ARAX/KG1, continue_if_no_results=true)",
+        "expand(kp=ARAX/KG2, continue_if_no_results=true)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -275,7 +198,7 @@ def test_single_node_query_with_no_results():
 def test_single_node_query_with_list():
     actions_list = [
         "add_qnode(key=n00, id=[CHEMBL.COMPOUND:CHEMBL108, CHEMBL.COMPOUND:CHEMBL110])",
-        "expand(kp=ARAX/KG1)",
+        "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -297,22 +220,6 @@ def test_query_that_returns_multiple_provided_bys():
 
 
 @pytest.mark.slow
-def test_three_hop_query():
-    actions_list = [
-        "add_qnode(key=n00, id=DOID:8454)",
-        "add_qnode(key=n01, category=biolink:PhenotypicFeature)",
-        "add_qnode(key=n02, category=biolink:Protein)",
-        "add_qnode(key=n03, category=biolink:AnatomicalEntity)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
-        "add_qedge(subject=n02, object=n03, key=e02)",
-        "expand(kp=ARAX/KG1)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
 def test_branched_query():
     actions_list = [
         "add_qnode(key=n00, id=DOID:0060227)",  # Adams-Oliver
@@ -322,7 +229,7 @@ def test_branched_query():
         "add_qedge(subject=n01, object=n00, key=e00)",
         "add_qedge(subject=n02, object=n00, key=e01)",
         "add_qedge(subject=n00, object=n03, key=e02)",
-        "expand(kp=ARAX/KG1)",
+        "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -344,28 +251,24 @@ def test_no_synonym_query_with_duplicate_nodes_in_results():
 @pytest.mark.slow
 def test_query_that_expands_same_edge_twice():
     actions_list = [
-        "add_qnode(key=n00, id=DOID:9065)",
+        "add_qnode(key=n00, id=DOID:9065, category=biolink:Disease)",
         "add_qnode(key=n01, category=biolink:ChemicalSubstance)",
-        "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(kp=ARAX/KG1, continue_if_no_results=true)",
-        "expand(kp=ARAX/KG2, continue_if_no_results=true)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicate=biolink:treats)",
+        "expand(kp=ARAX/KG2)",
+        "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert any(edge for edge in edges_by_qg_id['e00'].values() if
-               any(attr for attr in edge.attributes if attr.name == "is_defined_by" and attr.value == "ARAX/KG1"))
-    assert any(edge for edge in edges_by_qg_id['e00'].values() if
-               any(attr for attr in edge.attributes if attr.name == "is_defined_by" and attr.value == "ARAX/KG2c"))
 
 
 def test_771_continue_if_no_results_query():
     actions_list = [
         "add_qnode(id=UniProtKB:P14136, key=n00)",
         "add_qnode(category=biolink:BiologicalProcess, key=n01)",
-        "add_qnode(id=UniProtKB:P35579, key=n02)",
+        "add_qnode(id=NOTAREALCURIE, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n02, object=n01, key=e01)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG1, continue_if_no_results=true)",
+        "expand(edge_key=[e00,e01], kp=ARAX/KG2, continue_if_no_results=true)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -386,26 +289,16 @@ def test_774_continue_if_no_results_query():
     assert not nodes_by_qg_id and not edges_by_qg_id
 
 
-def test_curie_list_query_with_synonyms():
+def test_curie_list_query():
     actions_list = [
         "add_qnode(id=[DOID:6419, DOID:3717, DOID:11406], key=n00)",
         "add_qnode(category=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG1)",
+        "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-def test_curie_list_query_without_synonyms():
-    actions_list = [
-        "add_qnode(id=[DOID:6419, DOID:3717, DOID:11406], key=n00)",
-        "add_qnode(category=biolink:PhenotypicFeature, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG1, use_synonyms=false)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert len(nodes_by_qg_id["n00"]) == 3
 
 
 @pytest.mark.slow
@@ -439,7 +332,7 @@ def test_847_dont_expand_curie_less_edge():
         "add_qnode(key=n00, category=biolink:Protein)",
         "add_qnode(key=n01, category=biolink:ChemicalSubstance)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(edge_key=e00, kp=ARAX/KG1)",
+        "expand(edge_key=e00, kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True)
@@ -507,7 +400,7 @@ def test_987_override_node_categories():
         "add_qnode(name=DOID:8398, key=n00)",
         "add_qnode(category=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, predicate=biolink:has_phenotype, key=e00)",
-        "expand(edge_key=e00, kp=ARAX/KG1)",
+        "expand(edge_key=e00, kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -633,7 +526,8 @@ def test_chp_expand_2():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].url == "https://github.com/di2ag/chp_client" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
-def test_genetics_kp_simple():
+@pytest.mark.external
+def test_genetics_kp():
     actions_list = [
         "add_qnode(id=NCBIGene:1803, category=biolink:Gene, key=n00)",
         "add_qnode(category=biolink:Disease, key=n01)",
@@ -644,61 +538,7 @@ def test_genetics_kp_simple():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_genetics_kp_all_scores():
-    actions_list = [
-        "add_qnode(name=type 2 diabetes mellitus, category=biolink:Disease, key=n00)",
-        "add_qnode(category=biolink:Protein, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:condition_associated_with_gene)",
-        "expand(kp=GeneticsKP)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
-def test_genetics_kp_2_hop():
-    actions_list = [
-        "add_qnode(id=UniProtKB:Q99712, key=n00, category=biolink:Protein)",
-        "add_qnode(category=biolink:Disease, key=n01)",
-        "add_qnode(category=biolink:Gene, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:gene_associated_with_condition)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:condition_associated_with_gene)",
-        "expand(kp=GeneticsKP)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
-def test_genetics_kp_multi_kp():
-    actions_list = [
-        "add_qnode(key=n0, name=ertugliflozin, category=biolink:ChemicalSubstance)",
-        "add_qnode(key=n1, category=biolink:Disease, is_set=true)",
-        "add_qnode(key=n2, category=biolink:Protein)",
-        "add_qedge(key=e0, subject=n0, object=n1)",
-        "add_qedge(key=e1, subject=n1, object=n2, predicate=biolink:condition_associated_with_gene)",
-        "expand(kp=ARAX/KG2, edge_key=e0)",
-        "expand(kp=GeneticsKP, edge_key=e1)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
-def test_multi_kp_two_hop_query():
-    actions_list = [
-        "add_qnode(id=MONDO:0005737, key=n00, category=biolink:Disease)",
-        "add_qnode(category=biolink:Protein, key=n01)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=ARAX/KG2, edge_key=[e00,e01], continue_if_no_results=true)",
-        "expand(kp=ARAX/KG1, edge_key=e01, continue_if_no_results=true)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
+@pytest.mark.external
 def test_molepro_query():
     actions_list = [
         "add_qnode(id=HGNC:9379, category=biolink:Gene, key=n00)",
@@ -715,9 +555,9 @@ def test_exclude_edge_parallel():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicate=biolink:indicated_for, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicate=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicate=biolink:contraindicated_for, key=e01)",
-        "expand(kp=ARAX/KG1)",
+        "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -729,9 +569,9 @@ def test_exclude_edge_parallel():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicate=biolink:indicated_for, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicate=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicate=biolink:contraindicated_for, exclude=true, key=e01)",
-        "expand(kp=ARAX/KG1)",
+        "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
@@ -848,7 +688,7 @@ def test_option_group_query_no_results():
         "add_qedge(key=e00, subject=n00, object=n01, predicate=biolink:related_to)",
         "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicate=biolink:overlaps)",
         "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicate=biolink:affects)",
-        "expand()",
+        "expand(kp=ARAX/KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -896,6 +736,7 @@ def test_issue_1314():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+@pytest.mark.external
 def test_issue_1236():
     # Test that multiple KPs are used for expansion when no KP is specified in DSL
     actions_list = [
@@ -942,6 +783,20 @@ def test_kg2_predicate_hierarchy_reasoning():
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:physically_interacts_with")
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:molecularly_interacts_with")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
+
+
+def test_issue_1373_pinned_curies():
+    actions_list = [
+        "add_qnode(id=chembl.compound:CHEMBL2108129, key=n00)",
+        "add_qnode(category=biolink:Protein, key=n01)",
+        "add_qnode(category=biolink:Drug, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicate=biolink:physically_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:physically_interacts_with)",
+        "expand(kp=ARAX/KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert "CHEMBL.COMPOUND:CHEMBL2108129" not in nodes_by_qg_id["n02"]
 
 
 if __name__ == "__main__":
