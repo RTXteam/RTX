@@ -135,6 +135,7 @@ def test_add_qnode_bad_parameters():
         { 'parameters': [ 'ids', 'PICKLES:123' ], 'error_code': 'ParametersNotDict' },
         { 'parameters': { 'ids': 'UniProtKB:P14136', 'is_set': 'true' }, 'error_code': 'IdScalarButIsSetTrue' },
         { 'parameters': { 'pickles': 'on the side' }, 'error_code': 'UnknownParameter' },
+        { 'parameters': { 'ids': 'n2', 'category': 'biolink:Disease' }, 'error_code': 'UnknownParameter' },
     ]
     template_response = copy.deepcopy(response)
     for bad_parameters in bad_parameters_list:

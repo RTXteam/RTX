@@ -257,20 +257,17 @@ class ARAXMessenger:
                 id_list = [ parameters['ids'] ]
                 is_id_a_list = False
                 if parameters['is_set'] is not None and qnode.is_set is True:
-                    response.error(f"Specified ids '{parameters['ids']}' is a scalar, but is_set=true, which doesn't make sense", error_code="IdScalarButIsSetTrue")
+                    response.error(f"Specified ids '{parameters['ids']}' is singular, but is_set=true, which doesn't make sense", error_code="IdScalarButIsSetTrue")
                     return response
 
             # Or else set it up as a list
             elif isinstance(parameters['ids'], list):
                 id_list = parameters['ids']
                 is_id_a_list = True
-                if parameters['is_set'] is None:
-                    response.warning(f"Specified ids '{parameters['ids']}' is a list, but is_set was not set to true. It must be true in this context, so automatically setting to true. Avoid this warning by explictly setting to true.")
-                    qnode.is_set = True
-                else:
-                    if qnode.is_set == False:
-                        response.warning(f"Specified ids '{parameters['ids']}' is a list, but is_set=false, which doesn't make sense, so automatically setting to true. Avoid this warning by explictly setting to true.")
-                        qnode.is_set = True
+                if len(id_list) == 1:
+                    if qnode.is_set == True:
+                        response.warning(f"Specified ids '{parameters['ids']}' is singular, but is_set=true, which doesn't make sense, so automatically setting to false. Avoid this warning by not explictly setting to true.")
+                        qnode.is_set = False
 
             # Or if it's neither a list or a string, then error out. This cannot be handled at present
             else:
@@ -892,6 +889,7 @@ def main():
         { 'categories': ['biolink:Protein'], 'key': 'n10'},
         { 'ids': ['UniProtKB:P14136','UniProtKB:P35579'] },
         { 'ids': ['UniProtKB:P14136','UniProtKB:P35579'], 'is_set': 'false' },
+        { 'ids': ['UniProtKB:P14136'], 'is_set': 'true' },
     ]
 
     for parameter in parameters_sets:
