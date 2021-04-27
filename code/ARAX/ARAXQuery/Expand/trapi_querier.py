@@ -260,8 +260,9 @@ class TRAPIQuerier:
 
         # Send the query to the KP
         query_graph = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
-        qg_with_singular_property_names = self._switch_qg_to_singular_property_names(query_graph)
-        body = {'message': {'query_graph': qg_with_singular_property_names}}
+        if not self.kp_name == "ARAX/KG2":  # We're using 1.1 for KG2 API, but not other KPs yet (until deadline)
+            query_graph = self._switch_qg_to_trapi_1_0(query_graph)
+        body = {'message': {'query_graph': query_graph}}
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
         if self.force_local and self.kp_name == 'ARAX/KG2':
             self.log.debug(f"{self.kp_name}: Pretending to send query to KG2 API (really it will be run locally)")
@@ -373,7 +374,7 @@ class TRAPIQuerier:
             return 120
 
     @staticmethod
-    def _switch_qg_to_singular_property_names(dict_qg: Dict[str, Dict[str, any]]) -> Dict[str, Dict[str, any]]:
+    def _switch_qg_to_trapi_1_0(dict_qg: Dict[str, Dict[str, any]]) -> Dict[str, Dict[str, any]]:
         # This is a temporary patch for use until we start using KPs' TRAPI 1.1 endpoints
         qnode_keys = set(dict_qg["nodes"])
         for qnode_key in qnode_keys:
