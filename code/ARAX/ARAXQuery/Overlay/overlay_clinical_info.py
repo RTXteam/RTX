@@ -54,7 +54,7 @@ class OverlayClinicalInfo:
         self.response.info("Converting CURIE identifiers to human readable names")
         try:
             for key, node in self.message.knowledge_graph.nodes.items():
-                self.node_curie_to_type[key] = node.categories[0]  # WARNING: this is a list
+                self.node_curie_to_type[key] = node.categories  # WARNING: this is a list
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -124,6 +124,7 @@ class OverlayClinicalInfo:
                 # see which KP's can label both subjects of information
                 if self.in_common(subject_type, self.who_knows_about_what[KP]) and self.in_common(object_type, self.who_knows_about_what[KP]):
                     KP_to_use = KP
+
             if KP_to_use == 'COHD':
                 self.response.debug(f"Querying Columbia Open Health data for info about {subject_name} and {object_name}")
                 # convert CURIE to OMOP identifiers
@@ -271,6 +272,7 @@ class OverlayClinicalInfo:
                     curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         added_flag = False  # check to see if any edges where added
         # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
+
         for (subject_curie, object_curie) in itertools.product(subject_curies_to_decorate, object_curies_to_decorate):
             # create the edge attribute if it can be
             edge_attribute = self.make_edge_attribute_from_curies(subject_curie, object_curie,

@@ -318,7 +318,7 @@ class PredictDrugTreatsDisease:
                 curie_to_type = dict()
                 curie_to_name = dict()
                 for node_key, node in self.message.knowledge_graph.nodes.items():
-                    curie_to_type[node_key] = node.categories[0]
+                    curie_to_type[node_key] = node.categories
                     curie_to_name[node_key] = node.name
                 # then iterate over the edges and decorate if appropriate
                 for edge_key, edge in self.message.knowledge_graph.edges.items():
