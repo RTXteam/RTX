@@ -13,6 +13,8 @@ from datetime import datetime
 from neo4j import GraphDatabase, basic_auth
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
+RTXConfig = RTXConfiguration()
+RTXConfig.live = "Production"
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")
 from ARAX_query import ARAXQuery
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -24,8 +26,7 @@ from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 import collections
-
-
+import sqlite3
 class ComputeFTEST:
 
     #### Constructor
@@ -61,6 +62,23 @@ class ComputeFTEST:
         rel_edge_key = self.parameters['rel_edge_key'] if 'rel_edge_key' in self.parameters else None
         top_n = int(self.parameters['top_n']) if 'top_n' in self.parameters else None
         cutoff = float(self.parameters['cutoff']) if 'cutoff' in self.parameters else None
+
+        ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
+        pathlist = os.path.realpath(__file__).split(os.path.sep)
+        RTXindex = pathlist.index("RTX")
+        filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+
+        ## check if there is kg2c.sqlite
+        sqlite_name = RTXConfig.kg2c_sqlite_path.split("/")[-1]
+        sqlite_file_path = f"{filepath}{os.path.sep}{sqlite_name}"
+        if os.path.exists(sqlite_file_path):
+            pass
+        else:
+            os.system(f"scp {RTXConfig.kg2c_sqlite_username}@{RTXConfig.kg2c_sqlite_host}:{RTXConfig.kg2c_sqlite_path} {sqlite_file_path}")
+        self.sqlite_file_path = sqlite_file_path
+
+        if rel_edge_key is not None:
+            self.response.warning(f"The 'rel_edge_key' option in FET is specified, it will cause slow for the calculation of FEST test.")
 
         # initialize some variables
         nodes_info = {}
@@ -260,6 +278,10 @@ class ComputeFTEST:
             self.response.warning(f"More than one knowledge provider was detected to be used for expanding the edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
             self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
 
+        if kp == 'ARAX/KG1':
+            ## This warning can be removed once KG1 is deprecated
+            self.response.warning(f"Since KG1 will be deprecated soon and the total count of nodes is based on kg2c, currently querying with 'expand(kp=ARAX/KG1)' might cause little discrepancy for FET probability.")
+
         ## Print out some information used to calculate FET
         if len(subject_node_list) == 1:
             self.response.debug(f"{len(subject_node_list)} subject node with qnode key {subject_qnode_key} and node type {subject_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
@@ -271,96 +293,53 @@ class ComputeFTEST:
             self.response.debug(f"{len(object_node_dict)} object nodes with qnode key {object_qnode_key} and node type {object_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
 
 
-        # find all nodes with the same type of 'subject_qnode_key' nodes in specified KP ('ARAX/KG1','ARAX/KG2','BTE') that are adjacent to target nodes
-        use_parallel = False
-
-        if not use_parallel:
-            # query adjacent node in one DSL command by providing a list of query nodes to add_qnode()
-            if rel_edge_key:
-                if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
-                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total object nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp = kp, rel_type=list(rel_edge_type)[0], use_cypher_command=False)
-                else:  # if the edge with rel_edge_key has more than one type, we ignore the edge predicate and use all categories to find all subject nodes in KP
-                    self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
-                    self.response.debug(f"{kp} was used to calculate total object nodes in Fisher's Exact Test")
-                    result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp=kp, rel_type=None, use_cypher_command=False)
-            else:  # if no rel_edge_key is specified, we ignore the edge predicate and use all categories to find all subject nodes in KP
-                self.response.debug(f"{kp} was used to calculate total object nodes in Fisher's Exact Test")
-                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp=kp, rel_type=None, use_cypher_command=False)
-
-            if result is None:
-                return self.response ## Something wrong happened for querying the adjacent nodes
-            else:
-                res, removed_nodes = result
-                if len(removed_nodes)==0:
-                    size_of_object = res
+        # find all nodes with the same type of 'subject_qnode_key' nodes in specified KP ('ARAX/KG1','ARAX/KG2') that are adjacent to target nodes
+        # if rel_edge_key is not None, query adjacent node from database otherwise query adjacent node with DSL command by providing a list of query nodes to add_qnode()
+        ## Note: Regarding of whether kp='ARAX/KG1' or kp='ARAX/KG2', it will always query adjacent node count based on kg2c
+        if rel_edge_key:
+            if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
+                self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total object nodes in Fisher's Exact Test")
+                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp=kp, rel_type=list(rel_edge_type)[0])
+            else:  # if the edge with rel_edge_key has more than one type or no edge, we ignore the edge predicate and use all categories to find all subject nodes in KP
+                if len(rel_edge_key) == 0:
+                    self.response.warning(f"The edges with specified qedge key {rel_edge_key} have no category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
                 else:
-                    if len(removed_nodes) == 1:
-                        self.response.warning(f"One object node which is {removed_nodes[0]} can't find its neighbors. This node will be ignored for FET calculation.")
-                    else:
-                        self.response.warning(f"{len(removed_nodes)} object nodes which are {removed_nodes} can't find its neighbors. These nodes will be ignored for FET calculation.")
-                    for node in removed_nodes:
-                        del object_node_dict[node]
-                    size_of_object = res
+                    self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
+                self.response.debug(f"ARAX/KG2 was used to calculate total object nodes in Fisher's Exact Test")
+                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='KG2', rel_type=None)
+        else:  # if no rel_edge_key is specified, we ignore the edge predicate and use all categories to find all subject nodes in KP
+            self.response.debug(f"ARAX/KG2 was used to calculate total object nodes in Fisher's Exact Test")
+            result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='KG2', rel_type=None)
+
+        if result is None:
+            return self.response  ## Something wrong happened for querying the adjacent nodes
         else:
-            # query adjacent node for query nodes one by one in parallel
-            if rel_edge_key:
-                if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
-                    self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parameter_list = [(node, object_node_category[0], subject_node_category[0], kp, list(rel_edge_type)[0]) for node in list(object_node_dict.keys())]
-                else:  # if the edge with rel_edge_key has more than one type, we ignore the edge type and use all types to find all source nodes in KP
-                    self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one type, we ignore the edge type and use all types to calculate Fisher's Exact Test")
-                    self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                    parameter_list = [(node, object_node_category[0], subject_node_category[0], kp, None) for node in list(object_node_dict.keys())]
-            else:  # if no rel_edge_key is specified, we ignore the edge type and use all types to find all source nodes in KP
-                self.response.debug(f"{kp} was used to calculate total adjacent nodes in Fisher's Exact Test")
-                parameter_list = [(node, object_node_category[0], subject_node_category[0], kp, None) for node in list(object_node_dict.keys())]
-
-            ## get the count of all nodes with the type of 'subject_qnode_key' nodes in KP for each target node in parallel
-            try:
-                with multiprocessing.Pool() as executor:
-                    object_count_res = [elem for elem in executor.map(self._query_size_of_adjacent_nodes_parallel, parameter_list)]
-            except:
-                tb = traceback.format_exc()
-                error_type, error, _ = sys.exc_info()
-                self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"Something went wrong with querying adjacent nodes in parallel")
-                return self.response
-
-            if any([type(elem) is list for elem in object_count_res]):
-                for msg in [elem2 for elem1 in object_count_res if type(elem1) is list for elem2 in elem1]:
-                    if type(msg) is tuple:
-                        self.response.error(msg[0], error_code=msg[1])
-                    else:
-                        self.response.error(msg)
-                return self.response  ## Something wrong happened for querying the adjacent nodes
+            res, removed_nodes = result
+            if len(removed_nodes)==0:
+                size_of_object = res
             else:
-                for index in range(len(object_node_dict)):
-                    node = list(object_node_dict.keys())[index]
-                    size_of_object[node] = object_count_res[index]
+                if len(removed_nodes) == 1:
+                    self.response.warning(f"One object node which is {removed_nodes[0]} can't find its neighbors. This node will be ignored for FET calculation.")
+                else:
+                    self.response.warning(f"{len(removed_nodes)} object nodes which are {removed_nodes} can't find its neighbors. These nodes will be ignored for FET calculation.")
+                for node in removed_nodes:
+                    del object_node_dict[node]
+                size_of_object = res
 
         if len(object_node_dict) != 0:
-            ## Based on KP detected in message KG, find the total number of node with the same type of source node
+            ## Based on KP detected in message KG, find the total count of node with the same type of source node
+            ## Note: Regarding of whether kg='KG1' or kg='KG2' is specified in self.size_of_given_type_in_KP, it will always query total count based on kg2c
             if kp=='ARAX/KG1':
-                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], use_cypher_command=False, kg='KG1')
+                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], kg='KG1')
                 if size_of_total != 0:
-                    self.response.debug(f"ARAX/KG1 and cypher query were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                    self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in ARAX/KG1")
+                    self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in KG2c based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
                 else:
-                    size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], use_cypher_command=False, kg='KG2') ## If cypher query fails, then try kgNodeIndex
-                    if size_of_total==0:
-                        self.response.error(f"Both KG1 and KG2 have 0 node with the same type of subject node with qnode key {subject_qnode_key}")
-                        return self.response
-                    else:
-                        self.response.debug(f"Since KG1 can't find the any nodes with node category {subject_node_category[0]}, ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                        self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in ARAX/KG2C")
+                    self.response.error(f"KG2c have 0 node with the same type (which is {subject_node_category[0]}) of subject node with qnode key {subject_qnode_key}")
+                    return self.response
 
             elif kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
-                ## check KG1 first as KG2 might have many duplicates. If KG1 is 0, then check KG2
-                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], use_cypher_command=False, kg='KG2') ## Try cypher query first
-                self.response.debug(f"ARAX/KG2C were used to calculate total number of node with the same type of source node in Fisher's Exact Test")
-                self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in ARAX/KG2C")
-
+                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], kg='KG2')
+                self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in KG2c based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
             else:
                 self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
                 return self.response
@@ -369,18 +348,20 @@ class ComputeFTEST:
 
             self.response.debug(f"Computing Fisher's Exact Test P-value")
             # calculate FET p-value for each target node in parallel
-            del_list = []
+            # del_list = []
+
             parameter_list = []
             for node in object_node_dict:
                 if size_of_object[node]-len(object_node_dict[node]) < 0:
-                    del_list.append(node)
+                    # del_list.append(node)
+                    del object_node_dict[node]
                     self.response.warning(f"Skipping node {node} to calculate FET p-value due to issue897 (which causes negative value).")
                     continue
                 else:
                     parameter_list += [(node, len(object_node_dict[node]), size_of_object[node]-len(object_node_dict[node]), size_of_query_sample - len(object_node_dict[node]), (size_of_total - size_of_object[node]) - (size_of_query_sample - len(object_node_dict[node])))]
 
-            for del_node in del_list:
-                del object_node_dict[del_node]
+            # for del_node in del_list:
+            #     del object_node_dict[del_node]
             # parameter_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
 
             try:
@@ -454,89 +435,89 @@ class ComputeFTEST:
         return self.response
 
 
-    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="ARAX/KG1", rel_type=None, use_cypher_command=False):
+    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="KG2", rel_type=None):
         """
         Query adjacent nodes of a given source node based on adjacent node type.
         :param node_curie: (required) the curie id of query node. It accepts both single curie id or curie id list eg. "UniProtKB:P14136" or ['UniProtKB:P02675', 'UniProtKB:P01903', 'UniProtKB:P09601', 'UniProtKB:Q02878']
         :param source_type: (required) the type of source node, eg. "gene"
         :param adjacent_type: (required) the type of adjacent node, eg. "biological_process"
-        :param kp: (optional) the knowledge provider to use, eg. "ARAX/KG1"(default)
+        :param kp: (optional) the knowledge provider to use, eg. "KG2"(default)
         :param rel_type: (optional) edge type to consider, eg. "involved_in"
-        :param use_cypher_command: Boolean (True or False). If True, it used cypher command to the size of query adjacent nodes(default:True)
         :return a tuple with a dict containing the number of adjacent nodes for the query node and a list of removed nodes
         """
 
         res = None
+        source_type = ComputeFTEST.convert_string_to_snake_case(source_type.replace('biolink:',''))
+        source_type = ComputeFTEST.convert_string_biolinkformat(source_type)
+        adjacent_type = ComputeFTEST.convert_string_to_snake_case(adjacent_type.replace('biolink:',''))
+        adjacent_type = ComputeFTEST.convert_string_biolinkformat(adjacent_type)
 
-        if kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
-            kp="ARAX/KG2"
+        if kp.upper() == 'KG1' or kp.upper() == 'KG2' or kp.upper() == 'KG2C' or kp.upper() == 'ARAX/KG1' or kp.upper() == 'ARAX/KG2' or kp.upper() == 'ARAX/KG2C':
+            if kp.upper() == 'ARAX/KG2':
+                kp = 'ARAX/KG2'
+            pass
+        else:
+            self.response.error(f"Only KG1 or KG2 or KG2C is allowable to calculate the Fisher's exact test temporally")
+            return res
 
-        if use_cypher_command is True:
+        if rel_type is None:
+            nodesynonymizer = NodeSynonymizer()
+            normalized_nodes = nodesynonymizer.get_canonical_curies(node_curie)
+            failure_nodes = list()
+            mapping = {node:normalized_nodes[node]['preferred_curie'] for node in normalized_nodes if normalized_nodes[node] is not None}
+            failure_nodes += list(normalized_nodes.keys() - mapping.keys())
+            query_nodes = list(set(mapping.values()))
+            #     if normalized_nodes[node] is None:
+            #         self.response.warning(f"Fail to query adjacent nodes for {node} in FET because {node} doesn't have preferred curies")
+            #         failure_nodes.append(node)
+            #         continue
+            #     else:
+            #         mapping[node] = normalized_nodes[node]['preferred_curie']
+            #         query_nodes.append(normalized_nodes[node]['preferred_curie'])
+            # query_nodes = list(set(query_nodes))
 
-            #create the RTXConfiguration object
-            rtxConfig = RTXConfiguration()
-            # Connection information for the neo4j server, populated with orangeboard
-            if kp=="ARAX/KG1":
-                driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
-            elif kp=="ARAX/KG2":
-                rtxConfig.live = "KG2"
-                driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
+            # Get connected to kg2c sqlite
+            connection = sqlite3.connect(self.sqlite_file_path)
+            cursor = connection.cursor()
+
+            # Extract the neighbor count data
+            node_keys_str = "','".join(query_nodes)  # SQL wants ('node1', 'node2') format for string lists
+            sql_query = f"SELECT N.id, N.neighbor_counts " \
+                        f"FROM neighbors AS N " \
+                        f"WHERE N.id IN ('{node_keys_str}')"
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            connection.close()
+
+            # Load the counts into a dictionary
+            # neighbor_counts_dict = dict()
+            neighbor_counts_dict = {row[0]:eval(row[1]) for row in rows}
+            # for row in rows:
+            #     node_id = row[0]
+            #     neighbor_counts = eval(row[1])
+            #     neighbor_counts_dict[node_id] = neighbor_counts
+
+            res_dict = {node:neighbor_counts_dict[mapping[node]].get(adjacent_type) for node in mapping if neighbor_counts_dict[mapping[node]].get(adjacent_type) is not None}
+            failure_nodes += list(mapping.keys() - res_dict.keys())
+
+            # for node in mapping:
+            #     count = neighbor_counts_dict[mapping[node]].get(adjacent_type)
+            #     if count is None:
+            #         self.response.warning(f"Fail to query adjacent nodes with node type {adjacent_type} from ARAX/KG2 for {node} in FET")
+            #         failure_nodes.append(node)
+            #         check_empty = True
+            #         continue
+            #     else:
+            #         res_dict[node] = count
+
+            if len(failure_nodes) != 0:
+                return (res_dict, failure_nodes)
             else:
-                self.response.error(f"The 'kp' argument of 'query_size_of_adjacent_nodes' method within FET only accepts 'ARAX/KG1' or 'ARAX/KG2' for cypher query right now")
-                return res
-
-            session = driver.session()
-
-            # check if node_curie is a str or a list
-            if type(node_curie) is str:
-                if not rel_type:
-                    query = f"match (n00:{adjacent_type})-[]-(n01) where n01.id='{node_curie}' with collect(distinct n00.id) as nodes_n00, n01 as node_n01 return node_n01.id as curie, size(nodes_n00) as count"
-                else:
-                    query = f"match (n00:{adjacent_type})-[:{rel_type}]-(n01) where n01.id='{node_curie}' with collect(distinct n00.id) as nodes_n00, n01 as node_n01 return node_n01.id as curie, size(nodes_n00) as count"
-            elif type(node_curie) is list:
-                if not rel_type:
-                    query = f"match (n00:{adjacent_type})-[]-(n01) where n01.id in {node_curie} with collect(distinct n00.id) as nodes_n00, n01 as node_n01 return node_n01.id as curie, size(nodes_n00) as count"
-                else:
-                    query = f"match (n00:{adjacent_type})-[:{rel_type}]-(n01) where n01.id in {node_curie} with collect(distinct n00.id) as nodes_n00, n01 as node_n01 return node_n01.id as curie, size(nodes_n00) as count"
-            else:
-                self.response.error("The 'node_curie' argument of 'query_size_of_adjacent_nodes' method within FET only accepts str or list")
-                return res
-
-            try:
-                cypher_res = session.run(query)
-                result = pd.DataFrame(cypher_res.data())
-                if result.shape[0] == 0:
-                    self.response.error(f"Fail to query adjacent nodes from {kp} for {node_curie}")
-                    return res
-                else:
-                    res_dict = dict()
-                    has_error = False
-                    if type(node_curie) is str:
-                        res_dict[node_curie] = result['count'][0]
-                        return res_dict
-                    else:
-                        for node in node_curie:
-                            if node in list(result['curie']):
-                                row_ind = list(result['curie']).index(node)
-                                res_dict[node] = result.iloc[row_ind, 1]
-                            else:
-                                self.response.error(f"Fail to query adjacent nodes from {kp} for {node}")
-                                has_error = True
-
-                        if len(res_dict)==0:
-                            return res
-                        elif has_error is True:
-                            return res
-                        else:
-                            return res_dict
-            except:
-                tb = traceback.format_exc()
-                error_type, error, _ = sys.exc_info()
-                self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"Something went wrong with querying adjacent nodes from {kp} for {node_curie}")
-                return res
+                return (res_dict, [])
 
         else:
+            if kp == 'KG1' or kp == 'ARAX/KG1':
+                self.response.warning(f"Since the edge type '{rel_type}' is from KG1, we still use the DSL expand(kg=ARAX/KG1) to query neighbor count. However, the total node count is based on KG2c from 'nodesynonymizer.get_total_entity_count'. So the FET result might not be accurate.")
 
             # construct the instance of ARAXQuery class
             araxq = ARAXQuery()
@@ -555,36 +536,24 @@ class ComputeFTEST:
 
                 query_node_curie = node_id_list_str
             else:
-                self.response.error(
-                    "The 'node_curie' argument of 'query_size_of_adjacent_nodes' method within FET only accepts str or list")
+                self.response.error("The 'node_curie' argument of 'query_size_of_adjacent_nodes' method within FET only accepts str or list")
                 return res
 
             # call the method of ARAXQuery class to query adjacent node
-            if rel_type:
-                query = {"operations": {"actions": [
-                    "create_message",
-                    f"add_qnode(ids={query_node_curie}, categories={source_type}, key=FET_n00)",
-                    f"add_qnode(categories={adjacent_type}, key=FET_n01)",
-                    f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicates={rel_type})",
-                    f"expand(edge_key=FET_e00,kp={kp})",
-                    #"resultify()",
-                    "return(message=true, store=false)"
-                ]}}
-            else:
-                query = {"operations": {"actions": [
-                    "create_message",
-                    f"add_qnode(ids={query_node_curie}, categories={source_type}, key=FET_n00)",
-                    f"add_qnode(categories={adjacent_type}, key=FET_n01)",
-                    f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00)",
-                    f"expand(edge_key=FET_e00,kp={kp})",
-                    #"resultify()",
-                    "return(message=true, store=false)"
-                ]}}
+            query = {"operations": {"actions": [
+                "create_message",
+                f"add_qnode(ids={query_node_curie}, categories={source_type}, key=FET_n00)",
+                f"add_qnode(categories={adjacent_type}, key=FET_n01)",
+                f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicates={rel_type})",
+                f"expand(edge_key=FET_e00,kp={kp})",
+                #"resultify()",
+                "return(message=true, store=false)"
+            ]}}
 
             try:
                 result = araxq.query(query)
                 if result.status != 'OK':
-                    self.response.error(f"Fail to query adjacent nodes from {kp} for {node_curie}")
+                    self.response.error(f"Fail to query adjacent nodes from ARAX/KG2 for {node_curie}")
                     return res
                 else:
                     res_dict = dict()
@@ -598,20 +567,20 @@ class ComputeFTEST:
                         return (res_dict,[])
                     else:
                         check_empty = False
-                        failure_node = list()
+                        failure_nodes = list()
                         for node in node_curie:
                             tmplist = set([edge_key for edge_key in message.knowledge_graph.edges if message.knowledge_graph.edges[edge_key].subject == node or message.knowledge_graph.edges[edge_key].object == node])  ## edge has no direction
                             if len(tmplist) == 0:
                                 self.response.warning(f"Fail to query adjacent nodes from {kp} for {node} in FET probably because expander ignores node type. For more details, please see issue897.")
-                                failure_node.append(node)
+                                failure_nodes.append(node)
                                 check_empty = True
                                 continue
                             res_dict[node] = len(tmplist)
 
                         if check_empty is True:
-                            return (res_dict,failure_node)
+                            return (res_dict,failure_nodes)
                         else:
-                            return (res_dict,failure_node)
+                            return (res_dict,[])
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
@@ -619,137 +588,28 @@ class ComputeFTEST:
                 self.response.error(f"Something went wrong with querying adjacent nodes from {kp} for {node_curie}")
                 return res
 
-
-    def _query_size_of_adjacent_nodes_parallel(self, this):
-        # This method is expected to be run within this class
-        """
-        Query the size of adjacent nodes of a given source node based on adjacent node type in parallel.
-        :param this is a list containing five sub-arguments below since this function is exectued in parallel.
-        :return the number of adjacent nodes for the query node
-        """
-        #:sub-argument node_curie: (required) the curie id of query node, eg. "UniProtKB:P14136"
-        #:sub-argument source_type: (required) the type of source node, eg. "gene"
-        #:sub-argument adjacent_type: (required) the type of adjacent node, eg. "biological_process"
-        #:sub-argument kp: (optional) the knowledge provider to use, eg. "ARAX/KG1"(default)
-        #:sub-argument rel_type: (optional) edge type to consider, eg. "involved_in"
-
-        error_message = []
-        if len(this) == 5:
-            # this contains four arguments and assign them to different variables
-            node_curie, source_type, adjacent_type, kp, rel_type = this
-        elif len(this) == 4:
-            node_curie, source_type, adjacent_type, kp = this
-            rel_type = None
-        elif len(this) == 3:
-            node_curie, source_type, adjacent_type = this
-            kp = "ARAX/KG1"
-            rel_type = None
-        else:
-            error_message.append("The '_query_size_of_adjacent_nodes_parallel' method within FET only accepts four arguments: node_curie, adjacent_type, kp, rel_type")
-            return error_message
-
-        if kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
-            kp="ARAX/KG2"
-
-        # construct the instance of ARAXQuery class
-        araxq = ARAXQuery()
-
-        # check if node_curie is a str
-        if type(node_curie) is str:
-            pass
-        else:
-            error_message.append("The 'node_curie' argument of '_query_size_of_adjacent_nodes_parallel' method within FET only accepts str")
-            return error_message
-
-        # call the method of ARAXQuery class to query adjacent node
-
-        if rel_type:
-            query = {"operations": {"actions": [
-                "create_message",
-                f"add_qnode(ids={node_curie}, categories={source_type}, key=FET_n00)",
-                f"add_qnode(categories={adjacent_type}, key=FET_n01)",
-                f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicates={rel_type})",
-                f"expand(edge_key=FET_e00,kp={kp})",
-                #"resultify()",
-                "return(message=true, store=false)"
-            ]}}
-        else:
-            query = {"operations": {"actions": [
-                "create_message",
-                f"add_qnode(ids={node_curie}, categories={source_type}, key=FET_n00)",
-                f"add_qnode(categories={adjacent_type}, key=FET_n01)",
-                f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00)",
-                f"expand(edge_key=FET_e00,kp={kp})",
-                #"resultify()",
-                "return(message=true, store=false)"
-            ]}}
-
-        try:
-            result = araxq.query(query)
-            if result.status != 'OK':
-                error_message.append(f"Fail to query adjacent nodes from {kp} for {node_curie}")
-                return error_message
-            else:
-                message = araxq.response.envelope.message
-                tmplist = set([edge_key for edge_key in message.knowledge_graph.edges if message.knowledge_graph[edge_key].subject == node_curie or message.knowledge_graph[edge_key].object == node_curie]) ## edge has no direction
-                if len(tmplist) == 0:
-                    error_message.append(f"Fail to query adjacent nodes from {kp} for {node_curie}")
-                    return error_message
-                res = len(tmplist)
-                return res
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            error_message.append((tb, error_type.__name__))
-            error_message.append(f"Something went wrong with querying adjacent nodes from {kp} for {node_curie}")
-            return error_message
-
-    def size_of_given_type_in_KP(self, node_type, use_cypher_command=False, kg='KG1'):
+    def size_of_given_type_in_KP(self, node_type, kg='KG1'):
         """
         find all nodes of a certain type in KP
         :param node_type: the query node type
-        :param use_cypher_command: Boolean (True or False). If True, it used cypher command to query all nodes otherwise used NodeSynonymizer
         :param kg: only allowed for choosing 'KG1' or 'KG2' now. Will extend to BTE later
         """
         # TODO: extend this to KG2, BTE, and other KP's we know of
 
         size_of_total = None
 
-        if kg == 'KG1' or kg == 'KG2':
+        if kg.upper() == 'KG1' or kg.upper() == 'KG2' or kg.upper() == 'KG2C' or kg.upper() == 'ARAX/KG1' or kg.upper() == 'ARAX/KG2' or kg.upper() == 'ARAX/KG2C':
             pass
         else:
-            self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
+            self.response.error(f"Only KG1 or KG2 or KG2C is allowable to calculate the Fisher's exact test temporally")
             return size_of_total
 
         node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:',''))
         node_type = ComputeFTEST.convert_string_biolinkformat(node_type)
 
-        if kg == 'KG1':
-            if use_cypher_command:
-                rtxConfig = RTXConfiguration()
-                # Connection information for the neo4j server, populated with orangeboard
-                driver = GraphDatabase.driver(rtxConfig.neo4j_bolt, auth=basic_auth(rtxConfig.neo4j_username, rtxConfig.neo4j_password))
-                session = driver.session()
-
-                query = "MATCH (n:%s) return count(distinct n)" % (node_type)
-                res = session.run(query)
-                size_of_total = res.single()["count(distinct n)"]
-                return size_of_total
-            else:
-                nodesynonymizer = NodeSynonymizer()
-                size_of_total = nodesynonymizer.get_total_entity_count(node_type, kg_name=kg)
-                return size_of_total
-        else:
-            if use_cypher_command:
-                self.response.warning(f"KG2 is only allowable to use NodeSynonymizer to query the total number of node with query type. It was set to use kgNodeIndex")
-                nodesynonymizer = NodeSynonymizer()
-                size_of_total = nodesynonymizer.get_total_entity_count(node_type, kg_name=kg)
-                return size_of_total
-
-            else:
-                nodesynonymizer = NodeSynonymizer()
-                size_of_total = nodesynonymizer.get_total_entity_count(node_type, kg_name=kg)
-                return size_of_total
+        nodesynonymizer = NodeSynonymizer()
+        size_of_total = nodesynonymizer.get_total_entity_count(node_type)
+        return size_of_total
 
     def _calculate_FET_pvalue_parallel(self, this):
         # *Note*: The arugment 'this' is a list containing five sub-arguments below since this function is exectued in parallel.
