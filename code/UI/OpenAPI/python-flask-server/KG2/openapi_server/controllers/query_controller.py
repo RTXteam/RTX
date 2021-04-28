@@ -27,7 +27,7 @@ def query(request_body):  # noqa: E501
     query = connexion.request.get_json()
     araxq = ARAXQuery()
 
-    if "stream_progress" in query and query['stream_progress'] is true:
+    if "stream_progress" in query and query['stream_progress'] is True:
         # Return a stream of data to let the client know what's going on
         return Response(araxq.query_return_stream(query, mode='RTXKG2'),mimetype='text/plain')
 
