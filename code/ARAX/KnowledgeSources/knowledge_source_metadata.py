@@ -87,6 +87,7 @@ class KnowledgeSourceMetadata:
         try:
             with open(input_filename) as infile:
                 self.meta_knowledge_graph = json.load(infile)
+                return self.meta_knowledge_graph
 
         except:
             eprint(f"ERROR [{method_name}]: Unable to read meta_knowledge_graph from file '{input_filename}'")
