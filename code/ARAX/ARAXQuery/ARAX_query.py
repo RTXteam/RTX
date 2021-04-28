@@ -675,9 +675,9 @@ class ARAXQuery:
             # Fill out the message with data
             response.envelope.status = response.error_code
             response.envelope.description = response.message
-            if response.envelope.query_options is None:
-                response.envelope.query_options = {}
-            response.envelope.query_options['actions'] = operations.actions
+            if response.envelope.operations is None:
+                response.envelope.operations = operations
+            #response.envelope.operations['actions'] = operations.actions
 
             # Update the reasoner_id to ARAX if not already present
             for result in response.envelope.message.results:
@@ -780,7 +780,7 @@ def main():
             "expand(edge_key=e0)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=10)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
         ]}}
     elif params.example_number == 301:  # Variant of 3 with NGD
         query = {"operations": {"actions": [
