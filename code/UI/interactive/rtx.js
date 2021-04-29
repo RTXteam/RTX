@@ -153,10 +153,10 @@ function pasteQuestion(question) {
 }
 function pasteExample(type) {
     if (type == "DSL") {
-	document.getElementById("dslText").value = '# This program creates two query nodes and a query edge between them, looks for matching edges in the KG,\n# overlays NGD metrics, and returns the top 30 results\nadd_qnode(name=acetaminophen, key=n0)\nadd_qnode(category=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand()\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
+	document.getElementById("dslText").value = '# This program creates two query nodes and a query edge between them, looks for matching edges in the KG,\n# overlays NGD metrics, and returns the top 30 results\nadd_qnode(name=acetaminophen, key=n0)\nadd_qnode(categories=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand()\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
     }
     else {
-	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicate": "biolink:physically_interacts_with"\n      }\n   },\n   "nodes": {\n      "n00": {\n         "id":        "CHEMBL.COMPOUND:CHEMBL112",\n         "category":  "biolink:ChemicalSubstance"\n      },\n      "n01": {\n         "category":  "biolink:Protein"\n      }\n   }\n}\n';
+	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicates": ["biolink:physically_interacts_with"]\n      }\n   },\n   "nodes": {\n      "n00": {\n         "ids":        ["CHEMBL.COMPOUND:CHEMBL112"]\n      },\n      "n01": {\n         "categories":  ["biolink:Protein"]\n      }\n   }\n}\n';
     }
 }
 
@@ -183,7 +183,7 @@ function reset_vars() {
 // use fetch and stream
 function postQuery(qtype) {
     var queryObj= {};
-    queryObj.asynchronous = "stream";
+    queryObj.stream_progress = true;
 
     reset_vars();
     var statusdiv = document.getElementById("statusdiv");
@@ -712,9 +712,9 @@ function sendQuestion(e) {
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
     input_qg = { "edges": [], "nodes": [] };
 
-    var bypass_cache = "true";
+    var bypass_cache = true;
     if (document.getElementById("useCache").checked) {
-	bypass_cache = "false";
+	bypass_cache = false;
     }
 
     // collect the form data while iterating over the inputs
@@ -1030,7 +1030,10 @@ function render_response_stats(respObj) {
 
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("Rendering message..."));
+    if (!respObj["schema_version"])
+	respObj["schema_version"] = "1.1 (presumed)";
+    statusdiv.appendChild(document.createTextNode("Rendering TRAPI "+respObj["schema_version"]+" message..."));
+
     sesame('openmax',statusdiv);
 
     if (respObj.id) {
@@ -1076,7 +1079,7 @@ function render_response(respObj,dispjson) {
 	    }
 	    document.getElementById("jsonText").value = JSON.stringify(respObj.message["query_graph"],null,2);
 	}
-	process_graph(respObj.message["query_graph"],99999);
+	process_graph(respObj.message["query_graph"],99999,respObj["schema_version"]);
     }
     else
 	cytodata[99999] = 'dummy'; // this enables query graph editing
@@ -1104,8 +1107,11 @@ function render_response(respObj,dispjson) {
 	}
 	else {
 	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
-	    document.getElementById("result_container").innerHTML += "<h2>" + respObj.message.results.length + rtext + "</h2>";
-            document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
+	    var h2 = document.createElement("h2");
+	    h2.appendChild(document.createTextNode(respObj.message.results.length + rtext));
+	    document.getElementById("result_container").appendChild(h2);
+
+	    document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
             document.getElementById("menunumresults").classList.add("numnew");
 	    document.getElementById("menunumresults").classList.remove("numold");
 	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
@@ -1121,7 +1127,7 @@ function render_response(respObj,dispjson) {
 		document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
 	    }
 
-	    process_graph(respObj.message["knowledge_graph"],0);
+	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
 	    process_results(respObj.message["results"],respObj.message["knowledge_graph"]);
 	}
     }
@@ -1363,12 +1369,13 @@ function add_to_summary(rowdata, num) {
 }
 
 
-function process_graph(gne,gid) {
+function process_graph(gne,gid,trapi) {
     cytodata[gid] = [];
     for (var id in gne.nodes) {
 	var gnode = gne.nodes[id];
 
-	gnode.parentdivnum = gid; // helps link node to div when displaying node info on click
+	gnode.parentdivnum = gid;   // helps link node to div when displaying node info on click
+	gnode.trapiversion = trapi; // support multiple versions...?
 
         if (!gnode.fulltextname) {
 	    if (gnode.name)
@@ -1418,6 +1425,7 @@ function process_graph(gne,gid) {
 	    gedge.id = id;
 
 	gedge.parentdivnum = gid;
+        gedge.trapiversion = trapi;
         gedge.source = gedge.subject;
         gedge.target = gedge.object;
 
@@ -1742,7 +1750,10 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'));
+	if (this.data('trapiversion').startsWith("1.0"))
+	    show_attributes_1point0(div, this.data('attributes'));
+	else
+	    show_attributes_1point1(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -1779,7 +1790,10 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'));
+        if (this.data('trapiversion').startsWith("1.0"))
+	    show_attributes_1point0(div, this.data('attributes'));
+	else
+	    show_attributes_1point1(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -1787,7 +1801,106 @@ function add_cyto(i) {
 }
 
 
-function show_attributes(html_div, atts) {
+function show_attributes_1point1(html_div, atts) {
+    if (atts == null)  { return; }
+
+    // always display iri first
+    var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
+
+    var attshtml = "<table>";
+    for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
+	var snippet = "<tr><td colspan='2'><hr></td></tr>";
+	var value = '';
+
+	for (var nom in att) {
+	    if (nom == "value") {
+		value = att[nom];
+		continue;
+	    }
+	    else if (att[nom] != null) {
+		snippet += "<tr><td><b>" + nom + "</b>: </td><td>";
+
+		if (att[nom].toString().startsWith("http")) {
+		    snippet += "<a href='" + att[nom] + "'";
+		    snippet += " target='_blank'>" + att[nom] + "</a>";
+		}
+		else
+		    snippet += att[nom];
+
+		snippet += "</td></tr>";
+	    }
+	}
+	snippet += "<tr><td><b>value</b>: </td><td>";
+	if (value) {
+            var fixit = true;
+	    // truncate floats
+            if (att.original_attribute_name == "normalized_google_distance" ||
+		att.original_attribute_name == "fisher_exact_test_p-value"  ||
+		att.original_attribute_name == "probability_drug_treats"    ||
+		att.original_attribute_name == "observed_expected_ratio"    ||
+		att.original_attribute_name == "paired_concept_frequency"   ||
+		att.original_attribute_name == "paired_concept_freq"        ||
+		att.original_attribute_name == "jaccard_index"              ||
+		att.original_attribute_name == "Contribution"               ||
+		att.original_attribute_name == "probability"                ||
+		att.original_attribute_name == "confidence"                 ||
+		att.original_attribute_name == "chi_square"                 ||
+		att.original_attribute_name == "pValue"                     ||
+		att.original_attribute_name == "ngd") {
+		snippet += Number(att.value).toPrecision(3);
+		fixit = false;
+	    }
+	    else if (Array.isArray(att.value))
+		for (var val of att.value) {
+		    snippet += "<br>";
+		    if (val == null) {
+			snippet += "--NULL--";
+		    }
+		    else if (val.toString().startsWith("PMID:")) {
+			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
+			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
+		    }
+		    else if (val.toString().startsWith("DOI:")) {
+			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
+			snippet += " title='View in doi.org' target='_blank'>" + val + "</a>";
+		    }
+		    else if (val.toString().startsWith("http")) {
+			snippet += "<a href='" + val + "'";
+			snippet += " target='_blank'>" + val + "</a>";
+		    }
+		    else {
+			snippet += val;
+		    }
+		}
+	    else if (typeof att.value === 'object') {
+		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
+
+		fixit = false;
+	    }
+	    else if (value.toString().startsWith("http")) {
+		snippet += "<a href='" + value + "'";
+		snippet += " target='_blank'>" + value + "</a>";
+	    }
+	    else
+		snippet += att.value;
+
+            if (fixit) {
+		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
+		snippet = snippet.toString().replace(/---/g,'<br>---');
+		snippet = snippet.toString().replace( /;;/g,'<br>;;');
+	    }
+	}
+	else {
+            snippet += "<i>no value!</i>";
+	}
+	snippet += "</td></tr>";
+
+        attshtml += snippet;
+    }
+    html_div.innerHTML+= attshtml;
+}
+
+function show_attributes_1point0(html_div, atts) {
     if (atts == null)  { return; }
 
     var linebreak = "<hr>";
