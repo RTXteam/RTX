@@ -248,6 +248,7 @@ class NodeSynonymizer:
         kg_unique_concepts = self.kg_map['kg_unique_concepts']
         kg_curies = self.kg_map['kg_curies']
         kg_names = self.kg_map['kg_names']
+        kg_name_curies = self.kg_map['kg_name_curies']
 
         # For some modes of debugging, import a set of CURIEs to track
         debug_flag = DEBUG
@@ -504,6 +505,10 @@ class NodeSynonymizer:
             # Loop through the equivalent names from the SRI normalizer and add those to the list
             for equivalent_name in equivalence['equivalent_names']:
 
+                if equivalent_name == '':
+                    print(f"ERROR: SRI normalizer equivalent_name is '' for {uc_unique_concept_curie}");
+                    exit()
+
                 # If this equivalent name is already there, just make sure the unique_concept_curie is the same
                 lc_equivalent_name = equivalent_name.lower()
                 if lc_equivalent_name in kg_names:
@@ -601,6 +606,9 @@ class NodeSynonymizer:
         del normalizer
 
         print(f"INFO: Reading of KG2 node files complete")
+        print(f"INFO: Current entity counts\n  {len(kg_nodes)} nodes\n  {len(kg_unique_concepts)} unique concepts\n" +
+            f"  {len(kg_curies)} curies\n  {len(kg_names)} names and abbreviations\n" +
+            f"  {len(kg_name_curies)} name to curie provenance associations")
 
 
     # ############################################################################################
@@ -776,12 +784,8 @@ class NodeSynonymizer:
 
             if debug_flag:
                 print("====================================================================")
-                print(f"==== {uc_curie}  {concept['name']}  {concept['category']}")
-                #print(json.dumps(concept, indent=2, sort_keys=True))
-
-            #### Set the kg2
-
-
+                print(f"==== {uc_curie}  {concept['name']}  {concept['category']} has {len(concept['all_uc_curies'])} items")
+                print(json.dumps(concept, indent=2, sort_keys=True))
 
             #### Loop over all the uc_curies that map to this concept, recording the mapping in all_uc_curies_to_unique_concepts
             #### and scoring the unique_concept curie prefixes
@@ -793,7 +797,8 @@ class NodeSynonymizer:
 
                 #### Compute a score for this uc_unique_concept_curie
                 score = 0
-                uc_curie_prefix = uc_curie.split(':')[0]
+                #uc_curie_prefix = uc_curie.split(':')[0]
+                uc_curie_prefix = uc_equivalent_curie.split(':')[0]
                 if uc_curie_prefix in self.uc_curie_prefix_scores:
                     score = self.uc_curie_prefix_scores[uc_curie_prefix]
                 if uc_curie_prefix == 'UNIPROTKB':
@@ -807,6 +812,9 @@ class NodeSynonymizer:
                     'category': kg_unique_concepts[uc_curie]['category'],
                     'score': score
                 }
+
+                if debug_flag:
+                    print(f"{uc_equivalent_curie} -> {uc_curie} = {score}")
 
             counter += 1
             percentage = int(counter * 100.0 / n_items)
@@ -822,9 +830,10 @@ class NodeSynonymizer:
         for uc_unique_concept_curie, group in all_uc_curies_to_unique_concepts.items():
             if len(group) > 1:
                 if debug_flag:
+                    print(f"Assessing {uc_unique_concept_curie}")
                     print(f"Need to resolve a group {group}")
                 best_score = -1
-                best_curie = ''
+                best_curie = uc_unique_concept_curie
 
                 #### Determine the best scoring one (also sorted in case of ties)
                 for member_curie in sorted(group):
@@ -837,7 +846,8 @@ class NodeSynonymizer:
                 for member_curie in group:
                     if member_curie != best_curie:
                         concept_remap[member_curie] = best_curie
-
+                        if debug_flag:
+                            print(f"  ** {member_curie} -> {best_curie}")
         #### Perform the remapping
         self.remap_concepts(concept_remap)
 
@@ -884,7 +894,7 @@ class NodeSynonymizer:
                 if uc_curie not in kg_unique_concepts[target_curie]['all_uc_curies']:
                     kg_unique_concepts[target_curie]['all_uc_curies'][uc_curie] = True
                 if DEBUG:
-                    print(f"INFO: Tranferring {uc_curie} from all_uc_curies in {uc_unique_concept_curie} to {target_curie}")
+                    print(f"INFO: Transferring {uc_curie} ({kg_curies[uc_curie]['name']}) from all_uc_curies in {uc_unique_concept_curie} ({kg_unique_concepts[uc_unique_concept_curie]['name']}) to {target_curie} ({kg_unique_concepts[target_curie]['name']})")
 
         #### Remap kg_nodes
         for uc_curie, element in kg_nodes.items():
@@ -921,6 +931,11 @@ class NodeSynonymizer:
         for uc_curie in concept_remap:
             del kg_unique_concepts[uc_curie]
 
+        print("INFO: Done remapping")
+        print(f"INFO: Current entity counts\n  {len(kg_nodes)} nodes\n  {len(kg_unique_concepts)} unique concepts\n" +
+            f"  {len(kg_curies)} curies\n  {len(kg_names)} names and abbreviations\n" +
+            f"  {len(kg_name_curies)} name to curie provenance associations")
+
 
 
     #############################################################################################
@@ -951,6 +966,10 @@ class NodeSynonymizer:
             #if lc_name == 'losartan':
             #    debug_flag = True
 
+            if len(lc_name) < 3:
+                continue
+
+
             if debug_flag:
                 print("====================================================================")
                 print(f"==== {lc_name}  {concept['name']}  {concept['uc_unique_concept_curie']}")
@@ -978,7 +997,10 @@ class NodeSynonymizer:
                     'score': score
                 }
 
-                debug_flag = False
+                #debug_flag = False
+                if debug_flag:
+                    print(f"{lc_name} -> {uc_curie} = {score}")
+
 
             counter += 1
             percentage = int(counter * 100.0 / n_items)
@@ -1178,8 +1200,8 @@ class NodeSynonymizer:
                         else:
                             stats['association conflict'] += 1
                             #print(f"WARNING: Association conflict: {linking_curie}->{uc_linking_unique_concept_curie} and {second_curie}->{uc_second_unique_concept_curie}")
-                            kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = True
-                            kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_unique_concept_curie] = True
+                            kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 'KG2equivs'
+                            kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_unique_concept_curie] = 'KG2equivs'
 
                             # This probably isn't needed, but things are not working the way that I want. FIXME
                             #kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_curie] = 1
@@ -1188,8 +1210,8 @@ class NodeSynonymizer:
                     else:
                         print(f"Adding a new curie based on line '{line}'")
                         problem_counter += 1
-                        if problem_counter > 100:
-                            exit()
+                        #if problem_counter > 100:
+                        #    exit()
                         stats['add new linked curie'] += 1
                         kg_curies[uc_second_curie] = { 
                             'curie': second_curie, 
@@ -1200,7 +1222,7 @@ class NodeSynonymizer:
                             'normalizer_name': None,
                             'normalizer_category': None,
                             'source': 'KG2equivs' }
-                        kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = True
+                        kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 'KG2equivs'
 
                 percentage = int(bytes_read*100.0/filesize)
                 if percentage > previous_percentage:
@@ -2481,6 +2503,8 @@ def main():
     elif args.build:
         print("WARNING: Beginning full NodeSynonymizer build process. This requires 54 GB of RAM. If you don't have 54 GB of RAM available, this would be a good time to stop the process!")
         synonymizer.build_kg_map(filter_file=args.filter_file)
+
+        #print("WARNING: Skipping import_equivalenies because of possible problems")
         synonymizer.import_equivalencies()
 
         #print("WARNING: Skipping import_synonyms because of memory constraints")
