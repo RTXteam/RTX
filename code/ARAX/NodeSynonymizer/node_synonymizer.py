@@ -21,6 +21,11 @@ from category_manager import CategoryManager
 DEBUG = False
 
 
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+
 
 # ################################################################################################
 # Main class
@@ -44,11 +49,11 @@ class NodeSynonymizer:
             'rename': {},
         }
 
-        #self.RTXConfig = RTXConfiguration()
-        #self.RTXConfig.live = live
+        self.RTXConfig = RTXConfiguration()
+        self.RTXConfig.live = live
 
-        self.databaseName = "node_synonymizer.sqlite"
-        #self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
+        #self.databaseName = "node_synonymizer.sqlite"
+        self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
         self.engine_type = "sqlite"
 
         self.connection = None
@@ -2435,6 +2440,11 @@ def main():
         exit()
 
     synonymizer = NodeSynonymizer(live = args.live)
+    
+    # FW: If building use "node_synonymizer.sqlite" for the database name and reconnect
+    if args.build or args.recollate:
+        synonymizer.databaseName = "node_synonymizer.sqlite"
+        synonymizer.connect()
 
     # If the user asks to perform the SELECT statement, do it
     if args.query:
