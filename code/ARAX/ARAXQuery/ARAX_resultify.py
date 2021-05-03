@@ -884,23 +884,24 @@ def _create_result_graphs(kg: KnowledgeGraph,
                                                  for prior_qnode_key, corresponding_kg_nodes in prior_qnodes_kg_nodes.items()]
                 # Only keep connections that have links to KG nodes in ALL prior connected qnode roles
                 final_connected_kg_nodes = set.intersection(*current_kg_node_possibilities)
-                if current_qnode.is_set:
-                    # Replace this result graph with a new one with all valid connections listed under this qnode
-                    new_result_graph = _copy_result_graph(result_graph)
-                    new_result_graph["nodes"][current_qnode_key] = final_connected_kg_nodes
-                    pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
-                                                              sub_qg_adj_map=sub_qg_adj_map,
-                                                              kg_node_adj_map_by_qg_key=kg_node_adj_map_by_qg_key)
-                    new_result_graphs.append(pruned_result_graph)
-                else:
-                    # Create a new result graph for each new valid connected node
-                    for connected_node_key in final_connected_kg_nodes:
+                if final_connected_kg_nodes:
+                    if current_qnode.is_set:
+                        # Replace this result graph with a new one with all valid connections listed under this qnode
                         new_result_graph = _copy_result_graph(result_graph)
-                        new_result_graph["nodes"][current_qnode_key] = {connected_node_key}
+                        new_result_graph["nodes"][current_qnode_key] = final_connected_kg_nodes
                         pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
                                                                   sub_qg_adj_map=sub_qg_adj_map,
                                                                   kg_node_adj_map_by_qg_key=kg_node_adj_map_by_qg_key)
                         new_result_graphs.append(pruned_result_graph)
+                    else:
+                        # Create a new result graph for each new valid connected node
+                        for connected_node_key in final_connected_kg_nodes:
+                            new_result_graph = _copy_result_graph(result_graph)
+                            new_result_graph["nodes"][current_qnode_key] = {connected_node_key}
+                            pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
+                                                                      sub_qg_adj_map=sub_qg_adj_map,
+                                                                      kg_node_adj_map_by_qg_key=kg_node_adj_map_by_qg_key)
+                            new_result_graphs.append(pruned_result_graph)
             result_graphs = new_result_graphs
 
         # Update our records about which qnodes we've already processed
