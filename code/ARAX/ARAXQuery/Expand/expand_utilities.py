@@ -427,6 +427,17 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     return endpoint_map.get(kp_name)
 
 
+def get_kp_infores_curie(kp_name: str) -> Union[str, None]:
+    endpoint_map = {
+        "BTE": "infores:biothings_explorer",
+        "GeneticsKP": "infores:genetics_kp",
+        "MolePro": "infores:molecular_kp",
+        "ARAX/KG2": "infores:rtx_kg2_kp",
+        "CHP": "infores:connections_hypothesis_kp"
+    }
+    return endpoint_map.get(kp_name, kp_name)
+
+
 def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
     # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
     qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
