@@ -874,22 +874,32 @@ class NodeSynonymizer:
         #### A->B, B->C and we want, A->C, B->C
         #### So we need to iterate through and look for targets that are also sources
         iteration = 0
+        n_prev_forward_entries = -1
         while True:
             new_concept_remap = {}
+            forwarded_entries = {}
             is_new_map_changed = False
             iteration += 1
             for uc_unique_concept_curie, target_curie in concept_remap.items():
-                if target_curie in concept_remap:
+                if target_curie in concept_remap and target_curie != concept_remap[target_curie]:
+                    forwarded_entries[target_curie] = concept_remap[target_curie]
                     target_curie = concept_remap[target_curie]
                     is_new_map_changed = True
                 new_concept_remap[uc_unique_concept_curie] = target_curie
             if is_new_map_changed:
                 concept_remap = new_concept_remap
+                print(f"- After iteration {iteration}, there are {len(forwarded_entries)} forwarded entries")
+                if len(forwarded_entries) < 10:
+                    print(json.dumps(forwarded_entries,sort_keys=True,indent=2))
             else:
                 break
-            if iteration > 100:
-                eprint("ERROR: E9823: Reached 100 iterations")
+            if len(forwarded_entries) == n_prev_forward_entries:
+                print(f"- Stopped iterating. Two iterations with {len(forwarded_entries)} forwarded entries")
+                break
+            if iteration > 123:
+                eprint("ERROR: E98123: Reached 123 iterations")
                 exit()
+            n_prev_forward_entries = len(forwarded_entries)
 
         #### Show the mapping
         for uc_unique_concept_curie, target_curie in concept_remap.items():
@@ -2539,7 +2549,7 @@ def main():
         print(f"INFO: Created a NodeSynonymizer database with\n  {len(synonymizer.kg_map['kg_nodes'])} nodes\n  {len(synonymizer.kg_map['kg_unique_concepts'])} unique concepts\n" +
             f"  {len(synonymizer.kg_map['kg_curies'])} curies\n  {len(synonymizer.kg_map['kg_names'])} names and abbreviations\n" +
             f"  {len(synonymizer.kg_map['kg_name_curies'])} name to curie provenance associations")
-        print(f"INFO: Processing complete")
+        print(f"INFO: Processing complete. Freeing all the memory seems to still take a while though")
 
     # If requested, run the test examples
     if args.test:
