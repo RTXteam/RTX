@@ -38,6 +38,7 @@ class KG2Querier:
                 self.kg_name = "KG2"
         else:
             self.kg_name = "KG1"
+        self.infores_curie_map = dict()
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -378,19 +379,24 @@ class KG2Querier:
         node = Node(name=node_tuple[0], categories=eu.convert_to_list(node_tuple[1]))
         return node
 
-    @staticmethod
-    def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
+    def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list) -> Edge:
         edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
         provided_by = edge_tuple[3]
         publications = edge_tuple[4]
+        infores_curies = {self.infores_curie_map.get(source, self._get_infores_curie_from_provided_by(source))
+                          for source in provided_by}
         if provided_by:
-            edge.attributes.append(Attribute(original_attribute_name="provided_by",
-                                             attribute_type_id=eu.get_attribute_type("provided_by"),
-                                             value=provided_by))
+            provided_by_attributes = [Attribute(attribute_type_id="biolink:original_source",
+                                                value=infores_curie,
+                                                value_type_id="biolink:InformationResource",
+                                                attribute_source="infores:rtx_kg2_kp")
+                                      for infores_curie in infores_curies]
+            edge.attributes += provided_by_attributes
         if publications:
-            edge.attributes.append(Attribute(original_attribute_name="publications",
-                                             attribute_type_id=eu.get_attribute_type("publications"),
-                                             value=publications))
+            edge.attributes.append(Attribute(attribute_type_id="biolink:has_supporting_publications",
+                                             value_type_id="biolink:Publication",
+                                             value=publications,
+                                             attribute_source=list(infores_curies) if len(infores_curies) > 1 else list(infores_curies)[0]))
         return edge
 
     def _convert_kg1_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
@@ -525,3 +531,13 @@ class KG2Querier:
         if enforce_directionality:
             full_qedge_cypher += ">"
         return full_qedge_cypher
+
+    def _get_infores_curie_from_provided_by(self, provided_by: str) -> str:
+        # Temporary until spreadsheet with mappings is in place
+        stripped = provided_by.strip(":")  # Handle SEMMEDDB: situation
+        local_id = stripped.split(":")[-1]
+        before_dot = local_id.split(".")[0]
+        before_slash = before_dot.split("/")[0]
+        infores_curie = f"infores:{before_slash.lower()}"
+        self.infores_curie_map[provided_by] = infores_curie
+        return infores_curie
