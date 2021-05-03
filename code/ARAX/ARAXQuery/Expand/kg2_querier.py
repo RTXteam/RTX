@@ -450,9 +450,10 @@ class KG2Querier:
         edge.relation = neo4j_edge.get("relation")
         other_properties = ["provided_by", "probability"]
         edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(original_attribute_name="is_defined_by", value="ARAX/KG1",
-                                            attribute_type_id=eu.get_attribute_type("is_defined_by"))
-        edge.attributes.append(is_defined_by_attribute)
+        edge.attributes.append(Attribute(attribute_type_id="biolink:knowledge_provider_source",
+                                         value=eu.get_kp_infores_curie("ARAX/KG1"),
+                                         value_type_id="biolink:InformationResource",
+                                         attribute_source="infores:arax_ara"))
         return edge_key, edge
 
     @staticmethod
