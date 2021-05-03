@@ -635,7 +635,7 @@ class DTDQuerier:
                 return final_kg
             results_table = neo4j_results[0]
             column_names = [column_name for column_name in results_table]
-            res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
+            res = [(neo4j_edge.get(source_qnode_key),neo4j_edge.get(target_qnode_key)) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
             if len(res) != 0:
                 count, res, all_probabilities = self.pred.prob_all(res)
 
@@ -718,7 +718,8 @@ class DTDQuerier:
                 return final_kg
             results_table = neo4j_results[0]
             column_names = [column_name for column_name in results_table]
-            res = [(neo4j_edge.get('n0'),neo4j_edge.get('n1')) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
+            res = [(neo4j_edge.get(source_qnode_key),neo4j_edge.get(target_qnode_key)) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
+
             if len(res) != 0:
                 count, res, all_probabilities = self.pred.prob_all(res)
 
