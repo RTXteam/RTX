@@ -421,7 +421,7 @@ class COHDQuerier:
                 if len(omop_pairs) != 0:
                     res = self.cohdindex.get_obs_exp_ratio(concept_id_pair=omop_pairs, domain="", dataset_id=3)  # use the hierarchical dataset
                     if len(res) != 0:
-                        maximum_ln_ratio = res[0]['ln_ratio']  # the result returned from get_paired_concept_freq was sorted by decreasing order
+                        maximum_ln_ratio = res[0]['ln_ratio']  # the result returned from get_obs_exp_ratio was sorted by decreasing order
                         value = maximum_ln_ratio
                 if value >= threshold:
                     swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_preferred_key, target_preferred_key, "ln_observed_expected_ratio", value)
@@ -535,7 +535,7 @@ class COHDQuerier:
                 if len(target_qnode_omop_ids[target_preferred_key]) == 0:
                     log.warning(f"No OMOP concept id was found for target preferred id '{target_preferred_key}'' with qnode id '{qedge.object}'")
                     continue
-                elif len(self.cohdindex.get_paired_concept_freq(concept_id_1=target_qnode_omop_ids[target_preferred_key], dataset_id=3)) == 0:
+                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=target_qnode_omop_ids[target_preferred_key], dataset_id=3)) == 0:
                     log.warning(f"No paired concept frequency was found from COHD database for target preferred id '{target_preferred_key}'' with qnode id '{qedge.object}'")
                     continue
                 else:
@@ -645,7 +645,7 @@ class COHDQuerier:
                 if len(source_qnode_omop_ids[source_preferred_key]) == 0:
                     log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_key}'' with qnode id '{qedge.subject}'")
                     continue
-                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=source_qnode_omop_ids[source_preferred_key], dataset_id=3)) == 0:
+                elif len(self.cohdindex.get_chi_square(concept_id_1=source_qnode_omop_ids[source_preferred_key], dataset_id=3)) == 0:
                     log.warning(f"No paired concept ids was found from COHD database for source preferred id '{source_preferred_key}'' with qnode id '{qedge.subject}'")
                     continue
                 else:
@@ -654,7 +654,7 @@ class COHDQuerier:
                 if len(target_qnode_omop_ids[target_preferred_key]) == 0:
                     log.warning(f"No OMOP concept id was found for target preferred id '{target_preferred_key}'' with qnode id '{qedge.object}'")
                     continue
-                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=target_qnode_omop_ids[target_preferred_key], dataset_id=3)) == 0:
+                elif len(self.cohdindex.get_chi_square(concept_id_1=target_qnode_omop_ids[target_preferred_key], dataset_id=3)) == 0:
                     log.warning(f"No paired concept ids was found from COHD database for target preferred id '{target_preferred_key}'' with qnode id '{qedge.object}'")
                     continue
                 else:
@@ -671,7 +671,7 @@ class COHDQuerier:
                 if len(omop_pairs) != 0:
                     res = self.cohdIndex.get_chi_square(concept_id_pair=omop_pairs, domain="", dataset_id=3)  # use the hierarchical dataset
                     if len(res) != 0:
-                        minimum_pvalue = res[0]['p-value']  # the result returned from get_paired_concept_freq was sorted by decreasing order
+                        minimum_pvalue = res[0]['p-value']  # the result returned from get_chi_square was sorted by decreasing order
                         value = minimum_pvalue
 
                 if value <= threshold:
@@ -705,6 +705,7 @@ class COHDQuerier:
             new_edge = dict()
             average_threshold = 0
             count = 0
+
             for source_preferred_key in source_qnode_omop_ids:
 
                 if source_qnode.category is None:
@@ -715,10 +716,12 @@ class COHDQuerier:
                     else:
                         continue
 
+                print(f"################# {source_qnode_omop_ids[source_preferred_key]}")
+
                 if len(source_qnode_omop_ids[source_preferred_key]) == 0:
                     log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_key}'' with qnode id '{qedge.subject}'")
                     continue
-                elif len(self.cohdindex.get_obs_exp_ratio(concept_id_1=source_qnode_omop_ids[source_preferred_key], dataset_id=3)) == 0:
+                elif len(self.cohdindex.get_chi_square(concept_id_1=source_qnode_omop_ids[source_preferred_key], dataset_id=3)) == 0:
                     log.warning(f"No paired concept frequency was found from COHD database for source preferred id '{source_preferred_key}'' with qnode id '{qedge.subject}'")
                     continue
                 else:
@@ -786,7 +789,7 @@ class COHDQuerier:
                 if len(target_qnode_omop_ids[target_preferred_key]) == 0:
                     log.warning(f"No OMOP concept id was found for target preferred id '{target_preferred_key}'' with qnode id '{qedge.object}'")
                     continue
-                elif len(self.cohdindex.get_paired_concept_freq(concept_id_1=target_qnode_omop_ids[target_preferred_key], dataset_id=3)) == 0:
+                elif len(self.cohdindex.get_chi_square(concept_id_1=target_qnode_omop_ids[target_preferred_key], dataset_id=3)) == 0:
                     log.warning(f"No paired concept frequency was found from COHD database for target preferred id '{target_preferred_key}'' with qnode id '{qedge.object}'")
                     continue
                 else:
