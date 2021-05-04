@@ -23,7 +23,6 @@ with open(args.PKLfile, "rb") as file:
 concept_table = pd.read_csv(fpath + "/Athena_tables/ALL_CONCEPT_filtered.txt", sep='\t', index_col=None)
 concepts_table_select = concept_table.loc[:, ['concept_id', 'vocabulary_id', 'concept_code']]
 concepts_table_select['curie_name'] = concepts_table_select[['vocabulary_id', 'concept_code']].apply(lambda x: str(x[0]).upper() + ":" + str(x[1]).upper(), axis=1)
-concepts_table_select.drop(columns=['vocabulary_id', 'concept_code'])
 concepts_table_select = concepts_table_select.drop(columns=['vocabulary_id', 'concept_code'])
 
 def change_format(synonym):
