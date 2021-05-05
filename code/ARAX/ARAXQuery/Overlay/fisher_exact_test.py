@@ -7,8 +7,8 @@ import scipy.stats as stats
 import traceback
 import sys
 import os
+import re
 import multiprocessing
-import pandas as pd
 from datetime import datetime
 from neo4j import GraphDatabase, basic_auth
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
@@ -91,7 +91,7 @@ class ComputeFTEST:
         query_edge_key = set()
         rel_edge_type = set()
         subject_node_category = None
-        object_node_category= None
+        object_node_category = None
 
         ## Check if subject_qnode_key and object_qnode_key are in the Query Graph
         try:
@@ -161,10 +161,8 @@ class ComputeFTEST:
 
         ## loop over all nodes in KG and collect their node information
         try:
-            count = 0
             for node_key, node in self.message.knowledge_graph.nodes.items():
-                nodes_info[node_key] = {'count': count, 'qnode_keys': node.qnode_keys, 'category': self.message.knowledge_graph.nodes[node_key].categories[0], 'edge_index': []}
-                count = count + 1
+                nodes_info[node_key] = {'qnode_keys': node.qnode_keys, 'category': self.message.knowledge_graph.nodes[node_key].categories[0]}
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -174,19 +172,17 @@ class ComputeFTEST:
 
         ## loop over all edges in KG and create subject node list and target node dict based on subject_qnode_key, object_qnode_key as well as rel_edge_id (optional, otherwise all edges are considered)
         try:
-            count = 0
             for edge_key, edge in self.message.knowledge_graph.edges.items():
 
-                edge_attribute_dict = {x.original_attribute_name:x.value for x in self.message.knowledge_graph.edges[edge_key].attributes}
-                if edge_attribute_dict['is_defined_by'] != 'ARAX':
+                edge_attribute_list = [x.value for x in self.message.knowledge_graph.edges[edge_key].attributes if x.original_attribute_name == 'is_defined_by']
+                if len(edge_attribute_list) == 0:
 
-                    nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['edge_index'].append(count)
-                    nodes_info[self.message.knowledge_graph.edges[edge_key].object]['edge_index'].append(count)
+                    temp_kp = [re.sub("infores:", "", x.value) for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'biolink:knowledge_provider_source']
 
                     if rel_edge_key:
                         if rel_edge_key in edge.qedge_keys:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
-                                edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
+                                edge_expand_kp.append(temp_kp[0])
                                 rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
                                 if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
@@ -194,45 +190,31 @@ class ComputeFTEST:
                                 else:
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
                             else:
-                                edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
+                                edge_expand_kp.append(temp_kp[0])
                                 rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
                                 else:
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].subject].update([self.message.knowledge_graph.edges[edge_key].object])
-                        else:
-                            pass
                     else:
                         if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
+                                edge_expand_kp.append(temp_kp[0])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
                                 if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object] = {self.message.knowledge_graph.edges[edge_key].subject}
                                 else:
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
 
-                            else:
-                                pass
                         elif object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                edge_expand_kp.append(edge_attribute_dict['is_defined_by'])
+                                edge_expand_kp.append(temp_kp[0])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
                                 else:
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].subject].update([self.message.knowledge_graph.edges[edge_key].object])
-
-                            else:
-                                pass
-                        else:
-                            pass
-
-                else:
-                    pass
-
-                count = count + 1 ## record edge position in message.knowledge_graph
 
         except:
             tb = traceback.format_exc()
@@ -257,8 +239,6 @@ class ComputeFTEST:
         if subject_node_category is None:
             self.response.error(f"Subject node with qnode key {subject_qnode_key} was set to None in Query Graph. Please specify the node type")
             return self.response
-        else:
-            pass
 
         ## check if object node has more than one type. If so, throw an error
         if object_node_category is None:
@@ -277,6 +257,15 @@ class ComputeFTEST:
             self.response.debug(f"{occurrences}")
             self.response.warning(f"More than one knowledge provider was detected to be used for expanding the edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
             self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
+
+        ## check if kp is "ARAX/KG1" or "ARAX/KG2", if not, report error
+        if kp == "rtx_kg1_kp":
+            kp = 'ARAX/KG1'
+        elif kp == "rtx_kg2_kp":
+            kp = 'ARAX/KG2'
+        else:
+            self.response.error(f"Only KG1 or KG2 or KG2C is allowable to calculate the Fisher's exact test temporally")
+            return self.response
 
         if kp == 'ARAX/KG1':
             ## This warning can be removed once KG1 is deprecated
@@ -306,10 +295,10 @@ class ComputeFTEST:
                 else:
                     self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
                 self.response.debug(f"ARAX/KG2 was used to calculate total object nodes in Fisher's Exact Test")
-                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='KG2', rel_type=None)
+                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='ARAX/KG2', rel_type=None)
         else:  # if no rel_edge_key is specified, we ignore the edge predicate and use all categories to find all subject nodes in KP
             self.response.debug(f"ARAX/KG2 was used to calculate total object nodes in Fisher's Exact Test")
-            result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='KG2', rel_type=None)
+            result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='ARAX/KG2', rel_type=None)
 
         if result is None:
             return self.response  ## Something wrong happened for querying the adjacent nodes
@@ -328,17 +317,9 @@ class ComputeFTEST:
 
         if len(object_node_dict) != 0:
             ## Based on KP detected in message KG, find the total count of node with the same type of source node
-            ## Note: Regarding of whether kg='KG1' or kg='KG2' is specified in self.size_of_given_type_in_KP, it will always query total count based on kg2c
-            if kp=='ARAX/KG1':
-                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], kg='KG1')
-                if size_of_total != 0:
-                    self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in KG2c based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
-                else:
-                    self.response.error(f"KG2c have 0 node with the same type (which is {subject_node_category[0]}) of subject node with qnode key {subject_qnode_key}")
-                    return self.response
-
-            elif kp=='ARAX/KG2' or kp == 'ARAX/KG2c':
-                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0], kg='KG2')
+            ## Note: Regardless of whether kg='KG1' or kg='KG2' is specified in self.size_of_given_type_in_KP, it will always query total count based on kg2c
+            if kp=='ARAX/KG1' or kp=='ARAX/KG2':
+                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0])
                 self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in KG2c based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
             else:
                 self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
@@ -351,18 +332,15 @@ class ComputeFTEST:
             # del_list = []
 
             parameter_list = []
+            del_list = []
             for node in object_node_dict:
                 if size_of_object[node]-len(object_node_dict[node]) < 0:
-                    # del_list.append(node)
-                    del object_node_dict[node]
+                    del_list.append(node)
                     self.response.warning(f"Skipping node {node} to calculate FET p-value due to issue897 (which causes negative value).")
-                    continue
-                else:
-                    parameter_list += [(node, len(object_node_dict[node]), size_of_object[node]-len(object_node_dict[node]), size_of_query_sample - len(object_node_dict[node]), (size_of_total - size_of_object[node]) - (size_of_query_sample - len(object_node_dict[node])))]
 
-            # for del_node in del_list:
-            #     del object_node_dict[del_node]
-            # parameter_list = [(node, len(target_node_dict[node]), size_of_target[node]-len(target_node_dict[node]), size_of_query_sample - len(target_node_dict[node]), (size_of_total - size_of_target[node]) - (size_of_query_sample - len(target_node_dict[node]))) for node in target_node_dict]
+            for del_node in del_list:
+                del object_node_dict[del_node]
+            parameter_list = [(node, len(object_node_dict[node]), size_of_object[node]-len(object_node_dict[node]), size_of_query_sample - len(object_node_dict[node]), (size_of_total - size_of_object[node]) - (size_of_query_sample - len(object_node_dict[node]))) for node in object_node_dict]
 
             try:
                 with multiprocessing.Pool() as executor:
@@ -373,6 +351,8 @@ class ComputeFTEST:
                 self.response.error(tb, error_code=error_type.__name__)
                 self.response.error(f"Something went wrong with computing Fisher's Exact Test P-value")
                 return self.response
+
+            print(f"################ test3")
 
             if any([type(elem) is list for elem in FETpvalue_list]):
                 for msg in [elem2 for elem1 in FETpvalue_list if type(elem1) is list for elem2 in elem1]:
@@ -435,13 +415,13 @@ class ComputeFTEST:
         return self.response
 
 
-    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="KG2", rel_type=None):
+    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="ARAX/KG2", rel_type=None):
         """
         Query adjacent nodes of a given source node based on adjacent node type.
         :param node_curie: (required) the curie id of query node. It accepts both single curie id or curie id list eg. "UniProtKB:P14136" or ['UniProtKB:P02675', 'UniProtKB:P01903', 'UniProtKB:P09601', 'UniProtKB:Q02878']
         :param source_type: (required) the type of source node, eg. "gene"
         :param adjacent_type: (required) the type of adjacent node, eg. "biological_process"
-        :param kp: (optional) the knowledge provider to use, eg. "KG2"(default)
+        :param kp: (optional) the knowledge provider to use, eg. "ARAX/KG2"(default)
         :param rel_type: (optional) edge type to consider, eg. "involved_in"
         :return a tuple with a dict containing the number of adjacent nodes for the query node and a list of removed nodes
         """
@@ -452,14 +432,6 @@ class ComputeFTEST:
         adjacent_type = ComputeFTEST.convert_string_to_snake_case(adjacent_type.replace('biolink:',''))
         adjacent_type = ComputeFTEST.convert_string_biolinkformat(adjacent_type)
 
-        if kp.upper() == 'KG1' or kp.upper() == 'KG2' or kp.upper() == 'KG2C' or kp.upper() == 'ARAX/KG1' or kp.upper() == 'ARAX/KG2' or kp.upper() == 'ARAX/KG2C':
-            if kp.upper() == 'ARAX/KG2':
-                kp = 'ARAX/KG2'
-            pass
-        else:
-            self.response.error(f"Only KG1 or KG2 or KG2C is allowable to calculate the Fisher's exact test temporally")
-            return res
-
         if rel_type is None:
             nodesynonymizer = NodeSynonymizer()
             normalized_nodes = nodesynonymizer.get_canonical_curies(node_curie)
@@ -467,14 +439,6 @@ class ComputeFTEST:
             mapping = {node:normalized_nodes[node]['preferred_curie'] for node in normalized_nodes if normalized_nodes[node] is not None}
             failure_nodes += list(normalized_nodes.keys() - mapping.keys())
             query_nodes = list(set(mapping.values()))
-            #     if normalized_nodes[node] is None:
-            #         self.response.warning(f"Fail to query adjacent nodes for {node} in FET because {node} doesn't have preferred curies")
-            #         failure_nodes.append(node)
-            #         continue
-            #     else:
-            #         mapping[node] = normalized_nodes[node]['preferred_curie']
-            #         query_nodes.append(normalized_nodes[node]['preferred_curie'])
-            # query_nodes = list(set(query_nodes))
 
             # Get connected to kg2c sqlite
             connection = sqlite3.connect(self.sqlite_file_path)
@@ -490,25 +454,10 @@ class ComputeFTEST:
             connection.close()
 
             # Load the counts into a dictionary
-            # neighbor_counts_dict = dict()
             neighbor_counts_dict = {row[0]:eval(row[1]) for row in rows}
-            # for row in rows:
-            #     node_id = row[0]
-            #     neighbor_counts = eval(row[1])
-            #     neighbor_counts_dict[node_id] = neighbor_counts
 
             res_dict = {node:neighbor_counts_dict[mapping[node]].get(adjacent_type) for node in mapping if neighbor_counts_dict[mapping[node]].get(adjacent_type) is not None}
             failure_nodes += list(mapping.keys() - res_dict.keys())
-
-            # for node in mapping:
-            #     count = neighbor_counts_dict[mapping[node]].get(adjacent_type)
-            #     if count is None:
-            #         self.response.warning(f"Fail to query adjacent nodes with node type {adjacent_type} from ARAX/KG2 for {node} in FET")
-            #         failure_nodes.append(node)
-            #         check_empty = True
-            #         continue
-            #     else:
-            #         res_dict[node] = count
 
             if len(failure_nodes) != 0:
                 return (res_dict, failure_nodes)
@@ -516,7 +465,7 @@ class ComputeFTEST:
                 return (res_dict, [])
 
         else:
-            if kp == 'KG1' or kp == 'ARAX/KG1':
+            if kp == 'ARAX/KG1':
                 self.response.warning(f"Since the edge type '{rel_type}' is from KG1, we still use the DSL expand(kg=ARAX/KG1) to query neighbor count. However, the total node count is based on KG2c from 'nodesynonymizer.get_total_entity_count'. So the FET result might not be accurate.")
 
             # construct the instance of ARAXQuery class
@@ -588,7 +537,7 @@ class ComputeFTEST:
                 self.response.error(f"Something went wrong with querying adjacent nodes from {kp} for {node_curie}")
                 return res
 
-    def size_of_given_type_in_KP(self, node_type, kg='KG1'):
+    def size_of_given_type_in_KP(self, node_type):
         """
         find all nodes of a certain type in KP
         :param node_type: the query node type
@@ -597,12 +546,6 @@ class ComputeFTEST:
         # TODO: extend this to KG2, BTE, and other KP's we know of
 
         size_of_total = None
-
-        if kg.upper() == 'KG1' or kg.upper() == 'KG2' or kg.upper() == 'KG2C' or kg.upper() == 'ARAX/KG1' or kg.upper() == 'ARAX/KG2' or kg.upper() == 'ARAX/KG2C':
-            pass
-        else:
-            self.response.error(f"Only KG1 or KG2 or KG2C is allowable to calculate the Fisher's exact test temporally")
-            return size_of_total
 
         node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:',''))
         node_type = ComputeFTEST.convert_string_biolinkformat(node_type)
@@ -638,6 +581,7 @@ class ComputeFTEST:
             error_type, error, _ = sys.exc_info()
             error_message.append((tb, error_type.__name__))
             error_message.append(f"Something went wrong for target node {node} to calculate FET p-value")
+            error_message.append(f"a, b, c, d are respectively {a}, {b}, {c}, {d} ")
             return error_message
 
     @staticmethod
