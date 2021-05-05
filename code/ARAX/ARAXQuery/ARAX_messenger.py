@@ -182,6 +182,9 @@ class ARAXMessenger:
 
         #### Extract the message to work on
         message = response.envelope.message
+        self.response = response
+        self.envelope = response.envelope
+        self.messsage = message
 
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -429,6 +432,9 @@ class ARAXMessenger:
 
         #### Extract the message to work on
         message = response.envelope.message
+        self.response = response
+        self.envelope = response.envelope
+        self.messsage = message
 
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
