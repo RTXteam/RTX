@@ -189,7 +189,7 @@ class DTDQuerier:
                         return final_kg
         else:
             try:
-                category = source_qnode.categories.replace('biolink:','').replace('_','').lower()
+                category = source_qnode.categories[0].replace('biolink:','').replace('_','').lower()
             except AttributeError:
                 log.error(f"The category of query node {source_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
                 return final_kg
@@ -226,7 +226,7 @@ class DTDQuerier:
                         return final_kg
         else:
             try:
-                category = target_qnode.categories.replace('biolink:','').replace('_','').lower()
+                category = target_qnode.categories[0].replace('biolink:','').replace('_','').lower()
             except AttributeError:
                 log.error(f"The category of query node {target_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
                 return final_kg
