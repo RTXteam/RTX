@@ -26,6 +26,9 @@ pytest>=5.4.1,<=5.4.3
 joblib==0.15.1
 PyYAML==5.4
 ujson==4.0.2
+treelib==1.6.1
+textstat==0.7.0
+transformers==4.5.1
 git+https://github.com/di2ag/chp_client#egg=chp_client
 git+git://github.com/NCATSTranslator/reasoner-validator@master#egg=reasoner-validator
 # Other things that you may need to do in python to get required data

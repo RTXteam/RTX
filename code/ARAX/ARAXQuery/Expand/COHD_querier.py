@@ -703,6 +703,7 @@ class COHDQuerier:
             new_edge = dict()
             average_threshold = 0
             count = 0
+
             for source_preferred_key in source_qnode_omop_ids:
 
                 if source_qnode.categories is None:
@@ -712,6 +713,8 @@ class COHDQuerier:
                         pass
                     else:
                         continue
+
+                print(f"################# {source_qnode_omop_ids[source_preferred_key]}")
 
                 if len(source_qnode_omop_ids[source_preferred_key]) == 0:
                     log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_key}'' with qnode id '{qedge.subject}'")

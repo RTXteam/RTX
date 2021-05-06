@@ -68,7 +68,10 @@ class SortResults:
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute
                             if attribute.original_attribute_name == params['edge_attribute']:  # check if it's the desired one
-                                edge_values[key] = {'value': attribute.value, 'relation': edge.relation}
+                                try:
+                                    edge_values[key] = {'value': float(attribute.value), 'relation': edge.relation}
+                                except ValueError:
+                                    edge_values[key] = {'value': attribute.value, 'relation': edge.relation}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
@@ -161,7 +164,10 @@ class SortResults:
                                 if attribute.original_attribute_name == 'pubmed_ids':
                                     node_values[key] = {'value': attribute.value.count("PMID"), 'category': node.categories}
                                 else:
-                                    node_values[key] = {'value': attribute.value, 'category': node.categories}
+                                    try:
+                                        node_values[key] = {'value': float(attribute.value), 'category': node.categories}
+                                    except ValueError:
+                                        node_values[key] = {'value': attribute.value, 'category': node.categories}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
