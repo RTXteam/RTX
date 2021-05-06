@@ -387,7 +387,7 @@ def test_FET_example_4():
         assert query_edge.object in query_node_keys
 
 @pytest.mark.slow
-def test_FET_ranking():
+def test_FET_ranking_1():
     query = {"operations": { "actions": [
             "create_message",
             "add_qnode(key=n00,ids=UniProtKB:P14136,categories=biolink:Protein)",
@@ -611,7 +611,7 @@ def test_one_hop_kitchen_sink_BTE_2():
     _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
 
-def test_FET_ranking():
+def test_FET_ranking_2():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(key=n00,ids=[UniProtKB:P14136,UniProtKB:P35579],is_set=true,categories=biolink:Protein)",

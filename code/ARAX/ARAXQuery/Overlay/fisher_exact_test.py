@@ -329,7 +329,6 @@ class ComputeFTEST:
 
             self.response.debug(f"Computing Fisher's Exact Test P-value")
             # calculate FET p-value for each target node in parallel
-            # del_list = []
 
             parameter_list = []
             del_list = []
@@ -343,16 +342,15 @@ class ComputeFTEST:
             parameter_list = [(node, len(object_node_dict[node]), size_of_object[node]-len(object_node_dict[node]), size_of_query_sample - len(object_node_dict[node]), (size_of_total - size_of_object[node]) - (size_of_query_sample - len(object_node_dict[node]))) for node in object_node_dict]
 
             try:
-                with multiprocessing.Pool() as executor:
-                    FETpvalue_list = [elem for elem in executor.map(self._calculate_FET_pvalue_parallel, parameter_list)]
+                # with multiprocessing.Pool() as executor:
+                #     FETpvalue_list = [elem for elem in executor.map(self._calculate_FET_pvalue_parallel, parameter_list)]
+                FETpvalue_list = [elem for elem in map(self._calculate_FET_pvalue_parallel, parameter_list)]
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
                 self.response.error(f"Something went wrong with computing Fisher's Exact Test P-value")
                 return self.response
-
-            print(f"################ test3")
 
             if any([type(elem) is list for elem in FETpvalue_list]):
                 for msg in [elem2 for elem1 in FETpvalue_list if type(elem1) is list for elem2 in elem1]:
@@ -550,8 +548,20 @@ class ComputeFTEST:
         node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:',''))
         node_type = ComputeFTEST.convert_string_biolinkformat(node_type)
 
-        nodesynonymizer = NodeSynonymizer()
-        size_of_total = nodesynonymizer.get_total_entity_count(node_type)
+        # Get connected to kg2c sqlite
+        connection = sqlite3.connect(self.sqlite_file_path)
+        cursor = connection.cursor()
+
+        # Extract total count of nodes with certain type in kg2c
+        sql_query = f"SELECT C.count " \
+                    f"FROM category_counts AS C " \
+                    f"WHERE C.category = '{node_type}'"
+
+        cursor.execute(sql_query)
+        rows = cursor.fetchall()
+        size_of_total = rows[0][0]
+        connection.close()
+
         return size_of_total
 
     def _calculate_FET_pvalue_parallel(self, this):
@@ -573,7 +583,7 @@ class ComputeFTEST:
         error_message = []
 
         try:
-            contingency_table = [[a, b],[c,d]]
+            contingency_table = [[a, b], [c, d]]
             pvalue = stats.fisher_exact(contingency_table)[1]
             return (node, pvalue)
         except:
