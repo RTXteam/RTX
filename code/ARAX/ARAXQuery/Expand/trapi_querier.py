@@ -251,7 +251,7 @@ class TRAPIQuerier:
         answer_kg = QGOrganizedKnowledgeGraph()
         # Liberally use is_set to improve performance since we don't need individual results
         for qnode_key, qnode in query_graph.nodes.items():
-            if not qnode.id or len(eu.convert_to_list(qnode.id)) > 1:
+            if not qnode.ids or len(qnode.ids) > 1:
                 qnode.is_set = True
 
         # Strip non-essential and 'empty' properties off of our qnodes and qedges
