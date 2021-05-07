@@ -19,7 +19,7 @@ import collections
 import math
 import os
 import sys
-from typing import List, Dict, Set, Union, Iterable, cast, Optional, Tuple
+from typing import List, Dict, Set, Union, Iterable, cast, Optional, Tuple, DefaultDict
 from ARAX_response import ARAXResponse
 
 __author__ = 'Stephen Ramsey and Amy Glen'
@@ -526,6 +526,14 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         result_graph["nodes"] = nodes_by_qg_key
         final_result_graphs = [result_graph]
     else:
+        # Build up some indexes for edges in the KG (by their subject/object nodes and qedge keys)
+        edges_by_qg_id_and_subject_node = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
+        edges_by_qg_id_and_object_node = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
+        for edge_key, edge in kg.edges.items():
+            for qedge_key in edge.qedge_keys:
+                edges_by_qg_id_and_subject_node[qedge_key][edge.subject].add(edge_key)
+                edges_by_qg_id_and_object_node[qedge_key][edge.object].add(edge_key)
+
         # Create results off the "required" portion of the QG (excluding any qnodes/qedges belong to an "option group")
         required_qg = QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items() if not qnode.option_group_id},
                                  edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items() if not qedge.option_group_id})
@@ -533,7 +541,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         if qg_is_disconnected:
             raise ValueError(f"Required portion of QG is disconnected. This isn't allowed! 'Required' qnode IDs are: "
                              f"{[qnode_key for qnode_key in required_qg.nodes]}")
-        result_graphs_required = _create_result_graphs(kg, required_qg, ignore_edge_direction)
+        result_graphs_required = _create_result_graphs(kg, required_qg, edges_by_qg_id_and_subject_node,
+                                                       edges_by_qg_id_and_object_node, ignore_edge_direction)
 
         # Then create results for each of the "option groups" in the QG (including the required portion of the QG with each)
         option_groups_in_qg = {qedge.option_group_id for qedge in qg.edges.values() if qedge.option_group_id}
@@ -549,7 +558,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                 raise ValueError(f"Required + option group {option_group_id} portion of the QG is disconnected. "
                                  f"This isn't allowed! 'Required'/group {option_group_id} qnode IDs are: "
                                  f"{[qnode_key for qnode_key in option_group_qg.nodes]}")
-            result_graphs_for_option_group = _create_result_graphs(kg, option_group_qg, ignore_edge_direction)
+            result_graphs_for_option_group = _create_result_graphs(kg, option_group_qg, edges_by_qg_id_and_subject_node,
+                                                                   edges_by_qg_id_and_object_node, ignore_edge_direction)
             option_group_results_dict[option_group_id] = result_graphs_for_option_group
 
         # Organize our results for the 'required' portion of the QG by the IDs of their is_set=False nodes
@@ -840,6 +850,8 @@ def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
 
 def _create_result_graphs(kg: KnowledgeGraph,
                           qg: QueryGraph,
+                          edges_by_qg_id_and_subject: DefaultDict[str, DefaultDict[str, set]],
+                          edges_by_qg_id_and_object: DefaultDict[str, DefaultDict[str, set]],
                           ignore_edge_direction: bool = True) -> List[Result]:
     result_graphs = []
     kg_node_keys_by_qg_key = _get_kg_node_keys_by_qg_key(kg)
@@ -909,34 +921,22 @@ def _create_result_graphs(kg: KnowledgeGraph,
         qnode_keys_already_handled.add(current_qnode_key)
 
     # Then add edges to our result graphs as appropriate
-    edges_by_node_pairs = {qedge_key: dict() for qedge_key in qg.edges}
-    for edge_key, edge in kg.edges.items():
-        if edge.qedge_keys:
-            for qedge_key in edge.qedge_keys:
-                # Note: KG may contain some qedges not in this version of the QG due to option group handling
-                if qedge_key in set(qg.edges):
-                    edge_node_pair = f"{edge.subject}--{edge.object}"
-                    if edge_node_pair not in edges_by_node_pairs[qedge_key]:
-                        edges_by_node_pairs[qedge_key][edge_node_pair] = set()
-                    edges_by_node_pairs[qedge_key][edge_node_pair].add(edge_key)
-                    if ignore_edge_direction:
-                        node_pair_in_other_direction = f"{edge.object}--{edge.subject}"
-                        if node_pair_in_other_direction not in edges_by_node_pairs[qedge_key]:
-                            edges_by_node_pairs[qedge_key][node_pair_in_other_direction] = set()
-                        edges_by_node_pairs[qedge_key][node_pair_in_other_direction].add(edge_key)
     for result_graph in result_graphs:
         for qedge_key in result_graph['edges']:
             qedge = qg.edges[qedge_key]
-            potential_nodes_1 = result_graph['nodes'][qedge.subject]
-            potential_nodes_2 = result_graph['nodes'][qedge.object]
-            possible_node_pairs = set()
-            for node_1 in potential_nodes_1:
-                for node_2 in potential_nodes_2:
-                    node_pair_key = f"{node_1}--{node_2}"
-                    possible_node_pairs.add(node_pair_key)
-            for node_pair in possible_node_pairs:
-                ids_of_matching_edges = edges_by_node_pairs[qedge_key].get(node_pair, set())
-                result_graph['edges'][qedge_key] = result_graph['edges'][qedge_key].union(ids_of_matching_edges)
+            qedge_source_node_ids = result_graph['nodes'][qedge.subject]
+            qedge_target_node_ids = result_graph['nodes'][qedge.object]
+            edges_with_matching_subject = {edge_key for source_node in qedge_source_node_ids
+                                           for edge_key in edges_by_qg_id_and_subject[qedge_key][source_node]}
+            edges_with_matching_object = {edge_key for target_node in qedge_target_node_ids
+                                          for edge_key in edges_by_qg_id_and_object[qedge_key][target_node]}
+            result_graph['edges'][qedge_key] = edges_with_matching_subject.intersection(edges_with_matching_object)
+            if ignore_edge_direction:
+                edges_with_reverse_subject = {edge_key for target_node in qedge_target_node_ids
+                                              for edge_key in edges_by_qg_id_and_subject[qedge_key][target_node]}
+                edges_with_reverse_object = {edge_key for source_node in qedge_source_node_ids
+                                             for edge_key in edges_by_qg_id_and_object[qedge_key][source_node]}
+                result_graph['edges'][qedge_key].update(edges_with_reverse_subject.intersection(edges_with_reverse_object))
 
     final_result_graphs = [result_graph for result_graph in result_graphs if _result_graph_is_fulfilled(result_graph, qg)]
     return final_result_graphs
