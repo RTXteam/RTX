@@ -142,8 +142,8 @@ class DTDQuerier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD database")
         final_kg = QGOrganizedKnowledgeGraph()
-        drug_label_list = ['chemicalsubstance', 'drug']
-        disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature']
+        drug_label_list = ['chemicalsubstance', 'drug', 'biolink:ChemicalSubstance', 'biolink:Drug']
+        disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature', 'biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
         # use for checking the requirement
         source_pass_nodes = None
         source_category = None
@@ -780,8 +780,8 @@ class DTDQuerier:
 
     def _check_id(self, qnode_id, log):
 
-        drug_label_list = ['chemicalsubstance','drug']
-        disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
+        drug_label_list = ['chemicalsubstance','drug', 'biolink:ChemicalSubstance', 'biolink:Drug']
+        disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature', 'biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
 
         if type(qnode_id) is str:
             normalizer_result = self.synonymizer.get_canonical_curies(curies=[qnode_id], return_all_categories=True)
