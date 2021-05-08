@@ -87,7 +87,7 @@ def test_api_status():
     assert len(results_json["message"]["results"]) > 0
 
 @pytest.mark.slow
-def test_example_2_api():
+def test_kitchen_sink_api():
     query = {
   "bypass_cache": False,
   "enforce_edge_directionality": False,
