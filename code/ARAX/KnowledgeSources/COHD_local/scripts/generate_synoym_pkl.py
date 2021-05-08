@@ -13,7 +13,7 @@ fpath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'Knowledge
 
 parser = argparse.ArgumentParser(description="Generate a .pkl file for OMOP_mapping_parallel.py to map concepts", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--NodeDescriptionFile', type=str, help="The path of Node Descriptions file", default='~/RTX/data/KGmetadata/NodeNamesDescriptions_KG2.tsv')
-parser.add_argument("--CurieType", type=str, help="A list of interested curie type", default="['biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:ChemicalSubstance', 'biolink:Drug', 'biolink:DiseaseOrPhenotypicFeature']")
+parser.add_argument("--CurieType", type=str, help="A list of interested curie type", default="['biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:ChemicalSubstance', 'biolink:Drug', 'biolink:DiseaseOrPhenotypicFeature', 'biolink:Metabolite']")
 parser.add_argument('--OutFile', type=str, help="The path of output .pkl file", default='~/RTX/code/ARAX/KnowledgeSources/COHD_local/data/preferred_synonyms_kg2_5_0.pkl')
 args = parser.parse_args()
 
