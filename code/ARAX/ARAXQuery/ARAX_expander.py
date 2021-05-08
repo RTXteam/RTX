@@ -26,8 +26,16 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXExpander:
 
     def __init__(self):
-        self.protein_category = "biolink:Protein"
-        self.gene_category = "biolink:Gene"
+        self.category_equivalencies = {"biolink:Protein": {"biolink:Gene"},
+                                       "biolink:Gene": {"biolink:Protein"},
+                                       "biolink:Drug": {"biolink:ChemicalSubstance"},
+                                       "biolink:ChemicalSubstance": {"biolink:Drug"},
+                                       "biolink:Disease": {"biolink:PhenotypicFeature",
+                                                           "biolink:DiseaseOrPhenotypicFeature"},
+                                       "biolink:PhenotypicFeature": {"biolink:Disease",
+                                                                     "biolink:DiseaseOrPhenotypicFeature"},
+                                       "biolink:DiseaseOrPhenotypicFeature": {"biolink:Disease",
+                                                                              "biolink:PhenotypicFeature"}}
         self.edge_key_parameter_info = {
             "is_required": False,
             "examples": ["e00", "[e00, e01]"],
@@ -322,12 +330,18 @@ class ARAXExpander:
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
-        # Consider both protein and gene if qnode's category is one of those (since KPs handle these differently)
-        protein_gene_categories = {self.protein_category, self.gene_category}
+
+        # Add in any category equivalencies to the QG (e.g., protein == gene, since KPs handle these differently)
         for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.categories and set(qnode.categories).intersection(protein_gene_categories):
-                qnode.categories = list(set(qnode.categories).union(protein_gene_categories))
-                log.debug(f"Will consider qnode {qnode_key}'s category to be {qnode.categories}")
+            if qnode.ids and not qnode.categories:
+                # Infer categories for expand's internal use (in KP selection and etc.)
+                qnode.categories = eu.get_preferred_categories(qnode.ids, log)
+                log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
+            if qnode.categories and set(qnode.categories).intersection(self.category_equivalencies):
+                equivalent_categories = {equivalent_category for category in qnode.categories
+                                         for equivalent_category in self.category_equivalencies.get(category, [])}
+                qnode.categories = list(set(qnode.categories).union(equivalent_categories))
+                log.debug(f"Expand will consider qnode {qnode_key}'s category to be {qnode.categories}")
 
         # Expand any specified edges
         if input_qedge_keys:

@@ -3,7 +3,7 @@
 import sys
 import os
 import traceback
-from typing import List, Dict, Union, Set, Tuple
+from typing import List, Dict, Union, Set, Tuple, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -347,6 +347,29 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return []
+
+
+def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) -> Optional[List[str]]:
+    curies = convert_to_list(curie)
+    synonymizer = NodeSynonymizer()
+    log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
+    canonical_curies_dict = synonymizer.get_canonical_curies(curies)
+    log.debug(f"Got response back from NodeSynonymizer")
+    if canonical_curies_dict is not None:
+        recognized_input_curies = {input_curie for input_curie in canonical_curies_dict if canonical_curies_dict.get(input_curie)}
+        unrecognized_curies = set(curies).difference(recognized_input_curies)
+        if unrecognized_curies:
+            log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+        preferred_categories = {canonical_curies_dict[recognized_curie].get('preferred_category')
+                                for recognized_curie in recognized_input_curies}
+        if preferred_categories:
+            return list(preferred_categories)
+        else:
+            log.warning(f"Unable to find any preferred categories")
+            return None
+    else:
+        log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+        return []
 
 
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False) -> bool:

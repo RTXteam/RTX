@@ -737,10 +737,10 @@ def test_issue_1314():
 
 
 @pytest.mark.external
-def test_issue_1236():
+def test_issue_1236_a():
     # Test that multiple KPs are used for expansion when no KP is specified in DSL
     actions_list = [
-        "add_qnode(ids=NCBIGene:1803, categories=biolink:Gene, key=n00)",
+        "add_qnode(ids=NCBIGene:1803, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:gene_associated_with_condition)",
         "expand()",
@@ -749,7 +749,7 @@ def test_issue_1236():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
     actions_list_kg2_only = [
-        "add_qnode(ids=NCBIGene:1803, categories=biolink:Gene, key=n00)",
+        "add_qnode(ids=NCBIGene:1803, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:gene_associated_with_condition)",
         "expand(kp=ARAX/KG2)",
@@ -760,7 +760,7 @@ def test_issue_1236():
     assert len(nodes_by_qg_id["n01"]) > len(nodes_by_qg_id_kg2_only["n01"])
 
 
-def test_issue_1236_a():
+def test_issue_1236_b():
     actions_list = [
         "add_qnode(ids=DOID:14330, categories=biolink:Disease, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
