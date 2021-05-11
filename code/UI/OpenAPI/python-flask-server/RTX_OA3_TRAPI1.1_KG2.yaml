@@ -210,6 +210,7 @@ components:
         workflow:
           description: A list of operations to be applied
           type: array
+          example: null
           items:
             type: object
         bypass_cache:
@@ -259,6 +260,7 @@ components:
             Container for one or more Message objects or identifiers for one or
             more Messages along with a processing plan and options for how those
             messages should be processed and returned
+          example: null
           allOf:
             - $ref: '#/components/schemas/Operations'
       additionalProperties: true
@@ -301,6 +303,7 @@ components:
         workflow:
           description: A list of operations that were applied
           type: array
+          example: null
           items:
             type: object
         operations:
@@ -414,13 +417,13 @@ components:
             e00:
               subject: n00
               object: n01
-              predicate: biolink:physically_interacts_with
+              predicates: [ biolink:physically_interacts_with ]
           nodes:
             n00:
-              id: CHEMBL.COMPOUND:CHEMBL112
-              category: biolink:ChemicalSubstance
+              ids: [ CHEMBL.COMPOUND:CHEMBL112 ]
+              categories: [ biolink:ChemicalSubstance ]
             n01:
-              category: biolink:Protein
+              categories: [ biolink:Protein ]
     LogEntry:
       description: >-
         The LogEntry object contains information useful for tracing
@@ -463,6 +466,7 @@ components:
         - WARNING
         - INFO
         - DEBUG
+      example: DEBUG
     Result:
       type: object
       description: >-
