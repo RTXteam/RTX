@@ -471,7 +471,11 @@ def get_kp_infores_curie(kp_name: str) -> Union[str, None]:
         "MolePro": "infores:molecular_kp",
         "ARAX/KG2": "infores:rtx_kg2_kp",
         "ARAX/KG1": "infores:rtx_kg1_kp",
-        "CHP": "infores:connections_hypothesis_kp"
+        "CHP": "infores:connections_hypothesis_kp",
+        "ClinicalRiskKP": "infores:clinical_risk_kp",
+        "WellnessKP": "infores:wellness_kp",
+        "DrugResponseKP": "infores:drug_response_kp",
+        "TumorGeneMutationKP": "infores:tumor_gene_mutation_kp"
     }
     return endpoint_map.get(kp_name, kp_name)
 
