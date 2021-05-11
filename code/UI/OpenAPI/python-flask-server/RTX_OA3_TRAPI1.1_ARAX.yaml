@@ -338,6 +338,7 @@ components:
               - $ref: '#/components/schemas/OperationCompleteResults'    
               - $ref: '#/components/schemas/OperationFilterResultsTopN'  
               - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+          nullable: true
         bypass_cache:
           type: boolean
           default: false
@@ -388,6 +389,7 @@ components:
           example: null
           allOf:
             - $ref: '#/components/schemas/Operations'
+          nullable: true
       additionalProperties: true
       required:
         - message
@@ -1290,6 +1292,7 @@ components:
             Map of order independent options that apply during processing
           additionalProperties: true
       additionalProperties: true
+      nullable: true
     Question:
       type: object
       properties:
