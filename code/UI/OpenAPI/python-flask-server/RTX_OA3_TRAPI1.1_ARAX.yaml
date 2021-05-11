@@ -21,7 +21,7 @@ info:
       url: https://github.com/NCATSTranslator/translator_extensions/blob/\
         production/x-translator/
   x-trapi:
-    version: 1.1.0-beta
+    version: 1.1.0
     operations:
       - filter_results_top_n
     externalDocs:
