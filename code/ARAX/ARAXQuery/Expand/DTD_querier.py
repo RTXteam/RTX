@@ -146,9 +146,9 @@ class DTDQuerier:
         disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature', 'biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
         # use for checking the requirement
         source_pass_nodes = None
-        source_category = None
+        source_categories = None
         target_pass_nodes = None
-        target_category = None
+        target_categories = None
 
         qedge = query_graph.edges[qedge_key]
         source_qnode_key = qedge.subject
@@ -189,12 +189,13 @@ class DTDQuerier:
                         return final_kg
         else:
             try:
-                category = source_qnode.categories[0].replace('biolink:','').replace('_','').lower()
+                categories = [category.replace('biolink:','').replace('_','').lower() for category in source_qnode.categories]
             except AttributeError:
                 log.error(f"The category of query node {source_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
                 return final_kg
-            if (category in drug_label_list) or (category in disease_label_list):
-                source_category = category
+            print(f"################ {source_qnode.categories}")
+            if len(set(categories).intersection(set(drug_label_list))) > 0 or len(set(categories).intersection(set(disease_label_list))) > 0:
+                source_categories = categories
             else:
                 log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be drug or disase", error_code="CategoryError")
                 return final_kg
@@ -226,12 +227,12 @@ class DTDQuerier:
                         return final_kg
         else:
             try:
-                category = target_qnode.categories[0].replace('biolink:','').replace('_','').lower()
+                categories = [category.replace('biolink:','').replace('_','').lower() for category in target_qnode.categories]
             except AttributeError:
                 log.error(f"The category of query node {target_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
                 return final_kg
-            if (category in drug_label_list) or (category in disease_label_list):
-                target_category = category
+            if len(set(categories).intersection(set(drug_label_list))) > 0 or len(set(categories).intersection(set(disease_label_list))) > 0:
+                target_categories = categories
             else:
                 log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug or disase", error_code="CategoryError")
                 return final_kg
@@ -316,7 +317,7 @@ class DTDQuerier:
                 source_category_temp = 'drug'
             else:
                 source_category_temp = 'disease'
-            if target_category in drug_label_list:
+            if len(set(target_categories).intersection(set(drug_label_list))) > 0:
                 target_category_temp = 'drug'
             else:
                 target_category_temp = 'disease'
@@ -329,7 +330,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[source_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and target_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, row[0], "probability_treats", row[2])
@@ -344,7 +345,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[source_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and target_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], source_curie, "probability_treats", row[2])
@@ -376,7 +377,7 @@ class DTDQuerier:
                 target_category_temp = 'drug'
             else:
                 target_category_temp = 'disease'
-            if source_category in drug_label_list:
+            if len(set(source_categories).intersection(set(set(drug_label_list)))) > 0:
                 source_category_temp = 'drug'
             else:
                 source_category_temp = 'disease'
@@ -389,7 +390,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[target_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and source_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0 ]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, row[0], "probability_treats", row[2])
@@ -404,7 +405,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[target_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and source_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0 ]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], target_curie, "probability_treats", row[2])
@@ -427,7 +428,6 @@ class DTDQuerier:
 
                 return final_kg
 
-
     def _answer_query_using_DTD_model(self, query_graph: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD model")
@@ -436,9 +436,9 @@ class DTDQuerier:
         disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
         # use for checking the requirement
         source_pass_nodes = None
-        source_category = None
+        source_categories = None
         target_pass_nodes = None
-        target_category = None
+        target_categories = None
 
         qedge = query_graph.edges[qedge_key]
         source_qnode_key = qedge.subject
