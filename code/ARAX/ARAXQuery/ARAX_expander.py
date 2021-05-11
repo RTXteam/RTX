@@ -11,7 +11,7 @@ from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
-from director import Director
+from kp_selector import KPSelector
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
@@ -157,6 +157,50 @@ class ARAXExpander:
                 "dsl_command": "expand(kp=MolePro)",
                 "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
                                "subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "ClinicalRiskKP": {
+                "dsl_command": "expand(kp=ClinicalRiskKP)",
+                "description": "This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity "
+                               "subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "WellnessKP": {
+                "dsl_command": "expand(kp=WellnessKP)",
+                "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
+                               "subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "DrugResponseKP": {
+                "dsl_command": "expand(kp=DrugResponseKP)",
+                "description": "This command reaches out to the Multiomics Big GIM II Drug Response KP to find all "
+                               "bioentity subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "TumorGeneMutationKP": {
+                "dsl_command": "expand(kp=TumorGeneMutationKP)",
+                "description": "This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find "
+                               "all bioentity subpaths that satisfy the query graph.",
                 "parameters": {
                     "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
@@ -361,8 +405,8 @@ class ARAXExpander:
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
-                    director = Director(log, set(self.kp_command_definitions.keys()))
-                    kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
+                    kp_selector = KPSelector(log, set(self.kp_command_definitions.keys()))
+                    kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
                     kps_to_query = {parameters["kp"]}

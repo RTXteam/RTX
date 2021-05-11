@@ -799,5 +799,64 @@ def test_issue_1373_pinned_curies():
     assert "CHEMBL.COMPOUND:CHEMBL2108129" not in nodes_by_qg_id["n02"]
 
 
+@pytest.mark.external
+def test_multiomics_clinical_risk_kp():
+    actions_list = [
+        "add_qnode(ids=DOID:14330, categories=biolink:Disease, key=n00)",
+        "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
+        "expand(kp=ClinicalRiskKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+@pytest.mark.external
+def test_multiomics_wellness_kp():
+    actions_list = [
+        "add_qnode(ids=UniProtKB:O00533, categories=biolink:Protein, key=n00)",
+        "add_qnode(categories=biolink:Protein, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(kp=WellnessKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+@pytest.mark.external
+def test_multiomics_drug_response_kp():
+    actions_list = [
+        "add_qnode(ids=NCBIGene:7157, categories=biolink:Gene, key=n00)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(kp=DrugResponseKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+@pytest.mark.external
+def test_multiomics_tumor_gene_mutation_kp():
+    actions_list = [
+        "add_qnode(ids=MONDO:0018177, key=n00)",
+        "add_qnode(categories=biolink:Gene, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(kp=TumorGeneMutationKP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
+def test_many_kp_query():
+    actions_list = [
+        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n00)",
+        "add_qnode(categories=biolink:Protein, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

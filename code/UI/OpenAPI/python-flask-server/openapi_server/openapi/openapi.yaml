@@ -345,7 +345,16 @@ components:
           description: A list of operations to be applied
           items:
             oneOf:
-            - $ref: '#/components/schemas/FilterResultsTopN'
+            - $ref: '#/components/schemas/OperationOverlay'
+            - $ref: '#/components/schemas/OperationBind'
+            - $ref: '#/components/schemas/OperationOverlayComputeNgd'
+            - $ref: '#/components/schemas/OperationFill'
+            - $ref: '#/components/schemas/OperationFilterResults'
+            - $ref: '#/components/schemas/OperationFilterKgraph'
+            - $ref: '#/components/schemas/OperationRestate'
+            - $ref: '#/components/schemas/OperationCompleteResults'
+            - $ref: '#/components/schemas/OperationFilterResultsTopN'
+            - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
           type: array
         bypass_cache:
           default: false
@@ -470,7 +479,16 @@ components:
           description: A list of operations that were applied
           items:
             oneOf:
-            - $ref: '#/components/schemas/FilterResultsTopN'
+            - $ref: '#/components/schemas/OperationOverlay'
+            - $ref: '#/components/schemas/OperationBind'
+            - $ref: '#/components/schemas/OperationOverlayComputeNgd'
+            - $ref: '#/components/schemas/OperationFill'
+            - $ref: '#/components/schemas/OperationFilterResults'
+            - $ref: '#/components/schemas/OperationFilterKgraph'
+            - $ref: '#/components/schemas/OperationRestate'
+            - $ref: '#/components/schemas/OperationCompleteResults'
+            - $ref: '#/components/schemas/OperationFilterResultsTopN'
+            - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
           type: array
         operations:
           allOf:
@@ -1324,15 +1342,173 @@ components:
           format: float
           type: number
       type: object
-    FilterResultsTopN:
+    OperationBind:
       additionalProperties: false
-      description: This operation truncates the results to at most `max_results` that
-        appear in the TRAPI JSON message.
+      properties:
+        id:
+          enum:
+          - bind
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationCompleteResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - complete_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFill:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - fill
+          type: string
+        parameters:
+          oneOf:
+          - additionalProperties: false
+            properties:
+              allowlist:
+                description: List of knowledge providers/sources that may be used
+                  to provide knowledge.
+                example:
+                - icees
+                items:
+                  type: string
+                minLength: 1
+                type: array
+            type: object
+          - additionalProperties: false
+            properties:
+              denylist:
+                description: List of knowledge providers/sources that may NOT be used
+                  to provide knowledge.
+                example:
+                - ctd
+                items:
+                  type: string
+                minLength: 1
+                type: array
+            type: object
+          type: object
+      required:
+      - id
+      type: object
+    OperationFilterKgraph:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterKgraphOrphans:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_orphans
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterResultsTopN:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_results_top_n
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationFilterResultsTopN_parameters'
+      required:
+      - id
+      - parameters
+      type: object
+    OperationOverlay:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationOverlayComputeNgd:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_compute_ngd
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationOverlayComputeNgd_parameters'
+      required:
+      - id
+      - parameters
+      type: object
+    OperationRestate:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - restate
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterResultsTopN_parameters:
       properties:
         max_results:
           description: The maximum number of results to return.
           example: 50
+          minimum: 0
           type: integer
       required:
       - max_results
+      type: object
+    OperationOverlayComputeNgd_parameters:
+      properties:
+        qnode_keys:
+          description: A list of qnode keys to overlay pairwise edges onto. Must be
+            be a list of at least 2 valid qnodes.
+          example:
+          - n00
+          - n01
+          items:
+            type: string
+          type: array
+        virtual_relation_label:
+          description: An label to help identify the virtual edge in the relation
+            field
+          example: NGD1
+          type: string
+      required:
+      - qnode_keys
+      - virtual_relation_label
       type: object
