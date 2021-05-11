@@ -29,7 +29,17 @@ class QGOrganizedKnowledgeGraph:
     def add_node(self, node_key: str, node: Node, qnode_key: str):
         if qnode_key not in self.nodes_by_qg_id:
             self.nodes_by_qg_id[qnode_key] = dict()
-        self.nodes_by_qg_id[qnode_key][node_key] = node
+        # Merge attributes if this node already exists
+        if node_key in self.nodes_by_qg_id[qnode_key] and node.attributes:
+            existing_node = self.nodes_by_qg_id[qnode_key][node_key]
+            if not existing_node.attributes:
+                existing_node.attributes = node.attributes
+            else:
+                existing_attributes = {attribute.original_attribute_name for attribute in existing_node.attributes}
+                new_attributes = [attribute for attribute in node.attributes if attribute.original_attribute_name not in existing_attributes]
+                existing_node.attributes += new_attributes
+        else:
+            self.nodes_by_qg_id[qnode_key][node_key] = node
 
     def add_edge(self, edge_key: str, edge: Edge, qedge_key: str):
         if qedge_key not in self.edges_by_qg_id:
