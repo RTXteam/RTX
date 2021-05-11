@@ -1318,6 +1318,7 @@ components:
             halt_on_warning: false
           type: object
       type: object
+      nullable: true
     Question:
       additionalProperties: true
       properties:
