@@ -325,13 +325,17 @@ components:
               e00:
                 subject: n00
                 object: n01
-                predicate: biolink:physically_interacts_with
+                predicates:
+                - biolink:physically_interacts_with
             nodes:
               n00:
-                id: CHEMBL.COMPOUND:CHEMBL112
-                category: biolink:ChemicalSubstance
+                ids:
+                - CHEMBL.COMPOUND:CHEMBL112
+                categories:
+                - biolink:ChemicalSubstance
               n01:
-                category: biolink:Protein
+                categories:
+                - biolink:Protein
         page_size: 100
       properties:
         message:
@@ -426,13 +430,17 @@ components:
               e00:
                 subject: n00
                 object: n01
-                predicate: biolink:physically_interacts_with
+                predicates:
+                - biolink:physically_interacts_with
             nodes:
               n00:
-                id: CHEMBL.COMPOUND:CHEMBL112
-                category: biolink:ChemicalSubstance
+                ids:
+                - CHEMBL.COMPOUND:CHEMBL112
+                categories:
+                - biolink:ChemicalSubstance
               n01:
-                category: biolink:Protein
+                categories:
+                - biolink:Protein
         type: TranslatorAPIResponse
         schema_version: 1.0.0
         datetime: 2021-01-09 12:34:45
@@ -570,13 +578,17 @@ components:
             e00:
               subject: n00
               object: n01
-              predicate: biolink:physically_interacts_with
+              predicates:
+              - biolink:physically_interacts_with
           nodes:
             n00:
-              id: CHEMBL.COMPOUND:CHEMBL112
-              category: biolink:ChemicalSubstance
+              ids:
+              - CHEMBL.COMPOUND:CHEMBL112
+              categories:
+              - biolink:ChemicalSubstance
             n01:
-              category: biolink:Protein
+              categories:
+              - biolink:Protein
       properties:
         results:
           description: List of all returned Result objects for the query posed
@@ -639,6 +651,7 @@ components:
       - WARNING
       - INFO
       - DEBUG
+      example: DEBUG
       type: string
     Result:
       additionalProperties: true
