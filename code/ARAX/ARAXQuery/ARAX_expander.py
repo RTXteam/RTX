@@ -164,6 +164,50 @@ class ARAXExpander:
                     "use_synonyms": self.use_synonyms_parameter_info,
                 }
             },
+            "ClinicalRiskKP": {
+                "dsl_command": "expand(kp=ClinicalRiskKP)",
+                "description": "This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity "
+                               "subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "WellnessKP": {
+                "dsl_command": "expand(kp=WellnessKP)",
+                "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
+                               "subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "DrugResponseKP": {
+                "dsl_command": "expand(kp=DrugResponseKP)",
+                "description": "This command reaches out to the Multiomics Big GIM II Drug Response KP to find all "
+                               "bioentity subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "TumorGeneMutationKP": {
+                "dsl_command": "expand(kp=TumorGeneMutationKP)",
+                "description": "This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find "
+                               "all bioentity subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
             "NGD": {
                 "dsl_command": "expand(kp=NGD)",
                 "description": "This command uses ARAX's in-house normalized google distance (NGD) database to expand "

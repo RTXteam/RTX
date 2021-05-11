@@ -445,7 +445,11 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "BTE": "https://api.bte.ncats.io/v1",
         "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.0",
         "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
-        "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.1"
+        "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.1",
+        "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
+        "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
+        "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
+        "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3"
     }
     return endpoint_map.get(kp_name)
 
