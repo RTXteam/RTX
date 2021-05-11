@@ -310,11 +310,9 @@ components:
       example:
         bypass_cache: false
         page_number: 1
-        operations: ""
-        workflow:
-        - ""
-        - ""
-        log_level: ""
+        operations: null
+        workflow: null
+        log_level: DEBUG
         enforce_edge_directionality: false
         return_minimal_metadata: false
         max_results: 100
