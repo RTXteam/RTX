@@ -328,7 +328,16 @@ components:
           example: null
           items:
             oneOf:
-              - $ref: '#/components/schemas/FilterResultsTopN'
+              - $ref: '#/components/schemas/OperationOverlay'            
+              - $ref: '#/components/schemas/OperationBind'               
+              - $ref: '#/components/schemas/OperationOverlayComputeNgd'  
+              - $ref: '#/components/schemas/OperationFill'               
+              - $ref: '#/components/schemas/OperationFilterResults'      
+              - $ref: '#/components/schemas/OperationFilterKgraph'       
+              - $ref: '#/components/schemas/OperationRestate'            
+              - $ref: '#/components/schemas/OperationCompleteResults'    
+              - $ref: '#/components/schemas/OperationFilterResultsTopN'  
+              - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
         bypass_cache:
           type: boolean
           default: false
@@ -421,7 +430,16 @@ components:
           type: array
           items:
             oneOf:
-              - $ref: '#/components/schemas/FilterResultsTopN'
+              - $ref: '#/components/schemas/OperationOverlay'            
+              - $ref: '#/components/schemas/OperationBind'               
+              - $ref: '#/components/schemas/OperationOverlayComputeNgd'  
+              - $ref: '#/components/schemas/OperationFill'               
+              - $ref: '#/components/schemas/OperationFilterResults'      
+              - $ref: '#/components/schemas/OperationFilterKgraph'       
+              - $ref: '#/components/schemas/OperationRestate'            
+              - $ref: '#/components/schemas/OperationCompleteResults'    
+              - $ref: '#/components/schemas/OperationFilterResultsTopN'  
+              - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
         operations:
           description: >-
             Container for one or more Message objects or identifiers for one or
@@ -1302,14 +1320,167 @@ components:
           format: float
           description: Calculated Normalized Google Distance for the two supplied terms
           example: 0.714
-    FilterResultsTopN:
-      type: object
-      description: This operation truncates the results to at most `max_results` that appear in the TRAPI JSON message.
-      properties:
-        max_results:
-          type: integer
-          example: 50
-          description: The maximum number of results to return.
+    OperationBind:
       additionalProperties: false
+      properties:
+        id:
+          enum:
+          - bind
+          type: string
+        parameters: {}
       required:
-        - max_results
+      - id
+      type: object
+    OperationCompleteResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - complete_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFill:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - fill
+          type: string
+        parameters:
+          oneOf:
+          - additionalProperties: false
+            properties:
+              allowlist:
+                description: List of knowledge providers/sources that may be used
+                  to provide knowledge.
+                example:
+                - icees
+                minLength: 1
+                type: array
+                items:
+                  type: string
+          - additionalProperties: false
+            properties:
+              denylist:
+                description: List of knowledge providers/sources that may NOT be used
+                  to provide knowledge.
+                example:
+                - ctd
+                minLength: 1
+                type: array
+                items:
+                  type: string
+          type: object
+      required:
+      - id
+      type: object
+    OperationFilterKgraph:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterKgraphOrphans:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_orphans
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterResultsTopN:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_results_top_n
+          type: string
+        parameters:
+          properties:
+            max_results:
+              description: The maximum number of results to return.
+              example: 50
+              minimum: 0
+              type: integer
+          required:
+          - max_results
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationOverlay:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationOverlayComputeNgd:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_compute_ngd
+          type: string
+        parameters:
+          properties:
+            qnode_keys:
+              description: A list of qnode keys to overlay pairwise edges onto. Must
+                be be a list of at least 2 valid qnodes.
+              example:
+              - n00
+              - n01
+              items:
+                type: string
+              type: list
+            virtual_relation_label:
+              description: An label to help identify the virtual edge in the relation
+                field
+              example: NGD1
+              type: string
+          required:
+          - virtual_relation_label
+          - qnode_keys
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationRestate:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - restate
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
