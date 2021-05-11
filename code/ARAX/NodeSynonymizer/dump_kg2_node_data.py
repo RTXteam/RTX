@@ -33,31 +33,34 @@ def dump_kg2_node_info(file_name: str, write_mode: str, is_test: bool):
 	"""
 	query = f"match (n) return properties(n) as p, labels(n) as l {'limit 20' if is_test else ''}"
 	res = _run_cypher_query(query)
-	with open(file_name, write_mode, encoding="utf-8") as fid:
-		for item in res:
-			prop_dict = item['p']
-			labels = item['l']
-			try:
-				label = list(set(labels) - {'Base'}).pop()
-			except:
-				label = ""
-			try:
-				fid.write('%s\t' % prop_dict['id'])
-			except:
-				fid.write('\t')
-			try:
-				fid.write('%s\t' % remove_tab_newlines.sub(" ", prop_dict['name']))  # better approach
-			except:
-				fid.write('\t')
-			try:
-				fid.write('%s\t' % remove_tab_newlines.sub(" ", prop_dict['full_name']))
-			except:
-				fid.write('\t')
-			try:
-				fid.write('%s\n' % label)
-			except:
-				fid.write('\n')
-	print(f"Successfully created file '{file_name}'.")
+	if res:
+		with open(file_name, write_mode, encoding="utf-8") as fid:
+			for item in res:
+				prop_dict = item['p']
+				labels = item['l']
+				try:
+					label = list(set(labels) - {'Base'}).pop()
+				except:
+					label = ""
+				try:
+					fid.write('%s\t' % prop_dict['id'])
+				except:
+					fid.write('\t')
+				try:
+					fid.write('%s\t' % remove_tab_newlines.sub(" ", prop_dict['name']))  # better approach
+				except:
+					fid.write('\t')
+				try:
+					fid.write('%s\t' % remove_tab_newlines.sub(" ", prop_dict['full_name']))
+				except:
+					fid.write('\t')
+				try:
+					fid.write('%s\n' % label)
+				except:
+					fid.write('\n')
+		print(f"Successfully created file '{file_name}'.")
+	else:
+		raise Exception(f"Failed to get results from Neo4j for {file_name}")
 	return
 
 
@@ -93,7 +96,7 @@ def dump_kg2_equivalencies(output_file_name: str, is_test: bool):
 			csv_writer.writerows(list(distinct_pairs))
 		print(f"Successfully created file '{output_file_name}'.")
 	else:
-		print(f"Sorry, couldn't get equivalency data. No file created.")
+		raise Exception(f"Failed to get results from Neo4j for {output_file_name}")
 
 
 def dump_kg2_synonym_field(output_file_name: str, is_test: bool):
@@ -109,7 +112,7 @@ def dump_kg2_synonym_field(output_file_name: str, is_test: bool):
 			json.dump(synonym_map, output_file)
 		print(f"Successfully created file '{output_file_name}'.")
 	else:
-		print(f"Sorry, couldn't get synonym data. No file created.")
+		raise Exception(f"Failed to get results from Neo4j for {output_file_name}")
 
 
 def main():
