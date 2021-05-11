@@ -6,9 +6,12 @@ import pathlib
 import sys
 import urllib.request
 import expand_utilities as eu
-from typing import Set, Dict, List
+from typing import Set, Dict, List, Optional
 from collections import defaultdict
 from itertools import product
+
+import requests
+import requests_cache
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
@@ -22,12 +25,7 @@ class Director:
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map.json"
         self.log = log
         self.all_kps = all_kps
-        # Check if it's time to update the local copy of the meta_map
-        if self._need_to_regenerate_meta_map():
-            self._regenerate_meta_map()
-        # Load our map now that we know it's up to date
-        with open(self.meta_map_path) as map_file:
-            self.meta_map = json.load(map_file)
+        self.meta_map = self._load_meta_map()
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Set[str]:
         # confirm that the qg is one hop
@@ -103,45 +101,61 @@ class Director:
 
         return chosen_kps
 
-    def _need_to_regenerate_meta_map(self) -> bool:
-        # Check if file doesn't exist or if it hasn't been modified in the last day
+    def _load_meta_map(self):
+        # This function loads the meta map and updates it as needed
         meta_map_file = pathlib.Path(self.meta_map_path)
         twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
-        if not meta_map_file.exists() or datetime.fromtimestamp(meta_map_file.stat().st_mtime) < twenty_four_hours_ago:
-            self.log.debug(f"Local copy of meta map either doesn't exist or needs to be refreshed")
-            return True
+        # Do a refresh or create a new copy as needed
+        if not meta_map_file.exists():
+            self.log.debug(f"Creating local copy of meta map for all KPs")
+            meta_map = self._regenerate_meta_map()
+        elif datetime.fromtimestamp(meta_map_file.stat().st_mtime) < twenty_four_hours_ago:
+            self.log.debug(f"Doing a refresh of local meta map for all KPs")
+            meta_map = self._regenerate_meta_map()
         else:
-            return False
+            with open(self.meta_map_path) as map_file:
+                meta_map = json.load(map_file)
+            # Check for any missing KPs
+            kps_should_be_in_map = self.all_kps.difference({"ARAX/KG1"})
+            missing_kps = kps_should_be_in_map.difference(set(meta_map))
+            if missing_kps:
+                self.log.debug(f"Missing meta info for {missing_kps}; will try to get this info")
+                meta_map = self._regenerate_meta_map(missing_kps, meta_map)
+        return meta_map
 
-    def _regenerate_meta_map(self):
+    def _regenerate_meta_map(self, kps: Optional[Set[str]] = None, meta_map: Optional[Dict[str, dict]] = None):
         # Create an up to date version of the meta map
-        self.log.debug(f"Regenerating combined meta map for all KPs")
+        kps_to_update = kps if kps else self.all_kps
 
-        # First load whatever pre-existing meta-map we might already have (could use this info in case an API fails)
-        meta_map_file = pathlib.Path(self.meta_map_path)
-        if meta_map_file.exists():
-            with open(self.meta_map_path, "r") as existing_meta_map_file:
-                meta_map = json.load(existing_meta_map_file)
-        else:
-            meta_map = dict()
+        if not meta_map:
+            # Load whatever pre-existing meta-map we might already have (could use this info in case an API fails)
+            meta_map_file = pathlib.Path(self.meta_map_path)
+            if meta_map_file.exists():
+                with open(self.meta_map_path, "r") as existing_meta_map_file:
+                    meta_map = json.load(existing_meta_map_file)
+            else:
+                meta_map = dict()
 
         # Then (try to) get updated info from each KPs /predicates endpoint
-        for kp in self.all_kps:
+        for kp in kps_to_update:
             # get predicates dictionary from KP
             kp_endpoint = eu.get_kp_endpoint_url(kp)
             if kp_endpoint is None:
                 self.log.debug(f"No endpoint for {kp}. Skipping for now.")
                 continue
             try:
-                kp_predicates_response = urllib.request.urlopen(f"{kp_endpoint}/predicates", timeout=10)
-            except Exception:
+                with requests_cache.disabled():
+                    kp_predicates_response = requests.get(f"{kp_endpoint}/predicates", timeout=10)
+            except requests.exceptions.Timeout:
                 self.log.warning(f"Timed out when trying to hit {kp}'s /predicates endpoint")
+            except Exception:
+                self.log.warning(f"Ran into a problem hitting {kp}'s /predicates endpoint")
             else:
-                if kp_predicates_response.status != 200:
-                    self.log.warning(f"Unable to access {kp}'s predicates endpoint "
-                                 f"(returned status of {kp_predicates_response.status})")
+                if kp_predicates_response.status_code != 200:
+                    self.log.warning(f"Unable to access {kp}'s predicates endpoint (returned status of "
+                                     f"{kp_predicates_response.status_code})")
                     continue
-                predicates_dict = json.loads(kp_predicates_response.read())
+                predicates_dict = kp_predicates_response.json()
                 meta_map[kp] = predicates_dict
 
         # Merge what we found with our hard-coded info for API-less KPs
@@ -151,6 +165,8 @@ class Director:
         # Save our big combined metamap to a local json file
         with open(self.meta_map_path, "w+") as map_file:
             json.dump(meta_map, map_file)
+
+        return meta_map
 
     @staticmethod
     def _get_non_api_kps_meta_info(meta_map: Dict[str, Dict[str, Dict[str, List[str]]]]) -> Dict[str, Dict[str, Dict[str, List[str]]]]:
