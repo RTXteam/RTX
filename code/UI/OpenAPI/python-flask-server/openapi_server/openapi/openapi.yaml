@@ -312,7 +312,7 @@ components:
         page_number: 1
         operations: null
         workflow: null
-        log_level: DEBUG
+        log_level: "DEBUG"
         enforce_edge_directionality: false
         return_minimal_metadata: false
         max_results: 100
@@ -357,6 +357,7 @@ components:
             - $ref: '#/components/schemas/OperationCompleteResults'
             - $ref: '#/components/schemas/OperationFilterResultsTopN'
             - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+          nullable: true
           type: array
         bypass_cache:
           default: false
@@ -401,6 +402,7 @@ components:
           description: Container for one or more Message objects or identifiers for
             one or more Messages along with a processing plan and options for how
             those messages should be processed and returned
+          nullable: true
       required:
       - message
       type: object
