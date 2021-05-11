@@ -4,8 +4,6 @@ import json
 import os
 import pathlib
 import sys
-import urllib.request
-import expand_utilities as eu
 from typing import Set, Dict, List, Optional
 from collections import defaultdict
 from itertools import product
@@ -13,13 +11,15 @@ from itertools import product
 import requests
 import requests_cache
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 
 
-class Director:
+class KPSelector:
 
     def __init__(self, log: ARAXResponse, all_kps: Set[str]):
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map.json"
@@ -105,7 +105,6 @@ class Director:
         # This function loads the meta map and updates it as needed
         meta_map_file = pathlib.Path(self.meta_map_path)
         twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
-        # Do a refresh or create a new copy as needed
         if not meta_map_file.exists():
             self.log.debug(f"Creating local copy of meta map for all KPs")
             meta_map = self._regenerate_meta_map()

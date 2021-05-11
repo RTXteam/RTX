@@ -11,7 +11,7 @@ from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
-from director import Director
+from kp_selector import KPSelector
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
@@ -405,8 +405,8 @@ class ARAXExpander:
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
-                    director = Director(log, set(self.kp_command_definitions.keys()))
-                    kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
+                    kp_selector = KPSelector(log, set(self.kp_command_definitions.keys()))
+                    kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
                     kps_to_query = {parameters["kp"]}
