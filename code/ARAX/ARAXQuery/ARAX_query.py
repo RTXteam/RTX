@@ -129,6 +129,7 @@ class ARAXQuery:
         return
 
 
+    ########################################################################################
     def query_return_message(self,query, mode='ARAX'):
 
         self.query(query, mode=mode)
@@ -136,6 +137,7 @@ class ARAXQuery:
         return response.envelope
 
 
+    ########################################################################################
     def query(self,query, mode='ARAX'):
 
         #### Create the skeleton of the response
@@ -167,6 +169,7 @@ class ARAXQuery:
             if "have_operations" in query_attributes:
                 query['message'] = ARAXMessenger().from_dict(query['message'])
                 pass
+
             else:
                 response.debug(f"Deserializing message")
                 query['message'] = ARAXMessenger().from_dict(query['message'])
@@ -177,6 +180,7 @@ class ARAXQuery:
                 response.debug(f"Logging query_graph")
                 eprint(json.dumps(ast.literal_eval(repr(response.envelope.message.query_graph)), indent=2, sort_keys=True))
 
+                #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
                 if mode == 'ARAX':
                     response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
                     interpreter = ARAXQueryGraphInterpreter()
@@ -185,6 +189,8 @@ class ARAXQuery:
                         return response
                     query['operations'] = {}
                     query['operations']['actions'] = result.data['araxi_commands']
+
+                #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
                 else:
                     response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
                     if len(response.envelope.message.query_graph.nodes) > 2:
@@ -200,157 +206,37 @@ class ARAXQuery:
         if "have_operations" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
             result = self.execute_processing_plan(query, mode=mode)
-            return response
 
-        #### Otherwise extract the id and the terms from the incoming parameters
+        #### This used to support canned queries, but no longer does
         else:
-            response.info(f"Found id and terms from canned query")
-            eprint(json.dumps(query,sort_keys=True,indent=2))
-            id = query["query_type_id"]
-            terms = query["terms"]
+            response.error(f"Unable to determine ARAXi to execute. Error Q213", error_code="UnknownError")
 
-        #### Create an RTX Feedback management object
-        #response.info(f"Try to find a cached message for this canned query")
-        #rtxFeedback = RTXFeedback()
-        #rtxFeedback.connect()
-        #cachedMessage = rtxFeedback.getCachedMessage(query)
-        cachedMessage = None
-
-        #### If we can find a cached message for this query and this version of RTX, then return the cached message
-        if ( cachedMessage is not None ):
-            response.info(f"Loaded cached message for return")
-            apiMessage = Message().from_dict(cachedMessage)
-            #rtxFeedback.disconnect()
-            self.limit_message(apiMessage,query)
-
-            if apiMessage.message_code is None:
-                if apiMessage.result_code is not None:
-                    apiMessage.message_code = apiMessage.result_code
-                else:
-                    apiMessage.message_code = "wha??"
-
-            #self.log_query(query,apiMessage,'cached')
-            self.message = apiMessage
-            return response
-
-        #### Still have special handling for Q0
-        if id == 'Q0':
-            response.info(f"Answering 'what is' question with Q0 handler")
-            q0 = Q0()
-            message = q0.answer(terms["term"],use_json=True)
-            if 'original_question' in query["message"]:
-              message.original_question = query["message"]["original_question"]
-              message.restated_question = query["message"]["restated_question"]
-            message.query_type_id = query["message"]["query_type_id"]
-            message.terms = query["message"]["terms"]
-            id = message.id
-            #self.log_query(query,message,'new')
-            #rtxFeedback.addNewMessage(message,query)
-            #rtxFeedback.disconnect()
-            self.limit_message(message,query)
-            self.message = message
-            return response
-
-        #### Else call out to original solution scripts for an answer
-        else:
-
-            response.info(f"Entering legacy handler for a canned query")
-
-            #### Use the ParseQuestion system to determine what the execution_string should be
-            txltr = ParseQuestion()
-            eprint(terms)
-            command = "python3 " + txltr.get_execution_string(id,terms)
-
-            #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q1Solution code
-            cwd = os.getcwd()
-            os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
-            eprint(command)
-            returnedText = subprocess.run( [ command ], stdout=subprocess.PIPE, shell=True )
-            os.chdir(cwd)
-
-            #### reformat the stdout result of the shell command into a string
-            reformattedText = returnedText.stdout.decode('utf-8')
-            #eprint(reformattedText)
-
-            #### Try to decode that string into a message object
-            try:
-                #data = ast.literal_eval(reformattedText)
-                data = json.loads(reformattedText)
-                message = Message.from_dict(data)
-                if message.message_code is None:
-                    if message.result_code is not None:
-                        message.message_code = message.result_code
-                    else:
-                        message.message_code = "wha??"
-
-            #### If it fails, the just create a new Message object with a notice about the failure
-            except:
-                response.error("Error parsing the message from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable message was: " + reformattedText, error_code="InternalError551")
-                return response
-
-            #print(query)
-            if 'original_question' in query["message"]:
-                message.original_question = query["message"]["original_question"]
-                message.restated_question = query["message"]["restated_question"]
-            message.query_type_id = query["message"]["query_type_id"]
-            message.terms = query["message"]["terms"]
-
-            #### Log the result and return the Message object
-            #self.log_query(query,message,'new')
-            #rtxFeedback.addNewMessage(message,query)
-            #rtxFeedback.disconnect()
-
-            #### Limit message
-            self.limit_message(message,query)
-            self.message = message
-            return response
-
-        #### If the query type id is not triggered above, then return an error
-        response.error(f"The specified query id '{id}' is not supported at this time", error_code="UnsupportedQueryTypeID")
-        #rtxFeedback.disconnect()
         return response
 
 
-
+    #######################################################################################
     def examine_incoming_query(self, query, mode='ARAX'):
 
         response = self.response
-        response.info(f"Examine input query for needed information for dispatch")
+        response.info(f"Examine input Query for needed information for dispatch")
         #eprint(query)
 
         #### Check to see if there's a processing plan
         if 'operations' in query and query['operations'] is not None:
             response.data["have_operations"] = 1
 
-        #### Check to see if the pre-0.9.2 query_message has come through
-        if "query_message" in query:
-            response.error("Query specified 'query_message' instead of 'message', which is pre-0.9.2 style. Please update.", error_code="Pre0.9.2Query")
-            return response
+        #### Check to see if there's a processing plan
+        if 'workflow' in query and query['workflow'] is not None:
+            response.data["have_workflow"] = 1
 
         #### Check to see if there's a query message to process
-        if "message" in query:
+        if 'message' in query and query['message'] is not None:
             response.data["have_message"] = 1
-
-            #### Check the query_type_id and terms to make sure there is information in both
-            if "query_type_id" in query["message"] and query["message"]["query_type_id"] is not None:
-                if "terms" in query["message"] is not None:
-                    response.data["have_query_type_id_and_terms"] = 1
-                else:
-                    response.error("query_type_id was provided but terms is empty", error_code="QueryTypeIdWithoutTerms")
-                    return response
-            elif "terms" in query["message"] and query["message"]["terms"] is not None:
-                response.error("terms hash was provided without a query_type_id", error_code="TermsWithoutQueryTypeId")
-                return response
 
             #### Check if there is a query_graph
             if "query_graph" in query["message"] and query["message"]["query_graph"] is not None:
                 response.data["have_query_graph"] = 1
                 self.validate_incoming_query_graph(query["message"])
-
-            #### If there is both a query_type_id and a query_graph, then return an error
-            if "have_query_graph" in response.data and "have_query_type_id_and_terms" in response.data:
-                response.error("Message contains both a query_type_id and a query_graph, which is disallowed", error_code="BothQueryTypeIdAndQueryGraph")
-                return response
 
         #### Check to see if there is at least a message or a operations
         if "have_message" not in response.data and "have_operations" not in response.data:
@@ -365,6 +251,10 @@ class ARAXQuery:
             response.error("RTXKG2 does not support operations in Query", error_code="OperationsNotSupported")
             return response
 
+        # RTXKG2 does not support workflow
+        if mode == 'RTXKG2' and "have_workflow" in response.data:
+            response.error("RTXKG2 does not support workflow in Query", error_code="WorkflowNotSupported")
+            return response
 
         #### If we got this far, then everything seems to be good enough to proceed
         return response
