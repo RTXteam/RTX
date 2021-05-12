@@ -193,7 +193,6 @@ class DTDQuerier:
             except AttributeError:
                 log.error(f"The category of query node {source_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
                 return final_kg
-            print(f"################ {source_qnode.categories}")
             if len(set(categories).intersection(set(drug_label_list))) > 0 or len(set(categories).intersection(set(disease_label_list))) > 0:
                 source_categories = categories
             else:
