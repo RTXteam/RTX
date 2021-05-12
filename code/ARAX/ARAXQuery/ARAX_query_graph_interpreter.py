@@ -61,7 +61,7 @@ class ARAXQueryGraphInterpreter:
         result = query_graph_info.assess(message)
         response.merge(result)
         if result.status != 'OK':
-            print(response.show(level=ARAXResponse.DEBUG))
+            #print(response.show(level=ARAXResponse.DEBUG))
             return response
 
         query_graph_template = query_graph_info.query_graph_templates['detailed']
