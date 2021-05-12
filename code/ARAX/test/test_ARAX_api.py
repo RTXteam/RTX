@@ -49,42 +49,6 @@ def test_api_status():
     assert results_json['status'] == 'OK'
     assert len(results_json["message"]["results"]) > 0
 
-def test_api_status():
-    query = {
-      "bypass_cache": False,
-      "enforce_edge_directionality": False,
-      "max_results": 100,
-      "message": {
-        "query_graph": {
-          "edges": {
-            "e00": {
-              "object": "n01",
-              "predicates": ["biolink:physically_interacts_with"],
-              "subject": "n00"
-            }
-          },
-          "nodes": {
-            "n00": {
-              "categories": ["biolink:ChemicalSubstance"],
-              "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
-            },
-            "n01": {
-              "categories": ["biolink:Protein"]
-            }
-          }
-        }
-      },
-      "page_number": 1,
-      "page_size": 100,
-      "return_minimal_metadata": False,
-      "stream_progress": False
-    }
-    response_content = requests.post(arax_url, json=query, headers={'accept': 'application/json'})
-    status_code = response_content.status_code
-    assert status_code == 200
-    results_json = response_content.json()
-    assert results_json['status'] == 'OK'
-    assert len(results_json["message"]["results"]) > 0
 
 @pytest.mark.slow
 def test_kitchen_sink_api():
