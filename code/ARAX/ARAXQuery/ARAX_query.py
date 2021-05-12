@@ -130,10 +130,16 @@ class ARAXQuery:
 
 
     ########################################################################################
-    def query_return_message(self,query, mode='ARAX'):
+    def query_return_message(self, query, mode='ARAX'):
 
         self.query(query, mode=mode)
         response = self.response
+
+        #### If the query ended in an error, copy the error to the envelope
+        if response.status != 'OK':
+            response.envelope.status = response.error_code
+            response.envelope.description = response.message
+
         return response.envelope
 
 
