@@ -162,7 +162,13 @@ class QueryGraphInfo:
             #### Create a unique node link string
             link_string = ','.join(sorted([qedge.subject,qedge.object]))
             if link_string not in unique_links:
+                if qedge.subject not in node_info:
+                    response.error(f"QEdge subject={qedge.subject} is not found among the nodes", error_code="InvalidQEdgeSubject")
+                    return response
                 node_info[qedge.subject]['n_links'] += 1
+                if qedge.object not in node_info:
+                    response.error(f"QEdge object={qedge.object} is not found among the nodes", error_code="InvalidQEdgeObject")
+                    return response
                 node_info[qedge.object]['n_links'] += 1
                 unique_links[link_string] = 1
                 #print(link_string)
