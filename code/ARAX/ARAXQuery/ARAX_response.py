@@ -25,6 +25,7 @@ class ARAXResponse:
     #### Constructor
     def __init__(self, status='OK', logging_level=WARNING, error_code='OK', message='Normal completion'):
         self.status = status
+        self.http_status = 200
         self.logging_level = logging_level
         self.error_code = error_code
         self.message = message
@@ -83,7 +84,7 @@ class ARAXResponse:
 
 
     #### Add an error message
-    def error(self, message, code='UnknownError', error_code=None):
+    def error(self, message, code='UnknownError', error_code=None, http_status=400):
         """Public method that adds an ERROR level message to the response object logger.
         ERROR level messages must be conveyed to ordinary users usually because a
         crucial subtask could not be successfully completed and successful execution
@@ -97,6 +98,8 @@ class ARAXResponse:
         :type message: str
         :param code: A terse, unique string identifying the error (e.g. 'FileNotFound').
         :type code: str
+        :param http_status: Integer HTTP status code to return (e.g. 400, 404, 500, 200).
+        :type http_status: str
         """
 
         # Some backwards compatibility
@@ -106,6 +109,7 @@ class ARAXResponse:
         self.__add_message( message, self.ERROR, code=code )
         self.n_errors += 1
         self.status = 'ERROR'
+        self.http_status = http_status
         self.error_code = code
         self.message = message
 
@@ -157,6 +161,7 @@ class ARAXResponse:
         if response_to_merge.status != 'OK':
             self.status = response_to_merge.status
             self.error_code = response_to_merge.error_code
+            self.http_status = response_to_merge.http_status
             self.message = response_to_merge.message
 
 
