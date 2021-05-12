@@ -319,7 +319,7 @@ class ARAXQuery:
         #eprint(query)
 
         #### Check to see if there's a processing plan
-        if "operations" in query:
+        if 'operations' in query and query['operations'] is not None:
             response.data["have_operations"] = 1
 
         #### Check to see if the pre-0.9.2 query_message has come through

@@ -310,11 +310,9 @@ components:
       example:
         bypass_cache: false
         page_number: 1
-        operations: ""
-        workflow:
-        - ""
-        - ""
-        log_level: ""
+        operations: null
+        workflow: null
+        log_level: "DEBUG"
         enforce_edge_directionality: false
         return_minimal_metadata: false
         max_results: 100
@@ -325,13 +323,17 @@ components:
               e00:
                 subject: n00
                 object: n01
-                predicate: biolink:physically_interacts_with
+                predicates:
+                - biolink:physically_interacts_with
             nodes:
               n00:
-                id: CHEMBL.COMPOUND:CHEMBL112
-                category: biolink:ChemicalSubstance
+                ids:
+                - CHEMBL.COMPOUND:CHEMBL112
+                categories:
+                - biolink:ChemicalSubstance
               n01:
-                category: biolink:Protein
+                categories:
+                - biolink:Protein
         page_size: 100
       properties:
         message:
@@ -355,6 +357,7 @@ components:
             - $ref: '#/components/schemas/OperationCompleteResults'
             - $ref: '#/components/schemas/OperationFilterResultsTopN'
             - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+          nullable: true
           type: array
         bypass_cache:
           default: false
@@ -399,6 +402,7 @@ components:
           description: Container for one or more Message objects or identifiers for
             one or more Messages along with a processing plan and options for how
             those messages should be processed and returned
+          nullable: true
       required:
       - message
       type: object
@@ -426,13 +430,17 @@ components:
               e00:
                 subject: n00
                 object: n01
-                predicate: biolink:physically_interacts_with
+                predicates:
+                - biolink:physically_interacts_with
             nodes:
               n00:
-                id: CHEMBL.COMPOUND:CHEMBL112
-                category: biolink:ChemicalSubstance
+                ids:
+                - CHEMBL.COMPOUND:CHEMBL112
+                categories:
+                - biolink:ChemicalSubstance
               n01:
-                category: biolink:Protein
+                categories:
+                - biolink:Protein
         type: TranslatorAPIResponse
         schema_version: 1.0.0
         datetime: 2021-01-09 12:34:45
@@ -570,13 +578,17 @@ components:
             e00:
               subject: n00
               object: n01
-              predicate: biolink:physically_interacts_with
+              predicates:
+              - biolink:physically_interacts_with
           nodes:
             n00:
-              id: CHEMBL.COMPOUND:CHEMBL112
-              category: biolink:ChemicalSubstance
+              ids:
+              - CHEMBL.COMPOUND:CHEMBL112
+              categories:
+              - biolink:ChemicalSubstance
             n01:
-              category: biolink:Protein
+              categories:
+              - biolink:Protein
       properties:
         results:
           description: List of all returned Result objects for the query posed
@@ -639,6 +651,7 @@ components:
       - WARNING
       - INFO
       - DEBUG
+      example: DEBUG
       type: string
     Result:
       additionalProperties: true
@@ -1305,6 +1318,7 @@ components:
             halt_on_warning: false
           type: object
       type: object
+      nullable: true
     Question:
       additionalProperties: true
       properties:
