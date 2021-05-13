@@ -139,6 +139,8 @@ class ARAXQuery:
         if response.status != 'OK':
             response.envelope.status = response.error_code
             response.envelope.description = response.message
+            if hasattr(response,'http_status'):
+                response.envelope.http_status = response.http_status
 
         return response.envelope
 
@@ -172,9 +174,12 @@ class ARAXQuery:
 
             # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
             # and then will later execute the processing plan
-            if "have_operations" in query_attributes:
+            if "have_workflow" in query_attributes:
                 query['message'] = ARAXMessenger().from_dict(query['message'])
-                pass
+                self.convert_workflow_to_ARAXi(query)
+
+            elif "have_operations" in query_attributes:
+                query['message'] = ARAXMessenger().from_dict(query['message'])
 
             else:
                 response.debug(f"Deserializing message")
@@ -227,13 +232,18 @@ class ARAXQuery:
         response.info(f"Examine input Query for needed information for dispatch")
         #eprint(query)
 
-        #### Check to see if there's a processing plan
+        #### Check to see if there's an operations processing plan
         if 'operations' in query and query['operations'] is not None:
             response.data["have_operations"] = 1
 
-        #### Check to see if there's a processing plan
+        #### Check to see if there's a workflow processing plan
         if 'workflow' in query and query['workflow'] is not None:
             response.data["have_workflow"] = 1
+
+        #### But there can't be both operations and workflow
+        if "have_operations" in response.data and "have_workflow" in response.data:
+            response.error("There are both operations and workflows. There cannot be both since it is unclear which to run first", error_code="BothOperationsAndWorkflow")
+            return response
 
         #### Check to see if there's a query message to process
         if 'message' in query and query['message'] is not None:
@@ -266,6 +276,17 @@ class ARAXQuery:
         return response
 
 
+    #######################################################################################
+    def convert_workflow_to_ARAXi(self, query):
+
+        response = self.response
+        response.info(f"Converting workflow elements to ARAXi")
+        #eprint(query)
+
+        #for workflow_item in 
+        return response
+
+
     ############################################################################################
     def validate_incoming_query_graph(self,message):
 
@@ -280,13 +301,15 @@ class ARAXQuery:
         for id,qnode in message['query_graph']['nodes'].items():
             for attr in qnode:
                 if attr not in allowed_qnode_attributes:
-                    response.warning(f"Query graph node '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
+                    response.error(f"QueryGraph node '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQNodeProperty")
+                    return response
 
         #### Loop through edges checking the attributes
         for id,qedge in message['query_graph']['edges'].items():
             for attr in qedge:
                 if attr not in allowed_qedge_attributes:
-                    response.warning(f"Query graph edge '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
+                    response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
+                    return response
 
         return response
 
@@ -329,12 +352,13 @@ class ARAXQuery:
         messenger = ARAXMessenger()
 
         #### If there are URIs provided, try to load them
+        force_remote = False
         if operations.message_uris is not None:
             response.debug(f"Found message_uris")
             for uri in operations.message_uris:
                 response.debug(f"    messageURI={uri}")
                 matchResult = re.match( r'http[s]://arax.ncats.io/.*api/arax/.+/response/(\d+)',uri,re.M|re.I )
-                if matchResult:
+                if matchResult and not force_remote:
                     referenced_response_id = matchResult.group(1)
                     response.debug(f"Found local ARAX identifier corresponding to response_id {referenced_response_id}")
                     response.debug(f"Loading response_id {referenced_response_id}")
@@ -369,6 +393,10 @@ class ARAXQuery:
                     else:
                         response.error(f"Unable to load response_id {referenced_response_id}", error_code="CannotLoadPreviousResponseById")
                         return response
+
+                else:
+                    loaded_message = messenger.fetch_message(uri)
+                    messages = [ loaded_message ]
 
         #### If there are one or more messages embedded in the POST, process them
         if operations.messages is not None:
