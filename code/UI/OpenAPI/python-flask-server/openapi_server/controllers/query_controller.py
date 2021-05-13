@@ -34,4 +34,7 @@ def query(request_body):  # noqa: E501
     # Else perform the query and return the result
     else:
         envelope = araxq.query_return_message(query)
-        return envelope
+        http_status = 200
+        if hasattr(envelope, 'http_status'):
+            http_status = envelope.http_status
+        return(envelope,http_status)
