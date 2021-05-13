@@ -140,7 +140,7 @@ class ComputeNGD:
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             if added_flag:
                 #edge_type = parameters['virtual_edge_type']
-                edge_type = "biolink:has_normalized_google_distance_with"
+                edge_type = [ "biolink:has_normalized_google_distance_with" ]
                 relation = parameters['virtual_relation_label']
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, qg, self.response)
                 # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
