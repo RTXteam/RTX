@@ -139,6 +139,8 @@ class ARAXQuery:
         if response.status != 'OK':
             response.envelope.status = response.error_code
             response.envelope.description = response.message
+            if hasattr(response,'http_status'):
+                response.envelope.http_status = response.http_status
 
         return response.envelope
 
@@ -227,13 +229,18 @@ class ARAXQuery:
         response.info(f"Examine input Query for needed information for dispatch")
         #eprint(query)
 
-        #### Check to see if there's a processing plan
+        #### Check to see if there's an operations processing plan
         if 'operations' in query and query['operations'] is not None:
             response.data["have_operations"] = 1
 
-        #### Check to see if there's a processing plan
+        #### Check to see if there's a workflow processing plan
         if 'workflow' in query and query['workflow'] is not None:
             response.data["have_workflow"] = 1
+
+        #### But there can't be both operations and workflow
+        if "have_operations" in response.data and "have_workflow" in response.data:
+            response.error("There are both operations and workflows. There cannot be both since it is unclear which to run first", error_code="BothOperationsAndWorkflow")
+            return response
 
         #### Check to see if there's a query message to process
         if 'message' in query and query['message'] is not None:
@@ -280,13 +287,15 @@ class ARAXQuery:
         for id,qnode in message['query_graph']['nodes'].items():
             for attr in qnode:
                 if attr not in allowed_qnode_attributes:
-                    response.warning(f"Query graph node '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
+                    response.error(f"QueryGraph node '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQNodeProperty")
+                    return response
 
         #### Loop through edges checking the attributes
         for id,qedge in message['query_graph']['edges'].items():
             for attr in qedge:
                 if attr not in allowed_qedge_attributes:
-                    response.warning(f"Query graph edge '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
+                    response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
+                    return response
 
         return response
 
