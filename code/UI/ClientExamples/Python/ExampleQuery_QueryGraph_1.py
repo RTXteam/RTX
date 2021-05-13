@@ -1,10 +1,10 @@
 """ This example sends a simple query to the ARAX API.
 
 A one-line curl equivalent is:
-curl -X POST "https://arax.ncats.io/devED/api/arax/v1.0/query?bypass_cache=false" -H  "accept: application/json" -H  "Content-Type: application/json" -d "{\"asynchronous\":\"stream\",\"message\":{\"query_graph\":{\"edges\":{\"e00\":{\"subject\":\"n00\",\"object\":\"n01\",\"predicate\":\"biolink:physically_interacts_with\"}},\"nodes\":{\"n00\":{\"id\":\"CHEMBL.COMPOUND:CHEMBL112\",\"category\":\"biolink:ChemicalSubstance\"},\"n01\":{\"category\":\"biolink:Protein\"}}}}}"
+curl -X POST "https://arax.ncats.io/api/arax/v1.1/query" -H  "accept: application/json" -H  "Content-Type: application/json" -d "{\"bypass_cache\":false,\"enforce_edge_directionality\":false,\"log_level\":\"DEBUG\",\"max_results\":100,\"message\":{\"query_graph\":{\"edges\":{\"e00\":{\"object\":\"n01\",\"predicates\":[\"biolink:physically_interacts_with\"],\"subject\":\"n00\"}},\"nodes\":{\"n00\":{\"categories\":[\"biolink:ChemicalSubstance\"],\"ids\":[\"CHEMBL.COMPOUND:CHEMBL112\"]},\"n01\":{\"categories\":[\"biolink:Protein\"]}}}},\"operations\":null,\"page_number\":1,\"page_size\":100,\"return_minimal_metadata\":false,\"stream_progress\":false,\"workflow\":null}"
 
 To trigger a streaming response of progress, try this:
-curl -X POST "https://arax.ncats.io/devED/api/arax/v1.0/query?bypass_cache=false" -H  "accept: application/json" -H  "Content-Type: application/json" -d "{\"asynchronous\"\"stream\",\"message\":{\"query_graph\":{\"edges\":{\"e00\":{\"subject\":\"n00\",\"object\":\"n01\",\"predicate\":\"biolink:physically_interacts_with\"}},\"nodes\":{\"n00\":{\"id\":\"CHEMBL.COMPOUND:CHEMBL112\",\"category\":\"biolink:ChemicalSubstance\"},\"n01\":{\"category\":\"biolink:Protein\"}}}}}"
+curl -X POST "https://arax.ncats.io/api/arax/v1.1/query" -H  "accept: application/json" -H  "Content-Type: application/json" -d "{\"bypass_cache\":false,\"enforce_edge_directionality\":false,\"log_level\":\"DEBUG\",\"max_results\":100,\"message\":{\"query_graph\":{\"edges\":{\"e00\":{\"object\":\"n01\",\"predicates\":[\"biolink:physically_interacts_with\"],\"subject\":\"n00\"}},\"nodes\":{\"n00\":{\"categories\":[\"biolink:ChemicalSubstance\"],\"ids\":[\"CHEMBL.COMPOUND:CHEMBL112\"]},\"n01\":{\"categories\":[\"biolink:Protein\"]}}}},\"operations\":null,\"page_number\":1,\"page_size\":100,\"return_minimal_metadata\":false,\"stream_progress\":true,\"workflow\":null}"
 
 """
 
@@ -14,7 +14,7 @@ import json
 import re
 
 # Set the base URL for the ARAX reasoner and its endpoint
-endpoint_url = 'https://arax.ncats.io/devED/api/arax/v1.0/query'
+endpoint_url = 'https://arax.ncats.io/api/arax/v1.1/query'
 
 #### Create a dict of the request, specifying the query type and its parameters
 #### Note that predicates and categories must have the biolink: prefix to be valid
@@ -24,16 +24,16 @@ query = { "message": {
             "e00": {
                 "subject": "n00",
                 "object": "n01",
-                "predicate": "biolink:physically_interacts_with"
+                "predicates": [ "biolink:physically_interacts_with" ]
             }
         },
         "nodes": {
             "n00": {
-                "id": "CHEMBL.COMPOUND:CHEMBL112",
-                "category": "biolink:ChemicalSubstance"
+                "ids": [ "CHEMBL.COMPOUND:CHEMBL112" ],
+                "categories": [ "biolink:ChemicalSubstance" ]
             },
             "n01": {
-                "category": "biolink:Protein"
+                "categories": [ "biolink:Protein" ]
             }
         }
     }
