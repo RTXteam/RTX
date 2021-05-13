@@ -70,6 +70,7 @@ class QueryGraphInfo:
 
 
         #### Loop through nodes computing some stats
+        have_at_least_one_id = False
         node_info = {}
         self.node_category_map = {}
         for key,qnode in nodes.items():
@@ -81,6 +82,7 @@ class QueryGraphInfo:
             node_info[key] = { 'key': key, 'node_object': qnode, 'has_ids': False, 'categories': qnode.categories, 'has_categories': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
             if qnode.ids is not None:
                 node_info[key]['has_ids'] = True
+                have_at_least_one_id = True
 
                 #### If the user did not specify a category, but there is a curie, try to figure out the category
                 if node_info[key]['categories'] is None:
@@ -115,6 +117,12 @@ class QueryGraphInfo:
                 if isinstance(qnode.categories,list):
                     category = qnode.categories[0]                # FIXME this is a hack prior to proper list handling
                 self.node_category_map[category] = key
+
+
+        #### If we don't even have one id, then we don't support this
+        if not have_at_least_one_id:
+            response.error("QueryGraph has no nodes with ids. At least one node must have a specified 'ids'", error_code="QueryGraphNoIds")
+            return response
 
 
         #### Ignore special informationational edges for now.
