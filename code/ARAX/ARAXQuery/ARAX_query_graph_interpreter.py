@@ -163,18 +163,39 @@ class ARAXQueryGraphInterpreter:
             araxi_commands = self.query_graph_templates['templates'][query_graph_template_name]['DSL']
 
             # Need to remap the theoretical node and edge ids into the actual ones
+            # Do it in two passes in case there are overlaps in the names. Issue #1457
             new_araxi_commands = []
+            tmp_araxi_commands = []
             for command in araxi_commands:
                 node_index = 0
                 new_command = command
                 for node in query_graph_info.node_order:
                     template_id = f"n{node_index:02}"
-                    new_command = re.sub(template_id,node['key'],new_command)
+                    temp_template_id = f"zzxxyqn{node_index:02}"
+                    new_command = re.sub(template_id,temp_template_id,new_command)
                     node_index += 1
 
                 edge_index = 0
                 for edge in query_graph_info.edge_order:
                     template_id = f"e{edge_index:02}"
+                    temp_template_id = f"zzxxyqe{node_index:02}"
+                    new_command = re.sub(template_id,temp_template_id,new_command)
+                    edge_index += 1
+
+                tmp_araxi_commands.append(new_command)
+
+            #### Second pass remapping the temporary names
+            for command in tmp_araxi_commands:
+                node_index = 0
+                new_command = command
+                for node in query_graph_info.node_order:
+                    template_id = f"zzxxyqn{node_index:02}"
+                    new_command = re.sub(template_id,node['key'],new_command)
+                    node_index += 1
+
+                edge_index = 0
+                for edge in query_graph_info.edge_order:
+                    template_id = f"zzxxyqe{edge_index:02}"
                     new_command = re.sub(template_id,edge['key'],new_command)
                     edge_index += 1
 
@@ -436,6 +457,64 @@ def QGI_test3():
 
 
 
+##########################################################################################
+
+def QGI_test4():
+
+    input_query_graph = { "message": { "query_graph": 
+            {
+            "nodes": {
+                "n00": {
+                "categories": [
+                    "biolink:Gene"
+                ],
+                "is_set": False
+                },
+                "n01": {
+                "ids": [
+                    "MONDO:0018177"
+                ],
+                "categories": [
+                    "biolink:Disease"
+                ],
+                "is_set": False
+                }
+            },
+            "edges": {
+                "e00": {
+                "subject": "n00",
+                "object": "n01",
+                "exclude": False
+                }
+            }
+            }
+    } }
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    #print('-------------------------')
+    #print(response.show(level=ARAXResponse.DEBUG))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+    #sys.exit(1)
+
+
+
 
 ##########################################################################################
 def main():
@@ -451,6 +530,8 @@ def main():
         QGI_test2()
     elif params.test_number[0] == '3':
         QGI_test3()
+    elif params.test_number[0] == '4':
+        QGI_test4()
     else:
         QGI_test1()
 
