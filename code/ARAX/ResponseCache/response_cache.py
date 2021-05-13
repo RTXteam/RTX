@@ -179,7 +179,7 @@ class ResponseCache:
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
             servername = 'arax.ncats.io'
-        envelope.id = f"https://{servername}/api/arax/v1.0/response/{stored_response.response_id}"
+        envelope.id = f"https://{servername}/api/arax/v1.1/response/{stored_response.response_id}"
 
         #### Instead of storing the large response object in the MySQL database as a blob
         #### now store it as a JSON file on the filesystem
@@ -223,10 +223,27 @@ class ResponseCache:
                 response_path = f"{response_dir}/{response_filename}"
                 try:
                     with open(response_path) as infile:
-                        return json.load(infile)
+                        envelope = json.load(infile)
                 except:
                     eprint(f"ERROR: Unable to read response from file '{response_path}'")
                     return
+
+                #### Perform a validation on it
+                try:
+                    validate_Response(envelope)
+                    if 'description' not in envelope or envelope['description'] is None:
+                        envelope['description'] = 'reasoner-validator: PASS'
+
+                except ValidationError as error:
+                    timestamp = str(datetime.now().isoformat())
+                    if 'logs' not in envelope or envelope['logs'] is None:
+                        envelope['logs'] = []
+                    envelope['logs'].append( { "code": 'InvalidTRAPI', "level": "ERROR", "message": "TRAPI validator reported an error: " + str(error),
+                        "timestamp": timestamp } )
+                    if 'description' not in envelope or envelope['description'] is None:
+                        envelope['description'] = ''
+                    envelope['description'] = 'ERROR: TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description']
+                return envelope
 
             else:
                 return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
@@ -234,7 +251,7 @@ class ResponseCache:
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
             with requests_cache.disabled():
-                response_content = requests.get('https://ars.transltr.io/ars/api/messages/'+response_id, headers={'accept': 'application/json'})
+                response_content = requests.get('https://ars-dev.transltr.io/ars/api/messages/'+response_id, headers={'accept': 'application/json'})
             status_code = response_content.status_code
 
             if status_code != 200:
@@ -247,7 +264,8 @@ class ResponseCache:
                 return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
             if 'fields' in response_dict and 'actor' in response_dict['fields'] and str(response_dict['fields']['actor']) == '9':
-                response_content = requests.get('https://ars.transltr.io/ars/api/messages/' + response_id + '?trace=y', headers={'accept': 'application/json'})
+                with requests_cache.disabled():
+                    response_content = requests.get('https://ars-dev.transltr.io/ars/api/messages/' + response_id + '?trace=y', headers={'accept': 'application/json'})
                 status_code = response_content.status_code
 
                 if status_code != 200:
