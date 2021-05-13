@@ -174,9 +174,12 @@ class ARAXQuery:
 
             # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
             # and then will later execute the processing plan
-            if "have_operations" in query_attributes:
+            if "have_workflow" in query_attributes:
                 query['message'] = ARAXMessenger().from_dict(query['message'])
-                pass
+                self.convert_workflow_to_ARAXi(query)
+
+            elif "have_operations" in query_attributes:
+                query['message'] = ARAXMessenger().from_dict(query['message'])
 
             else:
                 response.debug(f"Deserializing message")
@@ -273,6 +276,17 @@ class ARAXQuery:
         return response
 
 
+    #######################################################################################
+    def convert_workflow_to_ARAXi(self, query):
+
+        response = self.response
+        response.info(f"Converting workflow elements to ARAXi")
+        #eprint(query)
+
+        #for workflow_item in 
+        return response
+
+
     ############################################################################################
     def validate_incoming_query_graph(self,message):
 
@@ -338,12 +352,13 @@ class ARAXQuery:
         messenger = ARAXMessenger()
 
         #### If there are URIs provided, try to load them
+        force_remote = False
         if operations.message_uris is not None:
             response.debug(f"Found message_uris")
             for uri in operations.message_uris:
                 response.debug(f"    messageURI={uri}")
                 matchResult = re.match( r'http[s]://arax.ncats.io/.*api/arax/.+/response/(\d+)',uri,re.M|re.I )
-                if matchResult:
+                if matchResult and not force_remote:
                     referenced_response_id = matchResult.group(1)
                     response.debug(f"Found local ARAX identifier corresponding to response_id {referenced_response_id}")
                     response.debug(f"Loading response_id {referenced_response_id}")
@@ -378,6 +393,10 @@ class ARAXQuery:
                     else:
                         response.error(f"Unable to load response_id {referenced_response_id}", error_code="CannotLoadPreviousResponseById")
                         return response
+
+                else:
+                    loaded_message = messenger.fetch_message(uri)
+                    messages = [ loaded_message ]
 
         #### If there are one or more messages embedded in the POST, process them
         if operations.messages is not None:
