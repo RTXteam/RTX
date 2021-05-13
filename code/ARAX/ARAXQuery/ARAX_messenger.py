@@ -13,6 +13,7 @@ import numpy as np
 import requests
 
 from ARAX_response import ARAXResponse
+from ARAX_resultify import ARAXResultify
 from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
 
@@ -725,13 +726,15 @@ class ARAXMessenger:
         #### Unpack the response content into a dict and dump
         try:
             response_dict = response_content.json()
-            message = self.from_dict(response_dict)
+            envelope = Response().from_dict(response_dict)
         except:
             response.error(f"Error converting response from '{message_uri}' to objects from content", error_code="UnableToParseContent")
             return response
 
         #### Store the decoded message and return response
+        message = envelope.message
         self.message = message
+        self.envelope = envelope
         n_results = 0
         n_qg_nodes = 0
         n_kg_nodes = 0
@@ -742,6 +745,10 @@ class ARAXMessenger:
         if message.knowledge_graph is not None and isinstance(message.knowledge_graph,KnowledgeGraph) and isinstance(message.knowledge_graph.nodes,list):
             n_kg_nodes = len(message.knowledge_graph.nodes)
         response.info(f"Retreived Message with {n_qg_nodes} QueryGraph nodes, {n_kg_nodes} KnowledgeGraph nodes, and {n_results} results")
+        if n_qg_nodes > 0 and n_kg_nodes > 0 and n_results > 0:
+            resultifier = ARAXResultify()
+            response.envelope = envelope
+            resultifier.recompute_qg_keys(response)
         return response
 
 
