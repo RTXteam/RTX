@@ -15,12 +15,11 @@ class WorkflowToARAXi:
     def __translate_overlay_compute_ngd(parameters):
         if ("virtual_relation_label" not in parameters) or ("qnode_keys" not in parameters):
             raise KeyError
-        ARAXi = ""  # blank to begin with
+        ARAXi = []
         # loop over all pairs of qnode keys and write the ARAXi
         for source, target in itertools.combinations(parameters["qnode_keys"], 2):
             # TODO: make is so ARAX properly handles -1 as the default value (in ranker)
-            command = f"overlay(action=compute_ngd,default_value=inf,virtual_relation_label={parameters['virtual_relation_label']},subject_qnode_key={source},object_qnode_key={target})"
-            ARAXi += f"{command}\n"
+            ARAXi.append(f"overlay(action=compute_ngd,default_value=inf,virtual_relation_label={parameters['virtual_relation_label']},subject_qnode_key={source},object_qnode_key={target})")
         return ARAXi
 
     @staticmethod
@@ -28,43 +27,41 @@ class WorkflowToARAXi:
         if 'max_results' not in parameters:
             raise KeyError
         assert type(parameters['max_results']) == int
-        ARAXi = ""  # blank to begin with
-        command = f"filter_results(action=limit_number_of_results,max_results={parameters['max_results']},prune_kg=true)"  # prune the kg
-        ARAXi += f"{command}\n"
+        ARAXi = []
+        ARAXi.append(f"filter_results(action=limit_number_of_results,max_results={parameters['max_results']},prune_kg=true)")  # prune the kg
         return ARAXi
 
     @staticmethod
     def __translate_bind(parameters):
-        ARAXi = ""  # blank to begin with
-        command = f"resultify(ignore_edge_direction=true)"  # ignore edge directions
-        ARAXi += f"{command}\n"
+        ARAXi = []
+        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
     @staticmethod
     def __translate_fill(parameters):
         if 'denylist' in parameters:
             raise NotImplementedError
-        ARAXi = ""  # blank to begin with
+        ARAXi = []
         if 'allowlist' in parameters:
             for KP_name in parameters['allowlist']:
                 # continue if no results, don't enforce directionality, and use synonyms
-                ARAXi += f"expand(kp={KP_name},continue_if_no_results=true,enforce_directionality=false,use_synonyms=true)\n"
+                ARAXi.append(f"expand(kp={KP_name},continue_if_no_results=true,enforce_directionality=false,use_synonyms=true)")
         else:
-            ARAXi += "expand()\n"
+            ARAXi.append("expand()")
         return ARAXi
 
     @staticmethod
     def __translate_filter_kgraph_orphans(parameters):
-        ARAXi = ""
-        ARAXi += f"filter_kg(action=remove_orphaned_nodes)\n"
+        ARAXi = []
+        ARAXi.append(f"filter_kg(action=remove_orphaned_nodes)")
         return ARAXi
 
     def translate(self, workflow):
-        ARAXi = ""
+        ARAXi = []
         for operation in workflow:
             if operation['id'] not in self.implemented:
                 raise NotImplementedError
-            ARAXi += getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters'])
+            ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters']))
         return ARAXi
 
 
@@ -124,13 +121,21 @@ def main():
                 }
             }
         ],
-        "workflow": [{
+        "workflow": [
+          {
             "id": "overlay_compute_ngd",
             "parameters": {
                 "virtual_relation_label": "ngd1",
                 "qnode_keys": ["drug", "type-2 diabetes"]
             }
-        }]
+          },
+          {
+            "id": "filter_results_top_n",
+            "parameters": {
+                "max_results": 12
+            }
+          }
+        ]
     }"""
 
     test_trapi = json.loads(trapi_eg)
