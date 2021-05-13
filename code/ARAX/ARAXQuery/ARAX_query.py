@@ -25,6 +25,7 @@ from ARAX_resultify import ARAXResultify
 from ARAX_query_graph_interpreter import ARAXQueryGraphInterpreter
 from ARAX_messenger import ARAXMessenger
 from ARAX_ranker import ARAXRanker
+from operation_to_ARAXi import WorkflowToARAXi
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
@@ -177,6 +178,7 @@ class ARAXQuery:
             if "have_workflow" in query_attributes:
                 query['message'] = ARAXMessenger().from_dict(query['message'])
                 self.convert_workflow_to_ARAXi(query)
+                query_attributes["have_operations"] = True
 
             elif "have_operations" in query_attributes:
                 query['message'] = ARAXMessenger().from_dict(query['message'])
@@ -281,7 +283,13 @@ class ARAXQuery:
 
         response = self.response
         response.info(f"Converting workflow elements to ARAXi")
-        #eprint(query)
+
+        converter = WorkflowToARAXi()
+        araxi = converter.translate(query['workflow'])
+        eprint("** araxi **")
+        eprint(araxi)
+        query['operations'] = {}
+        query['operations']['actions'] = araxi
 
         #for workflow_item in 
         return response
