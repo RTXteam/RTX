@@ -64,7 +64,7 @@ class WorkflowToARAXi:
             if 'parameters' in operation:
                 ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters']))
             else:
-                ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])({})
+                ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])({}))
         return ARAXi
 
 
