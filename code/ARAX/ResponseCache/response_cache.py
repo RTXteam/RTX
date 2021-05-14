@@ -228,13 +228,19 @@ class ResponseCache:
                     eprint(f"ERROR: Unable to read response from file '{response_path}'")
                     return
 
-                #### Temporary hack for schema problem
+                #### Temporary hack for schema problem FIXME
                 if 'message' in envelope:
                     if 'knowledge_graph' in envelope['message']:
                         if 'nodes' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['nodes'] is not None:
-                            for node_key,node in envelope['message']['knowledge_graph']['nodes']:
+                            for node_key,node in envelope['message']['knowledge_graph']['nodes'].items():
                                 if 'attributes' in node and node['attributes'] is not None:
                                     for attribute in node['attributes']:
+                                        if 'value_type_id' in attribute and attribute['value_type_id'] is None:
+                                            attribute['value_type_id'] = 'PLACEHOLDER:placeholder'
+                        if 'edges' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['edges'] is not None:
+                            for edge_key,edge in envelope['message']['knowledge_graph']['edges'].items():
+                                if 'attributes' in edge and edge['attributes'] is not None:
+                                    for attribute in edge['attributes']:
                                         if 'value_type_id' in attribute and attribute['value_type_id'] is None:
                                             attribute['value_type_id'] = 'PLACEHOLDER:placeholder'
 
