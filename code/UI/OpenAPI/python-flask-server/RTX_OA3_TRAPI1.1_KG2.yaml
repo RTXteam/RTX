@@ -18,16 +18,14 @@ info:
       description: >-
         The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
-      url: https://github.com/NCATSTranslator/translator_extensions/blob/\
-        production/x-translator/
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
     version: 1.1.0
     externalDocs:
       description: >-
         The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
-      url: https://github.com/NCATSTranslator/translator_extensions/blob/\
-        production/x-trapi/
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-trapi/
 externalDocs:
   description: >-
     Documentation for the NCATS Biomedical Translator Reasoners web services
