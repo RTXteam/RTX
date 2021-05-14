@@ -175,11 +175,18 @@ class ARAXQuery:
 
         # If there is a workflow, translate it to ARAXi and append it to the operations actions list
         if "have_workflow" in query_attributes:
-            self.convert_workflow_to_ARAXi(query)
+            try:
+                self.convert_workflow_to_ARAXi(query)
+            except Exception as error:
+                exception_type, exception_value, exception_traceback = sys.exc_info()
+                response.error(f"An unhandled error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UnhandledError")
+                return response
             query_attributes["have_operations"] = True
 
         # #### If we have a query_graph in the input query
         if "have_query_graph" in query_attributes and "have_operations" not in query_attributes:
+
+            response.envelope.message.query_graph = query['message'].query_graph
 
             #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
             if mode == 'ARAX':
@@ -481,6 +488,10 @@ class ARAXQuery:
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
             self.message = message
+
+            #### Create some empty stubs if they don't exist
+            if message.results is None:
+                message.results = []
 
             #### Process each action in order
             action_stats = { }
