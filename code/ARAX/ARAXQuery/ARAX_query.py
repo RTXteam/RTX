@@ -170,8 +170,9 @@ class ARAXQuery:
         query_attributes = result.data
 
         #### Convert the message from dicts to objects
-        response.debug(f"Deserializing message")
-        query['message'] = ARAXMessenger().from_dict(query['message'])
+        if 'message' in query:
+            response.debug(f"Deserializing message")
+            query['message'] = ARAXMessenger().from_dict(query['message'])
 
         # If there is a workflow, translate it to ARAXi and append it to the operations actions list
         if "have_workflow" in query_attributes:
