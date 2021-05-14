@@ -169,53 +169,41 @@ class ARAXQuery:
             return response
         query_attributes = result.data
 
+        #### Convert the message from dicts to objects
+        response.debug(f"Deserializing message")
+        query['message'] = ARAXMessenger().from_dict(query['message'])
+
+        # If there is a workflow, translate it to ARAXi and append it to the operations actions list
+        if "have_workflow" in query_attributes:
+            self.convert_workflow_to_ARAXi(query)
+            query_attributes["have_operations"] = True
 
         # #### If we have a query_graph in the input query
-        if "have_query_graph" in query_attributes:
+        if "have_query_graph" in query_attributes and "have_operations" not in query_attributes:
 
-            # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
-            # and then will later execute the processing plan
-            if "have_workflow" in query_attributes:
-                query['message'] = ARAXMessenger().from_dict(query['message'])
-                self.convert_workflow_to_ARAXi(query)
-                query_attributes["have_operations"] = True
+            #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
+            if mode == 'ARAX':
+                response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                interpreter = ARAXQueryGraphInterpreter()
+                interpreter.translate_to_araxi(response)
+                if response.status != 'OK':
+                    return response
+                query['operations'] = {}
+                query['operations']['actions'] = result.data['araxi_commands']
 
-            elif "have_operations" in query_attributes:
-                query['message'] = ARAXMessenger().from_dict(query['message'])
-
+            #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
             else:
-                response.debug(f"Deserializing message")
-                query['message'] = ARAXMessenger().from_dict(query['message'])
-                #eprint(json.dumps(query['message'].__dict__, indent=2, sort_keys=True))
-                #print(response.__dict__)
-                response.debug(f"Storing deserializing message")
-                response.envelope.message.query_graph = query['message'].query_graph
-                response.debug(f"Logging query_graph")
-                eprint(json.dumps(ast.literal_eval(repr(response.envelope.message.query_graph)), indent=2, sort_keys=True))
+                response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
+                if len(response.envelope.message.query_graph.nodes) > 2:
+                    response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
+                    return response
+                query['operations'] = {}
+                query['operations']['actions'] = [ 'expand(kp=ARAX/KG2)', 'resultify()', 'return(store=false)' ]
 
-                #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
-                if mode == 'ARAX':
-                    response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
-                    interpreter = ARAXQueryGraphInterpreter()
-                    interpreter.translate_to_araxi(response)
-                    if response.status != 'OK':
-                        return response
-                    query['operations'] = {}
-                    query['operations']['actions'] = result.data['araxi_commands']
-
-                #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
-                else:
-                    response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
-                    if len(response.envelope.message.query_graph.nodes) > 2:
-                        response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
-                        return response
-                    query['operations'] = {}
-                    query['operations']['actions'] = [ 'expand(kp=ARAX/KG2)', 'resultify()', 'return(store=false)' ]
-
-                query_attributes['have_operations'] = True
+            query_attributes['have_operations'] = True
 
 
-        #### If we have operations, handle that
+        #### If we have operations, execute them
         if "have_operations" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
             result = self.execute_processing_plan(query, mode=mode)
@@ -241,11 +229,6 @@ class ARAXQuery:
         #### Check to see if there's a workflow processing plan
         if 'workflow' in query and query['workflow'] is not None:
             response.data["have_workflow"] = 1
-
-        #### But there can't be both operations and workflow
-        if "have_operations" in response.data and "have_workflow" in response.data:
-            response.error("There are both operations and workflows. There cannot be both since it is unclear which to run first", error_code="BothOperationsAndWorkflow")
-            return response
 
         #### Check to see if there's a query message to process
         if 'message' in query and query['message'] is not None:
@@ -284,14 +267,19 @@ class ARAXQuery:
         response = self.response
         response.info(f"Converting workflow elements to ARAXi")
 
+        # Convert the TRAPI workflow into ARAXi
         converter = WorkflowToARAXi()
         araxi = converter.translate(query['workflow'])
-        eprint("** araxi **")
-        eprint(araxi)
-        query['operations'] = {}
-        query['operations']['actions'] = araxi
 
-        #for workflow_item in 
+        # If there are not already operations, create empty stubs
+        if 'operations' not in query:
+            query['operations'] = {}
+        if 'actions' not in query['operations']:
+            query['operations']['actions'] = []
+
+        # Append the new workflow-based ARAXi onto the end of the existing actions if there are any
+        query['operations']['actions'].extend(araxi)
+
         return response
 
 
