@@ -61,7 +61,10 @@ class WorkflowToARAXi:
         for operation in workflow:
             if operation['id'] not in self.implemented:
                 raise NotImplementedError
-            ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters']))
+            if 'parameters' in operation:
+                ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters']))
+            else:
+                ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])({})
         return ARAXi
 
 
