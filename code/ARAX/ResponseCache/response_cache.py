@@ -228,6 +228,17 @@ class ResponseCache:
                     eprint(f"ERROR: Unable to read response from file '{response_path}'")
                     return
 
+                #### Temporary hack for schema problem
+                if 'message' in envelope:
+                    if 'knowledge_graph' in envelope['message']:
+                        if 'nodes' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['nodes'] is not None:
+                            for node_key,node in envelope['message']['knowledge_graph']['nodes']:
+                                if 'attributes' in node and node['attributes'] is not None:
+                                    for attribute in node['attributes']:
+                                        if 'value_type_id' in attribute and attribute['value_type_id'] is None:
+                                            attribute['value_type_id'] = 'PLACEHOLDER:placeholder'
+
+
                 #### Perform a validation on it
                 try:
                     validate_Response(envelope)
