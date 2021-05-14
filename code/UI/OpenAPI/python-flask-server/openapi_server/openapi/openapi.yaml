@@ -23,6 +23,10 @@ info:
     version: 1.1.0
     operations:
     - filter_results_top_n
+    - overlay_compute_ngd
+    - bind
+    - fill
+    - filter_kgraph_orphans
     externalDocs:
       description: The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
