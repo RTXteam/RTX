@@ -126,6 +126,40 @@ def test_add_qnode_bad_name():
     assert response.error_code == 'UnresolvableNodeName'
 
 
+def test_add_qnode_duplicate_key():
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    assert response.status == 'OK'
+    message = response.envelope.message
+    messenger.add_qnode(response, { 'key': 'n00', 'ids': [ 'CHEMBL.COMPOUND:CHEMBL112' ] } )
+    assert response.status == 'OK'
+    messenger.add_qnode(response, { 'key': 'n00', 'ids': [ 'CHEBI:46195' ] } )
+    print(json.dumps(ast.literal_eval(repr(message.query_graph.nodes)), sort_keys=True, indent=2))
+    assert response.status == 'ERROR'
+    assert isinstance(message.query_graph.nodes, dict)
+    assert len(message.query_graph.nodes) == 1
+    assert response.error_code == 'QNodeDuplicateKey'
+
+
+def test_add_qedge_duplicate_key():
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    assert response.status == 'OK'
+    message = response.envelope.message
+    messenger.add_qnode(response, { 'key': 'n00', 'ids': [ 'CHEMBL.COMPOUND:CHEMBL112' ] } )
+    messenger.add_qnode(response, { 'key': 'n01', 'categories': [ 'biolink:Protein' ] } )
+    messenger.add_qedge(response, { 'key': 'e00', 'subject': 'n00', 'object': 'n01' } )
+    assert response.status == 'OK'
+    messenger.add_qedge(response, { 'key': 'e00', 'subject': 'n00', 'object': 'n01', 'predicates': [ 'biolink:treats' ] } )
+    print(json.dumps(ast.literal_eval(repr(message.query_graph.edges)), sort_keys=True, indent=2))
+    assert response.status == 'ERROR'
+    assert isinstance(message.query_graph.nodes, dict)
+    assert len(message.query_graph.edges) == 1
+    assert response.error_code == 'QEdgeDuplicateKey'
+
+
 def test_add_qnode_bad_parameters():
     response = ARAXResponse()
     messenger = ARAXMessenger()

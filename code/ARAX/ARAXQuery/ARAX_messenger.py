@@ -243,6 +243,9 @@ class ARAXMessenger:
         qnode = QNode()
         if parameters['key'] is not None:
             key = parameters['key']
+            if key in message.query_graph.nodes:
+                response.error(f"Duplicate key '{key}' specified when trying to create a new QNode", error_code="QNodeDuplicateKey")
+                return response
         else:
             key = self.__get_next_free_node_key()
 
@@ -483,6 +486,9 @@ class ARAXMessenger:
         qedge = QEdge()
         if parameters['key'] is not None:
             key = parameters['key']
+            if key in message.query_graph.edges:
+                response.error(f"Duplicate key '{key}' specified when trying to create a new QEdge", error_code="QEdgeDuplicateKey")
+                return response
         else:
             key = self.__get_next_free_edge_key()
 
