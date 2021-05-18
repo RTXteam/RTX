@@ -496,6 +496,7 @@ def test_ngd_expand():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+@pytest.mark.external
 def test_chp_expand_1():
     actions_list = [
         "add_qnode(ids=ENSEMBL:ENSG00000162419, key=n00)",
@@ -511,6 +512,7 @@ def test_chp_expand_1():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://github.com/di2ag/chp_client" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
+@pytest.mark.external
 def test_chp_expand_2():
     actions_list = [
         "add_qnode(ids=[ENSEMBL:ENSG00000124532,ENSEMBL:ENSG00000075975,ENSEMBL:ENSG00000104774], key=n00)",
