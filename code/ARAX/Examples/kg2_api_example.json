@@ -1,0 +1,32 @@
+{
+  "message":{
+    "query_graph":{
+      "nodes":{
+        "n00":{
+          "id":"CHEMBL.COMPOUND:CHEMBL112",
+          "category":[
+            "biolink:Drug"
+          ],
+          "is_set":false
+        },
+        "n01":{
+          "category":[
+            "biolink:Gene",
+            "biolink:Protein"
+          ],
+          "is_set":false
+        }
+      },
+      "edges":{
+        "e00":{
+          "predicate":[
+            "biolink:interacts_with"
+          ],
+          "subject":"n00",
+          "object":"n01",
+          "exclude":false
+        }
+      }
+    }
+  }
+}
