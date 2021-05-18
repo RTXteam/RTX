@@ -441,7 +441,7 @@ def test_cohd_expand_observed_expected_ratio():
 
 def test_cohd_expand_chi_square():
     actions_list = [
-        "add_qnode(ids=DOID:1588, key=n00)",
+        "add_qnode(ids=DOID:9053, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_percentile=95)",
@@ -487,8 +487,8 @@ def test_dtd_expand_2():
 
 def test_ngd_expand():
     actions_list = [
-        "add_qnode(name=MONDO:0015766, key=n00)",
-        "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
+        "add_qnode(name=MONDO:0007156, key=n00)",
+        "add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=NGD)",
         "return(message=true, store=false)"
