@@ -29,7 +29,7 @@ def test_query_by_query_graph_2():
             },
             "nodes": {
                 "qg0": { "name": "acetaminophen", "ids": ["CHEMBL.COMPOUND:CHEMBL112"], "categories": ["biolink:ChemicalSubstance"] },
-                "qg1": { "name": None, "desc": "Generic protein", "ids": None, "categories": ["biolink:Protein"] }
+                "qg1": { "name": None, "ids": None, "categories": ["biolink:Protein"] }
             } } } }
     araxq = ARAXQuery()
     araxq.query(query)
