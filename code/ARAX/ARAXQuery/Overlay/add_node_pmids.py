@@ -48,7 +48,7 @@ class AddNodePMIDS:
                 if 'max_num' in self.parameters:
                     pmids = pmids[0:self.parameters['max_num']]
                 value = pmids
-                ngd_edge_attribute = NodeAttribute(type=type, name=name, value=value, url=url)  # populate the NGD edge attribute
+                ngd_edge_attribute = NodeAttribute(attribute_type_id=type, original_attribute_name=name, value=value, value_url=url)  # populate the NGD edge attribute
                 node.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
         except:
             tb = traceback.format_exc()

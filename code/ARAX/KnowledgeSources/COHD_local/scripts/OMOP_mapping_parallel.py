@@ -65,7 +65,7 @@ def get_OMOP(key):
 def get_omop_id(key):
 
     print(key, flush=True)
-    synonyms = [change_format(synonym) for synonym in synonyms_file[key]['synonyms'] if synonym.split(":")[0] != "OMIM" and synonym.split(":")[0] != "Orphanet" and synonym.split(":")[0] != "CHEMBL.COMPOUND"]
+    synonyms = [change_format(synonym) for synonym in synonyms_file[key]['synonyms'] if synonym.split(":")[0] != "Orphanet" and synonym.split(":")[0] != "CHEMBL.COMPOUND"]
     # synonym = key
     # if synonym.split(":")[0] != "OMIM" and synonym.split(":")[0] != "Orphanet" and synonym.split(":")[0] != "CHEMBL.COMPOUND":
     #     synonyms = [change_format(synonym)]

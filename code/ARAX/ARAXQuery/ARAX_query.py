@@ -25,6 +25,7 @@ from ARAX_resultify import ARAXResultify
 from ARAX_query_graph_interpreter import ARAXQueryGraphInterpreter
 from ARAX_messenger import ARAXMessenger
 from ARAX_ranker import ARAXRanker
+from operation_to_ARAXi import WorkflowToARAXi
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
@@ -129,13 +130,23 @@ class ARAXQuery:
         return
 
 
-    def query_return_message(self,query, mode='ARAX'):
+    ########################################################################################
+    def query_return_message(self, query, mode='ARAX'):
 
         self.query(query, mode=mode)
         response = self.response
+
+        #### If the query ended in an error, copy the error to the envelope
+        if response.status != 'OK':
+            response.envelope.status = response.error_code
+            response.envelope.description = response.message
+            if hasattr(response,'http_status'):
+                response.envelope.http_status = response.http_status
+
         return response.envelope
 
 
+    ########################################################################################
     def query(self,query, mode='ARAX'):
 
         #### Create the skeleton of the response
@@ -158,199 +169,83 @@ class ARAXQuery:
             return response
         query_attributes = result.data
 
+        #### Convert the message from dicts to objects
+        if 'message' in query:
+            response.debug(f"Deserializing message")
+            query['message'] = ARAXMessenger().from_dict(query['message'])
+
+        # If there is a workflow, translate it to ARAXi and append it to the operations actions list
+        if "have_workflow" in query_attributes:
+            try:
+                self.convert_workflow_to_ARAXi(query)
+            except Exception as error:
+                exception_type, exception_value, exception_traceback = sys.exc_info()
+                response.error(f"An unhandled error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UnhandledError")
+                return response
+            query_attributes["have_operations"] = True
 
         # #### If we have a query_graph in the input query
-        if "have_query_graph" in query_attributes:
+        if "have_query_graph" in query_attributes and "have_operations" not in query_attributes:
 
-            # Then if there is also a processing plan, assume they go together. Leave the query_graph intact
-            # and then will later execute the processing plan
-            if "have_operations" in query_attributes:
-                query['message'] = ARAXMessenger().from_dict(query['message'])
-                pass
+            response.envelope.message.query_graph = query['message'].query_graph
+
+            #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
+            if mode == 'ARAX':
+                response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                interpreter = ARAXQueryGraphInterpreter()
+                interpreter.translate_to_araxi(response)
+                if response.status != 'OK':
+                    return response
+                query['operations'] = {}
+                query['operations']['actions'] = result.data['araxi_commands']
+
+            #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
             else:
-                response.debug(f"Deserializing message")
-                query['message'] = ARAXMessenger().from_dict(query['message'])
-                #eprint(json.dumps(query['message'].__dict__, indent=2, sort_keys=True))
-                #print(response.__dict__)
-                response.debug(f"Storing deserializing message")
-                response.envelope.message.query_graph = query['message'].query_graph
-                response.debug(f"Logging query_graph")
-                eprint(json.dumps(ast.literal_eval(repr(response.envelope.message.query_graph)), indent=2, sort_keys=True))
+                response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
+                if len(response.envelope.message.query_graph.nodes) > 2:
+                    response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
+                    return response
+                query['operations'] = {}
+                query['operations']['actions'] = [ 'expand(kp=ARAX/KG2)', 'resultify()', 'return(store=false)' ]
 
-                if mode == 'ARAX':
-                    response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
-                    interpreter = ARAXQueryGraphInterpreter()
-                    interpreter.translate_to_araxi(response)
-                    if response.status != 'OK':
-                        return response
-                    query['operations'] = {}
-                    query['operations']['actions'] = result.data['araxi_commands']
-                else:
-                    response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
-                    if len(response.envelope.message.query_graph.nodes) > 2:
-                        response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
-                        return response
-                    query['operations'] = {}
-                    query['operations']['actions'] = [ 'expand(kp=ARAX/KG2)', 'resultify()', 'return(store=false)' ]
-
-                query_attributes['have_operations'] = True
+            query_attributes['have_operations'] = True
 
 
-        #### If we have operations, handle that
+        #### If we have operations, execute them
         if "have_operations" in query_attributes:
             response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
             result = self.execute_processing_plan(query, mode=mode)
-            return response
 
-        #### Otherwise extract the id and the terms from the incoming parameters
+        #### This used to support canned queries, but no longer does
         else:
-            response.info(f"Found id and terms from canned query")
-            eprint(json.dumps(query,sort_keys=True,indent=2))
-            id = query["query_type_id"]
-            terms = query["terms"]
+            response.error(f"Unable to determine ARAXi to execute. Error Q213", error_code="UnknownError")
 
-        #### Create an RTX Feedback management object
-        #response.info(f"Try to find a cached message for this canned query")
-        #rtxFeedback = RTXFeedback()
-        #rtxFeedback.connect()
-        #cachedMessage = rtxFeedback.getCachedMessage(query)
-        cachedMessage = None
-
-        #### If we can find a cached message for this query and this version of RTX, then return the cached message
-        if ( cachedMessage is not None ):
-            response.info(f"Loaded cached message for return")
-            apiMessage = Message().from_dict(cachedMessage)
-            #rtxFeedback.disconnect()
-            self.limit_message(apiMessage,query)
-
-            if apiMessage.message_code is None:
-                if apiMessage.result_code is not None:
-                    apiMessage.message_code = apiMessage.result_code
-                else:
-                    apiMessage.message_code = "wha??"
-
-            #self.log_query(query,apiMessage,'cached')
-            self.message = apiMessage
-            return response
-
-        #### Still have special handling for Q0
-        if id == 'Q0':
-            response.info(f"Answering 'what is' question with Q0 handler")
-            q0 = Q0()
-            message = q0.answer(terms["term"],use_json=True)
-            if 'original_question' in query["message"]:
-              message.original_question = query["message"]["original_question"]
-              message.restated_question = query["message"]["restated_question"]
-            message.query_type_id = query["message"]["query_type_id"]
-            message.terms = query["message"]["terms"]
-            id = message.id
-            #self.log_query(query,message,'new')
-            #rtxFeedback.addNewMessage(message,query)
-            #rtxFeedback.disconnect()
-            self.limit_message(message,query)
-            self.message = message
-            return response
-
-        #### Else call out to original solution scripts for an answer
-        else:
-
-            response.info(f"Entering legacy handler for a canned query")
-
-            #### Use the ParseQuestion system to determine what the execution_string should be
-            txltr = ParseQuestion()
-            eprint(terms)
-            command = "python3 " + txltr.get_execution_string(id,terms)
-
-            #### Set CWD to the QuestioningAnswering area and then invoke from the shell the Q1Solution code
-            cwd = os.getcwd()
-            os.chdir(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
-            eprint(command)
-            returnedText = subprocess.run( [ command ], stdout=subprocess.PIPE, shell=True )
-            os.chdir(cwd)
-
-            #### reformat the stdout result of the shell command into a string
-            reformattedText = returnedText.stdout.decode('utf-8')
-            #eprint(reformattedText)
-
-            #### Try to decode that string into a message object
-            try:
-                #data = ast.literal_eval(reformattedText)
-                data = json.loads(reformattedText)
-                message = Message.from_dict(data)
-                if message.message_code is None:
-                    if message.result_code is not None:
-                        message.message_code = message.result_code
-                    else:
-                        message.message_code = "wha??"
-
-            #### If it fails, the just create a new Message object with a notice about the failure
-            except:
-                response.error("Error parsing the message from the reasoner. This is an internal bug that needs to be fixed. Unable to respond to this question at this time. The unparsable message was: " + reformattedText, error_code="InternalError551")
-                return response
-
-            #print(query)
-            if 'original_question' in query["message"]:
-                message.original_question = query["message"]["original_question"]
-                message.restated_question = query["message"]["restated_question"]
-            message.query_type_id = query["message"]["query_type_id"]
-            message.terms = query["message"]["terms"]
-
-            #### Log the result and return the Message object
-            #self.log_query(query,message,'new')
-            #rtxFeedback.addNewMessage(message,query)
-            #rtxFeedback.disconnect()
-
-            #### Limit message
-            self.limit_message(message,query)
-            self.message = message
-            return response
-
-        #### If the query type id is not triggered above, then return an error
-        response.error(f"The specified query id '{id}' is not supported at this time", error_code="UnsupportedQueryTypeID")
-        #rtxFeedback.disconnect()
         return response
 
 
-
+    #######################################################################################
     def examine_incoming_query(self, query, mode='ARAX'):
 
         response = self.response
-        response.info(f"Examine input query for needed information for dispatch")
+        response.info(f"Examine input Query for needed information for dispatch")
         #eprint(query)
 
-        #### Check to see if there's a processing plan
-        if "operations" in query:
+        #### Check to see if there's an operations processing plan
+        if 'operations' in query and query['operations'] is not None:
             response.data["have_operations"] = 1
 
-        #### Check to see if the pre-0.9.2 query_message has come through
-        if "query_message" in query:
-            response.error("Query specified 'query_message' instead of 'message', which is pre-0.9.2 style. Please update.", error_code="Pre0.9.2Query")
-            return response
+        #### Check to see if there's a workflow processing plan
+        if 'workflow' in query and query['workflow'] is not None:
+            response.data["have_workflow"] = 1
 
         #### Check to see if there's a query message to process
-        if "message" in query:
+        if 'message' in query and query['message'] is not None:
             response.data["have_message"] = 1
-
-            #### Check the query_type_id and terms to make sure there is information in both
-            if "query_type_id" in query["message"] and query["message"]["query_type_id"] is not None:
-                if "terms" in query["message"] is not None:
-                    response.data["have_query_type_id_and_terms"] = 1
-                else:
-                    response.error("query_type_id was provided but terms is empty", error_code="QueryTypeIdWithoutTerms")
-                    return response
-            elif "terms" in query["message"] and query["message"]["terms"] is not None:
-                response.error("terms hash was provided without a query_type_id", error_code="TermsWithoutQueryTypeId")
-                return response
 
             #### Check if there is a query_graph
             if "query_graph" in query["message"] and query["message"]["query_graph"] is not None:
                 response.data["have_query_graph"] = 1
                 self.validate_incoming_query_graph(query["message"])
-
-            #### If there is both a query_type_id and a query_graph, then return an error
-            if "have_query_graph" in response.data and "have_query_type_id_and_terms" in response.data:
-                response.error("Message contains both a query_type_id and a query_graph, which is disallowed", error_code="BothQueryTypeIdAndQueryGraph")
-                return response
 
         #### Check to see if there is at least a message or a operations
         if "have_message" not in response.data and "have_operations" not in response.data:
@@ -365,8 +260,34 @@ class ARAXQuery:
             response.error("RTXKG2 does not support operations in Query", error_code="OperationsNotSupported")
             return response
 
+        # RTXKG2 does not support workflow
+        if mode == 'RTXKG2' and "have_workflow" in response.data:
+            response.error("RTXKG2 does not support workflow in Query", error_code="WorkflowNotSupported")
+            return response
 
         #### If we got this far, then everything seems to be good enough to proceed
+        return response
+
+
+    #######################################################################################
+    def convert_workflow_to_ARAXi(self, query):
+
+        response = self.response
+        response.info(f"Converting workflow elements to ARAXi")
+
+        # Convert the TRAPI workflow into ARAXi
+        converter = WorkflowToARAXi()
+        araxi = converter.translate(query['workflow'])
+
+        # If there are not already operations, create empty stubs
+        if 'operations' not in query:
+            query['operations'] = {}
+        if 'actions' not in query['operations']:
+            query['operations']['actions'] = []
+
+        # Append the new workflow-based ARAXi onto the end of the existing actions if there are any
+        query['operations']['actions'].extend(araxi)
+
         return response
 
 
@@ -377,20 +298,22 @@ class ARAXQuery:
         response.info(f"Validating the input query graph")
 
         # Define allowed qnode and qedge attributes to check later
-        allowed_qnode_attributes = { 'id': 1, 'category':1, 'is_set': 1, 'option_group_id': 1 }
-        allowed_qedge_attributes = { 'predicate':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1 }
+        allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'option_group_id': 1, 'name': 1 }
+        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1 }
 
         #### Loop through nodes checking the attributes
         for id,qnode in message['query_graph']['nodes'].items():
             for attr in qnode:
                 if attr not in allowed_qnode_attributes:
-                    response.warning(f"Query graph node '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
+                    response.error(f"QueryGraph node '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQNodeProperty")
+                    return response
 
         #### Loop through edges checking the attributes
         for id,qedge in message['query_graph']['edges'].items():
             for attr in qedge:
                 if attr not in allowed_qedge_attributes:
-                    response.warning(f"Query graph edge '{id}' has an unexpected property '{attr}'. Don't know what to do with that, but will continue")
+                    response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
+                    return response
 
         return response
 
@@ -433,12 +356,13 @@ class ARAXQuery:
         messenger = ARAXMessenger()
 
         #### If there are URIs provided, try to load them
+        force_remote = False
         if operations.message_uris is not None:
             response.debug(f"Found message_uris")
             for uri in operations.message_uris:
                 response.debug(f"    messageURI={uri}")
                 matchResult = re.match( r'http[s]://arax.ncats.io/.*api/arax/.+/response/(\d+)',uri,re.M|re.I )
-                if matchResult:
+                if matchResult and not force_remote:
                     referenced_response_id = matchResult.group(1)
                     response.debug(f"Found local ARAX identifier corresponding to response_id {referenced_response_id}")
                     response.debug(f"Loading response_id {referenced_response_id}")
@@ -473,6 +397,10 @@ class ARAXQuery:
                     else:
                         response.error(f"Unable to load response_id {referenced_response_id}", error_code="CannotLoadPreviousResponseById")
                         return response
+
+                else:
+                    loaded_message = messenger.fetch_message(uri)
+                    messages = [ loaded_message ]
 
         #### If there are one or more messages embedded in the POST, process them
         if operations.messages is not None:
@@ -561,6 +489,10 @@ class ARAXQuery:
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
             self.message = message
+
+            #### Create some empty stubs if they don't exist
+            if message.results is None:
+                message.results = []
 
             #### Process each action in order
             action_stats = { }
@@ -675,9 +607,9 @@ class ARAXQuery:
             # Fill out the message with data
             response.envelope.status = response.error_code
             response.envelope.description = response.message
-            if response.envelope.query_options is None:
-                response.envelope.query_options = {}
-            response.envelope.query_options['actions'] = operations.actions
+            if response.envelope.operations is None:
+                response.envelope.operations = operations
+            #response.envelope.operations['actions'] = operations.actions
 
             # Update the reasoner_id to ARAX if not already present
             for result in response.envelope.message.results:
@@ -749,7 +681,7 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
-            "add_qnode(category=biolink:Protein, key=n1)",
+            "add_qnode(categories=biolink:Protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
             "expand(edge_key=e0)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
@@ -775,18 +707,18 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
-            "add_qnode(category=biolink:Protein, key=n1)",
+            "add_qnode(categories=biolink:Protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
             "expand(edge_key=e0)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=10)",
-            "return(message=true, store=false)",
+            "return(message=true, store=true)",
         ]}}
     elif params.example_number == 301:  # Variant of 3 with NGD
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
-            "add_qnode(category=biolink:Protein, id=n1)",
+            "add_qnode(categories=biolink:Protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
             "expand(edge_key=e0)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
@@ -796,7 +728,7 @@ def main():
     elif params.example_number == 4:
         query = { "operations": { "actions": [
             "add_qnode(name=hypertension, key=n00)",
-            "add_qnode(category=biolink:Protein, key=n01)",
+            "add_qnode(categories=biolink:Protein, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00)",
             "resultify()",
@@ -805,7 +737,7 @@ def main():
     elif params.example_number == 5:  # test overlay with ngd: hypertension->protein
         query = { "operations": { "actions": [
             "add_qnode(name=hypertension, key=n00)",
-            "add_qnode(category=biolink:Protein, key=n01)",
+            "add_qnode(categories=biolink:Protein, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00)",
             "overlay(action=compute_ngd)",
@@ -815,8 +747,8 @@ def main():
     elif params.example_number == 6:  # test overlay
         query = { "operations": { "actions": [
             "create_message",
-            "add_qnode(id=DOID:12384, key=n00)",
-            "add_qnode(category=biolink:PhenotypicFeature, is_set=True, key=n01)",
+            "add_qnode(ids=DOID:12384, key=n00)",
+            "add_qnode(categories=biolink:PhenotypicFeature, is_set=True, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00, type=has_phenotype)",
             "expand(edge_key=e00, kp=ARAX/KG2)",
             #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -830,9 +762,9 @@ def main():
     elif params.example_number == 7:  # stub to test out the compute_jaccard feature
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:14330, key=n00)",  # parkinsons
-            "add_qnode(category=biolink:Protein, is_set=True, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=false, key=n02)",
+            "add_qnode(ids=DOID:14330, key=n00)",  # parkinsons
+            "add_qnode(categories=biolink:Protein, is_set=True, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=false, key=n02)",
             "add_qedge(subject=n01, object=n00, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(edge_id=[e00,e01])",
@@ -844,20 +776,20 @@ def main():
     elif params.example_number == 8:  # to test jaccard with known result  # FIXME:  ERROR: Node DOID:8398 has been returned as an answer for multiple query graph nodes (n00, n02)
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:8398, key=n00)",  # osteoarthritis
-            "add_qnode(category=biolink:PhenotypicFeature, is_set=True, key=n01)",
+            "add_qnode(ids=DOID:8398, key=n00)",  # osteoarthritis
+            "add_qnode(categories=biolink:PhenotypicFeature, is_set=True, key=n01)",
             "add_qnode(type=disease, is_set=true, key=n02)",
             "add_qedge(subject=n01, object=n00, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(edge_id=[e00,e01])",
             "return(message=true, store=true)",
         ]}}
-    elif params.example_number == 9:  # to test jaccard with known result. This check's out by comparing with match p=(s:disease{id:"DOID:1588"})-[]-(r:protein)-[]-(:chemical_substance) return p and manually counting
+    elif params.example_number == 9:  # to test jaccard with known result. This check's out by comparing with match p=(s:disease{ids:"DOID:1588"})-[]-(r:protein)-[]-(:chemical_substance) return p and manually counting
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:1588, key=n00)",
-            "add_qnode(category=biolink:Protein, is_set=True, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n02)",
+            "add_qnode(ids=DOID:1588, key=n00)",
+            "add_qnode(categories=biolink:Protein, is_set=True, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n02)",
             "add_qedge(subject=n01, object=n00, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(edge_id=[e00,e01])",
@@ -867,8 +799,8 @@ def main():
     elif params.example_number == 10:  # test case of drug prediction
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:1588, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=false, key=n01)",
+            "add_qnode(ids=DOID:1588, key=n00)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=false, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00)",
             "overlay(action=predict_drug_treats_disease)",
@@ -878,8 +810,8 @@ def main():
     elif params.example_number == 11:  # test overlay with overlay_clinical_info, paired_concept_frequency via COHD
         query = { "operations": { "actions": [
             "create_message",
-            "add_qnode(id=DOID:0060227, key=n00)",  # Adam's oliver
-            "add_qnode(category=biolink:PhenotypicFeature, is_set=True, key=n01)",
+            "add_qnode(ids=DOID:0060227, key=n00)",  # Adam's oliver
+            "add_qnode(categories=biolink:PhenotypicFeature, is_set=True, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00, type=has_phenotype)",
             "expand(edge_key=e00)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -891,8 +823,8 @@ def main():
         query = { "operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
@@ -908,7 +840,7 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00)",
             "overlay(action=add_node_pmids, max_num=15)",
@@ -918,9 +850,9 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:8712, key=n00)",
-            "add_qnode(category=biolink:PhenotypicFeature, is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n02)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n03)",
+            "add_qnode(categories=biolink:PhenotypicFeature, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n02)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n03)",
             "add_qedge(subject=n00, object=n01, key=e00, type=has_phenotype)",  # phenotypes of disease
             "add_qedge(subject=n02, object=n01, key=e01, type=indicated_for)",  # only look for drugs that are indicated for those phenotypes
             "add_qedge(subject=n02, object=n03, key=e02)",  # find proteins that interact with those drugs
@@ -941,9 +873,9 @@ def main():
     elif params.example_number == 15:  # FIXME NOTE: this is our planned example 3 (so don't fix, it's just so it's highlighted in my IDE)
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:9406, key=n00)",  # hypopituitarism
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",  # look for all drugs associated with this disease (29 total drugs)
-            "add_qnode(category=biolink:Protein, key=n02)",   # look for proteins associated with these diseases (240 total proteins)
+            "add_qnode(ids=DOID:9406, key=n00)",  # hypopituitarism
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",  # look for all drugs associated with this disease (29 total drugs)
+            "add_qnode(categories=biolink:Protein, key=n02)",   # look for proteins associated with these diseases (240 total proteins)
             "add_qedge(subject=n00, object=n01, key=e00)",  # get connections
             "add_qedge(subject=n01, object=n02, key=e01)",  # get connections
             "expand(edge_id=[e00,e01])",  # expand the query graph
@@ -957,9 +889,9 @@ def main():
         ]}}
     elif params.example_number == 1515:  # Exact duplicate of ARAX_Example3.ipynb
         query = {"operations": {"actions": [
-            "add_qnode(id=DOID:9406, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
-            "add_qnode(category=biolink:Protein, key=n02)",
+            "add_qnode(ids=DOID:9406, key=n00)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:Protein, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(edge_id=[e00,e01])",
@@ -976,7 +908,7 @@ def main():
             "create_message",
             "add_qnode(name=DOID:8398, key=n00)",
             #"add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:PhenotypicFeature, key=n01)",
+            "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
             "add_qedge(subject=n00, object=n01, type=has_phenotype, key=e00)",
             "expand(edge_key=e00)",
             "overlay(action=overlay_clinical_info, chi_square=true)",
@@ -987,7 +919,7 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:731, key=n00, type=disease, is_set=false)",
-            "add_qnode(category=biolink:PhenotypicFeature, is_set=false, key=n01)",
+            "add_qnode(categories=biolink:PhenotypicFeature, is_set=false, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00)",
             'resultify(ignore_edge_direction=true)',
@@ -997,8 +929,8 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:9406, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n02)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00, e01])",
@@ -1010,7 +942,7 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=UMLS:C1452002, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00, type=interacts_with)",
             "expand(edge_key=e00)",
             "return(message=true, store=false)"
@@ -1019,7 +951,7 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=UMLS:C1452002, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00, type=interacts_with)",
             "expand(edge_key=e00, kp=ARAX/KG2)",
             "return(message=true, store=false)"
@@ -1028,8 +960,8 @@ def main():
         query = { "operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01])",
@@ -1046,7 +978,7 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00)",
             "overlay(action=add_node_pmids, max_num=15)",
@@ -1058,7 +990,7 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00)",
             "overlay(action=add_node_pmids, max_num=15)",
@@ -1068,9 +1000,9 @@ def main():
     elif params.example_number == 1212:  # dry run of example 2 with the machine learning model
         query = { "operations": { "actions": [
             "create_message",
-            "add_qnode(id=DOID:14330, key=n00)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(ids=DOID:14330, key=n00)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
@@ -1085,8 +1017,8 @@ def main():
     elif params.example_number == 201:  # KG2 version of demo example 1 (acetaminophen)
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
-            "add_qnode(key=n01, category=biolink:Protein, is_set=true)",
+            "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
+            "add_qnode(key=n01, categories=biolink:Protein, is_set=true)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "expand(edge_key=e00, kp=ARAX/KG2)",
             "return(message=true, store=false)",
@@ -1095,8 +1027,8 @@ def main():
         query = { "operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",  # for KG2
             #"add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",  # for KG1
@@ -1111,10 +1043,10 @@ def main():
     elif params.example_number == 203:  # KG2 version of demo example 3 (but using idiopathic pulmonary fibrosis)
         query = { "operations": { "actions": [
             "create_message",
-            #"add_qnode(key=n00, id=DOID:0050156)",  # idiopathic pulmonary fibrosis
-            "add_qnode(id=DOID:9406, key=n00)",  # hypopituitarism, original demo example
-            "add_qnode(key=n01, category=biolink:ChemicalSubstance, is_set=true)",
-            "add_qnode(key=n02, category=biolink:Protein)",
+            #"add_qnode(key=n00, ids=DOID:0050156)",  # idiopathic pulmonary fibrosis
+            "add_qnode(ids=DOID:9406, key=n00)",  # hypopituitarism, original demo example
+            "add_qnode(key=n01, categories=biolink:ChemicalSubstance, is_set=true)",
+            "add_qnode(key=n02, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "add_qedge(key=e01, subject=n01, object=n02)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
@@ -1128,9 +1060,9 @@ def main():
         query = { "operations": { "actions": [
             "create_message",
             "add_qnode(key=n00, id=DOID:0050156)",  # idiopathic pulmonary fibrosis
-            #"add_qnode(id=DOID:9406, key=n00)",  # hypopituitarism, original demo example
-            "add_qnode(key=n01, category=biolink:ChemicalSubstance, is_set=true)",
-            "add_qnode(key=n02, category=biolink:Protein)",
+            #"add_qnode(ids=DOID:9406, key=n00)",  # hypopituitarism, original demo example
+            "add_qnode(key=n01, categories=biolink:ChemicalSubstance, is_set=true)",
+            "add_qnode(key=n02, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "add_qedge(key=e01, subject=n01, object=n02)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
@@ -1143,8 +1075,8 @@ def main():
     elif params.example_number == 222:  # Simple BTE query
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(key=n00, id=NCBIGene:1017)",  # CDK2
-            "add_qnode(key=n01, category=biolink:ChemicalSubstance, is_set=True)",
+            "add_qnode(key=n00, ids=NCBIGene:1017)",  # CDK2
+            "add_qnode(key=n01, categories=biolink:ChemicalSubstance, is_set=True)",
             "add_qedge(key=e00, subject=n01, object=n00)",
             "expand(edge_key=e00, kp=BTE)",
             "return(message=true, store=false)",
@@ -1152,8 +1084,8 @@ def main():
     elif params.example_number == 233:  # KG2 version of demo example 1 (acetaminophen)
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
-            "add_qnode(key=n01, category=biolink:Protein, is_set=true)",
+            "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
+            "add_qnode(key=n01, categories=biolink:Protein, is_set=true)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "expand(edge_key=e00, kp=ARAX/KG2)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=https://pharos.nih.gov)",
@@ -1163,8 +1095,8 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
@@ -1180,7 +1112,7 @@ def main():
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
             "add_qnode(type=not_a_real_type, is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",
             "expand(edge_id=[e00,e01], continue_if_no_results=true)",
@@ -1190,8 +1122,8 @@ def main():
     elif params.example_number == 6231:  # chunyu testing #623, all nodes already in the KG and QG
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
-            "add_qnode(key=n01, is_set=true, category=biolink:Protein)",
+            "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL521, categories=biolink:ChemicalSubstance)",
+            "add_qnode(key=n01, is_set=true, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "add_qnode(key=n02, type=biological_process)",
             "add_qedge(key=e01, subject=n01, object=n02)",
@@ -1203,8 +1135,8 @@ def main():
     elif params.example_number == 6232:  # chunyu testing #623, this should return the 10 smallest FET p-values and only add the virtual edge with top 10 FET p-values
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
-            "add_qnode(key=n01, is_set=true, category=biolink:Protein)",
+            "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL521, categories=biolink:ChemicalSubstance)",
+            "add_qnode(key=n01, is_set=true, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "add_qnode(key=n02, type=biological_process)",
             "add_qedge(key=e01, subject=n01, object=n02)",
@@ -1216,8 +1148,8 @@ def main():
     elif params.example_number == 6233:  # chunyu testing #623, this DSL tests the FET module based on (source id - involved_in - target id) and only decorate/add virtual edge with pvalue<0.05
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
-            "add_qnode(key=n01, is_set=true, category=biolink:Protein)",
+            "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL521, categories=biolink:ChemicalSubstance)",
+            "add_qnode(key=n01, is_set=true, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "add_qnode(key=n02, type=biological_process)",
             "add_qedge(key=e01, subject=n01, object=n02, type=involved_in)",
@@ -1229,8 +1161,8 @@ def main():
     elif params.example_number == 6234:  # chunyu testing #623, nodes not in the KG and QG. This should throw an error initially. In the future we might want to add these nodes.
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
-            "add_qnode(key=n01, category=biolink:Protein)",
+            "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL521, categories=biolink:ChemicalSubstance)",
+            "add_qnode(key=n01, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "expand(edge_id=[e00], kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n01, virtual_relation_label=FET, object_qnode_key=n02, cutoff=0.05)",
@@ -1240,13 +1172,13 @@ def main():
     elif params.example_number == 6235:  # chunyu testing #623, this is a two-hop sample. First, find all edges between DOID:14330 and proteins and then filter out the proteins with connection having pvalue>0.001 to DOID:14330. Second, find all edges between proteins and chemical_substances and then filter out the chemical_substances with connection having pvalue>0.005 to proteins
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:14330, key=n00, type=disease)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(ids=DOID:14330, key=n00, type=disease)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",
             "expand(edge_key=e01, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2)",
@@ -1256,18 +1188,18 @@ def main():
     elif params.example_number == 6236:  # chunyu testing #623, this is a three-hop sample: DOID:14330 - protein - (physically_interacts_with) - chemical_substance - phenotypic_feature
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:14330, key=n00, type=disease)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(ids=DOID:14330, key=n00, type=disease)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n02)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n02)",
             "add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",
             "expand(edge_key=e01, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n02)",
-            "add_qnode(category=biolink:PhenotypicFeature, key=n03)",
+            "add_qnode(categories=biolink:PhenotypicFeature, key=n03)",
             "add_qedge(subject=n02, object=n03, key=e02)",
             "expand(edge_key=e02, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n02, object_qnode_key=n03, virtual_relation_label=FET3)",
@@ -1277,8 +1209,8 @@ def main():
     elif params.example_number == 6237:  # chunyu testing #623, this is a four-hop sample: CHEMBL521 - protein - biological_process - protein - disease
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(key=n00, id=CHEMBL.COMPOUND:CHEMBL521, category=biolink:ChemicalSubstance)",
-            "add_qnode(key=n01, is_set=true, category=biolink:Protein)",
+            "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL521, categories=biolink:ChemicalSubstance)",
+            "add_qnode(key=n01, is_set=true, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "expand(edge_key=e00, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1)",
@@ -1288,7 +1220,7 @@ def main():
             "expand(edge_key=e01, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_key=n02)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n03)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n03)",
             "add_qedge(subject=n02, object=n03, key=e02)",
             "expand(edge_key=e02, kp=ARAX/KG1)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n02, object_qnode_key=n03, virtual_relation_label=FET3)",
@@ -1303,8 +1235,8 @@ def main():
     elif params.example_number == 7680:  # issue 768 test all but jaccard, uncomment any one you want to test
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:1588, key=n0)",
-            "add_qnode(category=biolink:ChemicalSubstance, id=n1)",
+            "add_qnode(ids=DOID:1588, key=n0)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
             "expand(edge_key=e0)",
             #"overlay(action=predict_drug_treats_disease)",
@@ -1323,9 +1255,9 @@ def main():
     elif params.example_number == 7681:  # issue 768 with jaccard
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:14330, key=n00)",  # parkinsons
-            "add_qnode(category=biolink:Protein, is_set=True, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=False, key=n02)",
+            "add_qnode(ids=DOID:14330, key=n00)",  # parkinsons
+            "add_qnode(categories=biolink:Protein, is_set=True, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=False, key=n02)",
             "add_qedge(subject=n01, object=n00, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(edge_id=[e00,e01])",
@@ -1337,9 +1269,9 @@ def main():
     elif params.example_number == 7200:  # issue 720, example 2
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:14330, key=n00)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(ids=DOID:14330, key=n00)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG1)",
@@ -1354,8 +1286,8 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:11830, key=n00)",
-            "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2)",
@@ -1370,8 +1302,8 @@ def main():
     elif params.example_number == 887:
         query = {"operations": {"actions": [
             "add_qnode(name=DOID:9406, key=n00)",
-            "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
-            "add_qnode(category=biolink:Protein, key=n02)",
+            "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:Protein, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(edge_id=[e00,e01])",
@@ -1385,9 +1317,9 @@ def main():
         ]}}
     elif params.example_number == 892:  # drug disease prediction with BTE
         query = {"operations": {"actions": [
-            "add_qnode(id=DOID:11830, type=disease, key=n00)",
-            "add_qnode(type=gene, id=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(ids=DOID:11830, type=disease, key=n00)",
+            "add_qnode(type=gene, ids=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(kp=BTE)",
@@ -1397,9 +1329,9 @@ def main():
         ]}}
     elif params.example_number == 8922:  # drug disease prediction with BTE and KG2
         query = {"operations": {"actions": [
-            "add_qnode(id=DOID:11830, key=n0, type=disease)",
-            "add_qnode(category=biolink:ChemicalSubstance, id=n1)",
-            "add_qedge(subject=n0, object=n1, id=e1)",
+            "add_qnode(ids=DOID:11830, key=n0, type=disease)",
+            "add_qnode(categories=biolink:ChemicalSubstance, ids=n1)",
+            "add_qedge(subject=n0, object=n1, ids=e1)",
             "expand(edge_id=e1, kp=ARAX/KG2)",
             "expand(edge_id=e1, kp=BTE)",
             #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -1414,9 +1346,9 @@ def main():
     elif params.example_number == 8671:  # test_one_hop_kitchen_sink_BTE_1
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=DOID:11830, key=n0, type=disease)",
-            "add_qnode(category=biolink:ChemicalSubstance, id=n1)",
-            "add_qedge(subject=n0, object=n1, id=e1)",
+            "add_qnode(ids=DOID:11830, key=n0, type=disease)",
+            "add_qnode(categories=biolink:ChemicalSubstance, ids=n1)",
+            "add_qedge(subject=n0, object=n1, ids=e1)",
             # "expand(edge_key=e00, kp=ARAX/KG2)",
             "expand(edge_id=e1, kp=BTE)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -1432,7 +1364,7 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:11830, key=n00, type=disease)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=ARAX/KG2)",
             "expand(edge_key=e00, kp=BTE)",
@@ -1447,9 +1379,9 @@ def main():
     elif params.example_number == 8673:  # test_one_hop_based_on_types_1
         query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(id=MONDO:0001475, key=n00, type=disease)",
-            "add_qnode(category=biolink:Protein, key=n01, is_set=true)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(ids=MONDO:0001475, key=n00, type=disease)",
+            "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",
             "expand(edge_id=[e00,e01], kp=ARAX/KG2, continue_if_no_results=true)",
@@ -1470,7 +1402,7 @@ def main():
         query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=acetaminophen, key=n0)",
-            "add_qnode(category=biolink:Protein, id=n1)",
+            "add_qnode(categories=biolink:Protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
             "expand(edge_key=e0)",
             "resultify()",

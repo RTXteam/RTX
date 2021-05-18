@@ -70,51 +70,59 @@ class QueryGraphInfo:
 
 
         #### Loop through nodes computing some stats
+        have_at_least_one_id = False
         node_info = {}
         self.node_category_map = {}
         for key,qnode in nodes.items():
 
             if key is None:
-                response.error("QueryGraph has a node with null key. This is not permitted", error_code="QueryGraphNodeWithNoId")
+                response.error("QueryGraph has a node with null key. This is not permitted", error_code="QueryGraphNodeWithNullKey")
                 return response
 
-            node_info[key] = { 'key': key, 'node_object': qnode, 'has_id': False, 'category': qnode.category, 'has_category': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
-            if qnode.id is not None:
-                node_info[key]['has_id'] = True
+            node_info[key] = { 'key': key, 'node_object': qnode, 'has_ids': False, 'categories': qnode.categories, 'has_categories': False, 'is_set': False, 'n_edges': 0, 'n_links': 0, 'is_connected': False, 'edges': [], 'edge_dict': {} }
+            if qnode.ids is not None:
+                node_info[key]['has_ids'] = True
+                have_at_least_one_id = True
 
                 #### If the user did not specify a category, but there is a curie, try to figure out the category
-                if node_info[key]['category'] is None:
+                if node_info[key]['categories'] is None:
                     synonymizer = NodeSynonymizer()
-                    curie = qnode.id
-                    curies_list = qnode.id
-                    if isinstance(qnode.id,list):
-                        curie = qnode.id[0]
+                    curie = qnode.ids
+                    curies_list = qnode.ids
+                    if isinstance(qnode.ids,list):
+                        curie = qnode.ids[0]
                     else:
-                        curies_list = [ qnode.id ]
+                        curies_list = [ qnode.ids ]
 
                     canonical_curies = synonymizer.get_canonical_curies(curies=curies_list, return_all_categories=True)
                     if curie in canonical_curies and 'preferred_type' in canonical_curies[curie]:
-                        node_info[key]['has_category'] = True
-                        node_info[key]['category'] = canonical_curies[curie]['preferred_type']
+                        node_info[key]['has_categories'] = True
+                        node_info[key]['categories'] = canonical_curies[curie]['preferred_type']
 
-            if qnode.category is not None:
-                node_info[key]['has_category'] = True
+            if qnode.categories is not None:
+                node_info[key]['has_categories'] = True
 
             #if qnode.is_set is not None: node_info[key]['is_set'] = True
 
-            #### Store lookup of categorys
+            #### Store lookup of categories
             warning_counter = 0
-            if qnode.category is None or ( isinstance(qnode.category,list) and len(qnode.category) == 0 ):
+            if qnode.categories is None or ( isinstance(qnode.categories,list) and len(qnode.categories) == 0 ):
                 if warning_counter == 0:
-                    #response.debug("QueryGraph has nodes with no category. This may cause problems with results inference later")
+                    #response.debug("QueryGraph has nodes with no categories. This may cause problems with results inference later")
                     pass
                 warning_counter += 1
                 self.node_category_map['unknown'] = key
             else:
-                category = qnode.category
-                if isinstance(qnode.category,list):
-                    category = qnode.category[0]                # FIXME this is a hack prior to proper list handling
+                category = qnode.categories
+                if isinstance(qnode.categories,list):
+                    category = qnode.categories[0]                # FIXME this is a hack prior to proper list handling
                 self.node_category_map[category] = key
+
+
+        #### If we don't even have one id, then we don't support this
+        if not have_at_least_one_id:
+            response.error("QueryGraph has no nodes with ids. At least one node must have a specified 'ids'", error_code="QueryGraphNoIds")
+            return response
 
 
         #### Ignore special informationational edges for now.
@@ -136,7 +144,7 @@ class QueryGraphInfo:
 
         for key,qedge in edges.items():
 
-            predicate = qedge.predicate
+            predicate = qedge.predicates
             if isinstance(predicate,list):
                 if len(predicate) == 0:
                     predicate = None
@@ -146,14 +154,14 @@ class QueryGraphInfo:
             if predicate is not None and predicate in virtual_edge_predicates:
                 continue
 
-            edge_info[key] = { 'key': key, 'has_predicate': False, 'subject': qedge.subject, 'object': qedge.object, 'predicate': None, 'exclude': False }
+            edge_info[key] = { 'key': key, 'has_predicates': False, 'subject': qedge.subject, 'object': qedge.object, 'predicates': None, 'exclude': False }
 
             if qedge.exclude is not None:
                 edge_info[key]['exclude'] = qedge.exclude
 
             if predicate is not None:
-                edge_info[key]['has_predicate'] = True
-                edge_info[key]['predicate'] = predicate
+                edge_info[key]['has_predicates'] = True
+                edge_info[key]['predicates'] = predicate
 
             if key is None:
                 response.error("QueryGraph has a edge with null key. This is not permitted", error_code="QueryGraphEdgeWithNoKey")
@@ -162,7 +170,13 @@ class QueryGraphInfo:
             #### Create a unique node link string
             link_string = ','.join(sorted([qedge.subject,qedge.object]))
             if link_string not in unique_links:
+                if qedge.subject not in node_info:
+                    response.error(f"QEdge subject={qedge.subject} is not found among the nodes", error_code="QEdgeInvalidSubject")
+                    return response
                 node_info[qedge.subject]['n_links'] += 1
+                if qedge.object not in node_info:
+                    response.error(f"QEdge object={qedge.object} is not found among the nodes", error_code="QEdgeInvalidObject")
+                    return response
                 node_info[qedge.object]['n_links'] += 1
                 unique_links[link_string] = 1
                 #print(link_string)
@@ -206,7 +220,7 @@ class QueryGraphInfo:
         #### If this doesn't produce any singletons, then try curie based selection
         if len(singletons) == 0:
             for node_id,node_data in node_info.items():
-                if node_data['has_id']:
+                if node_data['has_ids']:
                     singletons.append(node_data)
 
         #### If this doesn't produce any singletons, then we don't know how to continue
@@ -224,9 +238,9 @@ class QueryGraphInfo:
         elif len(singletons) > 2:
             response.warning("QueryGraph appears to have a fork in it. This might cause trouble")
         else:
-            if singletons[0]['has_id'] is True and singletons[1]['has_id'] is False:
+            if singletons[0]['has_ids'] is True and singletons[1]['has_ids'] is False:
                 start_node = singletons[0]
-            elif singletons[0]['has_id'] is False and singletons[1]['has_id'] is True:
+            elif singletons[0]['has_ids'] is False and singletons[1]['has_ids'] is True:
                 start_node = singletons[1]
             else:
                 start_node = singletons[0]
@@ -310,18 +324,18 @@ class QueryGraphInfo:
         for node in node_order:
             component_id = f"n{node_index:02}"
             content = ''
-            component = { 'component_type': 'node', 'component_id': component_id, 'has_id': node['has_id'], 'has_category': node['has_category'], 'category_value': None }
+            component = { 'component_type': 'node', 'component_id': component_id, 'has_ids': node['has_ids'], 'has_categories': node['has_categories'], 'categories_value': None }
             self.query_graph_templates['detailed']['components'].append(component)
-            if node['has_id']:
-                content = 'id'
-            elif node['has_category'] and node['node_object'].category is not None:
-                category = node['node_object'].category
+            if node['has_ids']:
+                content = 'ids'
+            elif node['has_categories'] and node['node_object'].categories is not None:
+                category = node['node_object'].categories
                 if isinstance(category,list):
                     category = category[0]                                      # FIXME: Can we be smarter than just taking the first?
-                content = f"category={category}"
-                component['category_value'] = node['node_object'].category
-            elif node['has_category']:
-                content = 'category'
+                content = f"categories={category}"
+                component['categories_value'] = node['node_object'].categories
+            elif node['has_categories']:
+                content = 'categories'
             template_part = f"{component_id}({content})"
             self.query_graph_templates['simple'] += template_part
 
@@ -346,19 +360,19 @@ class QueryGraphInfo:
 
                 #### Extract the has_predicate and predicate_value from the edges of the node
                 #### This could fail if there are two edges coming out of the node FIXME
-                has_predicate = False
-                predicate_value = None
+                has_predicates = False
+                predicates_value = None
                 if 'edges' in node:
                     for related_edge in node['edges']:
                         if related_edge['subject'] == node['key']:
-                            has_predicate = related_edge['has_predicate']
-                            if has_predicate is True and 'predicate' in related_edge:
-                                predicate_value = related_edge['predicate']
+                            has_predicates = related_edge['has_predicates']
+                            if has_predicates is True and 'predicates' in related_edge:
+                                predicates_value = related_edge['predicates']
 
                 component_id = f"e{edge_index:02}"
                 template_part = f"-{component_id}()-"
                 self.query_graph_templates['simple'] += template_part
-                component = { 'component_type': 'edge', 'component_id': component_id, 'has_id': False, 'has_predicate': has_predicate, 'predicate_value': predicate_value }
+                component = { 'component_type': 'edge', 'component_id': component_id, 'has_ids': False, 'has_predicates': has_predicates, 'predicates_value': predicates_value }
                 self.query_graph_templates['detailed']['components'].append(component)
                 edge_index += 1
 
@@ -379,65 +393,65 @@ def test_example1():
     test_query_graphs = [
         { "description": "Two nodes, one edge linking them, 1 CURIE",
           "nodes": {
-            "n00": { "id": [ "MONDO:0001627" ] },
-            "n01": { "category": [ "biolink:ChemicalSubstance" ] } },
+            "n00": { "ids": [ "MONDO:0001627" ] },
+            "n01": { "categories": [ "biolink:ChemicalSubstance" ] } },
           "edges": {
-            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] } } },
+            "e00": { "subject": "n00", "object": "n01", "predicates": [ "biolink:physically_interacts_with" ] } } },
 
         { "description": "Two nodes, two edges linking them, 1 CURIE, one of which is excluded",
           "nodes": {
-            "n00": { "id": [ "MONDO:0001627" ] },
-            "n01": { "category": [ "biolink:ChemicalSubstance" ] } },
+            "n00": { "ids": [ "MONDO:0001627" ] },
+            "n01": { "categories": [ "biolink:ChemicalSubstance" ] } },
           "edges": {
             "e00": { "subject": "n00", "object": "n01" },
-            "e01": { "subject": "n00", "object":"n01", "predicate": [ "biolink:contraindicated_for" ], "exclude": True } } },
+            "e01": { "subject": "n00", "object":"n01", "predicates": [ "biolink:contraindicated_for" ], "exclude": True } } },
 
         { "description": "Two nodes, one edge linking them, both nodes are CURIEs",
           "nodes": {
-            "n00": { "id": [ "MONDO:0001627" ] },
-            "n01": { "id": [ "CHEMBL.COMPOUND:CHEMBL112" ] } },
+            "n00": { "ids": [ "MONDO:0001627" ] },
+            "n01": { "ids": [ "CHEMBL.COMPOUND:CHEMBL112" ] } },
           "edges": {
             "e00": { "subject": "n00", "object": "n01" } } },
 
         { "description": "Three nodes, 2 edges, 1 CURIE, simple linear chain",
           "nodes": {
-            "n00": { "id": [ "MONDO:0001627" ] },
-            "n01": { "category": [ "biolink:ChemicalSubstance" ] },
-            "n02": { "category": [ "biolink:Protein" ] } },
+            "n00": { "ids": [ "MONDO:0001627" ] },
+            "n01": { "categories": [ "biolink:ChemicalSubstance" ] },
+            "n02": { "categories": [ "biolink:Protein" ] } },
           "edges": {
-            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] },
+            "e00": { "subject": "n00", "object": "n01", "predicates": [ "biolink:physically_interacts_with" ] },
             "e01": { "subject": "n01", "object": "n02" } } },
 
         { "description": "Three nodes, 2 edges, but the CURIE is in the middle. What does that even mean?",
           "nodes": {
-            "n00": { "category": [ "biolink:ChemicalSubstance" ] },
-            "n01": { "id": [ "MONDO:0001627" ] },
-            "n02": { "category": [ "biolink:Protein" ] } },
+            "n00": { "categories": [ "biolink:ChemicalSubstance" ] },
+            "n01": { "ids": [ "MONDO:0001627" ] },
+            "n02": { "categories": [ "biolink:Protein" ] } },
           "edges": {
-            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] },
+            "e00": { "subject": "n00", "object": "n01", "predicates": [ "biolink:physically_interacts_with" ] },
             "e01": { "subject": "n01", "object": "n02" } } },
 
         { "description": "Four nodes, 3 edges, 1 CURIE, simple linear chain",
           "nodes": {
-            "n00": { "id": [ "MONDO:0001627" ] },
-            "n01": { "category": [ "biolink:ChemicalSubstance" ] },
-            "n02": { "category": [ "biolink:Protein" ] },
-            "n03": { "category": [ "biolink:Disease" ] } },
+            "n00": { "ids": [ "MONDO:0001627" ] },
+            "n01": { "categories": [ "biolink:ChemicalSubstance" ] },
+            "n02": { "categories": [ "biolink:Protein" ] },
+            "n03": { "categories": [ "biolink:Disease" ] } },
           "edges": {
-            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] },
+            "e00": { "subject": "n00", "object": "n01", "predicates": [ "biolink:physically_interacts_with" ] },
             "e01": { "subject": "n01", "object": "n02" },
             "e02": { "subject": "n02", "object": "n03" } } },
 
         { "description": "Two nodes, one edge linking them, 0 CURIEs",
           "nodes": {
-            "n00": { "category": [ "biolink:Drug" ] },
-            "n01": { "category": [ "biolink:ChemicalSubstance" ] } },
+            "n00": { "categories": [ "biolink:Drug" ] },
+            "n01": { "categories": [ "biolink:ChemicalSubstance" ] } },
           "edges": {
-            "e00": { "subject": "n00", "object": "n01", "predicate": [ "biolink:physically_interacts_with" ] } } },
+            "e00": { "subject": "n00", "object": "n01", "predicates": [ "biolink:physically_interacts_with" ] } } },
 
         { "description": "One node only",
           "nodes": {
-            "n00": { "id": [ "MONDO:0001627" ] } },
+            "n00": { "ids": [ "MONDO:0001627" ] } },
           "edges": {} },
 
         ]

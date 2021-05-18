@@ -17,30 +17,30 @@ class Node(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, name=None, category=None, attributes=None):  # noqa: E501
+    def __init__(self, name=None, categories=None, attributes=None):  # noqa: E501
         """Node - a model defined in OpenAPI
 
         :param name: The name of this Node.  # noqa: E501
         :type name: str
-        :param category: The category of this Node.  # noqa: E501
-        :type category: List[str]
+        :param categories: The categories of this Node.  # noqa: E501
+        :type categories: List[str]
         :param attributes: The attributes of this Node.  # noqa: E501
         :type attributes: List[Attribute]
         """
         self.openapi_types = {
             'name': str,
-            'category': List[str],
+            'categories': List[str],
             'attributes': List[Attribute]
         }
 
         self.attribute_map = {
             'name': 'name',
-            'category': 'category',
+            'categories': 'categories',
             'attributes': 'attributes'
         }
 
         self._name = name
-        self._category = category
+        self._categories = categories
         self._attributes = attributes
 
     @classmethod
@@ -78,25 +78,25 @@ class Node(Model):
         self._name = name
 
     @property
-    def category(self):
-        """Gets the category of this Node.
+    def categories(self):
+        """Gets the categories of this Node.
 
 
-        :return: The category of this Node.
+        :return: The categories of this Node.
         :rtype: List[str]
         """
-        return self._category
+        return self._categories
 
-    @category.setter
-    def category(self, category):
-        """Sets the category of this Node.
+    @categories.setter
+    def categories(self, categories):
+        """Sets the categories of this Node.
 
 
-        :param category: The category of this Node.
-        :type category: List[str]
+        :param categories: The categories of this Node.
+        :type categories: List[str]
         """
 
-        self._category = category
+        self._categories = categories
 
     @property
     def attributes(self):

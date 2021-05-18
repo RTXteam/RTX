@@ -49,7 +49,7 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
         for edge_binding in edge_binding_list:
             kg_edge = kg_edge_id_to_edge[edge_binding.id]
             if kg_edge.attributes is not None:
-                kg_edge_attributes = {x.name:x.value for x in kg_edge.attributes}
+                kg_edge_attributes = {x.original_attribute_name:x.value for x in kg_edge.attributes}
             else:
                 kg_edge_attributes = {}
             kg_edge_conf = kg_edge.confidence
@@ -236,7 +236,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 # here we are just multiplying the edge confidences
                 # --- to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
                 result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
-                #kg_edge_attributes = {x.name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
+                #kg_edge_attributes = {x.original_attribute_name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
                 #result_confidence *= kg_edge_attributes["confidence"]
             result.confidence = result_confidence
         else:
@@ -261,8 +261,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         edge_attribute_dict = {}
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
-                edge_attribute_dict[edge_attribute.name] = edge_attribute.value
-                normalized_score = self.edge_attribute_score_normalizer(edge_attribute.name, edge_attribute.value)
+                edge_attribute_dict[edge_attribute.original_attribute_name] = edge_attribute.value
+                normalized_score = self.edge_attribute_score_normalizer(edge_attribute.original_attribute_name, edge_attribute.value)
                 if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
@@ -529,7 +529,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             if edge.attributes is not None:
                 for edge_attribute in edge.attributes:
                     for attribute_name in self.known_attributes:
-                        if edge_attribute.name == attribute_name:
+                        if edge_attribute.original_attribute_name == attribute_name:
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf|NaN
                             value = float(edge_attribute.value)
@@ -553,7 +553,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
         for edge_key,edge in message.knowledge_graph.edges.items():
             if edge.attributes is not None:
-                edge_attributes = {x.name:x.value for x in edge.attributes}
+                edge_attributes = {x.original_attribute_name:x.value for x in edge.attributes}
             else:
                 edge_attributes = {}
             if edge_attributes.get("confidence", None) is not None:

@@ -99,7 +99,7 @@ class ComputeJaccard:
 
             # now actually add the virtual edges in
             for end_node_key, value in end_node_to_jaccard.items():
-                edge_attribute = EdgeAttribute(type=attribute_type, name=name, value=value, url=url)
+                edge_attribute = EdgeAttribute(attribute_type_id=attribute_type, original_attribute_name=name, value=value, value_url=url)
                 # try to ensure a unique edge id
                 id = f"J{j_iter}"
                 # if by chance you get the same id then loop until a unique one is generated
@@ -112,11 +112,11 @@ class ComputeJaccard:
                 # Do these need a attribute type and url?
                 edge_attribute_list = [
                     edge_attribute,
-                    EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
-                    EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
-                    EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
-                    #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
-                    #EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
+                    EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                    EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:provided_by"),
+                    #EdgeAttribute(name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
+                    #EdgeAttribute(name="weight", value=weight, attribute_type_id="metatype:Float"),
                     #EdgeAttribute(name="qedge_ids", value=qedge_ids)
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key, object_key=object_key,
@@ -136,7 +136,7 @@ class ComputeJaccard:
             #                object_key=object_qnode_key, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
             
             # Does not look to be a way to add option group ids to the new QEdge in TRAPI 1.0? Will error as written now
-            q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key,
+            q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
             # Need to fix this for TRAPI 1.0
             self.message.query_graph.edges[relation] = q_edge

@@ -38,6 +38,7 @@ class KG2Querier:
                 self.kg_name = "KG2"
         else:
             self.kg_name = "KG1"
+        self.infores_curie_map = dict()
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -66,16 +67,16 @@ class KG2Querier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        qnode_keys_with_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.id]
+        qnode_keys_with_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.ids]
         for qnode_key in qnode_keys_with_curies:
             qnode = query_graph.nodes[qnode_key]
             if use_synonyms and kg_name == "KG1":
-                qnode.id = eu.get_curie_synonyms(qnode.id, log)
+                qnode.ids = eu.get_curie_synonyms(qnode.ids, log)
             elif kg_name == "KG2c":
-                canonical_curies = eu.get_canonical_curies_list(qnode.id, log)
+                canonical_curies = eu.get_canonical_curies_list(qnode.ids, log)
                 log.debug(f"Using {len(canonical_curies)} curies as canonical curies for qnode {qnode_key}")
-                qnode.id = canonical_curies
-            qnode.category = []  # Important to clear this, otherwise results are limited (#889)
+                qnode.ids = canonical_curies
+            qnode.categories = None  # Important to clear this, otherwise results are limited (#889)
 
         if kg_name == "KG2c":
             # Use Plover to answer KG2c queries
@@ -102,13 +103,13 @@ class KG2Querier:
         qnode = single_node_qg.nodes[qnode_key]
 
         # Convert qnode curies as needed (either to synonyms or to canonical versions)
-        if qnode.id:
+        if qnode.ids:
             if use_synonyms and kg_name == "KG1":
-                qnode.id = eu.get_curie_synonyms(qnode.id, log)
-                qnode.category = []  # Important to clear this, otherwise results are limited (#889)
+                qnode.ids = eu.get_curie_synonyms(qnode.ids, log)
+                qnode.categories = None  # Important to clear this, otherwise results are limited (#889)
             elif kg_name == "KG2c":
-                qnode.id = eu.get_canonical_curies_list(qnode.id, log)
-                qnode.category = []  # Important to clear this to avoid discrepancies in types for particular concepts
+                qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
+                qnode.categories = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         if kg_name == "KG2c":
             # Use Plover to answer KG2c queries
@@ -144,7 +145,8 @@ class KG2Querier:
     def _load_plover_answer_into_object_model(self, plover_answer: Dict[str, Dict[str, Union[set, dict]]],
                                               log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # Figure out whether this response returned only node/edge IDs or node/edge objects themselves
-        first_nodes_entry = next(nodes for nodes in plover_answer["nodes"].values())
+        nodes_entries = [nodes for nodes in plover_answer["nodes"].values()]
+        first_nodes_entry = nodes_entries[0] if nodes_entries else dict()
         response_includes_metadata = True if isinstance(first_nodes_entry, dict) else False
         if response_includes_metadata:
             answer_kg = QGOrganizedKnowledgeGraph()
@@ -248,7 +250,7 @@ class KG2Querier:
         answer_kg = QGOrganizedKnowledgeGraph()
 
         # Build and run a cypher query to get this node/nodes
-        where_clause = f"{qnode_key}.id='{qnode.id}'" if type(qnode.id) is str else f"{qnode_key}.id in {qnode.id}"
+        where_clause = f"{qnode_key}.id='{qnode.ids}'" if len(qnode.ids) == 1 else f"{qnode_key}.id in {qnode.ids}"
         cypher_query = f"MATCH {self._get_cypher_for_query_node(qnode_key, qg)} WHERE {where_clause} RETURN {qnode_key}"
         log.info(f"Sending cypher query for node {qnode_key} to {kg_name} neo4j")
         results = self._run_cypher_query(cypher_query, kg_name, log)
@@ -279,15 +281,13 @@ class KG2Querier:
             where_fragments = []
             for qnode_key in [subject_qnode_key, object_qnode_key]:
                 qnode = qg.nodes[qnode_key]
-                if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
-                    where_fragments.append(f"{qnode_key}.id in {qnode.id}")
-                if qnode.category:
-                    qnode.category = eu.convert_to_list(qnode.category)
-                    if len(qnode.category) > 1:
-                        # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
-                        category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.category]
-                        category_where_fragment = f"({' OR '.join(category_sub_fragments)})"
-                        where_fragments.append(category_where_fragment)
+                if qnode.ids and len(qnode.ids) > 1:
+                    where_fragments.append(f"{qnode_key}.id in {qnode.ids}")
+                if qnode.categories and len(qnode.categories) > 1:
+                    # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
+                    category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.categories]
+                    categories_where_fragment = f"({' OR '.join(category_sub_fragments)})"
+                    where_fragments.append(categories_where_fragment)
             where_clause = f"WHERE {' AND '.join(where_fragments)}" if where_fragments else ""
 
             # Build the with clause
@@ -356,7 +356,7 @@ class KG2Querier:
         node = Node()
         node_key = neo4j_node.get('id')
         node.name = neo4j_node.get('name')
-        node.category = eu.convert_to_list(neo4j_node.get('category'))
+        node.categories = eu.convert_to_list(neo4j_node.get('category'))
         # Add all additional properties on KG2 nodes as TRAPI Attribute objects
         other_properties = ["iri", "full_name", "description", "publications", "synonym", "provided_by",
                             "deprecated", "update_date"]
@@ -367,7 +367,7 @@ class KG2Querier:
         node = Node()
         node_key = neo4j_node.get('id')
         node.name = neo4j_node.get('name')
-        node.category = eu.convert_to_list(neo4j_node.get('category'))
+        node.categories = eu.convert_to_list(neo4j_node.get('category'))
         # Add all additional properties on KG2c nodes as TRAPI Attribute objects
         other_properties = ["iri", "description", "all_names", "all_categories", "expanded_categories",
                             "equivalent_curies", "publications"]
@@ -376,22 +376,27 @@ class KG2Querier:
 
     @staticmethod
     def _convert_kg2c_plover_node_to_trapi_node(node_tuple: list) -> Node:
-        node = Node(name=node_tuple[0], category=eu.convert_to_list(node_tuple[1]))
+        node = Node(name=node_tuple[0], categories=eu.convert_to_list(node_tuple[1]))
         return node
 
-    @staticmethod
-    def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
+    def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list) -> Edge:
         edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
         provided_by = edge_tuple[3]
         publications = edge_tuple[4]
+        infores_curies = {self.infores_curie_map.get(source, self._get_infores_curie_from_provided_by(source))
+                          for source in provided_by}
         if provided_by:
-            edge.attributes.append(Attribute(name="provided_by",
-                                             type=eu.get_attribute_type("provided_by"),
-                                             value=provided_by))
+            provided_by_attributes = [Attribute(attribute_type_id="biolink:original_source",
+                                                value=infores_curie,
+                                                value_type_id="biolink:InformationResource",
+                                                attribute_source="infores:rtx_kg2_kp")
+                                      for infores_curie in infores_curies]
+            edge.attributes += provided_by_attributes
         if publications:
-            edge.attributes.append(Attribute(name="publications",
-                                             type=eu.get_attribute_type("publications"),
-                                             value=publications))
+            edge.attributes.append(Attribute(attribute_type_id="biolink:has_supporting_publications",
+                                             value_type_id="biolink:Publication",
+                                             value=publications,
+                                             attribute_source=list(infores_curies) if len(infores_curies) > 1 else list(infores_curies)[0]))
         return edge
 
     def _convert_kg1_node_to_trapi_node(self, neo4j_node: Dict[str, any]) -> Tuple[str, Node]:
@@ -399,7 +404,7 @@ class KG2Querier:
         node_key = neo4j_node.get('id')
         node.name = neo4j_node.get('name')
         node_category = neo4j_node.get('category')
-        node.category = eu.convert_to_list(node_category)
+        node.categories = eu.convert_to_list(node_category)
         other_properties = ["symbol", "description", "uri"]
         node.attributes = self._create_trapi_attributes(other_properties, neo4j_node)
         return node_key, node
@@ -424,8 +429,6 @@ class KG2Querier:
         other_properties = ["provided_by", "negated", "relation_curie", "simplified_relation_curie",
                             "simplified_relation", "edge_label", "publications"]
         edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2", type=eu.get_attribute_type("is_defined_by"))
-        edge.attributes.append(is_defined_by_attribute)
         return edge_key, edge
 
     def _convert_kg2c_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any]) -> Tuple[str, Edge]:
@@ -436,8 +439,6 @@ class KG2Querier:
         edge_key = f"KG2c:{edge.subject}-{edge.predicate}-{edge.object}"
         other_properties = ["provided_by", "publications"]
         edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG2c", type=eu.get_attribute_type("is_defined_by"))
-        edge.attributes.append(is_defined_by_attribute)
         return edge_key, edge
 
     def _convert_kg1_edge_to_trapi_edge(self, neo4j_edge: Dict[str, any], node_uuid_to_curie_dict: Dict[str, str]) -> Tuple[str, Edge]:
@@ -449,8 +450,10 @@ class KG2Querier:
         edge.relation = neo4j_edge.get("relation")
         other_properties = ["provided_by", "probability"]
         edge.attributes = self._create_trapi_attributes(other_properties, neo4j_edge)
-        is_defined_by_attribute = Attribute(name="is_defined_by", value="ARAX/KG1", type=eu.get_attribute_type("is_defined_by"))
-        edge.attributes.append(is_defined_by_attribute)
+        edge.attributes.append(Attribute(attribute_type_id="biolink:knowledge_provider_source",
+                                         value=eu.get_kp_infores_curie("ARAX/KG1"),
+                                         value_type_id="biolink:InformationResource",
+                                         attribute_source="infores:arax_ara"))
         return edge_key, edge
 
     @staticmethod
@@ -459,20 +462,17 @@ class KG2Querier:
         for property_name in property_names:
             property_value = neo4j_object.get(property_name)
             if property_value:
-                # Extract any lists, dicts, and booleans that are stored within strings
+                # Extract any booleans that are stored within strings
                 if type(property_value) is str:
-                    if (property_value.startswith('[') and property_value.endswith(']')) or \
-                            (property_value.startswith('{') and property_value.endswith('}')) or \
-                            property_value.lower() == "true" or property_value.lower() == "false":
+                    if property_value.lower() == "true" or property_value.lower() == "false":
                         property_value = ast.literal_eval(property_value)
-
                 # Create the actual Attribute object
-                trapi_attribute = Attribute(name=property_name,
-                                            type=eu.get_attribute_type(property_name),
+                trapi_attribute = Attribute(original_attribute_name=property_name,
+                                            attribute_type_id=eu.get_attribute_type(property_name),
                                             value=property_value)
                 # Also store this value in Attribute.url if it's a URL
                 if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
-                    trapi_attribute.url = property_value
+                    trapi_attribute.value_url = property_value
 
                 new_attributes.append(trapi_attribute)
         return new_attributes
@@ -516,10 +516,9 @@ class KG2Querier:
     def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph) -> str:
         qnode = qg.nodes[qnode_key]
         # Add in node label if there's only one category
-        category_cypher = f":`{qnode.category[0]}`" if len(qnode.category) == 1 else ""
-        if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
-            curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
-            curie_cypher = f" {{id:'{curie}'}}"
+        category_cypher = f":`{qnode.categories[0]}`" if qnode.categories and len(qnode.categories) == 1 else ""
+        if qnode.ids and len(qnode.ids) == 1:
+            curie_cypher = f" {{id:'{qnode.ids[0]}'}}"
         else:
             curie_cypher = ""
         qnode_cypher = f"({qnode_key}{category_cypher}{curie_cypher})"
@@ -528,8 +527,18 @@ class KG2Querier:
     @staticmethod
     def _get_cypher_for_query_edge(qedge_key: str, qg: QueryGraph, enforce_directionality: bool) -> str:
         qedge = qg.edges[qedge_key]
-        predicate_cypher = "|".join([f":`{predicate}`" for predicate in qedge.predicate])
+        predicate_cypher = "|".join([f":`{predicate}`" for predicate in qedge.predicates]) if qedge.predicates else ""
         full_qedge_cypher = f"-[{qedge_key}{predicate_cypher}]-"
         if enforce_directionality:
             full_qedge_cypher += ">"
         return full_qedge_cypher
+
+    def _get_infores_curie_from_provided_by(self, provided_by: str) -> str:
+        # Temporary until spreadsheet with mappings is in place
+        stripped = provided_by.strip(":")  # Handle SEMMEDDB: situation
+        local_id = stripped.split(":")[-1]
+        before_dot = local_id.split(".")[0]
+        before_slash = before_dot.split("/")[0]
+        infores_curie = f"infores:{before_slash.lower()}"
+        self.infores_curie_map[provided_by] = infores_curie
+        return infores_curie

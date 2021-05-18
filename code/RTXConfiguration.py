@@ -12,7 +12,7 @@ class RTXConfiguration:
 
     # ### Constructor
     def __init__(self):
-        self.version = "ARAX 0.7.0"
+        self.version = "ARAX 0.8.0"
 
         file_path = os.path.dirname(os.path.abspath(__file__)) + '/configv2.json'
         local_path = os.path.dirname(os.path.abspath(__file__)) + '/config_local.json'

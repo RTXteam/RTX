@@ -1,6 +1,6 @@
 openapi: 3.0.1
 info:
-  description: TRAPI 1.0 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
+  description: TRAPI 1.1 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
   version: 1.1.0
   title: ARAX Translator Reasoner
   contact:
@@ -18,18 +18,20 @@ info:
       description: >-
         The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
-      url: https://github.com/NCATSTranslator/translator_extensions/blob/\
-        production/x-translator/
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.1.0-beta
+    version: 1.1.0
     operations:
       - filter_results_top_n
+      - overlay_compute_ngd
+      - bind
+      - fill
+      - filter_kgraph_orphans
     externalDocs:
       description: >-
         The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
-      url: https://github.com/NCATSTranslator/translator_extensions/blob/\
-        production/x-trapi/
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-trapi/
 externalDocs:
   description: >-
     Documentation for the NCATS Biomedical Translator Reasoners web services
@@ -325,9 +327,20 @@ components:
         workflow:
           description: A list of operations to be applied
           type: array
+          example: null
           items:
             oneOf:
-              - $ref: '#/components/schemas/FilterResultsTopN'
+              - $ref: '#/components/schemas/OperationOverlay'            
+              - $ref: '#/components/schemas/OperationBind'               
+              - $ref: '#/components/schemas/OperationOverlayComputeNgd'  
+              - $ref: '#/components/schemas/OperationFill'               
+              - $ref: '#/components/schemas/OperationFilterResults'      
+              - $ref: '#/components/schemas/OperationFilterKgraph'       
+              - $ref: '#/components/schemas/OperationRestate'            
+              - $ref: '#/components/schemas/OperationCompleteResults'    
+              - $ref: '#/components/schemas/OperationFilterResultsTopN'  
+              - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+          nullable: true
         bypass_cache:
           type: boolean
           default: false
@@ -375,8 +388,10 @@ components:
             Container for one or more Message objects or identifiers for one or
             more Messages along with a processing plan and options for how those
             messages should be processed and returned
+          example: null
           allOf:
             - $ref: '#/components/schemas/Operations'
+          nullable: true
       additionalProperties: true
       required:
         - message
@@ -419,7 +434,16 @@ components:
           type: array
           items:
             oneOf:
-              - $ref: '#/components/schemas/FilterResultsTopN'
+              - $ref: '#/components/schemas/OperationOverlay'            
+              - $ref: '#/components/schemas/OperationBind'               
+              - $ref: '#/components/schemas/OperationOverlayComputeNgd'  
+              - $ref: '#/components/schemas/OperationFill'               
+              - $ref: '#/components/schemas/OperationFilterResults'      
+              - $ref: '#/components/schemas/OperationFilterKgraph'       
+              - $ref: '#/components/schemas/OperationRestate'            
+              - $ref: '#/components/schemas/OperationCompleteResults'    
+              - $ref: '#/components/schemas/OperationFilterResultsTopN'  
+              - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
         operations:
           description: >-
             Container for one or more Message objects or identifiers for one or
@@ -531,13 +555,13 @@ components:
             e00:
               subject: n00
               object: n01
-              predicate: biolink:physically_interacts_with
+              predicates: [ biolink:physically_interacts_with ]
           nodes:
             n00:
-              id: CHEMBL.COMPOUND:CHEMBL112
-              category: biolink:ChemicalSubstance
+              ids: [ CHEMBL.COMPOUND:CHEMBL112 ]
+              categories: [ biolink:ChemicalSubstance ]
             n01:
-              category: biolink:Protein
+              categories: [ biolink:Protein ]
     LogEntry:
       description: >-
         The LogEntry object contains information useful for tracing
@@ -580,6 +604,7 @@ components:
         - WARNING
         - INFO
         - DEBUG
+      example: DEBUG
     Result:
       type: object
       description: >-
@@ -1269,6 +1294,7 @@ components:
             Map of order independent options that apply during processing
           additionalProperties: true
       additionalProperties: true
+      nullable: true
     Question:
       type: object
       properties:
@@ -1299,14 +1325,167 @@ components:
           format: float
           description: Calculated Normalized Google Distance for the two supplied terms
           example: 0.714
-    FilterResultsTopN:
-      type: object
-      description: This operation truncates the results to at most `max_results` that appear in the TRAPI JSON message.
-      properties:
-        max_results:
-          type: integer
-          example: 50
-          description: The maximum number of results to return.
+    OperationBind:
       additionalProperties: false
+      properties:
+        id:
+          enum:
+          - bind
+          type: string
+        parameters: {}
       required:
-        - max_results
+      - id
+      type: object
+    OperationCompleteResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - complete_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFill:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - fill
+          type: string
+        parameters:
+          oneOf:
+          - additionalProperties: false
+            properties:
+              allowlist:
+                description: List of knowledge providers/sources that may be used
+                  to provide knowledge.
+                example:
+                - icees
+                minLength: 1
+                type: array
+                items:
+                  type: string
+          - additionalProperties: false
+            properties:
+              denylist:
+                description: List of knowledge providers/sources that may NOT be used
+                  to provide knowledge.
+                example:
+                - ctd
+                minLength: 1
+                type: array
+                items:
+                  type: string
+          type: object
+      required:
+      - id
+      type: object
+    OperationFilterKgraph:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterKgraphOrphans:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_orphans
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterResultsTopN:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_results_top_n
+          type: string
+        parameters:
+          properties:
+            max_results:
+              description: The maximum number of results to return.
+              example: 50
+              minimum: 0
+              type: integer
+          required:
+          - max_results
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationOverlay:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationOverlayComputeNgd:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_compute_ngd
+          type: string
+        parameters:
+          properties:
+            qnode_keys:
+              description: A list of qnode keys to overlay pairwise edges onto. Must
+                be be a list of at least 2 valid qnodes.
+              example:
+              - n00
+              - n01
+              items:
+                type: string
+              type: list
+            virtual_relation_label:
+              description: An label to help identify the virtual edge in the relation
+                field
+              example: NGD1
+              type: string
+          required:
+          - virtual_relation_label
+          - qnode_keys
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationRestate:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - restate
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object

@@ -18,5 +18,5 @@ def predicates():  # noqa: E501
     :rtype: Dict[str, Dict[str, List[str]]]
     """
     ksm = KnowledgeSourceMetadata()
-    return(ksm.get_kg_predicates(kg_name='KG2'))
+    return(ksm.get_kg_predicates())
 

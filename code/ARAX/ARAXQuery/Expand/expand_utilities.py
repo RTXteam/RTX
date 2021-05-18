@@ -3,7 +3,7 @@
 import sys
 import os
 import traceback
-from typing import List, Dict, Union, Set, Tuple
+from typing import List, Dict, Union, Set, Tuple, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -29,7 +29,17 @@ class QGOrganizedKnowledgeGraph:
     def add_node(self, node_key: str, node: Node, qnode_key: str):
         if qnode_key not in self.nodes_by_qg_id:
             self.nodes_by_qg_id[qnode_key] = dict()
-        self.nodes_by_qg_id[qnode_key][node_key] = node
+        # Merge attributes if this node already exists
+        if node_key in self.nodes_by_qg_id[qnode_key] and node.attributes:
+            existing_node = self.nodes_by_qg_id[qnode_key][node_key]
+            if not existing_node.attributes:
+                existing_node.attributes = node.attributes
+            else:
+                existing_attributes = {attribute.original_attribute_name for attribute in existing_node.attributes}
+                new_attributes = [attribute for attribute in node.attributes if attribute.original_attribute_name not in existing_attributes]
+                existing_node.attributes += new_attributes
+        else:
+            self.nodes_by_qg_id[qnode_key][node_key] = node
 
     def add_edge(self, edge_key: str, edge: Edge, qedge_key: str):
         if qedge_key not in self.edges_by_qg_id:
@@ -349,6 +359,29 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
             return []
 
 
+def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) -> Optional[List[str]]:
+    curies = convert_to_list(curie)
+    synonymizer = NodeSynonymizer()
+    log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
+    canonical_curies_dict = synonymizer.get_canonical_curies(curies)
+    log.debug(f"Got response back from NodeSynonymizer")
+    if canonical_curies_dict is not None:
+        recognized_input_curies = {input_curie for input_curie in canonical_curies_dict if canonical_curies_dict.get(input_curie)}
+        unrecognized_curies = set(curies).difference(recognized_input_curies)
+        if unrecognized_curies:
+            log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+        preferred_categories = {canonical_curies_dict[recognized_curie].get('preferred_category')
+                                for recognized_curie in recognized_input_curies}
+        if preferred_categories:
+            return list(preferred_categories)
+        else:
+            log.warning(f"Unable to find any preferred categories")
+            return None
+    else:
+        log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+        return []
+
+
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False) -> bool:
     if enforce_required_only:
         qg_without_kryptonite_portion = get_qg_without_kryptonite_portion(query_graph)
@@ -422,24 +455,29 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "BTE": "https://api.bte.ncats.io/v1",
         "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.0",
         "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
-        "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.0"
+        "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.1",
+        "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
+        "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
+        "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
+        "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3"
     }
     return endpoint_map.get(kp_name)
 
 
-def switch_back_to_str_or_list_types(qg: QueryGraph) -> QueryGraph:
-    # Switches QG back to old style where qnode.category and qedge.predicate can be strings OR lists (vs. always lists)
-    for qnode in qg.nodes.values():
-        if not qnode.category:
-            qnode.category = None
-        elif len(qnode.category) == 1:
-            qnode.category = qnode.category[0]
-    for qedge in qg.edges.values():
-        if not qedge.predicate:
-            qedge.predicate = None
-        elif len(qedge.predicate) == 1:
-            qedge.predicate = qedge.predicate[0]
-    return qg
+def get_kp_infores_curie(kp_name: str) -> Union[str, None]:
+    endpoint_map = {
+        "BTE": "infores:biothings_explorer",
+        "GeneticsKP": "infores:genetics_kp",
+        "MolePro": "infores:molecular_kp",
+        "ARAX/KG2": "infores:rtx_kg2_kp",
+        "ARAX/KG1": "infores:rtx_kg1_kp",
+        "CHP": "infores:connections_hypothesis_kp",
+        "ClinicalRiskKP": "infores:clinical_risk_kp",
+        "WellnessKP": "infores:wellness_kp",
+        "DrugResponseKP": "infores:drug_response_kp",
+        "TumorGeneMutationKP": "infores:tumor_gene_mutation_kp"
+    }
+    return endpoint_map.get(kp_name, kp_name)
 
 
 def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
@@ -447,12 +485,10 @@ def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
     qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
                          edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
     for qnode in qg_copy.nodes.values():
-        if qnode.category:
-            categories = convert_to_list(qnode.category)
-            prefixless_categories = [category.split(":")[-1] for category in categories]
-            qnode.category = [convert_string_to_snake_case(category) for category in prefixless_categories]
+        if qnode.categories:
+            prefixless_categories = [category.split(":")[-1] for category in qnode.categories]
+            qnode.categories = [convert_string_to_snake_case(category) for category in prefixless_categories]
     for qedge in qg_copy.edges.values():
-        if qedge.predicate:
-            predicates = convert_to_list(qedge.predicate)
-            qedge.predicate = [predicate.split(":")[-1] for predicate in predicates]
+        if qedge.predicates:
+            qedge.predicates = [predicate.split(":")[-1] for predicate in qedge.predicates]
     return qg_copy

@@ -342,7 +342,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 response.debug(f"Query graph is {message.query_graph}")
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
-                response.debug(f"Number of nodes in KG by type is {Counter([x.category[0] for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
+                response.debug(f"Number of nodes in KG by type is {Counter([x.categories[0] for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
                 #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")  # don't really need to worry about this now
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
                 response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges.values()])}")
@@ -352,7 +352,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 for x in message.knowledge_graph.edges.values():
                     if x.attributes:
                         for attr in x.attributes:
-                            attribute_names.append(attr.name)
+                            attribute_names.append(attr.original_attribute_name)
                 response.debug(f"Number of edges in KG by attribute {Counter(attribute_names)}")
         return response
 
@@ -522,10 +522,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                     if edge.attributes:
                         for attribute in edge.attributes:
                             if isinstance(attribute.value, Hashable):
-                                known_attributes.add(attribute.name)
+                                known_attributes.add(attribute.original_attribute_name)
                                 known_values.add(attribute.value)
                             elif isinstance(attribute.value, list) or isinstance(attribute.value, set):
-                                known_attributes.add(attribute.name)
+                                known_attributes.add(attribute.original_attribute_name)
                                 for val in attribute.value:
                                     known_values.add(val)
 
@@ -602,7 +602,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 if hasattr(edge, 'attributes'):
                     if edge.attributes:
                         for attribute in edge.attributes:
-                            known_attributes.add(attribute.name)
+                            known_attributes.add(attribute.original_attribute_name)
             # print(known_attributes)
             allowable_parameters = {'action': {'remove_edges_by_attribute'},
                                     'edge_attribute': known_attributes,
@@ -692,7 +692,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 if hasattr(edge, 'attributes'):
                     if edge.attributes:
                         for attribute in edge.attributes:
-                            known_attributes.add(attribute.name)
+                            known_attributes.add(attribute.original_attribute_name)
             # print(known_attributes)
             allowable_parameters = {'action': {'remove_edges_by_stats'},
                                     'edge_attribute': known_attributes,
@@ -832,7 +832,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'remove_nodes_by_category'},
-                                    'node_category': set([t for x in self.message.knowledge_graph.nodes.values() for t in x.category])
+                                    'node_category': set([t for x in self.message.knowledge_graph.nodes.values() for t in x.categories])
                                    }
         else:
             allowable_parameters = {'action': {'remove_nodes_by_category'}, 
@@ -937,7 +937,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'remove_orphaned_nodes'},
                                     'node_category': set(
-                                        [t for x in self.message.knowledge_graph.nodes.values() for t in x.category])
+                                        [t for x in self.message.knowledge_graph.nodes.values() for t in x.categories])
                                     }
         else:
             allowable_parameters = {'action': {'remove_orphaned_nodes'},

@@ -67,7 +67,7 @@ class SortResults:
                 if hasattr(edge, 'attributes'):  # check if they have attributes
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute
-                            if attribute.name == params['edge_attribute']:  # check if it's the desired one
+                            if attribute.original_attribute_name == params['edge_attribute']:  # check if it's the desired one
                                 try:
                                     edge_values[key] = {'value': float(attribute.value), 'relation': edge.relation}
                                 except ValueError:
@@ -156,19 +156,18 @@ class SortResults:
             node_values = {}
             # iterate over the nodes find the attribute values
             for key, node in self.message.knowledge_graph.nodes.items():  # iterate over the nodes
-                node_values[key] = {'value': None, 'category': node.category}
+                node_values[key] = {'value': None, 'category': node.categories}
                 if hasattr(node, 'attributes'):  # check if they have attributes
                     if node.attributes:  # if there are any node attributes
                         for attribute in node.attributes:  # for each attribute
-                            if attribute.name == params['node_attribute']:  # check if it's the desired one
-                                if attribute.name == 'pubmed_ids':
-                                    node_values[key] = {'value': attribute.value.count("PMID"), 'category': node.category}
+                            if attribute.original_attribute_name == params['node_attribute']:  # check if it's the desired one
+                                if attribute.original_attribute_name == 'pubmed_ids':
+                                    node_values[key] = {'value': attribute.value.count("PMID"), 'category': node.categories}
                                 else:
                                     try:
-                                        node_values[key] = {'value': float(attribute.value), 'category': node.category}
+                                        node_values[key] = {'value': float(attribute.value), 'category': node.categories}
                                     except ValueError:
-                                        node_values[key] = {'value': attribute.value, 'category': node.category}
-
+                                        node_values[key] = {'value': attribute.value, 'category': node.categories}
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
