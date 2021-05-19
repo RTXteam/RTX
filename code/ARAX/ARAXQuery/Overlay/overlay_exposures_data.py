@@ -190,9 +190,9 @@ class OverlayExposuresData:
         return None
 
     def _create_icees_edge_attribute(self, p_value):
-        return EdgeAttribute(name=self.icees_attribute_name,
+        return EdgeAttribute(original_attribute_name=self.icees_attribute_name,
                              value=p_value,
-                             type=self.icees_attribute_type)
+                             attribute_type_id=self.icees_attribute_type)
 
     def _create_icees_virtual_edge(self, subject_curie, object_curie, p_value):
         id = f"ICEES:{subject_curie}--{object_curie}"
@@ -207,8 +207,8 @@ class OverlayExposuresData:
         #             attributes=[self._create_icees_edge_attribute(p_value)])
         edge_attribute_list = [
             self._create_icees_edge_attribute(p_value),
-            EdgeAttribute(name="is_defined_by", value="ARAX", type="ARAX_TYPE_PLACEHOLDER"),
-            EdgeAttribute(name="provided_by", value="ICEES+", type="biolink:provided_by"),
+            EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="ARAX_TYPE_PLACEHOLDER"),
+            EdgeAttribute(original_attribute_name="provided_by", value="ICEES+", attribute_type_id="biolink:provided_by"),
             #EdgeAttribute(name="qedge_ids", value=[self.virtual_relation_label])
         ]
         edge = Edge(predicate=self.icees_edge_type, subject=subject_curie, object=object_curie,

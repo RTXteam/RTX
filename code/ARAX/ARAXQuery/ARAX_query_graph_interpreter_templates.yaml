@@ -1,11 +1,11 @@
-ARAX_QG_DSL_mapping: 0.1
+ARAX_QG_DSL_mapping: 0.2
 
 # Node templates should have one of the following formats:
-#   n00()                     - a node with no curie or category specified
-#   n00(category)                 - a node with only a category of any kind specified
-#   n00(category=biolink:Protein)         - a node with a specific category (such as a biolink:Protein) specified
-#   n00(id)                - a node with a specific curie specified
-#   n00(id,category=biolink:Protein)   - a node with a specific curie of the specified category.
+#   n00()                     - a node with no curie or categories specified
+#   n00(categories)                 - a node with only a categories of any kind specified
+#   n00(categories=biolink:Protein)         - a node with a specific categories (such as a biolink:Protein) specified
+#   n00(ids)                - a node with one or more curies specified
+#   n00(ids,categories=biolink:Protein)   - a node with one or more curies of the specified categories.
 # Edge templates should have the following format:
 #   e00()                     - an edge with no specification
 #
@@ -22,22 +22,22 @@ templates:
     restated_question: What is n00(name)?
     description: A single node question, where the one node has a curie
     template:
-      - n00(id)
+      - n00(ids)
     DSL:
       - expand(node_key=n00)
       - resultify()
 
-  one_node_with_category:
-    name: One node with only a category
-    description: A single node that has no curie but has a category. This could easily generate thousands of things.
-    restated_question: Which n00(category)s are known?
+  one_node_with_categories:
+    name: One node with only a categories
+    description: A single node that has no curie but has a categories. This could easily generate thousands of things.
+    restated_question: Which n00(categories)s are known?
     template:
-      - n00(category)
-    error: The input QueryGraph would just lead to thousands of nodes with this category. Not currently supported.
+      - n00(categories)
+    error: The input QueryGraph would just lead to thousands of nodes with this categories. Not currently supported.
 
-  one_node_with_no_category:
-    name: One node with not even a category
-    description: A single node that has no curie and no category. This is like tell me everything
+  one_node_with_no_categories:
+    name: One node with not even a categories
+    description: A single node that has no curie and no categories. This is like tell me everything
     restated_question: Which biological entities are known?
     template:
       - n00()
@@ -46,14 +46,14 @@ templates:
   ####################################################################################################
   #### Two node, one-hop questions
   one_hop_classic_question_curie2ChemicalSubstance:
-    name: One hop question with one curie and one category node of category biolink:ChemicalSubstance
-    description: Two nodes, one of which has a curie and the other has a category biolink:ChemicalSubstance
+    name: One hop question with one curie and one categories node of categories biolink:ChemicalSubstance
+    description: Two nodes, one of which has a curie and the other has a categories biolink:ChemicalSubstance
     comment: This is current just for testing. The DSL is the same as the next one
-    restated_question: Which n01(category)s are related to n00(name)?
+    restated_question: Which n01(categories)s are related to n00(name)?
     template:
-      - n00(id)
+      - n00(ids)
       - e00()
-      - n01(category=biolink:ChemicalSubstance)
+      - n01(categories=biolink:ChemicalSubstance)
     DSL:
       - expand()
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
@@ -61,13 +61,13 @@ templates:
       - filter_results(action=limit_number_of_results, max_results=100)
 
   one_hop_classic_question:
-    name: One hop question with one curie and one category node
-    description: Two nodes, one of which has a curie and the other has a category
-    restated_question: Which n01(category)s are related to n00(name)?
+    name: One hop question with one curie and one categories node
+    description: Two nodes, one of which has a curie and the other has a categories
+    restated_question: Which n01(categories)s are related to n00(name)?
     template:
-      - n00(id)
+      - n00(ids)
       - e00()
-      - n01(category)
+      - n01(categories)
     DSL:
       - expand()
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
@@ -79,9 +79,9 @@ templates:
     description: Two nodes, both of which have a curie
     restated_question: How are n00(name) and n01(name) directly related?
     template:
-      - n00(id)
+      - n00(ids)
       - e00()
-      - n01(id)
+      - n01(ids)
     DSL:
       - expand()
       - resultify()
@@ -89,10 +89,10 @@ templates:
 
   one_hop_all_connections:
     name: One hop question with one curie and one totally generic
-    description: Two nodes, one of which has a curie and the other has no category
+    description: Two nodes, one of which has a curie and the other has no categories
     restated_question: What is n00(name) related to?
     template:
-      - n00(id)
+      - n00(ids)
       - e00()
       - n01()
     DSL:
@@ -102,12 +102,12 @@ templates:
 
   one_hop_drug_treats_disease:
     name: one hop with start node drug, end node disease
-    description: Two nodes, start has a specific curie, end node has category specified as biolink:ChemicalSubstance (or drug?!)
-    restated_question: What n01(category)s is known to treat n00(name)?
+    description: Two nodes, start has a specific curie, end node has categories specified as biolink:ChemicalSubstance (or drug?!)
+    restated_question: What n01(categories)s is known to treat n00(name)?
     template:
-      - n00(id,category=biolink:Disease)
-      - e00(predicate=treats)
-      - n01(category=biolink:ChemicalSubstance)
+      - n00(ids,categories=biolink:Disease)
+      - e00(predicates=treats)
+      - n01(categories=biolink:ChemicalSubstance)
     DSL:
       - expand()
       - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
@@ -116,12 +116,12 @@ templates:
 
   one_hop_drug_somehow_related_to_disease:
     name: one hop with start node drug, end node disease
-    description: Two nodes, start has a specific curie, end node has category specified as biolink:ChemicalSubstance (or drug?!)
-    restated_question: What n01(category)s may treat n00(name)?
+    description: Two nodes, start has a specific curie, end node has categories specified as biolink:ChemicalSubstance (or drug?!)
+    restated_question: What n01(categories)s may treat n00(name)?
     template:
-      - n00(id,category=biolink:Disease)
+      - n00(ids,categories=biolink:Disease)
       - e00()
-      - n01(category=biolink:ChemicalSubstance)
+      - n01(categories=biolink:ChemicalSubstance)
     DSL:
       - expand()
       - overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=CP1)
@@ -133,14 +133,14 @@ templates:
 
   two_hop_drug_disease:
     name: one hop with start node drug, end node disease
-    description: Two nodes, start has a specific curie, end node has category specified as biolink:ChemicalSubstance (or drug?!)
-    restated_question: What n01(category)s may treat n00(name)?
+    description: Two nodes, start has a specific curie, end node has categories specified as biolink:ChemicalSubstance (or drug?!)
+    restated_question: What n01(categories)s may treat n00(name)?
     template:
-      - n00(id,category=biolink:Disease)
+      - n00(ids,categories=biolink:Disease)
       - e00()
-      - n01(category=biolink:Protein)
+      - n01(categories=biolink:Protein)
       - e01()
-      - n01(category=biolink:ChemicalSubstance)
+      - n01(categories=biolink:ChemicalSubstance)
     DSL:
       - expand()
       - overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)
@@ -155,46 +155,46 @@ templates:
   ####################################################################################################
   #### Three node, two-hop questions
   two_hop_classic_question:
-    name: Two hop question with one curie and two category nodes
-    description: Three nodes, one of which has a curie and the other two have a category
-    restated_question: Which n01(category)s share the most n01(category)s in common with n00(name)?
+    name: Two hop question with one curie and two categories nodes
+    description: Three nodes, one of which has a curie and the other two have a categories
+    restated_question: Which n01(categories)s share the most n01(categories)s in common with n00(name)?
     template:
-      - n00(id)
+      - n00(ids)
       - e00()
-      - n01(category)
+      - n01(categories)
       - e01()
-      - n02(category)
+      - n02(categories)
     DSL:
       - expand()
       - overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
 
-  two_hop_curie-category-curie_question:
-    name: Two hop question where both end nodes are provided and a category in the middle
+  two_hop_curie-categories-curie_question:
+    name: Two hop question where both end nodes are provided and a categories in the middle
     description: Three nodes, the two ends of which have a curie
-    restated_question: Which n01(category)s connect n00(name) and n02(name)?
+    restated_question: Which n01(categories)s connect n00(name) and n02(name)?
     template:
-      - n00(id)
+      - n00(ids)
       - e00()
-      - n01(category)
+      - n01(categories)
       - e01()
-      - n02(id)
+      - n02(ids)
     DSL:
       - expand()
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
 
   two_hop_two_curie_question:
-    name: Two hop question where both end nodes are provided and no category in the middle
-    description: Three nodes, the two ends of which have a curie and no category in the middle
-    restated_question: which n01(category)s connect n00(name) and n02(name)?
+    name: Two hop question where both end nodes are provided and no categories in the middle
+    description: Three nodes, the two ends of which have a curie and no categories in the middle
+    restated_question: which n01(categories)s connect n00(name) and n02(name)?
     template:
-      - n00(id)
+      - n00(ids)
       - e00()
       - n01()
       - e01()
-      - n02(id)
+      - n02(ids)
     DSL:
       - expand()
       - resultify()

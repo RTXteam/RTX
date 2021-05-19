@@ -11,7 +11,7 @@ from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
-from director import Director
+from kp_selector import KPSelector
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
@@ -26,8 +26,16 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXExpander:
 
     def __init__(self):
-        self.protein_category = "biolink:Protein"
-        self.gene_category = "biolink:Gene"
+        self.category_equivalencies = {"biolink:Protein": {"biolink:Gene"},
+                                       "biolink:Gene": {"biolink:Protein"},
+                                       "biolink:Drug": {"biolink:ChemicalSubstance"},
+                                       "biolink:ChemicalSubstance": {"biolink:Drug"},
+                                       "biolink:Disease": {"biolink:PhenotypicFeature",
+                                                           "biolink:DiseaseOrPhenotypicFeature"},
+                                       "biolink:PhenotypicFeature": {"biolink:Disease",
+                                                                     "biolink:DiseaseOrPhenotypicFeature"},
+                                       "biolink:DiseaseOrPhenotypicFeature": {"biolink:Disease",
+                                                                              "biolink:PhenotypicFeature"}}
         self.edge_key_parameter_info = {
             "is_required": False,
             "examples": ["e00", "[e00, e01]"],
@@ -149,6 +157,50 @@ class ARAXExpander:
                 "dsl_command": "expand(kp=MolePro)",
                 "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
                                "subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "ClinicalRiskKP": {
+                "dsl_command": "expand(kp=ClinicalRiskKP)",
+                "description": "This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity "
+                               "subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "WellnessKP": {
+                "dsl_command": "expand(kp=WellnessKP)",
+                "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
+                               "subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "DrugResponseKP": {
+                "dsl_command": "expand(kp=DrugResponseKP)",
+                "description": "This command reaches out to the Multiomics Big GIM II Drug Response KP to find all "
+                               "bioentity subpaths that satisfy the query graph.",
+                "parameters": {
+                    "edge_key": self.edge_key_parameter_info,
+                    "node_key": self.node_key_parameter_info,
+                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
+                    "use_synonyms": self.use_synonyms_parameter_info,
+                }
+            },
+            "TumorGeneMutationKP": {
+                "dsl_command": "expand(kp=TumorGeneMutationKP)",
+                "description": "This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find "
+                               "all bioentity subpaths that satisfy the query graph.",
                 "parameters": {
                     "edge_key": self.edge_key_parameter_info,
                     "node_key": self.node_key_parameter_info,
@@ -306,11 +358,6 @@ class ARAXExpander:
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = eu.copy_qg(message.query_graph)
-        # Convert all qnode categories and qedge predicates to lists (easier than supporting string AND list)
-        for qnode in query_graph.nodes.values():
-            qnode.category = eu.convert_to_list(qnode.category)
-        for qedge in query_graph.edges.values():
-            qedge.predicate = eu.convert_to_list(qedge.predicate)
 
         if response.status != 'OK':
             return response
@@ -327,12 +374,18 @@ class ARAXExpander:
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
-        # Consider both protein and gene if qnode's category is one of those (since KPs handle these differently)
-        protein_gene_categories = {self.protein_category, self.gene_category}
+
+        # Add in any category equivalencies to the QG (e.g., protein == gene, since KPs handle these differently)
         for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.category and set(qnode.category).intersection(protein_gene_categories):
-                qnode.category = list(set(qnode.category).union(protein_gene_categories))
-                log.debug(f"Will consider qnode {qnode_key}'s category to be {qnode.category}")
+            if qnode.ids and not qnode.categories:
+                # Infer categories for expand's internal use (in KP selection and etc.)
+                qnode.categories = eu.get_preferred_categories(qnode.ids, log)
+                log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
+            if qnode.categories and set(qnode.categories).intersection(self.category_equivalencies):
+                equivalent_categories = {equivalent_category for category in qnode.categories
+                                         for equivalent_category in self.category_equivalencies.get(category, [])}
+                qnode.categories = list(set(qnode.categories).union(equivalent_categories))
+                log.debug(f"Expand will consider qnode {qnode_key}'s category to be {qnode.categories}")
 
         # Expand any specified edges
         if input_qedge_keys:
@@ -352,8 +405,8 @@ class ARAXExpander:
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
-                    director = Director(log, set(self.kp_command_definitions.keys()))
-                    kps_to_query = director.get_kps_for_single_hop_qg(one_hop_qg)
+                    kp_selector = KPSelector(log, set(self.kp_command_definitions.keys()))
+                    kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
                     kps_to_query = {parameters["kp"]}
@@ -412,7 +465,7 @@ class ARAXExpander:
             kp_to_use = parameters["kp"] if user_specified_kp else "ARAX/KG2"  # Only KG2 does single-node queries
             for qnode_key in input_qnode_keys:
                 answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms,
-                                              mode, user_specified_kp, log)
+                                              mode, user_specified_kp, force_local, log)
                 if log.status != 'OK':
                     return response
                 self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, use_synonyms, mode, log)
@@ -453,7 +506,7 @@ class ARAXExpander:
         log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
 
         # Make sure at least one of the qnodes has a curie specified
-        if not any(qnode for qnode in edge_qg.nodes.values() if qnode.id):
+        if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
@@ -501,7 +554,7 @@ class ARAXExpander:
         return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, continue_if_no_results: bool, query_graph: QueryGraph,
-                     use_synonyms: bool, mode: str, user_specified_kp: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     use_synonyms: bool, mode: str, user_specified_kp: bool, force_local: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -509,7 +562,7 @@ class ARAXExpander:
         answer_kg = QGOrganizedKnowledgeGraph()
         if log.status != 'OK':
             return answer_kg
-        if not qnode.id:
+        if not qnode.ids:
             log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
 
@@ -521,7 +574,7 @@ class ARAXExpander:
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, force_local)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
@@ -559,24 +612,24 @@ class ARAXExpander:
             qnode_copy = eu.copy_qnode(qnode)
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
             qnode_already_fulfilled = qnode_key in overarching_kg.nodes_by_qg_id
-            if qnode_already_fulfilled and not qnode_copy.id:
+            if qnode_already_fulfilled and not qnode_copy.ids:
                 existing_curies_for_this_qnode_key = list(overarching_kg.nodes_by_qg_id[qnode_key])
                 if qedge_has_already_been_expanded:
                     # Feed in curies only for 'input' qnodes if we're re-expanding this edge (i.e., with another KP)
                     if self._is_input_qnode(qnode_key, qedge_key, full_qg, log):
-                        qnode_copy.id = existing_curies_for_this_qnode_key
+                        qnode_copy.ids = existing_curies_for_this_qnode_key
                 elif qedge_is_required:
                     # Only feed in curies to required qnodes if it was expansion of a REQUIRED qedge that grabbed them
                     qedge_keys_connected_to_qnode = eu.get_connected_qedge_keys(qnode_key, full_qg)
                     was_populated_by_required_edge = qedge_keys_connected_to_qnode.intersection(required_qedge_keys, expanded_qedge_keys)
                     if was_populated_by_required_edge:
-                        qnode_copy.id = existing_curies_for_this_qnode_key
+                        qnode_copy.ids = existing_curies_for_this_qnode_key
                 else:
-                    qnode_copy.id = existing_curies_for_this_qnode_key
+                    qnode_copy.ids = existing_curies_for_this_qnode_key
             edge_qg.nodes[qnode_key] = qnode_copy
 
         # Display a summary of what the modified query graph for this edge looks like
-        qnodes_with_curies = [qnode_key for qnode_key, qnode in edge_qg.nodes.items() if qnode.id]
+        qnodes_with_curies = [qnode_key for qnode_key, qnode in edge_qg.nodes.items() if qnode.ids]
         qnodes_without_curies = [qnode_key for qnode_key in edge_qg.nodes if qnode_key not in qnodes_with_curies]
         input_qnode_key = qnodes_with_curies[0] if qnodes_with_curies else qnodes_without_curies[0]
         output_qnode_key = list(set(edge_qg.nodes).difference({input_qnode_key}))[0]
@@ -584,8 +637,8 @@ class ARAXExpander:
         output_qnode = edge_qg.nodes[output_qnode_key]
         input_curie_summary = self._get_qnode_curie_summary(input_qnode)
         output_curie_summary = self._get_qnode_curie_summary(output_qnode)
-        log.debug(f"Modified QG for this qedge is ({input_qnode_key}:{input_qnode.category}{input_curie_summary})-"
-                  f"{qedge.predicate if qedge.predicate else ''}-({output_qnode_key}:{output_qnode.category}{output_curie_summary})")
+        log.debug(f"Modified QG for this qedge is ({input_qnode_key}:{input_qnode.categories}{input_curie_summary})-"
+                  f"{qedge.predicates if qedge.predicates else ''}-({output_qnode_key}:{output_qnode.categories}{output_curie_summary})")
         return edge_qg
 
     @staticmethod
@@ -610,20 +663,21 @@ class ARAXExpander:
                 if canonicalized_node:
                     preferred_curie = canonicalized_node.get('preferred_curie', node_key)
                     preferred_name = canonicalized_node.get('preferred_name', node.name)
-                    preferred_category = eu.convert_to_list(canonicalized_node.get('preferred_type', node.category))
+                    preferred_type = canonicalized_node.get('preferred_type')
+                    preferred_categories = eu.convert_to_list(preferred_type) if preferred_type else node.categories
                     curie_mappings[node_key] = preferred_curie
                 else:
                     # Means the NodeSynonymizer didn't recognize this curie
                     preferred_curie = node_key
                     preferred_name = node.name
-                    preferred_category = eu.convert_to_list(node.category)
+                    preferred_categories = node.categories
                     curie_mappings[node_key] = preferred_curie
 
                 # Add this node into our deduplicated KG as necessary
                 if preferred_curie not in deduplicated_kg.nodes_by_qg_id[qnode_key]:
                     node_key = preferred_curie
                     node.name = preferred_name
-                    node.category = preferred_category
+                    node.categories = preferred_categories
                     deduplicated_kg.add_node(node_key, node, qnode_key)
 
         # Then update the edges to reflect changes made to the nodes
@@ -680,9 +734,9 @@ class ARAXExpander:
         log.debug("Merging answer into Message.KnowledgeGraph")
         pinned_curies_map = defaultdict(set)
         for qnode_key, qnode in overarching_qg.nodes.items():
-            if qnode.id:
+            if qnode.ids:
                 # Get canonicalized versions of any curies in the QG, as appropriate
-                curies = eu.get_canonical_curies_list(qnode.id, log) if use_synonyms else eu.convert_to_list(qnode.id)
+                curies = eu.get_canonical_curies_list(qnode.ids, log) if use_synonyms else qnode.ids
                 for curie in curies:
                     pinned_curies_map[curie].add(qnode_key)
 
@@ -1016,9 +1070,9 @@ class ARAXExpander:
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
         for node in kg.nodes.values():
             corresponding_qnode_categories = {category for qnode_key in node.qnode_keys for category in
-                                              eu.convert_to_list(qg.nodes[qnode_key].category)}
+                                              eu.convert_to_list(qg.nodes[qnode_key].categories)}
             if corresponding_qnode_categories:
-                node.category = list(corresponding_qnode_categories)
+                node.categories = list(corresponding_qnode_categories)
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):
@@ -1029,7 +1083,7 @@ class ARAXExpander:
     @staticmethod
     def _get_qedges_with_curie_qnode(query_graph: QueryGraph) -> List[str]:
         return [qedge_key for qedge_key, qedge in query_graph.edges.items()
-                if query_graph.nodes[qedge.subject].id or query_graph.nodes[qedge.object].id]
+                if query_graph.nodes[qedge.subject].ids or query_graph.nodes[qedge.object].ids]
 
     @staticmethod
     def _find_connected_qedge(qedge_choices: List[QEdge], qedge: QEdge) -> QEdge:
@@ -1055,18 +1109,10 @@ class ARAXExpander:
             return bool_string
 
     @staticmethod
-    def _get_number_of_curies(qnode: QNode) -> int:
-        if qnode.id and isinstance(qnode.id, list):
-            return len(qnode.id)
-        elif qnode.id and isinstance(qnode.id, str):
-            return 1
-        else:
-            return 0
-
-    def _get_qnode_curie_summary(self, qnode: QNode) -> str:
-        num_curies = self._get_number_of_curies(qnode)
+    def _get_qnode_curie_summary(qnode: QNode) -> str:
+        num_curies = len(qnode.ids) if qnode.ids else 0
         if num_curies == 1:
-            return f" {qnode.id if isinstance(qnode.id, str) else qnode.id[0]}"
+            return f" {qnode.ids}"
         elif num_curies > 1:
             return f" [{num_curies} curies]"
         else:

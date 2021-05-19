@@ -4,4 +4,4 @@
 // IMPORTANT: change filename to "config.js" for changes to take effect
 let config = {};
 config.base    = '';
-config.baseAPI = config.base + "api/rtxkg2/v1.0";
+config.baseAPI = config.base + "api/rtxkg2/v1.1";

@@ -13,7 +13,7 @@ fpath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'Knowledge
 
 parser = argparse.ArgumentParser(description="Generate a .pkl file for OMOP_mapping_parallel.py to map concepts", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--NodeDescriptionFile', type=str, help="The path of Node Descriptions file", default='~/RTX/data/KGmetadata/NodeNamesDescriptions_KG2.tsv')
-parser.add_argument("--CurieType", type=str, help="A list of interested curie type", default="['biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:ChemicalSubstance', 'biolink:Drug', 'biolink:DiseaseOrPhenotypicFeature']")
+parser.add_argument("--CurieType", type=str, help="A list of interested curie type", default="['biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:ChemicalSubstance', 'biolink:Drug', 'biolink:DiseaseOrPhenotypicFeature', 'biolink:Metabolite']")
 parser.add_argument('--OutFile', type=str, help="The path of output .pkl file", default='~/RTX/code/ARAX/KnowledgeSources/COHD_local/data/preferred_synonyms_kg2_5_0.pkl')
 args = parser.parse_args()
 
@@ -24,10 +24,14 @@ NodeNamesDescriptions = NodeNamesDescriptions.loc[NodeNamesDescriptions.type.isi
 preferred_synonyms = dict()
 synonymizer = NodeSynonymizer()
 
-for curie in NodeNamesDescriptions['curie']:
+for index, curie in enumerate(NodeNamesDescriptions['curie']):
     preferred_curie = synonymizer.get_canonical_curies(curies=curie)[curie]
     if preferred_curie is None:
         print(f"{curie} doesn't have preferred curies", flush=True)
+        preferred_synonyms[preferred_curie['preferred_curie']] = dict()
+        preferred_synonyms[preferred_curie['preferred_curie']]['preferred_name'] = NodeNamesDescriptions.loc[index, 'name']
+        preferred_synonyms[preferred_curie['preferred_curie']]['preferred_type'] = NodeNamesDescriptions.loc[index, 'type']
+        preferred_synonyms[preferred_curie['preferred_curie']]['synonyms'] = [curie]
     else:
         if preferred_curie['preferred_curie'] not in preferred_synonyms:
             preferred_synonyms[preferred_curie['preferred_curie']] = dict()

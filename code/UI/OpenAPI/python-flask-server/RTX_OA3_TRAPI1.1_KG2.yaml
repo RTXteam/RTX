@@ -1,6 +1,6 @@
 openapi: 3.0.1
 info:
-  description: TRAPI 1.0 endpoint for the NCATS Biomedical Translator KP called RTX KG2
+  description: TRAPI 1.1 endpoint for the NCATS Biomedical Translator KP called RTX KG2
   version: 2.5.2
   title: RTX KG2
   contact:
@@ -18,16 +18,14 @@ info:
       description: >-
         The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
-      url: https://github.com/NCATSTranslator/translator_extensions/blob/\
-        production/x-translator/
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.1.0-beta
+    version: 1.1.0
     externalDocs:
       description: >-
         The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
-      url: https://github.com/NCATSTranslator/translator_extensions/blob/\
-        production/x-trapi/
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-trapi/
 externalDocs:
   description: >-
     Documentation for the NCATS Biomedical Translator Reasoners web services
@@ -210,6 +208,7 @@ components:
         workflow:
           description: A list of operations to be applied
           type: array
+          example: null
           items:
             type: object
         bypass_cache:
@@ -259,6 +258,7 @@ components:
             Container for one or more Message objects or identifiers for one or
             more Messages along with a processing plan and options for how those
             messages should be processed and returned
+          example: null
           allOf:
             - $ref: '#/components/schemas/Operations'
       additionalProperties: true
@@ -301,9 +301,9 @@ components:
         workflow:
           description: A list of operations that were applied
           type: array
+          example: null
           items:
-            oneOf:
-              - $ref: '#/components/schemas/FilterResultsTopN'
+            type: object
         operations:
           description: >-
             Container for one or more Message objects or identifiers for one or
@@ -415,13 +415,13 @@ components:
             e00:
               subject: n00
               object: n01
-              predicate: biolink:physically_interacts_with
+              predicates: [ biolink:physically_interacts_with ]
           nodes:
             n00:
-              id: CHEMBL.COMPOUND:CHEMBL112
-              category: biolink:ChemicalSubstance
+              ids: [ CHEMBL.COMPOUND:CHEMBL112 ]
+              categories: [ biolink:ChemicalSubstance ]
             n01:
-              category: biolink:Protein
+              categories: [ biolink:Protein ]
     LogEntry:
       description: >-
         The LogEntry object contains information useful for tracing
@@ -464,6 +464,7 @@ components:
         - WARNING
         - INFO
         - DEBUG
+      example: DEBUG
     Result:
       type: object
       description: >-

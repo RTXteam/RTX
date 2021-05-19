@@ -25,11 +25,11 @@ from ARAX_query import ARAXQuery
 
 def test_query_by_query_graph_2():
     query = { "message": { "query_graph": { "edges": {
-                "qg2": { "subject": "qg1", "object": "qg0", "predicate": "biolink:physically_interacts_with" }
+                "qg2": { "subject": "qg1", "object": "qg0", "predicates": ["biolink:physically_interacts_with"] }
             },
             "nodes": {
-                "qg0": { "name": "acetaminophen", "id": "CHEMBL.COMPOUND:CHEMBL112", "category": "biolink:ChemicalSubstance" },
-                "qg1": { "name": None, "desc": "Generic protein", "id": None, "category": "biolink:Protein" }
+                "qg0": { "name": "acetaminophen", "ids": ["CHEMBL.COMPOUND:CHEMBL112"], "categories": ["biolink:ChemicalSubstance"] },
+                "qg1": { "name": None, "ids": None, "categories": ["biolink:Protein"] }
             } } } }
     araxq = ARAXQuery()
     araxq.query(query)
@@ -39,7 +39,7 @@ def test_query_by_query_graph_2():
     assert response.status == 'OK'
     message = response.envelope.message
     assert len(message.results) >= 32
-    assert response.envelope.schema_version == '1.0.0'
+    assert response.envelope.schema_version == '1.1.0'
 
 
 if __name__ == "__main__": pytest.main(['-v'])

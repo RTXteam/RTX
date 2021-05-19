@@ -13,6 +13,7 @@ import numpy as np
 import requests
 
 from ARAX_response import ARAXResponse
+from ARAX_resultify import ARAXResultify
 from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
 
@@ -96,7 +97,7 @@ class ARAXMessenger:
         envelope.type = "translator_reasoner_response"
         envelope.reasoner_id = "ARAX"
         envelope.tool_version = RTXConfiguration().version
-        envelope.schema_version = "1.0.0"
+        envelope.schema_version = "1.1.0"
         envelope.status = "OK"
         envelope.description = "Created empty template response"
         envelope.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
@@ -143,11 +144,11 @@ class ARAXMessenger:
                     'description': """Any string that is unique among all QNode key fields, with recommended format n00, n01, n02, etc.
                         If no value is provided, autoincrementing values beginning for n00 are used.""",
                     },
-                'id': {
+                'ids': {
                     'is_required': False,
                     'examples': [ 'DOID:9281', '[UniProtKB:P12345,UniProtKB:Q54321]' ],
                     'type': 'string',
-                    'description': 'Any compact URI (CURIE) (e.g. DOID:9281) (May also be a list like [UniProtKB:P12345,UniProtKB:Q54321])',
+                    'description': 'A list (n >= 1) of compact URI (CURIE) (e.g. [DOID:9281] or [UniProtKB:P12345,UniProtKB:Q54321])',
                     },
                 'name': {
                     'is_required': False,
@@ -155,11 +156,11 @@ class ARAXMessenger:
                     'type': 'string',
                     'description': 'Any name of a bioentity that will be resolved into a CURIE if possible or result in an error if not (e.g. hypertension, insulin)',
                     },
-                'category': {
+                'categories': {
                     'is_required': False,
                     'examples': [ 'protein', 'chemical_substance', 'disease' ],
                     'type': 'ARAXnode',
-                    'description': 'Any valid Translator bioentity category (e.g. protein, chemical_substance, disease)',
+                    'description': 'A list (n >= 1) of valid BioLink bioentity categories (e.g. biolink:Protein, biolink:ChemicalSubstance, biolink:Disease)',
                     },
                 'is_set': {
                     'is_required': False,
@@ -194,9 +195,9 @@ class ARAXMessenger:
         #### Define a complete set of allowed parameters and their defaults
         parameters = {
             'key': None,
-            'id': None,
+            'ids': None,
             'name': None,
-            'category': None,
+            'categories': None,
             'is_set': None,
             'option_group_id': None,
         }
@@ -209,7 +210,7 @@ class ARAXMessenger:
                 parameters[key] = value
 
         #### Check for option_group_id and is_set:
-        if parameters['option_group_id'] is not None and parameters['id'] is None and parameters['name'] is None:
+        if parameters['option_group_id'] is not None and parameters['ids'] is None and parameters['name'] is None:
             if parameters['is_set'] is None:
                 parameters['is_set'] = 'true'
                 response.warning(f"An 'option_group_id' was set to {parameters['option_group_id']}, but 'is_set' was not an included parameter. It must be true when an 'option_group_id' is given, so automatically setting to true. Avoid this warning by explictly setting to true.")
@@ -242,6 +243,9 @@ class ARAXMessenger:
         qnode = QNode()
         if parameters['key'] is not None:
             key = parameters['key']
+            if key in message.query_graph.nodes:
+                response.error(f"Duplicate key '{key}' specified when trying to create a new QNode", error_code="QNodeDuplicateKey")
+                return response
         else:
             key = self.__get_next_free_node_key()
 
@@ -252,36 +256,33 @@ class ARAXMessenger:
         if parameters['is_set'] is not None:
             qnode.is_set = ( parameters['is_set'].lower() == 'true' or parameters['is_set'].lower() == 't' )
 
-        #### If the id is specified, try to find that
-        if parameters['id'] is not None:
+        #### If the ids is specified, try to find that
+        if parameters['ids'] is not None:
 
-            # If the id is a scalar then treat it here as a list of one
-            if isinstance(parameters['id'], str):
-                id_list = [ parameters['id'] ]
+            # If the ids is a scalar then treat it here as a list of one
+            if isinstance(parameters['ids'], str):
+                id_list = [ parameters['ids'] ]
                 is_id_a_list = False
                 if parameters['is_set'] is not None and qnode.is_set is True:
-                    response.error(f"Specified id '{parameters['id']}' is a scalar, but is_set=true, which doesn't make sense", error_code="IdScalarButIsSetTrue")
+                    response.error(f"Specified ids '{parameters['ids']}' is singular, but is_set=true, which doesn't make sense", error_code="IdScalarButIsSetTrue")
                     return response
 
             # Or else set it up as a list
-            elif isinstance(parameters['id'], list):
-                id_list = parameters['id']
+            elif isinstance(parameters['ids'], list):
+                id_list = parameters['ids']
                 is_id_a_list = True
-                qnode.id = []
-                if parameters['is_set'] is None:
-                    response.warning(f"Specified id '{parameters['id']}' is a list, but is_set was not set to true. It must be true in this context, so automatically setting to true. Avoid this warning by explictly setting to true.")
-                    qnode.is_set = True
-                else:
-                    if qnode.is_set == False:
-                        response.warning(f"Specified id '{parameters['id']}' is a list, but is_set=false, which doesn't make sense, so automatically setting to true. Avoid this warning by explictly setting to true.")
-                        qnode.is_set = True
+                if len(id_list) == 1:
+                    if qnode.is_set == True:
+                        response.warning(f"Specified ids '{parameters['ids']}' is singular, but is_set=true, which doesn't make sense, so automatically setting to false. Avoid this warning by not explictly setting to true.")
+                        qnode.is_set = False
 
             # Or if it's neither a list or a string, then error out. This cannot be handled at present
             else:
-                response.error(f"Specified id '{parameters['id']}' is neither a string nor a list. This cannot to handled", error_code="IdNotListOrScalar")
+                response.error(f"Specified ids '{parameters['ids']}' is neither a string nor a list. This cannot to handled", error_code="IdNotListOrScalar")
                 return response
 
             # Loop over the available ids and create the list
+            final_id_list = []
             for id in id_list:
                 response.debug(f"Looking up id {id} in NodeSynonymizer")
                 synonymizer_results = synonymizer.get_canonical_curies(curies=[id])
@@ -289,25 +290,21 @@ class ARAXMessenger:
                 # If nothing was found, we won't bail out, but rather just issue a warning that this id is suspect
                 if synonymizer_results[id] is None:
                     response.warning(f"A node with id {id} is not in our knowledge graph KG2, but will continue with it")
-                    if is_id_a_list:
-                        qnode.id.append(id)
-                    else:
-                        qnode.id = id
+                    final_id_list.append(id)
 
                 # And if it is found, keep the same id but report the preferred id
                 else:
 
                     response.info(f"id {id} is found. Adding it to the qnode")
-                    if is_id_a_list:
-                        qnode.id.append(id)
-                    else:
-                        qnode.id = id
+                    final_id_list.append(id)
 
-                if 'category' in parameters and parameters['category'] is not None:
-                    if isinstance(parameters['category'], str):
-                        qnode.category = parameters['category']
+                qnode.ids = final_id_list
+
+                if 'categories' in parameters and parameters['categories'] is not None:
+                    if isinstance(parameters['categories'], str):
+                        qnode.categories = [ parameters['categories'] ]
                     else:
-                        qnode.category = parameters['category'][0]
+                        qnode.categories = parameters['categories']
 
             message.query_graph.nodes[key] = qnode
             return response
@@ -322,22 +319,28 @@ class ARAXMessenger:
                 response.error(f"A node with name '{name}' is not in our knowledge graph", error_code="UnresolvableNodeName")
                 return response
  
-            qnode.id = synonymizer_results[name]['preferred_curie']
-            response.info(f"Creating QueryNode with id '{qnode.id}' for name '{name}'")
-            if parameters['category'] is not None:
-                qnode.category = parameters['category']
+            qnode.ids = [ synonymizer_results[name]['preferred_curie'] ]
+            response.info(f"Creating QueryNode with ids '{qnode.ids}' for name '{name}'")
+            if parameters['categories'] is not None:
+                if isinstance(parameters['categories'], str):
+                    qnode.categories = [ parameters['categories'] ]
+                else:
+                    qnode.categories = parameters['categories']
             message.query_graph.nodes[key] = qnode
             return response
 
-        #### If the category is specified, just add that category. There should be checking that it is legal. FIXME
-        if parameters['category'] is not None:
-            qnode.category = parameters['category']
+        #### If the categories is specified, just add that categories. There should be checking that it is legal. FIXME
+        if parameters['categories'] is not None:
+            if isinstance(parameters['categories'], str):
+                qnode.categories = [ parameters['categories'] ]
+            else:
+                qnode.categories = parameters['categories']
             if parameters['is_set'] is not None:
                 qnode.is_set = (parameters['is_set'].lower() == 'true')
             message.query_graph.nodes[key] = qnode
             return response
 
-        #### If we get here, it means that all three main parameters are null. Just a generic node with no category or anything. This is okay.
+        #### If we get here, it means that all three main parameters are null. Just a generic node with no categories or anything. This is okay.
         message.query_graph.nodes[key] = qnode
         return response
 
@@ -404,11 +407,11 @@ class ARAXMessenger:
                     'type': 'string',
                     'description': 'key of the target QNode already present in the QueryGraph (e.g. n01, n02)',
                     },
-                'predicate': {
+                'predicates': {
                     'is_required': False,
-                    'examples': [ 'protein', 'physically_interacts_with', 'participates_in' ],
+                    'examples': [ [ 'biolink:physically_interacts_with' ], [ 'biolink:participates_in' ] ],
                     'type': 'ARAXedge',
-                    'description': 'Any valid Translator/BioLink relationship predicate (e.g. physically_interacts_with, participates_in)',
+                    'description': 'A list (n >= 1) of valid BioLink relationship predicates (e.g. [physically_interacts_with], [participates_in])',
                     },
                 'option_group_id': {
                     'is_required': False,
@@ -446,7 +449,7 @@ class ARAXMessenger:
             'key': None,
             'subject': None,
             'object': None,
-            'predicate': None,
+            'predicates': None,
             'option_group_id': None,
             'exclude': None,
         }
@@ -483,6 +486,9 @@ class ARAXMessenger:
         qedge = QEdge()
         if parameters['key'] is not None:
             key = parameters['key']
+            if key in message.query_graph.edges:
+                response.error(f"Duplicate key '{key}' specified when trying to create a new QEdge", error_code="QEdgeDuplicateKey")
+                return response
         else:
             key = self.__get_next_free_edge_key()
 
@@ -509,9 +515,12 @@ class ARAXMessenger:
             response.error(f"While trying to add QEdge, object is a required parameter", error_code="MissingTargetKey")
             return response
 
-        #### Add the predicate if any. Need to verify it's an allowed predicate. FIXME
-        if parameters['predicate'] is not None:
-            qedge.predicate = parameters['predicate']
+        #### Add the predicates if any. Need to verify they are allowed predicates. FIXME
+        if parameters['predicates'] is not None:
+            if isinstance(parameters['predicates'], str):
+                qedge.predicates = [ parameters['predicates'] ]
+            else:
+                qedge.predicates = parameters['predicates']
 
         if parameters['exclude'] is not None:
             if parameters['exclude'] in {'t', 'T', 'true', 'True'}:
@@ -723,13 +732,15 @@ class ARAXMessenger:
         #### Unpack the response content into a dict and dump
         try:
             response_dict = response_content.json()
-            message = self.from_dict(response_dict)
+            envelope = Response().from_dict(response_dict)
         except:
             response.error(f"Error converting response from '{message_uri}' to objects from content", error_code="UnableToParseContent")
             return response
 
         #### Store the decoded message and return response
+        message = envelope.message
         self.message = message
+        self.envelope = envelope
         n_results = 0
         n_qg_nodes = 0
         n_kg_nodes = 0
@@ -740,6 +751,10 @@ class ARAXMessenger:
         if message.knowledge_graph is not None and isinstance(message.knowledge_graph,KnowledgeGraph) and isinstance(message.knowledge_graph.nodes,list):
             n_kg_nodes = len(message.knowledge_graph.nodes)
         response.info(f"Retreived Message with {n_qg_nodes} QueryGraph nodes, {n_kg_nodes} KnowledgeGraph nodes, and {n_results} results")
+        if n_qg_nodes > 0 and n_kg_nodes > 0 and n_results > 0:
+            resultifier = ARAXResultify()
+            response.envelope = envelope
+            resultifier.recompute_qg_keys(response)
         return response
 
 
@@ -755,28 +770,28 @@ class ARAXMessenger:
         if 'query_graph' in message and message['query_graph'] is not None:
             if 'edges' in message['query_graph'] and message['query_graph']['edges'] is not None:
                 for edge_key, edge in message['query_graph']['edges'].items():
-                    if 'predicate' in edge and edge['predicate'] is not None:
-                        if isinstance(edge['predicate'], str):
-                            edge['predicate'] = [ edge['predicate'] ]
+                    if 'predicates' in edge and edge['predicates'] is not None:
+                        if isinstance(edge['predicates'], str):
+                            edge['predicates'] = [ edge['predicates'] ]
 
             #print("Fixing nodes", file=sys.stderr, flush=True)
             if 'nodes' in message['query_graph'] and message['query_graph']['nodes'] is not None:
                 for node_key, node in message['query_graph']['nodes'].items():
-                    if 'category' in node and node['category'] is not None:
-                        if isinstance(node['category'], str):
-                            #eprint(f"node {node_key} category {node['category']}")
-                            node['category'] = [ node['category'] ]
-                    if 'id' in node and node['id'] is not None:
-                        if isinstance(node['id'], str):
-                            #eprint(f"node {node_key} id {node['id']}")
-                            node['id'] = [ node['id'] ]
+                    if 'categories' in node and node['categories'] is not None:
+                        if isinstance(node['categories'], str):
+                            #eprint(f"node {node_key} categories {node['categories']}")
+                            node['categories'] = [ node['categories'] ]
+                    if 'ids' in node and node['ids'] is not None:
+                        if isinstance(node['ids'], str):
+                            #eprint(f"node {node_key} ids {node['ids']}")
+                            node['ids'] = [ node['ids'] ]
 
         if 'knowledge_graph' in message and message['knowledge_graph'] is not None:
             if 'nodes' in message['knowledge_graph'] and message['knowledge_graph']['nodes'] is not None:
                 for node_key, node in message['knowledge_graph']['nodes'].items():
-                    if 'category' in node and node['category'] is not None:
-                        if isinstance(node['category'], str):
-                            node['category'] = [ node['category'] ]
+                    if 'categories' in node and node['categories'] is not None:
+                        if isinstance(node['categories'], str):
+                            node['categories'] = [ node['categories'] ]
 
 
         #eprint("Done")
@@ -885,14 +900,15 @@ def main():
 
     #### Some qnode examples
     parameters_sets = [
-        { 'id': 'DOID:9281'},
-        { 'id': 'Orphanet:673'},
-        { 'name': 'acetaminophen', 'category': 'biolink:ChemicalSubstance' },
-        { 'id': 'NCIT:C198'},
-        { 'id': 'UMLS:C4710278'},
-        { 'category': 'biolink:Protein', 'key': 'n10'},
-        { 'id': ['UniProtKB:P14136','UniProtKB:P35579'] },
-        { 'id': ['UniProtKB:P14136','UniProtKB:P35579'], 'is_set': 'false' },
+        { 'ids': ['DOID:9281']},
+        { 'ids': ['Orphanet:673']},
+        { 'name': 'acetaminophen', 'categories': ['biolink:ChemicalSubstance'] },
+        { 'ids': ['NCIT:C198']},
+        { 'ids': ['UMLS:C4710278']},
+        { 'categories': ['biolink:Protein'], 'key': 'n10'},
+        { 'ids': ['UniProtKB:P14136','UniProtKB:P35579'] },
+        { 'ids': ['UniProtKB:P14136','UniProtKB:P35579'], 'is_set': 'false' },
+        { 'ids': ['UniProtKB:P14136'], 'is_set': 'true' },
     ]
 
     for parameter in parameters_sets:
@@ -905,7 +921,7 @@ def main():
     #### Some qedge examples
     parameters_sets = [
         { 'subject': 'n00', 'object': 'n01' },
-        { 'subject': 'n01', 'object': 'n10', 'predicate': 'treats' },
+        { 'subject': 'n01', 'object': 'n10', 'predicates': [ 'biolink:treats' ] },
    ]
 
     for parameter in parameters_sets:

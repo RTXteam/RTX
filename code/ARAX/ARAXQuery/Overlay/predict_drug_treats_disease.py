@@ -266,7 +266,7 @@ class PredictDrugTreatsDisease:
                 #probability = self.pred.prob_single('ChEMBL:' + source_curie[22:], target_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                 #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                 #    value = probability[0]
-                edge_attribute = EdgeAttribute(type=attribute_type, name=attribute_name, value=str(value), url=url)  # populate the edge attribute
+                edge_attribute = EdgeAttribute(attribute_type_id=attribute_type, original_attribute_name=attribute_name, value=str(value), value_url=url)  # populate the edge attribute
                 if edge_attribute and value != 0:
                     added_flag = True
                     # make the edge, add the attribute
@@ -289,9 +289,9 @@ class PredictDrugTreatsDisease:
                     self.global_iter += 1
                     edge_attribute_list = [
                         edge_attribute,
-                        EdgeAttribute(name="is_defined_by", value=is_defined_by, type="ARAX_TYPE_PLACEHOLDER"),
-                        EdgeAttribute(name="defined_datetime", value=defined_datetime, type="metatype:Datetime"),
-                        EdgeAttribute(name="provided_by", value=provided_by, type="biolink:provided_by"),
+                        EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="ARAX_TYPE_PLACEHOLDER"),
+                        EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                        EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:provided_by"),
                         #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
                         #EdgeAttribute(name="weight", value=weight, type="metatype:Float")
                     ]
@@ -307,7 +307,7 @@ class PredictDrugTreatsDisease:
                 subject_qnode_key = parameters['subject_qnode_key']
                 object_qnode_key = parameters['object_qnode_key']
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, self.message.query_graph, self.response)
-                q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
+                q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
                 self.message.query_graph.edges[relation] = q_edge
             return self.response
 
@@ -318,7 +318,7 @@ class PredictDrugTreatsDisease:
                 curie_to_type = dict()
                 curie_to_name = dict()
                 for node_key, node in self.message.knowledge_graph.nodes.items():
-                    curie_to_type[node_key] = node.category
+                    curie_to_type[node_key] = node.categories
                     curie_to_name[node_key] = node.name
                 # then iterate over the edges and decorate if appropriate
                 for edge_key, edge in self.message.knowledge_graph.edges.items():
@@ -432,7 +432,7 @@ class PredictDrugTreatsDisease:
                     else:
                         continue
                     if value != 0:
-                        edge_attribute = EdgeAttribute(type=attribute_type, name=attribute_name, value=str(value), url=url)  # populate the attribute
+                        edge_attribute = EdgeAttribute(attribute_type_id=attribute_type, original_attribute_name=attribute_name, value=str(value), value_url=url)  # populate the attribute
                         edge.attributes.append(edge_attribute)  # append it to the list of attributes
             except:
                 tb = traceback.format_exc()

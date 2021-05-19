@@ -19,6 +19,7 @@ class Response:
     #### Constructor
     def __init__(self, status='OK', logging_level=WARNING, error_code='OK', message='Normal completion'):
         self.status = status
+        self.http_status = 200
         self.logging_level = logging_level
         self.error_code = error_code
         self.message = message
@@ -68,7 +69,7 @@ class Response:
 
 
     #### Add an error message
-    def error(self, message, error_code='UnknownError'):
+    def error(self, message, error_code='UnknownError', http_status=400):
         """Public method that adds an ERROR level message to the response object logger.
         ERROR level messages must be conveyed to ordinary users usually because a
         crucial subtask could not be successfully completed and successful execution
@@ -82,10 +83,13 @@ class Response:
         :type message: str
         :param error_code: A terse, unique string identifying the error (e.g. 'FileNotFound').
         :type error_code: str
+        :param http_status: Integer HTTP status code to return (e.g. 400, 404, 500, 200).
+        :type error_code: str
         """
         self.__add_message( message, self.ERROR )
         self.n_errors += 1
         self.status = 'ERROR'
+        self.http_status = http_status
         self.error_code = error_code
         self.message = message
 
@@ -129,6 +133,7 @@ class Response:
         if response_to_merge.status != 'OK':
             self.status = response_to_merge.status
             self.error_code = response_to_merge.error_code
+            self.http_code = response_to_merge.http_code
             self.message = response_to_merge.message
 
 

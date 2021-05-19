@@ -83,12 +83,12 @@ def test_gene_to_pathway_issue_9():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "id": "NCBIGENE:1017",
-                        "category":"biolink:Gene"
+                        "ids": ["NCBIGENE:1017"],
+                        "categories": ["biolink:Gene"]
                     },
                     "n1": {
                         
-                        "category": "biolink:Pathway"
+                        "categories": ["biolink:Pathway"]
                     }
                 },
                 "edges": {
@@ -111,11 +111,11 @@ def test_chemicals_to_gene_issue_10():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "id": "UniProtKB:P52788",
-                        "category":"biolink:Gene"
+                        "ids": ["UniProtKB:P52788"],
+                        "categories":["biolink:Gene"]
                     },
                     "n1": {
-                        "category": "biolink:ChemicalSubstance"
+                        "categories": ["biolink:ChemicalSubstance"]
                     }
                 },
                 "edges": {
@@ -138,11 +138,11 @@ def test_named_thing_associated_with_acrocynaosis_issue_12():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "id": "UMLS:C0221347",
-                        "category":"biolink:PhenotypicFeature"
+                        "ids": ["UMLS:C0221347"],
+                        "categories":["biolink:PhenotypicFeature"]
                     },
                     "n1": {
-                        "category": "biolink:NamedThing"
+                        "categories": ["biolink:NamedThing"]
                     }
                 },
                 "edges": {
@@ -165,18 +165,18 @@ def test_chemical_substances_correlated_with_asthma_issue_18():
         "query_graph": {
           "nodes": {
             "n0": {
-              "id": "MONDO:0004979",
-              "category": "biolink:Disease"
+              "ids": ["MONDO:0004979"],
+              "categories": ["biolink:Disease"]
             },
             "n1": {
-              "category": "biolink:ChemicalSubstance"
+              "categories": ["biolink:ChemicalSubstance"]
             }
           },
           "edges": {
             "e01": {
               "subject": "n0",
               "object": "n1",
-              "predicate": "biolink:correlated_with"
+              "predicates": ["biolink:correlated_with"]
             }
           }
         }
@@ -194,17 +194,17 @@ def test_diseases_treated_by_drug_issue_20():
           "edges": {
             "e01": {
               "object": "n0",
-              "predicate": "biolink:treated_by",
+              "predicates": ["biolink:treated_by"],
               "subject": "n1"
             }
           },
           "nodes": {
             "n0": {
-              "category": "biolink:Drug",
-              "id": "DRUGBANK:DB00394"
+              "categories": ["biolink:Drug"],
+              "ids": ["DRUGBANK:DB00394"]
             },
             "n1": {
-              "category": "biolink:Disease"
+              "categories": ["biolink:Disease"]
             }
           }
         }
@@ -222,7 +222,7 @@ def test_chemical_substances_that_down_regulate_STK11_issue_28():
           "edges": {
             "e01": {
               "object": "n0",
-              "predicate": ["biolink:prevents",
+              "predicates": ["biolink:prevents",
                 "biolink:negatively_regulates",
                 "biolink:decreases_secretion_of",
                 "biolink:decreases_secretion_of",
@@ -245,10 +245,10 @@ def test_chemical_substances_that_down_regulate_STK11_issue_28():
           },
           "nodes": {
             "n0": {
-              "id": "HGNC:11389"
+              "ids": ["HGNC:11389"]
             },
             "n1": {
-              "category": "biolink:ChemicalSubstance"
+              "categories": ["biolink:ChemicalSubstance"]
             }
           }
         }
@@ -267,16 +267,16 @@ def test_phenotypes_for_angel_shaped_phalango_epiphyseal_dysplasia_issue_33():
             "e01": {
               "object": "n0",
               "subject": "n1",
-              "predicate":"biolink:has_phenotype"
+              "predicates":["biolink:has_phenotype"]
             }
           },
           "nodes": {
             "n0": {
-              "id": "MONDO:0007114",
-              "category":"biolink:Disease"
+              "ids": ["MONDO:0007114"],
+              "categories":["biolink:Disease"]
             },
             "n1": {
-              "category": "biolink:PhenotypicFeature"
+              "categories": ["biolink:PhenotypicFeature"]
             }
           }
         }

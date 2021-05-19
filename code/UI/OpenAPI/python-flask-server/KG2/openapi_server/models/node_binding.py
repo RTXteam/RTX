@@ -46,7 +46,7 @@ class NodeBinding(Model):
     def id(self):
         """Gets the id of this NodeBinding.
 
-        An instance of NodeBinding is a single KnowledgeGraph Node mapping, identified by the corresponding 'id' object key identifier of the Node within the Knowledge Graph. Instances of NodeBinding may include extra annotation (such annotation is not yet fully standardized).  # noqa: E501
+        A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
         :return: The id of this NodeBinding.
         :rtype: str
@@ -57,7 +57,7 @@ class NodeBinding(Model):
     def id(self, id):
         """Sets the id of this NodeBinding.
 
-        An instance of NodeBinding is a single KnowledgeGraph Node mapping, identified by the corresponding 'id' object key identifier of the Node within the Knowledge Graph. Instances of NodeBinding may include extra annotation (such annotation is not yet fully standardized).  # noqa: E501
+        A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
         :param id: The id of this NodeBinding.
         :type id: str

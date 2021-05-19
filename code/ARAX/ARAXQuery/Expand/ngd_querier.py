@@ -31,7 +31,6 @@ class NGDQuerier:
         self.accepted_qedge_predicates = {"biolink:has_normalized_google_distance_with", "biolink:related_to"}
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
-        self.ngd_edge_attribute_url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -49,9 +48,9 @@ class NGDQuerier:
             return final_kg
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         qedge = query_graph.edges[qedge_key]
-        if qedge.predicate and not set(eu.convert_to_list(qedge.predicate)).intersection(self.accepted_qedge_predicates):
+        if qedge.predicates and not set(qedge.predicates).intersection(self.accepted_qedge_predicates):
             log.error(f"NGD can only expand qedges with these predicates: {self.accepted_qedge_predicates}. QEdge"
-                      f" {qedge_key}'s predicate is: {qedge.predicate}", error_code="UnsupportedQG")
+                      f" {qedge_key}'s predicate is: {qedge.predicates}", error_code="UnsupportedQG")
             return final_kg
 
         # Find potential answers using KG2
@@ -66,10 +65,10 @@ class NGDQuerier:
                                                         f"object={target_qnode_key}"])))
         source_params_str = ", ".join(list(filter(None, [f"key={source_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(source_qnode),
-                                                         self._get_dsl_qnode_category_str(source_qnode)])))
+                                                         self._get_dsl_qnode_categories_str(source_qnode)])))
         target_params_str = ", ".join(list(filter(None, [f"key={target_qnode_key}",
                                                          self._get_dsl_qnode_curie_str(target_qnode),
-                                                         self._get_dsl_qnode_category_str(target_qnode)])))
+                                                         self._get_dsl_qnode_categories_str(target_qnode)])))
         actions_list = [
             f"add_qnode({source_params_str})",
             f"add_qnode({target_params_str})",
@@ -126,13 +125,15 @@ class NGDQuerier:
         ngd_edge.subject = subject
         ngd_edge.object = object
         ngd_edge_key = f"NGD:{subject}--{ngd_edge.predicate}--{object}"
-        ngd_edge.attributes = [Attribute(name=self.ngd_edge_attribute_name,
-                                         type=self.ngd_edge_attribute_type,
-                                         value=ngd_value,
-                                         url=self.ngd_edge_attribute_url)]
-        ngd_edge.attributes += [Attribute(name="provided_by", value="ARAX", type=eu.get_attribute_type("provided_by")),
-                                Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by")),
-                                Attribute(name="publications", value=pmid_list, type=eu.get_attribute_type("publications"))]
+        ngd_edge.attributes = [Attribute(original_attribute_name=self.ngd_edge_attribute_name,
+                                         attribute_type_id=self.ngd_edge_attribute_type,
+                                         value=ngd_value)]
+        ngd_edge.attributes += [Attribute(original_attribute_name="provided_by", value="ARAX",
+                                          attribute_type_id=eu.get_attribute_type("provided_by")),
+                                Attribute(original_attribute_name="is_defined_by", value="ARAX",
+                                          attribute_type_id=eu.get_attribute_type("is_defined_by")),
+                                Attribute(original_attribute_name="publications", value=pmid_list,
+                                          attribute_type_id=eu.get_attribute_type("publications"))]
         return ngd_edge_key, ngd_edge
 
     @staticmethod
@@ -140,8 +141,8 @@ class NGDQuerier:
         ngd_node = Node()
         ngd_node_key = kg2_node_key
         ngd_node.name = kg2_node.name
-        ngd_node.category = kg2_node.category
-        ngd_node.attributes = [attribute for attribute in kg2_node.attributes if attribute.name in {"iri", "description"}]
+        ngd_node.categories = kg2_node.categories
+        ngd_node.attributes = [attribute for attribute in kg2_node.attributes if attribute.original_attribute_name in {"iri", "description"}]
         return ngd_node_key, ngd_node
 
     @staticmethod
@@ -154,17 +155,17 @@ class NGDQuerier:
 
     @staticmethod
     def _get_dsl_qnode_curie_str(qnode: QNode) -> str:
-        curie_str = f"[{', '.join(qnode.id)}]" if isinstance(qnode.id, list) else qnode.id
-        return f"id={curie_str}" if qnode.id else ""
+        curie_str = f"[{', '.join(qnode.ids)}]" if qnode.ids else None
+        return f"ids={curie_str}" if curie_str else ""
 
     @staticmethod
-    def _get_dsl_qnode_category_str(qnode: QNode) -> str:
-        if len(qnode.category) == 0:
+    def _get_dsl_qnode_categories_str(qnode: QNode) -> str:
+        if not qnode.categories:
             return ""
-        elif len(qnode.category) == 1:
-            return f"category={qnode.category[0]}"
+        elif len(qnode.categories) == 1:
+            return f"categories={qnode.categories[0]}"
         else:
-            return f"category=[{', '.join(qnode.category)}]"
+            return f"categories=[{', '.join(qnode.categories)}]"
 
     @staticmethod
     def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):

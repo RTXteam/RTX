@@ -29,8 +29,7 @@ ujson==4.0.2
 treelib==1.6.1
 textstat==0.7.0
 transformers==4.5.1
-git+https://github.com/di2ag/chp_client#egg=chp_client
-git+git://github.com/NCATSTranslator/reasoner-validator@master#egg=reasoner-validator
+reasoner-validator>=1.1.0.1.0.2
 # Other things that you may need to do in python to get required data
 # nltk.download('wordnet')
 # nltk.download('averaged_perceptron_tagger')

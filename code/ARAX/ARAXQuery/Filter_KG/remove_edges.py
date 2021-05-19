@@ -50,7 +50,7 @@ class RemoveEdges:
                 edge_qid_dict[key] = {'subject':q_edge.subject, 'object':q_edge.object}
             # iterate over the edges find the edges to remove
             for key, edge in self.message.knowledge_graph.edges.items():
-                if edge.predicate == edge_params['edge_predicate']:
+                if edge_params['edge_predicate'] == edge.predicate:
                     edges_to_remove.add(key)
                     if edge_params['remove_connected_nodes']:
                         for qedge_key in edge.qedge_keys:
@@ -132,8 +132,8 @@ class RemoveEdges:
                 # TRAPI1.0 hack to allow filtering by old properties that are now attributes
                 if hasattr(edge, 'attributes'):
                     for attribute in edge.attributes:
-                        if attribute.name not in edge_dict:
-                            edge_dict[attribute.name] = attribute.value
+                        if attribute.original_attribute_name not in edge_dict:
+                            edge_dict[attribute.original_attribute_name] = attribute.value
                 if type(edge_dict[edge_params['edge_property']]) == list or type(edge_dict[edge_params['edge_property']]) == set:
                     if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
                         edges_to_remove.add(key)
@@ -235,7 +235,7 @@ class RemoveEdges:
                 if hasattr(edge, 'attributes'):  # check if they have attributes
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute
-                            if attribute.name == edge_params['edge_attribute']:  # check if it's the desired one
+                            if attribute.original_attribute_name == edge_params['edge_attribute']:  # check if it's the desired one
                                 if compare(float(attribute.value), edge_params['threshold']):  # check if it's above/below the threshold
                                     edges_to_remove.add(key)  # mark it to be removed
                                     if edge_params['remove_connected_nodes']:  # if you want to remove the connected nodes, mark those too
@@ -322,7 +322,7 @@ class RemoveEdges:
                 if hasattr(edge, 'attributes'):  # check if they have attributes
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute
-                            if attribute.name == edge_params['edge_attribute']:  # check if it's the desired one
+                            if attribute.original_attribute_name == edge_params['edge_attribute']:  # check if it's the desired one
                                 values.append((key,float(attribute.value), edge.subject, edge.object))
             if len(values) > 0:
                 #print(edge_params)

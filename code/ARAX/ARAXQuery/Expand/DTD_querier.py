@@ -78,8 +78,6 @@ class DTDQuerier:
         self.DTD_threshold = float(self.response.data['parameters']['DTD_threshold'])
         DTD_slow_mode = self.response.data['parameters']['DTD_slow_mode']
         final_kg = QGOrganizedKnowledgeGraph()
-        # Switch QG back to old style where category/predicate can be strings OR lists
-        query_graph = eu.switch_back_to_str_or_list_types(query_graph)
 
         if 0.8 <= self.DTD_threshold <=1:
             if not DTD_slow_mode:
@@ -144,13 +142,13 @@ class DTDQuerier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD database")
         final_kg = QGOrganizedKnowledgeGraph()
-        drug_label_list = ['chemicalsubstance', 'drug']
-        disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature']
+        drug_label_list = ['chemicalsubstance', 'drug', 'biolink:ChemicalSubstance', 'biolink:Drug']
+        disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature', 'biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
         # use for checking the requirement
         source_pass_nodes = None
-        source_category = None
+        source_categories = None
         target_pass_nodes = None
-        target_category = None
+        target_categories = None
 
         qedge = query_graph.edges[qedge_key]
         source_qnode_key = qedge.subject
@@ -159,18 +157,18 @@ class DTDQuerier:
         target_qnode = query_graph.nodes[target_qnode_key]
 
         # check if both ends of edge have no curie
-        if (source_qnode.id is None) and (target_qnode.id is None):
+        if (source_qnode.ids is None) and (target_qnode.ids is None):
             log.error(f"Both ends of edge {qedge_key} are None", error_code="BadEdge")
             return final_kg
 
         # check if the query nodes are drug or disease
-        if source_qnode.id is not None:
+        if source_qnode.ids is not None:
 
-            if type(source_qnode.id) is str:
-                source_pass_nodes = [source_qnode.id]
+            if type(source_qnode.ids) is str:
+                source_pass_nodes = [source_qnode.ids]
             else:
-                source_pass_nodes = source_qnode.id
-            has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
+                source_pass_nodes = source_qnode.ids
+            has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.ids, log)
             if has_error:
                 return final_kg
             else:
@@ -183,31 +181,31 @@ class DTDQuerier:
                     else:
                         log.warning(f"All potential categories of these nodes {not_pass_nodes} don't contain drug or disease")
                 else:
-                    if type(source_qnode.id) is str:
-                        log.error(f"All potential categories of {source_qnode.id} don't contain drug or disease", error_code="CategoryError")
+                    if type(source_qnode.ids) is str:
+                        log.error(f"All potential categories of {source_qnode.ids} don't contain drug or disease", error_code="CategoryError")
                         return final_kg
                     else:
-                        log.error(f"All potential categories of {source_qnode.id} don't contain drug or disease", error_code="CategoryError")
+                        log.error(f"All potential categories of {source_qnode.ids} don't contain drug or disease", error_code="CategoryError")
                         return final_kg
         else:
             try:
-                category = source_qnode.category.replace('biolink:','').replace('_','').lower()
+                categories = [category.replace('biolink:','').replace('_','').lower() for category in source_qnode.categories]
             except AttributeError:
                 log.error(f"The category of query node {source_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
                 return final_kg
-            if (category in drug_label_list) or (category in disease_label_list):
-                source_category = category
+            if len(set(categories).intersection(set(drug_label_list))) > 0 or len(set(categories).intersection(set(disease_label_list))) > 0:
+                source_categories = categories
             else:
                 log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be drug or disase", error_code="CategoryError")
                 return final_kg
 
-        if target_qnode.id is not None:
+        if target_qnode.ids is not None:
 
-            if type(target_qnode.id) is str:
-                target_pass_nodes = [target_qnode.id]
+            if type(target_qnode.ids) is str:
+                target_pass_nodes = [target_qnode.ids]
             else:
-                target_pass_nodes = target_qnode.id
-            has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
+                target_pass_nodes = target_qnode.ids
+            has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.ids, log)
             if has_error:
                 return final_kg
             else:
@@ -220,20 +218,20 @@ class DTDQuerier:
                     else:
                         log.warning(f"All potential categories of these nodes {not_pass_nodes} don't contain drug or disease")
                 else:
-                    if type(target_qnode.id) is str:
-                        log.error(f"All potential categories of {target_qnode.id} don't contain drug or disease", error_code="CategoryError")
+                    if type(target_qnode.ids) is str:
+                        log.error(f"All potential categories of {target_qnode.ids} don't contain drug or disease", error_code="CategoryError")
                         return final_kg
                     else:
-                        log.error(f"All potential categories of {target_qnode.id} don't contain drug or disease", error_code="CategoryError")
+                        log.error(f"All potential categories of {target_qnode.ids} don't contain drug or disease", error_code="CategoryError")
                         return final_kg
         else:
             try:
-                category = target_qnode.category.replace('biolink:','').replace('_','').lower()
+                categories = [category.replace('biolink:','').replace('_','').lower() for category in target_qnode.categories]
             except AttributeError:
                 log.error(f"The category of query node {target_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
                 return final_kg
-            if (category in drug_label_list) or (category in disease_label_list):
-                target_category = category
+            if len(set(categories).intersection(set(drug_label_list))) > 0 or len(set(categories).intersection(set(disease_label_list))) > 0:
+                target_categories = categories
             else:
                 log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug or disase", error_code="CategoryError")
                 return final_kg
@@ -318,7 +316,7 @@ class DTDQuerier:
                 source_category_temp = 'drug'
             else:
                 source_category_temp = 'disease'
-            if target_category in drug_label_list:
+            if len(set(target_categories).intersection(set(drug_label_list))) > 0:
                 target_category_temp = 'drug'
             else:
                 target_category_temp = 'disease'
@@ -331,7 +329,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[source_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and target_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, row[0], "probability_treats", row[2])
@@ -346,7 +344,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[source_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and target_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], source_curie, "probability_treats", row[2])
@@ -378,7 +376,7 @@ class DTDQuerier:
                 target_category_temp = 'drug'
             else:
                 target_category_temp = 'disease'
-            if source_category in drug_label_list:
+            if len(set(source_categories).intersection(set(set(drug_label_list)))) > 0:
                 source_category_temp = 'drug'
             else:
                 source_category_temp = 'disease'
@@ -391,7 +389,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[target_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and source_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0 ]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, row[0], "probability_treats", row[2])
@@ -406,7 +404,7 @@ class DTDQuerier:
                         normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
                         res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[target_curie]['preferred_curie']])
                         if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and source_category in [item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]]
+                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0 ]
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], target_curie, "probability_treats", row[2])
@@ -429,7 +427,6 @@ class DTDQuerier:
 
                 return final_kg
 
-
     def _answer_query_using_DTD_model(self, query_graph: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD model")
@@ -438,9 +435,9 @@ class DTDQuerier:
         disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
         # use for checking the requirement
         source_pass_nodes = None
-        source_category = None
+        source_categories = None
         target_pass_nodes = None
-        target_category = None
+        target_categories = None
 
         qedge = query_graph.edges[qedge_key]
         source_qnode_key = qedge.subject
@@ -449,17 +446,17 @@ class DTDQuerier:
         target_qnode = query_graph.nodes[target_qnode_key]
 
         # check if both ends of edge have no curie
-        if (source_qnode.id is None) and (target_qnode.id is None):
+        if (source_qnode.ids is None) and (target_qnode.ids is None):
             log.error(f"Both ends of edge {qedge_key} are None", error_code="BadEdge")
             return final_kg
 
         # check if the query nodes are drug or disease
-        if source_qnode.id is not None:
+        if source_qnode.ids is not None:
 
-            if type(source_qnode.id) is str:
-                source_pass_nodes = [source_qnode.id]
+            if type(source_qnode.ids) is str:
+                source_pass_nodes = [source_qnode.ids]
             else:
-                source_pass_nodes = source_qnode.id
+                source_pass_nodes = source_qnode.ids
             # *The code below was commented because we don't need to check the type of input nodes #issue1240
             # has_error, pass_nodes, not_pass_nodes = self._check_id(source_qnode.id, log)
             # if has_error:
@@ -483,7 +480,7 @@ class DTDQuerier:
         else:
             pass
             # try:
-            #     category = source_qnode.category.replace('biolink:','').replace('_','').lower()
+            #     category = source_qnode.categories.replace('biolink:','').replace('_','').lower()
             # except AttributeError:
             #     log.error(f"The category of query node {source_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
             # *The code below was commented because we don't need to check the type of input nodes #issue1240
@@ -493,12 +490,12 @@ class DTDQuerier:
             #     log.error(f"The category of query node {source_qnode_key} is unsatisfiable", error_code="CategoryError")
             #     return final_kg, edge_to_nodes_map
 
-        if target_qnode.id is not None:
+        if target_qnode.ids is not None:
 
-            if type(target_qnode.id) is str:
-                target_pass_nodes = [target_qnode.id]
+            if type(target_qnode.ids) is str:
+                target_pass_nodes = [target_qnode.ids]
             else:
-                target_pass_nodes = target_qnode.id
+                target_pass_nodes = target_qnode.ids
             # *The code below was commented because we don't need to check the type of input nodes #issue1240
             # has_error, pass_nodes, not_pass_nodes = self._check_id(target_qnode.id, log)
             # if has_error:
@@ -522,7 +519,7 @@ class DTDQuerier:
         else:
             pass
             # try:
-            #     category = target_qnode.category.replace('biolink:','').replace('_','').lower()
+            #     category = target_qnode.categories.replace('biolink:','').replace('_','').lower()
             # except AttributeError:
             #     log.error(f"The category of query node {target_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
             # # *The code below was commented because we don't need to check the type of input nodes #issue1240
@@ -721,6 +718,8 @@ class DTDQuerier:
             results_table = neo4j_results[0]
             column_names = [column_name for column_name in results_table]
             res = [(neo4j_edge.get(source_qnode_key),neo4j_edge.get(target_qnode_key)) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
+
+
             if len(res) != 0:
                 count, res, all_probabilities = self.pred.prob_all(res)
 
@@ -780,8 +779,8 @@ class DTDQuerier:
 
     def _check_id(self, qnode_id, log):
 
-        drug_label_list = ['chemicalsubstance','drug']
-        disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
+        drug_label_list = ['chemicalsubstance','drug', 'biolink:ChemicalSubstance', 'biolink:Drug']
+        disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature', 'biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
 
         if type(qnode_id) is str:
             normalizer_result = self.synonymizer.get_canonical_curies(curies=[qnode_id], return_all_categories=True)
@@ -820,6 +819,7 @@ class DTDQuerier:
                 return [False, pass_nodes, not_pass_nodes]
 
     def _convert_one_hop_query_graph_to_cypher_query(self, qg: QueryGraph, enforce_directionality: bool, log: ARAXResponse) -> str:
+
         qedge_key = next(qedge_key for qedge_key in qg.edges)
         qedge = qg.edges[qedge_key]
         log.debug(f"Generating cypher for edge {qedge_key} query graph")
@@ -836,13 +836,13 @@ class DTDQuerier:
             where_fragments = []
             for qnode_key in [subject_qnode_key, object_qnode_key]:
                 qnode = qg.nodes[qnode_key]
-                if qnode.id and isinstance(qnode.id, list) and len(qnode.id) > 1:
-                    where_fragments.append(f"{qnode_key}.id in {qnode.id}")
-                if qnode.category:
-                    qnode.category = eu.convert_to_list(qnode.category)
-                    if len(qnode.category) > 1:
+                if qnode.ids and isinstance(qnode.ids, list) and len(qnode.ids) > 1:
+                    where_fragments.append(f"{qnode_key}.id in {qnode.ids}")
+                if qnode.categories:
+                    qnode.categories = eu.convert_to_list(qnode.categories)
+                    if len(qnode.categories) > 1:
                         # Create where fragment that looks like 'n00:biolink:Disease OR n00:biolink:PhenotypicFeature..'
-                        category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.category]
+                        category_sub_fragments = [f"{qnode_key}:`{category}`" for category in qnode.categories]
                         category_where_fragment = f"({' OR '.join(category_sub_fragments)})"
                         where_fragments.append(category_where_fragment)
             where_clause = f"WHERE {' AND '.join(where_fragments)}" if where_fragments else ""
@@ -880,9 +880,9 @@ class DTDQuerier:
         type = "EDAM:data_0951"
         url = "https://doi.org/10.1101/765305"
 
-        swagger_edge.attributes = [Attribute(type=type, name=name, value=str(value), url=url),
-                                   Attribute(name="provided_by", value="ARAX/DTD", type=eu.get_attribute_type("provided_by")),
-                                   Attribute(name="is_defined_by", value="ARAX", type=eu.get_attribute_type("is_defined_by"))]
+        swagger_edge.attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
+                                   Attribute(original_attribute_name="provided_by", value="ARAX/DTD", attribute_type_id=eu.get_attribute_type("provided_by")),
+                                   Attribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id=eu.get_attribute_type("is_defined_by"))]
 
         return swagger_edge_key, swagger_edge
 
@@ -891,7 +891,10 @@ class DTDQuerier:
         swagger_node_key = node_key
         swagger_node.name = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_name']
         swagger_node.description = None
-        swagger_node.category = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category']
+        if self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category'] is not None:
+            swagger_node.categories = [self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category']]
+        else:
+            swagger_node.categories = None
 
         return swagger_node_key, swagger_node
 
@@ -926,9 +929,9 @@ class DTDQuerier:
     def _get_cypher_for_query_node(qnode_key: str, qg: QueryGraph) -> str:
         qnode = qg.nodes[qnode_key]
         # Add in node label if there's only one category
-        category_cypher = f":`{qnode.category[0]}`" if isinstance(qnode.category, list) and len(qnode.category) == 1 else ""
-        if qnode.id and (isinstance(qnode.id, str) or len(qnode.id) == 1):
-            curie = qnode.id if isinstance(qnode.id, str) else qnode.id[0]
+        category_cypher = f":`{qnode.categories[0]}`" if isinstance(qnode.categories, list) and len(qnode.categories) == 1 else ""
+        if qnode.ids and (isinstance(qnode.ids, str) or len(qnode.ids) == 1):
+            curie = qnode.ids if isinstance(qnode.ids, str) else qnode.ids[0]
             curie_cypher = f" {{id:'{curie}'}}"
         else:
             curie_cypher = ""
@@ -938,7 +941,7 @@ class DTDQuerier:
     @staticmethod
     def _get_cypher_for_query_edge(qedge_key: str, qg: QueryGraph, enforce_directionality: bool) -> str:
         qedge = qg.edges[qedge_key]
-        qedge_type_cypher = f":`{qedge.predicate}`" if qedge.predicate else ""
+        qedge_type_cypher = f":`{qedge.predicates}`" if qedge.predicates else ""
         full_qedge_cypher = f"-[{qedge_key}{qedge_type_cypher}]-"
         if enforce_directionality:
             full_qedge_cypher += ">"
