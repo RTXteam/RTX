@@ -73,7 +73,7 @@ class NGDQuerier:
             f"add_qnode({source_params_str})",
             f"add_qnode({target_params_str})",
             f"add_qedge({qedge_params_str})",
-            f"expand(kp=ARAX/KG2)",
+            f"expand(kp=RTX-KG2)",
             f"return(message=true, store=false)",
         ]
         kg2_response, kg2_message = self._run_arax_query(actions_list, log)

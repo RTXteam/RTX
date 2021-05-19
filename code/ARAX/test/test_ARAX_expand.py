@@ -147,7 +147,7 @@ def test_720_multiple_qg_ids_in_different_results():
         "add_qedge(key=e00, subject=n00, object=n01)",
         "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:molecularly_interacts_with)",
         "add_qedge(key=e02, subject=n02, object=n03, predicates=biolink:molecularly_interacts_with)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -170,7 +170,7 @@ def test_bte_query():
 def test_single_node_query_with_synonyms():
     actions_list = [
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL1771)",
-        "expand(node_key=n00, kp=ARAX/KG2)",
+        "expand(node_key=n00, kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -179,7 +179,7 @@ def test_single_node_query_with_synonyms():
 def test_single_node_query_without_synonyms():
     actions_list = [
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL1276308)",
-        "expand(kp=ARAX/KG2, use_synonyms=false)",
+        "expand(kp=RTX-KG2, use_synonyms=false)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -188,7 +188,7 @@ def test_single_node_query_without_synonyms():
 def test_single_node_query_with_no_results():
     actions_list = [
         "add_qnode(key=n00, ids=FAKE:curie)",
-        "expand(kp=ARAX/KG2, continue_if_no_results=true)",
+        "expand(kp=RTX-KG2, continue_if_no_results=true)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -198,7 +198,7 @@ def test_single_node_query_with_no_results():
 def test_single_node_query_with_list():
     actions_list = [
         "add_qnode(key=n00, ids=[CHEMBL.COMPOUND:CHEMBL108, CHEMBL.COMPOUND:CHEMBL110])",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -213,7 +213,7 @@ def test_query_that_returns_multiple_provided_bys():
         "add_qnode(categories=biolink:Disease, key=n2)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -229,7 +229,7 @@ def test_branched_query():
         "add_qedge(subject=n01, object=n00, key=e00)",
         "add_qedge(subject=n02, object=n00, key=e01)",
         "add_qedge(subject=n00, object=n03, key=e02)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -241,7 +241,7 @@ def test_no_synonym_query_with_duplicate_nodes_in_results():
         "add_qnode(key=n00, ids=DOID:14330)",
         "add_qnode(key=n01, categories=biolink:Disease)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG2, use_synonyms=false)",
+        "expand(kp=RTX-KG2, use_synonyms=false)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -254,8 +254,8 @@ def test_query_that_expands_same_edge_twice():
         "add_qnode(key=n00, ids=DOID:9065, categories=biolink:Disease)",
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:treats)",
-        "expand(kp=ARAX/KG2)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -268,7 +268,7 @@ def test_771_continue_if_no_results_query():
         "add_qnode(ids=NOTAREALCURIE, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n02, object=n01, key=e01)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG2, continue_if_no_results=true)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2, continue_if_no_results=true)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -282,7 +282,7 @@ def test_774_continue_if_no_results_query():
         "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n1)",
         "add_qnode(ids=DOID:8295, key=n2)",
         "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(edge_key=e1, kp=ARAX/KG2, continue_if_no_results=True)",
+        "expand(edge_key=e1, kp=RTX-KG2, continue_if_no_results=True)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -294,7 +294,7 @@ def test_curie_list_query():
         "add_qnode(ids=[DOID:6419, DOID:3717, DOID:11406], key=n00)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -307,7 +307,7 @@ def test_query_with_curies_on_both_ends():
         "add_qnode(ids=MONDO:0005393, key=n00)",  # Gout
         "add_qnode(ids=UMLS:C0018100, key=n01)",  # Antigout agents
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -321,7 +321,7 @@ def test_query_with_intermediate_curie_node():
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -332,7 +332,7 @@ def test_847_dont_expand_curie_less_edge():
         "add_qnode(key=n00, categories=biolink:Protein)",
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(edge_key=e00, kp=ARAX/KG2)",
+        "expand(edge_key=e00, kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True)
@@ -344,7 +344,7 @@ def test_deduplication_and_self_edges():
         "add_qnode(ids=UMLS:C0004572, key=n00)",  # Babesia
         "add_qnode(key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=ARAX/KG2)",
+        "expand(edge_key=e00, kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -367,7 +367,7 @@ def test_889_missing_curies():
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -380,7 +380,7 @@ def test_873_consider_both_gene_and_protein():
         "add_qnode(ids=DOID:9452, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id_protein, edges_by_qg_id_protein = _run_query_and_do_standard_testing(actions_list_protein)
@@ -388,7 +388,7 @@ def test_873_consider_both_gene_and_protein():
         "add_qnode(ids=DOID:9452, key=n00)",
         "add_qnode(categories=biolink:Gene, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id_gene, edges_by_qg_id_gene = _run_query_and_do_standard_testing(actions_list_gene)
@@ -400,7 +400,7 @@ def test_987_override_node_categories():
         "add_qnode(name=DOID:8398, key=n00)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:has_phenotype, key=e00)",
-        "expand(edge_key=e00, kp=ARAX/KG2)",
+        "expand(edge_key=e00, kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -559,7 +559,7 @@ def test_exclude_edge_parallel():
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, key=e01)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -573,7 +573,7 @@ def test_exclude_edge_parallel():
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, exclude=true, key=e01)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
@@ -674,7 +674,7 @@ def test_option_group_query_one_hop():
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:positively_regulates)",
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:correlated_with, option_group_id=1)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -690,7 +690,7 @@ def test_option_group_query_no_results():
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:related_to)",
         "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicates=biolink:overlaps)",
         "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicates=biolink:affects)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -701,7 +701,7 @@ def test_category_and_predicate_format():
         "add_qnode(ids=UniProtKB:P42857, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:positively_regulates_entity_to_entity)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -720,7 +720,7 @@ def test_issue_1212():
         "add_qnode(ids=FAKE:Curie, categories=biolink:Drug, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=ARAX/KG2, continue_if_no_results=true)",
+        "expand(kp=RTX-KG2, continue_if_no_results=true)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -732,7 +732,7 @@ def test_issue_1314():
         "add_qnode(key=n0, ids=DRUGBANK:DB00394, categories=biolink:Drug)",
         "add_qnode(key=n1, categories=biolink:Disease)",
         "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:treated_by)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -754,7 +754,7 @@ def test_issue_1236_a():
         "add_qnode(ids=NCBIGene:1803, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:gene_associated_with_condition)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_kg2_only, edges_by_qg_id_kg2_only = _run_query_and_do_standard_testing(actions_list_kg2_only)
@@ -778,7 +778,7 @@ def test_kg2_predicate_hierarchy_reasoning():
         "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, categories=biolink:Drug, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:interacts_with)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -794,7 +794,7 @@ def test_issue_1373_pinned_curies():
         "add_qnode(categories=biolink:Drug, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:physically_interacts_with)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)

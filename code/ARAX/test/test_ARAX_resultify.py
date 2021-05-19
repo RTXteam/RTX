@@ -907,7 +907,7 @@ def test_issue731b():
         "add_qnode(categories=biolink:Disease, key=n2)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(edge_key=[e0,e1], kp=ARAX/KG2)",
+        "expand(edge_key=[e0,e1], kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1015,7 +1015,7 @@ def test_issue720_2():
         "add_qnode(key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(use_synonyms=false, kp=ARAX/KG2)",
+        "expand(use_synonyms=false, kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1214,7 +1214,7 @@ def test_issue1119_c():
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:positively_regulates)",
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:correlated_with, option_group_id=1)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
     ]
     response, message = _do_arax_query(actions)
@@ -1230,7 +1230,7 @@ def test_issue1119_c():
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:positively_regulates)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
     ]
     response, message_without_option_group = _do_arax_query(actions)
@@ -1242,7 +1242,7 @@ def test_issue1119_c():
         "add_qnode(key=n00, ids=DOID:3312)",
         f"add_qnode(key=n01, ids=[{', '.join([node_key for node_key, node in message.knowledge_graph.nodes.items() if 'n01' in node.qnode_keys])}])",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:correlated_with)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         # Note: skipping resultify here due to issue #1152
     ]
     response, message_option_edge_only = _do_arax_query(actions)
@@ -1261,7 +1261,7 @@ def test_issue1119_d():
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:correlated_with, option_group_id=1)",
         "add_qedge(key=e02, subject=n00, object=n01, predicates=biolink:affects, option_group_id=2)",
         "add_qedge(key=e03, subject=n00, object=n01, exclude=True, predicates=biolink:contraindicated_for)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
     ]
     response, message = _do_arax_query(actions)
@@ -1287,7 +1287,7 @@ def test_issue1119_e():
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:related_to)",
         "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicates=biolink:affects)",
         "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicates=biolink:physically_interacts_with)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1306,7 +1306,7 @@ def test_issue1119_e():
         "add_qedge(key=group1_e1, subject=n0, object=group1_n1, option_group_id=1, predicates=biolink:affects)",
         "add_qedge(key=group1_e2, subject=group1_n1, object=n1, option_group_id=1, predicates=biolink:physically_interacts_with)",
         "add_qedge(key=group1_ex, subject=group1_n2, object=group1_n1, option_group_id=1, exclude=True)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "resultify()",
         "return(message=true, store=false)"
     ]

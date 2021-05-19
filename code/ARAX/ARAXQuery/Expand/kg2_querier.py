@@ -31,7 +31,7 @@ class KG2Querier:
         self.response = response_object
         self.enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
         self.use_synonyms = self.response.data['parameters'].get('use_synonyms')
-        if input_kp == "ARAX/KG2":
+        if input_kp == "RTX-KG2":
             if self.use_synonyms:
                 self.kg_name = "KG2c"
             else:

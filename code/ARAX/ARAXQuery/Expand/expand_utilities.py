@@ -234,7 +234,7 @@ def get_kp_preferred_prefixes(kp_name: str) -> Union[Dict[str, str], None]:
 
 def kp_supports_category_lists(kp_name: str) -> bool:
     # TRAPI 1.0 specifies qnode.category can be a list, but not all KPs support that
-    list_support = {"ARAX/KG2": True,
+    list_support = {"RTX-KG2": True,
                     "MolePro": False,
                     "GeneticsKP": False,
                     "BTE": False}
@@ -243,7 +243,7 @@ def kp_supports_category_lists(kp_name: str) -> bool:
 
 def kp_supports_predicate_lists(kp_name: str) -> bool:
     # TRAPI 1.0 specifies qedge.predicate can be a list, but not all KPs support that
-    list_support = {"ARAX/KG2": True,
+    list_support = {"RTX-KG2": True,
                     "MolePro": False,
                     "GeneticsKP": False,
                     "BTE": False}
@@ -252,7 +252,7 @@ def kp_supports_predicate_lists(kp_name: str) -> bool:
 
 def kp_supports_none_for_predicate(kp_name: str) -> bool:
     # This information isn't captured in TRAPI anywhere currently, so hardcoding it
-    none_predicates = {"ARAX/KG2": True,
+    none_predicates = {"RTX-KG2": True,
                        "MolePro": True,
                        "GeneticsKP": False,
                        "BTE": True,
@@ -265,7 +265,7 @@ def kp_supports_none_for_predicate(kp_name: str) -> bool:
 
 def kp_supports_none_for_category(kp_name: str) -> bool:
     # This information isn't captured in TRAPI anywhere currently, so hardcoding it
-    none_categories = {"ARAX/KG2": True,
+    none_categories = {"RTX-KG2": True,
                        "MolePro": False,
                        "GeneticsKP": False,
                        "BTE": False,
@@ -278,7 +278,7 @@ def kp_supports_none_for_category(kp_name: str) -> bool:
 
 def get_kps_that_support_curie_lists() -> Set[str]:
     # This isn't really a standard in TRAPI yet, but some KPs can do it
-    return {"ARAX/KG2", "NGD"}
+    return {"RTX-KG2", "NGD"}
 
 
 def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
@@ -455,7 +455,7 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "BTE": "https://api.bte.ncats.io/v1",
         "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.0",
         "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
-        "ARAX/KG2": "https://arax.ncats.io/api/rtxkg2/v1.1",
+        "RTX-KG2": "https://arax.ncats.io/api/rtxkg2/v1.1",
         "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
         "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
         "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
@@ -469,7 +469,7 @@ def get_kp_infores_curie(kp_name: str) -> Union[str, None]:
         "BTE": "infores:biothings_explorer",
         "GeneticsKP": "infores:genetics_kp",
         "MolePro": "infores:molecular_kp",
-        "ARAX/KG2": "infores:rtx_kg2_kp",
+        "RTX-KG2": "infores:rtx_kg2_kp",
         "ARAX/KG1": "infores:rtx_kg1_kp",
         "CHP": "infores:connections_hypothesis_kp",
         "ClinicalRiskKP": "infores:clinical_risk_kp",
