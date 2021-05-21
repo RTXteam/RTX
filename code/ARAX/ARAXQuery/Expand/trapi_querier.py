@@ -265,11 +265,11 @@ class TRAPIQuerier:
 
         # Send the query to the KP
         query_graph = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
-        if not self.kp_name == "ARAX/KG2":  # We're using 1.1 for KG2 API, but not other KPs yet (until deadline)
+        if not self.kp_name == "RTX-KG2":  # We're using 1.1 for KG2 API, but not other KPs yet (until deadline)
             query_graph = self._switch_qg_to_trapi_1_0(query_graph)
         body = {'message': {'query_graph': query_graph}}
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
-        if self.force_local and self.kp_name == 'ARAX/KG2':
+        if self.force_local and self.kp_name == 'RTX-KG2':
             self.log.debug(f"{self.kp_name}: Pretending to send query to KG2 API (really it will be run locally)")
             arax_query = ARAXQuery()
             kg2_araxquery_response = arax_query.query(body, mode='RTXKG2')
@@ -370,7 +370,7 @@ class TRAPIQuerier:
     def _get_query_timeout_length(self, qg: QueryGraph) -> int:
         # Returns the number of seconds we should wait for a response based on the number of curies in the QG
         num_total_curies = sum([len(qnode.ids) for qnode in qg.nodes.values() if qnode.ids])
-        if self.kp_name == "ARAX/KG2":
+        if self.kp_name == "RTX-KG2":
             return 600
         elif self.user_specified_kp:  # This can be smaller since we don't send multi-curie queries to other KPs yet
             return 60

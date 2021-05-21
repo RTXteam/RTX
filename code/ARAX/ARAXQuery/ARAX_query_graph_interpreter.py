@@ -205,7 +205,16 @@ class ARAXQueryGraphInterpreter:
             response.data['araxi_commands'] = new_araxi_commands
             return response
 
-        response.error("QueryGraphInterpreter cannot interpret this QueryGraph", error_code="QueryGraphInterpreterUnsupportedGraph")
+        # response.error("QueryGraphInterpreter cannot interpret this QueryGraph", error_code="QueryGraphInterpreterUnsupportedGraph")
+
+        # If we got here, then no templates matches, so try to assign a bland program and hope for the best
+        response.warning("QueryGraphInterpreter cannot match this QueryGraph to a known template, just running a default template")
+        response.data['araxi_commands'] = [
+            'expand()',
+            'resultify()',
+            'filter_results(action=limit_number_of_results, max_results=100)'
+        ]
+
         return response
 
 

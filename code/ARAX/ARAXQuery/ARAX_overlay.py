@@ -305,7 +305,7 @@ Use cases include:
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
-predict_drug_treats_disease utilizes a machine learning model (trained on KP ARAX/KG2C) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+predict_drug_treats_disease utilizes a machine learning model (trained on KP RTX-KG2C) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
 For more information about how this model was trained and how it performs, please see this publication (https://doi.org/10.1101/765305) for the version trained on KG1 which used node2vec for its
 embeddings. The current version uses KG2C; publication in preparation.
 The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name 'probability_treats').

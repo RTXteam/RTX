@@ -45,7 +45,6 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     qg_edge_tuples = tuple(qg_nx.edges(keys=True, data=True))
     qg_edge_key_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
     for key, edge_binding_list in result.edge_bindings.items():
-        # FIXME: EWD: there's a problem here, but I'm baffled by what this is supposed to be doing
         for edge_binding in edge_binding_list:
             kg_edge = kg_edge_id_to_edge[edge_binding.id]
             if kg_edge.attributes is not None:

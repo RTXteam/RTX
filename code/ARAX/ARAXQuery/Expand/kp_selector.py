@@ -44,7 +44,7 @@ class KPSelector:
             if self._triple_is_in_predicates_response(kp, predicates_dict, sub_category_list, predicate_list, obj_category_list):
                 accepting_kps.add(kp)
             # Also check the reverse direction for KG2, since it actually ignores edge direction
-            elif kp == "ARAX/KG2" and self._triple_is_in_predicates_response(kp, predicates_dict, obj_category_list, predicate_list, sub_category_list):
+            elif kp == "RTX-KG2" and self._triple_is_in_predicates_response(kp, predicates_dict, obj_category_list, predicate_list, sub_category_list):
                 accepting_kps.add(kp)
 
         kps_to_return = self._select_best_kps(accepting_kps, qg)
@@ -91,7 +91,7 @@ class KPSelector:
             chosen_kps = chosen_kps.intersection(eu.get_kps_that_support_curie_lists())
 
         # Always hit up KG2 for now (until its /predicates is made more comprehensive. it fails fast anyway)
-        chosen_kps.add("ARAX/KG2")
+        chosen_kps.add("RTX-KG2")
 
         # Don't use BTE if this is a curie-to-curie query (they have a bug with such queries currently)
         if all(qnode.ids for qnode in qg.nodes.values()):
@@ -120,6 +120,12 @@ class KPSelector:
             if missing_kps:
                 self.log.debug(f"Missing meta info for {missing_kps}; will try to get this info")
                 meta_map = self._regenerate_meta_map(missing_kps, meta_map)
+
+        # Make sure the map doesn't contain any 'stale' KPs
+        stale_kps = set(meta_map).difference(self.all_kps)
+        for stale_kp in stale_kps:
+            del meta_map[stale_kp]
+
         return meta_map
 
     def _regenerate_meta_map(self, kps: Optional[Set[str]] = None, meta_map: Optional[Dict[str, dict]] = None):
@@ -187,7 +193,7 @@ class KPSelector:
         # NGD should have same subject/object combinations as KG2, but only a single predicate for now
         ngd_predicates = ["biolink:has_normalized_google_distance_with"]
         ngd_predicates_dict = dict()
-        for subject_category, objects_dict in meta_map.get("ARAX/KG2").items():
+        for subject_category, objects_dict in meta_map.get("RTX-KG2").items():
             ngd_predicates_dict[subject_category] = {object_category: ngd_predicates for object_category in objects_dict}
 
         # CHP Expand can only answer a subset of what's in their /predicates endpoint, so we'll hardcode it here

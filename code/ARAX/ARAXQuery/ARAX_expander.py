@@ -85,8 +85,8 @@ class ARAXExpander:
                     "use_synonyms": self.use_synonyms_parameter_info
                 }
             },
-            "ARAX/KG2": {
-                "dsl_command": "expand(kp=ARAX/KG2)",
+            "RTX-KG2": {
+                "dsl_command": "expand(kp=RTX-KG2)",
                 "description": "This command reaches out to the RTX KG2 knowledge graph to find all bioentity subpaths "
                                "that satisfy the query graph. If use_synonyms=true, it uses the KG2canonicalized "
                                "('KG2c') Neo4j instance; otherwise, the regular KG2 Neo4j instance is used.",
@@ -344,9 +344,9 @@ class ARAXExpander:
             return response
         parameters = self._set_and_validate_parameters(kp, input_parameters, log)
 
-        # Handle situation where 'ARAX/KG2c' is entered as the kp (technically invalid, but we won't error out)
-        if kp and parameters['kp'].upper() == "ARAX/KG2C":
-            parameters['kp'] = "ARAX/KG2"
+        # Handle situation where 'RTX-KG2c' is entered as the kp (technically invalid, but we won't error out)
+        if kp and parameters['kp'].upper() == "RTX-KG2C":
+            parameters['kp'] = "RTX-KG2"
             if not parameters['use_synonyms']:
                 log.warning(f"KG2c is only used when use_synonyms=true; overriding use_synonyms to True")
                 parameters['use_synonyms'] = True
@@ -462,7 +462,7 @@ class ARAXExpander:
 
         # Expand any specified nodes
         if input_qnode_keys:
-            kp_to_use = parameters["kp"] if user_specified_kp else "ARAX/KG2"  # Only KG2 does single-node queries
+            kp_to_use = parameters["kp"] if user_specified_kp else "RTX-KG2"  # Only KG2 does single-node queries
             for qnode_key in input_qnode_keys:
                 answer_kg = self._expand_node(qnode_key, kp_to_use, continue_if_no_results, query_graph, use_synonyms,
                                               mode, user_specified_kp, force_local, log)
@@ -530,7 +530,7 @@ class ARAXExpander:
         elif kp_to_use == 'NGD':
             from Expand.ngd_querier import NGDQuerier
             kp_querier = NGDQuerier(log)
-        elif (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
+        elif (kp_to_use == 'RTX-KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
             from Expand.kg2_querier import KG2Querier
             kp_querier = KG2Querier(log, kp_to_use)
         else:
@@ -546,7 +546,7 @@ class ARAXExpander:
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
-        if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
+        if use_synonyms and kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated
             answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
@@ -567,9 +567,9 @@ class ARAXExpander:
             return answer_kg
 
         # Answer the query using the proper KP (only our own KPs answer single-node queries)
-        valid_kps_for_single_node_queries = ["ARAX/KG1", "ARAX/KG2"]
+        valid_kps_for_single_node_queries = ["ARAX/KG1", "RTX-KG2"]
         if kp_to_use in valid_kps_for_single_node_queries:
-            if (kp_to_use == 'ARAX/KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
+            if (kp_to_use == 'RTX-KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
@@ -585,7 +585,7 @@ class ARAXExpander:
                               error_code="UnfulfilledQGID")
                     return answer_kg
 
-            if use_synonyms and kp_to_use != 'ARAX/KG2':  # KG2c is already deduplicated
+            if use_synonyms and kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated
                 answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
             return answer_kg
         else:
@@ -1045,7 +1045,7 @@ class ARAXExpander:
     def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], log: ARAXResponse) -> Dict[str, any]:
         parameters = {"kp": kp}
         if not kp:
-            kp = "ARAX/KG2"  # We'll use a standard set of parameters (like for KG2)
+            kp = "RTX-KG2"  # We'll use a standard set of parameters (like for KG2)
         for kp_parameter_name, info_dict in self.kp_command_definitions[kp]["parameters"].items():
             if info_dict["type"] == "boolean":
                 parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))

@@ -68,7 +68,7 @@ def test_error():
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:contraindicated_for)",
-            "expand(edge_key=e00, kp=ARAX/KG2)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
             "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:contraindicated_for, remove_connected_nodes=t)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
@@ -180,7 +180,7 @@ def test_remove_property_known_attributes():
         "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
-        "expand(kp=ARAX/KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
+        "expand(kp=RTX-KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
         "filter_kg(action=remove_edges_by_property,edge_property=provided_by,property_value=SEMMEDDB:,remove_connected_nodes=false)",
         "resultify()",
         "filter_results(action=limit_number_of_results, max_results=30)",
@@ -198,7 +198,7 @@ def  test_remove_attribute_known_attributes():
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG2)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
         "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
@@ -209,6 +209,38 @@ def  test_remove_attribute_known_attributes():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
+
+def test_provided_by_filter():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
+        "add_qnode(categories=biolink:Gene, key=n1)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
+        "expand(kp=RTX-KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
+        "filter_kg(action=remove_edges_by_property,edge_property=biolink:original_source,property_value=infores:semmeddb,remove_connected_nodes=false)",
+        "resultify()",
+        #"filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    count1 = len(message.results)
+    assert count1 == 0
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
+        "add_qnode(categories=biolink:Gene, key=n1)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
+        "expand(kp=RTX-KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
+        #"filter_kg(action=remove_edges_by_property,edge_property=biolink:original_source,property_value=infores:semmeddb,remove_connected_nodes=false)",
+        "resultify()",
+        #"filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    count2 = len(message.results)
+    assert count2 > count1
 
 if __name__ == "__main__":
     pytest.main(['-v'])

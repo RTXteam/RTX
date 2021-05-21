@@ -54,10 +54,14 @@ class ComputeJaccard:
             for edge in message.knowledge_graph.edges.values():
                 if edge.subject in intermediate_nodes:  # if subject is intermediate
                     if edge.object in end_node_to_intermediate_node_set:
-                        end_node_to_intermediate_node_set[edge.object].add((edge.subject, edge.predicate))  # add subject
+                        # end_node_to_intermediate_node_set[edge.object].add((edge.subject, edge.predicate))  # add subjectend_node_to_intermediate_node_set[edge.object].add((edge.subject, edge.predicate))
+                        # FW: Old way was to add in unique predicate, node id pairs but then count total number of intermediate nodes.
+                        # I've now changed this to add only node ids on both but we could change back but instead count all pairs for the demoninator.
+                        end_node_to_intermediate_node_set[edge.object].add(edge.subject)
                 elif edge.object in intermediate_nodes:  # if object is intermediate
                     if edge.subject in end_node_to_intermediate_node_set:
-                        end_node_to_intermediate_node_set[edge.subject].add((edge.object, edge.predicate))  # add object
+                        # end_node_to_intermediate_node_set[edge.subject].add((edge.object, edge.predicate))  # add object
+                        end_node_to_intermediate_node_set[edge.subject].add(edge.object)
 
             # now compute the actual jaccard indexes
             denom = len(intermediate_nodes)

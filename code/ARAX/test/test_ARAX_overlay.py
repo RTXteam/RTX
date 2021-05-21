@@ -571,7 +571,7 @@ def test_overlay_exposures_data_virtual():
     query = {"operations": {"actions": [
         "add_qnode(name=CHEMBL.COMPOUND:CHEMBL635, key=n0)",
         "add_qnode(name=MESH:D052638, key=n1)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "overlay(action=overlay_exposures_data, virtual_relation_label=E1, subject_qnode_key=n0, object_qnode_key=n1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -588,7 +588,7 @@ def test_overlay_exposures_data_attribute():
         "add_qnode(name=MONDO:0012607, key=n0)",
         "add_qnode(name=MONDO:0010940, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "overlay(action=overlay_exposures_data)",
         "resultify()",
         "return(message=true, store=false)",
@@ -605,7 +605,7 @@ def test_overlay_clinical_info_no_ids():
         "create_message",
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(name=Sotos syndrome, key=n1)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
         "overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=C2,subject_qnode_key=n0,object_qnode_key=n1)",
         "overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=C3,subject_qnode_key=n0,object_qnode_key=n1)",
@@ -630,7 +630,7 @@ def test_missing_ngd_pmids():
         "add_qedge(subject=n0, object=n1, key=e0)",
         "add_qnode(categories=[biolink:ChemicalSubstance,biolink:Drug], key=n2)",
         "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(kp=ARAX/KG2)",
+        "expand(kp=RTX-KG2)",
         "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
         "overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n0, object_qnode_key=n2)",
@@ -658,6 +658,38 @@ def test_missing_ngd_pmids():
         if 'ngd' in edge_dict and 'pubs' in edge_dict:
             if edge_dict['pubs'] == []:
                 assert edge_dict['ngd'] == 'inf'
+
+@pytest.mark.slow
+def test_jaccard_not_above_1():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(key=N0,ids=chembl.compound:CHEMBL787)",
+        "add_qnode(key=N1,categories=biolink:Protein)",
+        "add_qedge(key=E0,subject=N0,object=N1,predicates=biolink:physically_interacts_with)",
+        "add_qnode(key=N2,categories=biolink:ChemicalSubstance)",
+        "add_qedge(key=E2,subject=N1,object=N2)",
+        "expand(kp=RTX-KG2)",
+        "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=V1,subject_qnode_key=N0,object_qnode_key=N1)",
+        "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=V2,subject_qnode_key=N1,object_qnode_key=N2)",
+        "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=V3,subject_qnode_key=N0,object_qnode_key=N2)",
+        "overlay(action=compute_jaccard,start_node_key=N0,intermediate_node_key=N1,end_node_key=N2,virtual_relation_label=VJ)",
+        "resultify()",
+        #"filter_results(action=limit_number_of_results,max_results=100,prune_kg=true)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    print(response.show())
+    assert response.status == 'OK'
+    edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
+    assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
+    jaccard_edges = [x for x in message.knowledge_graph.edges.values() if x.relation == "VJ"]
+    assert len(jaccard_edges) > 0
+    for edge in jaccard_edges:
+        assert hasattr(edge, 'attributes')
+        assert edge.attributes
+        assert edge.attributes[0].original_attribute_name == 'jaccard_index'
+        assert edge.attributes[0].value >= 0
+        assert edge.attributes[0].value <= 1
 
 
 if __name__ == "__main__":
