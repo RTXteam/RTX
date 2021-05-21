@@ -242,5 +242,33 @@ def test_provided_by_filter():
     count2 = len(message.results)
     assert count2 > count1
 
+@pytest.mark.slow
+def test_stats_error_int_threshold():
+    query = {"operations": {"actions": [
+        "create_message",
+        # Multiple sclerosis -> chemical substance with "related_to" from Clinical Risk KP
+        "add_qnode(ids=MONDO:0005301, key=n0)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:related_to)",
+        "expand(kp=ClinicalRiskKP,edge_key=e0)",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=10)",
+        # Then look for proteins that are shared with these chemical substances and MS
+        "add_qnode(categories=biolink:Protein, key=n2, is_set=True)",
+        "add_qedge(subject=n0, object=n2, key=e1)",
+        "add_qedge(subject=n1, object=n2, key=e2)",
+        "expand(edge_key=[e1,e2])",
+        # rank drugs by Jaccard
+        "overlay(action=compute_jaccard,start_node_key=n0,intermediate_node_key=n2,end_node_key=n1,virtual_relation_label=J1)",
+        "filter_kg(action=remove_edges_by_stats,edge_attribute=jaccard_index,type=n, threshold=10,remove_connected_nodes=true,qnode_key=n2)",
+        "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
+        "overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n0, object_qnode_key=n2)",
+        "resultify()",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
 if __name__ == "__main__":
     pytest.main(['-v'])
