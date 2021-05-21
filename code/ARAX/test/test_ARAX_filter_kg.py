@@ -210,5 +210,37 @@ def  test_remove_attribute_known_attributes():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
 
+def test_provided_by_filter():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
+        "add_qnode(categories=biolink:Gene, key=n1)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
+        "expand(kp=RTX-KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
+        "filter_kg(action=remove_edges_by_property,edge_property=biolink:original_source,property_value=infores:semmeddb,remove_connected_nodes=false)",
+        "resultify()",
+        #"filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    count1 = len(message.results)
+    assert count1 == 0
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
+        "add_qnode(categories=biolink:Gene, key=n1)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
+        "expand(kp=RTX-KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
+        #"filter_kg(action=remove_edges_by_property,edge_property=biolink:original_source,property_value=infores:semmeddb,remove_connected_nodes=false)",
+        "resultify()",
+        #"filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    count2 = len(message.results)
+    assert count2 > count1
+
 if __name__ == "__main__":
     pytest.main(['-v'])

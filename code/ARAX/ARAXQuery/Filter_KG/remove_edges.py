@@ -132,8 +132,10 @@ class RemoveEdges:
                 # TRAPI1.0 hack to allow filtering by old properties that are now attributes
                 if hasattr(edge, 'attributes'):
                     for attribute in edge.attributes:
-                        if attribute.original_attribute_name not in edge_dict:
+                        if hasattr(attribute, "original_attribute_name") and attribute.original_attribute_name not in edge_dict:
                             edge_dict[attribute.original_attribute_name] = attribute.value
+                        if hasattr(attribute, "attribute_type_id") and attribute.attribute_type_id not in edge_dict:
+                            edge_dict[attribute.attribute_type_id] = attribute.value
                 if type(edge_dict[edge_params['edge_property']]) == list or type(edge_dict[edge_params['edge_property']]) == set:
                     if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
                         edges_to_remove.add(key)
@@ -235,7 +237,7 @@ class RemoveEdges:
                 if hasattr(edge, 'attributes'):  # check if they have attributes
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute
-                            if attribute.original_attribute_name == edge_params['edge_attribute']:  # check if it's the desired one
+                            if (hasattr(attribute, "original_attribute_name") and attribute.original_attribute_name == edge_params['edge_attribute']) or (hasattr(attribute, "attribute_type_id") and attribute.attribute_type_id == edge_params['edge_attribute']):  # check if it's the desired one
                                 if compare(float(attribute.value), edge_params['threshold']):  # check if it's above/below the threshold
                                     edges_to_remove.add(key)  # mark it to be removed
                                     if edge_params['remove_connected_nodes']:  # if you want to remove the connected nodes, mark those too
@@ -322,7 +324,7 @@ class RemoveEdges:
                 if hasattr(edge, 'attributes'):  # check if they have attributes
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute
-                            if attribute.original_attribute_name == edge_params['edge_attribute']:  # check if it's the desired one
+                            if (hasattr(attribute, "original_attribute_name") and attribute.original_attribute_name == edge_params['edge_attribute']) or (hasattr(attribute, "attribute_type_id") and attribute.attribute_type_id == edge_params['edge_attribute']):  # check if it's the desired one
                                 values.append((key,float(attribute.value), edge.subject, edge.object))
             if len(values) > 0:
                 #print(edge_params)

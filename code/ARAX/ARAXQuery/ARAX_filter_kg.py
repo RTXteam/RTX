@@ -352,7 +352,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 for x in message.knowledge_graph.edges.values():
                     if x.attributes:
                         for attr in x.attributes:
-                            attribute_names.append(attr.original_attribute_name)
+                            if hasattr(attr, "original_attribute_name"):
+                                attribute_names.append(attr.original_attribute_name)
+                            if hasattr(attr, "attribute_type_id"):
+                                attribute_names.append(attr.attribute_type_id)      
                 response.debug(f"Number of edges in KG by attribute {Counter(attribute_names)}")
         return response
 
@@ -522,10 +525,16 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                     if edge.attributes:
                         for attribute in edge.attributes:
                             if isinstance(attribute.value, Hashable):
-                                known_attributes.add(attribute.original_attribute_name)
+                                if hasattr(attribute, "original_attribute_name"):
+                                    known_attributes.add(attribute.original_attribute_name)
+                                if hasattr(attribute, "attribute_type_id"):
+                                    known_attributes.add(attribute.attribute_type_id)
                                 known_values.add(attribute.value)
                             elif isinstance(attribute.value, list) or isinstance(attribute.value, set):
-                                known_attributes.add(attribute.original_attribute_name)
+                                if hasattr(attribute, "original_attribute_name"):
+                                    known_attributes.add(attribute.original_attribute_name)
+                                if hasattr(attribute, "attribute_type_id"):
+                                    known_attributes.add(attribute.attribute_type_id)
                                 for val in attribute.value:
                                     known_values.add(val)
 
@@ -602,7 +611,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 if hasattr(edge, 'attributes'):
                     if edge.attributes:
                         for attribute in edge.attributes:
-                            known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute, "original_attribute_name"):
+                                known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute, "attribute_type_id"):
+                                known_attributes.add(attribute.attribute_type_id)  
             # print(known_attributes)
             allowable_parameters = {'action': {'remove_edges_by_attribute'},
                                     'edge_attribute': known_attributes,
@@ -692,7 +704,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 if hasattr(edge, 'attributes'):
                     if edge.attributes:
                         for attribute in edge.attributes:
-                            known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute, "original_attribute_name"):
+                                known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute, "attribute_type_id"):
+                                known_attributes.add(attribute.attribute_type_id) 
             # print(known_attributes)
             allowable_parameters = {'action': {'remove_edges_by_stats'},
                                     'edge_attribute': known_attributes,
