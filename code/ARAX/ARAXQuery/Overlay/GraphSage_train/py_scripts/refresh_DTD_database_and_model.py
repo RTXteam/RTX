@@ -9,7 +9,7 @@ def refresh_drug(curie, synonymizer):
 
     if curie is not None:
         res = synonymizer.get_canonical_curies(curie)
-        if res[curie] is not None and res[curie]['preferred_category'] in ['biolink:Drug','biolink:ChemicalSubstance']:
+        if res[curie] is not None and res[curie]['preferred_category'] in ['biolink:Drug','biolink:ChemicalSubstance','biolink:Metabolite']:
             return res[curie]['preferred_curie']
         else:
             return None
