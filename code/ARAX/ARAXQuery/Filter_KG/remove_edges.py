@@ -334,6 +334,7 @@ class RemoveEdges:
                     values.sort(key=lambda x:x[1])
                     if edge_params['top']:
                         values.reverse()
+                    edge_params['threshold'] = int(edge_params['threshold'])
                     values = values[edge_params['threshold']:]
                     #vals = [x[1] for x in values]
                     #print(np.min(vals),np.max(vals))

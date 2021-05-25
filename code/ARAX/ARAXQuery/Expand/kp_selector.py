@@ -120,6 +120,12 @@ class KPSelector:
             if missing_kps:
                 self.log.debug(f"Missing meta info for {missing_kps}; will try to get this info")
                 meta_map = self._regenerate_meta_map(missing_kps, meta_map)
+
+        # Make sure the map doesn't contain any 'stale' KPs
+        stale_kps = set(meta_map).difference(self.all_kps)
+        for stale_kp in stale_kps:
+            del meta_map[stale_kp]
+
         return meta_map
 
     def _regenerate_meta_map(self, kps: Optional[Set[str]] = None, meta_map: Optional[Dict[str, dict]] = None):
