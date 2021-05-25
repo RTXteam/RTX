@@ -1,3 +1,6 @@
+# THIS CODE HAS BEEN MOVED TO ITS OWN REPOSITORY. https://github.com/RTXteam/RTX-KG2
+### Please do all development work over there.
+<details><summary> Click here to view the old readme anyway. </summary>
 # KG2: the second-generation RTX knowledge graph
 
 KG2 is the second-generation knowledge graph for the
@@ -1005,6 +1008,7 @@ David Koslicki, Eric Deutsch, Yao Yao, Jared Roach, Chris Mungall, Tom Conlin, M
 Chunlei Wu, Harold Solbrig, Will Byrd, Michael Patton, Jim Balhoff, Chunyu Ma, Chris Bizon, and 
 Deepak Unni.
 
+
 ## Funding
 National Center for Advancing Translational Sciences (award number OT2TR002520).
-
+</details>
