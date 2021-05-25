@@ -67,13 +67,13 @@ In creating KG2c, edges from the regular KG2 are remapped to use only 'preferred
     1. If you wish to upload your eventual output KG2c files to S3:
         1. Install AWS CLI: `sudo apt-get install -y awscli`
         1. And configure it: `aws configure`
-1. Locally modify `kg2c_config.json` (in `RTX/code/kg2/canonicalized/`) for your particular needs
+1. Locally modify `kg2c_config.json` (in `RTX/code/kg2c/`) for your particular needs
     - Most importantly, be sure to specify the KG2 version you want to build this KG2c from
     - Make sure the Biolink model version specified matches that used by the KG2 you specified
     - Indicate whether or not you want a new NodeSynonymizer to be built
         - If you do **not** want a new `NodeSynonymizer` to be built (i.e., you already have a synonymizer made from the KG2 this KG2c will be built from), ensure your synonymizer file is in `RTX/code/ARAX/NodeSynonymizer/` and is named `node_synonymizer.sqlite`
 1. Then build KG2c (should take around 5-10 hours and 200GB of RAM):
-    - `python3 RTX/code/kg2/canonicalized/build_kg2c.py`
+    - `python3 RTX/code/kg2c/build_kg2c.py`
 
 In the end, KG2c will be created and stored in multiple file formats, including TSVs ready for import into Neo4j.
 
@@ -84,17 +84,17 @@ These instructions assume Neo4j is not already installed and that you are hostin
 (1) Clone the GitHub repository into your home directory
 ```
 cd ~
-git clone https://github.com/RTXteam/RTX.git
+git clone https://github.com/RTXteam/RTX-KG2.git
 ```
 
 (2) Setup the instance for Neo4j
 ```
-bash -x RTX/code/kg2/setup-kg2-neo4j.sh
+bash -x RTX-KG2/setup-kg2-neo4j.sh
 ```
 
-(3) Load the latest KG2c into Neo4j
+(3) Load the latest KG2c into Neo4j, by running this script out of the RTX repo:
 ```
-bash -x RTX/code/kg2/canonicalized/tsv-to-neo4j-canonicalized.sh
+bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
 ```
 
 # Contact
