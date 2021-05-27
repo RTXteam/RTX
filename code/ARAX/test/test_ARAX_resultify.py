@@ -637,8 +637,8 @@ def test09():
     actions = [
         "add_qnode(name=DOID:731, key=n00, categories=biolink:Disease, is_set=false)",
         "add_qnode(categories=biolink:PhenotypicFeature, is_set=false, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=ARAX/KG1)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:has_phenotype)",
+        "expand(edge_key=e00, kp=RTX-KG2)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "filter_results(action=limit_number_of_results, max_results=100)",
         "return(message=true, store=false)"
@@ -661,7 +661,7 @@ def test_example1():
         "add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=qg1, categories=biolink:Protein)",
         "add_qedge(subject=qg1, object=qg0, key=qe0)",
-        "expand(edge_key=qe0, kp=ARAX/KG1)",
+        "expand(edge_key=qe0, kp=RTX-KG2)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)"
     ]
@@ -782,13 +782,11 @@ def test_issue680():
         "add_qnode(ids=DOID:14330, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
-        "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
-        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)",
     ]
@@ -820,7 +818,7 @@ def test_issue686a():
     # Tests that an error is thrown when an invalid parameter is passed to resultify
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=ARAX/KG1)',
+        'expand(kp=RTX-KG2)',
         'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
         "return(message=true, store=false)"
     ]
@@ -832,7 +830,7 @@ def test_issue686b():
     # Tests that resultify can be called with no parameters passed in
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=ARAX/KG1)',
+        'expand(kp=RTX-KG2)',
         'resultify()',
         "return(message=true, store=false)"
     ]
@@ -844,7 +842,7 @@ def test_issue686c():
     # Tests that setting ignore_edge_direction to an invalid value results in an error
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=ARAX/KG1)',
+        'expand(kp=RTX-KG2)',
         'resultify(ignore_edge_direction=foo)',
         "return(message=true, store=false)"
     ]
@@ -856,7 +854,7 @@ def test_issue687():
     # Tests that ignore_edge_direction need not be specified
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=ARAX/KG1)',
+        'expand(kp=RTX-KG2)',
         'resultify(debug=true)',
         "return(message=true, store=false)"
     ]
@@ -996,7 +994,7 @@ def test_issue720_1():
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=ARAX/KG1)",
+        "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1035,18 +1033,18 @@ def test_issue720_3():
         "add_qedge(key=e00, subject=n00, object=n01)",
         "add_qedge(key=e01, subject=n01, object=n02)",
         "add_qedge(key=e02, subject=n02, object=n03)",
-        "expand(use_synonyms=false, kp=ARAX/KG1)",
+        "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    snca_id = "UniProtKB:P37840"
+    aldh181 = "UniProtKB:P00352"
     found_result_where_syna_is_n01_and_not_n03 = False
     found_result_where_syna_is_n03_and_not_n01 = False
     for result in message.results:
-        syna_as_n01 = any(node_binding for node_binding in result.node_bindings["n01"] if node_binding.id == snca_id)
-        syna_as_n03 = any(node_binding for node_binding in result.node_bindings["n03"] if node_binding.id == snca_id)
+        syna_as_n01 = any(node_binding for node_binding in result.node_bindings["n01"] if node_binding.id == aldh181)
+        syna_as_n03 = any(node_binding for node_binding in result.node_bindings["n03"] if node_binding.id == aldh181)
         if syna_as_n01 and not syna_as_n03:
             found_result_where_syna_is_n01_and_not_n03 = True
         elif syna_as_n03 and not syna_as_n01:
@@ -1087,7 +1085,7 @@ def test_issue833_extraneous_intermediate_nodes():
 def test_single_node():
     actions = [
         "add_qnode(name=ibuprofen, key=n00)",
-        "expand(node_key=n00, kp=ARAX/KG1)",
+        "expand(node_key=n00, kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1158,9 +1156,9 @@ def test_issue1119_a():
     actions = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:indicated_for, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, key=e01)",
-        "expand(kp=ARAX/KG1)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, key=e01)",
+        "expand(kp=RTX-KG2)",
         "resultify()"
     ]
     response, message = _do_arax_query(actions)
@@ -1172,9 +1170,9 @@ def test_issue1119_a():
     actions = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:indicated_for, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, exclude=true, key=e01)",
-        "expand(kp=ARAX/KG1)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=ex0)",
+        "expand(kp=RTX-KG2)",
         "resultify()"
     ]
     kryptonite_response, kryptonite_message = _do_arax_query(actions)
@@ -1191,11 +1189,11 @@ def test_issue1119_b():
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:treats)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "add_qnode(categories=biolink:Pathway, key=n03)",
-        "add_qedge(subject=n01, object=n03, key=e02, exclude=true)",
-        "expand(kp=ARAX/KG1)",
+        "add_qedge(subject=n01, object=n03, key=e02, predicates=biolink:participates_in, exclude=true)",
+        "expand(kp=RTX-KG2)",
         "resultify()"
     ]
     response, message = _do_arax_query(actions)
@@ -1319,12 +1317,12 @@ def test_issue1119_e():
 
 def test_issue1146_a():
     actions = [
-        "add_qnode(key=n0, ids=MONDO:0001475, categories=biolink:Disease)",
+        "add_qnode(key=n0, ids=MONDO:0008380, categories=biolink:Disease)",
         "add_qnode(key=n2, categories=biolink:ChemicalSubstance)",
         "add_qnode(key=n1, categories=biolink:Protein, is_set=true)",
         "add_qedge(key=e0, subject=n2, object=n1, predicates=biolink:physically_interacts_with)",
-        "add_qedge(key=e1, subject=n1, object=n0)",
-        "expand(kp=ARAX/KG1)",
+        "add_qedge(key=e1, subject=n1, object=n0, predicates=biolink:causes)",
+        "expand(kp=RTX-KG2)",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n0, object_qnode_key=n2)",
         "resultify(debug=true)",
         "filter_results(action=limit_number_of_results, max_results=4)",
@@ -1350,7 +1348,7 @@ def test_disconnected_qg():
         "add_qnode(name=acetaminophen, key=n01)",
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(key=e00, subject=n01, object=n02)",
-        "expand(kp=ARAX/KG1)",
+        "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
