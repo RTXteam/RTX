@@ -584,20 +584,22 @@ def test_exclude_edge_parallel():
 
 @pytest.mark.slow
 def test_exclude_edge_perpendicular():
+    n02_curies = ", ".join(["CHEMBL.COMPOUND:CHEMBL114655", "CHEMBL.COMPOUND:CHEMBL32800"])
+    exclude_curies = ", ".join(["CHEMBL.COMPOUND:CHEMBL114655"])
     # First run a query without any kryptonite edges to get a baseline
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        f"add_qnode(categories=biolink:ChemicalSubstance, key=n02, ids=[{n02_curies}])",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "add_qnode(categories=biolink:Pathway, key=n03)",
-        "add_qedge(subject=n01, object=n03, key=e02)",
-        "expand(kp=ARAX/KG1)",
+        f"add_qnode(categories=biolink:Drug, key=nx0, ids=[{exclude_curies}], option_group_id=1)",
+        "add_qedge(subject=n01, object=nx0, key=ex0, option_group_id=1)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    nodes_used_by_kryptonite_edge = eu.get_node_keys_used_by_edges(edges_by_qg_id["e02"])
+    nodes_used_by_kryptonite_edge = eu.get_node_keys_used_by_edges(edges_by_qg_id["ex0"])
     n01_nodes_to_blow_away = set(nodes_by_qg_id["n01"]).intersection(nodes_used_by_kryptonite_edge)
     assert n01_nodes_to_blow_away
 
@@ -605,17 +607,17 @@ def test_exclude_edge_perpendicular():
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        f"add_qnode(categories=biolink:ChemicalSubstance, key=n02, ids=[{n02_curies}])",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "add_qnode(categories=biolink:Pathway, key=n03)",
-        "add_qedge(subject=n01, object=n03, key=e02, exclude=true)",
-        "expand(kp=ARAX/KG1)",
+        f"add_qnode(categories=biolink:Drug, key=nx0, ids=[{exclude_curies}])",
+        "add_qedge(subject=n01, object=nx0, key=ex0, exclude=true)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
     assert not n01_nodes_to_blow_away.intersection(set(nodes_by_qg_id_not["n01"]))
-    assert "e02" not in edges_by_qg_id_not and "n03" not in nodes_by_qg_id_not
+    assert "ex0" not in edges_by_qg_id_not and "nx0" not in nodes_by_qg_id_not
 
 
 @pytest.mark.slow
@@ -624,28 +626,28 @@ def test_exclude_edge_ordering():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:indicated_for, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, exclude=true, key=e01)",
-        "expand(kp=ARAX/KG1, edge_key=e00)",
-        "expand(kp=ARAX/KG1, edge_key=e01)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=e01)",
+        "expand(kp=RTX-KG2, edge_key=e00)",
+        "expand(kp=RTX-KG2, edge_key=e01)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_a, edges_by_qg_id_a = _run_query_and_do_standard_testing(actions_list)
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:indicated_for, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, exclude=true, key=e01)",
-        "expand(kp=ARAX/KG1)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=e01)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_b, edges_by_qg_id_b = _run_query_and_do_standard_testing(actions_list)
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, exclude=true, key=e01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:indicated_for, key=e00)",
-        "expand(kp=ARAX/KG1)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=e01)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_c, edges_by_qg_id_c = _run_query_and_do_standard_testing(actions_list)
@@ -659,9 +661,9 @@ def test_exclude_edge_no_results():
     actions = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:indicated_for, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:not_a_real_edge_type, exclude=true, key=e01)",
-        "expand(kp=ARAX/KG1)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
