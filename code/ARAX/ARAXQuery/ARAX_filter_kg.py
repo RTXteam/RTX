@@ -25,9 +25,9 @@ class ARAXFilterKG:
             'remove_edges_by_std_dev',
             'remove_edges_by_percentile',
             'remove_edges_by_top_n',
-            'remove_edges_by_property',
-            'remove_nodes_by_category',
             'remove_nodes_by_property',
+            'remove_nodes_by_category',
+            'remove_edges_by_discrete_attribute',
             'remove_orphaned_nodes',
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
@@ -211,16 +211,16 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "qnode_key": self.qnode_key_info
                 }
             },
-            "remove_edges_by_property": {
-                "dsl_command": "filter_kg(action=remove_edges_by_property)",
+            "remove_edges_by_discrete_attribute": {
+                "dsl_command": "filter_kg(action=remove_edges_by_discrete_attribute)",
                 "description": """
-`remove_edges_by_property` removes edges from the knowledge graph (KG) based on a given edge property.
+`remove_edges_by_discrete_attribute` removes edges from the knowledge graph (KG) based on a given dicrete edge property or attribute.
 Use cases include:
                 
-* removing all edges that were provided by a certain knowledge provider (KP) via `edge_property=provided, property_value=Pharos` to remove all edges provided by the KP Pharos.
-* removing all edges that connect to a certain node via `edge_property=subject, property_value=DOID:8398`
-* removing all edges with a certain relation via `edge_property=relation, property_value=upregulates`
-* removing all edges provided by another ARA via `edge_property=is_defined_by, property_value=ARAX/RTX`
+* removing all edges that were provided by a certain knowledge provider (KP) via `edge_attribute=biolink:original_source, value=infores:semmeddb` to remove all edges provided by SemMedDB.
+* removing all edges that connect to a certain node via `edge_attribute=subject, value=DOID:8398`
+* removing all edges with a certain relation via `edge_attribute=relation, value=upregulates`
+* removing all edges provided by another ARA via `edge_attribute=is_defined_by, value=RTX-KG2`
 * etc. etc.
                 
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -229,11 +229,11 @@ else, only remove a single subject/object node based on a query node id (via `re
 This can be applied to an arbitrary knowledge graph as possible edge properties are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
-remove_edges_by_property removes edges from the knowledge graph (KG) based on a given edge property.
+remove_edges_by_discrete_attribute removes edges from the knowledge graph (KG) based on a given edge property.
                     """,
                 "parameters": {
-                    "edge_property": self.edge_property_info,
-                    "property_value": self.edge_property_value_info,
+                    "edge_attribute": self.edge_property_info,
+                    "value": self.edge_property_value_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_key": self.qnode_key_info
                 }
@@ -573,11 +573,11 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         response = RE.remove_edges_by_predicate()
         return response
 
-    def __remove_edges_by_property(self, describe=False):
+    def __remove_edges_by_discrete_attribute(self, describe=False):
         """
         Removes edges from the KG.
         Allowable parameters: {'edge_predicate': str, 
-                                'edge_property': str,
+                                'edge_attribute': str,
                                 'direction': {'above', 'below'}}
         :return:
         """
@@ -587,15 +587,15 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             # check if all required parameters are provided
-            if 'edge_property' not in parameters.keys():
-                self.response.error(f"The parameter edge_property must be provided to remove edges by propery, allowable parameters include: {set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str])}")
+            if 'edge_attribute' not in parameters.keys():
+                self.response.error(f"The parameter edge_attribute must be provided to remove edges by discrete attribute, allowable parameters include: {set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str])}")
             if self.response.status != 'OK':
                 return self.response
             known_values = set()
-            if 'edge_property' in parameters:
+            if 'edge_attribute' in parameters:
                 for edge in message.knowledge_graph.edges.values():
-                    if hasattr(edge, parameters['edge_property']):
-                        value = edge.to_dict()[parameters['edge_property']]
+                    if hasattr(edge, parameters['edge_attribute']):
+                        value = edge.to_dict()[parameters['edge_attribute']]
                         if type(value) == str:
                             known_values.add(value)
                         elif type(value) == list:
@@ -621,23 +621,23 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                 for val in attribute.value:
                                     known_values.add(val)
 
-            allowable_parameters = {'action': {'remove_edges_by_property'},
-                                    'edge_property': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]).union(known_attributes),
-                                    'property_value': known_values,
+            allowable_parameters = {'action': {'remove_edges_by_discrete_attribute'},
+                                    'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]).union(known_attributes),
+                                    'value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
                                 }
         else:
-            allowable_parameters = {'action': {'remove_edges_by_property'},
-                                    'edge_property': {'an edge property'},
-                                    'property_value':{'a value for the edge property'},
+            allowable_parameters = {'action': {'remove_edges_by_discrete_attribute'},
+                                    'edge_attribute': {'an edge property or attribute'},
+                                    'value':{'a value for the edge property or attribute'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_key':{'a specific query node id to remove'}
                                 }
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = self.command_definitions['remove_edges_by_property']
+            brief_description = self.command_definitions['remove_edges_by_discrete_attribute']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -660,13 +660,13 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         else:
             edge_params['remove_connected_nodes'] = False
 
-        if 'edge_property' not in edge_params:
+        if 'edge_attribute' not in edge_params:
             self.response.error(
-                f"Edge property must be provided, allowable properties are: {list(allowable_parameters['edge_property'])}",
+                f"Edge attribute must be provided, allowable properties are: {list(allowable_parameters['edge_attribute'])}",
                 error_code="UnknownValue")
-        if 'property_value' not in edge_params:
+        if 'value' not in edge_params:
             self.response.error(
-                f"Property value must be provided, allowable values are: {list(allowable_parameters['property_value'])}",
+                f"Value must be provided, allowable values are: {list(allowable_parameters['value'])}",
                 error_code="UnknownValue")
         if self.response.status != 'OK':
             return self.response

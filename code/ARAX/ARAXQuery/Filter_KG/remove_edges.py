@@ -136,9 +136,9 @@ class RemoveEdges:
                             edge_dict[attribute.original_attribute_name] = attribute.value
                         if hasattr(attribute, "attribute_type_id") and attribute.attribute_type_id not in edge_dict:
                             edge_dict[attribute.attribute_type_id] = attribute.value
-                if edge_params['edge_property'] in edge_dict:
-                    if type(edge_dict[edge_params['edge_property']]) == list or type(edge_dict[edge_params['edge_property']]) == set:
-                        if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
+                if edge_params['edge_attribute'] in edge_dict:
+                    if type(edge_dict[edge_params['edge_attribute']]) == list or type(edge_dict[edge_params['edge_attribute']]) == set:
+                        if edge_params['value'] in edge_dict[edge_params['edge_attribute']]:
                             edges_to_remove.add(key)
                             if edge_params['remove_connected_nodes']:
                                 for qedge_key in edge.qedge_keys:
@@ -151,7 +151,7 @@ class RemoveEdges:
                                     else:
                                         node_keys_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
                     else:
-                        if edge_dict[edge_params['edge_property']] == edge_params['property_value']:
+                        if edge_dict[edge_params['edge_attribute']] == edge_params['value']:
                             edges_to_remove.add(key)
                             if edge_params['remove_connected_nodes']:
                                 for qedge_key in edge.qedge_keys:
