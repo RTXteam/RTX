@@ -136,32 +136,33 @@ class RemoveEdges:
                             edge_dict[attribute.original_attribute_name] = attribute.value
                         if hasattr(attribute, "attribute_type_id") and attribute.attribute_type_id not in edge_dict:
                             edge_dict[attribute.attribute_type_id] = attribute.value
-                if type(edge_dict[edge_params['edge_property']]) == list or type(edge_dict[edge_params['edge_property']]) == set:
-                    if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
-                        edges_to_remove.add(key)
-                        if edge_params['remove_connected_nodes']:
-                            for qedge_key in edge.qedge_keys:
-                                if edge.subject not in node_keys_to_remove:
-                                    node_keys_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
-                                else:
-                                    node_keys_to_remove[edge.subject].add(edge_qid_dict[qedge_key]['subject'])
-                                if edge.object not in node_keys_to_remove:
-                                    node_keys_to_remove[edge.object] = {edge_qid_dict[qedge_key]['object']}
-                                else:
-                                    node_keys_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
-                else:
-                    if edge_dict[edge_params['edge_property']] == edge_params['property_value']:
-                        edges_to_remove.add(key)
-                        if edge_params['remove_connected_nodes']:
-                            for qedge_key in edge.qedge_keys:
-                                if edge.subject not in node_keys_to_remove:
-                                    node_keys_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
-                                else:
-                                    node_keys_to_remove[edge.subject].add(edge_qid_dict[qedge_key]['subject'])
-                                if edge.object not in node_keys_to_remove:
-                                    node_keys_to_remove[edge.object] = {edge_qid_dict[qedge_key]['object']}
-                                else:
-                                    node_keys_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
+                if edge_params['edge_property'] in edge_dict:
+                    if type(edge_dict[edge_params['edge_property']]) == list or type(edge_dict[edge_params['edge_property']]) == set:
+                        if edge_params['property_value'] in edge_dict[edge_params['edge_property']]:
+                            edges_to_remove.add(key)
+                            if edge_params['remove_connected_nodes']:
+                                for qedge_key in edge.qedge_keys:
+                                    if edge.subject not in node_keys_to_remove:
+                                        node_keys_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
+                                    else:
+                                        node_keys_to_remove[edge.subject].add(edge_qid_dict[qedge_key]['subject'])
+                                    if edge.object not in node_keys_to_remove:
+                                        node_keys_to_remove[edge.object] = {edge_qid_dict[qedge_key]['object']}
+                                    else:
+                                        node_keys_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
+                    else:
+                        if edge_dict[edge_params['edge_property']] == edge_params['property_value']:
+                            edges_to_remove.add(key)
+                            if edge_params['remove_connected_nodes']:
+                                for qedge_key in edge.qedge_keys:
+                                    if edge.subject not in node_keys_to_remove:
+                                        node_keys_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
+                                    else:
+                                        node_keys_to_remove[edge.subject].add(edge_qid_dict[qedge_key]['subject'])
+                                    if edge.object not in node_keys_to_remove:
+                                        node_keys_to_remove[edge.object] = {edge_qid_dict[qedge_key]['object']}
+                                    else:
+                                        node_keys_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
             if edge_params['remove_connected_nodes']:
                 self.response.debug(f"Removing Nodes")
                 self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
