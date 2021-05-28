@@ -21,7 +21,10 @@ class ARAXFilterKG:
         self.allowable_actions = {
             'remove_edges_by_predicate',
             'remove_edges_by_attribute',
-            'remove_edges_by_stats',
+            # 'remove_edges_by_stats',
+            'remove_edges_by_std_dev',
+            'remove_edges_by_percentile',
+            'remove_edges_by_top_n',
             'remove_edges_by_property',
             'remove_nodes_by_category',
             'remove_nodes_by_property',
@@ -235,8 +238,88 @@ remove_edges_by_property removes edges from the knowledge graph (KG) based on a 
                     "qnode_key": self.qnode_key_info
                 }
             },
-            "remove_edges_by_stats": {
-                "dsl_command": "filter_kg(action=remove_edges_by_stats)",
+            "remove_edges_by_std_dev": {
+                "dsl_command": "filter_kg(action=remove_edges_by_std_dev)",
+                "description": """
+`remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
+the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
+5% of results. (if not supplied this defaults to `n`)
+Use cases include:
+
+* removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* etc. etc.
+                
+You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
+
+You also have the option of specifying the direction to remove and location of the split by using the options 
+* `direction` with options `above`,`below`
+* `threshold` specified by a floating point number
+* `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
+e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
+`filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
+                    """,
+                'brief_description': """
+remove_edges_by_stats removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with overlay() as overlay() frequently adds additional edge attributes.
+                    """,
+                "parameters": {
+                    "edge_attribute": self.edge_attribute_info,
+                    "type": self.type_info,
+                    "direction": self.direction_stats_info,
+                    "threshold": self.threshold_stats_info,
+                    "top": self.top_info,
+                    "remove_connected_nodes": self.remove_connected_nodes_info,
+                    "qnode_key": self.qnode_key_info
+                }
+            },
+            "remove_edges_by_percentile": {
+                "dsl_command": "filter_kg(action=remove_edges_by_percentile)",
+                "description": """
+`remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
+the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
+5% of results. (if not supplied this defaults to `n`)
+Use cases include:
+
+* removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* etc. etc.
+                
+You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
+
+You also have the option of specifying the direction to remove and location of the split by using the options 
+* `direction` with options `above`,`below`
+* `threshold` specified by a floating point number
+* `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
+e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
+`filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
+                    """,
+                'brief_description': """
+remove_edges_by_stats removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with overlay() as overlay() frequently adds additional edge attributes.
+                    """,
+                "parameters": {
+                    "edge_attribute": self.edge_attribute_info,
+                    "type": self.type_info,
+                    "direction": self.direction_stats_info,
+                    "threshold": self.threshold_stats_info,
+                    "top": self.top_info,
+                    "remove_connected_nodes": self.remove_connected_nodes_info,
+                    "qnode_key": self.qnode_key_info
+                }
+            },
+            "remove_edges_by_top_n": {
+                "dsl_command": "filter_kg(action=remove_edges_by_top_n)",
                 "description": """
 `remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
@@ -687,7 +770,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         response = RE.remove_edges_by_attribute()
         return response
 
-    def __remove_edges_by_stats(self, describe=False):
+    def __remove_edges_by_std_dev(self, describe=False):
         """
         Removes edges from the KG.
         Allowable parameters: {'edge_predicate': str, 
@@ -709,9 +792,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                             if hasattr(attribute, "attribute_type_id"):
                                 known_attributes.add(attribute.attribute_type_id) 
             # print(known_attributes)
-            allowable_parameters = {'action': {'remove_edges_by_stats'},
+            allowable_parameters = {'action': {'remove_edges_by_std_dev'},
                                     'edge_attribute': known_attributes,
-                                    'type': {'n', 'std', 'std_dev', 'percentile', 'p'},
                                     'direction': {'above', 'below'},
                                     'threshold': {float()},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
@@ -719,9 +801,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
                                     }
         else:
-            allowable_parameters = {'action': {'remove_edges_by_stats'},
+            allowable_parameters = {'action': {'remove_edges_by_std_dev'},
                                     'edge_attribute': {'an edge attribute name'},
-                                    'type': {'n', 'top_n', 'std', 'top_std'},
                                     'direction': {'above', 'below'},
                                     'threshold': {'a floating point number'},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
@@ -731,10 +812,11 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = self.command_definitions['remove_edges_by_stats']
+            brief_description = self.command_definitions['remove_edges_by_std_dev']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
+        
         edge_params = self.parameters
 
         # try to convert the threshold to a float
@@ -746,6 +828,307 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         # return if bad parameters have been passed
         if self.response.status != 'OK' or resp == -1:
             return self.response
+
+        self.parameters['type'] = 'std_dev'
+        edge_params['type'] = 'std_dev'
+
+        supplied_threshhold = None
+        supplied_direction = None
+        supplied_top = None
+
+        if 'threshold' in edge_params:
+            try:
+                edge_params['threshold'] = float(edge_params['threshold'])
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"parameter 'threshold' must be a float")
+            if self.response.status != 'OK':
+                return self.response
+            supplied_threshhold = edge_params['threshold']
+        if 'direction' in edge_params:
+            supplied_direction = edge_params['direction']
+        if 'top' in edge_params:
+            if edge_params['top'] in {'true', 'True', 't', 'T'}:
+                supplied_top = True
+            elif edge_params['top'] in {'false', 'False', 'f', 'F'}:
+                supplied_top = False
+
+        if 'remove_connected_nodes' in edge_params:
+            value = edge_params['remove_connected_nodes']
+            if value in {'true', 'True', 't', 'T'}:
+                edge_params['remove_connected_nodes'] = True
+            elif value in {'false', 'False', 'f', 'F'}:
+                edge_params['remove_connected_nodes'] = False
+            else:
+                self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter remove_connected_nodes, allowable values are: {list(allowable_parameters['remove_connected_nodes'])}",
+                    error_code="UnknownValue")
+        else:
+            edge_params['remove_connected_nodes'] = False
+
+        if 'type' in edge_params:
+            if edge_params['type'] in {'n'}:
+                edge_params['stat'] = 'n'
+                edge_params['threshold']= 50
+            elif edge_params['type'] in {'std', 'std_dev'}:
+                edge_params['stat'] = 'std'
+                edge_params['threshold'] = 1
+            elif edge_params['type'] in {'percentile', 'p'}:
+                edge_params['stat'] = 'percentile'
+                edge_params['threshold'] = 95
+                if supplied_threshhold is not None:
+                    if supplied_threshhold > 100 or supplied_threshhold < 0:
+                        self.response.error(
+                            f"Supplied value {supplied_threshhold} is not permitted. In parameter threshold, when using the percentile type allowable values are real numbers between 0 and 100.",
+                            error_code="UnknownValue")
+        else:
+            edge_params['stat'] = 'n'
+            edge_params['threshold']= 50
+        if 'edge_attribute' not in edge_params:
+            self.response.error(
+                f"Edge attribute must be provided, allowable attributes are: {list(allowable_parameters['edge_attribute'])}",
+                error_code="UnknownValue")
+        else:
+            if edge_params['edge_attribute'] in {'ngd', 'normalized_google_distance', 'chi_square', 'fisher_exact', 'fisher_exact_test_p-value'}:
+                edge_params['direction'] = 'above'
+                edge_params['top'] = False
+                if edge_params['stat'] == 'percentile':
+                    edge_params['threshold'] = 1-edge_params['threshold']
+            elif edge_params['edge_attribute'] in {'jaccard_index', 'observed_expected_ratio', 'probability_treats', 'paired_concept_frequency'}:
+                edge_params['direction'] = 'below'
+                edge_params['top'] = True
+            else:
+                edge_params['direction'] = 'below'
+                edge_params['top'] = True
+        
+        if supplied_threshhold is not None:
+            edge_params['threshold'] = supplied_threshhold
+        if supplied_direction is not None:
+            edge_params['direction'] = supplied_direction
+        if supplied_top is not None:
+            edge_params['top'] = supplied_top
+
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to NGD
+        from Filter_KG.remove_edges import RemoveEdges
+        RE = RemoveEdges(self.response, self.message, edge_params)
+        response = RE.remove_edges_by_stats()
+        return response
+
+    def __remove_edges_by_percentile(self, describe=False):
+        """
+        Removes edges from the KG.
+        Allowable parameters: {'edge_predicate': str, 
+                                'edge_attribute': str,
+                                'direction': {'above', 'below'}}
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        if message and parameters and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
+            known_attributes = set()
+            for edge in message.knowledge_graph.edges.values():
+                if hasattr(edge, 'attributes'):
+                    if edge.attributes:
+                        for attribute in edge.attributes:
+                            if hasattr(attribute, "original_attribute_name"):
+                                known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute, "attribute_type_id"):
+                                known_attributes.add(attribute.attribute_type_id) 
+            # print(known_attributes)
+            allowable_parameters = {'action': {'remove_edges_by_percentile'},
+                                    'edge_attribute': known_attributes,
+                                    'direction': {'above', 'below'},
+                                    'threshold': {float()},
+                                    'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
+                                    }
+        else:
+            allowable_parameters = {'action': {'remove_edges_by_percentile'},
+                                    'edge_attribute': {'an edge attribute name'},
+                                    'direction': {'above', 'below'},
+                                    'threshold': {'a floating point number'},
+                                    'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_key':{'a specific query node id to remove'}
+                                    }
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = self.command_definitions['remove_edges_by_percentile']
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        
+        edge_params = self.parameters
+
+        # try to convert the threshold to a float
+        if self.response.status != 'OK':
+            return self.response
+
+        # Make sure only allowable parameters and values have been passed
+        resp = self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK' or resp == -1:
+            return self.response
+
+        self.parameters['type'] = 'percentile'
+        edge_params['type'] = 'percentile'
+
+        supplied_threshhold = None
+        supplied_direction = None
+        supplied_top = None
+
+        if 'threshold' in edge_params:
+            try:
+                edge_params['threshold'] = float(edge_params['threshold'])
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"parameter 'threshold' must be a float")
+            if self.response.status != 'OK':
+                return self.response
+            supplied_threshhold = edge_params['threshold']
+        if 'direction' in edge_params:
+            supplied_direction = edge_params['direction']
+        if 'top' in edge_params:
+            if edge_params['top'] in {'true', 'True', 't', 'T'}:
+                supplied_top = True
+            elif edge_params['top'] in {'false', 'False', 'f', 'F'}:
+                supplied_top = False
+
+        if 'remove_connected_nodes' in edge_params:
+            value = edge_params['remove_connected_nodes']
+            if value in {'true', 'True', 't', 'T'}:
+                edge_params['remove_connected_nodes'] = True
+            elif value in {'false', 'False', 'f', 'F'}:
+                edge_params['remove_connected_nodes'] = False
+            else:
+                self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter remove_connected_nodes, allowable values are: {list(allowable_parameters['remove_connected_nodes'])}",
+                    error_code="UnknownValue")
+        else:
+            edge_params['remove_connected_nodes'] = False
+
+        if 'type' in edge_params:
+            if edge_params['type'] in {'n'}:
+                edge_params['stat'] = 'n'
+                edge_params['threshold']= 50
+            elif edge_params['type'] in {'std', 'std_dev'}:
+                edge_params['stat'] = 'std'
+                edge_params['threshold'] = 1
+            elif edge_params['type'] in {'percentile', 'p'}:
+                edge_params['stat'] = 'percentile'
+                edge_params['threshold'] = 95
+                if supplied_threshhold is not None:
+                    if supplied_threshhold > 100 or supplied_threshhold < 0:
+                        self.response.error(
+                            f"Supplied value {supplied_threshhold} is not permitted. In parameter threshold, when using the percentile type allowable values are real numbers between 0 and 100.",
+                            error_code="UnknownValue")
+        else:
+            edge_params['stat'] = 'n'
+            edge_params['threshold']= 50
+        if 'edge_attribute' not in edge_params:
+            self.response.error(
+                f"Edge attribute must be provided, allowable attributes are: {list(allowable_parameters['edge_attribute'])}",
+                error_code="UnknownValue")
+        else:
+            if edge_params['edge_attribute'] in {'ngd', 'normalized_google_distance', 'chi_square', 'fisher_exact', 'fisher_exact_test_p-value'}:
+                edge_params['direction'] = 'above'
+                edge_params['top'] = False
+                if edge_params['stat'] == 'percentile':
+                    edge_params['threshold'] = 1-edge_params['threshold']
+            elif edge_params['edge_attribute'] in {'jaccard_index', 'observed_expected_ratio', 'probability_treats', 'paired_concept_frequency'}:
+                edge_params['direction'] = 'below'
+                edge_params['top'] = True
+            else:
+                edge_params['direction'] = 'below'
+                edge_params['top'] = True
+        
+        if supplied_threshhold is not None:
+            edge_params['threshold'] = supplied_threshhold
+        if supplied_direction is not None:
+            edge_params['direction'] = supplied_direction
+        if supplied_top is not None:
+            edge_params['top'] = supplied_top
+
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to NGD
+        from Filter_KG.remove_edges import RemoveEdges
+        RE = RemoveEdges(self.response, self.message, edge_params)
+        response = RE.remove_edges_by_stats()
+        return response
+
+    def __remove_edges_by_top_n(self, describe=False):
+        """
+        Removes edges from the KG.
+        Allowable parameters: {'edge_predicate': str, 
+                                'edge_attribute': str,
+                                'direction': {'above', 'below'}}
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        if message and parameters and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
+            known_attributes = set()
+            for edge in message.knowledge_graph.edges.values():
+                if hasattr(edge, 'attributes'):
+                    if edge.attributes:
+                        for attribute in edge.attributes:
+                            if hasattr(attribute, "original_attribute_name"):
+                                known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute, "attribute_type_id"):
+                                known_attributes.add(attribute.attribute_type_id) 
+            # print(known_attributes)
+            allowable_parameters = {'action': {'remove_edges_by_top_n'},
+                                    'edge_attribute': known_attributes,
+                                    'direction': {'above', 'below'},
+                                    'threshold': {float()},
+                                    'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
+                                    }
+        else:
+            allowable_parameters = {'action': {'remove_edges_by_top_n'},
+                                    'edge_attribute': {'an edge attribute name'},
+                                    'direction': {'above', 'below'},
+                                    'threshold': {'a floating point number'},
+                                    'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_key':{'a specific query node id to remove'}
+                                    }
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = self.command_definitions['remove_edges_by_top_n']
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        
+        edge_params = self.parameters
+
+        # try to convert the threshold to a float
+        if self.response.status != 'OK':
+            return self.response
+
+        # Make sure only allowable parameters and values have been passed
+        resp = self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK' or resp == -1:
+            return self.response
+
+        self.parameters['type'] = 'n'
+        edge_params['type'] = 'n'
 
         supplied_threshhold = None
         supplied_direction = None
