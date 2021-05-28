@@ -22,18 +22,20 @@
     - [expand(kp=CHP)](#expandkpchp)
     - [expand(kp=DTD)](#expandkpdtd)
   - [ARAX_overlay](#arax_overlay)
+    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
     - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
-    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
-    - [filter_kg(action=remove_edges_by_attribute)](#filter_kgactionremove_edges_by_attribute)
-    - [filter_kg(action=remove_edges_by_property)](#filter_kgactionremove_edges_by_property)
-    - [filter_kg(action=remove_edges_by_stats)](#filter_kgactionremove_edges_by_stats)
+    - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
+    - [filter_kg(action=remove_edges_by_discrete_attribute)](#filter_kgactionremove_edges_by_discrete_attribute)
+    - [filter_kg(action=remove_edges_by_std_dev)](#filter_kgactionremove_edges_by_std_dev)
+    - [filter_kg(action=remove_edges_by_percentile)](#filter_kgactionremove_edges_by_percentile)
+    - [filter_kg(action=remove_edges_by_top_n)](#filter_kgactionremove_edges_by_top_n)
     - [filter_kg(action=remove_nodes_by_category)](#filter_kgactionremove_nodes_by_category)
     - [filter_kg(action=remove_nodes_by_property)](#filter_kgactionremove_nodes_by_property)
     - [filter_kg(action=remove_orphaned_nodes)](#filter_kgactionremove_orphaned_nodes)
@@ -1089,6 +1091,262 @@ This command uses ARAX's in-house drug-treats-disease (DTD) database (built from
     - If not specified the default input will be false. 
 
 ## ARAX_overlay
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=predict_drug_treats_disease)
+
+`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
+Use cases include:
+
+* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
+* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### threshold
+
+    - What cut-off/threshold to use for DTD probability (optional, the default is 0.8)
+
+    - Acceptable input types: int or float or None.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0.8`, `0.95`, and `0.5` are examples of valid inputs.
+
+    - If not specified the default input will be 0.8. 
+
+* ##### slow_mode
+
+    - Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `T`, `t`, `True`, `F`, `f`, and `False` are examples of valid inputs.
+
+    - `True` and `False` are all possible valid inputs.
+
+    - If not specified the default input will be 0.8. 
+
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be 100. 
+
+### overlay(action=fisher_exact_test)
+
+`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
+This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
+It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+Use cases include:
+
+* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
+* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
+* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
+
+This p-value is calculated from fisher's exact test based on the contingency table with following format:
+
+|||||
+|-----|-----|-----|-----|
+|                                  | in query node list | not in query node list | row total |
+| connect to certain adjacent node |         a          |           b            |   a+b     |
+| not connect to adjacent node     |         c          |           d            |   c+d     |
+|         column total             |        a+c         |          b+d           |  a+b+c+d  |
+
+The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
+The code is as follows:
+
+```
+_, pvalue = stats.fisher_exact([[a, b], [c, d]])
+```
+                    
+
+#### parameters: 
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (required)
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (required)
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### rel_edge_key
+
+    - A specific QEdge id of edges connected to both subject nodes and object nodes in message KG (optional, otherwise all edges connected to both subject nodes and object nodes in message KG are considered), eg. 'e01'
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `e01` are examples of valid inputs.
+
+* ##### filter_type
+
+    - If `top_n` is set this indicate the top number (the smallest) of p-values will be returned acording to what is specified in the `value` parameter. If `cutoff` is set then this indicates the p-value cutoff should be used to return results acording to what is specified in the `value` parameter. (optional, otherwise all results returned)
+
+    - Acceptable input types: string or None.
+
+    - *NOTE*:  If this parameter is included then the parameter `value` must also be included for it to function.
+
+    - This is not a required parameter and may be omitted.
+
+    - `top_n`, `cutoff`, and `None` are examples of valid inputs.
+
+    - `top_n`, `cutoff`, and `None` are all possible valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### value
+
+    - If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)
+
+    - Acceptable input types: int or float or None.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 ### overlay(action=compute_jaccard)
 
 `compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
@@ -1211,80 +1469,6 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `n00` and `n01` are examples of valid inputs.
 
-### overlay(action=predict_drug_treats_disease)
-
-`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
-For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-Use cases include:
-
-* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
-* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### threshold
-
-    - What cut-off/threshold to use for DTD probability (optional, the default is 0.8)
-
-    - Acceptable input types: int or float or None.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0.8`, `0.95`, and `0.5` are examples of valid inputs.
-
-    - If not specified the default input will be 0.8. 
-
-* ##### slow_mode
-
-    - Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `T`, `t`, `True`, `F`, `f`, and `False` are examples of valid inputs.
-
-    - `True` and `False` are all possible valid inputs.
-
-    - If not specified the default input will be 0.8. 
-
 ### overlay(action=overlay_exposures_data)
 
 `overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
@@ -1325,188 +1509,6 @@ This can be applied to an arbitrary knowledge graph (i.e. not just those created
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=compute_ngd)
-
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### default_value
-
-    - The default value of the normalized Google distance (if its value cannot be determined)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0` and `inf` are examples of valid inputs.
-
-    - If not specified the default input will be inf. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=fisher_exact_test)
-
-`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
-This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
-It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-Use cases include:
-
-* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
-* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
-* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
-
-This p-value is calculated from fisher's exact test based on the contingency table with following format:
-
-|||||
-|-----|-----|-----|-----|
-|                                  | in query node list | not in query node list | row total |
-| connect to certain adjacent node |         a          |           b            |   a+b     |
-| not connect to adjacent node     |         c          |           d            |   c+d     |
-|         column total             |        a+c         |          b+d           |  a+b+c+d  |
-
-The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
-The code is as follows:
-
-```
-_, pvalue = stats.fisher_exact([[a, b], [c, d]])
-```
-                    
-
-#### parameters: 
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (required)
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `N1`, `J2`, and `FET` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (required)
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### rel_edge_key
-
-    - A specific QEdge id of edges connected to both subject nodes and object nodes in message KG (optional, otherwise all edges connected to both subject nodes and object nodes in message KG are considered), eg. 'e01'
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `e01` are examples of valid inputs.
-
-* ##### filter_type
-
-    - If `top_n` is set this indicate the top number (the smallest) of p-values will be returned acording to what is specified in the `value` parameter. If `cutoff` is set then this indicates the p-value cutoff should be used to return results acording to what is specified in the `value` parameter. (optional, otherwise all results returned)
-
-    - Acceptable input types: string or None.
-
-    - *NOTE*:  If this parameter is included then the parameter `value` must also be included for it to function.
-
-    - This is not a required parameter and may be omitted.
-
-    - `top_n`, `cutoff`, and `None` are examples of valid inputs.
-
-    - `top_n`, `cutoff`, and `None` are all possible valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### value
-
-    - If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)
-
-    - Acceptable input types: int or float or None.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
 
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_predicate)
@@ -1558,9 +1560,9 @@ This can be applied to an arbitrary knowledge graph as possible edge predicates 
 
     - `n01` and `n02` are examples of valid inputs.
 
-### filter_kg(action=remove_edges_by_attribute)
+### filter_kg(action=remove_edges_by_continuous_attribute)
 
-`remove_edges_by_attribute` removes edges from the knowledge graph (KG) based on a a certain edge attribute.
+`remove_edges_by_continuous_attribute` removes edges from the knowledge graph (KG) based on the value of a continuous edge attribute.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
 Use cases include:
@@ -1632,15 +1634,15 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
 
     - `n01` and `n02` are examples of valid inputs.
 
-### filter_kg(action=remove_edges_by_property)
+### filter_kg(action=remove_edges_by_discrete_attribute)
 
-`remove_edges_by_property` removes edges from the knowledge graph (KG) based on a given edge property.
+`remove_edges_by_discrete_attribute` removes edges from the knowledge graph (KG) based on a given dicrete edge property or attribute.
 Use cases include:
                 
-* removing all edges that were provided by a certain knowledge provider (KP) via `edge_property=provided, property_value=Pharos` to remove all edges provided by the KP Pharos.
-* removing all edges that connect to a certain node via `edge_property=subject, property_value=DOID:8398`
-* removing all edges with a certain relation via `edge_property=relation, property_value=upregulates`
-* removing all edges provided by another ARA via `edge_property=is_defined_by, property_value=ARAX/RTX`
+* removing all edges that were provided by a certain knowledge provider (KP) via `edge_attribute=biolink:original_source, value=infores:semmeddb` to remove all edges provided by SemMedDB.
+* removing all edges that connect to a certain node via `edge_attribute=subject, value=DOID:8398`
+* removing all edges with a certain relation via `edge_attribute=relation, value=upregulates`
+* removing all edges provided by another ARA via `edge_attribute=is_defined_by, value=RTX-KG2`
 * etc. etc.
                 
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -1651,7 +1653,7 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 
 #### parameters: 
 
-* ##### edge_property
+* ##### edge_attribute
 
     - The name of the edge property to filter on.
 
@@ -1661,7 +1663,7 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 
     - `subject`, `provided_by`, and `is_defined_by` are examples of valid inputs.
 
-* ##### property_value
+* ##### value
 
     - The edge property value to indicate which edges to remove.
 
@@ -1693,18 +1695,16 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 
     - `n01` and `n02` are examples of valid inputs.
 
-### filter_kg(action=remove_edges_by_stats)
+### filter_kg(action=remove_edges_by_std_dev)
 
-`remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+`remove_edges_by_std_dev` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
-there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
-the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
-5% of results. (if not supplied this defaults to `n`)
+By default `std_dev` removes all but the best results more than 1 standard deviation from the mean
 Use cases include:
 
-* removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
-* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* removing all edges with normalized google distance scores more than 1 standard deviation below the mean `edge_attribute=ngd` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index` (i.e. all edges that have less than 20% of intermediate nodes in common)
 * etc. etc.
                 
 You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -1715,7 +1715,7 @@ You also have the option of specifying the direction to remove and location of t
 * `threshold` specified by a floating point number
 * `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
 e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
-`filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
+`filter_kg(action=remove_edges_by_std_dev, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
                     
 
 #### parameters: 
@@ -1762,11 +1762,223 @@ e.g. to remove all the edges with jaccard_index values greater than 0.25 standar
 
     - This is not a required parameter and may be omitted.
 
+    - `1` and `0.45` are examples of valid inputs.
+
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
+
+    - If not specified the default input will be 1. 
+
+* ##### top
+
+    - Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True.. 
+
+* ##### remove_connected_nodes
+
+    - Indicates whether or not to remove the nodes connected to the edge.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### qnode_key
+
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n01` and `n02` are examples of valid inputs.
+
+### filter_kg(action=remove_edges_by_percentile)
+
+`remove_edges_by_percentile` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+By default `percentile` removes all but the best 5% of results.
+Use cases include:
+
+* removing all edges with normalized google distance scores but the 5% smallest values `edge_attribute=ngd` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than the top 5% of values. `edge_attribute=jaccard_index` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* etc. etc.
+                
+You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
+
+You also have the option of specifying the direction to remove and location of the split by using the options 
+* `direction` with options `above`,`below`
+* `threshold` specified by a floating point number
+* `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
+e.g. to remove all the edges with jaccard_index values greater than the bottom 25% of values you can run the following:
+`filter_kg(action=remove_edges_by_percentile, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=25, top=f, direction=above)`
+                    
+
+#### parameters: 
+
+* ##### edge_attribute
+
+    - The name of the edge attribute to filter on.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
+
+* ##### type
+
+    - The statistic to use for filtering.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n`, `std`, `std_dev`, `percentile`, and `p` are all possible valid inputs.
+
+    - If not specified the default input will be n. 
+
+* ##### direction
+
+    - Indictes whether to remove above or below the given threshold.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `above` and `below` are all possible valid inputs.
+
+    - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.. 
+
+* ##### threshold
+
+    - 95 unless `edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `threshold` will default to 5.
+
+    - Acceptable input types: float.
+
+    - This is not a required parameter and may be omitted.
+
     - `5` and `0.45` are examples of valid inputs.
 
-    - The values for this parameter can range from a minimum value of 0 to a maximum value of inf (or 100 if type=percentile or p).
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of 100.
 
-    - If not specified the default input will be a value dictated by the `type` parameter. If `type` is 'n' then `threshold` will default to 50. If `type` is 'std_dev' or 'std' then `threshold` will default to 1.If `type` is 'percentile' or 'p' then `threshold` will default to 95 unless `edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `threshold` will default to 5.. 
+* ##### top
+
+    - Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True.. 
+
+* ##### remove_connected_nodes
+
+    - Indicates whether or not to remove the nodes connected to the edge.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### qnode_key
+
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n01` and `n02` are examples of valid inputs.
+
+### filter_kg(action=remove_edges_by_top_n)
+
+`remove_edges_by_top_n` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+By default `top_n` removes all but the 50 best results.
+Use cases include:
+
+* removing all edges with normalized google distance scores but the 50 smallest values `edge_attribute=ngd` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than the 50 largest values. `edge_attribute=jaccard_index` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* etc. etc.
+                
+You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
+
+You also have the option of specifying the direction to remove and location of the split by using the options 
+* `direction` with options `above`,`below`
+* `threshold` specified by a floating point number
+* `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
+e.g. to remove all the edges with jaccard_index values greater than the 25 smallest values you can run the following:
+`filter_kg(action=remove_edges_by_top_n, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=25, top=f, direction=above)`
+                    
+
+#### parameters: 
+
+* ##### edge_attribute
+
+    - The name of the edge attribute to filter on.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
+
+* ##### type
+
+    - The statistic to use for filtering.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n`, `std`, `std_dev`, `percentile`, and `p` are all possible valid inputs.
+
+    - If not specified the default input will be n. 
+
+* ##### direction
+
+    - Indictes whether to remove above or below the given threshold.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `above` and `below` are all possible valid inputs.
+
+    - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.. 
+
+* ##### threshold
+
+    - The threshold to filter with.
+
+    - Acceptable input types: int.
+
+    - This is not a required parameter and may be omitted.
+
+    - `5`, `10`, and `50` are examples of valid inputs.
+
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
+
+    - If not specified the default input will be 50. 
 
 * ##### top
 
