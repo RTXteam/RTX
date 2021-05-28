@@ -26,7 +26,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 from sqlalchemy import inspect
 
-from reasoner_validator import validate_Response, ValidationError
+from reasoner_validator import validate
+from jsonschema.exceptions import ValidationError
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -247,7 +248,7 @@ class ResponseCache:
 
                 #### Perform a validation on it
                 try:
-                    validate_Response(envelope)
+                    validate(envelope,'Response','1.1.1')
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = 'reasoner-validator: PASS'
 
@@ -328,7 +329,7 @@ class ResponseCache:
 
                 #### Perform a validation on it
                 try:
-                    validate_Response(envelope)
+                    validate(envelope,'Response','1.1.1')
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = 'reasoner-validator: PASS'
 
@@ -395,7 +396,7 @@ def main():
         #print(json.dumps(envelope['logs'], sort_keys=True, indent=2))
 
     try:
-        validate_Message(envelope['message'])
+        validate(envelope['message'],'Message','1.1.1')
         print('- Message is valid')
     except ValidationError as error:
         print(f"- Message INVALID: {error}")
@@ -405,7 +406,7 @@ def main():
     for component in [ 'query_graph', 'knowledge_graph', 'results' ]:
         if component in envelope['message']:
             try:
-                validate_Message(envelope['message'][component])
+                validate(envelope['message'][component],'Message','1.1.1')
                 print(f"  - {component} is valid")
             except ValidationError:
                 print(f"  - {component} INVALID")
@@ -414,7 +415,7 @@ def main():
 
     for result in envelope['message']['results']:
         try:
-            validate_Result(result)
+            validate(result,'Result','1.1.1')
             print(f"    - result is valid")
         except ValidationError:
             print(f"    - result INVALID")
@@ -431,7 +432,7 @@ def main():
             for edge_binding in edge_binding_list:
                 print(json.dumps(edge_binding, sort_keys=True, indent=2))
                 try:
-                    validate_EdgeBinding(edge_binding)
+                    validate(edge_binding,'EdgeBinding','1.1.1')
                     print(f"      - edge_binding {key} is valid")
                 except ValidationError:
                     print(f"      - edge_binding {key} INVALID")
