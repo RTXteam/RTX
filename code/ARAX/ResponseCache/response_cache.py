@@ -371,7 +371,8 @@ def main():
     import argparse
     argparser = argparse.ArgumentParser(description='CLI testing of the ResponseCache class')
     argparser.add_argument('--verbose', action='count', help='If set, print more information about ongoing processing' )
-    argparser.add_argument('response_id', type=str, nargs='*', help='Integer number of a response to read and display')
+    #argparser.add_argument('list', action='store', help='List all local response ids')
+    argparser.add_argument('response_id', type=str, nargs='*', help='Id of a response to fetch and display')
     params = argparser.parse_args()
 
     #### Create a new ResponseStore object
@@ -381,19 +382,21 @@ def main():
     session = response_cache.session
 
     #### Query and print some rows from the reference tables
-    if len(params.response_id) == 0:
+    #if params.list is True:
+    if False:
         print("Listing of all responses")
         for response in session.query(Response).all():
             print(f"response_id={response.response_id}  response_datetime={response.response_datetime}")
+        return
 
-    else:
+    if len(params.response_id) > 0:
         print(f"Content of response_id {params.response_id[0]}:")
         envelope = response_cache.get_response(params.response_id[0])
 
         #print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
-        print(json.dumps(envelope, sort_keys=True, indent=2))
-        return
-        #print(json.dumps(envelope['logs'], sort_keys=True, indent=2))
+        #print(json.dumps(envelope, sort_keys=True, indent=2))
+        print(json.dumps(envelope['logs'], sort_keys=True, indent=2))
+        #return
 
     try:
         validate(envelope['message'],'Message','1.1.1')
@@ -401,17 +404,28 @@ def main():
     except ValidationError as error:
         print(f"- Message INVALID: {error}")
 
-    return
+    #return
 
-    for component in [ 'query_graph', 'knowledge_graph', 'results' ]:
+    for component, klass in { 'query_graph': 'QueryGraph', 'knowledge_graph': 'KnowledgeGraph' }.items():
         if component in envelope['message']:
             try:
-                validate(envelope['message'][component],'Message','1.1.1')
+                validate(envelope['message'][component], klass, '1.1.1')
                 print(f"  - {component} is valid")
             except ValidationError:
                 print(f"  - {component} INVALID")
         else:
             print(f"  - {component} is not present")
+
+    for node_key, node in envelope['message']['knowledge_graph']['nodes'].items():
+        print(f"{node_key}")
+        for attribute in node['attributes']:
+            attribute['value_type_id'] = None
+            try:
+                validate(attribute, 'Attribute', '1.1.1')
+                print(f"  - attribute with {attribute['attribute_type_id']} is valid")
+            except ValidationError:
+                print(f"  - attribute with {attribute['attribute_type_id']} is  INVALID")
+
 
     for result in envelope['message']['results']:
         try:
@@ -423,14 +437,14 @@ def main():
         for key,node_binding_list in result['node_bindings'].items():
             for node_binding in node_binding_list:
                 try:
-                    validate_NodeBinding(node_binding)
+                    validate(node_binding, 'NodeBinding', '1.1.1')
                     print(f"      - node_binding {key} is valid")
                 except ValidationError:
                     print(f"      - node_binding {key} INVALID")
 
         for key,edge_binding_list in result['edge_bindings'].items():
             for edge_binding in edge_binding_list:
-                print(json.dumps(edge_binding, sort_keys=True, indent=2))
+                #print(json.dumps(edge_binding, sort_keys=True, indent=2))
                 try:
                     validate(edge_binding,'EdgeBinding','1.1.1')
                     print(f"      - edge_binding {key} is valid")
