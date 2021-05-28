@@ -100,8 +100,7 @@ class ARAXFilterKG:
             "type": "float",
             "description": "95 unless "+\
             "`edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' "+\
-            "then `threshold` will default to 5.",
-            "UI_display": "false"
+            "then `threshold` will default to 5."
         }
         self.direction_stats_info = {
             "is_required": False,
@@ -110,8 +109,7 @@ class ARAXFilterKG:
             "description": "Indictes whether to remove above or below the given threshold.",
             "default": "a value dictated by the `edge_attribute` parameter. " +\
             "If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. " +\
-            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.",
-            "UI_display": "false"
+            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below."
         }
         self.threshold_stats_info_std_dev = {
             "is_required": False,
@@ -120,8 +118,7 @@ class ARAXFilterKG:
             "max": 'inf',
             "type": "float",
             "description": "The threshold to filter with.",
-            "default": 1,
-            "UI_display": "false"
+            "default": 1
         }
         self.threshold_stats_info_n = {
             "is_required": False,
@@ -130,8 +127,7 @@ class ARAXFilterKG:
             "max": 'inf',
             "type": "int",
             "description": "The threshold to filter with.",
-            "default": 50,
-            "UI_display": "false"
+            "default": 50
         }
         self.top_info = {
             "is_required": False,
@@ -140,8 +136,7 @@ class ARAXFilterKG:
             "description": "Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.",
             "default": "a value dictated by the `edge_attribute` parameter. " +\
             "If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. " +\
-            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True.",
-            "UI_display": "false"
+            "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True."
         }
         self.node_type_required_info = {
             "is_required": True,
