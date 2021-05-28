@@ -306,7 +306,7 @@ class OverlayClinicalInfo:
                 self.global_iter += 1
                 edge_attribute_list = [
                     edge_attribute,
-                    EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                     EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:provided_by"),
                     #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),

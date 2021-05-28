@@ -380,7 +380,7 @@ class ComputeFTEST:
 
                 edge_attribute_list =  [
                     EdgeAttribute(attribute_type_id="EDAM:data_1669", original_attribute_name="fisher_exact_test_p-value", value=str(value[1]), value_url=None),
-                    EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                     EdgeAttribute(original_attribute_name="provided_by", value="ARAX", attribute_type_id="biolink:provided_by"),
                     #EdgeAttribute(original_attribute_name="confidence", value=None, type="biolink:ConfidenceLevel"),

@@ -116,7 +116,7 @@ class ComputeJaccard:
                 # Do these need a attribute type and url?
                 edge_attribute_list = [
                     edge_attribute,
-                    EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="ARAX_TYPE_PLACEHOLDER"),
+                    EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                     EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:provided_by"),
                     #EdgeAttribute(name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
@@ -140,7 +140,7 @@ class ComputeJaccard:
             #                object_key=object_qnode_key, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
             
             # Does not look to be a way to add option group ids to the new QEdge in TRAPI 1.0? Will error as written now
-            q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key,
+            q_edge = QEdge(predicates=[edge_type], relation=relation, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
             # Need to fix this for TRAPI 1.0
             self.message.query_graph.edges[relation] = q_edge
