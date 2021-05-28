@@ -105,7 +105,7 @@ def test_default_std_dev():
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
-        "filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f)",
+        "filter_kg(action=remove_edges_by_std_dev, edge_attribute=jaccard_index, remove_connected_nodes=f)",
         "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
@@ -144,7 +144,7 @@ def test_std_dev():
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
-        "filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)",
+        "filter_kg(action=remove_edges_by_std_dev, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)",
         "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
@@ -165,7 +165,7 @@ def test_default_top_n():
         "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
-        "filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=n, remove_connected_nodes=f)",
+        "filter_kg(action=remove_edges_by_top_n, edge_attribute=jaccard_index, remove_connected_nodes=f)",
         "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
@@ -201,7 +201,7 @@ def  test_remove_attribute_known_attributes():
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
-        "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
+        #"filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=Pharos)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
         "resultify(ignore_edge_direction=true)",
         "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
@@ -242,6 +242,7 @@ def test_provided_by_filter():
     count2 = len(message.results)
     assert count2 > count1
 
+@pytest.mark.external
 @pytest.mark.slow
 def test_stats_error_int_threshold():
     query = {"operations": {"actions": [
@@ -261,7 +262,7 @@ def test_stats_error_int_threshold():
         "expand(edge_key=[e1,e2])",
         # rank drugs by Jaccard
         "overlay(action=compute_jaccard,start_node_key=n0,intermediate_node_key=n2,end_node_key=n1,virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_stats,edge_attribute=jaccard_index,type=n, threshold=10,remove_connected_nodes=true,qnode_key=n2)",
+        "filter_kg(action=remove_edges_by_top_n,edge_attribute=jaccard_index, threshold=10,remove_connected_nodes=true,qnode_key=n2)",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
         "overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n0, object_qnode_key=n2)",
         "resultify()",
