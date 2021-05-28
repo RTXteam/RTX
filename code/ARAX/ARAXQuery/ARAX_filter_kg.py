@@ -20,7 +20,7 @@ class ARAXFilterKG:
         self.parameters = None
         self.allowable_actions = {
             'remove_edges_by_predicate',
-            'remove_edges_by_attribute',
+            'remove_edges_by_continuous_attribute',
             # 'remove_edges_by_stats',
             'remove_edges_by_std_dev',
             'remove_edges_by_percentile',
@@ -180,10 +180,10 @@ remove_edges_by_predicate removes edges from the knowledge graph (KG) based on a
                     "qnode_key": self.qnode_key_info
                 }
             },
-            "remove_edges_by_attribute": {
-                "dsl_command": "filter_kg(action=remove_edges_by_attribute)",
+            "remove_edges_by_continuous_attribute": {
+                "dsl_command": "filter_kg(action=remove_edges_by_continuous_attribute)",
                 "description": """
-`remove_edges_by_attribute` removes edges from the knowledge graph (KG) based on a a certain edge attribute.
+`remove_edges_by_continuous_attribute` removes edges from the knowledge graph (KG) based on the value of a continuous edge attribute.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
 Use cases include:
@@ -199,7 +199,7 @@ else, only remove a single subject/object node based on a query node id (via `re
 This can be applied to an arbitrary knowledge graph as possible edge attributes are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     """,
                 'brief_description': """
-remove_edges_by_attribute removes edges from the knowledge graph (KG) based on a a certain edge attribute.
+remove_edges_by_continuous_attribute removes edges from the knowledge graph (KG) based on a a certain edge attribute.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with overlay() as overlay() frequently adds additional edge attributes.
                     """,
@@ -677,7 +677,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         response = RE.remove_edges_by_property()
         return response
 
-    def __remove_edges_by_attribute(self, describe=False):
+    def __remove_edges_by_continuous_attribute(self, describe=False):
         """
         Removes edges from the KG.
         Allowable parameters: {'edge_predicate': str, 
@@ -699,7 +699,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                             if hasattr(attribute, "attribute_type_id"):
                                 known_attributes.add(attribute.attribute_type_id)  
             # print(known_attributes)
-            allowable_parameters = {'action': {'remove_edges_by_attribute'},
+            allowable_parameters = {'action': {'remove_edges_by_continuous_attribute'},
                                     'edge_attribute': known_attributes,
                                     'direction': {'above', 'below'},
                                     'threshold': {float()},
@@ -707,7 +707,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
                                     }
         else:
-            allowable_parameters = {'action': {'remove_edges_by_attribute'},
+            allowable_parameters = {'action': {'remove_edges_by_continuous_attribute'},
                                     'edge_attribute': {'an edge attribute name'},
                                     'direction': {'above', 'below'},
                                     'threshold': {'a floating point number'},
@@ -717,7 +717,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
 
         # A little function to describe what this thing does
         if describe:
-            brief_description = self.command_definitions['remove_edges_by_attribute']
+            brief_description = self.command_definitions['remove_edges_by_continuous_attribute']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
@@ -1383,8 +1383,8 @@ def main():
         #"filter_kg(action=remove_edges_by_predicate, edge_predicate=physically_interacts_with, remove_connected_nodes=something)",
         #"filter(action=remove_nodes_by_category, node_category=protein)",
         #"overlay(action=compute_ngd)",
-        #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.63, direction=below, remove_connected_nodes=t)",
-        #"filter(action=remove_edges_by_attribute, edge_attribute=ngd, threshold=.6, remove_connected_nodes=False)",
+        #"filter(action=remove_edges_by_continuous_attribute, edge_attribute=ngd, threshold=.63, direction=below, remove_connected_nodes=t)",
+        #"filter(action=remove_edges_by_continuous_attribute, edge_attribute=ngd, threshold=.6, remove_connected_nodes=False)",
         "filter(action=remove_orphaned_nodes)",
         "return(message=true,store=false)"
     ]
