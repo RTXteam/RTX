@@ -862,5 +862,16 @@ def test_many_kp_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+def test_entity_to_entity_predicate_patch():
+    actions_list = [
+        "add_qnode(ids=NCBIGene:23221, categories=biolink:Gene, key=n0)",
+        "add_qnode(categories=biolink:Gene, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:entity_negatively_regulates_entity)",
+        "expand(kp=RTX-KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
