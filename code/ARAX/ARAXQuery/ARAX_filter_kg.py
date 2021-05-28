@@ -92,17 +92,13 @@ class ARAXFilterKG:
             "description": "The statistic to use for filtering.",
             "default": 'n'
         }
-        self.threshold_stats_info = {
+        self.threshold_stats_info_percentile = {
             "is_required": False,
             "examples": [5,0.45],
             "min": 0,
-            "max": 'inf (or 100 if type=percentile or p)',
+            "max": 100,
             "type": "float",
-            "description": "The threshold to filter with.",
-            "default": "a value dictated by the `type` parameter. " +\
-            "If `type` is 'n' then `threshold` will default to 50. " +\
-            "If `type` is 'std_dev' or 'std' then `threshold` will default to 1." +\
-            "If `type` is 'percentile' or 'p' then `threshold` will default to 95 unless "+\
+            "description": "95 unless "+\
             "`edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' "+\
             "then `threshold` will default to 5.",
             "UI_display": "false"
@@ -115,6 +111,26 @@ class ARAXFilterKG:
             "default": "a value dictated by the `edge_attribute` parameter. " +\
             "If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. " +\
             "If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.",
+            "UI_display": "false"
+        }
+        self.threshold_stats_info_std_dev = {
+            "is_required": False,
+            "examples": [1,0.45],
+            "min": 0,
+            "max": 'inf',
+            "type": "float",
+            "description": "The threshold to filter with.",
+            "default": 1,
+            "UI_display": "false"
+        }
+        self.threshold_stats_info_n = {
+            "is_required": False,
+            "examples": [5,10,50],
+            "min": 0,
+            "max": 'inf',
+            "type": "int",
+            "description": "The threshold to filter with.",
+            "default": 50,
             "UI_display": "false"
         }
         self.top_info = {
@@ -241,16 +257,14 @@ remove_edges_by_discrete_attribute removes edges from the knowledge graph (KG) b
             "remove_edges_by_std_dev": {
                 "dsl_command": "filter_kg(action=remove_edges_by_std_dev)",
                 "description": """
-`remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+`remove_edges_by_std_dev` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
-there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
-the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
-5% of results. (if not supplied this defaults to `n`)
+By default `std_dev` removes all but the best results more than 1 standard deviation from the mean
 Use cases include:
 
-* removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
-* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* removing all edges with normalized google distance scores more than 1 standard deviation below the mean `edge_attribute=ngd` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index` (i.e. all edges that have less than 20% of intermediate nodes in common)
 * etc. etc.
                 
 You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -261,10 +275,10 @@ You also have the option of specifying the direction to remove and location of t
 * `threshold` specified by a floating point number
 * `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
 e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
-`filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
+`filter_kg(action=remove_edges_by_std_dev, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
                     """,
                 'brief_description': """
-remove_edges_by_stats removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+remove_edges_by_std_dev removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics and the standard deviation of the values.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with overlay() as overlay() frequently adds additional edge attributes.
                     """,
@@ -272,7 +286,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "edge_attribute": self.edge_attribute_info,
                     "type": self.type_info,
                     "direction": self.direction_stats_info,
-                    "threshold": self.threshold_stats_info,
+                    "threshold": self.threshold_stats_info_std_dev,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_key": self.qnode_key_info
@@ -281,16 +295,14 @@ This action interacts particularly well with overlay() as overlay() frequently a
             "remove_edges_by_percentile": {
                 "dsl_command": "filter_kg(action=remove_edges_by_percentile)",
                 "description": """
-`remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+`remove_edges_by_percentile` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
-there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
-the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
-5% of results. (if not supplied this defaults to `n`)
+By default `percentile` removes all but the best 5% of results.
 Use cases include:
 
-* removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
-* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* removing all edges with normalized google distance scores but the 5% smallest values `edge_attribute=ngd` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than the top 5% of values. `edge_attribute=jaccard_index` (i.e. all edges that have less than 20% of intermediate nodes in common)
 * etc. etc.
                 
 You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -300,11 +312,11 @@ You also have the option of specifying the direction to remove and location of t
 * `direction` with options `above`,`below`
 * `threshold` specified by a floating point number
 * `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
-e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
-`filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
+e.g. to remove all the edges with jaccard_index values greater than the bottom 25% of values you can run the following:
+`filter_kg(action=remove_edges_by_percentile, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=25, top=f, direction=above)`
                     """,
                 'brief_description': """
-remove_edges_by_stats removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+remove_edges_by_percentile removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with overlay() as overlay() frequently adds additional edge attributes.
                     """,
@@ -312,7 +324,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "edge_attribute": self.edge_attribute_info,
                     "type": self.type_info,
                     "direction": self.direction_stats_info,
-                    "threshold": self.threshold_stats_info,
+                    "threshold": self.threshold_stats_info_percentile,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_key": self.qnode_key_info
@@ -321,16 +333,14 @@ This action interacts particularly well with overlay() as overlay() frequently a
             "remove_edges_by_top_n": {
                 "dsl_command": "filter_kg(action=remove_edges_by_top_n)",
                 "description": """
-`remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+`remove_edges_by_top_n` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
-there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
-the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
-5% of results. (if not supplied this defaults to `n`)
+By default `top_n` removes all but the 50 best results.
 Use cases include:
 
-* removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
-* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* removing all edges with normalized google distance scores but the 50 smallest values `edge_attribute=ngd` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than the 50 largest values. `edge_attribute=jaccard_index` (i.e. all edges that have less than 20% of intermediate nodes in common)
 * etc. etc.
                 
 You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -340,11 +350,11 @@ You also have the option of specifying the direction to remove and location of t
 * `direction` with options `above`,`below`
 * `threshold` specified by a floating point number
 * `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
-e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
-`filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
+e.g. to remove all the edges with jaccard_index values greater than the 25 smallest values you can run the following:
+`filter_kg(action=remove_edges_by_top_n, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=25, top=f, direction=above)`
                     """,
                 'brief_description': """
-remove_edges_by_stats removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+remove_edges_by_top_n removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with overlay() as overlay() frequently adds additional edge attributes.
                     """,
@@ -352,7 +362,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "edge_attribute": self.edge_attribute_info,
                     "type": self.type_info,
                     "direction": self.direction_stats_info,
-                    "threshold": self.threshold_stats_info,
+                    "threshold": self.threshold_stats_info_n,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_key": self.qnode_key_info
