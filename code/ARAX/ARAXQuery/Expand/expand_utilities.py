@@ -452,7 +452,7 @@ def get_attribute_type(attribute_name: str) -> str:
 
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
-        "BTE": "https://api.bte.ncats.io/v1",
+        "BTE": "https://bte.ncats.io/v1",
         "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.0",
         "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.0",
         "RTX-KG2": "https://arax.ncats.io/api/rtxkg2/v1.1",
