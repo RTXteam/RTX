@@ -21,17 +21,17 @@ from openapi_server.models.query_graph import QueryGraph
 
 class KPSelector:
 
-    def __init__(self, log: ARAXResponse, all_kps: Set[str]):
+    def __init__(self, log: ARAXResponse):
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map.json"
         self.log = log
-        self.all_kps = all_kps
+        self.all_kps = eu.get_all_kps()
         self.meta_map = self._load_meta_map()
 
-    def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Set[str]:
+    def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
         # confirm that the qg is one hop
         if len(qg.edges) > 1:
             self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.", error_code="UnexpectedQG")
-            return
+            return None
         # isolate possible subject predicate object from qg
         qedge = list(qg.edges.values())[0]
         sub_category_list = eu.convert_to_list(qg.nodes[qedge.subject].categories)
@@ -40,55 +40,72 @@ class KPSelector:
         
         # use metamap to check kp for predicate triple
         accepting_kps = set()
-        for kp, predicates_dict in self.meta_map.items():
-            if self._triple_is_in_predicates_response(kp, predicates_dict, sub_category_list, predicate_list, obj_category_list):
+        for kp in self.meta_map:
+            if self._triple_is_in_meta_info(kp, sub_category_list, predicate_list, obj_category_list):
                 accepting_kps.add(kp)
             # Also check the reverse direction for KG2, since it actually ignores edge direction
-            elif kp == "RTX-KG2" and self._triple_is_in_predicates_response(kp, predicates_dict, obj_category_list, predicate_list, sub_category_list):
+            elif kp == "RTX-KG2" and self._triple_is_in_meta_info(kp, obj_category_list, predicate_list, sub_category_list):
                 accepting_kps.add(kp)
 
         kps_to_return = self._select_best_kps(accepting_kps, qg)
         return kps_to_return
 
+    def kp_accepts_single_hop_qg(self, qg: QueryGraph, kp: str) -> Optional[bool]:
+        # Confirm that the qg is one-hop
+        if len(qg.edges) > 1:
+            self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.",
+                           error_code="UnexpectedQG")
+            return None
+
+        qedge = list(qg.edges.values())[0]
+        sub_category_list = qg.nodes[qedge.subject].categories
+        obj_category_list = qg.nodes[qedge.object].categories
+        predicate_list = qedge.predicates
+        return self._triple_is_in_meta_info(kp, sub_category_list, predicate_list, obj_category_list)
+
     # returns True if at least one possible triple exists in the predicates endpoint response
-    @staticmethod
-    def _triple_is_in_predicates_response(kp: str, predicates_dict: dict, subject_list: list, predicate_list: list, object_list: list)  -> bool:
-        # handle potential emptiness of sub, obj, predicate lists
-        if not subject_list and eu.kp_supports_none_for_category(kp): # any subject
-            subject_list = list(predicates_dict.keys())
-        if not object_list and eu.kp_supports_none_for_category(kp): # any object
-            object_set = set()
-            _ = [object_set.add(obj) for obj_dict in predicates_dict.values() for obj in obj_dict.keys()]
-            object_list = list(object_set)
-        any_predicate = False if predicate_list or not eu.kp_supports_none_for_predicate(kp) else True
+    def _triple_is_in_meta_info(self, kp: str, subject_list: List[str], predicate_list: List[str], object_list: List[str]) -> bool:
+        predicates_dict = self.meta_map.get(kp)
+        if not predicates_dict:
+            self.log.error(f"{kp} does not seem to be a valid KP for ARAX. Valid KPs are: {self.all_kps}", error_code="InvalidKP")
+            return False
+        else:
+            # handle potential emptiness of sub, obj, predicate lists
+            if not subject_list: # any subject
+                subject_list = list(predicates_dict.keys())
+            if not object_list: # any object
+                object_set = set()
+                _ = [object_set.add(obj) for obj_dict in predicates_dict.values() for obj in obj_dict.keys()]
+                object_list = list(object_set)
+            any_predicate = False if predicate_list or kp == "NGD" else True
 
-        # handle combinations of subject and objects using cross product
-        qg_sub_obj_dict = defaultdict(lambda: set())
-        for sub, obj in list(product(subject_list, object_list)):
-            qg_sub_obj_dict[sub].add(obj)
+            # handle combinations of subject and objects using cross product
+            qg_sub_obj_dict = defaultdict(lambda: set())
+            for sub, obj in list(product(subject_list, object_list)):
+                qg_sub_obj_dict[sub].add(obj)
 
-        # check for subjects
-        kp_allowed_subs = set(predicates_dict.keys())
-        accepted_subs = kp_allowed_subs.intersection(set(qg_sub_obj_dict.keys()))
+            # check for subjects
+            kp_allowed_subs = set(predicates_dict.keys())
+            accepted_subs = kp_allowed_subs.intersection(set(qg_sub_obj_dict.keys()))
 
-        # check for objects
-        for sub in accepted_subs:
-            kp_allowed_objs = set(predicates_dict[sub].keys())
-            accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub])
-            if len(accepted_objs) > 0:
-                # check predicates
-                for obj in accepted_objs:
-                    if any_predicate or set(predicate_list).intersection(set(predicates_dict[sub][obj])):
-                        return True
-        return False
+            # check for objects
+            for sub in accepted_subs:
+                kp_allowed_objs = set(predicates_dict[sub].keys())
+                accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub])
+                if len(accepted_objs) > 0:
+                    # check predicates
+                    for obj in accepted_objs:
+                        if any_predicate or set(predicate_list).intersection(set(predicates_dict[sub][obj])):
+                            return True
+            return False
 
     @staticmethod
     def _select_best_kps(possible_kps: Set[str], qg: QueryGraph) -> Set[str]:
         # Apply some special rules to filter down the KPs we'll use for this QG
         chosen_kps = possible_kps
-        # If a qnode has a lot of curies, only use KPs that support batch querying (no TRAPI standard yet)
-        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 10):
-            chosen_kps = chosen_kps.intersection(eu.get_kps_that_support_curie_lists())
+        # If a qnode has a lot of curies, only use KG2 for now (until figure out which KPs are reasonably fast for this)
+        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 20):
+            chosen_kps = {"RTX-KG2"}
 
         # Always hit up KG2 for now (until its /predicates is made more comprehensive. it fails fast anyway)
         chosen_kps.add("RTX-KG2")

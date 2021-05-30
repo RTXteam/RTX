@@ -107,13 +107,14 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
             assert node_key and isinstance(node_key, str)
             assert isinstance(node.name, str) or node.name is None
             assert node.qnode_keys and isinstance(node.qnode_keys, list)
-            assert node.categories and isinstance(node.categories, list)
+            assert node.categories and isinstance(node.categories, list) or node.categories is None
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             assert edge_key and isinstance(edge_key, str)
             assert edge.qedge_keys and isinstance(edge.qedge_keys, list)
             assert edge.subject and isinstance(edge.subject, str)
             assert edge.object and isinstance(edge.object, str)
+            assert edge.predicate and isinstance(edge.predicate, str) or edge.predicate is None
 
 
 def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
@@ -439,6 +440,7 @@ def test_cohd_expand_observed_expected_ratio():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
+@pytest.mark.slow
 def test_cohd_expand_chi_square():
     actions_list = [
         "add_qnode(ids=DOID:1588, key=n00)",

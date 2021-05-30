@@ -36,250 +36,7 @@ class ARAXExpander:
                                                                      "biolink:DiseaseOrPhenotypicFeature"},
                                        "biolink:DiseaseOrPhenotypicFeature": {"biolink:Disease",
                                                                               "biolink:PhenotypicFeature"}}
-        self.edge_key_parameter_info = {
-            "is_required": False,
-            "examples": ["e00", "[e00, e01]"],
-            "type": "string",
-            "description": "A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."
-        }
-        self.node_key_parameter_info = {
-            "is_required": False,
-            "examples": ["n00", "[n00, n01]"],
-            "type": "string",
-            "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
-        }
-        self.continue_if_no_results_parameter_info = {
-            "is_required": False,
-            "examples": ["true", "false"],
-            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-            "default": "false",
-            "type": "boolean",
-            "description": "Whether to continue execution if no paths are found matching the query graph."
-        }
-        self.enforce_directionality_parameter_info = {
-            "is_required": False,
-            "examples": ["true", "false"],
-            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-            "default": "false",
-            "type": "boolean",
-            "description": "Whether to obey (vs. ignore) edge directions in the query graph."
-        }
-        self.use_synonyms_parameter_info = {
-            "is_required": False,
-            "examples": ["true", "false"],
-            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-            "default": "true",
-            "type": "boolean",
-            "description": "Whether to consider curie synonyms and merge synonymous nodes."
-        }
-        self.kp_command_definitions = {
-            "ARAX/KG1": {
-                "dsl_command": "expand(kp=ARAX/KG1)",
-                "description": "This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths "
-                               "that satisfy the query graph.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "enforce_directionality": self.enforce_directionality_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info
-                }
-            },
-            "RTX-KG2": {
-                "dsl_command": "expand(kp=RTX-KG2)",
-                "description": "This command reaches out to the RTX KG2 knowledge graph to find all bioentity subpaths "
-                               "that satisfy the query graph. If use_synonyms=true, it uses the KG2canonicalized "
-                               "('KG2c') Neo4j instance; otherwise, the regular KG2 Neo4j instance is used.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "enforce_directionality": self.enforce_directionality_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info
-                }
-            },
-            "BTE": {
-                "dsl_command": "expand(kp=BTE)",
-                "description": "This command uses BioThings Explorer (from the Service Provider) to find all bioentity "
-                               "subpaths that satisfy the query graph. Of note, all query nodes must have a type "
-                               "specified for BTE queries. In addition, bi-directional queries are only partially "
-                               "supported (the ARAX system knows how to ignore edge direction when deciding which "
-                               "query node for a query edge will be the 'input' qnode, but BTE itself returns only "
-                               "answers matching the input edge direction).",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "enforce_directionality": self.enforce_directionality_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info
-                }
-            },
-            "COHD": {
-                "dsl_command": "expand(kp=COHD)",
-                "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
-                               " satisfy the query graph.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info,
-                    "COHD_method": {
-                        "is_required": False,
-                        "examples": ["paired_concept_freq", "chi_square"],
-                        "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
-                        "default": "paired_concept_freq",
-                        "type": "string",
-                        "description": "Which measure from COHD should be considered."
-                    },
-                    "COHD_method_percentile": {
-                        "is_required": False,
-                        "examples": [95, 80],
-                        "min": 0,
-                        "max": 100,
-                        "default": 99,
-                        "type": "integer",
-                        "description": "What percentile to use as a cut-off/threshold for the specified COHD method."
-                    }
-                }
-            },
-            "GeneticsKP": {
-                "dsl_command": "expand(kp=GeneticsKP)",
-                "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
-                               "satisfy the query graph.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info
-                }
-            },
-            "MolePro": {
-                "dsl_command": "expand(kp=MolePro)",
-                "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
-                               "subpaths that satisfy the query graph.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info,
-                }
-            },
-            "ClinicalRiskKP": {
-                "dsl_command": "expand(kp=ClinicalRiskKP)",
-                "description": "This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity "
-                               "subpaths that satisfy the query graph.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info,
-                }
-            },
-            "WellnessKP": {
-                "dsl_command": "expand(kp=WellnessKP)",
-                "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
-                               "subpaths that satisfy the query graph.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info,
-                }
-            },
-            "DrugResponseKP": {
-                "dsl_command": "expand(kp=DrugResponseKP)",
-                "description": "This command reaches out to the Multiomics Big GIM II Drug Response KP to find all "
-                               "bioentity subpaths that satisfy the query graph.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info,
-                }
-            },
-            "TumorGeneMutationKP": {
-                "dsl_command": "expand(kp=TumorGeneMutationKP)",
-                "description": "This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find "
-                               "all bioentity subpaths that satisfy the query graph.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info,
-                }
-            },
-            "NGD": {
-                "dsl_command": "expand(kp=NGD)",
-                "description": "This command uses ARAX's in-house normalized google distance (NGD) database to expand "
-                               "a query graph; it returns edges between nodes with an NGD value below a certain "
-                               "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
-                               "configurable/smarter in the future.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info
-                }
-            },
-            "CHP": {
-                "dsl_command": "expand(kp=CHP)",
-                "description": "This command reaches out to CHP (the Connections Hypothesis Provider) to query the probability "
-                               "of the form P(Outcome | Gene Mutations, Disease, Therapeutics, ...). It currently can answer a question like "
-                               "'Given a gene or a batch of genes, what is the probability that the survival time (day) >= a given threshold for this gene "
-                               "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
-                               "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
-                               "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info,
-                    "CHP_survival_threshold": {
-                        "is_required": False,
-                        "examples": [200, 100],
-                        "min": 0,
-                        "max": 1000000000000,
-                        "default": 500,
-                        "type": "int",
-                        "description": "What cut-off/threshold for surivial time (day) to estimate probability."
-                    },
-                }
-            },
-            "DTD": {
-                "dsl_command": "expand(kp=DTD)",
-                "description": "This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
-                               "a query graph; it returns edges between nodes with an DTD probability above a certain "
-                               "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
-                               "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
-                               "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
-                               "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
-                               "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to "
-                               "to call DTD model to do a real-time calculation.",
-                "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info,
-                    "DTD_threshold": {
-                        "is_required": False,
-                        "examples": [0.8, 0.5],
-                        "min": 0,
-                        "max": 1,
-                        "default": 0.8,
-                        "type": "float",
-                        "description": "What cut-off/threshold to use for expanding the DTD virtual edges."
-                    },
-                    "DTD_slow_mode": {
-                        "is_required": False,
-                        "examples": ["true", "false"],
-                        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-                        "default": "false",
-                        "type": "boolean",
-                        "description": "Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability."
-                    }
-                }
-            }
-        }
+        self.kp_command_definitions = eu.get_kp_command_definitions()
 
     def describe_me(self):
         """
@@ -287,6 +44,7 @@ class ARAXExpander:
         :return:
         """
         considered_kps = sorted(list(set(self.kp_command_definitions).difference({"ARAX/KG1"})))
+        kg2_definition = self.kp_command_definitions["RTX-KG2"]
         kp_less = {
                 "dsl_command": "expand()",
                 "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
@@ -296,11 +54,11 @@ class ARAXExpander:
                                f"but useful answers. For each QEdge, it queries the selected KPs in parallel; it will "
                                f"timeout for a particular KP if it decides it's taking too long to respond.",
                 "parameters": {
-                    "edge_key": self.edge_key_parameter_info,
-                    "node_key": self.node_key_parameter_info,
-                    "continue_if_no_results": self.continue_if_no_results_parameter_info,
-                    "enforce_directionality": self.enforce_directionality_parameter_info,
-                    "use_synonyms": self.use_synonyms_parameter_info
+                    "edge_key": kg2_definition["parameters"]["edge_key"],
+                    "node_key": kg2_definition["parameters"]["node_key"],
+                    "continue_if_no_results": kg2_definition["parameters"]["continue_if_no_results"],
+                    "enforce_directionality": kg2_definition["parameters"]["enforce_directionality"],
+                    "use_synonyms": kg2_definition["parameters"]["use_synonyms"]
                 }
             }
         return [kp_less] + list(self.kp_command_definitions.values())
@@ -419,7 +177,7 @@ class ARAXExpander:
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
-                    kp_selector = KPSelector(log, set(self.kp_command_definitions.keys()))
+                    kp_selector = KPSelector(log)
                     kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
