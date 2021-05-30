@@ -12,6 +12,7 @@ A test can be marked with more than one tag (e.g., slow *and* external).
 * To include slow tests, use `--runslow`
 * To include external tests, use `--runexternal`
 * To run _only_ slow tests, use `--runonlyslow`
+* To run _only_ external tests, use `--runonlyexternal`
 
 Example: Running `pytest -v --runslow --runexternal` will include all tests.
 
