@@ -199,15 +199,24 @@ class TRAPIQuerier:
             arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
             if not returned_edge.attributes:
                 returned_edge.attributes = []
+            # Put in a placeholder for missing required attribute fields to try to keep our answer TRAPI-compliant
+            for attribute in returned_edge.attributes:
+                if not attribute.attribute_type_id:
+                    attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
             returned_edge.attributes.append(Attribute(attribute_type_id="biolink:knowledge_provider_source",
                                                       value=eu.get_kp_infores_curie(self.kp_name),
                                                       value_type_id="biolink:InformationResource",
                                                       attribute_source="infores:arax_ara"))
+
             for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
                 answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
         for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
             for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
                 answer_kg.add_node(returned_node_key, returned_node, qnode_key)
+            if returned_node.attributes:
+                for attribute in returned_node.attributes:
+                    if not attribute.attribute_type_id:
+                        attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
 
         return answer_kg
 
