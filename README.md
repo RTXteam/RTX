@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/RTXteam/RTX.svg?branch=master)](https://travis-ci.com/RTXteam/RTX)
+[![DOI](https://zenodo.org/badge/111240202.svg)](https://zenodo.org/badge/latestdoi/111240202)
 
 # Table of contents
 
