@@ -16,7 +16,7 @@ before_install:
 # command to install python dependencies
 install:
   - pip install -r requirements.txt
-  - pip install reasoner_validator
+  #- pip install reasoner_validator
   - python ./code/ARAX/ARAXQuery/ARAX_database_manager.py --slim
 # command to run tests
 script:
