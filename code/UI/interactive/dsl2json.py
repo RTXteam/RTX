@@ -36,7 +36,7 @@ for module in modules.keys():
 
         dsl_name = re.sub('\`','', dsl_name)
         print(dsl_name, end='')
-        print('.' * (50-len(dsl_name)), end='')
+        print('.' * (60-len(dsl_name)), end='')
         
         araxi_json[dsl_name] = {}
         araxi_json[dsl_name]['parameters'] = {}
