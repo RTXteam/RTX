@@ -205,6 +205,8 @@ class ARAXExpander:
                 # Post-process all the KPs' answers and merge into our overarching KG
                 for answer_kg, kp_log in kp_answers:
                     if len(kps_to_query) > 1:
+                        if kp_log.status != 'OK':
+                            kp_log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
                         log.merge(kp_log)  # Processes can't share the main log, so we merge their individual logs here
                     if response.status != 'OK':
                         return response
