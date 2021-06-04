@@ -2,6 +2,7 @@
 import multiprocessing
 import sys
 import os
+import traceback
 from collections import defaultdict
 from typing import List, Dict, Tuple, Union, Set, Optional
 
@@ -290,28 +291,39 @@ class ARAXExpander:
             return answer_kg, log
 
         # Route this query to the proper place depending on the KP
-        if kp_to_use == 'COHD':
-            from Expand.COHD_querier import COHDQuerier
-            kp_querier = COHDQuerier(log)
-        elif kp_to_use == 'DTD':
-            from Expand.DTD_querier import DTDQuerier
-            kp_querier = DTDQuerier(log)
-        elif kp_to_use == 'CHP':
-            from Expand.CHP_querier import CHPQuerier
-            kp_querier = CHPQuerier(log)
-        elif kp_to_use == 'NGD':
-            from Expand.ngd_querier import NGDQuerier
-            kp_querier = NGDQuerier(log)
-        elif (kp_to_use == 'RTX-KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
-            from Expand.kg2_querier import KG2Querier
-            kp_querier = KG2Querier(log, kp_to_use)
-        else:
-            # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
-            from Expand.trapi_querier import TRAPIQuerier
-            kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, force_local)
+        try:
+            if kp_to_use == 'COHD':
+                from Expand.COHD_querier import COHDQuerier
+                kp_querier = COHDQuerier(log)
+            elif kp_to_use == 'DTD':
+                from Expand.DTD_querier import DTDQuerier
+                kp_querier = DTDQuerier(log)
+            elif kp_to_use == 'CHP':
+                from Expand.CHP_querier import CHPQuerier
+                kp_querier = CHPQuerier(log)
+            elif kp_to_use == 'NGD':
+                from Expand.ngd_querier import NGDQuerier
+                kp_querier = NGDQuerier(log)
+            elif (kp_to_use == 'RTX-KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
+                from Expand.kg2_querier import KG2Querier
+                kp_querier = KG2Querier(log, kp_to_use)
+            else:
+                # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
+                from Expand.trapi_querier import TRAPIQuerier
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, force_local)
 
-        # Actually answer the query using the Querier we identified above
-        answer_kg = kp_querier.answer_one_hop_query(edge_qg)
+            # Actually answer the query using the Querier we identified above
+            answer_kg = kp_querier.answer_one_hop_query(edge_qg)
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            if user_specified_kp:
+                log.error(f"An uncaught error was thrown while trying to Expand using {kp_to_use}. Error was: {tb}",
+                          error_code=f"UncaughtError")
+            else:
+                log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
+                            f"get answers from that KP. Error was: {tb}")
+            return QGOrganizedKnowledgeGraph(), log
 
         if log.status != 'OK':
             return answer_kg, log
