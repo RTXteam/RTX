@@ -135,10 +135,10 @@ class CHPQuerier:
                         log.warning(f"The curie ids of these nodes {not_pass_nodes} are not allowable based on CHP client")
                 else:
                     if type(target_qnode.ids) is str:
-                        log.error(f"The curie id of {target_qnode.ids} is not allowable based on CHP client", error_code="CategoryError")
+                        log.warning(f"The curie id of {target_qnode.ids} is not allowable based on CHP client", error_code="CategoryError")
                         return final_kg
                     else:
-                        log.error(f"The curie ids of {target_qnode.ids} are not allowable based on CHP client", error_code="CategoryError")
+                        log.warning(f"The curie ids of {target_qnode.ids} are not allowable based on CHP client", error_code="CategoryError")
                         return final_kg
         else:
             try:
