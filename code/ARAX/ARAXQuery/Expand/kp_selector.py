@@ -162,23 +162,21 @@ class KPSelector:
         for kp in kps_to_update:
             # get predicates dictionary from KP
             kp_endpoint = eu.get_kp_endpoint_url(kp)
-            if kp_endpoint is None:
-                self.log.debug(f"No endpoint for {kp}. Skipping for now.")
-                continue
-            try:
-                with requests_cache.disabled():
-                    kp_predicates_response = requests.get(f"{kp_endpoint}/predicates", timeout=10)
-            except requests.exceptions.Timeout:
-                self.log.warning(f"Timed out when trying to hit {kp}'s /predicates endpoint")
-            except Exception:
-                self.log.warning(f"Ran into a problem hitting {kp}'s /predicates endpoint")
-            else:
-                if kp_predicates_response.status_code != 200:
-                    self.log.warning(f"Unable to access {kp}'s predicates endpoint (returned status of "
-                                     f"{kp_predicates_response.status_code})")
-                    continue
-                predicates_dict = kp_predicates_response.json()
-                meta_map[kp] = predicates_dict
+            if kp_endpoint:
+                try:
+                    with requests_cache.disabled():
+                        kp_predicates_response = requests.get(f"{kp_endpoint}/predicates", timeout=10)
+                except requests.exceptions.Timeout:
+                    self.log.warning(f"Timed out when trying to hit {kp}'s /predicates endpoint")
+                except Exception:
+                    self.log.warning(f"Ran into a problem hitting {kp}'s /predicates endpoint")
+                else:
+                    if kp_predicates_response.status_code == 200:
+                        predicates_dict = kp_predicates_response.json()
+                        meta_map[kp] = predicates_dict
+                    else:
+                        self.log.warning(f"Unable to access {kp}'s predicates endpoint (returned status of "
+                                         f"{kp_predicates_response.status_code})")
 
         # Merge what we found with our hard-coded info for API-less KPs
         non_api_kps_meta_info = self._get_non_api_kps_meta_info(meta_map)
