@@ -366,9 +366,14 @@ hr {
 .p1, .msgERROR   { background-color: #821; }
 .p0, .msgDEBUG   { background-color: #444; }
 
-.srtx { background-color: #cb5; }
-.sind { background-color: #3bc; }
-.srob { background-color: #000; }
+.srtx { background-color: #5596d0; }
+.sind { background-color: #4b0082; }
+.srob { background-color: #333333; }
+.scod { background-color: #00539f; }
+.smol { background-color: #f28500; }
+.suns { background-color: #337ab7; }
+.sara { background-color: #c2c000; }
+.simp { background-color: #98afc7; }
 
 .hide {
     background-color: #bbb;

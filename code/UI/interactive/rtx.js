@@ -1128,7 +1128,10 @@ function render_response(respObj,dispjson) {
 	    }
 
 	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"]);
+	    respreas = 'n/a';
+	    if (respObj.reasoner_id)
+		respreas = respObj.reasoner_id;
+	    process_results(respObj.message["results"],respObj.message["knowledge_graph"], respreas);
 	}
     }
     else {
@@ -1479,7 +1482,7 @@ function eau_du_essence(result) {
     return guessence;
 }
 
-function process_results(reslist,kg) {
+function process_results(reslist,kg,mainreasoner) {
     if (Object.keys(all_nodes).length === 0 && all_nodes.constructor === Object) {
 	for (var result of reslist)
             for (var nbid in result.node_bindings)
@@ -1512,14 +1515,25 @@ function process_results(reslist,kg) {
             add_to_summary([ess], num);
 
 	var cnf = 0;
-	if (Number(result.confidence))
+	if (Number(result.score))
+	    cnf = Number(result.score).toFixed(3);
+	else if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
 	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : "p1";
 
-	var rsrc = 'n/a';
+	var rsrc = mainreasoner;
 	if (result.reasoner_id)
 	    rsrc = result.reasoner_id;
-	var rscl = (rsrc=="ARAX") ? "srtx" : (rsrc=="Indigo") ? "sind" : (rsrc=="Robokop") ? "srob" : "p0";
+	var rscl =
+	    (rsrc=="ARAX")     ? "srtx" :
+	    (rsrc=="Indigo")   ? "sind" :
+	    (rsrc=="Robokop")  ? "srob" :
+	    (rsrc=="COHD")     ? "scod" :
+	    (rsrc=="MolePro")  ? "smol" :
+	    (rsrc=="Unsecret") ? "suns" :
+	    (rsrc=="Aragorn")  ? "sara" :
+	    (rsrc=="ImProving")? "simp" :
+	    "p0";
 
 	var result_container = document.getElementById("result_container");
 
