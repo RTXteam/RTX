@@ -589,7 +589,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         result_scores = sum(ranks_list)/float(len(ranks_list))
         #print(result_scores)
         for result, score in zip(results, result_scores):
-            result.confidence = score
+            result.score = score
 
         # for result in message.results:
         #     self.result_confidence_maker(result)
@@ -597,19 +597,19 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
             # Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
             # This is a little bad in that 0.0005 becomes better than 0.0011, but this is all way low, so who cares
-            if result.confidence < 0.001:
-                result.confidence += 0.001
+            if result.score < 0.001:
+                result.score += 0.001
 
             # Round to reasonable precision. Keep only 3 digits after the decimal
-            score = int(result.confidence * 1000 + 0.5) / 1000.0
+            score = int(result.score * 1000 + 0.5) / 1000.0
 
             result.row_data = [score, result.essence, result.essence_category]
 
         # Add table columns name
-        response.envelope.table_column_names = ['confidence', 'essence', 'essence_category']
+        response.envelope.table_column_names = ['score', 'essence', 'essence_category']
 
         # Re-sort the final results
-        message.results.sort(key=lambda result: result.confidence, reverse=True)
+        message.results.sort(key=lambda result: result.score, reverse=True)
         response.debug("Results have been ranked and sorted")
 
 
