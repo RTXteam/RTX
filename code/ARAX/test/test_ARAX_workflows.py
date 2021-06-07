@@ -400,7 +400,7 @@ def test_FET_ranking_1():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    ranks = [result.confidence for result in message.results]
+    ranks = [result.score for result in message.results]
     assert min(ranks) != max(ranks)
 
 @pytest.mark.slow
@@ -631,10 +631,10 @@ def test_FET_ranking_2():
                 for edge in edge_bindings:
                     for attribute in message.knowledge_graph.edges[edge.id].attributes:
                         if attribute.original_attribute_name == "fisher_exact_test_p-value":
-                            if str(result.confidence) in fet_ranking_value:
-                                fet_ranking_value[str(result.confidence)].append(float(attribute.value))
+                            if str(result.score) in fet_ranking_value:
+                                fet_ranking_value[str(result.score)].append(float(attribute.value))
                             else:
-                                fet_ranking_value[str(result.confidence)] = [float(attribute.value)]
+                                fet_ranking_value[str(result.score)] = [float(attribute.value)]
     
     for fet_val, conf_list in fet_ranking_value.items():
         if len(conf_list) > 1:
@@ -664,10 +664,10 @@ def test_genetics_kp_ranking():
                     if message.knowledge_graph.edges[edge.id].attributes is not None:
                         for attribute in message.knowledge_graph.edges[edge.id].attributes:
                             if attribute.original_attribute_name == "pValue":
-                                if str(result.confidence) in gen_kp_ranking_value:
-                                    gen_kp_ranking_value[str(result.confidence)].append(float(attribute.value))
+                                if str(result.score) in gen_kp_ranking_value:
+                                    gen_kp_ranking_value[str(result.score)].append(float(attribute.value))
                                 else:
-                                    gen_kp_ranking_value[str(result.confidence)] = [float(attribute.value)]
+                                    gen_kp_ranking_value[str(result.score)] = [float(attribute.value)]
     assert len(gen_kp_ranking_value) > 0
 
 
