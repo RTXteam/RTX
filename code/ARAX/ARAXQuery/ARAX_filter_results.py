@@ -27,7 +27,7 @@ class ARAXFilterResults:
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
-        #parameter descriptions
+        #Parameter descriptions
         self.edge_attribute_info = {
             "is_required": True,
             "examples": ["jaccard_index", "observed_expected_ratio", "normalized_google_distance"],
