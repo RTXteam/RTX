@@ -152,6 +152,21 @@ def test_sort():
     assert len(message.results) == 20
     # add something to test if the results are assending and the correct numbers
 
+def test_issue1504():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(ids=MONDO:0005301, key=n00)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:related_to)",
+            "expand(kp=ClinicalRiskKP, edge_key=e00)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n00)",
+            "resultify()",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=feature_coefficient, direction=descending, max_results=30, prune_kg=true)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
