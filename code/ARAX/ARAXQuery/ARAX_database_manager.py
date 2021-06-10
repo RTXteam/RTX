@@ -44,6 +44,10 @@ class ARAXDatabaseManager:
         if not os.path.exists(kg2c_filepath):
             os.system(f"mkdir -p {kg2c_filepath}")
 
+        kg2c_meta_kg_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
+        if not os.path.exists(kg2c_meta_kg_filepath):
+            os.system(f"mkdir -p {kg2c_meta_kg_filepath}")
+
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
@@ -51,7 +55,8 @@ class ARAXDatabaseManager:
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
             'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}",
-            'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}"
+            'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
+            'kg2c_meta_kg': f"{kg2c_meta_kg_filepath}{os.path.sep}{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}"
         }
         # user, host, and paths to databases on remote server
         self.remote_locations = {
@@ -61,7 +66,8 @@ class ARAXDatabaseManager:
             'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_username}@{self.RTXConfig.curie_to_pmids_host}:{self.RTXConfig.curie_to_pmids_path}",
             'node_synonymizer': f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:{self.RTXConfig.node_synonymizer_path}",
             'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}",
-            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_username}@{self.RTXConfig.kg2c_sqlite_host}:{self.RTXConfig.kg2c_sqlite_path}"
+            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_username}@{self.RTXConfig.kg2c_sqlite_host}:{self.RTXConfig.kg2c_sqlite_path}",
+            'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_username}@{self.RTXConfig.kg2c_meta_kg_host}:{self.RTXConfig.kg2c_meta_kg_path}"
         }
         # database locations if inside rtx1 docker container
         self.docker_paths = {
@@ -71,7 +77,8 @@ class ARAXDatabaseManager:
             'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_path.replace('/translator/','/mnt/')}",
             'node_synonymizer': f"{self.RTXConfig.node_synonymizer_path.replace('/translator/','/mnt/')}",
             'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace('/translator/','/mnt/')}",
-            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace('/translator/', '/mnt/')}"
+            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace('/translator/', '/mnt/')}",
+            'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_path.replace('/translator/', '/mnt/')}",
         }
 
         # database local paths + version numbers
@@ -103,6 +110,10 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': {
                 'path': self.local_paths['kg2c_sqlite'],
                 'version': self.RTXConfig.kg2c_sqlite_version
+            },
+            'kg2c_meta_kg': {
+                'path': self.local_paths['kg2c_meta_kg'],
+                'version': self.RTXConfig.kg2c_meta_kg_version
             }
         }
 
@@ -225,7 +236,7 @@ class ARAXDatabaseManager:
         for database_name in self.remote_locations.keys():
             if debug:
                 print(f"Downloading slim {self.remote_locations[database_name].split('/')[-1]}...")
-            if database_name in ["node_synonymizer", "curie_to_pmids", "log_model", "kg2c_sqlite"]:
+            if database_name in ["node_synonymizer", "curie_to_pmids", "log_model", "kg2c_sqlite", "kg2c_meta_kg"]:
                 self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
             elif database_name in ["cohd_database", "dtd_prob", "graph_database"]:
                 self.download_database(remote_location=self.remote_locations[database_name].replace(".sqlite","_slim.sqlite").replace(".db","_slim.db"), local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)

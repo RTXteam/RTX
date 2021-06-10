@@ -113,6 +113,11 @@ class RTXConfiguration:
         self.kg2c_sqlite_path = self.config["Contextual"][self.live]["kg2c_sqlite"]["path"]
         self.kg2c_sqlite_version = self.config["Contextual"][self.live]["kg2c_sqlite"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
 
+        self.kg2c_meta_kg_host = self.config["Global"]["kg2c_meta_kg"]["host"]
+        self.kg2c_meta_kg_username = self.config["Global"]["kg2c_meta_kg"]["username"]
+        self.kg2c_meta_kg_path = self.config["Contextual"][self.live]["kg2c_meta_kg"]["path"]
+        self.kg2c_meta_kg_version = self.config["Contextual"][self.live]["kg2c_meta_kg"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
+
         self.mysql_feedback_host = self.config["Global"]["mysql_feedback"]["host"]
         self.mysql_feedback_port = self.config["Global"]["mysql_feedback"]["port"]
         self.mysql_feedback_username = self.config["Global"]["mysql_feedback"]["username"]
