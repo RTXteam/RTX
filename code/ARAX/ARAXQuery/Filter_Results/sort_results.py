@@ -67,7 +67,7 @@ class SortResults:
                 if hasattr(edge, 'attributes'):  # check if they have attributes
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute
-                            if attribute.original_attribute_name == params['edge_attribute']:  # check if it's the desired one
+                            if attribute.original_attribute_name == params['edge_attribute'] or attribute.attribute_type_id == params['edge_attribute']:  # check if it's the desired one
                                 try:
                                     edge_values[key] = {'value': float(attribute.value), 'relation': edge.relation}
                                 except ValueError:
@@ -160,7 +160,7 @@ class SortResults:
                 if hasattr(node, 'attributes'):  # check if they have attributes
                     if node.attributes:  # if there are any node attributes
                         for attribute in node.attributes:  # for each attribute
-                            if attribute.original_attribute_name == params['node_attribute']:  # check if it's the desired one
+                            if attribute.original_attribute_name == params['node_attribute'] or attribute.attribute_type_id == params['node_attribute']:  # check if it's the desired one
                                 if attribute.original_attribute_name == 'pubmed_ids':
                                     node_values[key] = {'value': attribute.value.count("PMID"), 'category': node.categories}
                                 else:

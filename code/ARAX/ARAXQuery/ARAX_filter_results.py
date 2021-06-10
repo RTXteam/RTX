@@ -321,7 +321,10 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                 if hasattr(edge, 'attributes'):
                     if edge.attributes:
                         for attribute in edge.attributes:
-                            known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute,"original_attribute_name"):
+                                known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute,"attribute_type_id"):
+                                known_attributes.add(attribute.attribute_type_id)
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': known_attributes,
@@ -421,7 +424,10 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                 if hasattr(node, 'attributes'):
                     if node.attributes:
                         for attribute in node.attributes:
-                            known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute,"original_attribute_name"):
+                                known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute,"attribute_type_id"):
+                                known_attributes.add(attribute.attribute_type_id)
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_node_attribute'},
                                     'node_attribute': known_attributes,
