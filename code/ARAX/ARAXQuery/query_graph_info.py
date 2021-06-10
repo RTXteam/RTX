@@ -339,16 +339,16 @@ class QueryGraphInfo:
             template_part = f"{component_id}({content})"
             self.query_graph_templates['simple'] += template_part
 
-            # Since queries with intermediate nodes that are not is_set=true tend to blow up, for now, make them is_set=true unless explicitly set to false
-            # Disabled 2021-04-22 due to #1398. But then re-enabled because this is not the right fix
-            if node_index > 0 and node_index < (self.n_nodes - 1 ):
+            # Since queries with intermediate nodes that are not is_set=true tend to blow up,
+            # for now, make them is_set=true unless explicitly set to false
+            # Intermediate nodes that have ids (curies) are an exception to this treatment
+            if node_index > 0 and node_index < (self.n_nodes - 1 ) and node['has_ids'] == False:
                 if 'is_set' not in node or node['is_set'] is None:
                     node['node_object'].is_set = True
                     response.warning(f"Setting unspecified is_set to true for {node['key']} because this will probably lead to a happier result")
                 elif node['is_set'] is True:
                     response.debug(f"Value for is_set is already true for {node['key']} so that's good")
                 elif node['is_set'] is False:
-                    #response.info(f"Value for is_set is set to false for intermediate node {node['key']}. This could lead to weird results. Consider setting it to true")
                     response.info(f"Value for is_set is false for intermediate node {node['key']}. Setting to true because this will probably lead to a happier result")
                     node['node_object'].is_set = True
                 #else:
