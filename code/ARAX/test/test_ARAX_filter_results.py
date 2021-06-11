@@ -152,6 +152,7 @@ def test_sort():
     assert len(message.results) == 20
     # add something to test if the results are assending and the correct numbers
 
+    
 @pytest.mark.external
 def test_issue1506():
     query = {"operations": {"actions": [
