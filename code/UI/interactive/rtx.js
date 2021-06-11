@@ -1063,6 +1063,7 @@ function render_response(respObj,dispjson) {
 
     if (respObj.message["query_graph"]) {
 	if (dispjson) {
+	    // delete null attributes to simplify json
 	    for (var id in respObj.message["query_graph"].nodes) {
 		var gnode = respObj.message["query_graph"].nodes[id];
 		for (var att in gnode)
@@ -1514,24 +1515,27 @@ function process_results(reslist,kg,mainreasoner) {
 	else
             add_to_summary([ess], num);
 
-	var cnf = 0;
+	var cnf = 'n/a';
 	if (Number(result.score))
 	    cnf = Number(result.score).toFixed(3);
 	else if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
-	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : "p1";
+	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
 
 	var rsrc = mainreasoner;
 	if (result.reasoner_id)
 	    rsrc = result.reasoner_id;
 	var rscl =
 	    (rsrc=="ARAX")     ? "srtx" :
+	    (rsrc=="BTE")      ? "sbte" :
+	    (rsrc=="Cam")      ? "scam" :
+	    (rsrc=="COHD")     ? "scod" :
 	    (rsrc=="Indigo")   ? "sind" :
 	    (rsrc=="Robokop")  ? "srob" :
-	    (rsrc=="COHD")     ? "scod" :
-	    (rsrc=="MolePro")  ? "smol" :
-	    (rsrc=="Unsecret") ? "suns" :
 	    (rsrc=="Aragorn")  ? "sara" :
+	    (rsrc=="MolePro")  ? "smol" :
+	    (rsrc=="Genetics") ? "sgen" :
+	    (rsrc=="Unsecret") ? "suns" :
 	    (rsrc=="ImProving")? "simp" :
 	    "p0";
 
