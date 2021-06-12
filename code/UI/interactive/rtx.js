@@ -335,7 +335,7 @@ function postQuery(qtype) {
 		    }
 		    else {
 			var jsonMsg = JSON.parse(msg);
-			if (jsonMsg.description) {
+			if (jsonMsg.logs) { // was:: (jsonMsg.description) {
 			    enqueue = true;
 			    respjson += msg;
 			}
@@ -673,6 +673,8 @@ function link_to_identifiers_dot_org(thing) {
 function getIdStats(id) {
     if (document.getElementById("numresults_"+id)) {
 	document.getElementById("numresults_"+id).innerHTML = '';
+	document.getElementById("respsize_"+id).innerHTML = '';
+	document.getElementById("nodedges_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	var wait = document.createElement("span");
 	wait.className = 'loading_cell';
@@ -693,7 +695,9 @@ function sendId() {
     input_qg = { "edges": [], "nodes": [] };
 
     if (document.getElementById("numresults_"+id)) {
-	document.getElementById("numresults_"+id).innerHTML = '';
+        document.getElementById("numresults_"+id).innerHTML = '';
+	document.getElementById("respsize_"+id).innerHTML = '';
+	document.getElementById("nodedges_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	var wait = document.createElement("span");
 	wait.className = 'loading_cell';
@@ -827,8 +831,9 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status","Message Id","N_Results","TRAPI 1.1?"] ) {
+	for (var head of ["","Agent","Status","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges"] ) {
 	    td = document.createElement("th")
+	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
 	    tr.appendChild(td);
 	}
@@ -871,12 +876,27 @@ function process_ars_message(ars_msg, level) {
     }
     td.appendChild(link);
     tr.appendChild(td);
+
     td = document.createElement("td");
-    td.id = "numresults_"+ars_msg.message;
+    td.id = "respsize_"+ars_msg.message;
+    td.style.textAlign = "right";
     tr.appendChild(td);
+
     td = document.createElement("td");
     td.id = "istrapi_"+ars_msg.message;
+    td.style.textAlign = "center";
     tr.appendChild(td);
+
+    td = document.createElement("td");
+    td.id = "numresults_"+ars_msg.message;
+    td.style.textAlign = "center";
+    tr.appendChild(td);
+
+    td = document.createElement("td");
+    td.id = "nodedges_"+ars_msg.message;
+    td.style.textAlign = "center";
+    tr.appendChild(td);
+
     table.appendChild(tr);
 
     if (go)
@@ -937,17 +957,23 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 	    jsonObj2.araxui_provider = provider;
 	    jsonObj2.araxui_response = resp_id;
 
-	    if (jsonObj2.description) {
+	    if (jsonObj2.validation_result) {
 		var nr = document.createElement("span");
-		if (jsonObj2.description.startsWith("ERROR")) {
+                if (type == "all")
+		    statusdiv.innerHTML += "<br>TRAPI v"+jsonObj2.validation_result.version+" validation: <b>"+jsonObj2.validation_result.status+"</b><br>";
+		if (jsonObj2.validation_result.status == "FAIL") {
 		    if (type == "all")
-			statusdiv.innerHTML += "<br><span class='error'>"+jsonObj2.description+"</span><br>";
+			statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
 		    nr.innerHTML = '&cross;';
 		    nr.className = 'explevel p1';
 		}
-		else {
+                else if (jsonObj2.validation_result.status == "NA") {
                     if (type == "all")
-			statusdiv.innerHTML += "<br><i>"+jsonObj2.description+"</i><br>";
+			statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
+		    nr.innerHTML = 'n/a';
+		    nr.className = 'explevel p0';
+		}
+		else {
 		    nr.innerHTML = '&check;';
 		    nr.className = 'explevel p9';
 		}
@@ -955,7 +981,22 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 	        if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
 		    document.getElementById("istrapi_"+jsonObj2.araxui_response).innerHTML = '';
 		    document.getElementById("istrapi_"+jsonObj2.araxui_response).appendChild(nr);
+
+		    document.getElementById("respsize_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.size;
+
+		    if (jsonObj2.validation_result.n_nodes)
+			document.getElementById("nodedges_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.n_nodes+' / '+jsonObj2.validation_result.n_edges;
+
 		}
+	    }
+
+            if (type == "all") {
+		statusdiv.innerHTML += "<br>";
+		if (jsonObj2.description)
+                    statusdiv.innerHTML += "<h3><i>"+jsonObj2.description+"</i></h3>";
+		if (jsonObj2.status)
+                    statusdiv.innerHTML += "<h3><i>"+jsonObj2.status+"</i></h3>";
+                statusdiv.innerHTML += "<br>";
 	    }
 	    sesame('openmax',statusdiv);
 
@@ -967,7 +1008,9 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 	else if ( xhr.status == 404 ) {
 	    if (document.getElementById("numresults_"+resp_id)) {
 		document.getElementById("numresults_"+resp_id).innerHTML = '';
-                document.getElementById("istrapi_"+resp_id).innerHTML = '';
+                document.getElementById("respsize_"+resp_id).innerHTML = '---';
+		document.getElementById("nodedges_"+resp_id).innerHTML = '';
+		document.getElementById("istrapi_"+resp_id).innerHTML = '';
 		var nr = document.createElement("span");
 		nr.className = 'explevel p0';
 		nr.innerHTML = '&nbsp;N/A&nbsp;';
@@ -980,6 +1023,8 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 	else {
             if (document.getElementById("numresults_"+resp_id)) {
 		document.getElementById("numresults_"+resp_id).innerHTML = '';
+		document.getElementById("respsize_"+resp_id).innerHTML = '---';
+		document.getElementById("nodedges_"+resp_id).innerHTML = '';
 		document.getElementById("istrapi_"+resp_id).innerHTML = '';
 		var nr = document.createElement("span");
 		nr.className = 'explevel p0';
@@ -1011,8 +1056,12 @@ function render_response_stats(respObj) {
     var nr = document.createElement("span");
     document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
 
-    if ( respObj.message["results"] ) {
-	if (respObj.description && respObj.description.startsWith("ERROR"))
+    if ( !respObj.message ) {
+        nr.className = 'explevel p0';
+	nr.innerHTML = '&nbsp;N/A&nbsp;';
+    }
+    else if ( respObj.message["results"] ) {
+	if (respObj.validation_result && respObj.validation_result.status == "FAIL")
 	    nr.className = 'explevel p1';
 	else if (respObj.message.results.length > 0)
 	    nr.className = 'explevel p9';
@@ -1060,6 +1109,24 @@ function render_response(respObj,dispjson) {
     else
 	document.title = "ARAX-UI [no response_id]";
 
+
+    if (!respObj.message) {
+	statusdiv.appendChild(document.createTextNode("no message!"));
+	statusdiv.appendChild(document.createElement("br"));
+	var nr = document.createElement("span");
+	nr.className = 'essence';
+	nr.appendChild(document.createTextNode("Response contains no message, and hence no results."));
+	statusdiv.appendChild(nr);
+	sesame('openmax',statusdiv);
+        if (document.getElementById("numresults_"+respObj.araxui_response)) {
+	    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
+	    var nr = document.createElement("span");
+	    nr.className = 'explevel p0';
+	    nr.innerHTML = '&nbsp;N/A&nbsp;';
+	    document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
+	}
+	return;
+    }
 
     if (respObj.message["query_graph"]) {
 	if (dispjson) {
@@ -1118,7 +1185,7 @@ function render_response(respObj,dispjson) {
 	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
 		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
 		var nr = document.createElement("span");
-		if (respObj.description && respObj.description.startsWith("ERROR"))
+		if (respObj.validation_result && respObj.validation_result.status == "FAIL")
 		    nr.className = 'explevel p1';
 		else if (respObj.message.results.length > 0)
 		    nr.className = 'explevel p9';
