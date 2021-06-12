@@ -35,6 +35,7 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
+trapi_version = '1.1.1'
 
 
 Base = declarative_base()
@@ -248,7 +249,7 @@ class ResponseCache:
 
                 #### Perform a validation on it
                 try:
-                    validate(envelope,'Response','1.1.1')
+                    validate(envelope,'Response',trapi_version)
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = 'reasoner-validator: PASS'
 
@@ -274,6 +275,16 @@ class ResponseCache:
 
             if status_code != 200:
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+            content_size = len(response_content.content)
+            if content_size < 1000:
+                content_size = '{:.2f} kB'.format(content_size/1000)
+            elif content_size < 1000000:
+                content_size = '{:.0f} kB'.format(content_size/1000)
+            elif content_size < 10000000000:
+                content_size = '{:.1f} MB'.format(content_size/1000000)
+            else:
+                content_size = '{:.0f} MB'.format(content_size/1000000)
 
             #### Unpack the response content into a dict
             try:
@@ -325,13 +336,33 @@ class ResponseCache:
                 #        if isinstance(log,dict):
                 #            if 'code' in log and log['code'] is None:
                 #                log['code'] = '-'
+                is_trapi = True
+                actual_response = ''
+                if 'message' in envelope:
+                    #eprint("INFO: envelope has a message")
+                    #eprint(json.dumps(envelope,indent=2,sort_keys=True))
+                    if 'logs' in envelope and isinstance(envelope['logs'],list) and len(envelope['logs']) > 0:
+                        #eprint("INFO: envelope has logs")
+                        if isinstance(envelope['logs'][0], str):
+                           #eprint("INFO: logs[0] is str")
+                           is_trapi = False
+                           actual_response = envelope['logs'][0]
+                           for i in range(len(envelope['logs'])):
+                               if isinstance(envelope['logs'][i],str):
+                                   envelope['logs'][i] = { 'level': 'INFO', 'message': 'ARS info: ' + envelope['logs'][i] }
+                else:
+                    #eprint("INFO: envelope has no message")
+                    is_trapi = False
+
+                if not is_trapi:
+                    envelope['validation_result'] = { 'status': 'NA', 'version': trapi_version, 'size': content_size, 'message': 'Returned response is not TRAPI: ' + actual_response }
+                    return envelope
 
 
                 #### Perform a validation on it
                 try:
-                    validate(envelope,'Response','1.1.1')
-                    if 'description' not in envelope or envelope['description'] is None:
-                        envelope['description'] = 'reasoner-validator: PASS'
+                    validate(envelope,'Response',trapi_version)
+                    envelope['validation_result'] = { 'status': 'PASS', 'version': trapi_version, 'size': content_size, 'message': '' }
 
                 except ValidationError as error:
                     timestamp = str(datetime.now().isoformat())
@@ -341,7 +372,7 @@ class ResponseCache:
                         "timestamp": timestamp } )
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = ''
-                    envelope['description'] = 'ERROR: TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description']
+                    envelope['validation_result'] = { 'status': 'FAIL', 'version': trapi_version, 'size': content_size, 'message': 'TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description'] }
 
                 #### Try to add the reasoner_id
                 if 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
@@ -353,6 +384,16 @@ class ResponseCache:
                                     pass
                                 else:
                                     result['reasoner_id'] = actor_lookup[actor]
+
+                if 'message' in envelope and 'knowledge_graph' in envelope['message'] and envelope['message']['knowledge_graph'] is not None:
+                    n_nodes = None
+                    if 'nodes' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['nodes'] is not None:
+                        n_nodes = len(envelope['message']['knowledge_graph']['nodes'])
+                    n_edges = None
+                    if 'edges' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['edges'] is not None:
+                        n_edges = len(envelope['message']['knowledge_graph']['edges'])
+                    envelope['validation_result']['n_nodes'] = n_nodes
+                    envelope['validation_result']['n_edges'] = n_edges
 
 
                 return envelope
@@ -399,7 +440,7 @@ def main():
         #return
 
     try:
-        validate(envelope['message'],'Message','1.1.1')
+        validate(envelope['message'],'Message',trapi_version)
         print('- Message is valid')
     except ValidationError as error:
         print(f"- Message INVALID: {error}")
@@ -409,7 +450,7 @@ def main():
     for component, klass in { 'query_graph': 'QueryGraph', 'knowledge_graph': 'KnowledgeGraph' }.items():
         if component in envelope['message']:
             try:
-                validate(envelope['message'][component], klass, '1.1.1')
+                validate(envelope['message'][component], klass, trapi_version)
                 print(f"  - {component} is valid")
             except ValidationError:
                 print(f"  - {component} INVALID")
@@ -421,7 +462,7 @@ def main():
         for attribute in node['attributes']:
             attribute['value_type_id'] = None
             try:
-                validate(attribute, 'Attribute', '1.1.1')
+                validate(attribute, 'Attribute', trapi_version)
                 print(f"  - attribute with {attribute['attribute_type_id']} is valid")
             except ValidationError:
                 print(f"  - attribute with {attribute['attribute_type_id']} is  INVALID")
@@ -429,7 +470,7 @@ def main():
 
     for result in envelope['message']['results']:
         try:
-            validate(result,'Result','1.1.1')
+            validate(result,'Result', trapi_version)
             print(f"    - result is valid")
         except ValidationError:
             print(f"    - result INVALID")
@@ -437,7 +478,7 @@ def main():
         for key,node_binding_list in result['node_bindings'].items():
             for node_binding in node_binding_list:
                 try:
-                    validate(node_binding, 'NodeBinding', '1.1.1')
+                    validate(node_binding, 'NodeBinding', trapi_version)
                     print(f"      - node_binding {key} is valid")
                 except ValidationError:
                     print(f"      - node_binding {key} INVALID")
@@ -446,7 +487,7 @@ def main():
             for edge_binding in edge_binding_list:
                 #print(json.dumps(edge_binding, sort_keys=True, indent=2))
                 try:
-                    validate(edge_binding,'EdgeBinding','1.1.1')
+                    validate(edge_binding,'EdgeBinding', trapi_version)
                     print(f"      - edge_binding {key} is valid")
                 except ValidationError:
                     print(f"      - edge_binding {key} INVALID")
