@@ -269,9 +269,13 @@ class ResponseCache:
 
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
-            with requests_cache.disabled():
-                response_content = requests.get('https://ars-dev.transltr.io/ars/api/messages/'+response_id, headers={'accept': 'application/json'})
-            status_code = response_content.status_code
+            ars_hosts = [ 'ars-dev.transltr.io', 'ars.ci.transltr.io', 'ars.transltr.io' ]
+            for ars_host in ars_hosts:
+                with requests_cache.disabled():
+                    response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
+                status_code = response_content.status_code
+                if status_code == 200:
+                    break
 
             if status_code != 200:
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
@@ -294,7 +298,7 @@ class ResponseCache:
 
             if 'fields' in response_dict and 'actor' in response_dict['fields'] and str(response_dict['fields']['actor']) == '9':
                 with requests_cache.disabled():
-                    response_content = requests.get('https://ars-dev.transltr.io/ars/api/messages/' + response_id + '?trace=y', headers={'accept': 'application/json'})
+                    response_content = requests.get(f"https://{ars_host}/ars/api/messages/" + response_id + '?trace=y', headers={'accept': 'application/json'})
                 status_code = response_content.status_code
 
                 if status_code != 200:
