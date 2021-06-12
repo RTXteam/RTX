@@ -206,10 +206,10 @@ class KPSelector:
                                                                       "biolink:ChemicalSubstance": dtd_predicates}}
 
         # NGD should have same subject/object combinations as KG2, but only a single predicate for now
-        ngd_predicates = ["biolink:has_normalized_google_distance_with"]
-        ngd_predicates_dict = dict()
-        for subject_category, objects_dict in meta_map.get("RTX-KG2").items():
-            ngd_predicates_dict[subject_category] = {object_category: ngd_predicates for object_category in objects_dict}
+        # ngd_predicates = ["biolink:has_normalized_google_distance_with"]
+        # ngd_predicates_dict = dict()
+        # for subject_category, objects_dict in meta_map.get("RTX-KG2").items():
+        #     ngd_predicates_dict[subject_category] = {object_category: ngd_predicates for object_category in objects_dict}
 
         # CHP Expand can only answer a subset of what's in their /predicates endpoint, so we'll hardcode it here
         chp_predicates = ["biolink:pairs_with"]
@@ -230,7 +230,7 @@ class KPSelector:
 
         non_api_predicates_info = {
             "DTD": dtd_predicates_dict,
-            "NGD": ngd_predicates_dict,
+            # "NGD": ngd_predicates_dict,
             "CHP": chp_predicates_dict,
             "COHD": cohd_predicates_dict
         }
