@@ -12,6 +12,10 @@ import csv
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 import Expand.expand_utilities as eu
 
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
 
 class KnowledgeSourceMetadata:
 
@@ -19,6 +23,7 @@ class KnowledgeSourceMetadata:
     def __init__(self):
         self.predicates = None
         self.meta_knowledge_graph = None
+        self.RTXConfig = RTXConfiguration()
 
     #### Get a list of all supported subjects, predicates, and objects and reformat to /predicates format
     def get_kg_predicates(self):
@@ -79,7 +84,8 @@ class KnowledgeSourceMetadata:
         kg_prefix = 'kg2c'
 
         # Verify that the source data file exists
-        input_filename = os.path.dirname(os.path.abspath(__file__)) + f"/{kg_prefix}_meta_kg.json"
+        #input_filename = os.path.dirname(os.path.abspath(__file__)) + f"/{kg_prefix}_meta_kg.json"
+        input_filename = f"{os.path.dirname(os.path.abspath(__file__))}/{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}"
         if not os.path.exists(input_filename):
             eprint(f"ERROR [{method_name}]: File '{input_filename}' not found")
             return None

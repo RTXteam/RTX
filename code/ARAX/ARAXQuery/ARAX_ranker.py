@@ -176,7 +176,8 @@ class ARAXRanker:
         self.known_attributes = {'probability', 'normalized_google_distance', 'jaccard_index',
                                  'probability_treats', 'paired_concept_frequency',
                                  'observed_expected_ratio', 'chi_square', 'chi_square_pvalue', 'MAGMA-pvalue', 'Genetics-quantile',
-                                 'pValue', 'fisher_exact_test_p-value','Richards-effector-genes'}
+                                 'pValue', 'fisher_exact_test_p-value','Richards-effector-genes',
+                                 'feature_coefficient'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
@@ -191,6 +192,7 @@ class ARAXRanker:
                                           'pValue': 1.0,
                                           'fisher_exact_test_p-value': 0.8,
                                           'Richards-effector-genes': 0.5,
+                                          'feature_coefficient': 1.0
                                           }
         self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
@@ -260,8 +262,12 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         edge_attribute_dict = {}
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
-                edge_attribute_dict[edge_attribute.original_attribute_name] = edge_attribute.value
-                normalized_score = self.edge_attribute_score_normalizer(edge_attribute.original_attribute_name, edge_attribute.value)
+                if edge_attribute.original_attribute_name is not None:
+                    edge_attribute_dict[edge_attribute.original_attribute_name] = edge_attribute.value
+                    normalized_score = self.edge_attribute_score_normalizer(edge_attribute.original_attribute_name, edge_attribute.value)
+                else:
+                    edge_attribute_dict[edge_attribute.attribute_type_id] = edge_attribute.value
+                    normalized_score = self.edge_attribute_score_normalizer(edge_attribute.attribute_type_id, edge_attribute.value)
                 if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
@@ -489,6 +495,14 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
     def __normalize_Richards_effector_genes(self, value):
         return value
 
+    def __normalize_feature_coefficient(self, value):
+        log_abs_value = np.log(abs(value))
+        max_value = 1
+        curve_steepness = 2.75
+        logistic_midpoint = 0.25
+        normalized_value = max_value / float(1+np.exp(-curve_steepness*(log_abs_value - logistic_midpoint)))
+        return normalized_value
+
     def aggregate_scores_dmk(self, response):
         """
         Take in a message,
@@ -528,7 +542,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             if edge.attributes is not None:
                 for edge_attribute in edge.attributes:
                     for attribute_name in self.known_attributes:
-                        if edge_attribute.original_attribute_name == attribute_name:
+                        if edge_attribute.original_attribute_name == attribute_name or edge_attribute.attribute_type_id == attribute_name:
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf|NaN
                             value = float(edge_attribute.value)
