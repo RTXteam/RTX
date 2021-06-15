@@ -471,6 +471,7 @@ components:
       - INFO
       - DEBUG
       type: string
+      x-nullable: true
     Result:
       additionalProperties: true
       description: A Result object specifies the nodes and edges in the knowledge
@@ -639,6 +640,7 @@ components:
       - edges
       - nodes
       type: object
+      x-nullable: true
     QueryGraph:
       additionalProperties: true
       description: A graph representing a biomedical question. It serves as a template
