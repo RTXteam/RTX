@@ -44,7 +44,6 @@ def serialize_with_sets(obj: any) -> any:
 
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
                   meta_kg_file_name: str, is_test: bool):
-
     logging.info("Gathering all meta triples..")
     meta_triples = set()
     for edge in edges_by_id.values():
