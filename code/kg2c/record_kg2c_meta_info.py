@@ -22,6 +22,17 @@ import yaml
 
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
 
+PROTEIN_CONFLATIONS = {"biolink:Protein", "biolink:Gene"}
+DISEASE_CONFLATIONS = {"biolink:Disease", "biolink:PhenotypicFeature", "biolink:DiseaseOrPhenotypicFeature"}
+DRUG_CONFLATIONS = {"biolink:Drug", "biolink:ChemicalSubstance"}
+CONFLATIONS_MAP = {"biolink:Protein": PROTEIN_CONFLATIONS,
+                   "biolink:Gene": PROTEIN_CONFLATIONS,
+                   "biolink:Disease": DISEASE_CONFLATIONS,
+                   "biolink:PhenotypicFeature": DISEASE_CONFLATIONS,
+                   "biolink:DiseaseOrPhenotypicFeature": DISEASE_CONFLATIONS,
+                   "biolink:Drug": DRUG_CONFLATIONS,
+                   "biolink:ChemicalSubstance": DRUG_CONFLATIONS}
+
 
 def serialize_with_sets(obj: any) -> any:
     # Thank you https://stackoverflow.com/a/60544597
@@ -31,72 +42,9 @@ def serialize_with_sets(obj: any) -> any:
         return obj
 
 
-def _create_tree_recursive(root_id: str, parent_to_child_map: Dict[str, Set[str]], tree: Tree):
-    # Recursively builds a treelib tree based on direct parent-to-child relationships
-    for child_id in parent_to_child_map.get(root_id, []):
-        tree.create_node(child_id, child_id, parent=root_id)
-        _create_tree_recursive(child_id, parent_to_child_map, tree)
-
-
-def _get_ancestors(node_id: str, tree: Tree, root_node_id: str) -> Set[str]:
-    # Gets IDs of all ancestors (including the given node itself)
-    ancestors = {node_id}
-    node = tree.get_node(node_id)
-    while node.identifier != root_node_id:
-        parent = tree.parent(node.identifier)
-        ancestors.add(parent.identifier)
-        node = parent
-    return ancestors
-
-
-def _convert_to_trapi_predicate_format(english_predicate: str) -> str:
-    # Converts a string like "treated by" to "biolink:treated_by"
-    return f"biolink:{english_predicate.replace(' ', '_')}"
-
-
-def _create_expanded_predicates_maps(biolink_version: str) -> Tuple[DefaultDict[str, set], Dict[str, str]]:
-    # Build maps of predicate ancestors and inverses, since KG2c considers these when answering queries
-    logging.info("Generating ancestor/inverse predicates maps..")
-
-    # First load the biolink model into a tree
-    root_predicate = "biolink:related_to"
-    biolink_tree = Tree()
-    inverses_map = dict()
-    biolink_model_yaml = f"https://raw.githubusercontent.com/biolink/biolink-model/{biolink_version}/biolink-model.yaml"
-    response = requests.get(biolink_model_yaml, timeout=10)
-    if response.status_code == 200:
-        # Build little helper maps of slot names to their direct children/inverses
-        biolink_model = yaml.safe_load(response.text)
-        parent_to_child_dict = defaultdict(set)
-        for slot_name_english, info in biolink_model["slots"].items():
-            slot_name = _convert_to_trapi_predicate_format(slot_name_english)
-            parent_name_english = info.get("is_a")
-            if parent_name_english:
-                parent_name = _convert_to_trapi_predicate_format(parent_name_english)
-                parent_to_child_dict[parent_name].add(slot_name)
-            inverse_name = info.get("inverse")
-            if inverse_name:
-                inverse_name_formatted = _convert_to_trapi_predicate_format(inverse_name)
-                inverses_map[slot_name] = inverse_name_formatted
-        # Recursively build the predicates tree starting with the root
-        biolink_tree.create_node(root_predicate, root_predicate)
-        _create_tree_recursive(root_predicate, parent_to_child_dict, biolink_tree)
-    else:
-        logging.warning(f"Unable to load Biolink yaml file. Will not be able to factor predicate ancestors "
-                        f"or inverses into meta triples.")
-
-    # Then use the biolink tree to build up a more convenient map of predicate ancestors
-    ancestors_map = defaultdict(set)
-    for predicate_node in biolink_tree.all_nodes():
-        predicate = predicate_node.identifier
-        ancestors_map[predicate] = _get_ancestors(predicate, biolink_tree, root_predicate)
-
-    return ancestors_map, inverses_map
-
-
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
-                  meta_kg_file_name: str, label_property_name: str, biolink_model_version: str, is_test: bool):
-    predicate_ancestors, inverses_map = _create_expanded_predicates_maps(biolink_model_version)
+                  meta_kg_file_name: str, is_test: bool):
+
     logging.info("Gathering all meta triples..")
     meta_triples = set()
     for edge in edges_by_id.values():
@@ -105,19 +53,12 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
         if not is_test or (subject_node_id in nodes_by_id and object_node_id in nodes_by_id):
             subject_node = nodes_by_id[subject_node_id]
             object_node = nodes_by_id[object_node_id]
-            subject_categories = subject_node[label_property_name]
-            object_categories = object_node[label_property_name]
-            predicates = predicate_ancestors.get(edge["predicate"], {edge["predicate"]})
+            subject_categories = get_conflated_categories(subject_node["category"])
+            object_categories = get_conflated_categories(object_node["category"])
+            predicate = edge["predicate"]
             for subject_category in subject_categories:
-                for predicate in predicates:
-                    for object_category in object_categories:
-                        meta_triples.add((subject_category, predicate, object_category))
-                        # Add the inverse of this meta triple as well (and its ancestors), if one exists
-                        if inverses_map.get(predicate):
-                            inverse_predicate = inverses_map[predicate]
-                            inverse_ancestors = predicate_ancestors.get(inverse_predicate, {inverse_predicate})
-                            for inverse_ancestor in inverse_ancestors:
-                                meta_triples.add((object_category, inverse_ancestor, subject_category))
+                for object_category in object_categories:
+                    meta_triples.add((subject_category, predicate, object_category))
     meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2]} for triple in meta_triples]
     logging.info(f"Created {len(meta_edges)} meta edges")
 
@@ -128,7 +69,7 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
     for node_id, node in nodes_by_id.items():
         equivalent_curies = equivalent_curies_dict.get(node_id, [node_id])
         prefixes = {curie.split(":")[0] for curie in equivalent_curies}
-        categories = node[label_property_name]
+        categories = get_conflated_categories(node["category"])
         for category in categories:
             meta_nodes[category]["id_prefixes"].update(prefixes)
     logging.info(f"Created {len(meta_nodes)} meta nodes")
@@ -137,6 +78,10 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
     meta_kg = {"nodes": meta_nodes, "edges": meta_edges}
     with open(f"{KG2C_DIR}/{meta_kg_file_name}", "w+") as meta_kg_file:
         json.dump(meta_kg, meta_kg_file, default=serialize_with_sets)
+
+
+def get_conflated_categories(category: str) -> Set[str]:
+    return CONFLATIONS_MAP.get(category, {category})
 
 
 def add_neighbor_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
@@ -201,7 +146,7 @@ def add_category_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], sqlite
     connection.close()
 
 
-def record_meta_kg_info(biolink_version: str, is_test: bool):
+def record_meta_kg_info(is_test: bool):
     input_kg_file_name = f"kg2c_lite{'_test' if is_test else ''}.json"
     meta_kg_file_name = f"kg2c_meta_kg{'_test' if is_test else ''}.json"
     sqlite_file_name = f"kg2c{'_test' if is_test else ''}.sqlite"
@@ -215,7 +160,7 @@ def record_meta_kg_info(biolink_version: str, is_test: bool):
         edges_by_id = {edge["id"]: edge for edge in kg2c_dict["edges"]}
         del kg2c_dict
 
-    build_meta_kg(nodes_by_id, edges_by_id, meta_kg_file_name, label_property_name, biolink_version, is_test)
+    build_meta_kg(nodes_by_id, edges_by_id, meta_kg_file_name, is_test)
     add_neighbor_counts_to_sqlite(nodes_by_id, edges_by_id, sqlite_file_name, label_property_name, is_test)
     add_category_counts_to_sqlite(nodes_by_id, sqlite_file_name, label_property_name)
 
@@ -229,11 +174,10 @@ def main():
                                   logging.StreamHandler()])
     logging.info("Starting to record KG2c meta info..")
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("biolink_model_version", type=str)
     arg_parser.add_argument("--test", dest="test", action='store_true', default=False)
     args = arg_parser.parse_args()
 
-    record_meta_kg_info(args.biolink_model_version, args.test)
+    record_meta_kg_info(args.test)
 
 
 if __name__ == "__main__":
