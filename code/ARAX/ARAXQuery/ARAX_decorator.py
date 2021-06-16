@@ -41,7 +41,7 @@ class ARAXDecorator:
 
         # Extract the KG2c nodes from sqlite
         response.debug(f"Looking up corresponding KG2c nodes in sqlite")
-        node_keys = set(message.knowledge_graph.nodes)
+        node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
         node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
         sql_query = f"SELECT N.node " \
                     f"FROM nodes AS N " \

@@ -875,5 +875,17 @@ def test_entity_to_entity_predicate_patch():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+def test_1516_single_quotes_in_ids():
+    actions = [
+        "add_qnode(key=n0,ids=UniProtKB:P00491)",
+        "add_qnode(key=n1)",
+        "add_qedge(key=e01,subject=n0,object=n1)",
+        "expand(kp=RTX-KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+    assert any(node_id for node_id in nodes_by_qg_id["n1"] if "'" in node_id)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
