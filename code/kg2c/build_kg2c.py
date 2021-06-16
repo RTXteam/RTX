@@ -18,11 +18,11 @@ import time
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from create_kg2c_files import create_kg2c_files
 from record_kg2c_meta_info import record_meta_kg_info
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # code directory
 from RTXConfiguration import RTXConfiguration
 
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
-CODE_DIR = f"{KG2C_DIR}/../.."
+CODE_DIR = f"{KG2C_DIR}/.."
 
 
 def _setup_rtx_config_local(kg2_version: str):
@@ -93,7 +93,7 @@ def main():
     logging.info("Creating KG2c files..")
     create_kg2c_files(args.test)
     logging.info("Recording meta KG info..")
-    record_meta_kg_info(biolink_version, args.test)
+    record_meta_kg_info(args.test)
     if upload_to_s3 and not args.test:
         _upload_output_files_to_s3()
 

@@ -24,9 +24,9 @@ from neo4j import GraphDatabase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils import select_best_description
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # code directory
 from RTXConfiguration import RTXConfiguration
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAX/NodeSynonymizer/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
 ARRAY_NODE_PROPERTIES = ["all_categories", "publications", "equivalent_curies", "all_names", "expanded_categories"]
