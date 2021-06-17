@@ -177,15 +177,6 @@ def test_single_node_query_with_synonyms():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_single_node_query_without_synonyms():
-    actions_list = [
-        "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL1276308)",
-        "expand(kp=RTX-KG2, use_synonyms=false)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
 def test_single_node_query_with_no_results():
     actions_list = [
         "add_qnode(key=n00, ids=FAKE:curie)",
@@ -234,19 +225,6 @@ def test_branched_query():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
-def test_no_synonym_query_with_duplicate_nodes_in_results():
-    actions_list = [
-        "add_qnode(key=n00, ids=DOID:14330)",
-        "add_qnode(key=n01, categories=biolink:Disease)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=RTX-KG2, use_synonyms=false)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n01']) > 1
 
 
 @pytest.mark.slow
