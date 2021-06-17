@@ -48,14 +48,14 @@ def test_command_definitions():
 def test_warning():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:1227, key=n00)",
+            "add_qnode(name=DOID:8741, key=n00)",
             "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=ARAX/KG1)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
-            "overlay(action=add_node_pmids, max_num=15)",
+            "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n01)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "filter_results(action=limit_number_of_results, max_results=20)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -80,15 +80,14 @@ def test_error():
 def test_default_std_dev():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:5199, key=n00)",
+        "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
-        "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)
@@ -97,12 +96,12 @@ def test_default_std_dev():
     comp_len = len([x for x in all_vals if x > comp_val])
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:5199, key=n00)",
+        "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
         "filter_kg(action=remove_edges_by_std_dev, edge_attribute=jaccard_index, remove_connected_nodes=f)",
@@ -117,12 +116,12 @@ def test_default_std_dev():
 def test_std_dev():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:5199, key=n00)",
+        "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
         "resultify(ignore_edge_direction=true, debug=true)",
@@ -136,12 +135,12 @@ def test_std_dev():
     comp_len = len([x for x in all_vals if x < comp_val])
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:5199, key=n00)",
+        "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
         "filter_kg(action=remove_edges_by_std_dev, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)",
@@ -157,12 +156,30 @@ def test_std_dev():
 def test_default_top_n():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:5199, key=n00)",
+        "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
+        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
+        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    all_vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.original_attribute_name == 'jaccard_index']
+    all_vals.sort()
+    all_vals.reverse()
+    sorted_vals = all_vals[:50]
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=DOID:0060680, key=n00)",
+        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n02, key=e01)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
         "filter_kg(action=remove_edges_by_top_n, edge_attribute=jaccard_index, remove_connected_nodes=f)",
@@ -172,7 +189,9 @@ def test_default_top_n():
     assert response.status == 'OK'
     vals = [float(y.value) for x in message.knowledge_graph.edges.values() if x.attributes is not None for y in x.attributes if y.original_attribute_name == 'jaccard_index']
     assert len(vals) == 50
-    assert sum([x == 1 for x in vals]) == 8
+    vals.sort()
+    vals.reverse()
+    assert vals == sorted_vals
 
 def test_remove_property_known_attributes():
     query = {"operations": {"actions": [
