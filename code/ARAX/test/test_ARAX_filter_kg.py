@@ -279,7 +279,7 @@ def test_stats_error_int_threshold():
         "add_qedge(subject=n0, object=n2, key=e1)",
         "add_qedge(subject=n1, object=n2, key=e2)",
         "expand(edge_key=[e1,e2])",
-        # rank drugs by Jaccard
+        # Rank drugs by Jaccard Index
         "overlay(action=compute_jaccard,start_node_key=n0,intermediate_node_key=n2,end_node_key=n1,virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_top_n,edge_attribute=jaccard_index, threshold=10,remove_connected_nodes=true,qnode_key=n2)",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
