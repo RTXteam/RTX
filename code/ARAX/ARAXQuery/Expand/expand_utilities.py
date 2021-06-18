@@ -415,7 +415,6 @@ def get_kp_infores_curie(kp_name: str) -> Union[str, None]:
         "GeneticsKP": "infores:genetics_kp",
         "MolePro": "infores:molecular_kp",
         "RTX-KG2": "infores:rtx_kg2_kp",
-        "ARAX/KG1": "infores:rtx_kg1_kp",
         "CHP": "infores:connections_hypothesis_kp",
         "ClinicalRiskKP": "infores:clinical_risk_kp",
         "WellnessKP": "infores:wellness_kp",
@@ -465,16 +464,6 @@ def get_kp_command_definitions() -> dict:
         "description": "Whether to obey (vs. ignore) edge directions in the query graph."
     }
     return {
-        "ARAX/KG1": {
-            "dsl_command": "expand(kp=ARAX/KG1)",
-            "description": "This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths "
-                           "that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "enforce_directionality": enforce_directionality_parameter_info
-            }
-        },
         "RTX-KG2": {
             "dsl_command": "expand(kp=RTX-KG2)",
             "description": "This command reaches out to the RTX-KG2 API to find all bioentity subpaths "

@@ -132,8 +132,7 @@ class KPSelector:
             with open(self.meta_map_path) as map_file:
                 meta_map = json.load(map_file)
             # Check for any missing KPs
-            kps_should_be_in_map = self.all_kps.difference({"ARAX/KG1"})
-            missing_kps = kps_should_be_in_map.difference(set(meta_map))
+            missing_kps = self.all_kps.difference(set(meta_map))
             if missing_kps:
                 self.log.debug(f"Missing meta info for {missing_kps}; will try to get this info")
                 meta_map = self._regenerate_meta_map(missing_kps, meta_map)

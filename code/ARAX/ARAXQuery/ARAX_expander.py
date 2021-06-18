@@ -44,7 +44,7 @@ class ARAXExpander:
         Little helper function for internal use that describes the actions and what they can do
         :return:
         """
-        considered_kps = sorted(list(set(self.kp_command_definitions).difference({"ARAX/KG1"})))
+        considered_kps = sorted(list(set(self.kp_command_definitions)))
         kg2_definition = self.kp_command_definitions["RTX-KG2"]
         kp_less = {
                 "dsl_command": "expand()",
@@ -290,7 +290,7 @@ class ARAXExpander:
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
-            elif (kp_to_use == 'RTX-KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
+            elif kp_to_use == 'RTX-KG2' and mode == 'RTXKG2':
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
@@ -336,10 +336,10 @@ class ARAXExpander:
             log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
 
-        # Answer the query using the proper KP (only our own KPs answer single-node queries)
-        valid_kps_for_single_node_queries = ["ARAX/KG1", "RTX-KG2"]
+        # Answer the query using the proper KP (only our own KP answers single-node queries)
+        valid_kps_for_single_node_queries = ["RTX-KG2"]
         if kp_to_use in valid_kps_for_single_node_queries:
-            if (kp_to_use == 'RTX-KG2' and mode == 'RTXKG2') or kp_to_use == "ARAX/KG1":
+            if kp_to_use == 'RTX-KG2' and mode == 'RTXKG2':
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log, kp_to_use)
             else:
