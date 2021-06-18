@@ -7,7 +7,7 @@ Usage:
 
 import sys
 import os
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 import pytest
 
@@ -21,15 +21,19 @@ from openapi_server.models.node import Node
 from openapi_server.models.query_graph import QueryGraph
 
 
-def _run_query_and_do_standard_testing(actions_list: List[str], kg_should_be_incomplete=False, debug=False,
-                                       should_throw_error=False) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
+def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
+                                       kg_should_be_incomplete=False, debug=False, should_throw_error=False,
+                                       error_code: Optional[str] = None) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
     # Run the query
     araxq = ARAXQuery()
-    response = araxq.query({"operations": {"actions": actions_list}})
+    assert actions or json_query  # Must provide some sort of query to run
+    response = araxq.query({"operations": {"actions": actions}}) if actions else araxq.query(json_query)
     message = araxq.message
     if response.status != 'OK':
         print(response.show(level=ARAXResponse.DEBUG))
     assert response.status == 'OK' or should_throw_error
+    if should_throw_error and error_code:
+        assert response.error_code == error_code
 
     # Convert output knowledge graph to a dictionary format for faster processing (organized by QG IDs)
     dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
@@ -314,7 +318,8 @@ def test_847_dont_expand_curie_less_edge():
         "expand(edge_key=e00, kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True,
+                                                                        error_code="InvalidQuery")
 
 
 @pytest.mark.slow
@@ -863,6 +868,36 @@ def test_1516_single_quotes_in_ids():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
     assert any(node_id for node_id in nodes_by_qg_id["n1"] if "'" in node_id)
+
+
+def test_constraint_validation():
+    query = {
+      "message": {
+        "query_graph": {
+          "edges": {
+            "e00": {
+              "object": "n01",
+              "predicates": ["biolink:physically_interacts_with"],
+              "subject": "n00",
+              "constraints": [{"id": "test_edge_constraint_1", "name": "test name edge", "operator": "<", "value": 1.0},
+                              {"id": "test_edge_constraint_2", "name": "test name edge", "operator": ">", "value": 0.5}]
+            }
+          },
+          "nodes": {
+            "n00": {
+              "categories": ["biolink:ChemicalSubstance"],
+              "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
+            },
+            "n01": {
+              "categories": ["biolink:Protein"],
+              "constraints": [{"id": "test_node_constraint", "name": "test name node", "operator": "<", "value": 1.0}]
+            }
+          }
+        }
+      }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True,
+                                                                        error_code="UnsupportedConstraint")
 
 
 if __name__ == "__main__":

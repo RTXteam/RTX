@@ -113,6 +113,18 @@ class ARAXExpander:
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = eu.copy_qg(message.query_graph)
 
+        # Verify we understand all constraints (right now we don't support any)
+        for qnode_key, qnode in query_graph.nodes.items():
+            if qnode.constraints:
+                constraint_ids = {constraint.id for constraint in qnode.constraints}
+                log.error(f"Unsupported constraint(s) detected on qnode {qnode_key} for {constraint_ids}. "
+                          f"Don't know how to handle these!", error_code="UnsupportedConstraint")
+        for qedge_key, qedge in query_graph.edges.items():
+            if qedge.constraints:
+                constraint_ids = {constraint.id for constraint in qedge.constraints}
+                log.error(f"Unsupported constraint(s) detected on qedge {qedge_key} for {constraint_ids}. "
+                          f"Don't know how to handle these!", error_code="UnsupportedConstraint")
+
         if response.status != 'OK':
             return response
 
