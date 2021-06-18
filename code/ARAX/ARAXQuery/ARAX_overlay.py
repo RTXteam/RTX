@@ -511,6 +511,21 @@ This information is included in edge attributes with the name 'icees_p-value'.
         response.debug(
             f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
 
+        # Don't try to overlay anything if the KG is empty
+        message = response.envelope.message
+        if not message.knowledge_graph or not message.knowledge_graph.nodes:
+            response.debug(f"Nothing to overlay (KG is empty)")
+            return response
+        # Don't try to overlay anything if any of the specified qnodes aren't fulfilled in the KG
+        possible_node_params = {"subject_qnode_key", "object_qnode_key", "start_node_key", "intermediate_node_key",
+                                "end_node_key"}
+        node_params_to_check = set(self.parameters).intersection(possible_node_params)
+        qnode_keys_to_check = {self.parameters[node_param] for node_param in node_params_to_check}
+        if not all(any(node for node in message.knowledge_graph.nodes.values() if qnode_key in node.qnode_keys)
+                   for qnode_key in qnode_keys_to_check):
+            response.debug(f"Nothing to overlay (one or more of the specified qnodes is not fulfilled in the KG)")
+            return response
+
         # convert the action string to a function call (so I don't need a ton of if statements
         getattr(self, '_' + self.__class__.__name__ + '__' + parameters[
             'action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string

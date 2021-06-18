@@ -456,14 +456,6 @@ def get_kp_command_definitions() -> dict:
         "type": "string",
         "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
     }
-    continue_if_no_results_parameter_info = {
-        "is_required": False,
-        "examples": ["true", "false"],
-        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-        "default": "false",
-        "type": "boolean",
-        "description": "Whether to continue execution if no paths are found matching the query graph."
-    }
     enforce_directionality_parameter_info = {
         "is_required": False,
         "examples": ["true", "false"],
@@ -480,7 +472,6 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
                 "enforce_directionality": enforce_directionality_parameter_info
             }
         },
@@ -491,7 +482,6 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
                 "enforce_directionality": enforce_directionality_parameter_info
             }
         },
@@ -506,7 +496,6 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
                 "enforce_directionality": enforce_directionality_parameter_info
             }
         },
@@ -517,7 +506,6 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
                 "COHD_method": {
                     "is_required": False,
                     "examples": ["paired_concept_freq", "chi_square"],
@@ -543,8 +531,7 @@ def get_kp_command_definitions() -> dict:
                            "satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info
+                "node_key": node_key_parameter_info
             }
         },
         "MolePro": {
@@ -553,8 +540,7 @@ def get_kp_command_definitions() -> dict:
                            "subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info
+                "node_key": node_key_parameter_info
             }
         },
         "ClinicalRiskKP": {
@@ -563,8 +549,7 @@ def get_kp_command_definitions() -> dict:
                            "subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info
+                "node_key": node_key_parameter_info
             }
         },
         "WellnessKP": {
@@ -573,8 +558,7 @@ def get_kp_command_definitions() -> dict:
                            "subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info
+                "node_key": node_key_parameter_info
             }
         },
         "DrugResponseKP": {
@@ -583,8 +567,7 @@ def get_kp_command_definitions() -> dict:
                            "bioentity subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info
+                "node_key": node_key_parameter_info
             }
         },
         "TumorGeneMutationKP": {
@@ -593,8 +576,7 @@ def get_kp_command_definitions() -> dict:
                            "all bioentity subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info
+                "node_key": node_key_parameter_info
             }
         },
         "NGD": {
@@ -605,8 +587,7 @@ def get_kp_command_definitions() -> dict:
                            "configurable/smarter in the future.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info
+                "node_key": node_key_parameter_info
             }
         },
         "CHP": {
@@ -620,7 +601,6 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
                 "CHP_survival_threshold": {
                     "is_required": False,
                     "examples": [200, 100],
@@ -645,7 +625,6 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
                 "DTD_threshold": {
                     "is_required": False,
                     "examples": [0.8, 0.5],

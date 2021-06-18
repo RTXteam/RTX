@@ -180,7 +180,7 @@ def test_single_node_query_with_synonyms():
 def test_single_node_query_with_no_results():
     actions_list = [
         "add_qnode(key=n00, ids=FAKE:curie)",
-        "expand(kp=RTX-KG2, continue_if_no_results=true)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -247,7 +247,7 @@ def test_771_continue_if_no_results_query():
         "add_qnode(ids=NOTAREALCURIE, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n02, object=n01, key=e01)",
-        "expand(edge_key=[e00,e01], kp=RTX-KG2, continue_if_no_results=true)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -261,7 +261,7 @@ def test_774_continue_if_no_results_query():
         "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n1)",
         "add_qnode(ids=DOID:8295, key=n2)",
         "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(edge_key=e1, kp=RTX-KG2, continue_if_no_results=True)",
+        "expand(edge_key=e1, kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -702,7 +702,7 @@ def test_issue_1212():
         "add_qnode(ids=FAKE:Curie, categories=biolink:Drug, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=RTX-KG2, continue_if_no_results=true)",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
