@@ -404,7 +404,9 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
         "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
         "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
-        "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3"
+        "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
+        "CHP": "http://chp.thayer.dartmouth.edu",
+        "COHD": "http://tr-kp-clinical.ncats.io/api"
     }
     return endpoint_map.get(kp_name)
 
