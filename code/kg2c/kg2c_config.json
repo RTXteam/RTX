@@ -1,5 +1,6 @@
 {
-  "kg2_version": "2.6.3",
+  "kg2_version": "2.6.5",
+  "kg2_neo4j_endpoint": "kg2endpoint-kg2-6-5.rtx.ai",
   "biolink_version": "1.8.1",
   "build_synonymizer": true,
   "upload_to_s3": true

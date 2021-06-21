@@ -1,7 +1,7 @@
 #!/bin/env python3
 """
-This script creates a canonicalized version of KG2 stored in TSV files, ready for import into neo4j. The TSVs are
-created in the directory this script is in.
+This script creates a canonicalized version of KG2 stored in various formats, including TSV files ready for import
+into neo4j. The files are created in the directory this script is in.
 Usage: python3 create_kg2c_files.py [--test]
 """
 import argparse
