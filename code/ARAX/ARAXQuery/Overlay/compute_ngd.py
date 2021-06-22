@@ -34,6 +34,9 @@ from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 RTXConfig.live = "Production"
 
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from ARAX_database_manager import ARAXDatabaseManager
+
 
 class ComputeNGD:
 
@@ -270,20 +273,25 @@ class ComputeNGD:
         ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
         db_path_local = f"{ngd_filepath}{os.path.sep}{self.ngd_database_name}"
         db_path_remote = RTXConfig.curie_to_pmids_path
-        if not os.path.exists(f"{db_path_local}"):
-            self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
-            #os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
-            os.system(f"scp {RTXConfig.curie_to_pmids_username}@{RTXConfig.curie_to_pmids_host}:{RTXConfig.curie_to_pmids_path} {db_path_local}")
-        else:
-            last_modified_local = int(os.path.getmtime(db_path_local))
-            last_modified_remote_byte_str = subprocess.check_output(f"ssh rtxconfig@arax.ncats.io 'stat -c %Y {db_path_remote}'", shell=True)
-            last_modified_remote = int(str(last_modified_remote_byte_str, 'utf-8'))
-            if last_modified_local < last_modified_remote:
-                self.response.debug(f"Downloading new version of fast NGD database... (will take a few minutes)")
-                #os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
-                os.system(f"scp {RTXConfig.curie_to_pmids_username}@{RTXConfig.curie_to_pmids_host}:{RTXConfig.curie_to_pmids_path} {db_path_local}")
-            else:
-                self.response.debug(f"Confirmed local NGD database is current")
+        # FW: Removed in favor of using the DBmanager but just commenting out in case there is some reason to keep this
+        # if not os.path.exists(f"{db_path_local}"):
+        #     self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
+        #     #os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
+        #     os.system(f"scp {RTXConfig.curie_to_pmids_username}@{RTXConfig.curie_to_pmids_host}:{RTXConfig.curie_to_pmids_path} {db_path_local}")
+        # else:
+        #     last_modified_local = int(os.path.getmtime(db_path_local))
+        #     last_modified_remote_byte_str = subprocess.check_output(f"ssh rtxconfig@arax.ncats.io 'stat -c %Y {db_path_remote}'", shell=True)
+        #     last_modified_remote = int(str(last_modified_remote_byte_str, 'utf-8'))
+        #     if last_modified_local < last_modified_remote:
+        #         self.response.debug(f"Downloading new version of fast NGD database... (will take a few minutes)")
+        #         #os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
+        #         os.system(f"scp {RTXConfig.curie_to_pmids_username}@{RTXConfig.curie_to_pmids_host}:{RTXConfig.curie_to_pmids_path} {db_path_local}")
+        #     else:
+        #         self.response.debug(f"Confirmed local NGD database is current")
+        DBmanager = ARAXDatabaseManager()
+        if DBmanager.check_versions():
+            self.response.debug(f"Downloading databases because mismatch in local versions and remote versions was found... (will take a few minutes)")
+            self.response = DBmanager.update_databases(response=self.response)
         # Set up a connection to the database so it's ready for use
         try:
             connection = sqlite3.connect(db_path_local)
