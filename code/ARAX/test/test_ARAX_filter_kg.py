@@ -45,7 +45,7 @@ def test_command_definitions():
     fkg = ARAXFilterKG()
     assert fkg.allowable_actions == set(fkg.command_definitions.keys())
 
-def test_warning():
+def test_warnings():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:8741, key=n00)",
@@ -53,6 +53,10 @@ def test_warning():
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
+            "filter_kg(action=remove_edges_by_discrete_attribute, edge_attribute=asdfghjkl, value=qwertyuiop)",
+            "filter_kg(action=remove_edges_by_std_dev, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)",
+            "filter_kg(action=remove_edges_by_top_n, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=50, top=f, direction=above)",
+            "filter_kg(action=remove_edges_by_percentile, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=25, top=f, direction=above)",
             "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n01)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=20)",
