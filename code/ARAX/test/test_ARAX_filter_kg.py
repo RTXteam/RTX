@@ -240,6 +240,8 @@ def test_provided_by_filter():
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
         "expand(kp=RTX-KG2,enforce_directionality=true)",
+        "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:knowledge_source,value=infores:semmeddb,remove_connected_nodes=false)",
+        # The below line is now an outdated way of doing it, but including for now to prevent error until new code is rolled out to KG2 API
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:original_source,value=infores:semmeddb,remove_connected_nodes=false)",
         "resultify()",
         #"filter_results(action=limit_number_of_results, max_results=30)",

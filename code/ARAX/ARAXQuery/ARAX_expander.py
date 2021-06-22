@@ -304,7 +304,7 @@ class ARAXExpander:
                 kp_querier = NGDQuerier(log)
             elif kp_to_use == 'RTX-KG2' and mode == 'RTXKG2':
                 from Expand.kg2_querier import KG2Querier
-                kp_querier = KG2Querier(log, kp_to_use)
+                kp_querier = KG2Querier(log)
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
                 from Expand.trapi_querier import TRAPIQuerier
@@ -353,7 +353,7 @@ class ARAXExpander:
         if kp_to_use in valid_kps_for_single_node_queries:
             if kp_to_use == 'RTX-KG2' and mode == 'RTXKG2':
                 from Expand.kg2_querier import KG2Querier
-                kp_querier = KG2Querier(log, kp_to_use)
+                kp_querier = KG2Querier(log)
             else:
                 from Expand.trapi_querier import TRAPIQuerier
                 kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, force_local)

@@ -51,7 +51,7 @@ class KPSelector:
         # use metamap to check kp for predicate triple
         accepting_kps = set()
         for kp in self.meta_map:
-            if self._triple_is_in_meta_info(kp, sub_categories, predicates, obj_categories):
+            if self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories):
                 accepting_kps.add(kp)
 
         kps_to_return = self._select_best_kps(accepting_kps, qg)
@@ -81,7 +81,7 @@ class KPSelector:
         sub_categories = self._get_category_descendants(qg.nodes[qedge.subject].categories)
         obj_categories = self._get_category_descendants(qg.nodes[qedge.object].categories)
         predicates = self._get_predicate_descendants(qedge.predicates)
-        kp_accepts = self._triple_is_in_meta_info(kp, sub_categories, predicates, obj_categories)
+        kp_accepts = self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories)
 
         # Cache any new category/predicate descendants we learned
         ending_descendants = set(self.descendants_map)
@@ -92,7 +92,7 @@ class KPSelector:
         return kp_accepts
 
     # returns True if at least one possible triple exists in the KP's meta map
-    def _triple_is_in_meta_info(self, kp: str, subject_categories: Set[str], predicates: Set[str], object_categories: Set[str]) -> bool:
+    def _triple_is_in_meta_map(self, kp: str, subject_categories: Set[str], predicates: Set[str], object_categories: Set[str]) -> bool:
         kp_meta_map = self.meta_map.get(kp)
         if not kp_meta_map:
             if kp not in self.all_kps:
