@@ -416,7 +416,7 @@ def get_kp_infores_curie(kp_name: str) -> Union[str, None]:
         "BTE": "infores:biothings_explorer",
         "GeneticsKP": "infores:genetics_kp",
         "MolePro": "infores:molecular_kp",
-        "RTX-KG2": "infores:rtx_kg2_kp",
+        "RTX-KG2": "infores:rtx-kg2-kp",
         "CHP": "infores:connections_hypothesis_kp",
         "ClinicalRiskKP": "infores:clinical_risk_kp",
         "WellnessKP": "infores:wellness_kp",
