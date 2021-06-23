@@ -2,8 +2,6 @@
 
 KG2canonicalized (KG2c) is a lightweight version of KG2 in which synonymous nodes have been merged. It is built from the regular KG2's Neo4j endpoint and uses the [ARAX NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/ARAX/NodeSynonymizer) to determine which nodes are equivalent. 
 
-The Neo4j endpoint for KG2c is accessible at http://kg2canonicalized2.rtx.ai:7474/browser/ (contact the maintainer for username and password).
-
 ### Schema
 Example KG2c node:
 ```
@@ -63,12 +61,15 @@ In creating KG2c, edges from the regular KG2 are remapped to use only 'preferred
 ### Build KG2canonicalized
 
 1. If the machine you'll be using has never previously built a KG2c:
-    1. Follow steps 1-3 in [this section](https://github.com/RTXteam/RTX/wiki/Dev-info#setting-up-for-local-dev-work-on-arax) of the ARAX dev wiki
-    1. If you wish to upload your eventual output KG2c files to S3:
-        1. Install AWS CLI: `sudo apt-get install -y awscli`
-        1. And configure it: `aws configure`
+    1. If you are creating this KG2c from a **standard KG2** instance (made by the RTX-KG2 team):
+        1. Follow steps 1-3 in [this section](https://github.com/RTXteam/RTX/wiki/Dev-info#setting-up-for-local-dev-work-on-arax) of the ARAX dev wiki
+        1. If you wish to upload your eventual output KG2c files to S3:
+            1. Install AWS CLI: `sudo apt-get install -y awscli`
+            1. And configure it: `aws configure`
+    1. Otherwise if you are creating this KG2c from your own **custom KG2**:
+        1. Create a copy of `configv2.json` that contains the proper secrets for your own KG2 endpoint
 1. Locally modify `kg2c_config.json` (in `RTX/code/kg2c/`) for your particular needs
-    - Most importantly, be sure to specify the KG2 version you want to build this KG2c from
+    - Be sure to specify the KG2 version you want to build this KG2c from
     - Make sure the Biolink model version specified matches that used by the KG2 you specified
     - Indicate whether or not you want a new NodeSynonymizer to be built
         - If you do **not** want a new `NodeSynonymizer` to be built (i.e., you already have a synonymizer made from the KG2 this KG2c will be built from), ensure your synonymizer file is in `RTX/code/ARAX/NodeSynonymizer/` and is named `node_synonymizer.sqlite`

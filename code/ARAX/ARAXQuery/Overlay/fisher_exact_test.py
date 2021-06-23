@@ -261,7 +261,7 @@ class ComputeFTEST:
         ## check if kp is "ARAX/KG1" or "RTX-KG2", if not, report error
         if kp == "rtx_kg1_kp":
             kp = 'ARAX/KG1'
-        elif kp == "rtx_kg2_kp":
+        elif kp == "rtx-kg2-kp":
             kp = 'RTX-KG2'
         else:
             self.response.error(f"Only KG1 or KG2 or KG2C is allowable to calculate the Fisher's exact test temporally")

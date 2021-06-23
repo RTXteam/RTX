@@ -1013,7 +1013,7 @@ def test_issue720_2():
         "add_qnode(key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(use_synonyms=false, kp=RTX-KG2)",
+        "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]

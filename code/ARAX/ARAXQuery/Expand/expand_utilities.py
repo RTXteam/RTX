@@ -404,7 +404,9 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
         "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
         "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
-        "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3"
+        "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
+        "CHP": "http://chp.thayer.dartmouth.edu",
+        "COHD": "http://tr-kp-clinical.ncats.io/api"
     }
     return endpoint_map.get(kp_name)
 
@@ -414,8 +416,7 @@ def get_kp_infores_curie(kp_name: str) -> Union[str, None]:
         "BTE": "infores:biothings_explorer",
         "GeneticsKP": "infores:genetics_kp",
         "MolePro": "infores:molecular_kp",
-        "RTX-KG2": "infores:rtx_kg2_kp",
-        "ARAX/KG1": "infores:rtx_kg1_kp",
+        "RTX-KG2": "infores:rtx-kg2-kp",
         "CHP": "infores:connections_hypothesis_kp",
         "ClinicalRiskKP": "infores:clinical_risk_kp",
         "WellnessKP": "infores:wellness_kp",
@@ -456,14 +457,6 @@ def get_kp_command_definitions() -> dict:
         "type": "string",
         "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
     }
-    continue_if_no_results_parameter_info = {
-        "is_required": False,
-        "examples": ["true", "false"],
-        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-        "default": "false",
-        "type": "boolean",
-        "description": "Whether to continue execution if no paths are found matching the query graph."
-    }
     enforce_directionality_parameter_info = {
         "is_required": False,
         "examples": ["true", "false"],
@@ -472,38 +465,15 @@ def get_kp_command_definitions() -> dict:
         "type": "boolean",
         "description": "Whether to obey (vs. ignore) edge directions in the query graph."
     }
-    use_synonyms_parameter_info = {
-        "is_required": False,
-        "examples": ["true", "false"],
-        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-        "default": "true",
-        "type": "boolean",
-        "description": "Whether to consider curie synonyms and merge synonymous nodes."
-    }
     return {
-        "ARAX/KG1": {
-            "dsl_command": "expand(kp=ARAX/KG1)",
-            "description": "This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths "
+        "RTX-KG2": {
+            "dsl_command": "expand(kp=RTX-KG2)",
+            "description": "This command reaches out to the RTX-KG2 API to find all bioentity subpaths "
                            "that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "enforce_directionality": enforce_directionality_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info
-            }
-        },
-        "RTX-KG2": {
-            "dsl_command": "expand(kp=RTX-KG2)",
-            "description": "This command reaches out to the RTX KG2 knowledge graph to find all bioentity subpaths "
-                           "that satisfy the query graph. If use_synonyms=true, it uses the KG2canonicalized "
-                           "('KG2c') Neo4j instance; otherwise, the regular KG2 Neo4j instance is used.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "enforce_directionality": enforce_directionality_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info
+                "enforce_directionality": enforce_directionality_parameter_info
             }
         },
         "BTE": {
@@ -517,9 +487,7 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "enforce_directionality": enforce_directionality_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info
+                "enforce_directionality": enforce_directionality_parameter_info
             }
         },
         "COHD": {
@@ -529,8 +497,6 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info,
                 "COHD_method": {
                     "is_required": False,
                     "examples": ["paired_concept_freq", "chi_square"],
@@ -556,9 +522,7 @@ def get_kp_command_definitions() -> dict:
                            "satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info
+                "node_key": node_key_parameter_info
             }
         },
         "MolePro": {
@@ -567,9 +531,7 @@ def get_kp_command_definitions() -> dict:
                            "subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info,
+                "node_key": node_key_parameter_info
             }
         },
         "ClinicalRiskKP": {
@@ -578,9 +540,7 @@ def get_kp_command_definitions() -> dict:
                            "subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info,
+                "node_key": node_key_parameter_info
             }
         },
         "WellnessKP": {
@@ -589,9 +549,7 @@ def get_kp_command_definitions() -> dict:
                            "subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info,
+                "node_key": node_key_parameter_info
             }
         },
         "DrugResponseKP": {
@@ -600,9 +558,7 @@ def get_kp_command_definitions() -> dict:
                            "bioentity subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info,
+                "node_key": node_key_parameter_info
             }
         },
         "TumorGeneMutationKP": {
@@ -611,9 +567,7 @@ def get_kp_command_definitions() -> dict:
                            "all bioentity subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info,
+                "node_key": node_key_parameter_info
             }
         },
         "NGD": {
@@ -624,9 +578,7 @@ def get_kp_command_definitions() -> dict:
                            "configurable/smarter in the future.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info
+                "node_key": node_key_parameter_info
             }
         },
         "CHP": {
@@ -640,8 +592,6 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info,
                 "CHP_survival_threshold": {
                     "is_required": False,
                     "examples": [200, 100],
@@ -666,8 +616,6 @@ def get_kp_command_definitions() -> dict:
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info,
-                "continue_if_no_results": continue_if_no_results_parameter_info,
-                "use_synonyms": use_synonyms_parameter_info,
                 "DTD_threshold": {
                     "is_required": False,
                     "examples": [0.8, 0.5],

@@ -966,16 +966,19 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 			statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
 		    nr.innerHTML = '&cross;';
 		    nr.className = 'explevel p1';
+		    nr.title = 'Failed TRAPI 1.1 validation';
 		}
                 else if (jsonObj2.validation_result.status == "NA") {
                     if (type == "all")
 			statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
-		    nr.innerHTML = 'n/a';
+		    nr.innerHTML = '&nsub;';
 		    nr.className = 'explevel p0';
+                    nr.title = 'Response is non-TRAPI';
 		}
 		else {
 		    nr.innerHTML = '&check;';
 		    nr.className = 'explevel p9';
+		    nr.title = 'Passed TRAPI 1.1 validation';
 		}
 
 	        if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {

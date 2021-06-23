@@ -45,7 +45,7 @@ def test_command_definitions():
     fkg = ARAXFilterKG()
     assert fkg.allowable_actions == set(fkg.command_definitions.keys())
 
-def test_warning():
+def test_warnings():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:8741, key=n00)",
@@ -53,6 +53,10 @@ def test_warning():
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
+            "filter_kg(action=remove_edges_by_discrete_attribute, edge_attribute=asdfghjkl, value=qwertyuiop)",
+            "filter_kg(action=remove_edges_by_std_dev, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)",
+            "filter_kg(action=remove_edges_by_top_n, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=50, top=f, direction=above)",
+            "filter_kg(action=remove_edges_by_percentile, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=25, top=f, direction=above)",
             "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n01)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=20)",
@@ -199,7 +203,7 @@ def test_remove_property_known_attributes():
         "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
-        "expand(kp=RTX-KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
+        "expand(kp=RTX-KG2,enforce_directionality=true)",
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by,value=SEMMEDDB:,remove_connected_nodes=false)",
         "resultify()",
         "filter_results(action=limit_number_of_results, max_results=30)",
@@ -235,7 +239,9 @@ def test_provided_by_filter():
         "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
-        "expand(kp=RTX-KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
+        "expand(kp=RTX-KG2,enforce_directionality=true)",
+        "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:knowledge_source,value=infores:semmeddb,remove_connected_nodes=false)",
+        # The below line is now an outdated way of doing it, but including for now to prevent error until new code is rolled out to KG2 API
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:original_source,value=infores:semmeddb,remove_connected_nodes=false)",
         "resultify()",
         #"filter_results(action=limit_number_of_results, max_results=30)",
@@ -250,7 +256,7 @@ def test_provided_by_filter():
         "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
-        "expand(kp=RTX-KG2,continue_if_no_results=false,enforce_directionality=true,use_synonyms=true)",
+        "expand(kp=RTX-KG2,enforce_directionality=true)",
         #"filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:original_source,value=infores:semmeddb,remove_connected_nodes=false)",
         "resultify()",
         #"filter_results(action=limit_number_of_results, max_results=30)",
@@ -279,7 +285,7 @@ def test_stats_error_int_threshold():
         "add_qedge(subject=n0, object=n2, key=e1)",
         "add_qedge(subject=n1, object=n2, key=e2)",
         "expand(edge_key=[e1,e2])",
-        # rank drugs by Jaccard
+        # Rank drugs by Jaccard Index
         "overlay(action=compute_jaccard,start_node_key=n0,intermediate_node_key=n2,end_node_key=n1,virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_top_n,edge_attribute=jaccard_index, threshold=10,remove_connected_nodes=true,qnode_key=n2)",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",

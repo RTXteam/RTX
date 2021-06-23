@@ -45,7 +45,7 @@ class WorkflowToARAXi:
         if 'allowlist' in parameters:
             for KP_name in parameters['allowlist']:
                 # continue if no results, don't enforce directionality, and use synonyms
-                ARAXi.append(f"expand(kp={KP_name},continue_if_no_results=true,enforce_directionality=false,use_synonyms=true)")
+                ARAXi.append(f"expand(kp={KP_name},enforce_directionality=false)")
         else:
             ARAXi.append("expand()")
         return ARAXi

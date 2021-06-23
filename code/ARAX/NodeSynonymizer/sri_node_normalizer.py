@@ -200,7 +200,7 @@ class SriNodeNormalizer:
             return self.supported_types
 
         # Build the URL and fetch the result
-        url = f"https://nodenormalization-sri.renci.org/get_semantic_types"
+        url = f"https://nodenormalization-sri.renci.org/1.1/get_semantic_types"
         response_content = requests.get(url, headers={'accept': 'application/json'})
         status_code = response_content.status_code
 
@@ -242,7 +242,7 @@ class SriNodeNormalizer:
         supported_prefixes = {}
 
         # Build the URL and fetch the result
-        url = f"https://nodenormalization-sri.renci.org/get_curie_prefixes"
+        url = f"https://nodenormalization-sri.renci.org/1.1/get_curie_prefixes"
         response_content = requests.get(url, headers={'accept': 'application/json'})
         status_code = response_content.status_code
 
@@ -283,7 +283,7 @@ class SriNodeNormalizer:
             print(f"ERROR: Call to sri_node_normalizer requested cache_only and we missed the cache with {curies}")
 
         # Build the URL and fetch the result
-        url = f"https://nodenormalization-sri.renci.org/get_normalized_nodes?"
+        url = f"https://nodenormalization-sri.renci.org/1.1/get_normalized_nodes?"
 
         prefix = ''
         for curie in curies:
