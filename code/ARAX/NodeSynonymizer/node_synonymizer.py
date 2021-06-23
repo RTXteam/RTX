@@ -2455,6 +2455,8 @@ def main():
                         help="If set, run a test of the index by doing several lookups", default=False)
     parser.add_argument('-l', '--lookup', action="store",
                         help="If set to a curie or name, then use the NodeSynonymizer (or SRI normalizer) to lookup the equivalence information for the curie or name", default=None)
+    parser.add_argument('-n', '--node_list', action="store",
+                        help="If set to a curie or name, then return a list of node curies that belong to the group for the specified curie or name", default=None)
     parser.add_argument('-e', '--export', action="store",
                         help="Specify a filename that the lookup results will be exported to as json (e.g. curie.json)", default=None)
     parser.add_argument('-q', '--query', action="store_true",
@@ -2467,7 +2469,7 @@ def main():
                         help="If set, update the NodeSynonmizer with improved category information")
     args = parser.parse_args()
 
-    if not args.build and not args.test and not args.recollate and not args.lookup and not args.query and not args.get and not args.update:
+    if not args.build and not args.test and not args.recollate and not args.lookup and not args.node_list and not args.query and not args.get and not args.update:
         parser.print_help()
         exit()
 
@@ -2510,6 +2512,19 @@ def main():
             with open(args.export,'w') as outfile:
                 outfile.write(json.dumps(equivalence, indent=2, sort_keys=True) + "\n")
         print(f"INFO: Information retrieved in {t1-t0} sec")
+        return
+
+
+    # If the --node_list option is provided, just get the list of nodes that match and return that
+    if args.node_list is not None:
+        entities = args.node_list.split(',')
+        equivalence = synonymizer.get_normalizer_results(entities)
+        for entity in entities:
+            if equivalence[entity] is not None:
+                nodes = []
+                for node in equivalence[entity]['nodes']:
+                    nodes.append(node['identifier'])
+                print(f"{entity} = {nodes}")
         return
 
 
