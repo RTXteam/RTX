@@ -4,5 +4,6 @@
   "biolink_version": "1.7.0",
   "build_synonymizer": true,
   "upload_to_s3": true,
-  "upload_artifacts_to_arax.ncats.io": true
+  "upload_artifacts_to_arax.ncats.io": true,
+  "use_nlp_to_choose_descriptions": true
 }

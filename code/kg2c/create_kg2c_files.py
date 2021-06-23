@@ -80,7 +80,7 @@ def _clean_up_description(description: str) -> str:
     return re.sub("UMLS Semantic Type: UMLS_STY:[a-zA-Z][0-9]{3}[;]?", "", description).strip().strip(";")
 
 
-def _get_best_description(descriptions_list: List[str]) -> Optional[str]:
+def _get_best_description_nlp(descriptions_list: List[str]) -> Optional[str]:
     candidate_descriptions = [description for description in descriptions_list if description and len(description) < 10000]
     if len(candidate_descriptions) == 1:
         return candidate_descriptions[0]
@@ -88,6 +88,16 @@ def _get_best_description(descriptions_list: List[str]) -> Optional[str]:
         # Use Chunyu's NLP-based method to select the best description out of the coalesced nodes
         description_finder = select_best_description(candidate_descriptions)
         return description_finder.get_best_description
+
+
+def _get_best_description_length(descriptions_list: List[str]) -> Optional[str]:
+    candidate_descriptions = [description for description in descriptions_list if description and len(description) < 10000]
+    if not candidate_descriptions:
+        return None
+    elif len(candidate_descriptions) == 1:
+        return candidate_descriptions[0]
+    else:
+        return max(candidate_descriptions, key=len)
 
 
 def _modify_column_headers_for_neo4j(plain_column_headers: List[str], file_name_root: str) -> List[str]:
@@ -388,14 +398,21 @@ def create_kg2c_files(is_test=False):
     canonicalized_nodes_dict[kg2c_build_node['id']] = kg2c_build_node
 
     # Choose best descriptions using Chunyu's NLP-based method
+    use_nlp_to_choose_descriptions = kg2c_config_info.get("use_nlp_to_choose_descriptions")
+    description_method = "nlp" if use_nlp_to_choose_descriptions else "length"
     node_ids = list(canonicalized_nodes_dict)
     description_lists = [canonicalized_nodes_dict[node_id]["descriptions_list"] for node_id in node_ids]
     num_cpus = os.cpu_count()
     logging.info(f" Detected {num_cpus} cpus; will use all of them to choose best descriptions")
     pool = Pool(num_cpus)
-    logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions (in parallel)..")
+    if use_nlp_to_choose_descriptions:
+        logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
+        best_descriptions = pool.map(_get_best_description_nlp, description_lists)
+    else:
+        logging.info(f"  Choosing best descriptions (longest under 10,000 characters)..")
+        best_descriptions = pool.map(_get_best_description_length, description_lists)
     start = time.time()
-    best_descriptions = pool.map(_get_best_description, description_lists)
+
     logging.info(f" Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
     # Actually decorate nodes with their 'best' description
     for num in range(len(node_ids)):
