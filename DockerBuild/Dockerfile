@@ -31,13 +31,13 @@ RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -yq apache2
 COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 RUN cd /var/www && mv html html-orig && ln -s /mnt/data/orangeboard/production/RTX/code/UI/interactive html
-RUN cd /var/www && a2enmod proxy && a2enmod proxy_html && a2enmod rewrite && a2enmod headers
+RUN cd /var/www && a2enmod proxy && a2enmod proxy_html && a2enmod proxy_http && a2enmod rewrite && a2enmod headers
 RUN cd /var/www && /usr/sbin/apachectl configtest
 
 # install python and packages
 RUN apt-get update
 RUN apt-get install -y python3 python3-dev python3-pip python3-venv
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && pip3 install -r requirements.txt && pip3 install flask_cors
+RUN su rt && cd /mnt/data/orangeboard/production/RTX && pip3 install -r requirements.txt && pip3 install flask_cors connexion[swagger-ui]
 
 # setup services
 RUN export DEVAREA=production
