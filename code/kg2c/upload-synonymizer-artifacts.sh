@@ -8,6 +8,7 @@ script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"  # T
 arax_dir=${script_dir}/../ARAX
 remote_destination=$1
 
+cd ${arax_dir}/NodeSynonymizer
 scp node_synonymizer.sqlite rtxconfig@arax.ncats.io:${remote_destination}
 scp kg2_node_info.tsv rtxconfig@arax.ncats.io:${remote_destination}
 scp kg2_equivalencies.tsv rtxconfig@arax.ncats.io:${remote_destination}
