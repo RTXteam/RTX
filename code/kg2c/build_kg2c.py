@@ -49,13 +49,10 @@ def _setup_rtx_config_local(kg2_endpoint: str):
 def _upload_output_files_to_s3():
     logging.info("Uploading KG2c json and TSV files to S3..")
     tarball_path = f"{KG2C_DIR}/kg2c-tsv.tar.gz"
-    json_file_path = f"{KG2C_DIR}/kg2c.json"
     json_lite_file_path = f"{KG2C_DIR}/kg2c_lite.json"
     subprocess.check_call(["tar", "-czvf", tarball_path, "nodes_c.tsv", "nodes_c_header.tsv", "edges_c.tsv", "edges_c_header.tsv"])
     subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", tarball_path, "s3://rtx-kg2/"])
-    subprocess.check_call(["gzip", "-f", json_file_path])
     subprocess.check_call(["gzip", "-f", json_lite_file_path])
-    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{json_file_path}.gz", "s3://rtx-kg2/"])
     subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{json_lite_file_path}.gz", "s3://rtx-kg2/"])
 
 
