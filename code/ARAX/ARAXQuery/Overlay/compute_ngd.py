@@ -198,7 +198,7 @@ class ComputeNGD:
         stop_index = chunk_size
         for num in range(num_chunks):
             chunk = curies[start_index:stop_index] if stop_index <= len(curies) else curies[start_index:]
-            curie_list_str = ", ".join([f"'{curie}'" for curie in chunk])
+            curie_list_str = ", ".join([f"'{curie}'" for curie in chunk if "'" not in curie])
             self.cursor.execute(f"SELECT * FROM curie_to_pmids WHERE curie in ({curie_list_str})")
             rows = self.cursor.fetchall()
             for row in rows:

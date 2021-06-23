@@ -693,6 +693,38 @@ def test_jaccard_not_above_1():
         assert edge.attributes[0].value >= 0
         assert edge.attributes[0].value <= 1
 
+def test_ngd_sqlite_syntax_error():
+    query = {"message":{"query_graph":{
+          "edges": {
+            "e00": {
+              "object": "n01",
+              "subject": "n00"
+            }
+          },
+          "nodes": {
+            "n00": {
+              "ids": [
+                "CHEBI:16680"
+              ],
+              "is_set": False
+            },
+            "n01": {
+              "categories": [
+                "biolink:Pathway",
+                "biolink:BiologicalProcess",
+                "biolink:MolecularActivity",
+                "biolink:CellularComponent",
+                "biolink:InformationContentEntity",
+                "biolink:NamedThing"
+              ],
+              "is_set": False
+            }
+          }
+        }
+    }}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
