@@ -539,14 +539,14 @@ def get_kp_command_definitions() -> dict:
                     "type": "string",
                     "description": "Which measure from COHD should be considered."
                 },
-                "COHD_method_percentile": {
+                "COHD_method_top_N": {
                     "is_required": False,
-                    "examples": [95, 80],
+                    "examples": [500, 1000],
                     "min": 0,
-                    "max": 100,
-                    "default": 99,
+                    "max": 1000000000000000000,
+                    "default": 1000,
                     "type": "integer",
-                    "description": "What percentile to use as a cut-off/threshold for the specified COHD method."
+                    "description": "What top N to use as a cut-off/threshold for the specified COHD method."
                 }
             }
         },

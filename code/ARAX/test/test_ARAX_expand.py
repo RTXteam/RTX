@@ -414,7 +414,7 @@ def test_cohd_expand_paired_concept_freq():
         "add_qnode(ids=UMLS:C0015967, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_percentile=95)",
+        "expand(edge_key=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_top_N=500)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -430,7 +430,7 @@ def test_cohd_expand_observed_expected_ratio():
         "add_qnode(ids=DOID:10718, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_percentile=95)",
+        "expand(edge_key=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_top_N=500)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -446,7 +446,7 @@ def test_cohd_expand_chi_square():
         "add_qnode(ids=DOID:1588, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_percentile=95)",
+        "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_top_N=500)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
