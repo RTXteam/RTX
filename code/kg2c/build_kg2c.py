@@ -79,6 +79,7 @@ def main():
     kg2_endpoint = kg2c_config_info["kg2_neo4j_endpoint"]
     biolink_version = kg2c_config_info["biolink_version"]
     upload_to_s3 = kg2c_config_info["upload_to_s3"]
+    upload_to_arax_ncats_io = kg2c_config_info["upload_artifacts_to_arax.ncats.io"]
     build_synonymizer = kg2c_config_info["build_synonymizer"]
     logging.info(f"KG2 version to use is {kg2_version}")
     logging.info(f"Biolink model version to use is {biolink_version}")
@@ -90,6 +91,9 @@ def main():
     if (build_synonymizer and not args.test) or args.synonymizer_only:
         logging.info("Building node synonymizer off of specified KG2..")
         subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/build-synonymizer.sh"])
+        if upload_to_arax_ncats_io and not args.test:
+            remote_path = f"/data/orangeboard/databases/{kg2_version}/synonymizer"
+            subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", remote_path])
 
     # Actually build KG2c
     if not args.synonymizer_only:
