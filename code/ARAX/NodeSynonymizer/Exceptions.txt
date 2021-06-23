@@ -2,6 +2,26 @@
 skip_SRI MESH:D004921
 skip_SRI CHEMBL.COMPOUND:CHEMBL995
 
+#### 2021-06-23 SRI conflation: https://github.com/TranslatorSRI/NodeNormalization/issues/68
+skip_SRI MONDO:0015010
+skip_SRI OMIM:601019
+skip_SRI OMIM:617301
+skip_SRI ORPHANET:289863
+skip_SRI UMLS:C1832872
+skip_SRI UMLS:C4310943
+
+#### 2021-06-23 SRI conflation: https://github.com/TranslatorSRI/NodeNormalization/issues/69
+skip_SRI MONDO:0007251
+skip_SRI DOID:0050463
+skip_SRI ORPHANET:140
+skip_SRI UMLS:C1861922
+skip_SRI UMLS:C1861923
+skip_SRI UMLS:C4225438
+skip_SRI UMLS:C4747386
+skip_SRI MESH:D055036
+skip_SRI NCIT:C84609
+skip_SRI SNOMEDCT:74928006
+
 rename NCBIGENE:43 AChE (human)
 rename UNIPROTKB:P22303 AChE (human)
 rename RXNORM:1053143 Stye(TM)
