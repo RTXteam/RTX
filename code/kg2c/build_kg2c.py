@@ -89,8 +89,8 @@ def main():
         logging.info("Building node synonymizer off of specified KG2..")
         subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/build-synonymizer.sh"])
         if upload_to_arax_ncats_io and not args.test:
-            remote_path = f"/data/orangeboard/databases/{kg2_version}/synonymizer"
-            subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", remote_path])
+            remote_path = f"/data/orangeboard/databases/KG{kg2_version}/synonymizer"
+            subprocess.call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", remote_path])
 
     # Actually build KG2c
     if not args.synonymizer_only:
