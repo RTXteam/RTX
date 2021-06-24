@@ -1,4 +1,4 @@
-var input_qg = { "edges": [], "nodes": [] };
+var input_qg = { "edges": {}, "nodes": {} };
 var qgids = [];
 var cyobj = [];
 var cytodata = [];
@@ -227,34 +227,14 @@ function postQuery(qtype) {
 	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
         statusdiv.appendChild(document.createElement("br"));
 
-	// ids need to start with a non-numeric character
-	for (var gnode of input_qg.nodes) {
-	    if (String(gnode.id).match(/^\d/))
-		gnode.id = "qg" + gnode.id;
-
-	    if (gnode.is_set) {
-		var list = gnode.name.split("LIST_")[1];
-		gnode.curie = get_list_as_curie_array(list);
-	    }
-	}
-	for (var gedge of input_qg.edges) {
-	    if (String(gedge.id).match(/^\d/))
-		gedge.id = "qg" + gedge.id;
-	    if (String(gedge.source_id).match(/^\d/))
-		gedge.source_id = "qg" + gedge.source_id;
-	    if (String(gedge.target_id).match(/^\d/))
-		gedge.target_id = "qg" + gedge.target_id;
-
-	}
-
 	document.getElementById('qg_form').style.visibility = 'hidden';
 	document.getElementById('qg_form').style.maxHeight = null;
 
+	clean_up_qg(true);
 	queryObj.message = { "query_graph" :input_qg };
 	//queryObj.bypass_cache = bypass_cache;
 	queryObj.max_results = 100;
 
-	document.getElementById("jsonText").value = JSON.stringify(input_qg,null,2);
 	clear_qg();
     }
 
@@ -408,7 +388,7 @@ function postQuery(qtype) {
 		clear_qg();
 	    }
 	    else if (data["status"] == "OK") {
-		input_qg = { "edges": [], "nodes": [] };
+		input_qg = { "edges": {}, "nodes": {} };
 		render_response(data,qtype == "DSL");
 	    }
 	    else if (data["logs"]) {
@@ -692,10 +672,10 @@ function sendId() {
 
     reset_vars();
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
-    input_qg = { "edges": [], "nodes": [] };
+    input_qg = { "edges": {}, "nodes": {} };
 
     if (document.getElementById("numresults_"+id)) {
-        document.getElementById("numresults_"+id).innerHTML = '';
+	document.getElementById("numresults_"+id).innerHTML = '';
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
@@ -714,7 +694,7 @@ function sendId() {
 function sendQuestion(e) {
     reset_vars();
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
-    input_qg = { "edges": [], "nodes": [] };
+    input_qg = { "edges": {}, "nodes": {} };
 
     var bypass_cache = true;
     if (document.getElementById("useCache").checked) {
@@ -1458,20 +1438,14 @@ function process_graph(gne,gid,trapi) {
 		gnode.fulltextname = id;
 	}
 
-	// NEED THIS??
-	if (gnode.node_id) // deal with QueryGraphNode (QNode)
-	    gnode.id = gnode.node_id;
-
 	//if (!gnode.id)
 	//gnode.id = id;
 
-        if (gnode.id) {
-	    if (Array.isArray(gnode.id)) {
-		if (gnode.id.length == 1)
-		    gnode.id = gnode.id[0];
-		else
-		    UIstate.hasNodeArray = true;
-	    }
+        if (gnode.ids) {
+	    if (gnode.ids.length == 1)
+		gnode.id = gnode.ids[0];
+	    else
+		UIstate.hasNodeArray = true;
 
 	    if (gnode.name)
 		gnode.name += " ("+gnode.id+")";
@@ -1482,8 +1456,8 @@ function process_graph(gne,gid,trapi) {
         gnode.id = id;
 
 	if (!gnode.name) {
-	    if (gnode.category)
-		gnode.name = gnode.category + "s?";
+	    if (gnode.categories)
+		gnode.name = gnode.categories[0] + "s?";
 	    else
 		gnode.name = "(Any)";
 	}
@@ -1512,32 +1486,28 @@ function process_graph(gne,gid,trapi) {
 	for (var id in gne.nodes) {
 	    var gnode = gne.nodes[id];
 
-	    qgids.push(gnode.id);
+	    qgids.push(id);
 
-	    var tmpdata = { "id"     : id,
-			    "is_set" : gnode.is_set,
-			    "name"   : gnode.name,
-			    "desc"   : gnode.description,
-			    "curie"  : gnode.id,
-			    "type"   : gnode.category
+	    var tmpdata = { "ids"        : gnode.ids,
+			    "is_set"     : gnode.is_set,
+			    "_name"      : gnode.name,
+			    "_desc"      : gnode.description,
+			    "categories" : gnode.categories
 			  };
 
-	    input_qg.nodes.push(tmpdata);
+	    input_qg.nodes[id] = tmpdata;
 	}
 
 	for (var id in gne.edges) {
             var gedge = gne.edges[id];
 
-	    qgids.push(gedge.id);
+	    qgids.push(id);
 
-	    var tmpdata = { "id"       : id,
-			    "negated"  : null,
-			    "relation" : null,
-			    "source_id": gedge.subject,
-			    "target_id": gedge.object,
-			    "type"     : gedge.predicate
+	    var tmpdata = { "subject"    : gedge.subject,
+			    "object"     : gedge.object,
+			    "predicates" : gedge.predicates
 			  };
-	    input_qg.edges.push(tmpdata);
+	    input_qg.edges[id] = tmpdata;
 	}
     }
 
@@ -2102,74 +2072,76 @@ function cylayout(index,layname) {
 }
 
 function mapNodeShape(ele) {
-    var ntype = ele.data().category ? ele.data().category[0] : "NA";
+    var ntype = ele.data().categories ? ele.data().categories[0] : "NA";
     if (ntype.endsWith("microRNA"))           { return "hexagon";} //??
     if (ntype.endsWith("Metabolite"))         { return "heptagon";}
     if (ntype.endsWith("Protein"))            { return "octagon";}
     if (ntype.endsWith("Pathway"))            { return "vee";}
     if (ntype.endsWith("Disease"))            { return "triangle";}
-    if (ntype.endsWith("MolecularFunction")) { return "rectangle";}
-    if (ntype.endsWith("CellularComponent")) { return "ellipse";}
-    if (ntype.endsWith("BiologicalProcess")) { return "tag";}
-    if (ntype.endsWith("ChemicalSubstance")) { return "diamond";}
-    if (ntype.endsWith("AnatomicalEntity"))  { return "rhomboid";}
-    if (ntype.endsWith("PhenotypicFeature")) { return "star";}
+    if (ntype.endsWith("MolecularFunction"))  { return "rectangle";} //??
+    if (ntype.endsWith("CellularComponent"))  { return "ellipse";}
+    if (ntype.endsWith("BiologicalProcess"))  { return "tag";}
+    if (ntype.endsWith("ChemicalSubstance"))  { return "diamond";}
+    if (ntype.endsWith("AnatomicalEntity"))   { return "rhomboid";}
+    if (ntype.endsWith("PhenotypicFeature"))  { return "star";}
     return "rectangle";
 }
 
 function mapNodeColor(ele) {
-    var ntype = ele.data().category;
-    if (ntype == "microRNA")           { return "orange";}
-    if (ntype == "metabolite")         { return "aqua";}
-    if (ntype == "protein")            { return "black";}
-    if (ntype == "pathway")            { return "gray";}
-    if (ntype == "disease")            { return "red";}
-    if (ntype == "molecular_function") { return "blue";}
-    if (ntype == "cellular_component") { return "purple";}
-    if (ntype == "biological_process") { return "green";}
-    if (ntype == "chemical_substance") { return "yellowgreen";}
-    if (ntype == "anatomical_entity")  { return "violet";}
-    if (ntype == "phenotypic_feature") { return "indigo";}
+    var ntype = ele.data().categories ? ele.data().categories[0] : "NA";
+    if (ntype.endsWith("microRNA"))           { return "orange";} //??
+    if (ntype.endsWith("Metabolite"))         { return "aqua";}
+    if (ntype.endsWith("Protein"))            { return "black";}
+    if (ntype.endsWith("Pathway"))            { return "gray";}
+    if (ntype.endsWith("Disease"))            { return "red";}
+    if (ntype.endsWith("MolecularFunction"))  { return "blue";} //??
+    if (ntype.endsWith("CellularComponent"))  { return "purple";}
+    if (ntype.endsWith("BiologicalProcess"))  { return "green";}
+    if (ntype.endsWith("ChemicalSubstance"))  { return "yellowgreen";}
+    if (ntype.endsWith("AnatomicalEntity"))   { return "violet";}
+    if (ntype.endsWith("PhenotypicFeature"))  { return "indigo";}
     return "#04c";
 }
 
 function mapEdgeColor(ele) {
-    var etype = ele.data().predicate ? ele.data().predicate : "NA";
+    var etype = ele.data().predicates ? ele.data().predicates[0] : "NA";
     if (etype == "contraindicated_for")       { return "red";}
     if (etype == "indicated_for")             { return "green";}
     if (etype == "physically_interacts_with") { return "green";}
     return "#aaf";
 }
 
-function edit_qg() {
+function edit_qg(m) {
     cytodata[99999] = [];
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
 
-    for (var gnode of input_qg.nodes) {
+    for (var gid in input_qg.nodes) {
+	var gnode = input_qg.nodes[gid];
 	var name = "";
 
 	if (gnode.name)       { name = gnode.name;}
-	else if (gnode.curie) { name = gnode.curie;}
-	else if (gnode.type)  { name = gnode.type + "s?";}
+	else if (gnode.ids)   { name = gnode.ids[0];}
+	else if (gnode.categories)  { name = gnode.categories[0] + "s?";}
 	else                  { name = "(Any)";}
 
         cyobj[99999].add( {
 	    "data" : {
-		"id"   : gnode.id,
+		"id"   : gid,
 		"name" : name,
-		"type" : gnode.type,
+		"type" : gnode.categories ? gnode.categories[0] : null,
 		"parentdivnum" : 99999 },
 //	    "position" : {x:100*(qgid-nn), y:50+nn*50}
 	} );
     }
 
-    for (var gedge of input_qg.edges) {
+    for (var eid in input_qg.edges) {
+	var gedge = input_qg.edges[eid];
 	cyobj[99999].add( {
 	    "data" : {
-		"id"     : gedge.id,
-		"source" : gedge.source_id,
-		"target" : gedge.target_id,
-		"type"   : gedge.type,
+		"id"     : eid,
+		"source" : gedge.subject,
+		"target" : gedge.object,
+		"type"   : gedge.predicates ? gedge.predicates[0] : null,
 		"parentdivnum" : 99999 }
 	} );
     }
@@ -2177,6 +2149,12 @@ function edit_qg() {
     cylayout(99999,"breadthfirst");
     document.getElementById('qg_form').style.visibility = 'visible';
     document.getElementById('qg_form').style.maxHeight = "100%";
+
+    if (m==1)
+	document.getElementById("statusdiv").innerHTML = "<p>Copied Query Graph to visual edit window.</p>";
+    else
+	document.getElementById("showQGjson").checked = false;
+
     update_kg_edge_input();
     display_query_graph_items();
 
@@ -2185,6 +2163,11 @@ function edit_qg() {
 
 
 function display_query_graph_items() {
+    if (document.getElementById("showQGjson").checked) {
+	document.getElementById("statusdiv").innerHTML += "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
+	sesame('openmax',statusdiv);
+    }
+
     var table = document.createElement("table");
     table.className = 'sumtab';
 
@@ -2198,44 +2181,48 @@ function display_query_graph_items() {
 
     var nitems = 0;
 
-    input_qg.nodes.forEach(function(result, index) {
+    //1.1x input_qg.nodes.forEach(function(result, index) {
+    for (nid in input_qg.nodes) {
+	var result = input_qg.nodes[nid];
 	nitems++;
 
 	tr = document.createElement("tr");
 	tr.className = 'hoverable';
 
 	var td = document.createElement("td");
-        td.appendChild(document.createTextNode(result.id));
+        td.appendChild(document.createTextNode(nid));
         tr.appendChild(td);
 
         td = document.createElement("td");
-        td.appendChild(document.createTextNode(result.name == null ? "-" : result.name));
+        td.appendChild(document.createTextNode(result["_name"] == null ? "-" : result["_name"]));
         tr.appendChild(td);
 
 	td = document.createElement("td");
-        td.appendChild(document.createTextNode(result.is_set ? "(multiple items)" : result.curie == null ? "(any node)" : result.curie));
+        td.appendChild(document.createTextNode(result.is_set ? "(multiple items)" : result.ids == null ? "(any node)" : result.ids[0]));
         tr.appendChild(td);
 
 	td = document.createElement("td");
-        td.appendChild(document.createTextNode(result.is_set ? "(set of nodes)" : result.type == null ? "(any)" : result.type));
+        td.appendChild(document.createTextNode(result.is_set ? "(set of nodes)" : result.categories == null ? "(any)" : result.categories[0]));
         tr.appendChild(td);
 
         td = document.createElement("td");
 	var link = document.createElement("a");
-	link.href = 'javascript:remove_node_from_query_graph(\"'+result.id+'\")';
+	link.href = 'javascript:remove_node_from_query_graph(\"'+nid+'\")';
 	link.appendChild(document.createTextNode("Remove"));
 	td.appendChild(link);
         tr.appendChild(td);
 
 	table.appendChild(tr);
-    });
+    } //1.1x );
 
-    input_qg.edges.forEach(function(result, index) {
+    // 1.1x input_qg.edges.forEach(function(result, index) {
+    for (eid in input_qg.edges) {
+	var result = input_qg.edges[eid];
         tr = document.createElement("tr");
 	tr.className = 'hoverable';
 
 	var td = document.createElement("td");
-        td.appendChild(document.createTextNode(result.id));
+        td.appendChild(document.createTextNode(eid));
 	tr.appendChild(td);
 
 	td = document.createElement("td");
@@ -2243,22 +2230,22 @@ function display_query_graph_items() {
         tr.appendChild(td);
 
         td = document.createElement("td");
-	td.appendChild(document.createTextNode(result.source_id+"--"+result.target_id));
+	td.appendChild(document.createTextNode(result.subject+"--"+result.object));
 	tr.appendChild(td);
 
         td = document.createElement("td");
-	td.appendChild(document.createTextNode(result.type == null ? "(any)" : result.type));
+	td.appendChild(document.createTextNode(result.predicates == null ? "(any)" : result.predicates[0]));
 	tr.appendChild(td);
 
         td = document.createElement("td");
 	var link = document.createElement("a");
-	link.href = 'javascript:remove_edge_from_query_graph(\"'+result.id+'\")';
+	link.href = 'javascript:remove_edge_from_query_graph(\"'+eid+'\")';
 	link.appendChild(document.createTextNode("Remove"));
 	td.appendChild(link);
 	tr.appendChild(td);
 
         table.appendChild(tr);
-    });
+    }; // 1.1x );
 
     document.getElementById("qg_items").innerHTML = '';
     if (nitems > 0)
@@ -2278,7 +2265,7 @@ function add_edge_to_query_graph() {
     }
 
     document.getElementById("statusdiv").innerHTML = "<p>Added an edge of type <i>"+et+"</i></p>";
-    var qgid = get_qg_id();
+    var qgid = get_qg_id('e');
 
     if (et=='NONSPECIFIC') { et = null; }
 
@@ -2291,15 +2278,13 @@ function add_edge_to_query_graph() {
     } );
     cylayout(99999,"breadthfirst");
 
-    var tmpdata = { "id"       : qgid,
-		    "negated"  : null,
-		    "relation" : null,
-		    "source_id": n1,
-		    "target_id": n2,
-		    "type"     : et
-		  };
+    var tmpdata = {};
+    tmpdata["subject"] = n1;
+    tmpdata["object"]  = n2;
+    if (et)
+	tmpdata["predicates"] = [et];
 
-    input_qg.edges.push(tmpdata);    
+    input_qg.edges[qgid] = tmpdata;    
     display_query_graph_items();
 }
 
@@ -2311,16 +2296,16 @@ function update_kg_edge_input() {
     var opt = document.createElement('option');
     opt.style.borderBottom = "1px solid black";
     opt.value = '';
-    opt.innerHTML = "Source Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;";
+    opt.innerHTML = "Source Node ("+Object.keys(input_qg.nodes).length+")&nbsp;&nbsp;&nbsp;&#8675;";
     document.getElementById("qg_edge_n1").appendChild(opt);
 
     opt = document.createElement('option');
     opt.style.borderBottom = "1px solid black";
     opt.value = '';
-    opt.innerHTML = "Target Node ("+input_qg.nodes.length+")&nbsp;&nbsp;&nbsp;&#8675;";
+    opt.innerHTML = "Target Node ("+Object.keys(input_qg.nodes).length+")&nbsp;&nbsp;&nbsp;&#8675;";
     document.getElementById("qg_edge_n2").appendChild(opt);
 
-    if (input_qg.nodes.length < 2) {
+    if (Object.keys(input_qg.nodes).length < 2) {
 	opt = document.createElement('option');
 	opt.value = '';
 	opt.innerHTML = "Must have 2 nodes minimum";
@@ -2329,14 +2314,16 @@ function update_kg_edge_input() {
 	return;
     }
 
-    input_qg.nodes.forEach(function(qgnode) {
+    //1.1x input_qg.nodes.forEach(function(qgnode) {
+    for (nid in input_qg.nodes) {
+	var qgnode = input_qg.nodes[nid];
 	for (var x = 1; x <=2; x++) {
             opt = document.createElement('option');
-	    opt.value = qgnode["id"];
-	    opt.innerHTML = qgnode["curie"] ? qgnode["curie"] : qgnode["type"] ? qgnode["type"] : qgnode["id"];
+	    opt.value = nid;
+	    opt.innerHTML = qgnode["_name"] ? qgnode["_name"] : qgnode["_desc"] ? qgnode["_desc"] : qgnode.categories[0] ? qgnode.categories[0] : nid;
 	    document.getElementById("qg_edge_n"+x).appendChild(opt);
 	}
-    });
+    } //1.1x );
     get_possible_edges();
 }
 
@@ -2361,12 +2348,12 @@ function get_possible_edges() {
 	return;
     }
 
-    var nt1 = input_qg.nodes.filter(function(node){
-	return node["id"] == edge1;
-    });
-    var nt2 = input_qg.nodes.filter(function(node){
-	return node["id"] == edge2;
-    });
+    var nt1 = input_qg.nodes[edge1]; //1.1x .filter(function(node){
+    //1.1x return node["id"] == edge1;
+    //1.1x });
+    var nt2 = input_qg.nodes[edge2]; //1.1x .filter(function(node){
+	//1.1x return node["id"] == edge2;
+    //1.1x });
 
     qet_node.innerHTML = '';
     opt = document.createElement('option');
@@ -2375,7 +2362,7 @@ function get_possible_edges() {
     opt.innerHTML = "Populating edges...";
     qet_node.appendChild(opt);
 
-    if (nt1[0].type == null || nt2[0].type == null) {
+    if (nt1.categories == null || nt2.categories == null) {
 	// NONSPECIFIC nodes only get NONSPECIFIC edges...for now
         qet_node.innerHTML = '';
         opt = document.createElement('option');
@@ -2386,17 +2373,18 @@ function get_possible_edges() {
     }
 
     var relation = "A --> B";
-    if (!(nt2[0].type in predicates[nt1[0].type])) {
+    if (!(nt2.categories[0] in predicates[nt1.categories[0]])) {
 	[nt1, nt2] = [nt2, nt1]; // swap
 	relation = "B --> A";
     }
 
-    if (nt2[0].type in predicates[nt1[0].type]) {
-	if (predicates[nt1[0].type][nt2[0].type].length == 1) {
+    //1.1x if (nt2[0].type in predicates[nt1[0].type]) {
+    if (nt2.categories[0] in predicates[nt1.categories[0]]) {
+	if (predicates[nt1.categories[0]][nt2.categories[0]].length == 1) {
 	    qet_node.innerHTML = '';
 	    opt = document.createElement('option');
-	    opt.value = predicates[nt1[0].type][nt2[0].type][0];
-	    opt.innerHTML = predicates[nt1[0].type][nt2[0].type][0] + " ["+relation+"]";
+	    opt.value = predicates[nt1.categories[0]][nt2.categories[0]][0];
+	    opt.innerHTML = predicates[nt1.categories[0]][nt2.categories[0]][0] + " ["+relation+"]";
 	    qet_node.appendChild(opt);
 	}
 	else {
@@ -2404,10 +2392,10 @@ function get_possible_edges() {
 	    opt = document.createElement('option');
 	    opt.style.borderBottom = "1px solid black";
 	    opt.value = '';
-            opt.innerHTML = "Edge Type ["+relation+"]&nbsp; ("+predicates[nt1[0].type][nt2[0].type].length+")&nbsp;&nbsp;&nbsp;&#8675;";
+            opt.innerHTML = "Edge Type ["+relation+"]&nbsp; ("+predicates[nt1.categories[0]][nt2.categories[0]].length+")&nbsp;&nbsp;&nbsp;&#8675;";
 	    qet_node.appendChild(opt);
 
-	    for (var pred of predicates[nt1[0].type][nt2[0].type]) {
+	    for (var pred of predicates[nt1.categories[0]][nt2.categories[0]].sort()) {
 		var opt = document.createElement('option');
 		opt.value = pred;
 		opt.innerHTML = pred;
@@ -2447,37 +2435,33 @@ function add_nodeclass_to_query_graph(nodetype) {
 
 function add_nodetype_to_query_graph(nodetype) {
     document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
-    var qgid = get_qg_id();
-
-    var nt = nodetype;
+    var qgid = get_qg_id('n');
 
     cyobj[99999].add( {
         "data" : { "id"   : qgid,
 		   "name" : nodetype+"s",
-		   "type" : nt,
+		   "type" : nodetype,
 		   "parentdivnum" : 99999 },
 //        "position" : {x:100*qgid, y:50}
     } );
     cyobj[99999].reset();
     cylayout(99999,"breadthfirst");
 
-    if (nodetype=='NONSPECIFIC') { nt = null; }
-    var tmpdata = { "id"     : qgid,
-		    "is_set" : null,
-		    "name"   : null,
-		    "desc"   : "Generic " + nodetype,
-		    "curie"  : null,
-		    "type"   : nt
-		  };
+    var tmpdata = {};
+    tmpdata["is_set"] = false;
+    tmpdata["_name"]  = null;
+    tmpdata["_desc"]  = "Generic " + nodetype;
+    if (nodetype != 'NONSPECIFIC')
+	tmpdata["categories"] = [nodetype];
 
-    input_qg.nodes.push(tmpdata);
+    input_qg.nodes[qgid] = tmpdata;
 }
 
 function add_nodelist_to_query_graph(nodetype) {
     var list = nodetype.split("LIST_")[1];
 
     document.getElementById("statusdiv").innerHTML = "<p>Added a set of nodes from list <i>"+list+"</i></p>";
-    var qgid = get_qg_id();
+    var qgid = get_qg_id('n');
 
     cyobj[99999].add( {
         "data" : { "id"   : qgid,
@@ -2488,15 +2472,13 @@ function add_nodelist_to_query_graph(nodetype) {
     cyobj[99999].reset();
     cylayout(99999,"breadthfirst");
 
-    var tmpdata = { "id"     : qgid,
-		    "is_set" : true,
-		    "name"   : nodetype,
-		    "desc"   : "Set of nodes from list " + list,
-		    "curie"  : null,
-		    "type"   : null
-		  };
+    var tmpdata = {};
+    tmpdata["ids"]    = get_list_as_curie_array(list);
+    tmpdata["is_set"] = true;
+    tmpdata["_name"]  = nodetype;
+    tmpdata["_desc"]  = "Set of nodes from list " + list;
 
-    input_qg.nodes.push(tmpdata);
+    input_qg.nodes[qgid] = tmpdata;
 }
 
 
@@ -2521,7 +2503,7 @@ async function add_node_to_query_graph() {
         document.getElementById("statusdiv").innerHTML = "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+thing+"</i> in our knowledge graph.</p>";
 	sesame('openmax',statusdiv);
 
-	var qgid = get_qg_id();
+	var qgid = get_qg_id('n');
 
 	cyobj[99999].add( {
 	    "data" : { "id"   : qgid,
@@ -2531,15 +2513,14 @@ async function add_node_to_query_graph() {
 	    //		"position" : {x:100*(qgid-nn), y:50+nn*50}
 	} );
 
-	var tmpdata = { "id"     : qgid,
-			"is_set" : null,
-			"name"   : bestthing.name,
-			"curie"  : bestthing.curie,
-			"type"   : bestthing.type
+	var tmpdata = { "ids"    : [bestthing.curie],
+			"is_set" : false,
+			"_name"  : bestthing.name,
+			"categories" : [bestthing.type]
 		      };
 
 	document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + bestthing.curie + "<br>";
-	input_qg.nodes.push(tmpdata);
+	input_qg.nodes[qgid] = tmpdata;
 
 	cyobj[99999].reset();
 	cylayout(99999,"breadthfirst");
@@ -2556,73 +2537,105 @@ async function add_node_to_query_graph() {
 
 function remove_edge_from_query_graph(edgeid) {
     cyobj[99999].remove("#"+edgeid);
-
-    input_qg.edges.forEach(function(result, index) {
-	if (result["id"] == edgeid) {
-	    //Remove from array
-	    input_qg.edges.splice(index, 1);
-	}
-    });
+    delete input_qg.edges[edgeid];
 
     var idx = qgids.indexOf(edgeid);
     if (idx > -1)
 	qgids.splice(idx, 1);
 
+    document.getElementById("statusdiv").innerHTML = "<p>Deleted edge <i>"+edgeid+"</i></p>";
     display_query_graph_items();
 }
 
 function remove_node_from_query_graph(nodeid) {
     cyobj[99999].remove("#"+nodeid);
-
-    input_qg.nodes.forEach(function(result, index) {
-	if (result["id"] == nodeid) {
-	    //Remove from array
-	    input_qg.nodes.splice(index, 1);
-	}
-    });
+    delete input_qg.nodes[nodeid];
 
     var idx = qgids.indexOf(nodeid);
     if (idx > -1)
 	qgids.splice(idx, 1);
 
-    // remove items starting from end of array...
-    for (var k = input_qg.edges.length - 1; k > -1; k--){
-	if (input_qg.edges[k].source_id == nodeid) {
-	    input_qg.edges.splice(k, 1);
-	}
-	else if (input_qg.edges[k].target_id == nodeid) {
-	    input_qg.edges.splice(k, 1);
+    var delstat = "<p>Deleted node <i>"+nodeid+"</i>";
+
+    for (eid in input_qg.edges) {
+	var killit = false
+	if (input_qg.edges[eid].subject == nodeid)
+	    killit = true;
+	else if (input_qg.edges[eid].object == nodeid)
+	    killit = true;
+
+	if (killit) {
+	    delete input_qg.edges[eid];
+	    delstat += ", and edge <i>"+eid+"</i>";
+	    var idx = qgids.indexOf(eid);
+	    if (idx > -1)
+		qgids.splice(idx, 1);
 	}
     }
+    delstat += "</p>";
 
+    document.getElementById("statusdiv").innerHTML = delstat;
     update_kg_edge_input();
     display_query_graph_items();
+}
+
+function clean_up_qg(xfer) {
+    // clean up non-TRAPI attributes and null arrays
+    for (var nid in input_qg.nodes) {
+	var gnode = input_qg.nodes[nid];
+
+	if (gnode.is_set) {
+	    var list = gnode["_name"].split("LIST_")[1];
+	    gnode.ids = get_list_as_curie_array(list);
+	}
+
+	for (var att of ["_name","_desc"] ) {
+	    if (gnode.hasOwnProperty(att))
+		delete gnode[att];
+	}
+	if (gnode.ids && gnode.ids[0] == null)
+	    delete gnode.ids;
+	if (gnode.categories && gnode.categories[0] == null)
+	    delete gnode.categories;
+    }
+
+    for (var eid in input_qg.edges) {
+	var gedge = input_qg.edges[eid];
+	if (gedge.predicates && gedge.predicates[0] == null)
+	    delete gedge.predicates;
+    }
+
+    if (xfer)
+	document.getElementById("jsonText").value = JSON.stringify(input_qg,null,2);
 }
 
 function clear_qg(m) {
     if (cyobj[99999]) { cyobj[99999].elements().remove(); }
-    input_qg = { "edges": [], "nodes": [] };
+    input_qg = { "edges": {}, "nodes": {} };
+
+    if (m==1)
+	document.getElementById("statusdiv").innerHTML = "<p>Query Graph has been cleared.</p>";
+    else
+	document.getElementById("showQGjson").checked = false;
+
     update_kg_edge_input();
     get_possible_edges();
     display_query_graph_items();
     qgids = [];
-    if (m==1){
-	document.getElementById("statusdiv").innerHTML = "<p>Query Graph has been cleared.</p>";
-    }
     document.getElementById('qg_form').style.visibility = 'visible';
     document.getElementById('qg_form').style.maxHeight = "100%";
 }
 
-function get_qg_id() {
+function get_qg_id(prefix) {
     var new_id = 0;
     do {
-	if (!qgids.includes("qg"+new_id))
+	if (!qgids.includes(prefix+new_id))
 	    break;
 	new_id++;
     } while (new_id < 100);
 
-    qgids.push("qg"+new_id);
-    return "qg"+new_id;
+    qgids.push(prefix+new_id);
+    return prefix+new_id;
 }
 
 

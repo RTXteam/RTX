@@ -1,5 +1,7 @@
+<!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
 <link rel="stylesheet" type="text/css" href="rtx.css">
@@ -56,10 +58,10 @@
 <div class="page">
 <br><br><br><br>
 
-<div class="statushead">TRAPI 1.1</div>
+<!-- div class="statushead">TRAPI 1.1</div>
 <div id="topnotice" class="status">
   <h3 style="display:inline-block;">This is the interface based on <b>TRAPI 1.1</b>.</h3> Click <a href="/legacy">here to go to the TRAPI 1.0-based interface</a>
-</div><br><br>
+</div><br><br -->
 
 <div class="pagesection" id="historyDiv">
   <div class="statushead">Session History (<span id="numlistitemsSESSION">-</span>)</div>
@@ -130,6 +132,10 @@
 	  <option>...loading</option>
 	</select>
       </span>
+      <label style="margin-left:200px;">
+          <input id="showQGjson" type="checkbox">
+	  Show JSON in Status Window
+      </label>
       <br>
       Enter new relationship:
       <span class="qgselect">
@@ -150,8 +156,9 @@
 	  <option>Must have a minimum of 2 nodes</option>
 	</select>
       </span>
-      <input type="button" class="questionBox button" name="action" value="Add" onClick="add_edge_to_query_graph();">  
-      <br/>
+      <input type="button" class="questionBox button" name="action" value="Add" onClick="add_edge_to_query_graph();">
+      <a style="margin-left:170px;" href="javascript:clean_up_qg(true);selectInput('qjson');">Edit in JSON pane</a>
+      <br>
       <input type="button" class="questionBox button" name="action" value="QUERY" onClick="postQuery('qGraph');"/>
     </div>
   </div>
