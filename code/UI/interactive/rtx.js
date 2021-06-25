@@ -180,10 +180,8 @@ function reset_vars() {
 }
 
 
-// use fetch and stream
-function postQuery(qtype) {
+function postQuery(qtype,agent) {
     var queryObj= {};
-    queryObj.stream_progress = true;
 
     reset_vars();
     var statusdiv = document.getElementById("statusdiv");
@@ -237,6 +235,47 @@ function postQuery(qtype) {
 
 	clear_qg();
     }
+
+    if (agent == 'ARS')
+	postQuery_ARS(queryObj);
+    else
+	postQuery_ARAX(qtype,queryObj);
+
+}
+
+function postQuery_ARS(queryObj) {
+    var ars_api = 'https://ars-dev.transltr.io/ars/api/submit';
+    // ars-dev.transltr.io
+
+    document.getElementById("statusdiv").innerHTML += " - contacting ARS...";
+    document.getElementById("statusdiv").appendChild(document.createElement("br"));
+
+    fetch(ars_api, {
+	method: 'post',
+	body: JSON.stringify(queryObj),
+	headers: { 'Content-type': 'application/json' }
+    }).then(response => {
+	if (response.ok) return response.json();
+	else throw new Error('Something went wrong');
+    })
+        .then(data => {
+	    var message_id = data['pk'];
+	    document.getElementById("statusdiv").innerHTML += " - got message_id = "+message_id;
+	    document.getElementById("statusdiv").appendChild(document.createElement("br"));
+	    document.getElementById("idText").value = message_id;
+	    retrieve_response('ARS',providers['ARS'].url+message_id,message_id,"all");
+	})
+        .catch(error => {
+            document.getElementById("statusdiv").innerHTML += " - ERROR:: "+error;
+        });
+
+    return;
+}
+
+
+// use fetch and stream
+function postQuery_ARAX(qtype,queryObj) {
+    queryObj.stream_progress = true;
 
     var cmddiv = document.createElement("div");
     cmddiv.id = "cmdoutput";
@@ -1476,6 +1515,8 @@ function process_graph(gne,gid,trapi) {
         gedge.trapiversion = trapi;
         gedge.source = gedge.subject;
         gedge.target = gedge.object;
+	if (gedge.predicates)
+	    gedge.type = gedge.predicates[0];
 
         var tmpdata = { "data" : gedge }; // already contains id(?)
         cytodata[gid].push(tmpdata);
@@ -1714,6 +1755,8 @@ function process_results(reslist,kg,mainreasoner) {
 	    for (var edge of result.edge_bindings[ebid]) {
 		var kmne = Object.create(kg.edges[edge.id]);
 		kmne.parentdivnum = num;
+		if (kmne.predicate)
+		    kmne.type = kmne.predicate;
 		//console.log("=================== kmne:"+kmne.id);
 		var tmpdata = { "data" : kmne };
 		cytodata[num].push(tmpdata);
@@ -1747,11 +1790,12 @@ function add_cyto(i) {
 	    .css({
 		'curve-style' : 'bezier',
 		'line-color': function(ele) { return mapEdgeColor(ele); } ,
+		'line-style': function(ele) { if (ele.data().relation) { return 'dashed'; } return 'solid'; },
 		'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
 		'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
 		'target-arrow-shape': 'triangle',
 		'opacity': 0.8,
-		'content': function(ele) { if ((ele.data().parentdivnum > 99998) && ele.data().type) { return ele.data().type; } return '';}
+		'content': function(ele) { if ((ele.data().parentdivnum > 0) && ele.data().type) { return ele.data().type; } return '';}
 	    })
 	    .selector(':selected')
 	    .css({
@@ -3286,7 +3330,6 @@ function check_entities_batch(batchsize) {
 	    });
     }
 }
-
 
 
 function check_entities() {

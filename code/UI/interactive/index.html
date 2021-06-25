@@ -159,17 +159,19 @@
       <input type="button" class="questionBox button" name="action" value="Add" onClick="add_edge_to_query_graph();">
       <a style="margin-left:170px;" href="javascript:clean_up_qg(true);selectInput('qjson');">Edit in JSON pane</a>
       <br>
-      <input type="button" class="questionBox button" name="action" value="QUERY" onClick="postQuery('qGraph');"/>
+      <input type="button" class="questionBox button" name="action" value="QUERY (ARAX)" onClick="postQuery('qGraph','ARAX');"/>
+      <input type="button" class="questionBox button" name="action" value="QUERY (ARS)" onClick="postQuery('qGraph','ARS');"/>
     </div>
   </div>
   
   <div class="inputsection" id="qjson_input">
     <h3 style="display:inline;">JSON Input:</h3>
     <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>"query_graph"</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
-    <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON');">
+    <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
 	    <br/>
-	    <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('JSON');">
+	    <input type="button" class="questionBox button" name="action" value="POST (ARAX)" onClick="postQuery('JSON','ARAX');">
+	    <input type="button" class="questionBox button" name="action" value="POST (ARS)" onClick="postQuery('JSON','ARS');">
     </form>
   </div>
 
@@ -177,7 +179,7 @@
     <h3 style="display:inline;">DSL Input:</h3>
     <span class="tiny" style="position:relative; left:150px;">One line per DSL command, no quotes or commas;
     <a href="https://github.com/RTXteam/RTX/blob/master/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a><a href="javascript:pasteExample('DSL');" style="position:relative; left:100px;">Example</a></span>
-    <form id="dslForm" name="dslForm" method="post" action="postQuery('DSL');">
+    <form id="dslForm" name="dslForm" method="post" action="postQuery('DSL','ARAX');">
       <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="clearDSL();">&#9587;</span>
       <br/>
       <span class="qgselect">
@@ -188,7 +190,7 @@
       <div id="dsl_command_form"></div>
       <br/>
       <br/>
-      <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL');">
+      <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL','ARAX');">
     </form>
   </div>
 
