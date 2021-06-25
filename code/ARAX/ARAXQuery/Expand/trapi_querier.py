@@ -203,10 +203,7 @@ class TRAPIQuerier:
             for attribute in returned_edge.attributes:
                 if not attribute.attribute_type_id:
                     attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
-            returned_edge.attributes.append(Attribute(attribute_type_id="biolink:knowledge_provider_source",
-                                                      value=eu.get_kp_infores_curie(self.kp_name),
-                                                      value_type_id="biolink:InformationResource",
-                                                      attribute_source="infores:arax_ara"))
+            returned_edge.attributes.append(eu.get_knowledge_provider_source_attribute(self.kp_name))
 
             for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
                 answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)

@@ -12,6 +12,7 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
+from openapi_server.models.attribute import Attribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
@@ -380,10 +381,8 @@ def get_attribute_type(attribute_name: str) -> str:
         "deprecated": "biolink:Unknown",
         "equivalent_curies": "biolink:synonym",
         "full_name": "biolink:full_name",
-        "is_defined_by": "biolink:Unknown",
         "negated": "biolink:negated",
         "probability": "biolink:p_value",
-        "provided_by": "biolink:provided_by",
         "publications": "biolink:publications",
         "relation": "biolink:relation",
         "symbol": "biolink:symbol",
@@ -393,6 +392,13 @@ def get_attribute_type(attribute_name: str) -> str:
         "iri": "biolink:IriType"
     }
     return attribute_type_map.get(attribute_name, "biolink:Unknown")
+
+
+def get_knowledge_provider_source_attribute(kp_name: str) -> Attribute:
+    return Attribute(attribute_type_id="biolink:knowledge_provider_source",
+                     value=get_translator_infores_curie(kp_name),
+                     value_type_id="biolink:InformationResource",
+                     attribute_source=get_translator_infores_curie("ARAX"))
 
 
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
@@ -411,17 +417,21 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     return endpoint_map.get(kp_name)
 
 
-def get_kp_infores_curie(kp_name: str) -> Union[str, None]:
+def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
     endpoint_map = {
-        "BTE": "infores:biothings_explorer",
-        "GeneticsKP": "infores:genetics_kp",
-        "MolePro": "infores:molecular_kp",
-        "RTX-KG2": "infores:rtx-kg2-kp",
-        "CHP": "infores:connections_hypothesis_kp",
-        "ClinicalRiskKP": "infores:clinical_risk_kp",
-        "WellnessKP": "infores:wellness_kp",
-        "DrugResponseKP": "infores:drug_response_kp",
-        "TumorGeneMutationKP": "infores:tumor_gene_mutation_kp"
+        "ARAX": "infores:arax-reasoner-ara",
+        "BTE": "infores:biothings-explorer",
+        "GeneticsKP": "infores:genetics-data-provider",
+        "MolePro": "infores:molecular-data-provider",
+        "RTX-KG2": "infores:rtx-kg2",
+        "CHP": "infores:connections-hypothesis",
+        "COHD": "infores:cohd",
+        "DTD": "infores:arax-drug-treats-disease",  # TODO: get an official infores curie for this?
+        "NGD": "infores:arax-normalized-google-distance",  # TODO: get an official infores curie for this?
+        "ClinicalRiskKP": "infores:biothings-multiomics-clinical-risk",
+        "WellnessKP": "infores:biothings-multiomics-wellness",
+        "DrugResponseKP": "infores:biothings-multiomics-drug-response",
+        "TumorGeneMutationKP": "infores:biothings-tcga-mut-freq"
     }
     return endpoint_map.get(kp_name, kp_name)
 

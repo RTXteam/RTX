@@ -128,10 +128,7 @@ class NGDQuerier:
         ngd_edge.attributes = [Attribute(original_attribute_name=self.ngd_edge_attribute_name,
                                          attribute_type_id=self.ngd_edge_attribute_type,
                                          value=ngd_value)]
-        ngd_edge.attributes += [Attribute(original_attribute_name="provided_by", value="ARAX",
-                                          attribute_type_id=eu.get_attribute_type("provided_by")),
-                                Attribute(original_attribute_name="is_defined_by", value="ARAX",
-                                          attribute_type_id=eu.get_attribute_type("is_defined_by")),
+        ngd_edge.attributes += [eu.get_knowledge_provider_source_attribute("NGD"),
                                 Attribute(original_attribute_name="publications", value=pmid_list,
                                           attribute_type_id=eu.get_attribute_type("publications"))]
         return ngd_edge_key, ngd_edge

@@ -881,8 +881,7 @@ class DTDQuerier:
         url = "https://doi.org/10.1101/765305"
 
         swagger_edge.attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
-                                   Attribute(original_attribute_name="provided_by", value="ARAX/DTD", attribute_type_id=eu.get_attribute_type("provided_by")),
-                                   Attribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id=eu.get_attribute_type("is_defined_by"))]
+                                   eu.get_knowledge_provider_source_attribute("DTD")]
 
         return swagger_edge_key, swagger_edge
 
