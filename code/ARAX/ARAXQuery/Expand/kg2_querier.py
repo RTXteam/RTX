@@ -222,7 +222,7 @@ class KG2Querier:
         provided_by_attributes = [Attribute(attribute_type_id=self.infores_curie_map[source]["type"],
                                             value=self.infores_curie_map[source]["curie"],
                                             value_type_id="biolink:InformationResource",
-                                            attribute_source=eu.get_kp_infores_curie("RTX-KG2"))
+                                            attribute_source=eu.get_translator_infores_curie("RTX-KG2"))
                                   for source in provided_bys]
         edge.attributes += provided_by_attributes
         if publications:
