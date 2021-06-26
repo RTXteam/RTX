@@ -76,6 +76,7 @@
   <img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/>
   <img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
   <img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/>
+  <img src="resp.png"  class="slink" id="resp_link"   onclick="selectInput('resp');"   title="View/Render Response JSON object"/>
 
   <div class="inputsection" id="qtext_input">
     <h3 style="display:inline;">Enter question:</h3>
@@ -210,6 +211,16 @@
       <span title="clear id" class="clq" onclick="pasteId('');">&#9587;</span>
     </form>
     <br>
+  </div>
+
+  <div class="inputsection" id="resp_input">
+    <h3 style="display:inline;">Response Input:</h3>
+        <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>"response"</b> object</span>
+	<form id="responseForm" name="responseForm" method="post" action="viewResponse();">
+	  <textarea class="questionBox" wrap="off" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
+	  <br/>
+	  <input type="button" class="questionBox button" name="action" value="VIEW" onClick="viewResponse();">
+	</form>
   </div>
 
   <br><br>

@@ -64,6 +64,7 @@ function main() {
 
 	document.getElementById("devdiv").innerHTML =  "Requested "+provider_id+" response id = " + response_id + "<br>";
 	retrieve_response(provider_id,rurl+response_id,response_id,"all");
+        pasteId(response_id);
     }
     else {
 	add_cyto(99999);
@@ -122,7 +123,7 @@ function selectInput (input_id) {
     if (e[0]) { e[0].classList.remove("slink_on"); }
     document.getElementById(input_id+"_link").classList.add("slink_on");
 
-    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qid_input']) {
+    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qid_input','resp_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -136,6 +137,9 @@ function clearJSON() {
 }
 function clearDSL() {
     document.getElementById("dslText").value = '';
+}
+function clearResponse() {
+    document.getElementById("responseText").value = '';
 }
 
 function pasteSyn(word) {
@@ -177,6 +181,30 @@ function reset_vars() {
     cytodata = [];
     UIstate.nodedd = 1;
     UIstate.hasNodeArray = false;
+}
+
+function viewResponse() {
+    var resp = document.getElementById("responseText").value;
+    if (!resp) return;
+
+    reset_vars();
+
+    var jsonInput;
+    try {
+	jsonInput = JSON.parse(resp);
+    }
+    catch(e) {
+	statusdiv.appendChild(document.createElement("br"));
+	if (e.name == "SyntaxError")
+	    statusdiv.innerHTML += "<b>Error</b> parsing JSON response input. Please correct errors and resubmit: ";
+	else
+	    statusdiv.innerHTML += "<b>Error</b> processing response input. Please correct errors and resubmit: ";
+	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+	return;
+    }
+
+    render_response(jsonInput,true);
 }
 
 
@@ -262,7 +290,7 @@ function postQuery_ARS(queryObj) {
 	    var message_id = data['pk'];
 	    document.getElementById("statusdiv").innerHTML += " - got message_id = "+message_id;
 	    document.getElementById("statusdiv").appendChild(document.createElement("br"));
-	    document.getElementById("idText").value = message_id;
+	    pasteId(message_id);
 	    retrieve_response('ARS',providers['ARS'].url+message_id,message_id,"all");
 	})
         .catch(error => {
@@ -705,6 +733,29 @@ function getIdStats(id) {
     retrieve_response("ARS",providers["ARS"].url+id,id,"stats");
 }
 
+function checkRefreshARS() {
+    document.getElementById("ars_refresh").dataset.count += "x";
+    var moon = 127765;
+    if (document.getElementById("ars_refresh").dataset.count.length == document.getElementById("ars_refresh").dataset.total) {
+	document.getElementById("ars_refresh").innerHTML = "&#"+moon;
+	var timetogo = 8;
+	var timeout = setInterval(countdown, 375);
+	function countdown() {
+	    if (timetogo == 0) {
+		clearInterval(timeout);
+                sendId();
+		document.getElementById("ars_refresh").innerHTML = "";
+	    } else {
+		moon--;
+		if (moon == 127760) moon = 127768;
+		document.getElementById("ars_refresh").innerHTML =  "&#"+moon;
+		timetogo--;
+	    }
+	}
+
+    }
+}
+
 function sendId() {
     var id = document.getElementById("idText").value.trim();
     if (!id) return;
@@ -827,12 +878,15 @@ function sendQuestion(e) {
 
 }
 
-
 function process_ars_message(ars_msg, level) {
     if (level > 5)
 	return; // stopgap
     var table, tr, td;
     if (level == 0) {
+        document.title = "ARAX-UI [ARS Collection: "+ars_msg.message+"]";
+        add_to_session('source=ARS&id='+ars_msg.message,"[ARS Collection] id="+ars_msg.message);
+	history.pushState({ id: 'ARAX_UI' }, 'ARAX | source=ARS&id='+ars_msg.message, "//"+ window.location.hostname + window.location.pathname + '?source=ARS&id='+ars_msg.message);
+
 	if (document.getElementById('ars_message_list'))
 	    document.getElementById('ars_message_list').remove();
 	var div = document.createElement("div");
@@ -843,8 +897,18 @@ function process_ars_message(ars_msg, level) {
         div2.appendChild(document.createTextNode("Collection Results"));
         div.appendChild(div2);
 
+	var span = document.createElement("span");
+	span.id = 'ars_refresh';
+	span.style.float = 'right';
+	span.style.marginRight = '20px';
+	span.dataset.total = ars_msg.status == 'Done' ? 999999 : ars_msg["children"].length + 1;
+	span.dataset.count = '';
+	span.appendChild(document.createTextNode("Auto-reload: " + (ars_msg.status == 'Done' ? "OFF" : "ON")));
+	div2.appendChild(span);
+
 	var div2 = document.createElement("div");
 	div2.className = "status";
+
 	table = document.createElement("table");
 	table.id = 'ars_message_list_table';
 	table.className = 'sumtab';
@@ -920,6 +984,8 @@ function process_ars_message(ars_msg, level) {
 
     if (go)
 	getIdStats(ars_msg.message);
+    else
+	checkRefreshARS();
 
     level++;
     for (let child of ars_msg["children"])
@@ -1009,6 +1075,7 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 		    if (jsonObj2.validation_result.n_nodes)
 			document.getElementById("nodedges_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.n_nodes+' / '+jsonObj2.validation_result.n_edges;
 
+		    checkRefreshARS();
 		}
 	    }
 
@@ -1281,6 +1348,7 @@ function render_response(respObj,dispjson) {
     nr.className = 'essence';
     nr.appendChild(document.createTextNode("Click on Results, Summary, or Knowledge Graph links on the left to explore results."));
     statusdiv.appendChild(nr);
+    statusdiv.appendChild(document.createElement("br"));
     sesame('openmax',statusdiv);
 }
 
@@ -1789,10 +1857,11 @@ function add_cyto(i) {
 	    .selector('edge')
 	    .css({
 		'curve-style' : 'bezier',
+		'font-size' : '12',
 		'line-color': function(ele) { return mapEdgeColor(ele); } ,
-		'line-style': function(ele) { if (ele.data().relation) { return 'dashed'; } return 'solid'; },
-		'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
+		'line-style': function(ele) { return mapEdgeLineStyle(ele); } ,
 		'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
+		'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
 		'target-arrow-shape': 'triangle',
 		'opacity': 0.8,
 		'content': function(ele) { if ((ele.data().parentdivnum > 0) && ele.data().type) { return ele.data().type; } return '';}
@@ -2147,11 +2216,17 @@ function mapNodeColor(ele) {
     return "#04c";
 }
 
+function mapEdgeLineStyle(ele) {
+    var etype = ele.data().predicate ? ele.data().predicate : ele.data().predicates ? ele.data().predicates[0] : "NA";
+    if (etype == "biolink:has_normalized_google_distance_with") return 'dashed';
+    return 'solid';
+}
+
 function mapEdgeColor(ele) {
-    var etype = ele.data().predicates ? ele.data().predicates[0] : "NA";
-    if (etype == "contraindicated_for")       { return "red";}
-    if (etype == "indicated_for")             { return "green";}
-    if (etype == "physically_interacts_with") { return "green";}
+    var etype = ele.data().predicate ? ele.data().predicate : ele.data().predicates ? ele.data().predicates[0] : "NA";
+    if (etype == "biolink:contraindicated_for")       { return "red";}
+    if (etype == "biolink:indicated_for")             { return "green";}
+    if (etype == "biolink:physically_interacts_with") { return "green";}
     return "#aaf";
 }
 
