@@ -350,7 +350,7 @@ def test_889_missing_curies():
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:interacts_with)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "return(message=true, store=false)",
     ]
@@ -543,7 +543,7 @@ def test_exclude_edge_parallel():
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, key=e01)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:causes, key=e01)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
@@ -557,7 +557,7 @@ def test_exclude_edge_parallel():
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, exclude=true, key=e01)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:causes, exclude=true, key=e01)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
@@ -659,8 +659,8 @@ def test_option_group_query_one_hop():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:positively_regulates)",
-        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:correlated_with, option_group_id=1)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
+        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:affects, option_group_id=1)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
@@ -687,7 +687,7 @@ def test_category_and_predicate_format():
     actions_list = [
         "add_qnode(ids=UniProtKB:P42857, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:positively_regulates_entity_to_entity)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:affects)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
@@ -764,13 +764,13 @@ def test_kg2_predicate_hierarchy_reasoning():
     actions_list = [
         "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, categories=biolink:Drug, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:interacts_with)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:affects)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:physically_interacts_with")
-    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:molecularly_interacts_with")
+    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:affects")
+    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:entity_positively_regulates_entity")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
 
@@ -847,9 +847,9 @@ def test_many_kp_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_entity_to_entity_predicate_patch():
+def test_entity_to_entity_query():
     actions_list = [
-        "add_qnode(ids=NCBIGene:23221, categories=biolink:Gene, key=n0)",
+        "add_qnode(ids=NCBIGene:375, categories=biolink:Gene, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2)",
