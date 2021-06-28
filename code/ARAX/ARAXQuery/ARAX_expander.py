@@ -164,6 +164,14 @@ class ARAXExpander:
                         core_of_predicate = predicate.strip(item_type).strip("_")
                         qedge.predicates.append(f"biolink:{core_of_predicate}_{item_type}_to_{item_type}")
                     log.debug(f"Considering qedge {qedge_key}'s predicates to be: {qedge.predicates}")
+        # Make sure QG only uses canonical predicates
+        if mode == "ARAX":
+            canonical_predicates_map = eu.load_canonical_predicates_map(log)
+            log.debug(f"Making sure QG only uses canonical predicates")
+            for qedge in query_graph.edges.values():
+                if qedge.predicates:
+                    canonical_predicates = {canonical_predicates_map.get(predicate, predicate) for predicate in qedge.predicates}
+                    qedge.predicates = list(canonical_predicates)
 
         # Expand any specified edges
         if input_qedge_keys:
