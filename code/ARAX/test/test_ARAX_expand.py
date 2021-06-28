@@ -569,17 +569,17 @@ def test_exclude_edge_parallel():
 
 @pytest.mark.slow
 def test_exclude_edge_perpendicular():
-    n02_curies = ", ".join(["CHEMBL.COMPOUND:CHEMBL114655", "CHEMBL.COMPOUND:CHEMBL32800"])
-    exclude_curies = ", ".join(["CHEMBL.COMPOUND:CHEMBL114655"])
+    exclude_curies = ", ".join(['CHEMBL.COMPOUND:CHEMBL190', 'CHEMBL.COMPOUND:CHEMBL775'])
     # First run a query without any kryptonite edges to get a baseline
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
-        f"add_qnode(categories=biolink:ChemicalSubstance, key=n02, ids=[{n02_curies}])",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
-        f"add_qnode(categories=biolink:Drug, key=nx0, ids=[{exclude_curies}], option_group_id=1)",
-        "add_qedge(subject=n01, object=nx0, key=ex0, option_group_id=1)",
+        f"add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:causes)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
+        # 'Exclude' portion (just optional for now to get a baseline)
+        f"add_qnode(categories=biolink:Drug, key=nx0, option_group_id=1, ids=[{exclude_curies}])",
+        "add_qedge(subject=n01, object=nx0, key=ex0, option_group_id=1, predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
@@ -592,11 +592,12 @@ def test_exclude_edge_perpendicular():
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
-        f"add_qnode(categories=biolink:ChemicalSubstance, key=n02, ids=[{n02_curies}])",
+        f"add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
+        # 'Exclude' portion
         f"add_qnode(categories=biolink:Drug, key=nx0, ids=[{exclude_curies}])",
-        "add_qedge(subject=n01, object=nx0, key=ex0, exclude=true)",
+        "add_qedge(subject=n01, object=nx0, key=ex0, exclude=True, predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
