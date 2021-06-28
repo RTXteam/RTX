@@ -274,8 +274,7 @@ function postQuery(qtype,agent) {
 }
 
 function postQuery_ARS(queryObj) {
-    var ars_api = 'https://ars-dev.transltr.io/ars/api/submit';
-    // ars-dev.transltr.io
+    var ars_api = 'https://ars.ci.transltr.io/ars/api/submit';
 
     document.getElementById("statusdiv").innerHTML += " - contacting ARS...";
     document.getElementById("statusdiv").appendChild(document.createElement("br"));
@@ -990,7 +989,7 @@ function process_ars_message(ars_msg, level) {
 	checkRefreshARS();
 
     level++;
-    for (let child of ars_msg["children"])
+    for (let child of ars_msg["children"].sort(function(a, b) { return a.actor.agent > b.actor.agent; }))
 	process_ars_message(child, level);
 }
 
