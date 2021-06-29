@@ -38,6 +38,7 @@ class KG2Querier:
         self.infores_curie_tsv_name = "kg2-provided-by-curie-to-infores-curie.tsv"
         self.infores_curie_tsv_path = f"{os.path.dirname(os.path.abspath(__file__))}/{self.infores_curie_tsv_name}"
         self.infores_curie_map = self._initiate_infores_curie_map(self.response)
+        self.canonical_predicate_map = eu.load_canonical_predicates_map(self.response)
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -222,7 +223,7 @@ class KG2Querier:
         provided_by_attributes = [Attribute(attribute_type_id=self.infores_curie_map[source]["type"],
                                             value=self.infores_curie_map[source]["curie"],
                                             value_type_id="biolink:InformationResource",
-                                            attribute_source=eu.get_kp_infores_curie("RTX-KG2"))
+                                            attribute_source=eu.get_translator_infores_curie("RTX-KG2"))
                                   for source in provided_bys]
         edge.attributes += provided_by_attributes
         if publications:
@@ -231,6 +232,14 @@ class KG2Querier:
                                              value_type_id="biolink:Publication",
                                              value=publications,
                                              attribute_source=list(infores_curies) if len(infores_curies) > 1 or len(infores_curies) == 0 else list(infores_curies)[0]))
+
+        # Switch to canonical predicate as needed (temporary patch until KG2 uses only canonical predicates)
+        if edge.predicate in self.canonical_predicate_map:
+            edge.predicate = self.canonical_predicate_map[edge.predicate]
+            original_subject = edge.subject
+            edge.subject = edge.object
+            edge.object = original_subject
+
         return edge
 
     def _get_infores_curie_from_provided_by(self, provided_by: str, log: ARAXResponse) -> str:

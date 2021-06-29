@@ -269,7 +269,7 @@ class ResponseCache:
 
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
-            ars_hosts = [ 'ars-dev.transltr.io', 'ars.ci.transltr.io', 'ars.transltr.io' ]
+            ars_hosts = [ 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
                     response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})

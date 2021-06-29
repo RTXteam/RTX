@@ -1,9 +1,16 @@
 #!/bin/env python3
 # This file contains utilities/helper functions for general use within the Expand module
+import json
+import pathlib
 import sys
 import os
 import traceback
 from typing import List, Dict, Union, Set, Tuple, Optional
+from datetime import datetime, timedelta
+
+import requests
+import requests_cache
+import yaml
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -372,6 +379,55 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
 
 def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
+
+
+def load_canonical_predicates_map(log: ARAXResponse) -> Dict[str, str]:
+    map_path = f"{os.path.dirname(os.path.abspath(__file__))}/canonical_predicates.json"
+    map_file = pathlib.Path(map_path)
+    two_days_ago = datetime.now() - timedelta(hours=48)
+
+    # Create or refresh the map as needed
+    if not map_file.exists() or datetime.fromtimestamp(map_file.stat().st_mtime) < two_days_ago:
+        log.debug(f"Refreshing canonical predicates map")
+        # First load any cached data in case we fail at grabbing the Biolink yaml file
+        if map_file.exists():
+            with open(map_path, "r") as input_file:
+                canonical_predicates_map = json.load(input_file)
+        else:
+            canonical_predicates_map = dict()
+
+        # Grab the Biolink 2.0 yaml file and extract canonical predicate info
+        try:
+            with requests_cache.disabled():
+                response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/2.0.2/biolink-model.yaml",
+                                        timeout=10)  # Canonical predicates were added in 2.0
+        except requests.exceptions.Timeout:
+            log.warning(f"Timed out trying to grab Biolink 2.0 yaml")
+        except Exception:
+            log.warning(f"Ran into a problem grabbing Biolink 2.0 yaml file")
+        else:
+            if response.status_code == 200:
+                biolink_model = yaml.safe_load(response.text)
+                canonical_predicates_map = dict()  # Clear cached data since we successfully got new data
+                for slot_name_english, info in biolink_model["slots"].items():
+                    predicate = f"biolink:{slot_name_english.replace(' ', '_')}"
+                    if info.get("inverse"):
+                        inverse_predicate_english = info["inverse"]
+                        inverse_info = biolink_model["slots"][inverse_predicate_english]
+                        if inverse_info.get("annotations") and \
+                                inverse_info["annotations"].get("tag") == "biolink:canonical_predicate" and \
+                                inverse_info["annotations"].get("value"):
+                            canonical_predicates_map[predicate] = f"biolink:{inverse_predicate_english.replace(' ', '_')}"
+            else:
+                log.warning(f"Got {response.status_code} loading Biolink 2.0 yaml file. Can't refresh.")
+        # Save our refreshed data
+        with open(map_path, "w+") as output_file:
+            json.dump(canonical_predicates_map, output_file)
+
+    # Now that we know the map exists/is current, load it
+    with open(map_path, "r") as input_file:
+        predicates_map = json.load(input_file)
+    return predicates_map
 
 
 def get_attribute_type(attribute_name: str) -> str:
