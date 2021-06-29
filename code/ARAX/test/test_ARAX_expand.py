@@ -394,7 +394,7 @@ def test_987_override_node_categories():
 @pytest.mark.slow
 def test_cohd_expand_paired_concept_freq():
     actions_list = [
-        "add_qnode(ids=UMLS:C0015967, key=n00)",
+        "add_qnode(ids=DOID:1588, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_top_N=500)",
@@ -410,7 +410,7 @@ def test_cohd_expand_paired_concept_freq():
 @pytest.mark.slow
 def test_cohd_expand_observed_expected_ratio():
     actions_list = [
-        "add_qnode(ids=DOID:10718, key=n00)",
+        "add_qnode(ids=DOID:1588, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_top_N=500)",
