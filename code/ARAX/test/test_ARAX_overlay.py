@@ -121,7 +121,7 @@ def test_jaccard():
 def test_add_node_pmids():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:2958, key=n00)",
+        "add_qnode(name=MONDO:0018077, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=RTX-KG2)",
