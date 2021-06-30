@@ -100,7 +100,7 @@ def get_kg2_predicate_triples_examples():
                 "node2, value.subject as subject, value.object as object"
     results = run_neo4j_query(cypher, "KG2", "predicate triples")
     triples_dict = {"subject":[], "predicate":[], "object":[]}
-    examples_json = {"url": "https://arax.ncats.io/kg2/api/rtxkg2/v1.0/ui/",
+    examples_json = {"url": "https://arax.ncats.io/api/rtxkg2/v1.1/query",
                     "TRAPI": True,
                     "edges": []}
     for result in results:
@@ -131,7 +131,7 @@ def get_kg2c_predicate_triples_examples():
                 "node2, value.subject as subject, value.object as object"
     results = run_neo4j_query(cypher, "KG2c", "predicate triples")
     triples_dict = {"subject":[], "predicate":[], "object":[]}
-    examples_json = {"url": "https://arax.ncats.io/kg2/api/rtxkg2/v1.0/ui/",
+    examples_json = {"url": "https://arax.ncats.io/api/rtxkg2/v1.1/query",
                     "TRAPI": True,
                     "edges": []}
     for result in results:
