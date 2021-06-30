@@ -71,9 +71,9 @@ def test_error():
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
             "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-            "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:contraindicated_for)",
+            "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
             "expand(edge_key=e00, kp=RTX-KG2)",
-            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:contraindicated_for, remove_connected_nodes=t)",
+            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=t)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
         ]}}
@@ -238,7 +238,7 @@ def test_provided_by_filter():
         "create_message",
         "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2,enforce_directionality=true)",
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:knowledge_source,value=infores:semmeddb,remove_connected_nodes=false)",
         # The below line is now an outdated way of doing it, but including for now to prevent error until new code is rolled out to KG2 API
@@ -255,7 +255,7 @@ def test_provided_by_filter():
         "create_message",
         "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2,enforce_directionality=true)",
         #"filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:original_source,value=infores:semmeddb,remove_connected_nodes=false)",
         "resultify()",

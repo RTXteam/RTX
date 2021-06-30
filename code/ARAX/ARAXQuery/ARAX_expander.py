@@ -150,20 +150,6 @@ class ARAXExpander:
                                          for equivalent_category in self.category_equivalencies.get(category, [])}
                 qnode.categories = list(set(qnode.categories).union(equivalent_categories))
                 log.debug(f"Expand will consider qnode {qnode_key}'s category to be {qnode.categories}")
-        # Add in any predicate patches (due to biolink model version bridging)
-        for qedge_key, qedge in query_graph.edges.items():
-            if qedge.predicates:
-                predicate_local_ids = [predicate.split(":")[-1] for predicate in qedge.predicates]
-                predicates_to_convert = {predicate for predicate in predicate_local_ids if
-                                         (predicate.startswith("entity") and predicate.endswith("entity")) or
-                                         (predicate.startswith("process") and predicate.endswith("process"))}
-                if predicates_to_convert:
-                    log.debug(f"Adding old Biolink version of predicate(s) to qedge {qedge_key}")
-                    for predicate in predicates_to_convert:
-                        item_type = "entity" if predicate.startswith("entity") else "process"
-                        core_of_predicate = predicate.strip(item_type).strip("_")
-                        qedge.predicates.append(f"biolink:{core_of_predicate}_{item_type}_to_{item_type}")
-                    log.debug(f"Considering qedge {qedge_key}'s predicates to be: {qedge.predicates}")
         # Make sure QG only uses canonical predicates
         if mode == "ARAX":
             canonical_predicates_map = eu.load_canonical_predicates_map(log)

@@ -121,7 +121,7 @@ def test_jaccard():
 def test_add_node_pmids():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:2958, key=n00)",
+        "add_qnode(name=MONDO:0018077, key=n00)",
         "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=RTX-KG2)",
@@ -408,7 +408,7 @@ def test_chi_square_attribute():
 def test_predict_drug_treats_disease_virtual():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=DOID:8453, key=n0, categories=biolink:Disease)",
+        "add_qnode(ids=MONDO:0004992, key=n0, categories=biolink:Disease)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
@@ -425,7 +425,7 @@ def test_predict_drug_treats_disease_virtual():
 def test_predict_drug_treats_disease_attribute():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=DOID:8453, key=n0)",
+        "add_qnode(ids=MONDO:0004992, key=n0)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
@@ -442,7 +442,7 @@ def test_predict_drug_treats_disease_attribute():
 def test_issue_832():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=DOID:8453, key=n0)",
+        "add_qnode(ids=MONDO:0004992, key=n0)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
