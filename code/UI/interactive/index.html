@@ -25,7 +25,7 @@
 <div class="menuleft">
 <br><br><br>
 &nbsp;Input<br>
-<div id="queryMenu" onclick="openSection('query');" class="menucurrent">Query</div>
+<div id="queryMenu" onclick="openSection('query');" class="menucurrent">Queries</div>
 <div id="listaMenu" onclick="openSection('lista');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
 <div id="listbMenu" onclick="openSection('listb');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
 <div id="compareMenu" onclick="openSection('compare');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
@@ -44,6 +44,8 @@
 <div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
 <br><br><br><br>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
+<br><br><br><br>
+<div title="ARAX UI version" class="tiny" id="uiversionstring">version...</div>
 </div>
 
 <div class="banner" banner-bg-text="ARAX User Interface">
@@ -69,8 +71,9 @@
 </div>
 
 <div class="pagesection" id="queryDiv">
-  <h3 style="margin:0px;">Choose Query Type:</h3>
-  &nbsp;&nbsp;&nbsp;
+  <h3 class="stitle">Query</h3>
+  <h3 style="width:210px;" class="stitle">Import</h3>
+  <br>&nbsp;
 <!--  <img src="qtxt.png"  class="slink" id="qtext_link" onclick="selectInput('qtext');"  title="Enter Query using Natural Language"/> -->
   <img src="qg.png"    class="slink" id="qgraph_link" onclick="selectInput('qgraph');" title="Enter Query Graph"/>
   <img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/>
@@ -167,7 +170,7 @@
   
   <div class="inputsection" id="qjson_input">
     <h3 style="display:inline;">JSON Input:</h3>
-    <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>"query_graph"</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
+    <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>query_graph</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
 	    <br/>
@@ -215,7 +218,7 @@
 
   <div class="inputsection" id="resp_input">
     <h3 style="display:inline;">Response Input:</h3>
-        <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>"response"</b> object</span>
+        <span class="tiny" style="position:relative; left:150px;">Copy-paste a <b>JSON TRAPI Response</b> into the box below</span>
 	<form id="responseForm" name="responseForm" method="post" action="viewResponse();">
 	  <textarea class="questionBox" wrap="off" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
 	  <br/>

@@ -150,6 +150,14 @@ class ARAXExpander:
                                          for equivalent_category in self.category_equivalencies.get(category, [])}
                 qnode.categories = list(set(qnode.categories).union(equivalent_categories))
                 log.debug(f"Expand will consider qnode {qnode_key}'s category to be {qnode.categories}")
+        # Make sure QG only uses canonical predicates
+        if mode == "ARAX":
+            canonical_predicates_map = eu.load_canonical_predicates_map(log)
+            log.debug(f"Making sure QG only uses canonical predicates")
+            for qedge in query_graph.edges.values():
+                if qedge.predicates:
+                    canonical_predicates = {canonical_predicates_map.get(predicate, predicate) for predicate in qedge.predicates}
+                    qedge.predicates = list(canonical_predicates)
 
         # Expand any specified edges
         if input_qedge_keys:

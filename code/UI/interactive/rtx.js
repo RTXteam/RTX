@@ -30,6 +30,7 @@ var providers = {
 
 
 function main() {
+    UIstate["version"] = checkUIversion(false);
     document.getElementById("menuapiurl").href = baseAPI + "/ui/";
 
     get_example_questions();
@@ -166,6 +167,7 @@ function pasteExample(type) {
 
 function reset_vars() {
     add_status_divs();
+    checkUIversion(true);
     document.getElementById("result_container").innerHTML = "";
     if (cyobj[0]) {cyobj[0].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
@@ -272,8 +274,7 @@ function postQuery(qtype,agent) {
 }
 
 function postQuery_ARS(queryObj) {
-    var ars_api = 'https://ars-dev.transltr.io/ars/api/submit';
-    // ars-dev.transltr.io
+    var ars_api = 'https://ars.ci.transltr.io/ars/api/submit';
 
     document.getElementById("statusdiv").innerHTML += " - contacting ARS...";
     document.getElementById("statusdiv").appendChild(document.createElement("br"));
@@ -988,7 +989,7 @@ function process_ars_message(ars_msg, level) {
 	checkRefreshARS();
 
     level++;
-    for (let child of ars_msg["children"])
+    for (let child of ars_msg["children"].sort(function(a, b) { return a.actor.agent > b.actor.agent; }))
 	process_ars_message(child, level);
 }
 
@@ -3592,4 +3593,109 @@ function addCheckBox(ele,remove) {
 
     if (remove)
 	var timeout = setTimeout(function() { check.remove(); }, 1500 );
+}
+
+
+function checkUIversion(compare) {
+    fetch("rtx.version", {
+	headers: { 'Cache-Control': 'no-cache' }
+    })
+        .then(response => response.text())
+	.then(response => {
+	    //console.log(response+"--"+UIstate["version"]);
+	    if (compare && (UIstate["version"] != response))
+		showVersionAlert(response);
+	    else {
+		UIstate["version"] = response;
+		document.getElementById("uiversionstring").innerHTML = '&nbsp;&nbsp;v.'+response;
+	    }
+	})
+	.catch(error => { //log and ignore...
+            console.log(error);
+	});
+}
+
+function showVersionAlert(version) {
+    if (document.getElementById("valert"))
+	return;  // just like Highlander...
+
+    var popup = document.createElement("div");
+    popup.id = "valert";
+    popup.className = 'alertbox';
+
+    var div = document.createElement("div");
+    div.className = 'statushead';
+    div.appendChild(document.createTextNode("Version Alert"));
+    popup.appendChild(div);
+
+    div = document.createElement("div");
+    div.className = 'status error';
+    div.appendChild(document.createElement("br"));
+    div.appendChild(document.createTextNode("You are using an out-of-date version of this interface ("+UIstate["version"]+")"));
+    div.appendChild(document.createElement("br"));
+    div.appendChild(document.createElement("br"));
+    div.appendChild(document.createTextNode("Please use the Reload button below to load the latest version ("+version+")"));
+    div.appendChild(document.createElement("br"));
+    div.appendChild(document.createElement("br"));
+    div.appendChild(document.createElement("br"));
+    popup.appendChild(div);
+
+    var button = document.createElement("input");
+    button = document.createElement("input");
+    button.className = "questionBox button";
+    button.type = "button";
+    button.title = 'Reload to update';
+    button.value = 'Reload';
+    button.setAttribute('onclick', 'window.location.reload();');
+    popup.appendChild(button);
+
+    button = document.createElement("input");
+    button.className = "questionBox button";
+    button.style.float = "right";
+    button.type = "button";
+    button.title = 'Dismiss alert';
+    button.value = 'Dismiss';
+    button.setAttribute('onclick', 'document.body.removeChild(document.getElementById("valert"))');
+    popup.appendChild(button);
+
+    dragElement(popup);
+    document.body.appendChild(popup);
+}
+
+
+// from w3schools (mostly)
+function dragElement(ele) {
+    ele.style.cursor = "move";
+    var posx1 = 0, posx2 = 0, posy1 = 0, posy2 = 0;
+    if (document.getElementById(ele.id + "header")) {
+	document.getElementById(ele.id + "header").onmousedown = dragMouseDown;
+    }
+    else {
+	ele.onmousedown = dragMouseDown;
+    }
+
+    function dragMouseDown(e) {
+	e = e || window.event;
+	e.preventDefault();
+	posx2 = e.clientX;
+	posy2 = e.clientY;
+	document.onmouseup = closeDragElement;
+	document.onmousemove = elementDrag;
+    }
+
+    function elementDrag(e) {
+	e = e || window.event;
+	e.preventDefault();
+	posx1 = posx2 - e.clientX;
+	posy1 = posy2 - e.clientY;
+	posx2 = e.clientX;
+	posy2 = e.clientY;
+	ele.style.top  = (ele.offsetTop  - posy1) + "px";
+	ele.style.left = (ele.offsetLeft - posx1) + "px";
+    }
+
+    function closeDragElement() {
+	document.onmouseup = null;
+	document.onmousemove = null;
+    }
 }
