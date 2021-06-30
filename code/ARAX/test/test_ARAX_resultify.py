@@ -637,7 +637,7 @@ def test09():
     actions = [
         "add_qnode(name=DOID:731, key=n00, categories=biolink:Disease, is_set=false)",
         "add_qnode(categories=biolink:PhenotypicFeature, is_set=false, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:has_phenotype)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=RTX-KG2)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "filter_results(action=limit_number_of_results, max_results=100)",
@@ -1028,28 +1028,29 @@ def test_issue720_3():
     actions = [
         "add_qnode(key=n00, ids=DOID:14330)",  # parkinson's
         "add_qnode(key=n01, categories=biolink:Protein)",
-        "add_qnode(key=n02, categories=biolink:ChemicalSubstance, ids=CHEMBL.COMPOUND:CHEMBL452076)",  # cilnidipine
+        "add_qnode(key=n02, categories=biolink:ChemicalSubstance, ids=CHEMBL.COMPOUND:CHEMBL1489)",
         "add_qnode(key=n03, categories=biolink:Protein)",
-        "add_qedge(key=e00, subject=n00, object=n01)",
-        "add_qedge(key=e01, subject=n01, object=n02)",
-        "add_qedge(key=e02, subject=n02, object=n03)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
+        "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:interacts_with)",
+        "add_qedge(key=e02, subject=n02, object=n03, predicates=biolink:interacts_with)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    aldh181 = "UniProtKB:P00352"
-    found_result_where_syna_is_n01_and_not_n03 = False
-    found_result_where_syna_is_n03_and_not_n01 = False
+    n03s = {node_binding.id for result in message.results for node_binding in result.node_bindings["n03"]}
+    protein_presence = {node_id: {"n01_and_not_n03": False, "n03_and_not_n01": False} for node_id in n03s}
     for result in message.results:
-        syna_as_n01 = any(node_binding for node_binding in result.node_bindings["n01"] if node_binding.id == aldh181)
-        syna_as_n03 = any(node_binding for node_binding in result.node_bindings["n03"] if node_binding.id == aldh181)
-        if syna_as_n01 and not syna_as_n03:
-            found_result_where_syna_is_n01_and_not_n03 = True
-        elif syna_as_n03 and not syna_as_n01:
-            found_result_where_syna_is_n03_and_not_n01 = True
-    assert found_result_where_syna_is_n01_and_not_n03 and found_result_where_syna_is_n03_and_not_n01
+        n01s = {node_binding.id for node_binding in result.node_bindings["n01"]}
+        n03s = {node_binding.id for node_binding in result.node_bindings["n03"]}
+        n01s_and_not_n03s = n01s.difference(n03s)
+        n03s_and_not_n01s = n03s.difference(n01s)
+        for node_id in n01s_and_not_n03s:
+            protein_presence[node_id]["n01_and_not_n03"] = True
+        for node_id in n03s_and_not_n01s:
+            protein_presence[node_id]["n03_and_not_n01"] = True
+    assert any(item for item in protein_presence.values() if item["n01_and_not_n03"] and item["n03_and_not_n01"])
 
 
 def test_issue833_extraneous_intermediate_nodes():
@@ -1210,8 +1211,8 @@ def test_issue1119_c():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:positively_regulates)",
-        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:correlated_with, option_group_id=1)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
+        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:predisposes, option_group_id=1)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
     ]
@@ -1227,7 +1228,7 @@ def test_issue1119_c():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:positively_regulates)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
     ]
@@ -1239,7 +1240,7 @@ def test_issue1119_c():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         f"add_qnode(key=n01, ids=[{', '.join([node_key for node_key, node in message.knowledge_graph.nodes.items() if 'n01' in node.qnode_keys])}])",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:correlated_with)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:predisposes)",
         "expand(kp=RTX-KG2)",
         # Note: skipping resultify here due to issue #1152
     ]
@@ -1255,10 +1256,10 @@ def test_issue1119_d():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:positively_regulates)",
-        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:correlated_with, option_group_id=1)",
-        "add_qedge(key=e02, subject=n00, object=n01, predicates=biolink:affects, option_group_id=2)",
-        "add_qedge(key=e03, subject=n00, object=n01, exclude=True, predicates=biolink:contraindicated_for)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:treats)",
+        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:affects, option_group_id=1)",
+        "add_qedge(key=e02, subject=n00, object=n01, predicates=biolink:disrupts, option_group_id=2)",
+        "add_qedge(key=e03, subject=n00, object=n01, exclude=True, predicates=biolink:predisposes)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
     ]
@@ -1273,46 +1274,6 @@ def test_issue1119_d():
     assert any(result for result in message.results if result.edge_bindings.get("e02"))
     # Verify there are some results without any optional portion (happens to be true for this query)
     assert any(result for result in message.results if not {"e01", "e02"}.issubset(set(result.edge_bindings)))
-
-
-@pytest.mark.slow
-def test_issue1119_e():
-    # Test (curie)--(curie) query where required portion is one-hop and there's one optional group that's two-hop
-    actions = [
-        "add_qnode(key=n00, ids=DOID:3312)",
-        "add_qnode(key=n01, ids=CHEBI:48607)",
-        "add_qnode(key=n02, categories=biolink:Protein, option_group_id=1, is_set=true)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:related_to)",
-        "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicates=biolink:affects)",
-        "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicates=biolink:physically_interacts_with)",
-        "expand(kp=RTX-KG2)",
-        "resultify()",
-        "return(message=true, store=false)"
-    ]
-    response, message = _do_arax_query(actions)
-    assert len(message.results) == 1
-    intermediate_proteins_in_result = {node_binding.id for node_binding in message.results[0].node_bindings["n02"]}
-    assert len(intermediate_proteins_in_result) > 1
-
-    # Then make sure when we introduce a not edge on our option group, we see a reduction in the proteins in the result
-    actions = [
-        "add_qnode(key=n0, ids=DOID:3312)",
-        "add_qnode(key=n1, ids=CHEBI:48607)",
-        "add_qnode(key=group1_n1, categories=biolink:Protein, option_group_id=1, is_set=true)",
-        "add_qnode(key=group1_n2, ids=UMLS:C0023692, option_group_id=1)",
-        "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:related_to)",
-        "add_qedge(key=group1_e1, subject=n0, object=group1_n1, option_group_id=1, predicates=biolink:affects)",
-        "add_qedge(key=group1_e2, subject=group1_n1, object=n1, option_group_id=1, predicates=biolink:physically_interacts_with)",
-        "add_qedge(key=group1_ex, subject=group1_n2, object=group1_n1, option_group_id=1, exclude=True)",
-        "expand(kp=RTX-KG2)",
-        "resultify()",
-        "return(message=true, store=false)"
-    ]
-    response_x, message_x = _do_arax_query(actions)
-    assert response_x.status == 'OK'
-    assert len(message_x.results) == 1
-    intermediate_proteins_in_result_x = {node_binding.id for node_binding in message_x.results[0].node_bindings["group1_n1"]}
-    assert len(intermediate_proteins_in_result) > len(intermediate_proteins_in_result_x)
 
 
 def test_issue1146_a():

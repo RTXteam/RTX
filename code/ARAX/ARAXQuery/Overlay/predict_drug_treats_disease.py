@@ -179,7 +179,7 @@ class PredictDrugTreatsDisease:
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
 
             for (source_curie, target_curie) in itertools.product(source_curies_to_decorate, target_curies_to_decorate):
-                self.response.debug(f"Predicting probability that {curie_to_name[source_curie]} treats {curie_to_name[target_curie]}")
+                # self.response.debug(f"Predicting probability that {curie_to_name[source_curie]} treats {curie_to_name[target_curie]}")
                 # create the edge attribute if it can be
                 # loop over all equivalent curies and take the highest probability
 
@@ -217,6 +217,7 @@ class PredictDrugTreatsDisease:
                             continue
 
                     probability = self.pred.get_prob_from_DTD_db(converted_source_curie, converted_target_curie)
+
                     if probability is not None:
                         if np.isfinite(probability) and probability >= self.threshold:
                             max_probability = probability
@@ -332,7 +333,7 @@ class PredictDrugTreatsDisease:
                     target_types = curie_to_type[target_curie]
                     if (("drug" in source_types) or ("chemical_substance" in source_types) or ("biolink:Drug" in source_types) or ("biolink:ChemicalSubstance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types) or ("biolink:Disease" in target_types) or ("biolink:PhenotypicFeature" in target_types) or ("biolink:DiseaseOrPhenotypicFeature" in target_types)):
                         # loop over all pairs of equivalent curies and take the highest probability
-                        self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
+                        # self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
                         converted_source_curie = self.convert_to_trained_curies(source_curie)
                         if converted_source_curie is None:
@@ -382,7 +383,7 @@ class PredictDrugTreatsDisease:
                         #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
-                        self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
+                        # self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
                         converted_source_curie = self.convert_to_trained_curies(source_curie)
                         if converted_source_curie is None:
