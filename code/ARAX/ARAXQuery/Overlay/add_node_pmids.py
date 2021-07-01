@@ -12,6 +12,9 @@ from openapi_server.models.attribute import Attribute as NodeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from compute_ngd import ComputeNGD
+
 
 class AddNodePMIDS:
 
@@ -20,6 +23,7 @@ class AddNodePMIDS:
         self.response = response
         self.message = message
         self.parameters = parameters
+        self.ngd = ComputeNGD(response, message, parameters)
 
     def add_node_pmids(self):
         """
@@ -28,11 +32,11 @@ class AddNodePMIDS:
         """
         self.response.debug(f"Adding node PMIDs")
         self.response.info(f"Adding pubmed ID's to nodes based on occurrence in PubMed abstracts")
-        self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
         name = "pubmed_ids"
         type = "EDAM:data_0971"
         value = ""
         url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+        ncbi_warning_flag = True
 
         # iterate over KG edges, add the information
         try:
@@ -43,8 +47,18 @@ class AddNodePMIDS:
                 # now go and actually get the NGD
                 node_curie = key
                 node_name = node.name
-                pmids = NGD.get_pmids_for_all([node_curie], [node_name])[0]  # since the function was designed for multiple inputs, but I only want the first
-
+                canonicalized_curie_lookup = self.ngd._get_canonical_curies_map([node_curie])
+                self.ngd.load_curie_to_pmids_data(canonicalized_curie_lookup.values())
+                pmids = self.ngd.curie_to_pmids_map.get(node_curie)
+                if pmids is None or len(pmids) < 1:
+                    if ncbi_warning_flag:
+                        self.response.warning(f"Utilizing API calls to NCBI eUtils, so this may take a while...")
+                        ncbi_warning_flag = False
+                    try:
+                        pmids = NGD.get_pmids_for_all([node_curie], [node_name])[0]  # since the function was designed for multiple inputs, but I only want the first
+                    except:
+                        self.response.warning(f"There was an error retrieving the PMIDs for {node_curie} from NCBIeUtils.")
+                        pmids = []
                 if 'max_num' in self.parameters:
                     pmids = pmids[0:self.parameters['max_num']]
                 value = pmids
