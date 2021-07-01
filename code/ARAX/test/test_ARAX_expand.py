@@ -900,5 +900,26 @@ def test_constraint_validation():
                                                                         error_code="UnsupportedConstraint")
 
 
+def test_canonical_predicates():
+    actions = [
+        "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL945)",
+        "add_qnode(key=n01, categories=biolink:BiologicalEntity)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:participates_in)",  # Not canonical
+        "add_qnode(key=n02, categories=biolink:Disease)",
+        "add_qedge(key=e01, subject=n00, object=n02, predicates=biolink:treats)",  # Canonical form
+        "add_qnode(key=n03, categories=biolink:BiologicalEntity)",
+        "add_qedge(key=e02, subject=n00, object=n03, predicates=biolink:has_participant)",  # Canonical form
+        "expand(kp=RTX-KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+    e00_predicates = {edge.predicate for edge in edges_by_qg_id["e00"].values()}
+    e01_predicates = {edge.predicate for edge in edges_by_qg_id["e01"].values()}
+    e02_predicates = {edge.predicate for edge in edges_by_qg_id["e02"].values()}
+    assert "biolink:has_participant" in e00_predicates and "biolink:participates_in" not in e00_predicates
+    assert "biolink:treats" in e01_predicates and "biolink:treated_by" not in e01_predicates
+    assert "biolink:has_participant" in e02_predicates and "biolink:participates_in" not in e02_predicates
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
