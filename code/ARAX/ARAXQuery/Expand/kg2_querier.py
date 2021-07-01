@@ -282,7 +282,8 @@ class KG2Querier:
                 reader = csv.reader(tsv_file, delimiter="\t")
                 next(reader)  # Skip headers
                 for row in reader:
-                    source_type = f"biolink:{row[2]}" if not row[2].startswith("biolink:") else row[2]
+                    source_type_raw = row[2] if row[2] else "biolink:knowledge_source"
+                    source_type = f"biolink:{source_type_raw}" if not source_type_raw.startswith("biolink:") else source_type_raw
                     infores_curie_map[row[0]] = {"curie": row[1], "type": source_type}
         except Exception:
             tb = traceback.format_exc()
