@@ -40,6 +40,8 @@ class AddNodePMIDS:
 
         # iterate over KG edges, add the information
         try:
+            canonicalized_curie_lookup = self.ngd._get_canonical_curies_map(list(set(self.message.knowledge_graph.nodes.keys())))
+            self.ngd.load_curie_to_pmids_data(canonicalized_curie_lookup.values())
             for key, node in self.message.knowledge_graph.nodes.items():
                 # Make sure the attributes are not None
                 if not node.attributes:
@@ -47,8 +49,6 @@ class AddNodePMIDS:
                 # now go and actually get the NGD
                 node_curie = key
                 node_name = node.name
-                canonicalized_curie_lookup = self.ngd._get_canonical_curies_map([node_curie])
-                self.ngd.load_curie_to_pmids_data(canonicalized_curie_lookup.values())
                 pmids = self.ngd.curie_to_pmids_map.get(node_curie)
                 if pmids is None or len(pmids) < 1:
                     if ncbi_warning_flag:
