@@ -231,7 +231,7 @@ class KG2Querier:
             edge.attributes.append(Attribute(attribute_type_id="biolink:has_supporting_publications",
                                              value_type_id="biolink:Publication",
                                              value=publications,
-                                             attribute_source=list(infores_curies) if len(infores_curies) > 1 or len(infores_curies) == 0 else list(infores_curies)[0]))
+                                             attribute_source=infores_curies if len(infores_curies) == 1 else None))
 
         # Switch to canonical predicate as needed (temporary patch until KG2 uses only canonical predicates)
         if edge.predicate in self.canonical_predicate_map:
