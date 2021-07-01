@@ -138,6 +138,7 @@ class ARAXExpander:
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
+        canonical_predicates_map = eu.load_canonical_predicates_map(log)
 
         # Add in any category equivalencies to the QG (e.g., protein == gene, since KPs handle these differently)
         for qnode_key, qnode in query_graph.nodes.items():
@@ -152,7 +153,6 @@ class ARAXExpander:
                 log.debug(f"Expand will consider qnode {qnode_key}'s category to be {qnode.categories}")
         # Make sure QG only uses canonical predicates
         if mode == "ARAX":
-            canonical_predicates_map = eu.load_canonical_predicates_map(log)
             log.debug(f"Making sure QG only uses canonical predicates")
             for qedge in query_graph.edges.values():
                 if qedge.predicates:
@@ -190,13 +190,13 @@ class ARAXExpander:
                     with multiprocessing.Pool(num_cpus) as pool:
                         kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
                                                                        mode, user_specified_kp,
-                                                                       force_local, empty_log]
+                                                                       force_local, canonical_predicates_map, empty_log]
                                                                       for kp_to_use in kps_to_query])
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
                     kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, mode,
-                                                    user_specified_kp, force_local, log)]
+                                                    user_specified_kp, force_local, canonical_predicates_map, log)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
@@ -260,7 +260,8 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], mode: str,
-                     user_specified_kp: bool, force_local: bool, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     user_specified_kp: bool, force_local: bool, canonical_predicates_map: Dict[str, str],
+                     log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
@@ -283,6 +284,7 @@ class ARAXExpander:
             return answer_kg, log
 
         # Route this query to the proper place depending on the KP
+        from Expand.kg2_querier import KG2Querier
         try:
             if kp_to_use == 'COHD':
                 from Expand.COHD_querier import COHDQuerier
@@ -297,7 +299,6 @@ class ARAXExpander:
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
             elif kp_to_use == 'RTX-KG2' and mode == 'RTXKG2':
-                from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log)
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
@@ -319,6 +320,11 @@ class ARAXExpander:
 
         if log.status != 'OK':
             return answer_kg, log
+
+        # Make sure the KP's answer only uses canonical predicates (KG2 already does this, so no need to check it)
+        if not isinstance(kp_querier, KG2Querier):
+            answer_kg = eu.check_for_canonical_predicates(answer_kg, canonical_predicates_map, kp_to_use, log)
+
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)

@@ -38,7 +38,7 @@ class KG2Querier:
         self.infores_curie_tsv_name = "kg2-provided-by-curie-to-infores-curie.tsv"
         self.infores_curie_tsv_path = f"{os.path.dirname(os.path.abspath(__file__))}/{self.infores_curie_tsv_name}"
         self.infores_curie_map = self._initiate_infores_curie_map(self.response)
-        self.canonical_predicate_map = eu.load_canonical_predicates_map(self.response)
+        self.canonical_predicates_map = eu.load_canonical_predicates_map(self.response)
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -241,11 +241,9 @@ class KG2Querier:
                                              attribute_source=list(infores_curies)[0] if len(infores_curies) == 1 else None))
 
         # Switch to canonical predicate as needed (temporary patch until KG2 uses only canonical predicates)
-        if edge.predicate in self.canonical_predicate_map:
-            edge.predicate = self.canonical_predicate_map[edge.predicate]
-            original_subject = edge.subject
-            edge.subject = edge.object
-            edge.object = original_subject
+        if edge.predicate in self.canonical_predicates_map:
+            canonical_predicate = self.canonical_predicates_map[edge.predicate]
+            edge = eu.flip_edge(edge, canonical_predicate)
 
         return edge
 

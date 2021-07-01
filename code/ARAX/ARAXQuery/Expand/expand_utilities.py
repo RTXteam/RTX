@@ -430,6 +430,29 @@ def load_canonical_predicates_map(log: ARAXResponse) -> Dict[str, str]:
     return predicates_map
 
 
+def flip_edge(edge: Edge, new_predicate: str) -> Edge:
+    edge.predicate = new_predicate
+    original_subject = edge.subject
+    edge.subject = edge.object
+    edge.object = original_subject
+    return edge
+
+
+def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, canonical_predicates_map: Dict[str, str],
+                                   kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+    non_canonical_predicates_used = set()
+    for qedge_id, edges in kg.edges_by_qg_id.items():
+        for edge in edges.values():
+            if edge.predicate in canonical_predicates_map:
+                non_canonical_predicates_used.add(edge.predicate)
+                canonical_predicate = canonical_predicates_map[edge.predicate]
+                _ = flip_edge(edge, canonical_predicate)
+    if non_canonical_predicates_used:
+        log.warning(f"{kp_name}: Found edges in {kp_name}'s answer that use non-canonical "
+                    f"predicates: {non_canonical_predicates_used}. I corrected these.")
+    return kg
+
+
 def get_attribute_type(attribute_name: str) -> str:
     # These are placeholder types for attributes (plan is to discuss such types in API working group #1192)
     attribute_type_map = {
