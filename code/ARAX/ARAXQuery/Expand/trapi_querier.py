@@ -203,7 +203,13 @@ class TRAPIQuerier:
             for attribute in returned_edge.attributes:
                 if not attribute.attribute_type_id:
                     attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
-            returned_edge.attributes.append(eu.get_knowledge_provider_source_attribute(self.kp_name))
+
+            # Check if KPs are properly indicating that these edges came from them (indicate it ourselves if not)
+            kp_infores_curie = eu.get_translator_infores_curie(self.kp_name)
+            if not any(attribute.value == kp_infores_curie for attribute in returned_edge.attributes):
+                returned_edge.attributes.append(eu.get_kp_source_attribute(self.kp_name))
+            # Add an attribute to indicate that this edge passed through ARAX
+            returned_edge.attributes.append(eu.get_arax_source_attribute())
 
             for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
                 answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)

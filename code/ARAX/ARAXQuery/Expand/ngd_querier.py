@@ -128,9 +128,11 @@ class NGDQuerier:
         ngd_edge.attributes = [Attribute(original_attribute_name=self.ngd_edge_attribute_name,
                                          attribute_type_id=self.ngd_edge_attribute_type,
                                          value=ngd_value)]
-        ngd_edge.attributes += [eu.get_knowledge_provider_source_attribute("NGD"),
-                                Attribute(original_attribute_name="publications", value=pmid_list,
-                                          attribute_type_id=eu.get_attribute_type("publications"))]
+        kp_description = "ARAX's in-house normalized google distance database."
+        ngd_edge.attributes += [Attribute(original_attribute_name="publications", value=pmid_list,
+                                          attribute_type_id=eu.get_attribute_type("publications")),
+                                eu.get_kp_source_attribute("NGD", arax_kp=True, description=kp_description),
+                                eu.get_arax_source_attribute()]
         return ngd_edge_key, ngd_edge
 
     @staticmethod

@@ -905,8 +905,10 @@ class COHDQuerier:
         type = "EDAM:data_0951"
         url = "http://cohd.smart-api.info/"
 
+        description = "The Clinical Data Provider (COHD), accessed via a local ARAX copy."
         swagger_edge.attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
-                                   eu.get_knowledge_provider_source_attribute("COHD")]
+                                   eu.get_kp_source_attribute("COHD", arax_kp=True, description=description),
+                                   eu.get_arax_source_attribute()]
 
         return swagger_edge_key, swagger_edge
 

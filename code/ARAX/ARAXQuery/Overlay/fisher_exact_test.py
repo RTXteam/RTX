@@ -177,7 +177,7 @@ class ComputeFTEST:
                 edge_attribute_list = [x.value for x in self.message.knowledge_graph.edges[edge_key].attributes if x.original_attribute_name == 'is_defined_by']
                 if len(edge_attribute_list) == 0:
 
-                    temp_kp = [re.sub("infores:", "", x.value) for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'biolink:knowledge_provider_source']
+                    temp_kp = [re.sub("infores:", "", x.value) for x in self.message.knowledge_graph.edges[edge_key].attributes if x.value == 'infores:rtx-kg2']
 
                     if rel_edge_key:
                         if rel_edge_key in edge.qedge_keys:

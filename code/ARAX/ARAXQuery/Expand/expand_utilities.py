@@ -450,10 +450,22 @@ def get_attribute_type(attribute_name: str) -> str:
     return attribute_type_map.get(attribute_name, "biolink:Unknown")
 
 
-def get_knowledge_provider_source_attribute(kp_name: str) -> Attribute:
-    return Attribute(attribute_type_id="biolink:knowledge_provider_source",
+def get_arax_source_attribute() -> Attribute:
+    arax_infores_curie = get_translator_infores_curie("ARAX")
+    return Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
+                     value=arax_infores_curie,
+                     value_type_id="biolink:InformationResource",
+                     attribute_source=arax_infores_curie)
+
+
+def get_kp_source_attribute(kp_name: str, arax_kp: bool = False, description: Optional[str] = None) -> Attribute:
+    if not arax_kp and not description:
+        description = f"ARAX inserted this attribute because the KP ({kp_name}) did not seem to provide such " \
+                      f"an attribute (indicating that this edge came from them)."
+    return Attribute(attribute_type_id="biolink:knowledge_source",
                      value=get_translator_infores_curie(kp_name),
                      value_type_id="biolink:InformationResource",
+                     description=description,
                      attribute_source=get_translator_infores_curie("ARAX"))
 
 

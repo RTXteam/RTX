@@ -379,7 +379,8 @@ class CHPQuerier:
         url = "https://github.com/di2ag/chp_client"
 
         swagger_edge.attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
-                                   eu.get_knowledge_provider_source_attribute(self.kp_name)]
+                                   eu.get_kp_source_attribute(self.kp_name),
+                                   eu.get_arax_source_attribute()]
         return swagger_edge_key, swagger_edge
 
     def _convert_to_swagger_node(self, node_key: str) -> Tuple[str, Node]:
