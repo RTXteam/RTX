@@ -58,55 +58,55 @@ elif database == 'DTD':
 
 cohd_DSL_queries = [
 {"operations": {"actions": [
-        "add_qnode(id=UMLS:C0015967, key=n00)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(ids=DOID:1588, key=n00)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_percentile=95)",
+        "expand(edge_key=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_top_N=500)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
-        "add_qnode(id=DOID:10718, key=n00)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(ids=DOID:1588, key=n00)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_percentile=95)",
+        "expand(edge_key=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_top_N=500)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
-        "add_qnode(id=DOID:5844, key=n00)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(ids=DOID:1588, key=n00)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_percentile=95)",
+        "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_top_N=500)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, COHD_method=paired_concept_frequency)",
         "resultify()",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio)",
         "resultify()",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, COHD_method=chi_square)",
         "resultify()",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
@@ -122,130 +122,108 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info,observed_expected_ratio=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
         "resultify()",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "resultify()",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=UniProtKB:Q13627, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(name=UniProtKB:P62328, key=n0)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
         "resultify()",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=UniProtKB:Q13627, key=n0)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(name=UniProtKB:P62328, key=n0)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=ARAX/KG1)",
+        "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "resultify()",
-        "return(message=true, store=false)",
-    ]}},
-{"operations": {"actions": [
-        "add_qnode(name=DOID:9406, key=n00)",
-        "add_qnode(category=biolink:ChemicalSubstance, is_set=true, key=n01)",
-        "add_qnode(category=biolink:Protein, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=[e00,e01], kp=ARAX/KG1)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
-        "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:11830, key=n00)",
-        "add_qnode(category=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicate=biolink:molecularly_interacts_with)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         # overlay a bunch of clinical info
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
         "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C3)",
+        # filter some stuff out for the fun of it
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=paired_concept_frequency, direction=above, threshold=0.5, remove_connected_nodes=true, qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=above, threshold=1, remove_connected_nodes=true, qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=chi_square, direction=below, threshold=0.05, remove_connected_nodes=true, qnode_key=n02)",
         # return results
         "resultify(ignore_edge_direction=true)",
-        "return(message=true, store=false)",
+        "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
-        "create_message",
-        "add_qnode(name=DOID:11830, key=n00)",
-        "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
+       "add_qnode(name=DOID:9406, key=n00)",
+        "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:Protein, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=RTX-KG2)",
-        # overlay a bunch of clinical info
-        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-        "overlay(action=overlay_clinical_info, chi_square=true)",
-        # return results
-        "resultify(ignore_edge_direction=true)",
-        "return(message=true, store=false)",
-    ]}},
-{"operations": {"actions": [
-            "create_message",
-            f"add_qnode(id=DOID:11830, key=n00, category=biolink:Disease)",
-            "add_qnode(category=biolink:ChemicalSubstance, key=n01)",
-            "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
-            "expand(edge_key=e00, kp=BTE)",
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-            # "overlay(action=predict_drug_treats_disease)",
-            # "filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)",
-            # "overlay(action=compute_ngd)",
-            "resultify(ignore_edge_direction=true)",
-            # "filter_results(action=limit_number_of_results, max_results=50)",
-            "return(message=true, store=false)",
-        ]}}
-
+        "add_qedge(subject=n01, object=n02, key=e01)",
+        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_key=n01)",
+        "filter_kg(action=remove_orphaned_nodes, node_category=biolink:Protein)",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_key=n02)",
+        "resultify(ignore_edge_direction=true, debug=true)",
+        "return(message=true, store=false)"
+    ]}}
 ]
 
 ## Below queries are for DTD
@@ -266,23 +244,7 @@ dtd_DSL_queries = [
     ]}},
 {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:14330, key=n00)",
-        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
-        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
-        #"filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by, value=Pharos)",
-        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
-        "resultify(ignore_edge_direction=true)",
-        "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
-        "return(message=true, store=false)"
-    ]}},
-{"operations": {"actions": [
-        "create_message",
-        "add_qnode(ids=DOID:8453, key=n0, categories=biolink:Disease)",
+        "add_qnode(ids=MONDO:0004992, key=n0, categories=biolink:Disease)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
@@ -292,7 +254,7 @@ dtd_DSL_queries = [
     ]}},
 {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=DOID:8453, key=n0)",
+        "add_qnode(ids=MONDO:0004992, key=n0)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
@@ -302,7 +264,7 @@ dtd_DSL_queries = [
     ]}},
 {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=DOID:8453, key=n0)",
+        "add_qnode(ids=MONDO:0004992, key=n0)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
@@ -346,25 +308,7 @@ dtd_DSL_queries = [
         "resultify(ignore_edge_direction=true)",
         "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
         "return(message=true, store=false)"
-    ]}},
-{"operations": {"actions": [
-"create_message",
-            f"add_qnode(ids=DOID:11830, key=n00, categories=biolink:Disease)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-            "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
-            "expand(edge_key=e00, kp=BTE)",
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-            "overlay(action=predict_drug_treats_disease)",
-            "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)",
-            "overlay(action=compute_ngd)",
-            "resultify(ignore_edge_direction=true)",
-            "filter_results(action=limit_number_of_results, max_results=50)",
-            "return(message=true, store=false)"
-    ]}},
-{"operations": {"actions": [
-
-    ]}},
+    ]}}
 ]
 # # example:
 # [{"operations": {"actions": [

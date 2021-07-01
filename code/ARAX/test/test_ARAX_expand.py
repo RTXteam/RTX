@@ -438,7 +438,6 @@ def test_cohd_expand_chi_square():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
-@pytest.mark.skip(reason="This should be skipped until the new DTD model is completed for kg2.6.7")
 def test_dtd_expand_1():
     actions_list = [
         "add_qnode(name=acetaminophen, key=n0)",

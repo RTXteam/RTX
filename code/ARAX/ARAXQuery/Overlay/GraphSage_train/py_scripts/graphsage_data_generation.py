@@ -32,7 +32,7 @@ def initialize_node(this):
     if not has_node_class:
         return [{'test': False, 'id': int(node), 'feature': np.zeros(args.feature_dim).tolist(), 'label': [1], 'val': (node in valid)}]
     else:
-        return [{'test': False, 'id': int(node), 'feature': np.zeros(args.feature_dim).tolist(), 'label': nodeclass_data_index[nodes[node]][1], 'val': (node in valid)}]
+        return [{'test': False, 'id': int(node), 'feature': nodeclass_data_index[nodes[node]][1], 'label': [1], 'val': (node in valid)}]
 
 def initialize_edge(node):
 
@@ -83,10 +83,11 @@ if __name__ == "__main__":
             label_index[item[0]] = item[1]
 
         nodeclass_data_index = nodeclass_data.set_index(nodeclass_data.columns[0]).to_dict()[nodeclass_data.columns[1]]
-        for name, cls in nodeclass_data_index.items():
+
+        for name, node_cls in nodeclass_data_index.items():
             temp = np.zeros(len(label_index)).tolist()
-            temp[label_index[cls]] = temp[label_index[cls]] + 1
-            nodeclass_data_index[name] = [cls, temp]
+            temp[label_index[node_cls]] = temp[label_index[node_cls]] + 1
+            nodeclass_data_index[name] = [node_cls, temp]
 
 
     nodes = sorted(set(list(graph_data.iloc[:,0]) + list(graph_data.iloc[:,1])))
