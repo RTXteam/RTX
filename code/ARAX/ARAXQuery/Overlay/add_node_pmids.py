@@ -59,6 +59,8 @@ class AddNodePMIDS:
                     except:
                         self.response.warning(f"There was an error retrieving the PMIDs for {node_curie} from NCBIeUtils.")
                         pmids = []
+                else:
+                    pmids = [f"PMID:{str(pmid)}" for pmid in pmids]
                 if 'max_num' in self.parameters:
                     pmids = pmids[0:self.parameters['max_num']]
                 value = pmids
