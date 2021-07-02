@@ -120,6 +120,17 @@ class RemoveEdges:
         self.response.debug(f"Removing Edges")
         self.response.info(f"Removing edges from the knowledge graph matching the specified property")
         edge_params = self.edge_parameters
+        # FW: Hack to allow all provided by synonyms
+        provided_by_attributes = {'biolink:knowledge_source',
+                                            'biolink:primary_knowledge_source',
+                                            'biolink:original_knowledge_source',
+                                            'biolink:aggregator_knowledge_source',
+                                            'biolink:supporting_data_source',
+                                            'biolink:original_source',
+                                            'provided_by'}
+        provided_by_flag = edge_params['edge_attribute'] in provided_by_attributes
+
+
         try:
             edges_to_remove = set()
             node_keys_to_remove = {}
@@ -132,10 +143,18 @@ class RemoveEdges:
                 # TRAPI1.0 hack to allow filtering by old properties that are now attributes
                 if hasattr(edge, 'attributes'):
                     for attribute in edge.attributes:
-                        if hasattr(attribute, "original_attribute_name") and attribute.original_attribute_name not in edge_dict:
-                            edge_dict[attribute.original_attribute_name] = attribute.value
-                        if hasattr(attribute, "attribute_type_id") and attribute.attribute_type_id not in edge_dict:
-                            edge_dict[attribute.attribute_type_id] = attribute.value
+                        if hasattr(attribute, "original_attribute_name"):
+                            if attribute.value == edge_params['value']:
+                                edge_dict[attribute.original_attribute_name] = attribute.value
+                                # FW: Hack to allow all provided by synonyms
+                                if provided_by_flag and attribute.original_attribute_name in provided_by_attributes:
+                                    edge_dict[edge_params['edge_attribute']] = edge_params['value']
+                        if hasattr(attribute, "attribute_type_id"):
+                            if attribute.value == edge_params['value']:
+                                edge_dict[attribute.attribute_type_id] = attribute.value
+                                # FW: Hack to allow all provided by synonyms
+                                if provided_by_flag and attribute.attribute_type_id in provided_by_attributes:
+                                    edge_dict[edge_params['edge_attribute']] = edge_params['value']
                 if edge_params['edge_attribute'] in edge_dict:
                     if type(edge_dict[edge_params['edge_attribute']]) == list or type(edge_dict[edge_params['edge_attribute']]) == set:
                         if edge_params['value'] in edge_dict[edge_params['edge_attribute']]:

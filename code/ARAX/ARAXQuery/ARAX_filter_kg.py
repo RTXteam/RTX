@@ -608,6 +608,13 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                 if type(x) == str:
                                     known_values.add(x)
             known_attributes = set()
+            provided_by_attributes = {'biolink:knowledge_source',
+                                            'biolink:primary_knowledge_source',
+                                            'biolink:original_knowledge_source',
+                                            'biolink:aggregator_knowledge_source',
+                                            'biolink:supporting_data_source',
+                                            'biolink:original_source',
+                                            'provided_by'}
             for edge in message.knowledge_graph.edges.values():
                 if hasattr(edge, 'attributes'):
                     if edge.attributes:
@@ -625,6 +632,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     known_attributes.add(attribute.attribute_type_id)
                                 for val in attribute.value:
                                     known_values.add(val)
+                        if len(known_attributes.intersection(provided_by_attributes)) > 0:
+                            known_attributes = known_attributes.union(provided_by_attributes)
 
             allowable_parameters = {'action': {'remove_edges_by_discrete_attribute'},
                                     'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]).union(known_attributes),
