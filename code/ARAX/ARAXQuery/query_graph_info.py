@@ -341,19 +341,20 @@ class QueryGraphInfo:
             self.query_graph_templates['simple'] += template_part
 
             # Since queries with intermediate nodes that are not is_set=true tend to blow up,
-            # for now, make them is_set=true unless explicitly set to false
+            # we thought it would be a good idea to set them to true, but then around 2021-07
+            # this seemed to hurt more than it helps, so disable it for now and see how that goes.
             # Intermediate nodes that have ids (curies) are an exception to this treatment
             if node_index > 0 and node_index < (self.n_nodes - 1 ) and node['has_ids'] == False:
                 if 'is_set' not in node or node['is_set'] is None:
-                    node['node_object'].is_set = True
-                    response.warning(f"Setting unspecified is_set to true for {node['key']} because this will probably lead to a happier result")
+                    #node['node_object'].is_set = True
+                    #response.warning(f"Setting unspecified is_set to true for {node['key']} because this will probably lead to a happier result")
+                    response.info(f"Property is_set is not true for {node['key']} although maybe it should be to keep the query from blowing up. Consider setting is_set to true here.")
                 elif node['is_set'] is True:
                     response.debug(f"Value for is_set is already true for {node['key']} so that's good")
                 elif node['is_set'] is False:
-                    response.info(f"Value for is_set is false for intermediate node {node['key']}. Setting to true because this will probably lead to a happier result")
-                    node['node_object'].is_set = True
-                #else:
-                #    response.error(f"Unrecognized value is_set='{node['is_set']}' for {node['key']}. This should be true or false")
+                    #node['node_object'].is_set = True
+                    #response.info(f"Value for is_set is false for intermediate node {node['key']}. Setting to true because this will probably lead to a happier result")
+                    response.info(f"Property is_set is not true for {node['key']} although maybe it should be to keep the query from blowing up. Consider setting is_set to true here.")
 
             node_index += 1
             if node_index < self.n_nodes:
