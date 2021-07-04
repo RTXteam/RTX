@@ -234,7 +234,25 @@ def get_kp_preferred_prefixes(kp_name: str) -> Union[Dict[str, str], None]:
     return preferred_prefixes.get(kp_name)
 
 
-def get_curie_synonyms(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
+def make_qg_use_supported_prefixes(kp_selector, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
+    for qnode_key, qnode in qg.nodes.items():
+        if qnode.ids:
+            converted_curies = kp_selector.convert_curies_to_supported_prefixes(qnode.ids,
+                                                                                qnode.categories,
+                                                                                kp_name)
+            if not converted_curies:
+                log.warning(f"{kp_name} cannot answer the query because I couldn't find any "
+                            f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
+                            f"curies were: {qnode.ids}")
+                return None
+            else:
+                log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
+                          f"{len(converted_curies)} curies with prefixes {kp_name} supports")
+                qnode.ids = converted_curies
+    return qg
+
+
+def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> List[str]:
     curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()

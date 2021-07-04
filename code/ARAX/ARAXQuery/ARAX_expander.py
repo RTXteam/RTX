@@ -187,16 +187,20 @@ class ARAXExpander:
                 if len(kps_to_query) > 1:
                     num_cpus = multiprocessing.cpu_count()
                     empty_log = ARAXResponse()  # We'll have to merge processes' logs together afterwards
+                    kp_selector = KPSelector(empty_log)
                     with multiprocessing.Pool(num_cpus) as pool:
                         kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
                                                                        mode, user_specified_kp,
-                                                                       force_local, canonical_predicates_map, empty_log]
+                                                                       force_local, canonical_predicates_map,
+                                                                       kp_selector, empty_log]
                                                                       for kp_to_use in kps_to_query])
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
+                    kp_selector = KPSelector(log)
                     kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, mode,
-                                                    user_specified_kp, force_local, canonical_predicates_map, log)]
+                                                    user_specified_kp, force_local, canonical_predicates_map,
+                                                    kp_selector, log)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
@@ -261,7 +265,7 @@ class ARAXExpander:
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], mode: str,
                      user_specified_kp: bool, force_local: bool, canonical_predicates_map: Dict[str, str],
-                     log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     kp_selector: KPSelector, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
@@ -295,6 +299,10 @@ class ARAXExpander:
             elif kp_to_use == 'CHP':
                 from Expand.CHP_querier import CHPQuerier
                 kp_querier = CHPQuerier(log)
+                # This is done in TRAPIQuerier for other KPs
+                edge_qg = eu.make_qg_use_supported_prefixes(kp_selector, edge_qg, kp_to_use, log)
+                if not edge_qg:  # Means no curies had prefixes CHP supports
+                    return QGOrganizedKnowledgeGraph(), log
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
@@ -303,7 +311,7 @@ class ARAXExpander:
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, force_local)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, kp_selector, force_local)
 
             # Actually answer the query using the Querier we identified above
             answer_kg = kp_querier.answer_one_hop_query(edge_qg)

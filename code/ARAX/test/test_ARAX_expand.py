@@ -921,5 +921,37 @@ def test_canonical_predicates():
     assert "biolink:has_participant" in e02_predicates and "biolink:participates_in" not in e02_predicates
 
 
+@pytest.mark.slow
+@pytest.mark.external
+def test_curie_prefix_conversion_1537():
+    # Without prefix conversion to ENSEMBL, CHP doesn't find any answers
+    query = {
+        "message": {
+            "query_graph": {
+                "edges": {
+                    "e2": {
+                        "object": "n3",
+                        "predicates": ["biolink:related_to"],
+                        "subject": "n2"
+                    }
+                },
+                "nodes": {
+                    "n2": {
+                        "categories": ["biolink:Gene"],
+                        "ids": ["NCBIGene:60412"],
+                        "is_set": False
+                    },
+                    "n3": {
+                        "categories": ["biolink:Drug"],
+                        "is_set": False
+                    }
+                }
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    assert len(nodes_by_qg_id["n3"]) > 5
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

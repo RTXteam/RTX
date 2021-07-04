@@ -21,12 +21,12 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
-from openapi_server.models.attribute import Attribute
 
 
 class TRAPIQuerier:
 
-    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, force_local: bool = False):
+    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, kp_selector: KPSelector,
+                 force_local: bool = False):
         self.log = response_object
         self.kp_name = kp_name
         self.user_specified_kp = user_specified_kp
@@ -34,6 +34,7 @@ class TRAPIQuerier:
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.kp_preferred_prefixes = eu.get_kp_preferred_prefixes(kp_name)
         self.predicates_timeout = 5
+        self.kp_selector = kp_selector
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -46,16 +47,18 @@ class TRAPIQuerier:
         final_kg = QGOrganizedKnowledgeGraph()
         qg_copy = eu.copy_qg(query_graph)  # Create a copy so we don't modify the original
 
-        # Verify this query graph is valid and make sure it's answerable by the KP
         self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg
-        if self.user_specified_kp and self.kp_name != "RTX-KG2":
-            kp_selector = KPSelector(log)
-            if not kp_selector.kp_accepts_single_hop_qg(query_graph, self.kp_name):
-                log.error(f"{self.kp_name} cannot answer queries with the specified categories/predicates",
-                          error_code="UnsupportedQG")
-                return final_kg
+
+        # Verify that the KP accepts these predicates/categories/prefixes
+        if self.kp_name != "RTX-KG2":
+            if self.user_specified_kp:  # This is already done if expand chose the KP itself
+                if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_name):
+                    log.error(f"{self.kp_name} cannot answer queries with the specified categories/predicates",
+                              error_code="UnsupportedQG")
+                    return final_kg
+            qg_copy = eu.make_qg_use_supported_prefixes(self.kp_selector, qg_copy, self.kp_name, log)
 
         # Answer the query using the KP and load its answers into our object model
         final_kg = self._answer_query_using_kp(qg_copy)
@@ -96,22 +99,6 @@ class TRAPIQuerier:
         if len(query_graph.edges) > 0:
             self.log.error(f"answer_single_node_query() was passed a query graph that has edges: "
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
-
-    def _convert_to_accepted_curie_prefixes(self, query_graph: QueryGraph) -> QueryGraph:
-        for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.ids:
-                equivalent_curies = eu.get_curie_synonyms(qnode.ids, self.log)
-                # TODO: Right to take first category here?
-                preferred_prefix = self.kp_preferred_prefixes.get(qnode.categories[0]) if qnode.categories else None
-                if preferred_prefix:
-                    desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{preferred_prefix}:")]
-                    if desired_curies:
-                        qnode.ids = desired_curies
-                        self.log.debug(f"{self.kp_name}: Converted qnode {qnode_key} curie to {qnode.ids}")
-                    else:
-                        self.log.warning(f"{self.kp_name}: Could not convert qnode {qnode_key} curie(s) to preferred prefix "
-                                         f"({self.kp_preferred_prefixes[qnode.categories[0]]})")
-        return query_graph
 
     @staticmethod
     def _get_kg_to_qg_mappings_from_results(results: List[Result]) -> Dict[str, Dict[str, Set[str]]]:
