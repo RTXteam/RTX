@@ -59,6 +59,8 @@ class TRAPIQuerier:
                               error_code="UnsupportedQG")
                     return final_kg
             qg_copy = eu.make_qg_use_supported_prefixes(self.kp_selector, qg_copy, self.kp_name, log)
+            if not qg_copy:  # Means no equivalent curies with supported prefixes were found
+                return final_kg
 
         # Answer the query using the KP and load its answers into our object model
         final_kg = self._answer_query_using_kp(qg_copy)
