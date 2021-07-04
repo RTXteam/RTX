@@ -840,7 +840,7 @@ def test_many_kp_query():
     actions_list = [
         "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:interacts_with)",
         "expand()",
         "return(message=true, store=false)"
     ]
