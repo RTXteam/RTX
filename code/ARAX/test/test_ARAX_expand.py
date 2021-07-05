@@ -953,5 +953,31 @@ def test_curie_prefix_conversion_1537():
     assert len(nodes_by_qg_id["n3"]) > 5
 
 
+@pytest.mark.slow
+@pytest.mark.external
+def test_merging_node_attributes_1450():
+    actions = [
+        "add_qnode(key=n0, ids=CHEMBL.COMPOUND:CHEMBL112)",
+        "add_qnode(key=n1, categories=biolink:Disease)",
+        "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats)",
+        "expand(kp=BTE)",
+        "expand(kp=RTX-KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+    num_attributes_a = len(nodes_by_qg_id["n0"]["CHEMBL.COMPOUND:CHEMBL112"].attributes)
+    actions = [
+        "add_qnode(key=n0, ids=CHEMBL.COMPOUND:CHEMBL112)",
+        "add_qnode(key=n1, categories=biolink:Disease)",
+        "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats)",
+        "expand(kp=RTX-KG2)",
+        "expand(kp=BTE)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+    num_attributes_b = len(nodes_by_qg_id["n0"]["CHEMBL.COMPOUND:CHEMBL112"].attributes)
+    assert num_attributes_a == num_attributes_b
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

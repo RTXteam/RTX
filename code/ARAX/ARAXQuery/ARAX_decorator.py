@@ -56,22 +56,21 @@ class ARAXDecorator:
         for row in rows:
             kg2c_node_as_dict = ujson.loads(row[0])
             node_id = kg2c_node_as_dict["id"]
+            kg2c_node_attributes = self._create_trapi_attributes(kg2c_node_as_dict)
             trapi_node = message.knowledge_graph.nodes[node_id]
-            existing_attributes = {attribute.original_attribute_name for attribute in trapi_node.attributes} if trapi_node.attributes else set()
-            kg2c_node_attributes = set(kg2c_node_as_dict).difference(self.core_node_properties)
-            attributes_to_add = kg2c_node_attributes.difference(existing_attributes)
-            new_attribute_objects = self._create_trapi_attributes(attributes_to_add, kg2c_node_as_dict)
-            if new_attribute_objects:
-                if trapi_node.attributes is None:
-                    trapi_node.attributes = []
-                trapi_node.attributes += new_attribute_objects
+            existing_attribute_triples = {eu.get_attribute_triple(attribute) for attribute in trapi_node.attributes} if trapi_node.attributes else set()
+            novel_attributes = [attribute for attribute in kg2c_node_attributes
+                                if eu.get_attribute_triple(attribute) not in existing_attribute_triples]
+            if trapi_node.attributes:
+                trapi_node.attributes += novel_attributes
+            else:
+                trapi_node.attributes = novel_attributes
 
         return response
 
-    @staticmethod
-    def _create_trapi_attributes(property_names: Set[str], kg2c_dict_node: Dict[str, any]) -> List[Attribute]:
+    def _create_trapi_attributes(self, kg2c_dict_node: Dict[str, any]) -> List[Attribute]:
         new_attributes = []
-        for property_name in property_names:
+        for property_name in set(kg2c_dict_node).difference(self.core_node_properties):
             property_value = kg2c_dict_node.get(property_name)
             if property_value:
                 # Extract any booleans that are stored within strings

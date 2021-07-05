@@ -38,14 +38,16 @@ class QGOrganizedKnowledgeGraph:
         if qnode_key not in self.nodes_by_qg_id:
             self.nodes_by_qg_id[qnode_key] = dict()
         # Merge attributes if this node already exists
-        if node_key in self.nodes_by_qg_id[qnode_key] and node.attributes:
+        if node_key in self.nodes_by_qg_id[qnode_key]:
             existing_node = self.nodes_by_qg_id[qnode_key][node_key]
-            if not existing_node.attributes:
-                existing_node.attributes = node.attributes
+            new_node_attributes = node.attributes if node.attributes else []
+            if existing_node.attributes:
+                existing_attribute_triples = {get_attribute_triple(attribute) for attribute in existing_node.attributes}
+                new_attributes_unique = [attribute for attribute in new_node_attributes
+                                         if get_attribute_triple(attribute) not in existing_attribute_triples]
+                existing_node.attributes += new_attributes_unique
             else:
-                existing_attributes = {attribute.original_attribute_name for attribute in existing_node.attributes}
-                new_attributes = [attribute for attribute in node.attributes if attribute.original_attribute_name not in existing_attributes]
-                existing_node.attributes += new_attributes
+                existing_node.attributes = new_node_attributes
         else:
             self.nodes_by_qg_id[qnode_key][node_key] = node
 
@@ -77,6 +79,10 @@ def get_curie_local_id(curie: str) -> str:
         return curie.split(':')[-1]  # Note: Taking last item gets around "PR:PR:000001" situation
     else:
         return curie
+
+
+def get_attribute_triple(attribute: Attribute) -> str:
+    return f"{attribute.attribute_type_id}--{attribute.value}--{attribute.attribute_source}"
 
 
 def copy_qedge(old_qedge: QEdge) -> QEdge:
