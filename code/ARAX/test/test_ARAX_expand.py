@@ -52,7 +52,6 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
     _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     _check_property_format(nodes_by_qg_id, edges_by_qg_id)
     _check_node_categories(message.knowledge_graph.nodes, message.query_graph)
-    _check_counts_of_curie_qnodes(nodes_by_qg_id, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
 
@@ -127,19 +126,6 @@ def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
             qnode = query_graph.nodes[qnode_key]
             if qnode.categories:
                 assert set(qnode.categories).issubset(set(node.categories))  # Could have additional categories if it has multiple qnode keys
-
-
-def _check_counts_of_curie_qnodes(nodes_by_qg_id: Dict[str, Dict[str, Node]], query_graph: QueryGraph):
-    # Note: Can't really use this function anymore since KPs can respond with multiple curies per 1 qg curie now...
-    qnodes_with_single_curie = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.ids and len(qnode.ids) == 1]
-    for qnode_key in qnodes_with_single_curie:
-        if qnode_key in nodes_by_qg_id:
-            assert len(nodes_by_qg_id[qnode_key]) == 1
-    qnodes_with_multiple_curies = [qnode_key for qnode_key, qnode in query_graph.nodes.items() if qnode.ids and len(qnode.ids) > 1]
-    for qnode_key in qnodes_with_multiple_curies:
-        qnode = query_graph.nodes[qnode_key]
-        if qnode_key in nodes_by_qg_id:
-            assert 1 <= len(nodes_by_qg_id[qnode_key]) <= len(qnode.ids)
 
 
 @pytest.mark.slow
