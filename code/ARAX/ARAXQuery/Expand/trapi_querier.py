@@ -203,8 +203,12 @@ class TRAPIQuerier:
             for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
                 answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
         for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
-            for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
-                answer_kg.add_node(returned_node_key, returned_node, qnode_key)
+            if returned_node_key not in kg_to_qg_mappings['nodes']:
+                self.log.warning(f"{self.kp_name}: Node {returned_node_key} was found in {self.kp_name}'s "
+                                 f"answer KnowledgeGraph but not in its Results. Skipping since there is no binding.")
+            else:
+                for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
+                    answer_kg.add_node(returned_node_key, returned_node, qnode_key)
             if returned_node.attributes:
                 for attribute in returned_node.attributes:
                     if not attribute.attribute_type_id:
