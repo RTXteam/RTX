@@ -209,5 +209,27 @@ templates:
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
 
+  ####################################################################################################
+  #### Four node, three-hop questions
+  three_hop_classic_question:
+    name: Three hop question with one curie and three more nodes
+    description: Four nodes, one of which has a curie and the others can be anything
+    restated_question: Which?
+    template:
+      - n00(ids)
+      - e00()
+      - n01()
+      - e01()
+      - n02()
+      - e01()
+      - n03()
+    DSL:
+      - expand()
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n01, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n02, object_qnode_key=n03)
+      - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
+
 
 
