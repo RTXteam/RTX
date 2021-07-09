@@ -989,7 +989,7 @@ function process_ars_message(ars_msg, level) {
 	checkRefreshARS();
 
     level++;
-    for (let child of ars_msg["children"].sort(function(a, b) { return a.actor.agent > b.actor.agent; }))
+    for (let child of ars_msg["children"].sort(function(a, b) { return a.actor.agent > b.actor.agent ? 1 : -1; }))
 	process_ars_message(child, level);
 }
 

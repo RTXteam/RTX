@@ -110,6 +110,7 @@ hr {
     border-bottom: 2px solid black;
     text-align: center;
     margin-left: 20px;
+    padding-bottom: 2px;
 }
 
 .slink {
