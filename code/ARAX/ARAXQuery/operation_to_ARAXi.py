@@ -56,6 +56,44 @@ class WorkflowToARAXi:
         ARAXi.append(f"filter_kg(action=remove_orphaned_nodes)")
         return ARAXi
 
+    @staticmethod
+    def __translate_filter_kgraph_top_n(parameters):
+        if ("edge_attribute" not in parameters):
+            raise KeyError
+        ARAXi = []
+        threshold = parameters.get('max_edges',50)
+        top = parameters.get('keep_top_or_bottom','top')
+        if top == 'top':
+            direction = 'below'
+        else:
+            direction = 'above'
+        # FW: need to update this to handle qedge_keys and qnode_keys
+        ARAXi.append(f"filter_kg(action=remove_edges_by_top_n,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction},top={top == 'top'})")
+        return ARAXi
+
+    @staticmethod
+    def __translate_filter_kgraph_std_dev(parameters):
+        if ("edge_attribute" not in parameters):
+            raise KeyError
+        ARAXi = []
+        threshold = parameters.get('threshold',1)
+        direction = parameters.get('remove_above_or_below','below')
+        top = parameters.get('keep_top_or_bottom','top')
+        # FW: need to update this to handle qedge_keys and qnode_keys
+        ARAXi.append(f"filter_kg(action=remove_edges_by_std_dev,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction},top={top == 'top'})")
+        return ARAXi
+
+    @staticmethod
+    def __translate_filter_kgraph_percentile(parameters):
+        if ("edge_attribute" not in parameters):
+            raise KeyError
+        ARAXi = []
+        threshold = parameters.get('threshold',95)
+        direction = parameters.get('remove_above_or_below','below')
+        # FW: need to update this to handle qedge_keys and qnode_keys
+        ARAXi.append(f"filter_kg(action=remove_edges_by_percentile,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction})")
+        return ARAXi
+
     def translate(self, workflow):
         ARAXi = []
         for operation in workflow:
