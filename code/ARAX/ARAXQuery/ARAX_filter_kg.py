@@ -1157,7 +1157,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"parameter 'n' must be a float")
+                self.response.error(f"parameter 'n' must be an integer")
             if self.response.status != 'OK':
                 return self.response
             supplied_threshhold = edge_params['threshold']
