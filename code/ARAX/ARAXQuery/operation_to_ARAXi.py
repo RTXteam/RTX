@@ -23,6 +23,27 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
+    def __translate_overlay_compute_jaccard(parameters):
+        if ("virtual_relation_label" not in parameters) or ("end_node_keys" not in parameters) or ("intermediate_node_key" not in parameters):
+            raise KeyError
+        ARAXi = []
+        source = parameters['end_node_keys'][0]
+        target = parameters['end_node_keys'][1]
+        ARAXi.append(f"overlay(action=compute_jaccard,virtual_relation_label={parameters['virtual_relation_label']},start_node_key={source},end_node_key={target},intermediate_node_key={parameters['intermediate_node_key']})")
+        return ARAXi
+
+    @staticmethod
+    def __translate_overlay_fisher_exact_test(parameters):
+        if ("virtual_relation_label" not in parameters) or ("subject_qnode_key" not in parameters) or ("object_qnode_key" not in parameters):
+            raise KeyError
+        ARAXi = []
+        if 'rel_edge_key' not in parameters:
+            ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label={parameters['virtual_relation_label']},subject_qnode_key={parameters['subject_qnode_key']},object_qnode_key={parameters['object_qnode_key']},intermediate_node_key={parameters['intermediate_node_key']})")
+        else:
+            ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label={parameters['virtual_relation_label']},subject_qnode_key={parameters['subject_qnode_key']},object_qnode_key={parameters['object_qnode_key']},intermediate_node_key={parameters['intermediate_node_key']},rel_edge_key={parameters['rel_edge_key']})")
+        return ARAXi
+
+    @staticmethod
     def __translate_filter_results_top_n(parameters):
         if 'max_results' not in parameters:
             raise KeyError
