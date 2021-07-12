@@ -55,7 +55,7 @@ def test_warnings():
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
             "filter_kg(action=remove_edges_by_discrete_attribute, edge_attribute=asdfghjkl, value=qwertyuiop)",
             "filter_kg(action=remove_edges_by_std_dev, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)",
-            "filter_kg(action=remove_edges_by_top_n, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=50, top=f, direction=above)",
+            "filter_kg(action=remove_edges_by_top_n, edge_attribute=asdfghjkl, remove_connected_nodes=f, n=50, top=f, direction=above)",
             "filter_kg(action=remove_edges_by_percentile, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=25, top=f, direction=above)",
             "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n01)",
             "resultify(ignore_edge_direction=true)",
@@ -288,7 +288,7 @@ def test_stats_error_int_threshold():
         "expand(edge_key=[e1,e2])",
         # Rank drugs by Jaccard Index
         "overlay(action=compute_jaccard,start_node_key=n0,intermediate_node_key=n2,end_node_key=n1,virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_top_n,edge_attribute=jaccard_index, threshold=10,remove_connected_nodes=true,qnode_key=n2)",
+        "filter_kg(action=remove_edges_by_top_n,edge_attribute=jaccard_index, n=10,remove_connected_nodes=true,qnode_key=n2)",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
         "overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n0, object_qnode_key=n2)",
         "resultify()",
