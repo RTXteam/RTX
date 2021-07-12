@@ -115,6 +115,27 @@ class WorkflowToARAXi:
         ARAXi.append(f"filter_kg(action=remove_edges_by_percentile,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction})")
         return ARAXi
 
+    @staticmethod
+    def __translate_filter_kgraph_continuous_attribute(parameters):
+        if ("edge_attribute" not in parameters) or ("threshold" not in parameters) or ("remove_above_or_below" not in parameters):
+            raise KeyError
+        ARAXi = []
+        threshold = parameters.get('threshold',None)
+        direction = parameters.get('remove_above_or_below',None)
+        # FW: need to update this to handle qedge_keys and qnode_keys
+        ARAXi.append(f"filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction})")
+        return ARAXi
+
+    @staticmethod
+    def __translate_filter_kgraph_discrete_kedge_attribute(parameters):
+        if ("edge_attribute" not in parameters) or ("remove_value" not in parameters):
+            raise KeyError
+        ARAXi = []
+        value = parameters.get('remove_value',None)
+        # FW: need to update this to handle qedge_keys and qnode_keys
+        ARAXi.append(f"filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute={parameters['edge_attribute']},value={value})")
+        return ARAXi
+
     def translate(self, workflow):
         ARAXi = []
         for operation in workflow:
