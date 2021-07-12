@@ -5,6 +5,8 @@ import itertools
 class WorkflowToARAXi:
     def __init__(self):
         self.implemented = {'overlay_compute_ngd',
+                            'overlay_compute_jaccard',
+                            'overlay_fisher_exact_test',
                             'filter_results_top_n',
                             'bind',
                             'fill',
