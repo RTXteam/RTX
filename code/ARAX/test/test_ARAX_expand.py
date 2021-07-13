@@ -965,5 +965,20 @@ def test_merging_node_attributes_1450():
     assert num_attributes_a == num_attributes_b
 
 
+@pytest.mark.slow
+def test_almost_cycle_1565():
+    actions_list = [
+        "add_qnode(ids=MONDO:0010161, key=n0)",
+        "add_qnode(categories=biolink:Gene, key=n1)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n2)",
+        "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:related_to)",
+        "add_qedge(subject=n1, object=n2, key=e1, predicates=biolink:related_to)",
+        "add_qedge(subject=n0, object=n2, key=e2, predicates=biolink:related_to)",
+        "expand(kp=RTX-KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
