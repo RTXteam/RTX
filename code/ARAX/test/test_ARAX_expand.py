@@ -977,7 +977,7 @@ def test_almost_cycle_1565():
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, debug=True)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
 if __name__ == "__main__":
