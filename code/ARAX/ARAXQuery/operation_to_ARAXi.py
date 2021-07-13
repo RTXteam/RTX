@@ -10,7 +10,9 @@ class WorkflowToARAXi:
                             'filter_results_top_n',
                             'bind',
                             'fill',
-                            'filter_kgraph_orphans'}
+                            'filter_kgraph_orphans',
+                            'score',
+                            'complete_results'}
 
     # NGD
     @staticmethod
@@ -147,6 +149,18 @@ class WorkflowToARAXi:
                 ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters']))
             else:
                 ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])({}))
+        return ARAXi
+
+    @staticmethod
+    def __translate_score(parameters):
+        ARAXi = []
+        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
+        return ARAXi
+
+    @staticmethod
+    def __translate_complete_results(parameters):
+        ARAXi = []
+        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
 
