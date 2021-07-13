@@ -297,5 +297,21 @@ def test_stats_error_int_threshold():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
 
+def test_tuple_bug():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(key=n00,ids=DRUGBANK:DB00150,categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n01,categories=biolink:Protein)",
+        "add_qedge(key=e00,subject=n00,object=n01)",
+        "expand(edge_key=e00, kp=RTX-KG2)",
+        "overlay(action=fisher_exact_test,subject_qnode_key=n00,virtual_relation_label=F0,object_qnode_key=n01)",
+        "filter_kg(action=remove_edges_by_top_n,edge_attribute=fisher_exact_test_p-value,direction=below,n=10,remove_connected_nodes=true,qnode_key=n01)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=100)",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
 if __name__ == "__main__":
     pytest.main(['-v'])

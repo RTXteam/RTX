@@ -388,12 +388,12 @@ class RemoveEdges:
             for edge in values: # here edge = (edge index, value, subject id, object id)
                 edges_to_remove.add(edge[0])  # mark it to be removed
                 if edge_params['remove_connected_nodes']:  # if you want to remove the connected nodes, mark those too
-                    for qedge_key in edge.qedge_keys:
-                        if edge.subject not in node_keys_to_remove:
+                    for qedge_key in self.message.knowledge_graph.edges[edge[0]].qedge_keys:
+                        if edge[2] not in node_keys_to_remove: # edge[2] = edge subect
                             node_keys_to_remove[edge[2]] = {edge_qid_dict[qedge_key]['subject']}
                         else:
                             node_keys_to_remove[edge[2]].add(edge_qid_dict[qedge_key]['subject'])
-                        if edge.object not in node_keys_to_remove:
+                        if edge[3] not in node_keys_to_remove: # edge[2] = edge object
                             node_keys_to_remove[edge[3]] = {edge_qid_dict[qedge_key]['object']}
                         else:
                             node_keys_to_remove[edge[3]].add(edge_qid_dict[qedge_key]['object'])
