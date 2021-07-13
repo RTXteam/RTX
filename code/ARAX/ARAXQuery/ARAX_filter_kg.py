@@ -354,7 +354,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                 "parameters": {
                     "edge_attribute": self.edge_attribute_info,
                     "direction": self.direction_stats_info,
-                    "threshold": self.threshold_stats_info_n,
+                    "n": self.threshold_stats_info_n,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_key": self.qnode_key_info
