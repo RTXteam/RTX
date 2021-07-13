@@ -9,6 +9,7 @@ from typing import List, Dict, Tuple, Union, Set, Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_decorator import ARAXDecorator
+from ARAX_resultify import ARAXResultify
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -19,6 +20,8 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
+from openapi_server.models.message import Message
+from openapi_server.models.response import Response
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -225,7 +228,7 @@ class ARAXExpander:
                 if mode == "ARAX":
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
-                    self._prune_dead_end_paths(overarching_kg, query_sub_graph, qedge, response)
+                    overarching_kg = self._prune_dead_end_paths(overarching_kg, query_graph, response)
                     if response.status != 'OK':
                         return response
 
@@ -536,8 +539,15 @@ class ARAXExpander:
                 else:
                     overarching_kg.add_node(node_key, node, qnode_key)
         for qedge_key, edges_dict in answer_kg.edges_by_qg_id.items():
+            qedge = overarching_qg.edges[qedge_key]
             for edge_key, edge in edges_dict.items():
-                overarching_kg.add_edge(edge_key, edge, qedge_key)
+                if (edge.subject in overarching_kg.nodes_by_qg_id[qedge.subject] and
+                    edge.object in overarching_kg.nodes_by_qg_id[qedge.object]) or \
+                        (edge.subject in overarching_kg.nodes_by_qg_id[qedge.object] and
+                         edge.object in overarching_kg.nodes_by_qg_id[qedge.subject]):
+                    overarching_kg.add_edge(edge_key, edge, qedge_key)
+                else:
+                    log.debug(f"Removing edge {edge_key} (fulfilling {qedge_key}) from the KG because it's orphaned")
 
     @staticmethod
     def _store_kryptonite_edge_info(kryptonite_kg: QGOrganizedKnowledgeGraph, kryptonite_qedge_key: str, qg: QueryGraph,
@@ -617,102 +627,34 @@ class ARAXExpander:
                 for edge_key in edge_keys_to_remove:
                     organized_kg.edges_by_qg_id[qedge_key].pop(edge_key)
 
-    def _prune_dead_end_paths(self, organized_kg: QGOrganizedKnowledgeGraph, qg: QueryGraph, qedge_expanded: QEdge,
-                              log: ARAXResponse):
+    @staticmethod
+    def _prune_dead_end_paths(organized_kg: QGOrganizedKnowledgeGraph, qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         # found in the last expansion will connect to edges in the next one)
-        log.debug(f"Pruning any paths that are now dead ends")
+        log.debug(f"Pruning any paths that are now dead ends (with help of Resultify)")
+        expanded_qnodes = {qnode_key for qnode_key in qg.nodes if organized_kg.nodes_by_qg_id.get(qnode_key)}
+        expanded_qedges = {qedge_key for qedge_key in qg.edges if organized_kg.edges_by_qg_id.get(qedge_key)}
+        qg_expanded_thus_far = QueryGraph(nodes={qnode_key: qg.nodes[qnode_key] for qnode_key in expanded_qnodes},
+                                          edges={qedge_key: qg.edges[qedge_key] for qedge_key in expanded_qedges})
+        regular_format_kg = eu.convert_qg_organized_kg_to_standard_kg(organized_kg)
 
-        # Grab the part of the QG the most recently expanded qedge belongs to ('required' part or an option group)
-        if qedge_expanded.option_group_id:
-            group_qnode_keys = {qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.option_group_id == qedge_expanded.option_group_id}
-            sub_qg_qedge_keys = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.option_group_id == qedge_expanded.option_group_id}
-            qnode_keys_used_by_group_qedges = {qnode_key for qedge_key in sub_qg_qedge_keys for qnode_key in
-                                               {qg.edges[qedge_key].subject, qg.edges[qedge_key].object}}
-            sub_qg_qnode_keys = group_qnode_keys.union(qnode_keys_used_by_group_qedges)
-            sub_qg = QueryGraph(nodes={qnode_key: qg.nodes[qnode_key] for qnode_key in sub_qg_qnode_keys},
-                                edges={qedge_key: qg.edges[qedge_key] for qedge_key in sub_qg_qedge_keys})
+        # Use resultify to remove dead ends from our (thus far) KG
+        resultifier = ARAXResultify()
+        prune_response = ARAXResponse()
+        prune_response.envelope = Response()
+        prune_response.envelope.message = Message()
+        prune_message = prune_response.envelope.message
+        prune_message.query_graph = qg_expanded_thus_far
+        prune_message.knowledge_graph = regular_format_kg
+        resultify_response = resultifier.apply(prune_response, {})
+        if resultify_response.status == "OK":
+            pruned_organized_kg = eu.convert_standard_kg_to_qg_organized_kg(prune_message.knowledge_graph)
         else:
-            sub_qg = QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items() if not qnode.option_group_id},
-                                edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items() if not qedge.option_group_id})
-
-        # Create a map of which qnodes are connected to which other qnodes (only for the relevant portion of the QG)
-        # Example qnode_connections_map: {'n00': {'n01'}, 'n01': {'n00', 'n02'}, 'n02': {'n01'}}
-        qnode_connections_map = dict()
-        for qnode_key, qnode in sub_qg.nodes.items():
-            qnode_connections_map[qnode_key] = set()
-            for qedge in sub_qg.edges.values():
-                if qedge.subject == qnode_key or qedge.object == qnode_key:
-                    other_qnode_key = qedge.object if qedge.object != qnode_key else qedge.subject
-                    qnode_connections_map[qnode_key].add(other_qnode_key)
-
-        # Create a map of which nodes each node is connected to (organized by the qnode_key they're fulfilling)
-        # Example node_connections_map: {'n01': {'UMLS:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22'}}}, ...}
-        node_connections_map = dict()
-        for current_qedge_key, edges in organized_kg.edges_by_qg_id.items():
-            if current_qedge_key in sub_qg.edges:  # Only collect info for edges in the portion of the QG we're considering
-                current_qedge = sub_qg.edges[current_qedge_key]
-                # Initiate our node connections map with empty dictionaries for each relevant qnode key
-                if current_qedge.subject not in node_connections_map:
-                    node_connections_map[current_qedge.subject] = dict()
-                if current_qedge.object not in node_connections_map:
-                    node_connections_map[current_qedge.object] = dict()
-                # Scan all edges to build up the node connections map
-                for edge_key, edge in edges.items():
-                    # Figure out which direction this edge fulfilled this qedge in (since we ignore edge direction)
-                    if edge.subject in organized_kg.nodes_by_qg_id[current_qedge.subject] \
-                            and edge.object in organized_kg.nodes_by_qg_id[current_qedge.object]:
-                        self._add_node_connection_to_map(current_qedge.subject, current_qedge.object, edge, node_connections_map)
-                    else:
-                        self._add_node_connection_to_map(current_qedge.object, current_qedge.subject, edge, node_connections_map)
-
-        # Iteratively remove all disconnected nodes until there are none left (for the relevant portion of the QG)
-        qnode_keys_already_expanded = set(node_connections_map)
-        qnode_keys_to_prune = qnode_keys_already_expanded.intersection(set(sub_qg.nodes))
-        found_dead_end = True
-        while found_dead_end:
-            found_dead_end = False
-            for qnode_key in qnode_keys_to_prune:
-                qnode_keys_should_be_connected_to = qnode_connections_map[qnode_key].intersection(qnode_keys_already_expanded)
-                for node_key, node_mappings_dict in node_connections_map[qnode_key].items():
-                    # Check if any mappings are even entered for all qnode_keys this node should be connected to
-                    if set(node_mappings_dict.keys()) != qnode_keys_should_be_connected_to:
-                        if node_key in organized_kg.nodes_by_qg_id[qnode_key]:
-                            del organized_kg.nodes_by_qg_id[qnode_key][node_key]
-                            found_dead_end = True
-                    else:
-                        # Verify that at least one of the connections still exists (for each connected qnode_key)
-                        for other_qnode_key, connected_node_keys in node_mappings_dict.items():
-                            if not connected_node_keys.intersection(set(organized_kg.nodes_by_qg_id[other_qnode_key].keys())):
-                                if node_key in organized_kg.nodes_by_qg_id[qnode_key]:
-                                    del organized_kg.nodes_by_qg_id[qnode_key][node_key]
-                                    found_dead_end = True
-
-        # Then remove all orphaned edges
-        edges_to_remove = []
-        for qedge_key, edges in organized_kg.edges_by_qg_id.items():
-            if qedge_key in sub_qg.edges:  # Only worry about edges in the portion of the QG we're considering
-                qedge = qg.edges[qedge_key]
-                for edge_key, edge in edges.items():
-                    if not ((edge.subject in organized_kg.nodes_by_qg_id[qedge.subject] and
-                            edge.object in organized_kg.nodes_by_qg_id[qedge.object]) or
-                            (edge.subject in organized_kg.nodes_by_qg_id[qedge.object] and
-                             edge.object in organized_kg.nodes_by_qg_id[qedge.subject])):
-                        edges_to_remove.append((edge_key, qedge_key))
-        for edge_key, qedge_key in edges_to_remove:
-            del organized_kg.edges_by_qg_id[qedge_key][edge_key]
-
-        # And remove all orphaned nodes (that aren't supposed to be orphans - some qnodes may be orphans by design)
-        qnode_keys_used_by_qedges = {qnode_key for qedge in qg.edges.values() for qnode_key in {qedge.subject, qedge.object}}
-        non_orphan_qnode_keys = set(qg.nodes).intersection(qnode_keys_used_by_qedges)
-        node_keys_used_by_edges = organized_kg.get_all_node_keys_used_by_edges()
-        for non_orphan_qnode_key in non_orphan_qnode_keys:
-            node_keys_in_kg = set(organized_kg.nodes_by_qg_id.get(non_orphan_qnode_key, []))
-            orphan_node_keys = node_keys_in_kg.difference(node_keys_used_by_edges)
-            for orphan_node_key in orphan_node_keys:
-                del organized_kg.nodes_by_qg_id[non_orphan_qnode_key][orphan_node_key]
+            pruned_organized_kg = QGOrganizedKnowledgeGraph()
+            log.error(f"Ran into an issue trying to prune using Resultify: {prune_response.show()}", error_code="PruneError")
 
         log.debug(f"After pruning, KG counts are: {eu.get_printable_counts_by_qg_id(organized_kg)}")
+        return pruned_organized_kg
 
     @staticmethod
     def _add_node_connection_to_map(qnode_key_a: str, qnode_key_b: str, edge: Edge,
