@@ -484,11 +484,14 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # normalized_value = 1-value
 
         # option 2:
-        value = -np.log(value)  # FIXME: could divide by zero
-        max_value = 1.0
-        curve_steepness = 3
-        logistic_midpoint = 2.7
-        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        try:
+            value = -np.log(value)  # FIXME: could divide by zero
+            max_value = 1.0
+            curve_steepness = 3
+            logistic_midpoint = 2.7
+            normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+        except RuntimeWarning:  # this is the case when value is 0 (or nearly so), so should award the max value
+            normalized_value = 1.
 
         return normalized_value
 
