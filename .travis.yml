@@ -19,4 +19,4 @@ install:
   - python ./code/ARAX/ARAXQuery/ARAX_database_manager.py --slim
 # command to run tests
 script:
-  - pytest -v ./code/ARAX/test/ --disable-pytest-warnings -k 'not test_predict_drug_treats_disease_attribute'
+  - pytest -v ./code/ARAX/test/ --disable-pytest-warnings -k 'not test_predict_drug_treats_disease'
