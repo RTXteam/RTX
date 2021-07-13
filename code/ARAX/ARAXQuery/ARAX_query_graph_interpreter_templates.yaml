@@ -225,17 +225,64 @@ templates:
       - n03()
     DSL:
       - expand()
+      - overlay(action=fisher_exact_test,subject_qnode_key=n01,virtual_relation_label=F1,object_qnode_key=n02,filter_type=top_n,value=30)
+      - overlay(action=fisher_exact_test,subject_qnode_key=n02,virtual_relation_label=F2,object_qnode_key=n03,filter_type=top_n,value=30)
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n01, object_qnode_key=n02)
       - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n02, object_qnode_key=n03)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
 
+  #### Four node, three-hop questions, with end curies pinned
+  three_hop_two_pinned_question:
+    name: Three hop question with one curie and three more nodes
+    description: Four nodes, one of which has a curie and the others can be anything
+    restated_question: Which?
+    template:
+      - n00(ids)
+      - e00()
+      - n01()
+      - e01()
+      - n02()
+      - e02()
+      - n03(ids)
+    DSL:
+      - expand()
+      - overlay(action=fisher_exact_test,subject_qnode_key=n01,virtual_relation_label=F1,object_qnode_key=n02,filter_type=top_n,value=30)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n01, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n02, object_qnode_key=n03)
+      - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100)
+
+  #### four node, forked question
+  # FIXME: Query graph interpreter does not like non-linear queries
+  four_node_forked_two_pinned_question:
+    name: Four node forked, two pinned node question
+    description: Four nodes, one unpinned ancestor with two pinned descendants
+    restated_question: Which?
+    template:
+      - n01(ids)
+      - e00()
+      - n00()
+      - e01()
+      - n02(ids)
+      - n00()
+      - e03()
+      - n03()
+    DSL:
+      - expand()
+      - overlay(action=compute_jaccard,start_node_key=n01,intermediate_node_key=n00,end_node_key=n03,virtual_relation_label=J1)
+      - overlay(action=compute_jaccard,start_node_key=n02,intermediate_node_key=n00,end_node_key=n03,virtual_relation_label=J2)
+      - overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N1,subject_qnode_key=n03,object_qnode_key=n02)
+      - overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N2,subject_qnode_key=n03,object_qnode_key=n01)
+      - resultify()
+      - filter_results(action=limit_number_of_results, max_results=100, prune_kg=true)
   ####################################################################################################
   #### Five node, four-hop questions
   four_hop_classic_question:
     name: Four hop question with one curie and four more nodes
-    description: Five nodes, one of which has a curie and the others can be anything
+    description: Five nodes, one of which has a curie and the others can be anything. FET to decrease combinatorial explosion
     restated_question: Which?
     template:
       - n00(ids)
@@ -249,11 +296,15 @@ templates:
       - n04()
     DSL:
       - expand()
+      - overlay(action=fisher_exact_test,subject_qnode_key=n01,virtual_relation_label=F1,object_qnode_key=n02,filter_type=top_n,value=20)
+      - overlay(action=fisher_exact_test,subject_qnode_key=n02,virtual_relation_label=F2,object_qnode_key=n03,filter_type=top_n,value=20)
+      - overlay(action=fisher_exact_test,subject_qnode_key=n03,virtual_relation_label=F3,object_qnode_key=n04,filter_type=top_n,value=20)
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n01, object_qnode_key=n02)
       - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n02, object_qnode_key=n03)
       - overlay(action=compute_ngd, virtual_relation_label=N4, subject_qnode_key=n03, object_qnode_key=n04)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=100)
+
 
 

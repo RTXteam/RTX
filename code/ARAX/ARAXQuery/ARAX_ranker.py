@@ -484,7 +484,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # normalized_value = 1-value
 
         # option 2:
-        value = -np.log(value)
+        value = -np.log(value)  # FIXME: could divide by zero
         max_value = 1.0
         curve_steepness = 3
         logistic_midpoint = 2.7
