@@ -213,7 +213,7 @@ class COHDQuerier:
                             continue
                     else:
                         log.warning(f"No 'preferred_category' for '{source_preferred_key}'")
-                        continue
+                        pass
 
                 if len(source_qnode_omop_ids[source_preferred_key]) == 0:
                     log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_key}'' with qnode id '{qedge.subject}'")
@@ -232,7 +232,14 @@ class COHDQuerier:
                     if target_qnode.categories is None:
                         preferred_target_list = self.cohdindex.get_curies_from_concept_id(freq_data['concept_id_2'])
                     else:
-                        preferred_target_list = [preferred_target_curie for preferred_target_curie in self.cohdindex.get_curies_from_concept_id(freq_data['concept_id_2']) if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie] and self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'] in target_qnode.categories]
+                        preferred_target_list = []
+                        temp = self.cohdindex.get_curies_from_concept_id(freq_data['concept_id_2'])
+                        for preferred_target_curie in temp:
+                            if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]:
+                                if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'] in target_qnode.categories:
+                                    preferred_target_list += [preferred_target_curie]
+                            else:
+                                preferred_target_list += [preferred_target_curie]
 
                     for target_preferred_key in preferred_target_list:
                         if target_preferred_key not in new_edge[source_preferred_key]:
@@ -303,7 +310,14 @@ class COHDQuerier:
                     if source_qnode.categories is None:
                         preferred_source_list = self.cohdindex.get_curies_from_concept_id(freq_data['concept_id_2'])
                     else:
-                        preferred_source_list = [preferred_source_curie for preferred_source_curie in self.cohdindex.get_curies_from_concept_id(freq_data['concept_id_2']) if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie] and self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'] in source_qnode.categories]
+                        preferred_source_list = []
+                        temp = self.cohdindex.get_curies_from_concept_id(freq_data['concept_id_2'])
+                        for preferred_source_curie in temp:
+                            if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]:
+                                if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'] in source_qnode.categories:
+                                    preferred_source_list += [preferred_source_curie]
+                            else:
+                                preferred_source_list += [preferred_source_curie]
 
                     for source_preferred_key in preferred_source_list:
                         if source_preferred_key not in new_edge[target_preferred_key]:
@@ -489,7 +503,14 @@ class COHDQuerier:
                     if target_qnode.categories is None:
                         preferred_target_list = self.cohdindex.get_curies_from_concept_id(ln_ratio_data['concept_id_2'])
                     else:
-                        preferred_target_list = [preferred_target_curie for preferred_target_curie in self.cohdindex.get_curies_from_concept_id(ln_ratio_data['concept_id_2']) if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie] and self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'] in target_qnode.categories]
+                        preferred_target_list = []
+                        temp = self.cohdindex.get_curies_from_concept_id(ln_ratio_data['concept_id_2'])
+                        for preferred_target_curie in temp:
+                            if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]:
+                                if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'] in target_qnode.categories:
+                                    preferred_target_list += [preferred_target_curie]
+                            else:
+                                preferred_target_list += [preferred_target_curie]
 
                     for target_preferred_key in preferred_target_list:
                         if target_preferred_key not in new_edge[source_preferred_key]:
@@ -559,7 +580,14 @@ class COHDQuerier:
                     if source_qnode.categories is None:
                         preferred_source_list = self.cohdindex.get_curies_from_concept_id(ln_ratio_data['concept_id_2'])
                     else:
-                        preferred_source_list = [preferred_source_curie for preferred_source_curie in self.cohdindex.get_curies_from_concept_id(ln_ratio_data['concept_id_2']) if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie] and self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'] in source_qnode.categories]
+                        preferred_source_list = []
+                        temp = self.cohdindex.get_curies_from_concept_id(ln_ratio_data['concept_id_2'])
+                        for preferred_source_curie in temp:
+                            if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]:
+                                if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'] in source_qnode.categories:
+                                    preferred_source_list += [preferred_source_curie]
+                            else:
+                                preferred_source_list += [preferred_source_curie]
 
                     for source_preferred_key in preferred_source_list:
                         if source_preferred_key not in new_edge[target_preferred_key]:
@@ -729,8 +757,6 @@ class COHDQuerier:
                         log.warning(f"No 'preferred_category' for '{source_preferred_key}'")
                         continue
 
-                print(f"################# {source_qnode_omop_ids[source_preferred_key]}")
-
                 if len(source_qnode_omop_ids[source_preferred_key]) == 0:
                     log.warning(f"No OMOP concept id was found for source preferred id '{source_preferred_key}'' with qnode id '{qedge.subject}'")
                     continue
@@ -748,7 +774,14 @@ class COHDQuerier:
                     if target_qnode.categories is None:
                         preferred_target_list = self.cohdindex.get_curies_from_concept_id(pvalue_data['concept_id_2'])
                     else:
-                        preferred_target_list = [preferred_target_curie for preferred_target_curie in self.cohdindex.get_curies_from_concept_id(pvalue_data['concept_id_2']) if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie] and self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'] in target_qnode.categories]
+                        preferred_target_list = []
+                        temp = self.cohdindex.get_curies_from_concept_id(pvalue_data['concept_id_2'])
+                        for preferred_target_curie in temp:
+                            if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]:
+                                if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'] in target_qnode.categories:
+                                    preferred_target_list += [preferred_target_curie]
+                            else:
+                                preferred_target_list += [preferred_target_curie]
 
                     for target_preferred_key in preferred_target_list:
                         if target_preferred_key not in new_edge[source_preferred_key]:
@@ -814,7 +847,14 @@ class COHDQuerier:
                     if source_qnode.categories is None:
                         preferred_source_list = self.cohdindex.get_curies_from_concept_id(pvalue_data['concept_id_2'])
                     else:
-                        preferred_source_list = [preferred_source_curie for preferred_source_curie in self.cohdindex.get_curies_from_concept_id(pvalue_data['concept_id_2']) if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie] and self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'] in source_qnode.categories]
+                        preferred_source_list = []
+                        temp = self.cohdindex.get_curies_from_concept_id(pvalue_data['concept_id_2'])
+                        for preferred_source_curie in temp:
+                            if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]:
+                                if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'] in source_qnode.categories:
+                                    preferred_source_list += [preferred_source_curie]
+                            else:
+                                preferred_source_list += [preferred_source_curie]
 
                     for source_preferred_key in preferred_source_list:
                         if source_preferred_key not in new_edge[target_preferred_key]:
@@ -916,9 +956,13 @@ class COHDQuerier:
         swagger_node = Node()
         swagger_node_key = node_key
         swagger_node.description = None
-        if self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category'] is not None:
-            swagger_node.name = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_name']
-            swagger_node.categories = [self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category']]
+        if self.synonymizer.get_canonical_curies(node_key)[node_key] is not None:
+            if self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category'] is not None:
+                swagger_node.name = self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_name']
+                swagger_node.categories = [self.synonymizer.get_canonical_curies(node_key)[node_key]['preferred_category']]
+            else:
+                swagger_node.name = None
+                swagger_node.categories = None
         else:
             swagger_node.name = None
             swagger_node.categories = None
