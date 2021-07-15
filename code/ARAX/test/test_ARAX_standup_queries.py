@@ -159,7 +159,7 @@ def test_named_thing_associated_with_acrocynaosis_issue_12():
     assert len(message.results) > 0
 
 
-# This query doesn't find results after conflations were resolved in KG2.6.7. Check back on it after #1536.
+# This query doesn't find results after conflations were resolved in KG2.6.7
 @pytest.mark.skip
 def test_chemical_substances_correlated_with_asthma_issue_18():
     query = {
@@ -261,7 +261,7 @@ def test_chemical_substances_that_down_regulate_STK11_issue_28():
     assert len(message.results) > 0
 
 
-# This query doesn't find results after conflations were resolved in KG2.6.7. Check back on it after #1536.
+# This query doesn't find results after conflations were resolved in KG2.6.7
 @pytest.mark.skip
 def test_phenotypes_for_angel_shaped_phalango_epiphyseal_dysplasia_issue_33():
     query = {

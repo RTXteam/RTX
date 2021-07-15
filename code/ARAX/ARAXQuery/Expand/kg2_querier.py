@@ -105,6 +105,11 @@ class KG2Querier:
         log.debug(f"Sending query to Plover")
         dict_qg = qg.to_dict()
         dict_qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)
+        # Allow subclass_of reasoning for qnodes with a small number of curies
+        for qnode in dict_qg["nodes"].values():
+            if qnode.get("ids") and len(qnode["ids"]) < 5:
+                if "allow_subclasses" not in qnode or qnode["allow_subclasses"] is None:
+                    qnode["allow_subclasses"] = True
         response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, timeout=60,
                                  headers={'accept': 'application/json'})
         if response.status_code == 200:

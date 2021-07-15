@@ -267,7 +267,7 @@ def test_curie_list_query():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id["n00"]) == 3
+    assert len(nodes_by_qg_id["n00"]) >= 3
 
 
 @pytest.mark.slow
@@ -522,6 +522,8 @@ def test_molepro_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+# TODO: Needs to be re-written given new subclass_of reasoning
+@pytest.mark.skip
 def test_exclude_edge_parallel():
     # First run a query without any kryptonite edges to get a baseline
     actions_list = [

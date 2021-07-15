@@ -405,6 +405,8 @@ def test_chi_square_attribute():
     _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 2)
 
 
+# TODO: Choose a more specific disease (too large due to subclass_of reasoning)
+@pytest.mark.slow
 def test_predict_drug_treats_disease_virtual():
     query = {"operations": {"actions": [
         "create_message",
@@ -422,6 +424,8 @@ def test_predict_drug_treats_disease_virtual():
     _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
 
 
+# TODO: Choose a more specific disease (too large due to subclass_of reasoning)
+@pytest.mark.slow
 def test_predict_drug_treats_disease_attribute():
     query = {"operations": {"actions": [
         "create_message",
@@ -439,6 +443,8 @@ def test_predict_drug_treats_disease_attribute():
     _attribute_tester(message, 'probability_treats', 'EDAM:data_0951', 2)
 
 
+# TODO: Choose a more specific disease (too large due to subclass_of reasoning)
+@pytest.mark.slow
 def test_issue_832():
     query = {"operations": {"actions": [
         "create_message",
