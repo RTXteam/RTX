@@ -280,7 +280,7 @@ def _make_edge_key(node1_id: str,
 
 def _is_specific_query_node(qnode_key: str, qnode: QNode):
     return (qnode_key is not None and ':' in qnode_key) or \
-        (qnode.ids is not None and len(qnode.ids) == 1)
+        (qnode.ids is not None and len(qnode.ids) > 0)
 
 
 def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
@@ -341,8 +341,6 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> Optional[str]:
     non_specific_nodes = all_nodes - specific_nodes
     non_specific_leaf_nodes = leaf_nodes & non_specific_nodes
 
-    if len(is_set_nodes & specific_nodes) > 0:
-        raise ValueError("the following query nodes have specific CURIE IDs but have is_set=true: " + str(is_set_nodes & specific_nodes))
     candidate_essence_nodes = non_specific_leaf_nodes - is_set_nodes
     if len(candidate_essence_nodes) == 0:
         candidate_essence_nodes = non_specific_nodes - is_set_nodes
