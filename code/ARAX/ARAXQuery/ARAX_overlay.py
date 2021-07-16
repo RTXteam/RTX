@@ -169,11 +169,11 @@ class ARAXOverlay:
         }
         self.dtd_slow_mode_info = {
             "is_required": False,
-            "examples": ['T', 't', 'True', 'F', 'f', 'False'],
-            "enum": ["True", "False"],
-            'type': 'string',
+            "examples": ["True", "False"],
+            "enum": ['T', 't', 'True', 'F', 'f', 'False'],
+            'type': 'boolean',
             'description': "Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)",
-            'default': 0.8
+            'default': False
         }
 
         # descriptions
