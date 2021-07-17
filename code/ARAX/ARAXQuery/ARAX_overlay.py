@@ -63,21 +63,21 @@ class ARAXOverlay:
         self.paired_concept_frequency_info = {
             'is_required': False,
             'examples': ['true', 'false'],
-            'type': 'string',
+            'type': 'boolean',
             'description': "Indicates if you want to use the paired concept frequency option. Mutually exlisive with: " + \
                            "`paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error."
         }
         self.observed_expected_ratio_info = {
             'is_required': False,
             'examples': ['true', 'false'],
-            'type': 'string',
+            'type': 'boolean',
             'description': "Indicates if you want to use the paired concept frequency option. Mutually exlisive with: " + \
                            "`paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error."
         }
         self.chi_square_info = {
             'is_required': False,
             'examples': ['true', 'false'],
-            'type': 'string',
+            'type': 'boolean',
             'description': "Indicates if you want to use the paired concept frequency option. Mutually exlisive with: " + \
                            "`paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` if any of the oters are set to true while this is there will be an error."
         }
@@ -171,7 +171,7 @@ class ARAXOverlay:
             "is_required": False,
             "examples": ["True", "False"],
             "enum": ['T', 't', 'True', 'F', 'f', 'False'],
-            'type': 'string',
+            'type': 'boolean',
             'description': "Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)",
             'default': "false"
         }
