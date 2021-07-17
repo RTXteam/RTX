@@ -171,9 +171,9 @@ class ARAXOverlay:
             "is_required": False,
             "examples": ["True", "False"],
             "enum": ['T', 't', 'True', 'F', 'f', 'False'],
-            'type': 'boolean',
+            'type': 'string',
             'description': "Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)",
-            'default': False
+            'default': "false"
         }
 
         # descriptions
