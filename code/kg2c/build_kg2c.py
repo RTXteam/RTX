@@ -10,7 +10,6 @@ Usage: python3 build_kg2c.py [--test] [--synonymizeronly]
 import argparse
 import logging
 import pathlib
-from datetime import datetime
 import json
 import os
 import subprocess

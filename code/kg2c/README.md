@@ -100,18 +100,18 @@ In the end, KG2c will be created and stored in multiple file formats, including 
 
 These instructions assume Neo4j is not already installed and that you are hosting Neo4j on an AWS instance.
 
-(1) Clone the GitHub repository into your home directory
+(1) Clone the `RTX` repo into the instance's home directory (if you haven't already):
 ```
 cd ~
-git clone https://github.com/RTXteam/RTX-KG2.git
+git clone https://github.com/RTXteam/RTX.git
 ```
 
-(2) Setup the instance for Neo4j
+(2) Set up the instance for Neo4j:
 ```
-bash -x RTX-KG2/setup-kg2-neo4j.sh
+python3 RTX/code/kg2c/setup_for_neo4j.py
 ```
 
-(3) Load the latest KG2c into Neo4j, by running this script out of the RTX repo:
+(3) Load the latest KG2c into Neo4j:
 ```
 bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
 ```
