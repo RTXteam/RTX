@@ -967,6 +967,30 @@ def test_merging_node_attributes_1450():
     assert num_attributes_a == num_attributes_b
 
 
+@pytest.mark.external
+def test_icees_dili():
+    actions = [
+        "add_qnode(key=n0, ids=NCIT:C28421, categories=biolink:PhenotypicFeature)",
+        "add_qnode(key=n1, categories=biolink:NamedThing)",
+        "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:correlated_with)",
+        "expand(kp=ICEES-DILI)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+
+
+@pytest.mark.external
+def test_icees_asthma():
+    actions = [
+        "add_qnode(key=n0, ids=NCIT:C28421, categories=biolink:PhenotypicFeature)",
+        "add_qnode(key=n1, categories=biolink:NamedThing)",
+        "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:correlated_with)",
+        "expand(kp=ICEES-Asthma)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+
+
 @pytest.mark.slow
 def test_almost_cycle_1565():
     actions_list = [
