@@ -1,79 +1,97 @@
 # What is KG2canonicalized?
 
-KG2canonicalized (KG2c) is a lightweight version of KG2 in which synonymous nodes have been merged. It is built from the regular KG2's Neo4j endpoint and uses the [ARAX NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/ARAX/NodeSynonymizer) to determine which nodes are equivalent. 
+KG2canonicalized (KG2c) is a lightweight version of KG2 in which synonymous nodes have been merged. It is built from the [KG2pre](https://github.com/RTXteam/RTX-KG2) Neo4j endpoint and uses the [ARAX NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/ARAX/NodeSynonymizer) to determine which nodes are equivalent. 
 
 ### Schema
-Example KG2c node:
+
+###### Example KG2c node:
 ```
 {
-  "id": "MONDO:0000710",
-  "name": "gastroduodenal Crohn disease",
-  "category": "biolink:Disease",
-  "iri": "http://purl.obolibrary.org/obo/MONDO_0000710",
-  "description": "An inflammatory bowel disease characterized by inflammation located_in stomach and located_in duodenum, has_symptom nausea, has_symptom vomiting, has_symptom weight loss and has_symptom loss of appetite.",
-    "all_categories": [
-    "biolink:Disease"
-  ],
+  "id": "CHEMBL.COMPOUND:CHEMBL3349001",
+  "name": "AVN-944",
+  "category": "biolink:ChemicalSubstance",
+  "iri": "https://identifiers.org/chembl.compound:CHEMBL3349001",
+  "description": "AVN944 is a biotech drug that demonstrated a statistically meaningful impact on IMPDH and other proteins that are critical to activities in cancer cells, including nucleotide biosynthesis, energy and metabolism, DNA replication, apoptosis and cell cycle control. AVN944 has been associated with cancer cell death in clinical trials. It is being investigated for the treatment of patients with advanced hematologic malignancies.",
   "expanded_categories": [
+    "biolink:ChemicalSubstance",
+    "biolink:Drug",
+    "biolink:MolecularEntity",
     "biolink:BiologicalEntity",
-    "biolink:Disease",
-    "biolink:DiseaseOrPhenotypicFeature",
-    "biolink:NamedThing",
-    "biolink:PhenotypicFeature"
+    "biolink:NamedThing"
   ],
   "equivalent_curies": [
-    "DOID:0060191",
-    "MONDO:0000710"
+    "DRUGBANK:DB05500",
+    "MESH:C526922",
+    "CHEMBL.COMPOUND:CHEMBL3349001"
   ],
   "all_names": [
-    "gastroduodenal Crohn disease",
-    "gastroduodenal Crohn's disease"
+    "AVN-944",
+    "Avn-944",
+    "Avn 944"
+  ],
+  "all_categories": [
+    "biolink:MolecularEntity",
+    "biolink:ChemicalSubstance"
   ],
   "publications": [
-    "PMID:12769447",
-    "http://en.wikipedia.org/wiki/crohn%27s_disease",
-    "http://www.bidmc.org/centers-and-departments/departments/digestive-disease-center/inflammatory-bowel-disease-program/crohns-disease/what-are-the-types-of-crohns-disease.aspx",
-    "http://www.ccfa.org/what-are-crohns-and-colitis/what-is-crohns-disease/types-of-crohns-disease.htm"
+    "PMID:17659481",
+    "PMID:17462731"
   ]
 }
 ```
 The node `id` is the 'preferred' curie for the group of synonymous nodes this KG2c node represents (according to the ARAX `NodeSynonymizer`). Similarly, the node `category` and `name` are the 'preferred' category/name, according to the `NodeSynonymizer`.
 
-Example KG2c edge:
+In the Neo4j instantiation of KG2c (see [below section](#Host KG2canonicalized in Neo4j) for how to host KG2c in Neo4j), nodes are labeled with their `expanded_categories`.
+
+###### Example KG2c edge:
 ```
 {
-  "subject": "UMLS:C0180600",
-  "object": "MONDO:0000001",
-  "predicate": "treats",
+  "id": "30836349",
+  "subject": "CHEMBL.COMPOUND:CHEMBL378081",
+  "object": "MONDO:0021024",
+  "predicate": "biolink:physically_interacts_with",
   "provided_by": [
-    "SEMMEDDB:"
+    "identifiers_org_registry:drugbank"
   ],
   "publications": [
-    "PMID:14477543",
-    "PMID:4266234"
+    "PMID:17379310",
+    "PMID:17494951",
+    "PMID:17503181",
+    "PMID:11752352"
+  ],
+  "kg2_ids": [
+    "DRUGBANK:DB01234---DRUGBANK:target---UniProtKB:P35228---identifiers_org_registry:drugbank"
   ]
 }
 ```
-In creating KG2c, edges from the regular KG2 are remapped to use only 'preferred' curies for their `subject` and `object`; edges with the same `subject`, `object`, and `predicate` are then merged.
+In creating KG2c, edges from KG2pre are remapped to use only 'preferred' curies for their `subject` and `object`; edges with the same `subject`, `object`, and `predicate` are then merged.
+
+The `kg2_ids` property captures the IDs of the edges in KG2pre that this KG2c edge was created from. 
 
 # How to create it
 
 ### Build KG2canonicalized
 
 1. If the machine you'll be using has never previously built a KG2c:
-    1. If you are creating this KG2c from a **standard KG2** instance (made by the RTX-KG2 team):
+    1. If you are creating this KG2c from a **standard KG2pre** instance (made by the RTX-KG2 team):
         1. Follow steps 1-3 in [this section](https://github.com/RTXteam/RTX/wiki/Dev-info#setting-up-for-local-dev-work-on-arax) of the ARAX dev wiki
         1. If you wish to upload your eventual output KG2c files to S3:
             1. Install AWS CLI: `sudo apt-get install -y awscli`
             1. And configure it: `aws configure`
-    1. Otherwise if you are creating this KG2c from your own **custom KG2**:
-        1. Create a copy of `configv2.json` that contains the proper secrets for your own KG2 endpoint
-1. Locally modify `kg2c_config.json` (in `RTX/code/kg2c/`) for your particular needs
-    - Be sure to specify the KG2 version you want to build this KG2c from
-    - Make sure the Biolink model version specified matches that used by the KG2 you specified
-    - Indicate whether or not you want a new NodeSynonymizer to be built
-        - If you do **not** want a new `NodeSynonymizer` to be built (i.e., you already have a synonymizer made from the KG2 this KG2c will be built from), ensure your synonymizer file is in `RTX/code/ARAX/NodeSynonymizer/` and is named `node_synonymizer.sqlite`
-1. Then build KG2c (should take around 5-10 hours and 200GB of RAM):
+    1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
+        1. Create a copy of `configv2.json` that contains the proper secrets for your own KG2pre endpoint
+1. Locally modify `kg2c_config.json` (in `RTX/code/kg2c/`) for your particular needs. Adjust the following slots:
+    - `kg2_version`: Should be the name of the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
+    - `kg2_neo4j_endpoint`: Should point to the correct endpoint for your specified KG2pre version
+    - `biolink_version`: Should match the Biolink version used by the KG2pre you specified (e.g., 1.8.1)
+    - `build_synonymizer`: Set this to true if you want to build a **new** synonymizer (from your specified KG2pre version), false otherwise
+    - `synonymizer_name`: The name of the synonymizer to use (if you're building a new synonymizer, it will be given this name)
+        - NOTE: If `build_synonymizer` is set to `false`, you **must** ensure that a synonymizer with the name specified in `synonymizer_name` already exists in the `RTX/code/ARAX/NodeSynonymizer` directory in your clone of the repo
+    - `upload_to_s3`: Indicates whether you want the final output KG2c files (JSON and a tarball of TSVs) to automatically be uploaded to the KG2 S3 bucket
+    - `upload_artifacts_to_arax.ncats.io`: Indicates whether you want the artifacts of the `NodeSynonymizer` build to automatically be uploaded to `arax.ncats.io`
+        - NOTE: If you set this slot to `true`, before starting the KG2c build, create a `databases/` directory for your KG2 version on `arax.ncats.io` if one doesn't already exist (e.g., `/translator/data/orangeboard/databases/KG2.6.7`) and make sure it has a subdirectory called `synonymizer` (e.g., `/translator/data/orangeboard/databases/KG2.6.7/synonymizer`)
+    - `use_nlp_to_choose_descriptions`: This should generally be set to `true`, unless you're doing a 'debugging' build that doesn't involve debugging of node descriptions. In that case you may want to set this to `false` because it will shave a few hours off the build time. (When `true`, an NLP method will be used to choose the best node descriptions; when `false`, the longest description under a certain limit will be chosen.)
+1. Then build KG2c (should take ~200GB of RAM and 2-10 hours depending on your settings in `kg2c_config.json`):
     - `python3 RTX/code/kg2c/build_kg2c.py`
 
 In the end, KG2c will be created and stored in multiple file formats, including TSVs ready for import into Neo4j.

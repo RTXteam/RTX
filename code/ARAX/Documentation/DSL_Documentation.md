@@ -21,12 +21,12 @@
     - [expand(kp=CHP)](#expandkpchp)
     - [expand(kp=DTD)](#expandkpdtd)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
+    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
     - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
-    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
     - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
@@ -377,19 +377,19 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - If not specified the default input will be paired_concept_freq. 
 
-* ##### COHD_method_percentile
+* ##### COHD_method_top_N
 
-    - What percentile to use as a cut-off/threshold for the specified COHD method.
+    - What top N to use as a cut-off/threshold for the specified COHD method.
 
     - Acceptable input types: integer.
 
     - This is not a required parameter and may be omitted.
 
-    - `95` and `80` are examples of valid inputs.
+    - `500` and `1000` are examples of valid inputs.
 
-    - The values for this parameter can range from a minimum value of 0 to a maximum value of 100.
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of 1000000000000000000.
 
-    - If not specified the default input will be 99. 
+    - If not specified the default input will be 1000. 
 
 ### expand(kp=GeneticsKP)
 This command reaches out to the Genetics Provider to find all bioentity subpaths that satisfy the query graph.
@@ -659,29 +659,6 @@ This command uses ARAX's in-house drug-treats-disease (DTD) database (built from
     - If not specified the default input will be false. 
 
 ## ARAX_overlay
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
-
 ### overlay(action=predict_drug_treats_disease)
 
 `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
@@ -746,15 +723,56 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)
 
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `True` and `False` are examples of valid inputs.
+
+    - `T`, `t`, `True`, `F`, `f`, and `False` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+### overlay(action=overlay_exposures_data)
+
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+                    
+
+#### parameters: 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
     - Acceptable input types: string.
 
     - This is not a required parameter and may be omitted.
 
-    - `T`, `t`, `True`, `F`, `f`, and `False` are examples of valid inputs.
+    - `N1` and `J2` are examples of valid inputs.
 
-    - `True` and `False` are all possible valid inputs.
+* ##### subject_qnode_key
 
-    - If not specified the default input will be 0.8. 
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
 
 ### overlay(action=overlay_clinical_info)
 
@@ -878,47 +896,6 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `N1`, `J2`, and `FET` are examples of valid inputs.
 
-### overlay(action=overlay_exposures_data)
-
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
-
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
 ### overlay(action=compute_ngd)
 
 `compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
@@ -976,6 +953,29 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be 100. 
 
 ### overlay(action=fisher_exact_test)
 
@@ -1298,18 +1298,6 @@ e.g. to remove all the edges with jaccard_index values greater than 0.25 standar
 
     - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
 
-* ##### type
-
-    - The statistic to use for filtering.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n`, `std`, `std_dev`, `percentile`, and `p` are all possible valid inputs.
-
-    - If not specified the default input will be n. 
-
 * ##### direction
 
     - Indictes whether to remove above or below the given threshold.
@@ -1405,18 +1393,6 @@ e.g. to remove all the edges with jaccard_index values greater than the bottom 2
 
     - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
 
-* ##### type
-
-    - The statistic to use for filtering.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n`, `std`, `std_dev`, `percentile`, and `p` are all possible valid inputs.
-
-    - If not specified the default input will be n. 
-
 * ##### direction
 
     - Indictes whether to remove above or below the given threshold.
@@ -1510,18 +1486,6 @@ e.g. to remove all the edges with jaccard_index values greater than the 25 small
 
     - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
 
-* ##### type
-
-    - The statistic to use for filtering.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n`, `std`, `std_dev`, `percentile`, and `p` are all possible valid inputs.
-
-    - If not specified the default input will be n. 
-
 * ##### direction
 
     - Indictes whether to remove above or below the given threshold.
@@ -1534,7 +1498,7 @@ e.g. to remove all the edges with jaccard_index values greater than the 25 small
 
     - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.. 
 
-* ##### threshold
+* ##### n
 
     - The threshold to filter with.
 

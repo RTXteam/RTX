@@ -54,7 +54,7 @@ class COHDIndex:
             print("INFO: Connecting to database", flush=True)
             return True
         else:
-            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_6_7_with_concepts.pkl']
+            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_6_7_with_concepts.pkl', 'concepts_table_Athena.txt']
             # has_files = [f for f in os.listdir(self.databaseLocation) if os.path.isfile(os.path.join(self.databaseLocation, f))]
             # for file in required_files:
             #     if file in has_files:
@@ -95,6 +95,8 @@ class COHDIndex:
         #     print("INFO: Creating database " + self.databaseName, flush=True)
         #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
         #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
+        #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING_ATHENA")
+        #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING_ATHENA( curie VARCHAR(255), concept_id INT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS SINGLE_CONCEPT_COUNTS")
         #     self.connection.execute(f"CREATE TABLE SINGLE_CONCEPT_COUNTS( dataset_id TINYINT, concept_id INT, concept_count INT, concept_prevalence FLOAT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS CONCEPTS")
@@ -161,19 +163,37 @@ class COHDIndex:
         #         insert_command = insert_command1 + ")" + insert_command2 + ")"
         #         insert_command = insert_command.replace(',)', ')')
 
-        #     if DEBUG:
-        #         print(insert_command, flush=True)
-        #         content_col = content_list[0].strip().split("\t")
-        #         concept_pair_id = f"{content_col[1]}_{content_col[2]}"
-        #         content_col.insert(0, concept_pair_id)
-        #         print(tuple(content_col), flush=True)
+        #         if DEBUG:
+        #             print(insert_command, flush=True)
+        #             content_col = content_list[0].strip().split("\t")
+        #             concept_pair_id = f"{content_col[1]}_{content_col[2]}"
+        #             content_col.insert(0, concept_pair_id)
+        #             print(tuple(content_col), flush=True)
 
-        #     for line in content_list:
-        #         content_col = line.strip().split("\t")
-        #         concept_pair_id = f"{content_col[1]}_{content_col[2]}"
-        #         content_col.insert(0, concept_pair_id)
-        #         record = tuple(content_col)
-        #         self.connection.execute(insert_command, record)
+        #         for line in content_list:
+        #             content_col = line.strip().split("\t")
+        #             concept_pair_id = f"{content_col[1]}_{content_col[2]}"
+        #             content_col.insert(0, concept_pair_id)
+        #             record = tuple(content_col)
+        #             self.connection.execute(insert_command, record)
+
+        #     self.connection.commit()
+
+        #     concepts_table_Athena_file = 'concepts_table_Athena.txt'
+        #     current_table_name = paired_file.replace('.txt', '').upper()
+        #     print(f"INFO: Populating table {current_table_name}", flush=True)
+        #     with open(f"{self.databaseLocation}/{concepts_table_Athena_file}", 'r') as file:
+        #         content_list = file.readlines()
+        #         col_name = content_list.pop(0)
+        #         insert_command1 = f"INSERT INTO CURIE_TO_OMOP_MAPPING_ATHENA(curie, concept_id)"
+        #         insert_command2 = f" values (?,?)"
+
+        #         insert_command = insert_command1 + insert_command2
+
+        #         for line in content_list:
+        #             content_col = line.strip().split("\t")
+        #             record = tuple([content_col[1],content_col[0]])
+        #             self.connection.execute(insert_command, record)
 
         #     self.connection.commit()
 
@@ -225,6 +245,10 @@ class COHDIndex:
         #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_preferred_curie ON CURIE_TO_OMOP_MAPPING(preferred_curie)")
         #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_concept_id ON CURIE_TO_OMOP_MAPPING(concept_id)")
 
+        #     print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING_ATHENA", flush=True)
+        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_curie ON CURIE_TO_OMOP_MAPPING_ATHENA(curie)")
+        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_concept_id ON CURIE_TO_OMOP_MAPPING_ATHENA(concept_id)")
+
         #     print(f"INFO: Creating INDEXes on SINGLE_CONCEPT_COUNTS", flush=True)
         #     self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_dataset_id ON SINGLE_CONCEPT_COUNTS(dataset_id)")
         #     self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_concept_id ON SINGLE_CONCEPT_COUNTS(concept_id)")
@@ -240,6 +264,62 @@ class COHDIndex:
 
         #     print(f"INFO: Creating INDEXes is completed", flush=True)
 
+    @staticmethod
+    def _change_format_bk(synonym):
+
+        synonym = synonym.upper()
+
+        try:
+            vocabulary_id, concept_code = synonym.split(':')
+        except ValueError:
+            vocabulary_id, concept_code = synonym.split(':')[1:]
+
+        if vocabulary_id == "ICD10":
+            synonym = synonym.replace('ICD10','ICD-10')
+        elif vocabulary_id == "ICD9CM":
+            synonym = synonym.replace('ICD9CM','ICD-9')
+        # elif vocabulary_id == "MESH":
+        #     synonym = synonym.replace('MESH', 'MeSH')
+        # elif vocabulary_id == "RXNORM":
+        #     synonym = synonym.replace('RXNORM', 'RxNorm')
+        elif vocabulary_id == "SNOMEDCT":
+            synonym = synonym.replace('SNOMED','SNOMEDCT')
+        # elif vocabulary_id == "MEDDRA":
+        #     synonym = synonym.replace('MEDDRA', 'MedDRA')
+        else:
+            pass
+
+        return synonym
+
+    @staticmethod
+    def _change_format(synonym):
+
+        synonym = synonym.upper()
+
+        try:
+            vocabulary_id, concept_code = synonym.split(':')
+        except ValueError:
+            vocabulary_id, concept_code = synonym.split(':')[1:]
+
+        if vocabulary_id == "ICD-10":
+            synonym = synonym.replace('ICD-10', 'ICD10')
+        elif vocabulary_id == "ICD-9":
+            synonym = synonym.replace('ICD-9', 'ICD9CM')
+        # elif vocabulary_id == "MESH":
+        #     synonym = synonym.replace('MESH', 'MeSH')
+        # elif vocabulary_id == "RXNORM":
+        #     synonym = synonym.replace('RXNORM', 'RxNorm')
+        elif vocabulary_id == "SNOMEDCT":
+            synonym = synonym.replace('SNOMEDCT', 'SNOMED')
+        elif vocabulary_id == "SNOMEDCT_VET":
+            synonym = synonym.replace('SNOMEDCT_VET', 'SNOMED')
+        # elif vocabulary_id == "MEDDRA":
+        #     synonym = synonym.replace('MEDDRA', 'MedDRA')
+        else:
+            pass
+
+        return synonym
+
     def get_concept_ids(self, curie):
         """Search for OMOP concept ids by curie id.
 
@@ -251,25 +331,30 @@ class COHDIndex:
             example:
                 [75617, 80180, 1570333, 4025957, 4035441, 4079750, 4083695, 4083696, 4110738, 36516824, 36569386, 45618044]
         """
+        cursor = self.connection.cursor()
+        results_list = []
         if isinstance(curie, str):
             preferred_curie = self.synonymizer.get_canonical_curies(curie)[curie]
             if preferred_curie is None:
-                print("Can't convert {curie} to preferred curie in get_concept_ids", flush=True)
-                return []
+                print(f"Can't convert {curie} to preferred curie in get_concept_ids and thus use its original curie", flush=True)
+                cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where curie='{self._change_format(curie)}';")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    return results_list
+                else:
+                    results_list = [row[1] for row in res]
+                    return results_list
             else:
                 preferred_curie = preferred_curie['preferred_curie']
+                cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where preferred_curie='{preferred_curie}';")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    return results_list
+                else:
+                    results_list = [row[1] for row in res]
+                    return results_list
         else:
             print("The 'curie' in get_concept_ids should be a str", flush=True)
-            return []
-
-        results_list = []
-        cursor = self.connection.cursor()
-        cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where preferred_curie='{preferred_curie}';")
-        res = cursor.fetchall()
-        if len(res) == 0:
-            return []
-        else:
-            results_list = [row[1] for row in res]
             return results_list
 
     def get_curies_from_concept_id(self, concept_id):
@@ -295,8 +380,16 @@ class COHDIndex:
         res = cursor.fetchall()
         if len(res) != 0:
             results_list = list(set([record[0] for record in res]))
+            # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
+            # res = cursor.fetchall()
+            # if len(res) != 0:
+            #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
         else:
-            results_list = []
+            pass
+            # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
+            # res = cursor.fetchall()
+            # if len(res) != 0:
+            #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
 
         return results_list
 

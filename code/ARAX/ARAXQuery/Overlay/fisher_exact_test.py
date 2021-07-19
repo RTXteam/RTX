@@ -177,12 +177,14 @@ class ComputeFTEST:
                 edge_attribute_list = [x.value for x in self.message.knowledge_graph.edges[edge_key].attributes if x.original_attribute_name == 'is_defined_by']
                 if len(edge_attribute_list) == 0:
 
-                    temp_kp = [re.sub("infores:", "", x.value) for x in self.message.knowledge_graph.edges[edge_key].attributes if x.value == 'infores:rtx-kg2']
+                    ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
+                    temp_kp = [re.sub("infores:", "", x.value) for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'biolink:aggregator_knowledge_source' or x.attribute_type_id == 'biolink:knowledge_source']
+                    temp_kp.remove('arax-reasoner-ara')
 
                     if rel_edge_key:
                         if rel_edge_key in edge.qedge_keys:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
-                                edge_expand_kp.append(temp_kp[0])
+                                edge_expand_kp.extend(temp_kp)
                                 rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
                                 if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
@@ -190,7 +192,7 @@ class ComputeFTEST:
                                 else:
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
                             else:
-                                edge_expand_kp.append(temp_kp[0])
+                                edge_expand_kp.extend(temp_kp)
                                 rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
@@ -200,7 +202,7 @@ class ComputeFTEST:
                     else:
                         if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                edge_expand_kp.append(temp_kp[0])
+                                edge_expand_kp.extend(temp_kp)
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
                                 if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object] = {self.message.knowledge_graph.edges[edge_key].subject}
@@ -209,7 +211,7 @@ class ComputeFTEST:
 
                         elif object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                edge_expand_kp.append(temp_kp[0])
+                                edge_expand_kp.extend(temp_kp)
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
@@ -255,8 +257,8 @@ class ComputeFTEST:
             max_index = max([(value, index) for index, value in enumerate(occurrences.values())])[1] # if there are more than one kp having the maximum number of edges, then the last one based on alphabetical order will be chosen.
             kp = list(occurrences.keys())[max_index]
             self.response.debug(f"{occurrences}")
-            self.response.warning(f"More than one knowledge provider was detected to be used for expanding the edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
-            self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
+            self.response.warning(f"More than one knowledge provider were detected to be used for expanding the edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
+            self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
 
         ## check if kp is "ARAX/KG1" or "RTX-KG2", if not, report error
         if kp == "rtx_kg1_kp":
@@ -264,7 +266,8 @@ class ComputeFTEST:
         elif kp == "rtx-kg2":
             kp = 'RTX-KG2'
         else:
-            self.response.error(f"Only KG1 or KG2 or KG2C is allowable to calculate the Fisher's exact test temporally")
+            kp = 'RTX-KG2'
+            self.response.warning(f"Most of edges between the subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key} are from {kp} rather than RTX-KG2. But we can't access the total number of nodes with specific node type from {kp}, so RTX-KG2 was still used to calcualte Fisher's exact test.")
             return self.response
 
         if kp == 'ARAX/KG1':
@@ -333,9 +336,10 @@ class ComputeFTEST:
             parameter_list = []
             del_list = []
             for node in object_node_dict:
-                if size_of_object[node]-len(object_node_dict[node]) < 0:
+                temp = [len(object_node_dict[node]), size_of_object[node]-len(object_node_dict[node]), size_of_query_sample - len(object_node_dict[node]), (size_of_total - size_of_object[node]) - (size_of_query_sample - len(object_node_dict[node]))]
+                if any([value < 0 for value in temp]) < 0:
                     del_list.append(node)
-                    self.response.warning(f"Skipping node {node} to calculate FET p-value due to issue897 (which causes negative value).")
+                    self.response.warning(f"Skipping node {node} to calculate FET p-value due to issue1438 (which causes negative value).")
 
             for del_node in del_list:
                 del object_node_dict[del_node]

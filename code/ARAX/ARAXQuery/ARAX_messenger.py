@@ -262,10 +262,6 @@ class ARAXMessenger:
             # If the ids is a scalar then treat it here as a list of one
             if isinstance(parameters['ids'], str):
                 id_list = [ parameters['ids'] ]
-                is_id_a_list = False
-                if parameters['is_set'] is not None and qnode.is_set is True:
-                    response.error(f"Specified ids '{parameters['ids']}' is singular, but is_set=true, which doesn't make sense", error_code="IdScalarButIsSetTrue")
-                    return response
 
             # Or else set it up as a list
             elif isinstance(parameters['ids'], list):

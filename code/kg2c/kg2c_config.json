@@ -1,8 +1,9 @@
 {
-  "kg2_version": "2.6.6",
-  "kg2_neo4j_endpoint": "kg2endpoint-kg2-6-6.rtx.ai",
-  "biolink_version": "1.7.0",
+  "kg2_version": "2.6.7",
+  "kg2_neo4j_endpoint": "kg2endpoint-kg2-6-7.rtx.ai",
+  "biolink_version": "1.8.1",
   "build_synonymizer": true,
+  "synonymizer_name": "node_synonymizer_v1.0_KG2.6.7.sqlite",
   "upload_to_s3": true,
   "upload_artifacts_to_arax.ncats.io": true,
   "use_nlp_to_choose_descriptions": true

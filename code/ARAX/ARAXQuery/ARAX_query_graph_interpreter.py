@@ -523,8 +523,259 @@ def QGI_test4():
     #sys.exit(1)
 
 
+def QGI_test5():
+    # This is to test forked/non-linear queries (currently not working properly)
+    input_query_graph = {
+    "message": {
+        "query_graph": {
+            "nodes": {
+                "n0": {
+                    "categories": ["biolink:Gene"]
+                },
+                "n1": {
+                    "ids": ["CHEBI:45783"],
+                    "categories": ["biolink:ChemicalSubstance"]
+                },
+                "n2": {
+                    "ids": ["MONDO:0005301"],
+                    "categories": ["biolink:Disease"]
+                },
+                "n3": {
+                    "categories": ["biolink:ChemicalSubstance"]
+                }
+            },
+            "edges": {
+                "e01": {
+                    "subject": "n0",
+                    "object": "n1",
+                    "predicates": ["biolink:related_to"]
+                },
+                "e02": {
+                    "subject": "n0",
+                    "object": "n2",
+                    "predicates": ["biolink:related_to"]
+                },
+                "e03": {
+                    "subject": "n0",
+                    "object": "n3",
+                    "predicates": ["biolink:related_to"]
+                }
+            }
+        }
+    }
+    }
 
 
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    #print('-------------------------')
+    #print(response.show(level=ARAXResponse.DEBUG))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+    #sys.exit(1)
+
+def QGI_test6():
+    # This is to test a three hop query with ends pinned (should result in FET ARAXi commands), and actually run the query
+    input_query_graph = {
+            "message": {
+                "query_graph": {
+          "edges": {
+            "e00": {
+              "object": "n01",
+              "subject": "n00"
+            },
+            "e01": {
+              "object": "n02",
+              "subject": "n01"
+            },
+            "e02": {
+              "object": "n03",
+              "subject": "n02"
+            }
+          },
+          "nodes": {
+            "n00": {
+              "categories": [
+                "biolink:ChemicalSubstance"
+              ],
+              "ids": [
+                "DRUGBANK:DB00150"
+              ]
+            },
+            "n01": {
+              "categories": [
+                "biolink:Protein"
+              ]
+            },
+            "n02": {
+              "categories": [
+                "biolink:MolecularActivity"
+              ]
+            },
+            "n03": {
+              "categories": [
+                "biolink:ChemicalSubstance"
+              ],
+              "ids": [
+                "KEGG.COMPOUND:C02700"
+              ]
+            }
+          }
+        }
+
+    }
+    }
+
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    #print('-------------------------')
+    #print(response.show(level=ARAXResponse.DEBUG))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+
+    #### Actually run the query
+    from ARAX_query import ARAXQuery
+    import ast
+    araxq = ARAXQuery()
+    # Run the query
+    araxq.query({**input_query_graph, "operations": {"actions":araxi_commands}})
+    # unpack the response
+    response = araxq.response
+    envelope = response.envelope
+    message = envelope.message  # overrides the current message
+    envelope.status = response.error_code
+    envelope.description = response.message
+    # return the message ID
+    print(f"Returned response id: {envelope.id}")
+    print('-------------------------')
+    # print the whole message
+    #print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+    # save message to file (since I can't get the UI working locally for some reason)
+    with open('QGI_test6.json', 'w', encoding='utf-8') as f:
+        json.dump(ast.literal_eval(repr(envelope)), f, ensure_ascii=False, indent=4)
+
+def QGI_test7():
+    # This is to test a three hop query with one end pinned (should result in FET ARAXi commands), and actually run the query
+    input_query_graph = {
+        "message": {
+            "query_graph": {
+                "edges": {
+                    "e00": {
+                        "object": "n01",
+                        "subject": "n00"
+                    },
+                    "e01": {
+                        "object": "n02",
+                        "subject": "n01"
+                    },
+                    "e02": {
+                        "object": "n03",
+                        "subject": "n02"
+                    }
+                },
+                "nodes": {
+                    "n00": {
+                        "categories": [
+                            "biolink:ChemicalSubstance"
+                        ],
+                        "ids": [
+                            "DRUGBANK:DB00150"
+                        ]
+                    },
+                    "n01": {
+                        "categories": [
+                            "biolink:Protein"
+                        ]
+                    },
+                    "n02": {
+                        "categories": [
+                            "biolink:MolecularActivity"
+                        ]
+                    },
+                    "n03": {
+                        "categories": [
+                            "biolink:ChemicalSubstance"
+                        ]
+                    }
+                }
+            }
+
+        }
+    }
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    # print('-------------------------')
+    # print(response.show(level=ARAXResponse.DEBUG))
+    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+
+    #### Actually run the query
+    from ARAX_query import ARAXQuery
+    import ast
+    araxq = ARAXQuery()
+    # Run the query
+    araxq.query({**input_query_graph, "operations": {"actions": araxi_commands}})
+    # unpack the response
+    response = araxq.response
+    envelope = response.envelope
+    message = envelope.message  # overrides the current message
+    envelope.status = response.error_code
+    envelope.description = response.message
+    # return the message ID
+    print(f"Returned response id: {envelope.id}")
+    print('-------------------------')
+    # print the whole message
+    # print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+    # save message to file (since I can't get the UI working locally for some reason)
+    with open('QGI_test7.json', 'w', encoding='utf-8') as f:
+        json.dump(ast.literal_eval(repr(envelope)), f, ensure_ascii=False, indent=4)
 ##########################################################################################
 def main():
 
@@ -541,6 +792,12 @@ def main():
         QGI_test3()
     elif params.test_number[0] == '4':
         QGI_test4()
+    elif params.test_number[0] == '5':
+        QGI_test5()
+    elif params.test_number[0] == '6':
+        QGI_test6()
+    elif params.test_number[0] == '7':
+        QGI_test7()
     else:
         QGI_test1()
 

@@ -279,7 +279,6 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     """,
                 "parameters": {
                     "edge_attribute": self.edge_attribute_info,
-                    "type": self.type_info,
                     "direction": self.direction_stats_info,
                     "threshold": self.threshold_stats_info_std_dev,
                     "top": self.top_info,
@@ -317,7 +316,6 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     """,
                 "parameters": {
                     "edge_attribute": self.edge_attribute_info,
-                    "type": self.type_info,
                     "direction": self.direction_stats_info,
                     "threshold": self.threshold_stats_info_percentile,
                     "top": self.top_info,
@@ -355,9 +353,8 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     """,
                 "parameters": {
                     "edge_attribute": self.edge_attribute_info,
-                    "type": self.type_info,
                     "direction": self.direction_stats_info,
-                    "threshold": self.threshold_stats_info_n,
+                    "n": self.threshold_stats_info_n,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_key": self.qnode_key_info
@@ -473,6 +470,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                     error_code="UnknownParameter")
             elif item not in allowable_parameters[key]:
                 if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
+                    return
+                elif any([type(x) == int for x in allowable_parameters[key]]):
                     return
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.warning(
@@ -1107,7 +1106,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             allowable_parameters = {'action': {'remove_edges_by_top_n'},
                                     'edge_attribute': known_attributes,
                                     'direction': {'above', 'below'},
-                                    'threshold': {float()},
+                                    'n': {int()},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
@@ -1116,7 +1115,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             allowable_parameters = {'action': {'remove_edges_by_top_n'},
                                     'edge_attribute': {'an edge attribute name'},
                                     'direction': {'above', 'below'},
-                                    'threshold': {'a floating point number'},
+                                    'n': {'an integer'},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_key':{'a specific query node id to remove'}
@@ -1148,14 +1147,17 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         supplied_direction = None
         supplied_top = None
 
+        if 'n' in edge_params:
+            edge_params['threshold'] = edge_params['n']
+
         if 'threshold' in edge_params:
             try:
-                edge_params['threshold'] = float(edge_params['threshold'])
+                edge_params['threshold'] = int(edge_params['threshold'])
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"parameter 'threshold' must be a float")
+                self.response.error(f"parameter 'n' must be an integer")
             if self.response.status != 'OK':
                 return self.response
             supplied_threshhold = edge_params['threshold']

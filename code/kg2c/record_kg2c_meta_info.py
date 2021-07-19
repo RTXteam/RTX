@@ -12,12 +12,8 @@ import pickle
 import sqlite3
 import time
 from collections import defaultdict
-from datetime import datetime
-from typing import Dict, Set, Tuple, DefaultDict
+from typing import Dict, Set
 
-import requests
-from treelib import Tree
-import yaml
 
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
 
