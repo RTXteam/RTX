@@ -300,7 +300,7 @@ def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -
         if canonical_curies_dict is not None:
             unrecognized_curies = {input_curie for input_curie in canonical_curies_dict if not canonical_curies_dict.get(input_curie)}
             if unrecognized_curies:
-                log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+                log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
             return canonical_curies_dict
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
@@ -324,7 +324,7 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
             recognized_input_curies = {input_curie for input_curie in canonical_curies_dict if canonical_curies_dict.get(input_curie)}
             unrecognized_curies = set(curies).difference(recognized_input_curies)
             if unrecognized_curies:
-                log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+                log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
             canonical_curies = {canonical_curies_dict[recognized_curie].get('preferred_curie') for recognized_curie in recognized_input_curies}
             # Include any original curies we weren't able to find a canonical version for
             canonical_curies.update(unrecognized_curies)
@@ -346,7 +346,7 @@ def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) ->
         recognized_input_curies = {input_curie for input_curie in canonical_curies_dict if canonical_curies_dict.get(input_curie)}
         unrecognized_curies = set(curies).difference(recognized_input_curies)
         if unrecognized_curies:
-            log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+            log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
         preferred_categories = {canonical_curies_dict[recognized_curie].get('preferred_category')
                                 for recognized_curie in recognized_input_curies}
         if preferred_categories:
