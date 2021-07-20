@@ -80,6 +80,7 @@ The `kg2_ids` property captures the IDs of the edges in KG2pre that this KG2c ed
             1. And configure it: `aws configure`
     1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
         1. Create a copy of `configv2.json` that contains the proper secrets for your own KG2pre endpoint
+1. Make sure you have the latest code from whatever branch you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
 1. Locally modify `kg2c_config.json` (in `RTX/code/kg2c/`) for your particular needs. Adjust the following slots:
     - `kg2_version`: Should be the name of the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
     - `kg2_neo4j_endpoint`: Should point to the correct endpoint for your specified KG2pre version
@@ -98,8 +99,8 @@ In the end, KG2c will be created and stored in multiple file formats, including 
 
 ### Build only an ARAX NodeSynonymizer
 
-If you want to build _only_ an ARAX NodeSynonymizer from your KG2 version, you'll still need to do steps 1 and 2 
-in the above section, but instead of step 3, run the following command:
+If you want to build _only_ an ARAX NodeSynonymizer from your KG2 version, follow the same steps as in the [above section](#Build KG2canonicalized),
+but instead of step 4, run the following command:
 
 ```
 python3 RTX/code/kg2c/build_kg2c.py --synonymizeronly
