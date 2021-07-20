@@ -41,7 +41,7 @@ KG2canonicalized (KG2c) is a lightweight version of KG2 in which synonymous node
 ```
 The node `id` is the 'preferred' curie for the group of synonymous nodes this KG2c node represents (according to the ARAX `NodeSynonymizer`). Similarly, the node `category` and `name` are the 'preferred' category/name, according to the `NodeSynonymizer`.
 
-In the Neo4j instantiation of KG2c (see [below section](#Host KG2canonicalized in Neo4j) for how to host KG2c in Neo4j), nodes are labeled with their `expanded_categories`.
+In the Neo4j instantiation of KG2c (see [below section](#host-kg2canonicalized-in-neo4j) for how to host KG2c in Neo4j), nodes are labeled with their `expanded_categories`.
 
 ###### Example KG2c edge:
 ```
@@ -99,7 +99,7 @@ In the end, KG2c will be created and stored in multiple file formats, including 
 
 ### Build only an ARAX NodeSynonymizer
 
-If you want to build _only_ an ARAX NodeSynonymizer from your KG2 version, follow the same steps as in the [above section](#Build KG2canonicalized),
+If you want to build _only_ an ARAX NodeSynonymizer from your KG2 version, follow the same steps as in the [above section](#build-kg2canonicalized),
 but instead of step 4, run the following command:
 
 ```
