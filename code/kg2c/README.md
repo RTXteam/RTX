@@ -96,6 +96,23 @@ The `kg2_ids` property captures the IDs of the edges in KG2pre that this KG2c ed
 
 In the end, KG2c will be created and stored in multiple file formats, including TSVs ready for import into Neo4j.
 
+### Build only an ARAX NodeSynonymizer
+
+If you want to build _only_ an ARAX NodeSynonymizer from your KG2 version, you'll still need to do steps 1 and 2 
+in the above section, but instead of step 3, run the following command:
+
+```
+python3 RTX/code/kg2c/build_kg2c.py --synonymizeronly
+```
+
+This will build the synonymizer from the KG2pre specified in your `kg2c_config.json` and then halt before building
+a KG2c. This can be very useful when debugging conflations or other synonymization issues. In particular, after your
+synonymizer build is done, you may want to inspect the artifact located at `RTX/code/ARAX/NodeSynonymizer/problems.tsv`
+and compare it to that of previous synonymizer builds.
+
+If you build a synonymizer and then decide you want to move forward with a KG2c build using it, you can simply set 
+`build_synonymizer` to `false` in `kg2c_config.json` and then run `python3 RTX/code/kg2c/build_kg2c.py`.
+
 ### Host KG2canonicalized in Neo4j
 
 These instructions assume Neo4j is not already installed and that you are hosting Neo4j on an AWS instance.
