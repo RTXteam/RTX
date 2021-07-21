@@ -706,7 +706,7 @@ class COHDQuerier:
                 omop_pairs = [f"{omop1}_{omop2}" for (omop1, omop2) in itertools.product(source_qnode_omop_ids[source_preferred_key], target_qnode_omop_ids[target_preferred_key])]
 
                 if len(omop_pairs) != 0:
-                    res = self.cohdIndex.get_chi_square(concept_id_pair=omop_pairs, domain="", dataset_id=3)  # use the hierarchical dataset
+                    res = self.cohdindex.get_chi_square(concept_id_pair=omop_pairs, domain="", dataset_id=3)  # use the hierarchical dataset
                     if len(res) != 0:
                         minimum_pvalue = res[0]['p-value']  # the result returned from get_chi_square was sorted by ascending order
                         value = minimum_pvalue
