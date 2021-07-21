@@ -3,9 +3,7 @@
 This script creates a canonicalized version of KG2 stored in various file formats, including TSVs ready for import
 into Neo4j. Files are created in the directory this script is in. It relies on the options you specify in
 kg2c_config.json; in particular, the KG2c will be built off of the KG2 endpoint you specify in that config file.
-The 'synonymizeronly' flag allows you to build a node synonymizer but not a KG2c (this is useful if you want to
-inspect artifacts to make sure the synonymizer/KG2 look good before building a KG2c from them).
-Usage: python3 build_kg2c.py [--test] [--synonymizeronly]
+Usage: python3 build_kg2c.py [--test]
 """
 import argparse
 import logging
@@ -65,35 +63,51 @@ def main():
     # Grab any parameters passed to this script
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--test", dest="test", action='store_true', default=False)
-    arg_parser.add_argument("--synonymizeronly", dest="synonymizer_only", action='store_true', default=False)
     args = arg_parser.parse_args()
 
     # Load the KG2c config file
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
-    kg2_version = kg2c_config_info["kg2_version"]
-    kg2_endpoint = kg2c_config_info["kg2_neo4j_endpoint"]
+    kg2_version = kg2c_config_info["kg2_pre_version"]
+    kg2_endpoint = kg2c_config_info["kg2_pre_neo4j_endpoint"]
     biolink_version = kg2c_config_info["biolink_version"]
-    upload_to_s3 = kg2c_config_info["upload_to_s3"]
-    upload_to_arax_ncats_io = kg2c_config_info["upload_artifacts_to_arax.ncats.io"]
-    build_synonymizer = kg2c_config_info["build_synonymizer"]
-    synonymizer_name = kg2c_config_info["synonymizer_name"]
+    build_kg2c = kg2c_config_info["kg2c"]["build"]
+    upload_to_s3 = kg2c_config_info["kg2c"]["upload_to_s3"]
+    build_synonymizer = kg2c_config_info["synonymizer"]["build"]
+    synonymizer_name = kg2c_config_info["synonymizer"]["name"]
+    upload_to_arax_ncats_io = kg2c_config_info["synonymizer"]["upload_artifacts_to_arax.ncats.io"]
+    upload_directory = kg2c_config_info["synonymizer"]["upload_directory"]
     logging.info(f"KG2 version to use is {kg2_version}")
     logging.info(f"Biolink model version to use is {biolink_version}")
+    # Make sure synonymizer settings are valid
+    if build_synonymizer and not args.test:
+        if not synonymizer_name:
+            raise ValueError(f"You must specify the name to give the new synonymizer in kg2c_config.json.")
+        if not upload_directory:
+            raise ValueError(f"You must specify the path of the directory on arax.ncats.io to upload synonymizer "
+                             f"artifacts to in kg2c_config.json.")
+    else:
+        synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
+        synonymizer_file = pathlib.Path(f"{synonymizer_dir}/{synonymizer_name}")
+        if not synonymizer_name:
+            raise ValueError(f"You must specify the name of the synonymizer to use in kg2c_config.json since you are "
+                             f"not building a new synonymizer.")
+        elif not synonymizer_file.exists():
+            raise ValueError(f"The synonymizer specified in kg2c_config.json does not exist in {synonymizer_dir}. You "
+                             f"must put a copy of it there or use a different synonymizer.")
 
     # Set up an RTX config_local.json file that points to the right KG2 and synonymizer
     _setup_rtx_config_local(kg2_endpoint, synonymizer_name)
 
     # Build a new node synonymizer, if we're supposed to
-    if (build_synonymizer and not args.test) or args.synonymizer_only:
+    if build_synonymizer and not args.test:
         logging.info("Building node synonymizer off of specified KG2..")
         subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/build-synonymizer.sh", synonymizer_name])
-        if upload_to_arax_ncats_io and not args.test:
-            remote_path = f"/data/orangeboard/databases/KG{kg2_version}/synonymizer"
-            subprocess.call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", remote_path])
+        if upload_to_arax_ncats_io:
+            subprocess.call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", upload_directory])
 
     # Actually build KG2c
-    if not args.synonymizer_only:
+    if build_kg2c:
         logging.info("Creating KG2c files..")
         create_kg2c_files(args.test)
         logging.info("Recording meta KG info..")

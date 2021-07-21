@@ -80,19 +80,22 @@ The `kg2_ids` property captures the IDs of the edges in KG2pre that this KG2c ed
             1. And configure it: `aws configure`
     1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
         1. Create a copy of `configv2.json` that contains the proper secrets for your own KG2pre endpoint
-1. Make sure you have the latest code from whatever branch you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
-1. Locally modify `kg2c_config.json` (in `RTX/code/kg2c/`) for your particular needs. Adjust the following slots:
-    - `kg2_version`: Should be the name of the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
-    - `kg2_neo4j_endpoint`: Should point to the correct endpoint for your specified KG2pre version
+1. Make sure you have the **latest code** from whatever branch you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
+1. Locally modify the KG2c build **config file** (`RTX/code/kg2c/kg2c_config.json`) for your particular needs:
+    - `kg2_pre_version`: Should be the name of the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
+    - `kg2_pre_neo4j_endpoint`: Should point to the correct endpoint for your specified KG2pre version
     - `biolink_version`: Should match the Biolink version used by the KG2pre you specified (e.g., 1.8.1)
-    - `build_synonymizer`: Set this to true if you want to build a **new** synonymizer (from your specified KG2pre version), false otherwise
-    - `synonymizer_name`: The name of the synonymizer to use (if you're building a new synonymizer, it will be given this name)
-        - NOTE: If `build_synonymizer` is set to `false`, you **must** ensure that a synonymizer with the name specified in `synonymizer_name` already exists in the `RTX/code/ARAX/NodeSynonymizer` directory in your clone of the repo
-    - `upload_to_s3`: Indicates whether you want the final output KG2c files (JSON and a tarball of TSVs) to automatically be uploaded to the KG2 S3 bucket
-    - `upload_artifacts_to_arax.ncats.io`: Indicates whether you want the artifacts of the `NodeSynonymizer` build to automatically be uploaded to `arax.ncats.io`
-        - NOTE: If you set this slot to `true`, before starting the KG2c build, create a `databases/` directory for your KG2 version on `arax.ncats.io` if one doesn't already exist (e.g., `/translator/data/orangeboard/databases/KG2.6.7`) and make sure it has a subdirectory called `synonymizer` (e.g., `/translator/data/orangeboard/databases/KG2.6.7/synonymizer`)
-    - `use_nlp_to_choose_descriptions`: This should generally be set to `true`, unless you're doing a 'debugging' build that doesn't involve debugging of node descriptions. In that case you may want to set this to `false` because it will shave a few hours off the build time. (When `true`, an NLP method will be used to choose the best node descriptions; when `false`, the longest description under a certain limit will be chosen.)
-1. Then build KG2c (should take ~200GB of RAM and 2-10 hours depending on your settings in `kg2c_config.json`):
+    - Under the `kg2c` slot:
+        - `build`: Specify whether you want a KG2c to be built (sometimes it can be useful to build only a synonymizer and not a KG2c).
+        - `use_nlp_to_choose_descriptions`: This should generally be set to `true`, unless you're doing a 'debugging' build that doesn't involve debugging of node descriptions. In that case you may want to set this to `false` because it will shave a few hours off the build time. (When `true`, an NLP method will be used to choose the best node descriptions; when `false`, the longest description under a certain limit will be chosen.)
+        - `upload_to_s3`: Indicates whether you want the final output KG2c files (JSON and a tarball of TSVs) to automatically be uploaded to the KG2 S3 bucket (this should generally be `true` unless you're doing a 'debugging' build)
+    - Under the `synonymizer` slot:
+        - `build`: Set this to true if you want to build a **new** synonymizer (from your specified KG2pre version), false otherwise
+        - `name`: The name of the synonymizer to use (if you're building a new synonymizer, it will be given this name)
+            - NOTE: If you're not building a new synonymizer, you must ensure that a synonymizer with the name specified in this slot already exists in the `RTX/code/ARAX/NodeSynonymizer` directory in your clone of the repo
+        - `upload_artifacts_to_arax.ncats.io`: Indicates whether you want the artifacts of the `NodeSynonymizer` build to automatically be uploaded to `arax.ncats.io`
+        - `upload_directory`: The path to the directory on arax.ncats.io the synonymizer artifacts should be uplaoded to (e.g., `"/translator/data/orangeboard/databases/KG2.6.7/synonymizer"`)
+1. Then do the actual build (should take ~200GB of RAM and 2-11 hours depending on your settings in `kg2c_config.json`):
     - `python3 RTX/code/kg2c/build_kg2c.py`
 
 In the end, KG2c will be created and stored in multiple file formats, including TSVs ready for import into Neo4j.
@@ -100,19 +103,19 @@ In the end, KG2c will be created and stored in multiple file formats, including 
 ### Build only an ARAX NodeSynonymizer
 
 If you want to build _only_ an ARAX NodeSynonymizer from your KG2 version, follow the same steps as in the [above section](#build-kg2canonicalized),
-but instead of step 4, run the following command:
+simply making sure to set the `kg2c` --> `build` slot in the config file to `false` and the `synonymizer` --> `build` slot to `true`.
 
-```
-python3 RTX/code/kg2c/build_kg2c.py --synonymizeronly
-```
-
-This will build the synonymizer from the KG2pre specified in your `kg2c_config.json` and then halt before building
+This will build a synonymizer from the KG2pre specified in your `kg2c_config.json` and then halt before building
 a KG2c. This can be very useful when debugging conflations or other synonymization issues. In particular, after your
 synonymizer build is done, you may want to inspect the artifact located at `RTX/code/ARAX/NodeSynonymizer/problems.tsv`
 and compare it to that of previous synonymizer builds.
 
-If you build a synonymizer and then decide you want to move forward with a KG2c build using it, you can simply set 
-`build_synonymizer` to `false` in `kg2c_config.json` and then run `python3 RTX/code/kg2c/build_kg2c.py`.
+If you build a synonymizer and then decide you want to move forward with a KG2c build using it, just adjust your
+config file once again:
+* Set the `kg2c` --> `build` slot to `true`
+* Set the `synonymizer` --> `build` slot to `false`
+
+And then once again run `python3 RTX/code/kg2c/build_kg2c.py`.
 
 ### Host KG2canonicalized in Neo4j
 

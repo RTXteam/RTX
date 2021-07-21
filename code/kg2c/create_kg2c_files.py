@@ -377,7 +377,7 @@ def create_kg2c_files(is_test=False):
     # Create a node containing information about this KG2C build
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
-    kg2_version = kg2c_config_info.get("kg2_version")
+    kg2_version = kg2c_config_info.get("kg2_pre_version")
     biolink_version = kg2c_config_info.get("biolink_version")
     description_dict = {"kg2_version": kg2_version,
                         "biolink_version": biolink_version,
@@ -398,8 +398,7 @@ def create_kg2c_files(is_test=False):
     canonicalized_nodes_dict[kg2c_build_node['id']] = kg2c_build_node
 
     # Choose best descriptions using Chunyu's NLP-based method
-    use_nlp_to_choose_descriptions = kg2c_config_info.get("use_nlp_to_choose_descriptions")
-    description_method = "nlp" if use_nlp_to_choose_descriptions else "length"
+    use_nlp_to_choose_descriptions = kg2c_config_info["kg2c"].get("use_nlp_to_choose_descriptions")
     node_ids = list(canonicalized_nodes_dict)
     description_lists = [canonicalized_nodes_dict[node_id]["descriptions_list"] for node_id in node_ids]
     num_cpus = os.cpu_count()
