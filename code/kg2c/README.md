@@ -94,7 +94,7 @@ The `kg2_ids` property captures the IDs of the edges in KG2pre that this KG2c ed
         - `name`: The name of the synonymizer to use (if you're building a new synonymizer, it will be given this name)
             - NOTE: If you're not building a new synonymizer, you must ensure that a synonymizer with the name specified in this slot already exists in the `RTX/code/ARAX/NodeSynonymizer` directory in your clone of the repo
         - `upload_artifacts_to_arax.ncats.io`: Indicates whether you want the artifacts of the `NodeSynonymizer` build to automatically be uploaded to `arax.ncats.io`
-        - `upload_directory`: The path to the directory on arax.ncats.io the synonymizer artifacts should be uplaoded to (e.g., `"/translator/data/orangeboard/databases/KG2.6.7/synonymizer"`)
+        - `upload_directory`: The path to the directory on `arax.ncats.io` the synonymizer artifacts should be uploaded to (e.g., `"/translator/data/orangeboard/databases/KG2.6.7/synonymizer"`). Note that this directory must already exist on `arax.ncats.io`.
 1. Then do the actual build (should take ~200GB of RAM and 2-11 hours depending on your settings in `kg2c_config.json`):
     - `python3 RTX/code/kg2c/build_kg2c.py`
 
