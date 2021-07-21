@@ -300,7 +300,7 @@ def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -
         if canonical_curies_dict is not None:
             unrecognized_curies = {input_curie for input_curie in canonical_curies_dict if not canonical_curies_dict.get(input_curie)}
             if unrecognized_curies:
-                log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+                log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
             return canonical_curies_dict
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
@@ -324,7 +324,7 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
             recognized_input_curies = {input_curie for input_curie in canonical_curies_dict if canonical_curies_dict.get(input_curie)}
             unrecognized_curies = set(curies).difference(recognized_input_curies)
             if unrecognized_curies:
-                log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+                log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
             canonical_curies = {canonical_curies_dict[recognized_curie].get('preferred_curie') for recognized_curie in recognized_input_curies}
             # Include any original curies we weren't able to find a canonical version for
             canonical_curies.update(unrecognized_curies)
@@ -346,7 +346,7 @@ def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) ->
         recognized_input_curies = {input_curie for input_curie in canonical_curies_dict if canonical_curies_dict.get(input_curie)}
         unrecognized_curies = set(curies).difference(recognized_input_curies)
         if unrecognized_curies:
-            log.warning(f"NodeSynonymizer did not return canonical info for: {unrecognized_curies}")
+            log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
         preferred_categories = {canonical_curies_dict[recognized_curie].get('preferred_category')
                                 for recognized_curie in recognized_input_curies}
         if preferred_categories:
@@ -527,7 +527,9 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
         "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
         "CHP": "http://chp.thayer.dartmouth.edu",
-        "COHD": "http://tr-kp-clinical.ncats.io/api"
+        "COHD": "http://tr-kp-clinical.ncats.io/api",
+        "ICEES-DILI": "https://icees.renci.org:16341",
+        "ICEES-Asthma": "https://icees.renci.org:16339"
     }
     return endpoint_map.get(kp_name)
 
@@ -546,7 +548,9 @@ def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
         "ClinicalRiskKP": "infores:biothings-multiomics-clinical-risk",
         "WellnessKP": "infores:biothings-multiomics-wellness",
         "DrugResponseKP": "infores:biothings-multiomics-drug-response",
-        "TumorGeneMutationKP": "infores:biothings-tcga-mut-freq"
+        "TumorGeneMutationKP": "infores:biothings-tcga-mut-freq",
+        "ICEES-DILI": "infores:icees",
+        "ICEES-Asthma": "infores:icees"
     }
     return endpoint_map.get(kp_name, kp_name)
 
@@ -701,6 +705,24 @@ def get_kp_command_definitions() -> dict:
                            "a query graph; it returns edges between nodes with an NGD value below a certain "
                            "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
                            "configurable/smarter in the future.",
+            "parameters": {
+                "edge_key": edge_key_parameter_info,
+                "node_key": node_key_parameter_info
+            }
+        },
+        "ICEES-DILI": {
+            "dsl_command": "expand(kp=ICEES-DILI)",
+            "description": "This command reaches out to the ICEES knowledge provider's DILI instance to find "
+                           "all bioentity subpaths that satisfy the query graph.",
+            "parameters": {
+                "edge_key": edge_key_parameter_info,
+                "node_key": node_key_parameter_info
+            }
+        },
+        "ICEES-Asthma": {
+            "dsl_command": "expand(kp=ICEES-Asthma)",
+            "description": "This command reaches out to the ICEES knowledge provider's Asthma instance to find "
+                           "all bioentity subpaths that satisfy the query graph.",
             "parameters": {
                 "edge_key": edge_key_parameter_info,
                 "node_key": node_key_parameter_info

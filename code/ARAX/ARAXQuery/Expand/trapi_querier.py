@@ -232,8 +232,8 @@ class TRAPIQuerier:
         if self.kp_name == "RTX-KG2":
             return 600
         elif self.user_specified_kp:
-            return 120
+            return 300
         elif num_total_curies < 30:
-            return 15
+            return 30
         else:
             return 120
