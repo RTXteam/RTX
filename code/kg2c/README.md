@@ -82,8 +82,8 @@ The `kg2_ids` property captures the IDs of the edges in KG2pre that this KG2c ed
         1. Create a copy of `configv2.json` that contains the proper secrets for your own KG2pre endpoint
 1. Make sure you have the **latest code** from whatever branch you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
 1. Locally modify the KG2c build **config file** (`RTX/code/kg2c/kg2c_config.json`) for your particular needs:
-    - `kg2_pre_version`: Should be the name of the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
-    - `kg2_pre_neo4j_endpoint`: Should point to the correct endpoint for your specified KG2pre version
+    - `kg2pre_version`: Should be the name of the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
+    - `kg2pre_neo4j_endpoint`: Should point to the correct endpoint for your specified KG2pre version
     - `biolink_version`: Should match the Biolink version used by the KG2pre you specified (e.g., 1.8.1)
     - Under the `kg2c` slot:
         - `build`: Specify whether you want a KG2c to be built (sometimes it can be useful to build only a synonymizer and not a KG2c).

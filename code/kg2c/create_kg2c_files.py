@@ -377,7 +377,7 @@ def create_kg2c_files(is_test=False):
     # Create a node containing information about this KG2C build
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
-    kg2_version = kg2c_config_info.get("kg2_pre_version")
+    kg2_version = kg2c_config_info.get("kg2pre_version")
     biolink_version = kg2c_config_info.get("biolink_version")
     description_dict = {"kg2_version": kg2_version,
                         "biolink_version": biolink_version,

@@ -1,6 +1,6 @@
 {
-  "kg2_pre_version": "2.6.7",
-  "kg2_pre_neo4j_endpoint": "kg2endpoint-kg2-6-7.rtx.ai",
+  "kg2pre_version": "2.6.7",
+  "kg2pre_neo4j_endpoint": "kg2endpoint-kg2-6-7.rtx.ai",
   "biolink_version": "1.8.1",
   "kg2c": {
     "build": true,

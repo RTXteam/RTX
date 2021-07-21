@@ -68,8 +68,8 @@ def main():
     # Load the KG2c config file
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
-    kg2_version = kg2c_config_info["kg2_pre_version"]
-    kg2_endpoint = kg2c_config_info["kg2_pre_neo4j_endpoint"]
+    kg2_version = kg2c_config_info["kg2pre_version"]
+    kg2_endpoint = kg2c_config_info["kg2pre_neo4j_endpoint"]
     biolink_version = kg2c_config_info["biolink_version"]
     build_kg2c = kg2c_config_info["kg2c"]["build"]
     upload_to_s3 = kg2c_config_info["kg2c"]["upload_to_s3"]
