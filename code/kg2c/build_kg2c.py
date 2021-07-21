@@ -104,7 +104,7 @@ def main():
         logging.info("Building node synonymizer off of specified KG2..")
         subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/build-synonymizer.sh", synonymizer_name])
         if upload_to_arax_ncats_io:
-            subprocess.call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", upload_directory])
+            subprocess.call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", upload_directory, synonymizer_name])
 
     # Actually build KG2c
     if build_kg2c:
