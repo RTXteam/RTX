@@ -70,18 +70,32 @@ def _create_qedges(qg_edge_info: Iterable[Dict[str, any]]) -> Dict[str, QEdge]:
                                           object=qedge_info['object']) for qedge_info in qg_edge_info}
 
 
-def _print_results_for_debug(results: List[Result]):
+def _print_results_for_debug(message: Message):
     print()
-    for result in results:
+    qg = message.query_graph
+    kg = message.knowledge_graph
+    for result in message.results:
         print(result.essence)
         for qnode_key, node_bindings_list in result.node_bindings.items():
-            print(f" {qnode_key}:")
+            qnode = qg.nodes[qnode_key]
+            print(f"  qnode {qnode_key}{f' (option group {qnode.option_group_id})' if qnode.option_group_id else ''}:")
             for node_binding in node_bindings_list:
-                print(f"  {node_binding.id}")
+                print(f"    {node_binding.id} {kg.nodes[node_binding.id].name}")
         for qedge_key, edge_bindings_list in result.edge_bindings.items():
-            print(f" {qedge_key}:")
+            qedge = qg.edges[qedge_key]
+            print(f"  qedge {qedge_key}{f' (option group {qedge.option_group_id})' if qedge.option_group_id else ''}:")
             for edge_binding in edge_bindings_list:
-                print(f"  {edge_binding.id}")
+                print(f"    {edge_binding.id}")
+    # Display the query graph
+    import graphviz
+    dot = graphviz.Digraph(comment='QG')
+    for qnode_key, qnode in qg.nodes.items():
+        dot.node(qnode_key, qnode_key if not qnode.option_group_id else f"{qnode_key} (option group {qnode.option_group_id})")
+    for qedge_key, qedge in qg.edges.items():
+        dot.edge(qedge.subject,
+                 qedge.object,
+                 label=qedge_key if not qedge.option_group_id else f"{qedge_key} (option group {qedge.option_group_id})")
+    dot.render("qg.gv", view=True)
 
 
 def _get_result_node_keys_by_qg_key(result: Result) -> Dict[str, Set[str]]:
@@ -97,9 +111,10 @@ def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[ARAXResponse, 
     araxq = ARAXQuery()
     response = araxq.query(query)
     message = araxq.message
-    if response.status != 'OK':
-        if debug:
-            _print_results_for_debug(message.results)
+    if debug:
+        _print_results_for_debug(message)
+        print(response.show(level=response.DEBUG))
+    elif response.status != 'OK':
         print(response.show(level=response.DEBUG))
     return response, message
 
@@ -134,7 +149,7 @@ def _run_resultify_directly(query_graph: QueryGraph,
     resultifier.apply(response, parameters)
     if response.status != 'OK':
         if debug:
-            _print_results_for_debug(message.results)
+            _print_results_for_debug(message)
         print(response.show(level=response.DEBUG))
     return response, message
 
