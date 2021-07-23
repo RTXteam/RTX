@@ -523,8 +523,7 @@ def test_molepro_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-# TODO: Needs to be re-written given new subclass_of reasoning
-@pytest.mark.skip
+@pytest.mark.slow
 def test_exclude_edge_parallel():
     # First run a query without any kryptonite edges to get a baseline
     actions_list = [
@@ -536,9 +535,8 @@ def test_exclude_edge_parallel():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    nodes_used_by_contraindicated_edge = eu.get_node_keys_used_by_edges(edges_by_qg_id["e01"])
-    n01_nodes_contraindicated = set(nodes_by_qg_id["n01"]).intersection(nodes_used_by_contraindicated_edge)
-    assert n01_nodes_contraindicated
+    contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in edges_by_qg_id["e00"].values()}
+    assert contraindicated_pairs
 
     # Then exclude the contraindicated edge and make sure the appropriate nodes are blown away
     actions_list = [
@@ -551,7 +549,8 @@ def test_exclude_edge_parallel():
     ]
     nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
     # None of the contraindicated n01 nodes should appear in the answer this time
-    assert not n01_nodes_contraindicated.intersection(set(nodes_by_qg_id_not["n01"]))
+    final_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in edges_by_qg_id_not["e00"].values()}
+    assert not contraindicated_pairs.intersection(final_pairs)
     assert "e01" not in edges_by_qg_id_not
 
 
