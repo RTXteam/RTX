@@ -90,11 +90,18 @@ def _print_results_for_debug(message: Message):
     import graphviz
     dot = graphviz.Digraph(comment='QG')
     for qnode_key, qnode in qg.nodes.items():
-        dot.node(qnode_key, qnode_key if not qnode.option_group_id else f"{qnode_key} (option group {qnode.option_group_id})")
+        node_id_line = qnode_key if not qnode.option_group_id else f"{qnode_key} (group {qnode.option_group_id})"
+        if qnode.ids:
+            node_details_line = ", ".join(qnode.ids)
+        elif qnode.categories:
+            node_details_line = ", ".join(qnode.categories)
+        else:
+            node_details_line = ""
+        dot.node(qnode_key, f"{node_id_line}\n{node_details_line}")
     for qedge_key, qedge in qg.edges.items():
         dot.edge(qedge.subject,
                  qedge.object,
-                 label=qedge_key if not qedge.option_group_id else f"{qedge_key} (option group {qedge.option_group_id})")
+                 label=qedge_key if not qedge.option_group_id else f"{qedge_key} (group {qedge.option_group_id})")
     dot.render("qg.gv", view=True)
 
 
