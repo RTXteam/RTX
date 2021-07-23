@@ -921,7 +921,7 @@ def _create_result_graphs(kg: KnowledgeGraph,
 
         # Initialize our result graphs if this is our first iteration
         if not result_graphs:
-            log.debug(f"Initiating result graphs with nodes for {current_qnode_key}")
+            log.debug(f"Initiating result graphs with nodes for {current_qnode_key} (is_set={current_qnode.is_set})")
             all_node_keys_in_kg_for_this_qnode_key = kg_node_keys_by_qg_key.get(current_qnode_key)
             # We'll start with one result graph with ALL corresponding nodes in the KG in this spot if is_set=True
             if current_qnode.is_set:
@@ -937,7 +937,7 @@ def _create_result_graphs(kg: KnowledgeGraph,
                     result_graphs.append(new_result_graph)
         # Otherwise fan out our existing result graphs, filling out this qnode spot in them based on prior contents
         else:
-            log.debug(f"Adding a layer to each result graph for qnode {current_qnode_key}")
+            log.debug(f"Adding a layer to each result graph for qnode {current_qnode_key} (is_set={current_qnode.is_set})")
             new_result_graphs = []
             sub_qg_adj_map = _extract_sub_qg_adj_map(qg_adj_map, qnode_keys_already_handled.union({current_qnode_key}))
             for result_graph in result_graphs:
