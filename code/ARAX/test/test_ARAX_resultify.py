@@ -90,7 +90,7 @@ def _print_results_for_debug(message: Message):
     import graphviz
     dot = graphviz.Digraph(comment='QG')
     for qnode_key, qnode in qg.nodes.items():
-        node_id_line = qnode_key if not qnode.option_group_id else f"{qnode_key} (group {qnode.option_group_id})"
+        node_id_line = f"{qnode_key}{f' (group {qnode.option_group_id})' if qnode.option_group_id else ''}"
         if qnode.ids:
             node_details_line = ", ".join(qnode.ids)
         elif qnode.categories:
@@ -101,7 +101,7 @@ def _print_results_for_debug(message: Message):
     for qedge_key, qedge in qg.edges.items():
         dot.edge(qedge.subject,
                  qedge.object,
-                 label=qedge_key if not qedge.option_group_id else f"{qedge_key} (group {qedge.option_group_id})")
+                 label=f"{qedge_key}{f' (NOT)' if qedge.exclude else ''}{f' (group {qedge.option_group_id})' if qedge.option_group_id else ''}\n{', '.join(qedge.predicates) if qedge.predicates else ''}")
     dot.render("qg.gv", view=True)
 
 
@@ -1174,37 +1174,38 @@ def test_issue912_clean_up_kg():
     assert not orphan_edges
 
 
-# TODO: Needs to be rewritten given KG2's new subclass_of reasoning
-@pytest.mark.skip
+@pytest.mark.slow
 def test_issue1119_a():
     # Run a query to identify chemical substances that are both indicated for and contraindicated for our disease
     actions = [
-        "add_qnode(name=DOID:3312, key=n00)",
+        "add_qnode(name=DOID:3312, key=n00, is_set=True)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, key=e01)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, key=e01)",
         "expand(kp=RTX-KG2)",
-        "resultify()"
+        "resultify()",
+        "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert message.results
-    n01_nodes_contraindicated = {node_binding.id for result in message.results for node_binding in result.node_bindings["n01"]}
+    contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in message.knowledge_graph.edges.values()}
 
     # Verify those chemical substances aren't returned when we make the contraindicated_for edge kryptonite
     actions = [
-        "add_qnode(name=DOID:3312, key=n00)",
+        "add_qnode(name=DOID:3312, key=n00, is_set=True)",
         "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=ex0)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, exclude=true, key=ex0)",
         "expand(kp=RTX-KG2)",
-        "resultify()"
+        "resultify()",
+        "return(message=true, store=false)"
     ]
     kryptonite_response, kryptonite_message = _do_arax_query(actions)
     assert kryptonite_response.status == 'OK'
     assert kryptonite_message.results
-    n01_nodes_kryptonite_query = {node_binding.id for result in kryptonite_message.results for node_binding in result.node_bindings["n01"]}
-    assert not n01_nodes_contraindicated.intersection(n01_nodes_kryptonite_query)
+    all_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in kryptonite_message.knowledge_graph.edges.values()}
+    assert not contraindicated_pairs.intersection(all_pairs)
 
 
 @pytest.mark.slow
@@ -1219,7 +1220,8 @@ def test_issue1119_b():
         "add_qnode(categories=biolink:Pathway, key=n03)",
         "add_qedge(subject=n01, object=n03, key=e02, predicates=biolink:participates_in, exclude=true)",
         "expand(kp=RTX-KG2)",
-        "resultify()"
+        "resultify()",
+        "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
@@ -1239,6 +1241,7 @@ def test_issue1119_c():
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:predisposes, option_group_id=1)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
+        "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
@@ -1255,6 +1258,7 @@ def test_issue1119_c():
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
+        "return(message=true, store=false)"
     ]
     response, message_without_option_group = _do_arax_query(actions)
     assert response.status == 'OK'
@@ -1266,6 +1270,7 @@ def test_issue1119_c():
         f"add_qnode(key=n01, ids=[{', '.join([node_key for node_key, node in message.knowledge_graph.nodes.items() if 'n01' in node.qnode_keys])}])",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:predisposes)",
         "expand(kp=RTX-KG2)",
+        "return(message=true, store=false)"
         # Note: skipping resultify here due to issue #1152
     ]
     response, message_option_edge_only = _do_arax_query(actions)
@@ -1286,6 +1291,7 @@ def test_issue1119_d():
         "add_qedge(key=e03, subject=n00, object=n01, exclude=True, predicates=biolink:predisposes)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
+        "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
@@ -1311,6 +1317,7 @@ def test_issue1146_a():
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n0, object_qnode_key=n2)",
         "resultify(debug=true)",
         "filter_results(action=limit_number_of_results, max_results=4)",
+        "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
@@ -1396,7 +1403,8 @@ def test_issue_1446():
         "expand(kp=RTX-KG2)",
         "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
         "resultify()",
-        "filter_results(action=limit_number_of_results, max_results=100)"
+        "filter_results(action=limit_number_of_results, max_results=100)",
+        "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == "OK"

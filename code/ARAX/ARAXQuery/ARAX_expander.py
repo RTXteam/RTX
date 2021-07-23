@@ -653,7 +653,7 @@ class ARAXExpander:
             pruned_organized_kg = QGOrganizedKnowledgeGraph()
             log.error(f"Ran into an issue trying to prune using Resultify: {prune_response.show()}", error_code="PruneError")
 
-        log.debug(f"After pruning, KG counts are: {eu.get_printable_counts_by_qg_id(organized_kg)}")
+        log.debug(f"After pruning, KG counts are: {eu.get_printable_counts_by_qg_id(pruned_organized_kg)}")
         return pruned_organized_kg
 
     @staticmethod
