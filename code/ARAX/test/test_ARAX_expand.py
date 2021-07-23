@@ -188,20 +188,6 @@ def test_single_node_query_with_list():
 
 
 @pytest.mark.slow
-def test_query_that_returns_multiple_provided_bys():
-    actions_list = [
-        "add_qnode(ids=MONDO:0005737, key=n0, categories=biolink:Disease)",
-        "add_qnode(categories=biolink:Protein, key=n1)",
-        "add_qnode(categories=biolink:Disease, key=n2)",
-        "add_qedge(subject=n0, object=n1, key=e0)",
-        "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(kp=RTX-KG2)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.slow
 def test_branched_query():
     actions_list = [
         "add_qnode(key=n00, ids=DOID:0060227)",  # Adams-Oliver
@@ -285,11 +271,11 @@ def test_query_with_curies_on_both_ends():
 @pytest.mark.slow
 def test_query_with_intermediate_curie_node():
     actions_list = [
-        "add_qnode(categories=biolink:Protein, key=n00)",
+        "add_qnode(categories=biolink:Protein, key=n00, is_set=True)",
         "add_qnode(ids=HP:0005110, key=n01)",  # atrial fibrillation
         "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:treats)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
@@ -327,21 +313,6 @@ def test_deduplication_and_self_edges():
     # Check that we don't have any self-edges
     self_edges = [edge for edge in edges_by_qg_id['e00'].values() if edge.subject == edge.object]
     assert not self_edges
-
-
-@pytest.mark.slow
-def test_889_missing_curies():
-    actions_list = [
-        "add_qnode(name=DOID:11830, key=n00)",
-        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:interacts_with)",
-        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
-        "return(message=true, store=false)",
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n02']) > 30
 
 
 @pytest.mark.slow
@@ -560,7 +531,7 @@ def test_exclude_edge_perpendicular():
     # First run a query without any kryptonite edges to get a baseline
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
-        "add_qnode(categories=biolink:Protein, key=n01)",
+        "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
         f"add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
@@ -578,7 +549,7 @@ def test_exclude_edge_perpendicular():
     # Then use a kryptonite edge and make sure the appropriate nodes are blown away
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
-        "add_qnode(categories=biolink:Protein, key=n01)",
+        "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
         f"add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
