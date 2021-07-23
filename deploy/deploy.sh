@@ -14,7 +14,7 @@ export $(egrep -v '^#' .env)
 
 for item in "${toReplace[@]}";
 do
-  sed -I.bak \
+  sed -i.bak \
       -e "s/${item}/${!item}/g" \
       values.yaml
   rm values.yaml.bak
