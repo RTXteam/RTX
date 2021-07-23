@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # Database definition and RTXFeedback class
+from ARAX.ARAXQuery.ARAX_attribute_parser import ARAXAttributeParser
 import sys
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -31,6 +32,7 @@ from jsonschema.exceptions import ValidationError
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
+from ARAX_attribute_parser import ARAXAttributeParser
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
@@ -398,6 +400,10 @@ class ResponseCache:
                         n_edges = len(envelope['message']['knowledge_graph']['edges'])
                     envelope['validation_result']['n_nodes'] = n_nodes
                     envelope['validation_result']['n_edges'] = n_edges
+
+                    #### Count provenance information
+                    attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
+                    envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
 
 
                 return envelope
