@@ -529,12 +529,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     results: List[Result] = []
 
-    # Return empty result list if the KG doesn't fulfill the QG
-    unfulfilled_qnode_keys = set(qg.nodes).difference(kg_node_keys_by_qg_key)
-    unfulfilled_qedge_keys = set(qg.edges).difference(kg_edge_keys_by_qg_key)
-    if unfulfilled_qnode_keys or unfulfilled_qedge_keys or not kg.nodes:
-        log.debug(f"KG does not fulfill the QG. Unfulfilled qnodes: {unfulfilled_qnode_keys}. "
-                  f"Unfulfilled qedges: {unfulfilled_qedge_keys}.")
+    # Return empty result list if have empty KG
+    if not kg.nodes:
+        log.debug(f"KG is empty - no results.")
         return results
 
     # Handle case where QG contains multiple qnodes and no qedges (we'll dump everything in one result)
@@ -569,6 +566,13 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             log.error(f"Required portion of QG is disconnected. This isn't allowed! 'Required' qnode IDs are: "
                       f"{[qnode_key for qnode_key in required_qg.nodes]}", error_code="DisconnectedQG")
             return []
+        # Make sure all required qnodes/qedges are fulfilled
+        unfulfilled_qnode_keys = set(required_qg.nodes).difference(kg_node_keys_by_qg_key)
+        unfulfilled_qedge_keys = set(required_qg.edges).difference(kg_edge_keys_by_qg_key)
+        if unfulfilled_qnode_keys or unfulfilled_qedge_keys:
+            log.debug(f"KG does not fulfill the (required portion of the) QG. Unfulfilled qnodes: {unfulfilled_qnode_keys}. "
+                      f"Unfulfilled qedges: {unfulfilled_qedge_keys}.")
+            return results
         log.info(f"Creating result graphs for required portion of QG")
         result_graphs_required = _create_result_graphs(kg, required_qg, kg_node_keys_by_qg_key,
                                                        edge_keys_by_subject, edge_keys_by_object,

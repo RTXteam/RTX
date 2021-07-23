@@ -1385,5 +1385,23 @@ def test_multi_node_edgeless_qg():
     assert len(message.results) == 1
 
 
+@pytest.mark.slow
+def test_issue_1446():
+    actions = [
+        "add_qnode(ids=HGNC:6284, key=n0, categories=biolink:Gene)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qedge(key=e0,subject=n0,object=n1, predicates=biolink:entity_negatively_regulates_entity)",
+        "add_qedge(key=e1,subject=n0,object=n1, predicates=biolink:decreases_activity_of, option_group_id=1)",
+        "add_qedge(key=e2,subject=n0,object=n1, predicates=biolink:decreases_expression_of, option_group_id=2)",
+        "expand(kp=RTX-KG2)",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=100)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == "OK"
+    assert message.results
+
+
 if __name__ == '__main__':
     pytest.main(['-v', 'test_ARAX_resultify.py'])
