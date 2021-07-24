@@ -58,14 +58,14 @@ class ARAXAttributeParser:
                             sources[f"{value}"] = True
                             label = f"{predicate} --> {attribute['attribute_type_id']} = {value}"
                             if label not in provenance_information['provenance_counts']:
-                                provenance_information['provenance_counts'][label] = 0
-                            provenance_information['provenance_counts'][label] += 1
+                                provenance_information['provenance_counts'][label] = [ predicate, attribute['attribute_type_id'], value, 0 ]
+                            provenance_information['provenance_counts'][label][3] += 1
                             found_provenance = True
                 if not found_provenance:
                     label = f"{predicate} --> no provenance"
                     if label not in provenance_information['provenance_counts']:
-                        provenance_information['provenance_counts'][label] = 0
-                    provenance_information['provenance_counts'][label] += 1
+                        provenance_information['provenance_counts'][label] = [ predicate, '-', 'no provenance', 0 ]
+                    provenance_information['provenance_counts'][label][3] += 1
             provenance_information['n_sources'] = len(sources)
 
         #### Else assume it is objects
