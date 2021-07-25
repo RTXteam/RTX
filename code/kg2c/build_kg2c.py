@@ -79,11 +79,12 @@ def main():
     upload_directory = kg2c_config_info["synonymizer"]["upload_directory"]
     logging.info(f"KG2 version to use is {kg2_version}")
     logging.info(f"Biolink model version to use is {biolink_version}")
+    logging.info(f"Synonymizer to use is {synonymizer_name}")
     # Make sure synonymizer settings are valid
     if build_synonymizer and not args.test:
         if not synonymizer_name:
             raise ValueError(f"You must specify the name to give the new synonymizer in kg2c_config.json.")
-        if not upload_directory:
+        if upload_to_arax_ncats_io and not upload_directory:
             raise ValueError(f"You must specify the path of the directory on arax.ncats.io to upload synonymizer "
                              f"artifacts to in kg2c_config.json.")
     else:
