@@ -55,7 +55,7 @@ function main() {
     document.getElementById("menuapiurl").href = baseAPI + "/ui/";
 
     get_example_questions();
-    load_meta_knowledge_graph(); //load_nodes_and_predicates();
+    load_meta_knowledge_graph();
     populate_dsl_commands();
     display_list('A');
     display_list('B');
@@ -192,6 +192,7 @@ function reset_vars() {
     document.getElementById("result_container").innerHTML = "";
     if (cyobj[0]) {cyobj[0].elements().remove();}
     document.getElementById("summary_container").innerHTML = "";
+    document.getElementById("provenance_container").innerHTML = "";
     document.getElementById("menunummessages").innerHTML = "--";
     document.getElementById("menunummessages").className = "numold menunum";
     document.getElementById("menunumresults").innerHTML = "--";
@@ -930,6 +931,7 @@ function process_ars_message(ars_msg, level) {
 	div2.appendChild(span);
 
 	var div2 = document.createElement("div");
+	div2.id = "arsresultsdiv";
 	div2.className = "status";
 
 	table = document.createElement("table");
@@ -937,7 +939,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges"] ) {
+	for (var head of ["","Agent","Status","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges","Sources"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -1000,6 +1002,11 @@ function process_ars_message(ars_msg, level) {
 
     td = document.createElement("td");
     td.id = "nodedges_"+ars_msg.message;
+    td.style.textAlign = "center";
+    tr.appendChild(td);
+
+    td = document.createElement("td");
+    td.id = "nsources_"+ars_msg.message;
     td.style.textAlign = "center";
     tr.appendChild(td);
 
@@ -1084,9 +1091,82 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 	    if (jsonObj2.validation_result.n_nodes)
 		document.getElementById("nodedges_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.n_nodes+' / '+jsonObj2.validation_result.n_edges;
 
+	    if (jsonObj2.validation_result.provenance_summary) {
+		var html_node = document.getElementById("nsources_"+jsonObj2.araxui_response);
+		html_node.innerHTML = jsonObj2.validation_result.provenance_summary.n_sources;
+
+		if (jsonObj2.validation_result.n_edges > 0) {
+		    var table, tr, td;
+		    html_node.className = "tooltip";
+		    var tnode = document.createElement("span");
+		    tnode.className = 'tooltiptext';
+		    table = document.createElement("table");
+		    table.style.width = "100%";
+		    table.style.borderCollapse = "collapse";
+		    tr = document.createElement("tr");
+		    td = document.createElement("th");
+		    td.colSpan = "4";
+		    td.style.background = "#3d6d98";
+		    td.style.padding = "5px 0px";
+		    td.appendChild(document.createTextNode("Provenance Counts"));
+		    tr.appendChild(td);
+		    table.appendChild(tr);
+		    for (var prov in jsonObj2.validation_result.provenance_summary.provenance_counts) {
+			tr = document.createElement("tr");
+			tr.style.background = "initial";
+			for (var pc of jsonObj2.validation_result.provenance_summary.provenance_counts[prov]) {
+			    td = document.createElement("td");
+			    td.appendChild(document.createTextNode(pc));
+			    tr.appendChild(td);
+			}
+			table.appendChild(tr);
+		    }
+		    tnode.appendChild(table);
+		    html_node.appendChild(tnode);
+		    // trickery to fix FF annoying h-scrollbar issue
+		    tnode.style.visibility = "visible";
+		    if (tnode.scrollWidth > 440)
+			tnode.style.width = tnode.scrollWidth + 15 + "px";
+		    tnode.style.visibility = "";
+
+		    // do predicates
+                    html_node = document.getElementById("nodedges_"+jsonObj2.araxui_response);
+		    html_node.className = "tooltip";
+		    tnode = document.createElement("span");
+		    tnode.className = 'tooltiptext';
+		    table = document.createElement("table");
+		    table.style.width = "100%";
+                    table.style.borderCollapse = "collapse";
+                    tr = document.createElement("tr");
+		    tr.style.background = "initial";
+		    td = document.createElement("th");
+		    td.colSpan = "2";
+                    td.style.background = "#3d6d98";
+		    td.style.padding = "5px 0px";
+		    td.appendChild(document.createTextNode("Predicate Counts"));
+		    tr.appendChild(td);
+		    table.appendChild(tr);
+		    for (var pred in jsonObj2.validation_result.provenance_summary.predicate_counts) {
+			tr = document.createElement("tr");
+                        tr.style.background = "initial";
+			td = document.createElement("td")
+			td.appendChild(document.createTextNode(pred));
+			tr.appendChild(td);
+			td = document.createElement("td");
+			td.appendChild(document.createTextNode(jsonObj2.validation_result.provenance_summary.predicate_counts[pred]));
+			tr.appendChild(td);
+			table.appendChild(tr);
+		    }
+		    tnode.appendChild(table);
+		    html_node.appendChild(tnode);
+		}
+	    }
 	    checkRefreshARS();
 	}
     }
+
+    if (document.getElementById("arsresultsdiv"))
+	document.getElementById("arsresultsdiv").style.height = document.getElementById("arsresultsdiv").scrollHeight + "px";
 
     if (type == "all") {
 	statusdiv.innerHTML += "<br>";
@@ -1333,6 +1413,7 @@ function render_response(respObj,dispjson) {
     else {
         document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
         document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
+	document.getElementById("provenance_container").innerHTML += "<h2>No results...</h2>";
         if (document.getElementById("numresults_"+respObj.araxui_response)) {
 	    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
 	    var nr = document.createElement("span");
@@ -1370,13 +1451,73 @@ function render_response(respObj,dispjson) {
 	table.className = 'sumtab';
 	table.innerHTML = summary_table_html;
         div.appendChild(table);
-
 	div.appendChild(document.createElement("br"));
 
 	document.getElementById("summary_container").appendChild(div);
     }
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
+
+
+    if (respObj.validation_result && respObj.validation_result.provenance_summary) {
+	var div = document.createElement("div");
+	div.className = 'statushead';
+	div.appendChild(document.createTextNode("Provenance Summary"));
+	document.getElementById("provenance_container").appendChild(div);
+
+	div = document.createElement("div");
+	div.className = 'status';
+	div.id = 'provenancediv';
+	div.appendChild(document.createElement("br"));
+
+        var table = document.createElement("table");
+	table.className = 'sumtab';
+        var tr = document.createElement("tr");
+        var td = document.createElement("th");
+	td.colSpan = "4";
+	td.appendChild(document.createTextNode("Provenance Counts: "+respObj.validation_result.provenance_summary["n_sources"]));
+	tr.appendChild(td);
+	table.appendChild(tr);
+	for (var prov in respObj.validation_result.provenance_summary.provenance_counts) {
+	    tr = document.createElement("tr");
+            tr.className = 'hoverable';
+	    for (var pc of respObj.validation_result.provenance_summary.provenance_counts[prov]) {
+		td = document.createElement("td");
+		td.appendChild(document.createTextNode(pc));
+		tr.appendChild(td);
+	    }
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+	div.appendChild(document.createElement("br"));
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+	tr = document.createElement("tr");
+	td = document.createElement("th");
+	td.colSpan = "2";
+	td.appendChild(document.createTextNode("Predicate Counts"));
+	tr.appendChild(td);
+	table.appendChild(tr);
+        for (var pred in respObj.validation_result.provenance_summary.predicate_counts) {
+	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(pred));
+	    tr.appendChild(td);
+	    td = document.createElement("td");
+	    td.appendChild(document.createTextNode(respObj.validation_result.provenance_summary.predicate_counts[pred]));
+	    tr.appendChild(td);
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+	div.appendChild(document.createElement("br"));
+
+	document.getElementById("provenance_container").appendChild(div);
+    }
+    else
+	document.getElementById("provenance_container").innerHTML += "<h2>Provenance information not available for this response</h2>";
+
 
     add_cyto(0);
     if (!UIstate.hasNodeArray)
@@ -1385,7 +1526,7 @@ function render_response(respObj,dispjson) {
     statusdiv.appendChild(document.createElement("br"));
     var nr = document.createElement("span");
     nr.className = 'essence';
-    nr.appendChild(document.createTextNode("Click on Results, Summary, or Knowledge Graph links on the left to explore results."));
+    nr.appendChild(document.createTextNode("Click on Results, Summary, Provenance, or Knowledge Graph links on the left to explore results."));
     statusdiv.appendChild(nr);
     statusdiv.appendChild(document.createElement("br"));
     sesame('openmax',statusdiv);
@@ -2997,7 +3138,7 @@ function load_meta_knowledge_graph() {
     fetch(baseAPI + "/meta_knowledge_graph")
 	.then(response => {
 	    if (response.ok) return response.json();
-	    else throw new Error('Something went wrong');
+	    else throw new Error('Something went wrong with /meta_knowledge_graph');
 	})
         .then(data => {
 	    //add_to_dev_info("META_KNOWLEDGE_GRAPH",data);
@@ -3029,64 +3170,6 @@ function load_meta_knowledge_graph() {
 			delete predicates[s][o];
 
 	    opt = document.createElement('option');
-	    opt.value = 'NONSPECIFIC';
-	    opt.innerHTML = "Unspecified/Non-specific";
-	    allnodes_node.appendChild(opt);
-
-            opt = document.createElement('option');
-	    opt.id = 'nodesetA';
-	    opt.value = 'LIST_A';
-	    opt.title = "Set of Nodes from List [A]";
-	    opt.innerHTML = "List [A]";
-	    allnodes_node.appendChild(opt);
-
-            opt = document.createElement('option');
-	    opt.id = 'nodesetB';
-	    opt.value = 'LIST_B';
-            opt.title = "Set of Nodes from List [B]";
-	    opt.innerHTML = "List [B]";
-	    allnodes_node.appendChild(opt);
-	})
-        .catch(error => {
-	    var opt = document.createElement('option');
-	    opt.value = '';
-	    opt.style.borderBottom = "1px solid black";
-	    opt.innerHTML = "-- Error Loading Node Types --";
-	    allnodes_node.appendChild(opt);
-        });
-}
-
-
-function load_nodes_and_predicates() {
-    var allnodes_node = document.getElementById("allnodetypes");
-    allnodes_node.innerHTML = '';
-
-    fetch(baseAPI + "/predicates")
-	.then(response => {
-	    if (response.ok) return response.json();
-	    else throw new Error('Something went wrong');
-	})
-        .then(data => {
-	    //add_to_dev_info("PREDICATES",data);
-	    predicates = data;
-
-	    var opt = document.createElement('option');
-	    opt.value = '';
-	    opt.style.borderBottom = "1px solid black";
-	    opt.innerHTML = "Add Node by Type&nbsp;&nbsp;&nbsp;&#8675;";
-	    allnodes_node.appendChild(opt);
-
-            for (const p in predicates) {
-		opt = document.createElement('option');
-		opt.value = p;
-		opt.innerHTML = p;
-		allnodes_node.appendChild(opt);
-
-		for (const n in predicates[p])
-		    for (const r of predicates[p][n])
-			all_predicates[r] = 1;
-	    }
-            opt = document.createElement('option');
 	    opt.value = 'NONSPECIFIC';
 	    opt.innerHTML = "Unspecified/Non-specific";
 	    allnodes_node.appendChild(opt);
