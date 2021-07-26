@@ -236,9 +236,9 @@ class TRAPIQuerier:
         elif self.user_specified_kp:
             return 300
         elif num_qnodes_with_curies == 1:
-            if num_total_curies_in_qg < 15:
+            if num_total_curies_in_qg < 30:
                 return 15
-            elif num_total_curies_in_qg < 30:
+            elif num_total_curies_in_qg < 100:
                 return 30
             elif num_total_curies_in_qg < 200:
                 return 60
