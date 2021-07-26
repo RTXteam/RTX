@@ -349,7 +349,7 @@ def test_FET_example_4():
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=RTX-KG2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, virtual_relation_label=FET1, object_qnode_key=n01,rel_edge_key=e00)",
-        "filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute=fisher_exact_test_p-value,direction=above,threshold=0.001,remove_connected_nodes=t,qnode_key=n01)",
+        "filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute=fisher_exact_test_p-value,direction=above,threshold=0.001,remove_connected_nodes=t,qnode_keys=[n01])",
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=e01, kp=RTX-KG2)",
@@ -416,7 +416,7 @@ def test_example_2_kg2():
             "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
             "expand(edge_key=[e00,e01], kp=RTX-KG2)",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",  # seems to work just fine
-            "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_key=n02)",
+            "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_keys=[n02])",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
             "return(message=true, store=false)",
