@@ -23,13 +23,13 @@
     - [expand(kp=CHP)](#expandkpchp)
     - [expand(kp=DTD)](#expandkpdtd)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
     - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
     - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -375,9 +375,9 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - `paired_concept_freq` and `chi_square` are examples of valid inputs.
 
-    - `paired_concept_freq`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
+    - `all`, `paired_concept_freq`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
 
-    - If not specified the default input will be paired_concept_freq. 
+    - If not specified the default input will be all. 
 
 * ##### COHD_method_top_N
 
@@ -392,6 +392,34 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
     - The values for this parameter can range from a minimum value of 0 to a maximum value of 1000000000000000000.
 
     - If not specified the default input will be 1000. 
+
+* ##### sorted_by
+
+    - If COHD_method=='all', then what statistics the 'COHD_method_top_N' is based on.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `paired_concept_freq` and `chi_square` are examples of valid inputs.
+
+    - `paired_concept_freq`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
+
+    - If not specified the default input will be paired_concept_freq. 
+
+* ##### COHD_slow_mode
+
+    - Whether to call COHD API when the local COHD database doesn't return the expected results.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
 
 ### expand(kp=GeneticsKP)
 This command reaches out to the Genetics Provider to find all bioentity subpaths that satisfy the query graph.
@@ -711,47 +739,6 @@ This command uses ARAX's in-house drug-treats-disease (DTD) database (built from
     - If not specified the default input will be false. 
 
 ## ARAX_overlay
-### overlay(action=overlay_exposures_data)
-
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
-
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
 ### overlay(action=overlay_clinical_info)
 
 `overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
@@ -791,6 +778,64 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     - `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
 
     - If not specified the default input will be paired_concept_frequency. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
 
 * ##### virtual_relation_label
 
@@ -874,33 +919,16 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `N1`, `J2`, and `FET` are examples of valid inputs.
 
-### overlay(action=compute_ngd)
+### overlay(action=overlay_exposures_data)
 
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
 
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
                     
 
 #### parameters: 
-
-* ##### default_value
-
-    - The default value of the normalized Google distance (if its value cannot be determined)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0` and `inf` are examples of valid inputs.
-
-    - If not specified the default input will be inf. 
 
 * ##### virtual_relation_label
 
@@ -931,6 +959,29 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be 100. 
 
 ### overlay(action=predict_drug_treats_disease)
 
@@ -1107,29 +1158,6 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - If not specified the default input will be None. 
 
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
-
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_predicate)
 
@@ -1170,15 +1198,25 @@ This can be applied to an arbitrary knowledge graph as possible edge predicates 
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
 
-    - Acceptable input types: string.
+    - Acceptable input types: list.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+* ##### qedge_keys
+
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
 ### filter_kg(action=remove_edges_by_continuous_attribute)
 
@@ -1244,15 +1282,25 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
 
-    - Acceptable input types: string.
+    - Acceptable input types: list.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+* ##### qedge_keys
+
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
 ### filter_kg(action=remove_edges_by_discrete_attribute)
 
@@ -1305,15 +1353,25 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
 
-    - Acceptable input types: string.
+    - Acceptable input types: list.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+* ##### qedge_keys
+
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
 ### filter_kg(action=remove_edges_by_std_dev)
 
@@ -1400,15 +1458,25 @@ e.g. to remove all the edges with jaccard_index values greater than 0.25 standar
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
 
-    - Acceptable input types: string.
+    - Acceptable input types: list.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+* ##### qedge_keys
+
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
 ### filter_kg(action=remove_edges_by_percentile)
 
@@ -1493,15 +1561,25 @@ e.g. to remove all the edges with jaccard_index values greater than the bottom 2
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
 
-    - Acceptable input types: string.
+    - Acceptable input types: list.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+* ##### qedge_keys
+
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
 ### filter_kg(action=remove_edges_by_top_n)
 
@@ -1588,15 +1666,25 @@ e.g. to remove all the edges with jaccard_index values greater than the 25 small
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
 
-    - Acceptable input types: string.
+    - Acceptable input types: list.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+* ##### qedge_keys
+
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
 ### filter_kg(action=remove_nodes_by_category)
 
