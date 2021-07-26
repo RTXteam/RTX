@@ -57,13 +57,13 @@ COPY configv2.json /mnt/data/orangeboard/production/RTX/code/config_local.json
 # check if correct file has been copied over
 # RUN cat /mnt/data/orangeboard/production/RTX/code/config_local.json
 
-# run an infinite command to simulate starting service, need to be replaced with actually service command
-# CMD ["tail", "-f", "/dev/null"]
-
 # run following commands to initialze the application
 # this CMD should run after we have placed the database file in the correct place
 RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py
 
-CMD ["service", "apache2", "start"]
-CMD ["service", "RTX_OpenAPI_production", "start"]
+# run an infinite command to simulate starting service, need to be replaced with actually service command
+CMD ["tail", "-f", "/dev/null"]
+
+# CMD ["service", "apache2", "start"]
+# CMD ["service", "RTX_OpenAPI_production", "start"]
 
