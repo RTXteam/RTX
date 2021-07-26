@@ -136,8 +136,8 @@ def test_720_multiple_qg_ids_in_different_results():
         "add_qnode(key=n02, categories=biolink:ChemicalSubstance)",
         "add_qnode(key=n03, categories=biolink:Protein)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:molecularly_interacts_with)",
-        "add_qedge(key=e02, subject=n02, object=n03, predicates=biolink:molecularly_interacts_with)",
+        "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:physically_interacts_with)",
+        "add_qedge(key=e02, subject=n02, object=n03, predicates=biolink:physically_interacts_with)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
