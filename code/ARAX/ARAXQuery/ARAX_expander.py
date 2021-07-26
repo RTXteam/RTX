@@ -293,7 +293,7 @@ class ARAXExpander:
         # Route this query to the proper place depending on the KP
         from Expand.kg2_querier import KG2Querier
         try:
-            if kp_to_use == 'COHD':
+            if kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode"):
                 from Expand.COHD_querier import COHDQuerier
                 kp_querier = COHDQuerier(log)
             elif kp_to_use == 'DTD':
