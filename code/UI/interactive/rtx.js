@@ -189,8 +189,8 @@ function pasteExample(type) {
 function reset_vars() {
     add_status_divs();
     checkUIversion(true);
-    document.getElementById("result_container").innerHTML = "";
     if (cyobj[0]) {cyobj[0].elements().remove();}
+    document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
     document.getElementById("menunummessages").innerHTML = "--";
@@ -1388,7 +1388,7 @@ function render_response(respObj,dispjson) {
     if ( respObj["table_column_names"] )
 	add_to_summary(respObj["table_column_names"],0);
     else
-	add_to_summary(["'Guessence'"],0);
+	add_to_summary(["score","'guessence'"],0);
 
     if ( respObj.message["results"] ) {
 	if (!respObj.message["knowledge_graph"] ) {
@@ -1709,7 +1709,7 @@ function add_to_summary(rowdata, num) {
 
 	if (cell == 'th') {
 	    //columnlist[i] = [];
-	    if (rowdata[i] != 'confidence') {
+	    if (rowdata[i] == 'essence' || rowdata[i] == "'guessence'") {
 		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
 		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
 	    }
@@ -1855,17 +1855,17 @@ function process_results(reslist,kg,mainreasoner) {
 		ess = kg.nodes[ess].fulltextname;
 	}
 
-        if (result.row_data)
-            add_to_summary(result.row_data, num);
-	else
-            add_to_summary([ess], num);
-
 	var cnf = 'n/a';
 	if (Number(result.score))
 	    cnf = Number(result.score).toFixed(3);
 	else if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
 	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
+
+        if (result.row_data)
+            add_to_summary(result.row_data, num);
+	else
+            add_to_summary([cnf,ess], num);
 
 	var rsrc = mainreasoner;
 	if (result.reasoner_id)
