@@ -51,7 +51,12 @@ RUN update-rc.d RTX_OpenAPI_production enable
 # set production flag to false
 RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py
 
+# copy over configv2.json
+# configv2.json will be served via Jenkins config file instead of from git repo
+COPY configv2.json /mnt/data/orangeboard/production/RTX/code/config_local.json
+# check if correct file has been copied over
+RUN cat /mnt/data/orangeboard/production/RTX/code/config_local.jsono
+
 # run an infinite command to simulate starting service, need to be replaced with actually service command
-EXPOSE 80/tcp
 CMD ["tail", "-f", "/dev/null"]
 
