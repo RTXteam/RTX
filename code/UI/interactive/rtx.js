@@ -745,6 +745,7 @@ function getIdStats(id) {
 	document.getElementById("numresults_"+id).innerHTML = '';
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
+	document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	var wait = document.createElement("span");
 	wait.className = 'loading_cell';
@@ -792,6 +793,7 @@ function sendId() {
 	document.getElementById("numresults_"+id).innerHTML = '';
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
+        document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	var wait = document.createElement("span");
 	wait.className = 'loading_cell';
@@ -1086,6 +1088,11 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 	    document.getElementById("istrapi_"+jsonObj2.araxui_response).innerHTML = '';
 	    document.getElementById("istrapi_"+jsonObj2.araxui_response).appendChild(nr);
 
+	    var num = parseFloat(jsonObj2.validation_result.size.match(/[\d\.]+/));
+	    if (num && num > 2 && jsonObj2.validation_result.size.includes("MB")) {
+		document.getElementById("respsize_"+jsonObj2.araxui_response).className = "error";
+		document.getElementById("respsize_"+jsonObj2.araxui_response).title = "Warning: Very large responses might render slowly";
+	    }
 	    document.getElementById("respsize_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.size;
 
 	    if (jsonObj2.validation_result.n_nodes)
@@ -1194,10 +1201,13 @@ function retrieve_response(provider, resp_url, resp_id, type) {
     statusdiv.appendChild(document.createTextNode("Retrieving "+provider+" response id = " + resp_id));
 
     if (response_cache[provider+":"+resp_id]) {
+        if (document.getElementById("istrapi_"+resp_id))
+	    document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
 	statusdiv.appendChild(document.createTextNode(" ...from cache"));
 	statusdiv.appendChild(document.createElement("hr"));
 	sesame('openmax',statusdiv);
-        process_response(provider, resp_url, resp_id, type,response_cache[provider+":"+resp_id]);
+	// 50ms timeout allows css animation to start before processing locks the thread
+        var timeout = setTimeout(function() { process_response(provider, resp_url, resp_id, type,response_cache[provider+":"+resp_id]); }, 50 );
 	return;
     }
 
@@ -1210,6 +1220,8 @@ function retrieve_response(provider, resp_url, resp_id, type) {
     xhr.send(null);
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
+            if (document.getElementById("istrapi_"+resp_id))
+		document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
 	    process_response(provider, resp_url, resp_id, type,JSON.parse(xhr.responseText));
 
 	}
@@ -1218,6 +1230,7 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 		document.getElementById("numresults_"+resp_id).innerHTML = '';
                 document.getElementById("respsize_"+resp_id).innerHTML = '---';
 		document.getElementById("nodedges_"+resp_id).innerHTML = '';
+		document.getElementById("nsources_"+id).innerHTML = '';
 		document.getElementById("istrapi_"+resp_id).innerHTML = '';
 		var nr = document.createElement("span");
 		nr.className = 'explevel p0';
@@ -1233,6 +1246,7 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 		document.getElementById("numresults_"+resp_id).innerHTML = '';
 		document.getElementById("respsize_"+resp_id).innerHTML = '---';
 		document.getElementById("nodedges_"+resp_id).innerHTML = '';
+		document.getElementById("nsources_"+id).innerHTML = '';
 		document.getElementById("istrapi_"+resp_id).innerHTML = '';
 		var nr = document.createElement("span");
 		nr.className = 'explevel p0';
@@ -1390,6 +1404,13 @@ function render_response(respObj,dispjson) {
 	    document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
             document.getElementById("menunumresults").classList.add("numnew");
 	    document.getElementById("menunumresults").classList.remove("numold");
+
+	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
+	    var respreas = 'n/a';
+	    if (respObj.reasoner_id)
+		respreas = respObj.reasoner_id;
+	    process_results(respObj.message["results"],respObj.message["knowledge_graph"], respreas);
+
 	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
 		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
 		var nr = document.createElement("span");
@@ -1402,12 +1423,6 @@ function render_response(respObj,dispjson) {
 		nr.innerHTML = '&nbsp;'+respObj.message.results.length+'&nbsp;';
 		document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
 	    }
-
-	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
-	    respreas = 'n/a';
-	    if (respObj.reasoner_id)
-		respreas = respObj.reasoner_id;
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"], respreas);
 	}
     }
     else {
