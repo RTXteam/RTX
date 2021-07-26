@@ -52,4 +52,6 @@ RUN update-rc.d RTX_OpenAPI_production enable
 RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py
 
 # run an infinite command to simulate starting service, need to be replaced with actually service command
+EXPOSE 80/tcp
 CMD ["tail", "-f", "/dev/null"]
+
