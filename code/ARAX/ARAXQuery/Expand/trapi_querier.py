@@ -233,6 +233,8 @@ class TRAPIQuerier:
             return 600
         elif self.user_specified_kp:
             return 300
+        elif num_total_curies < 15:
+            return 15
         elif num_total_curies < 30:
             return 30
         else:

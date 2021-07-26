@@ -132,7 +132,7 @@ class ARAXFilterKG:
         self.top_info = {
             "is_required": False,
             "enum": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
-            "type": "string",
+            "type": "boolean",
             "description": "Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.",
             "default": "a value dictated by the `edge_attribute` parameter. " +\
             "If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. " +\

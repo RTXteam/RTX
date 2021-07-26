@@ -247,7 +247,7 @@ def make_qg_use_supported_prefixes(kp_selector, qg: QueryGraph, kp_name: str, lo
                                                                                 qnode.categories,
                                                                                 kp_name)
             if not converted_curies:
-                log.warning(f"{kp_name} cannot answer the query because I couldn't find any "
+                log.info(f"{kp_name} cannot answer the query because I couldn't find any "
                             f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
                             f"curies were: {qnode.ids}")
                 return None
