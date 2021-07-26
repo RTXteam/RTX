@@ -77,6 +77,22 @@ autoscaling:
 
 nodeSelector: {}
 
-tolerations: []
+# With the following two sections, we can restrict the deployment on and only on the specific node
+# toleration to node taint such that this deployment can be scheduled on the tainted node while others without the toleration can not
+tolerations: 
+- key      : "rtx"
+  value    : "arax"
+  operator : "Equal"
+  effect   : "NoSchedule"
 
-affinity: {}
+# nodeSelection affinity(application=arax) such that this deployment will only select the node with that label
+affinity: 
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: application
+          operator: In
+          values:
+          - arax
+
