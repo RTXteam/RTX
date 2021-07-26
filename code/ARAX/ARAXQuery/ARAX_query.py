@@ -616,6 +616,14 @@ class ARAXQuery:
                 if result.reasoner_id is None:
                     result.reasoner_id = 'ARAX'
 
+            # Store the provenance information
+            # This doesn't work because it needs to be added to the schema!
+            #response.envelope.validation_results = { 'status': '?', 'version': '?', 'size': '?', 'message': '' }
+            #from ARAX_attribute_parser import ARAXAttributeParser
+            #attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
+            #envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
+
+
             # If store=true, then put the message in the database
             response_id = None
             if return_action['parameters']['store'] == 'true':
