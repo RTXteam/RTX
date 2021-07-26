@@ -93,7 +93,13 @@ class WorkflowToARAXi:
         else:
             direction = 'above'
         # FW: need to update this to handle qedge_keys and qnode_keys
-        ARAXi.append(f"filter_kg(action=remove_edges_by_top_n,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction},top={top == 'top'})")
+        araxi_string = f"filter_kg(action=remove_edges_by_top_n,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction},top={top == 'top'}"
+        if "qnode_keys" in parameters:
+            araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
+        if "qedge_keys" in parameters:
+            araxi_string += f",qedge_keys={parameters['qedge_keys']}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
         return ARAXi
 
     @staticmethod
@@ -105,7 +111,13 @@ class WorkflowToARAXi:
         direction = parameters.get('remove_above_or_below','below')
         top = parameters.get('keep_top_or_bottom','top')
         # FW: need to update this to handle qedge_keys and qnode_keys
-        ARAXi.append(f"filter_kg(action=remove_edges_by_std_dev,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction},top={top == 'top'})")
+        araxi_string = f"filter_kg(action=remove_edges_by_std_dev,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction},top={top == 'top'}"
+        if "qnode_keys" in parameters:
+            araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
+        if "qedge_keys" in parameters:
+            araxi_string += f",qedge_keys={parameters['qedge_keys']}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
         return ARAXi
 
     @staticmethod
@@ -116,7 +128,13 @@ class WorkflowToARAXi:
         threshold = parameters.get('threshold',95)
         direction = parameters.get('remove_above_or_below','below')
         # FW: need to update this to handle qedge_keys and qnode_keys
-        ARAXi.append(f"filter_kg(action=remove_edges_by_percentile,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction})")
+        araxi_string = f"filter_kg(action=remove_edges_by_percentile,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction}"
+        if "qnode_keys" in parameters:
+            araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
+        if "qedge_keys" in parameters:
+            araxi_string += f",qedge_keys={parameters['qedge_keys']}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
         return ARAXi
 
     @staticmethod
@@ -127,7 +145,13 @@ class WorkflowToARAXi:
         threshold = parameters.get('threshold',None)
         direction = parameters.get('remove_above_or_below',None)
         # FW: need to update this to handle qedge_keys and qnode_keys
-        ARAXi.append(f"filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction})")
+        araxi_string = f"filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction}"
+        if "qnode_keys" in parameters:
+            araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
+        if "qedge_keys" in parameters:
+            araxi_string += f",qedge_keys={parameters['qedge_keys']}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
         return ARAXi
 
     @staticmethod
@@ -137,7 +161,13 @@ class WorkflowToARAXi:
         ARAXi = []
         value = parameters.get('remove_value',None)
         # FW: need to update this to handle qedge_keys and qnode_keys
-        ARAXi.append(f"filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute={parameters['edge_attribute']},value={value})")
+        araxi_string = f"filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute={parameters['edge_attribute']},value={value}"
+        if "qnode_keys" in parameters:
+            araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
+        if "qedge_keys" in parameters:
+            araxi_string += f",qedge_keys={parameters['qedge_keys']}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
         return ARAXi
 
     def translate(self, workflow):
