@@ -48,9 +48,9 @@ class ARAXFilterKG:
         }
         self.qnode_key_info = {
             "is_required": False,
-            "examples": ['n01', 'n02'],
-            "type": "string",
-            "description": "If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed." +\
+            "examples": [['n01', 'n02'],[]],
+            "type": "list",
+            "description": "If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed." +\
             "If not provided the qnode_key will not be considered when filtering."
         }
         self.qedge_key_info = {
@@ -195,7 +195,7 @@ remove_edges_by_predicate removes edges from the knowledge graph (KG) based on a
                 "parameters": {
                     "edge_predicate": self.edge_type_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_key": self.qnode_key_info,
+                    "qnode_keys": self.qnode_key_info,
                     "qedge_keys": self.qedge_key_info
                 }
             },
@@ -227,7 +227,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "direction": self.direction_info,
                     "threshold": self.threshold_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_key": self.qnode_key_info,
+                    "qnode_keys": self.qnode_key_info,
                     "qedge_keys": self.qedge_key_info
                 }
             },
@@ -255,7 +255,7 @@ remove_edges_by_discrete_attribute removes edges from the knowledge graph (KG) b
                     "edge_attribute": self.edge_property_info,
                     "value": self.edge_property_value_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_key": self.qnode_key_info,
+                    "qnode_keys": self.qnode_key_info,
                     "qedge_keys": self.qedge_key_info
                 }
             },
@@ -293,7 +293,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "threshold": self.threshold_stats_info_std_dev,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_key": self.qnode_key_info,
+                    "qnode_keys": self.qnode_key_info,
                     "qedge_keys": self.qedge_key_info
                 }
             },
@@ -331,7 +331,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "threshold": self.threshold_stats_info_percentile,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_key": self.qnode_key_info,
+                    "qnode_keys": self.qnode_key_info,
                     "qedge_keys": self.qedge_key_info
                 }
             },
@@ -369,7 +369,7 @@ This action interacts particularly well with overlay() as overlay() frequently a
                     "n": self.threshold_stats_info_n,
                     "top": self.top_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
-                    "qnode_key": self.qnode_key_info,
+                    "qnode_keys": self.qnode_key_info,
                     "qedge_keys": self.qedge_key_info
                 }
             },
@@ -557,14 +557,14 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             allowable_parameters = {'action': {'remove_edges_by_predicate'},
                                     'edge_predicate': set([x.predicate for x in self.message.knowledge_graph.edges.values()]),
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
+                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
                                     'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_predicate'},
                                     'edge_predicate': {'an edge predicate'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':{'a specific query node id to remove'},
+                                    'qnode_keys':{'a specific query node id to remove'},
                                     'qedge_keys':{'a list of specific query edge ids to remove'}
                                 }
 
@@ -572,6 +572,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         if describe:
             allowable_parameters['brief_description'] = self.command_definitions['remove_edges_by_predicate']
             return allowable_parameters
+
+        # FW: patch to allow qnode_key to be backwards compatable:
+        if 'qnode_key' in self.parameters and 'qnode_keys' not in self.parameters:
+            self.parameters['qnode_keys'] = [self.parameters['qnode_key']]
 
         # Make sure only allowable parameters and values have been passed
         resp = self.check_params(allowable_parameters)
@@ -659,7 +663,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]).union(known_attributes),
                                     'value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
+                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
                                     'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
                                 }
         else:
@@ -667,7 +671,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'edge_attribute': {'an edge property or attribute'},
                                     'value':{'a value for the edge property or attribute'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':{'a specific query node id to remove'},
+                                    'qnode_keys':{'a specific query node id to remove'},
                                     'qedge_keys':{'a list of specific query edge ids to remove'}
                                 }
 
@@ -676,6 +680,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             brief_description = self.command_definitions['remove_edges_by_discrete_attribute']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
+
+        # FW: patch to allow qnode_key to be backwards compatable:
+        if 'qnode_key' in self.parameters and 'qnode_keys' not in self.parameters:
+            self.parameters['qnode_keys'] = [self.parameters['qnode_key']]
 
         # Make sure only allowable parameters and values have been passed
         resp = self.check_params(allowable_parameters)
@@ -740,7 +748,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'direction': {'above', 'below'},
                                     'threshold': {float()},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
+                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
                                     'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
                                     }
         else:
@@ -749,7 +757,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'direction': {'above', 'below'},
                                     'threshold': {'a floating point number'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':{'a specific query node id to remove'},
+                                    'qnode_keys':{'a specific query node id to remove'},
                                     'qedge_keys':{'a list of specific query edge ids to remove'}
                                     }
 
@@ -758,6 +766,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             brief_description = self.command_definitions['remove_edges_by_continuous_attribute']
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
+
+        # FW: patch to allow qnode_key to be backwards compatable:
+        if 'qnode_key' in self.parameters and 'qnode_keys' not in self.parameters:
+            self.parameters['qnode_keys'] = [self.parameters['qnode_key']]
 
         edge_params = self.parameters
 
@@ -836,7 +848,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'threshold': {float()},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
+                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
                                     'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
                                     }
         else:
@@ -846,7 +858,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'threshold': {'a floating point number'},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':{'a specific query node id to remove'},
+                                    'qnode_keys':{'a specific query node id to remove'},
                                     'qedge_keys':{'a list of specific query edge ids to remove'}
                                     }
 
@@ -857,6 +869,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return allowable_parameters
 
         
+        # FW: patch to allow qnode_key to be backwards compatable:
+        if 'qnode_key' in self.parameters and 'qnode_keys' not in self.parameters:
+            self.parameters['qnode_keys'] = [self.parameters['qnode_key']]
+
         edge_params = self.parameters
 
         # try to convert the threshold to a float
@@ -987,7 +1003,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'threshold': {float()},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
+                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
                                     'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
                                     }
         else:
@@ -997,7 +1013,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'threshold': {'a floating point number'},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':{'a specific query node id to remove'},
+                                    'qnode_keys':{'a specific query node id to remove'},
                                     'qedge_keys':{'a list of specific query edge ids to remove'}
                                     }
 
@@ -1008,6 +1024,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return allowable_parameters
 
         
+        # FW: patch to allow qnode_key to be backwards compatable:
+        if 'qnode_key' in self.parameters and 'qnode_keys' not in self.parameters:
+            self.parameters['qnode_keys'] = [self.parameters['qnode_key']]
+
         edge_params = self.parameters
 
         # try to convert the threshold to a float
@@ -1138,7 +1158,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'n': {int()},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
+                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
                                     'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
                                     }
         else:
@@ -1148,7 +1168,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'n': {'an integer'},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_key':{'a specific query node id to remove'},
+                                    'qnode_keys':{'a specific query node id to remove'},
                                     'qedge_keys':{'a list of specific query edge ids to remove'}
                                     }
 
@@ -1158,6 +1178,9 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             allowable_parameters['brief_description'] = brief_description
             return allowable_parameters
 
+        # FW: patch to allow qnode_key to be backwards compatable:
+        if 'qnode_key' in self.parameters and 'qnode_keys' not in self.parameters:
+            self.parameters['qnode_keys'] = [self.parameters['qnode_key']]
         
         edge_params = self.parameters
 
