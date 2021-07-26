@@ -73,13 +73,32 @@ def test_error():
             "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
             "expand(edge_key=e00, kp=RTX-KG2)",
-            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=t)",
+            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=t, qedge_keys=[e00])",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query, False)
     assert response.status == 'ERROR'
     assert response.error_code == "RemovedQueryNode"
+
+def test_edge_key_removal():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=DOID:11086, key=n00)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:Disease, key=n02)",
+            "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
+            "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:treats)",
+            "expand(kp=RTX-KG2)",
+            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=f, qedge_keys=[e01])",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query, False)
+    assert response.status == 'OK'
+    edge_key_set = set()
+    for edge in message.knowledge_graph.edges.values():
+        edge_key_set = edge_key_set.union(edge.qedge_keys)
+    assert 'e01' not in edge_key_set
 
 def test_default_std_dev():
     query = {"operations": {"actions": [
