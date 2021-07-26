@@ -376,6 +376,21 @@ def test_987_override_node_categories():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all('biolink:PhenotypicFeature' in node.categories for node in nodes_by_qg_id['n01'].values())
 
+@pytest.mark.slow
+def test_cohd_expand_all():
+    actions_list = [
+        "add_qnode(ids=DOID:1588, key=n00)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00, kp=COHD, COHD_method=all, COHD_method_top_N=500)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:has_cohd_info_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "concept_pair_count" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+
 
 @pytest.mark.slow
 def test_cohd_expand_paired_concept_freq():

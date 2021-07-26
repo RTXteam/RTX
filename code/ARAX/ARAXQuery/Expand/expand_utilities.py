@@ -629,8 +629,8 @@ def get_kp_command_definitions() -> dict:
                 "COHD_method": {
                     "is_required": False,
                     "examples": ["paired_concept_freq", "chi_square"],
-                    "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
-                    "default": "paired_concept_freq",
+                    "enum": ["all", "paired_concept_freq", "observed_expected_ratio", "chi_square"],
+                    "default": "all",
                     "type": "string",
                     "description": "Which measure from COHD should be considered."
                 },
@@ -642,6 +642,14 @@ def get_kp_command_definitions() -> dict:
                     "default": 1000,
                     "type": "integer",
                     "description": "What top N to use as a cut-off/threshold for the specified COHD method."
+                },
+                "sorted_by": {
+                    "is_required": False,
+                    "examples": ["paired_concept_freq", "chi_square"],
+                    "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
+                    "default": "paired_concept_freq",
+                    "type": "string",
+                    "description": "If COHD_method=='all', then what statistics the 'COHD_method_top_N' is based on."
                 }
             }
         },
