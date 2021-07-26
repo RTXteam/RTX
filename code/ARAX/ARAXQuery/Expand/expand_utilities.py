@@ -650,6 +650,14 @@ def get_kp_command_definitions() -> dict:
                     "default": "paired_concept_freq",
                     "type": "string",
                     "description": "If COHD_method=='all', then what statistics the 'COHD_method_top_N' is based on."
+                },
+                "CHOD_slow_mode": {
+                    "is_required": False,
+                    "examples": ["true", "false"],
+                    "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+                    "default": "false",
+                    "type": "boolean",
+                    "description": "Whether to call COHD API when the local COHD database doesn't return the expected results."
                 }
             }
         },
