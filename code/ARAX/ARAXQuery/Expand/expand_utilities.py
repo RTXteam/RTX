@@ -574,42 +574,49 @@ def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
             del kg.edges[edge_key]
 
 
-def create_results(one_hop_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False, rank_results: bool = False) -> Response:
+def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False,
+                   rank_results: bool = False, qnode_key_to_prune: Optional[str] = None,) -> Response:
     regular_format_kg = convert_qg_organized_kg_to_standard_kg(kg)
     resultifier = ARAXResultify()
     prune_response = ARAXResponse()
     prune_response.envelope = Response()
     prune_response.envelope.message = Message()
     prune_message = prune_response.envelope.message
-    prune_message.query_graph = one_hop_qg
+    prune_message.query_graph = qg
     prune_message.knowledge_graph = regular_format_kg
     if overlay_fet:
         log.debug(f"Using FET to assess quality of intermediate answers in Expand")
-        fet_qedge_key = "FETe0"
-        try:
-            overlayer = ARAXOverlay()
-            qnodes = list(one_hop_qg.nodes)
-            params = {"action": "fisher_exact_test",
-                      "subject_qnode_key": qnodes[0],
-                      "object_qnode_key": qnodes[1],
-                      "virtual_relation_label": fet_qedge_key}
-            overlayer.apply(prune_response, params)
-        except Exception as error:
-            exception_type, exception_value, exception_traceback = sys.exc_info()
-            log.error(f"An uncaught error occurred when overlaying with FET during expand's pruning: "
-                      f"{error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}",
-                      error_code="UncaughtARAXiError")
-        if prune_response.status != "OK":
-            log.warning(f"FET produced an error when Expand tried to use it to prune the KG. "
-                        f"Log was: {prune_response.show()}")
-            log.debug(f"Will continue pruning without overlaying FET")
-            # Get rid of any FET edges that might be in the KG/QG, since this step failed
-            remove_edges_with_qedge_key(prune_response.envelope.message.knowledge_graph, fet_qedge_key)
-            one_hop_qg.edges.pop(fet_qedge_key, None)
-            prune_response.status = "OK"  # Clear this so we can continue without overlaying
-        else:
-            # Make this virtual edge optional (don't want to lose results that had no FET value)
-            one_hop_qg.edges[fet_qedge_key].option_group_id = "FET_VIRTUAL_GROUP"
+        connected_qedges = [qedge for qedge in qg.edges.values()
+                            if qedge.subject == qnode_key_to_prune or qedge.object == qnode_key_to_prune]
+        qnode_pairs_to_overlay = {(qedge.subject if qedge.subject != qnode_key_to_prune else qedge.object, qnode_key_to_prune)
+                                  for qedge in connected_qedges}
+        for qnode_pair in qnode_pairs_to_overlay:
+            pair_string_id = f"{qnode_pair[0]}-->{qnode_pair[1]}"
+            log.debug(f"Overlaying FET for {pair_string_id} (from Expand)")
+            fet_qedge_key = f"FET{pair_string_id}"
+            try:
+                overlayer = ARAXOverlay()
+                params = {"action": "fisher_exact_test",
+                          "subject_qnode_key": qnode_pair[0],
+                          "object_qnode_key": qnode_pair[1],
+                          "virtual_relation_label": fet_qedge_key}
+                overlayer.apply(prune_response, params)
+            except Exception as error:
+                exception_type, exception_value, exception_traceback = sys.exc_info()
+                log.error(f"An uncaught error occurred when overlaying with FET during expand's pruning: "
+                          f"{error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}",
+                          error_code="UncaughtARAXiError")
+            if prune_response.status != "OK":
+                log.warning(f"FET produced an error when Expand tried to use it to prune the KG. "
+                            f"Log was: {prune_response.show()}")
+                log.debug(f"Will continue pruning without overlaying FET")
+                # Get rid of any FET edges that might be in the KG/QG, since this step failed
+                remove_edges_with_qedge_key(prune_response.envelope.message.knowledge_graph, fet_qedge_key)
+                qg.edges.pop(fet_qedge_key, None)
+                prune_response.status = "OK"  # Clear this so we can continue without overlaying
+            else:
+                # Make this virtual edge optional (don't want to lose results that had no FET value)
+                qg.edges[fet_qedge_key].option_group_id = f"FET_VIRTUAL_GROUP_{pair_string_id}"
 
     # Create results and rank them as appropriate
     log.debug(f"Calling Resultify from Expand for pruning")
@@ -630,6 +637,14 @@ def create_results(one_hop_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: A
                 if result.score is None:
                     result.score = 0
     return prune_response
+
+
+def get_qg_expanded_thus_far(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph) -> QueryGraph:
+    expanded_qnodes = {qnode_key for qnode_key in qg.nodes if kg.nodes_by_qg_id.get(qnode_key)}
+    expanded_qedges = {qedge_key for qedge_key in qg.edges if kg.edges_by_qg_id.get(qedge_key)}
+    qg_expanded_thus_far = QueryGraph(nodes={qnode_key: copy.deepcopy(qg.nodes[qnode_key]) for qnode_key in expanded_qnodes},
+                                      edges={qedge_key: copy.deepcopy(qg.edges[qedge_key]) for qedge_key in expanded_qedges})
+    return qg_expanded_thus_far
 
 
 def get_all_kps() -> Set[str]:
