@@ -1,4 +1,5 @@
 #!/bin/env python3
+import copy
 import multiprocessing
 import sys
 import os
@@ -111,7 +112,7 @@ class ARAXExpander:
             parameters['node_key'] = self._get_orphan_qnode_keys(message.query_graph)
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
-        query_graph = eu.copy_qg(message.query_graph)
+        query_graph = copy.deepcopy(message.query_graph)
 
         # Verify we understand all constraints (right now we don't support any)
         for qnode_key, qnode in query_graph.nodes.items():
@@ -171,6 +172,19 @@ class ARAXExpander:
             for qedge_key in ordered_qedge_keys_to_expand:
                 log.debug(f"Expanding qedge {qedge_key}")
                 qedge = query_graph.edges[qedge_key]
+
+                # Determine the prune threshold for this qedge (depending on whether the next qedge is pinned)
+                qedge_index = ordered_qedge_keys_to_expand.index(qedge_key)
+                if qedge_index < len(ordered_qedge_keys_to_expand) - 1:
+                    next_qedge_key = ordered_qedge_keys_to_expand[qedge_index + 1]
+                    next_qedge = query_graph.edges[next_qedge_key]
+                    next_qnodes = [query_graph.nodes[next_qedge.subject], query_graph.nodes[next_qedge.object]]
+                    if any(qnode.ids for qnode in next_qnodes):
+                        qedge.prune_threshold = 8000
+                    else:
+                        qedge.prune_threshold = 1200
+                else:
+                    qedge.prune_threshold = 1200
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
                 if log.status != 'OK':
@@ -385,7 +399,7 @@ class ARAXExpander:
         qnode_keys = [qedge.subject, qedge.object]
 
         # Add (a copy of) this qedge to our edge query graph
-        edge_qg.edges[qedge_key] = eu.copy_qedge(qedge)
+        edge_qg.edges[qedge_key] = copy.deepcopy(qedge)
 
         # Update this qedge's qnodes as appropriate and add (copies of) them to the edge query graph
         required_qedge_keys = {qe_key for qe_key, qe in full_qg.edges.items() if not qe.option_group_id}
@@ -394,7 +408,7 @@ class ARAXExpander:
         qedge_is_required = qedge_key in required_qedge_keys
         for qnode_key in qnode_keys:
             qnode = full_qg.nodes[qnode_key]
-            qnode_copy = eu.copy_qnode(qnode)
+            qnode_copy = copy.deepcopy(qnode)
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
             qnode_already_fulfilled = qnode_key in overarching_kg.nodes_by_qg_id
             if qnode_already_fulfilled and not qnode_copy.ids:
@@ -502,11 +516,11 @@ class ARAXExpander:
                 return None
 
             # Add (copies of) this qedge and its two qnodes to our new query sub graph
-            qedge_copy = eu.copy_qedge(qedge)
+            qedge_copy = copy.deepcopy(qedge)
             if qedge_key not in sub_query_graph.edges:
                 sub_query_graph.edges[qedge_key] = qedge_copy
             for qnode_key in [qedge_copy.subject, qedge_copy.object]:
-                qnode_copy = eu.copy_qnode(query_graph.nodes[qnode_key])
+                qnode_copy = copy.deepcopy(query_graph.nodes[qnode_key])
                 if qnode_key not in sub_query_graph.nodes:
                     sub_query_graph.nodes[qnode_key] = qnode_copy
 
@@ -629,17 +643,17 @@ class ARAXExpander:
     def _prune_kg(kg: QGOrganizedKnowledgeGraph, full_qg: QueryGraph, one_hop_qg: QueryGraph,
                   log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # Rank answers for the most recently expanded qedge and filter them if we have too many
-        max_nodes_allowed = 1200
         current_qedge_key = next(qedge_key for qedge_key in one_hop_qg.edges)
+        current_qedge = one_hop_qg.edges[current_qedge_key]
         qnodes_keys_without_ids = {qnode_key for qnode_key, qnode in one_hop_qg.nodes.items() if not qnode.ids}
         if qnodes_keys_without_ids:
             newly_fulfilled_qnode_key = next(qnode_key for qnode_key in qnodes_keys_without_ids)
             num_nodes_fulfilling_qnode = len(kg.nodes_by_qg_id[newly_fulfilled_qnode_key])
             already_fulfilled_qnode_key = list(set(one_hop_qg.nodes).difference({newly_fulfilled_qnode_key}))[0]
-            if num_nodes_fulfilling_qnode > max_nodes_allowed:
+            if num_nodes_fulfilling_qnode > current_qedge.prune_threshold:
                 log.info(f"Pruning back answers for {newly_fulfilled_qnode_key} because there are more than "
-                         f"{max_nodes_allowed} (there are {num_nodes_fulfilling_qnode})")
-                sub_qg = eu.copy_qg(one_hop_qg)
+                         f"{current_qedge.prune_threshold} (there are {num_nodes_fulfilling_qnode})")
+                sub_qg = copy.deepcopy(one_hop_qg)
                 # Modify is_set values in way that makes sense for these intermediate one-hop results
                 sub_qg.nodes[newly_fulfilled_qnode_key].is_set = False
                 sub_qg.nodes[already_fulfilled_qnode_key].is_set = True
@@ -655,7 +669,7 @@ class ARAXExpander:
                     kept_nodes = set()
                     scores = []
                     counter = 0
-                    while len(kept_nodes) < max_nodes_allowed and counter < len(results):
+                    while len(kept_nodes) < current_qedge.prune_threshold and counter < len(results):
                         current_result = resultify_response.envelope.message.results[counter]
                         scores.append(current_result.score)
                         kept_nodes.update({binding.id for binding in current_result.node_bindings[newly_fulfilled_qnode_key]})

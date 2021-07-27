@@ -1,5 +1,6 @@
 #!/bin/env python3
 # This file contains utilities/helper functions for general use within the Expand module
+import copy
 import json
 import pathlib
 import sys
@@ -88,27 +89,6 @@ def get_curie_local_id(curie: str) -> str:
 
 def get_attribute_triple(attribute: Attribute) -> str:
     return f"{attribute.attribute_type_id}--{attribute.value}--{attribute.attribute_source}"
-
-
-def copy_qedge(old_qedge: QEdge) -> QEdge:
-    new_qedge = QEdge()
-    for edge_property in new_qedge.to_dict():
-        value = getattr(old_qedge, edge_property)
-        setattr(new_qedge, edge_property, value)
-    return new_qedge
-
-
-def copy_qnode(old_qnode: QNode) -> QNode:
-    new_qnode = QNode()
-    for node_property in new_qnode.to_dict():
-        value = getattr(old_qnode, node_property)
-        setattr(new_qnode, node_property, value)
-    return new_qnode
-
-
-def copy_qg(qg: QueryGraph) -> QueryGraph:
-    return QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
-                      edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
 
 
 def remove_orphan_edges(kg: QGOrganizedKnowledgeGraph, qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -575,8 +555,7 @@ def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
 
 def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
     # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
-    qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
-                         edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+    qg_copy = copy.deepcopy(qg)
     for qnode in qg_copy.nodes.values():
         if qnode.categories:
             prefixless_categories = [category.split(":")[-1] for category in qnode.categories]

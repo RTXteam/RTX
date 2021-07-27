@@ -1,4 +1,5 @@
 #!/bin/env python3
+import copy
 import json
 import sys
 import os
@@ -45,7 +46,7 @@ class TRAPIQuerier:
         """
         log = self.log
         final_kg = QGOrganizedKnowledgeGraph()
-        qg_copy = eu.copy_qg(query_graph)  # Create a copy so we don't modify the original
+        qg_copy = copy.deepcopy(query_graph)  # Create a copy so we don't modify the original
 
         self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
@@ -75,7 +76,7 @@ class TRAPIQuerier:
         """
         log = self.log
         final_kg = QGOrganizedKnowledgeGraph()
-        qg_copy = eu.copy_qg(single_node_qg)
+        qg_copy = copy.deepcopy(single_node_qg)
 
         # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
         self._verify_is_single_node_query_graph(qg_copy)
