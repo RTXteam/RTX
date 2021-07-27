@@ -268,7 +268,6 @@ class ComputeFTEST:
         else:
             kp = 'RTX-KG2'
             self.response.warning(f"Most of edges between the subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key} are from {kp} rather than RTX-KG2. But we can't access the total number of nodes with specific node type from {kp}, so RTX-KG2 was still used to calcualte Fisher's exact test.")
-            return self.response
 
         if kp == 'ARAX/KG1':
             ## This warning can be removed once KG1 is deprecated
