@@ -159,8 +159,6 @@ def test_named_thing_associated_with_acrocynaosis_issue_12():
     assert len(message.results) > 0
 
 
-# This query doesn't find results after conflations were resolved in KG2.6.7
-@pytest.mark.skip
 def test_chemical_substances_correlated_with_asthma_issue_18():
     query = {
       "message": {

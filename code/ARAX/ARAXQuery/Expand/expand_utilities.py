@@ -651,7 +651,7 @@ def get_kp_command_definitions() -> dict:
                     "type": "string",
                     "description": "If COHD_method=='all', then what statistics the 'COHD_method_top_N' is based on."
                 },
-                "CHOD_slow_mode": {
+                "COHD_slow_mode": {
                     "is_required": False,
                     "examples": ["true", "false"],
                     "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],

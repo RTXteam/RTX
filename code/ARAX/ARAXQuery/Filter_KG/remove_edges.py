@@ -70,15 +70,16 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_keys_to_remove:
-                        if 'qnode_key' in edge_params:
+                        if 'qnode_keys' in edge_params:
                             if node.qnode_keys is not None:
-                                if edge_params['qnode_key'] in node.qnode_keys:
-                                    if len(node.qnode_keys) == 1:
-                                        nodes_to_remove.add(key)
+                                for param_qnode_key in edge_params['qnode_keys']:
+                                    if param_qnode_key in node.qnode_keys:
+                                        if len(node.qnode_keys) == 1:
+                                            nodes_to_remove.add(key)
+                                        else:
+                                            node.qnode_keys.remove(param_qnode_key)
                                     else:
-                                        node.qnode_keys.remove(edge_params['qnode_key'])
-                                else:
-                                    del node_keys_to_remove[key]
+                                        del node_keys_to_remove[key]
                             else:
                                 del node_keys_to_remove[key]
                         else:
@@ -101,7 +102,19 @@ class RemoveEdges:
             # remove edges
             #self.message.knowledge_graph.edges = [val for idx,val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
             for key in edges_to_remove:
-                del self.message.knowledge_graph.edges[key]
+                if edge_params.get('qedge_keys',None) is not None:
+                    if hasattr(self.message.knowledge_graph.edges[key],'qedge_keys') and self.message.knowledge_graph.edges[key].qedge_keys is not None:
+                        qedge_key_diff = set(self.message.knowledge_graph.edges[key].qedge_keys) - set(edge_params['qedge_keys'])
+                        if len(qedge_key_diff) < 1:
+                            del self.message.knowledge_graph.edges[key]
+                        else:
+                            self.message.knowledge_graph.edges[key].qedge_keys = list(qedge_key_diff)
+                    else:
+                        self.response.warning(
+                            f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
+                else:
+                    del self.message.knowledge_graph.edges[key]
+                    
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -189,15 +202,16 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_keys_to_remove:
-                        if 'qnode_key' in edge_params:
+                        if 'qnode_keys' in edge_params:
                             if node.qnode_keys is not None:
-                                if edge_params['qnode_key'] in node.qnode_keys:
-                                    if len(node.qnode_keys) == 1:
-                                        nodes_to_remove.add(key)
+                                for param_qnode_key in edge_params['qnode_keys']:
+                                    if param_qnode_key in node.qnode_keys:
+                                        if len(node.qnode_keys) == 1:
+                                            nodes_to_remove.add(key)
+                                        else:
+                                            node.qnode_keys.remove(param_qnode_key)
                                     else:
-                                        node.qnode_keys.remove(edge_params['qnode_key'])
-                                else:
-                                    del node_keys_to_remove[key]
+                                        del node_keys_to_remove[key]
                             else:
                                 del node_keys_to_remove[key]
                         else:
@@ -220,7 +234,18 @@ class RemoveEdges:
             # remove edges
             #self.message.knowledge_graph.edges = [val for idx,val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
             for key in edges_to_remove:
-                del self.message.knowledge_graph.edges[key]
+                if edge_params.get('qedge_keys',None) is not None:
+                    if hasattr(self.message.knowledge_graph.edges[key],'qedge_keys') and self.message.knowledge_graph.edges[key].qedge_keys is not None:
+                        qedge_key_diff = set(self.message.knowledge_graph.edges[key].qedge_keys) - set(edge_params['qedge_keys'])
+                        if len(qedge_key_diff) < 1:
+                            del self.message.knowledge_graph.edges[key]
+                        else:
+                            self.message.knowledge_graph.edges[key].qedge_keys = list(qedge_key_diff)
+                    else:
+                        self.response.warning(
+                            f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
+                else:
+                    del self.message.knowledge_graph.edges[key]
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -277,15 +302,16 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_keys_to_remove:
-                        if 'qnode_key' in edge_params:
+                        if 'qnode_keys' in edge_params:
                             if node.qnode_keys is not None:
-                                if edge_params['qnode_key'] in node.qnode_keys:
-                                    if len(node.qnode_keys) == 1:
-                                        nodes_to_remove.add(key)
+                                for param_qnode_key in edge_params['qnode_keys']:
+                                    if param_qnode_key in node.qnode_keys:
+                                        if len(node.qnode_keys) == 1:
+                                            nodes_to_remove.add(key)
+                                        else:
+                                            node.qnode_keys.remove(param_qnode_key)
                                     else:
-                                        node.qnode_keys.remove(edge_params['qnode_key'])
-                                else:
-                                    del node_keys_to_remove[key]
+                                        del node_keys_to_remove[key]
                             else:
                                 del node_keys_to_remove[key]
                         else:
@@ -313,7 +339,18 @@ class RemoveEdges:
             # remove edges
             #self.message.knowledge_graph.edges = [val for idx,val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
             for key in edges_to_remove:
-                del self.message.knowledge_graph.edges[key]
+                if edge_params.get('qedge_keys',None) is not None:
+                    if hasattr(self.message.knowledge_graph.edges[key],'qedge_keys') and self.message.knowledge_graph.edges[key].qedge_keys is not None:
+                        qedge_key_diff = set(self.message.knowledge_graph.edges[key].qedge_keys) - set(edge_params['qedge_keys'])
+                        if len(qedge_key_diff) < 1:
+                            del self.message.knowledge_graph.edges[key]
+                        else:
+                            self.message.knowledge_graph.edges[key].qedge_keys = list(qedge_key_diff)
+                    else:
+                        self.response.warning(
+                            f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
+                else:
+                    del self.message.knowledge_graph.edges[key]
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -405,15 +442,16 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_keys_to_remove:
-                        if 'qnode_key' in edge_params:
+                        if 'qnode_keys' in edge_params:
                             if node.qnode_keys is not None:
-                                if edge_params['qnode_key'] in node.qnode_keys:
-                                    if len(node.qnode_keys) == 1:
-                                        nodes_to_remove.add(key)
+                                for param_qnode_key in edge_params['qnode_keys']:
+                                    if param_qnode_key in node.qnode_keys:
+                                        if len(node.qnode_keys) == 1:
+                                            nodes_to_remove.add(key)
+                                        else:
+                                            node.qnode_keys.remove(param_qnode_key)
                                     else:
-                                        node.qnode_keys.remove(edge_params['qnode_key'])
-                                else:
-                                    del node_keys_to_remove[key]
+                                        del node_keys_to_remove[key]
                             else:
                                 del node_keys_to_remove[key]
                         else:
@@ -439,7 +477,18 @@ class RemoveEdges:
             # remove edges
             #self.message.knowledge_graph.edges = [val for idx,val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
             for key in edges_to_remove:
-                del self.message.knowledge_graph.edges[key]
+                if edge_params.get('qedge_keys',None) is not None:
+                    if hasattr(self.message.knowledge_graph.edges[key],'qedge_keys') and self.message.knowledge_graph.edges[key].qedge_keys is not None:
+                        qedge_key_diff = set(self.message.knowledge_graph.edges[key].qedge_keys) - set(edge_params['qedge_keys'])
+                        if len(qedge_key_diff) < 1:
+                            del self.message.knowledge_graph.edges[key]
+                        else:
+                            self.message.knowledge_graph.edges[key].qedge_keys = list(qedge_key_diff)
+                    else:
+                        self.response.warning(
+                            f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
+                else:
+                    del self.message.knowledge_graph.edges[key]
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()

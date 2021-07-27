@@ -215,7 +215,7 @@ def test_FET_ex1():
         "add_qedge(subject=n00, object=n01,key=e00)",
         "expand(edge_key=e00, kp=RTX-KG2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_key=n01)",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=e01, kp=RTX-KG2)",
