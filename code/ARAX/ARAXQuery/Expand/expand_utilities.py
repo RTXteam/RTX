@@ -605,6 +605,7 @@ def create_results(one_hop_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: A
     prune_message.query_graph = one_hop_qg
     prune_message.knowledge_graph = regular_format_kg
     if overlay_fet:
+        log.debug(f"Using FET to assess quality of intermediate answers in Expand")
         fet_qedge_key = "FETe0"
         try:
             overlayer = ARAXOverlay()
@@ -627,12 +628,16 @@ def create_results(one_hop_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: A
             remove_edges_with_qedge_key(prune_response.envelope.message.knowledge_graph, fet_qedge_key)
             one_hop_qg.edges.pop(fet_qedge_key, None)
             prune_response.status = "OK"  # Clear this so we can continue without overlaying
+        else:
+            # Make this virtual edge optional (don't want to lose results that had no FET value)
+            one_hop_qg.edges[fet_qedge_key].option_group_id = "FET_VIRTUAL_GROUP"
 
     # Create results and rank them as appropriate
+    log.debug(f"Calling Resultify from Expand for pruning")
     resultifier.apply(prune_response, {})
     if rank_results:
         try:
-            log.debug(f"Applying ranker to Expand's intermediate pruning results")
+            log.debug(f"Ranking Expand's intermediate pruning results")
             ranker = ARAXRanker()
             ranker.aggregate_scores_dmk(prune_response)
         except Exception as error:

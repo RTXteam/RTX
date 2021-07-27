@@ -169,6 +169,7 @@ class ARAXExpander:
             # Expand the query graph edge-by-edge
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
             for qedge_key in ordered_qedge_keys_to_expand:
+                log.debug(f"Expanding qedge {qedge_key}")
                 qedge = query_graph.edges[qedge_key]
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
@@ -628,23 +629,25 @@ class ARAXExpander:
     def _prune_kg(kg: QGOrganizedKnowledgeGraph, full_qg: QueryGraph, one_hop_qg: QueryGraph,
                   log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # Rank answers for the most recently expanded qedge and filter them if we have too many
-        # TODO: don't do this if it's our last qedge expansion?? or still do?
-        max_nodes_allowed = 2000
+        max_nodes_allowed = 1200
         current_qedge_key = next(qedge_key for qedge_key in one_hop_qg.edges)
         qnodes_keys_without_ids = {qnode_key for qnode_key, qnode in one_hop_qg.nodes.items() if not qnode.ids}
         if qnodes_keys_without_ids:
             newly_fulfilled_qnode_key = next(qnode_key for qnode_key in qnodes_keys_without_ids)
             num_nodes_fulfilling_qnode = len(kg.nodes_by_qg_id[newly_fulfilled_qnode_key])
+            already_fulfilled_qnode_key = list(set(one_hop_qg.nodes).difference({newly_fulfilled_qnode_key}))[0]
             if num_nodes_fulfilling_qnode > max_nodes_allowed:
                 log.info(f"Pruning back answers for {newly_fulfilled_qnode_key} because there are more than "
                          f"{max_nodes_allowed} (there are {num_nodes_fulfilling_qnode})")
                 sub_qg = eu.copy_qg(one_hop_qg)
-                for qnode in sub_qg.nodes.values():  # Make sure all nodes have is_set=false for pruning purposes
-                    qnode.is_set = False
+                # Modify is_set values in way that makes sense for these intermediate one-hop results
+                sub_qg.nodes[newly_fulfilled_qnode_key].is_set = False
+                sub_qg.nodes[already_fulfilled_qnode_key].is_set = True
                 sub_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: kg.nodes_by_qg_id[qnode_key] for qnode_key in sub_qg.nodes},
                                                    edges={qedge_key: kg.edges_by_qg_id[qedge_key] for qedge_key in sub_qg.edges})
                 # Create ranked results for this qedge
                 resultify_response = eu.create_results(sub_qg, sub_kg, log, rank_results=True, overlay_fet=True)
+                log.debug(f"A total of {len(resultify_response.envelope.message.results)} intermediate results were created/ranked")
                 if resultify_response.status == "OK":
                     # Filter down so we only keep the top X nodes
                     results = resultify_response.envelope.message.results
@@ -675,6 +678,8 @@ class ARAXExpander:
         expanded_qedges = {qedge_key for qedge_key in full_qg.edges if kg.edges_by_qg_id.get(qedge_key)}
         qg_expanded_thus_far = QueryGraph(nodes={qnode_key: full_qg.nodes[qnode_key] for qnode_key in expanded_qnodes},
                                           edges={qedge_key: full_qg.edges[qedge_key] for qedge_key in expanded_qedges})
+        for qnode in qg_expanded_thus_far.nodes.values():
+            qnode.is_set = True  # This makes resultify run faster and doesn't hurt in our case
         resultify_response = eu.create_results(qg_expanded_thus_far, kg, log)
         if resultify_response.status == "OK":
             pruned_kg = eu.convert_standard_kg_to_qg_organized_kg(resultify_response.envelope.message.knowledge_graph)
