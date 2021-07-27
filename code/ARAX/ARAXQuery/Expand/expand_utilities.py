@@ -20,8 +20,13 @@ from openapi_server.models.q_edge import QEdge
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
+from openapi_server.models.message import Message
+from openapi_server.models.response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
+from ARAX_resultify import ARAXResultify
+from ARAX_overlay import ARAXOverlay
+from ARAX_ranker import ARAXRanker
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
@@ -104,6 +109,19 @@ def copy_qnode(old_qnode: QNode) -> QNode:
 def copy_qg(qg: QueryGraph) -> QueryGraph:
     return QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
                       edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+
+
+def remove_orphan_edges(kg: QGOrganizedKnowledgeGraph, qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
+    fulfilled_qedge_keys = set(kg.edges_by_qg_id)
+    for qedge_key in fulfilled_qedge_keys:
+        qedge = qg.edges[qedge_key]
+        edge_keys = set(kg.edges_by_qg_id[qedge_key])
+        for edge_key in edge_keys:
+            edge = kg.edges_by_qg_id[qedge_key][edge_key]
+            if not ((edge.subject in kg.nodes_by_qg_id[qedge.subject] and edge.object in kg.nodes_by_qg_id[qedge.object]) or
+                    (edge.object in kg.nodes_by_qg_id[qedge.subject] and edge.subject in kg.nodes_by_qg_id[qedge.object])):
+                del kg.edges_by_qg_id[qedge_key][edge_key]
+    return kg
 
 
 def convert_string_to_pascal_case(input_string: str) -> str:
@@ -567,6 +585,67 @@ def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
         if qedge.predicates:
             qedge.predicates = [predicate.split(":")[-1] for predicate in qedge.predicates]
     return qg_copy
+
+
+def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
+    edge_keys = set(kg.edges)
+    for edge_key in edge_keys:
+        edge = kg.edges[edge_key]
+        if qedge_key in edge.qedge_keys:
+            del kg.edges[edge_key]
+
+
+def create_results(one_hop_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False, rank_results: bool = False) -> Response:
+    regular_format_kg = convert_qg_organized_kg_to_standard_kg(kg)
+    resultifier = ARAXResultify()
+    prune_response = ARAXResponse()
+    prune_response.envelope = Response()
+    prune_response.envelope.message = Message()
+    prune_message = prune_response.envelope.message
+    prune_message.query_graph = one_hop_qg
+    prune_message.knowledge_graph = regular_format_kg
+    if overlay_fet:
+        fet_qedge_key = "FETe0"
+        try:
+            overlayer = ARAXOverlay()
+            qnodes = list(one_hop_qg.nodes)
+            params = {"action": "fisher_exact_test",
+                      "subject_qnode_key": qnodes[0],
+                      "object_qnode_key": qnodes[1],
+                      "virtual_relation_label": fet_qedge_key}
+            overlayer.apply(prune_response, params)
+        except Exception as error:
+            exception_type, exception_value, exception_traceback = sys.exc_info()
+            log.error(f"An uncaught error occurred when overlaying with FET during expand's pruning: "
+                      f"{error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}",
+                      error_code="UncaughtARAXiError")
+        if prune_response.status != "OK":
+            log.warning(f"FET produced an error when Expand tried to use it to prune the KG. "
+                        f"Log was: {prune_response.show()}")
+            log.debug(f"Will continue pruning without overlaying FET")
+            # Get rid of any FET edges that might be in the KG/QG, since this step failed
+            remove_edges_with_qedge_key(prune_response.envelope.message.knowledge_graph, fet_qedge_key)
+            one_hop_qg.edges.pop(fet_qedge_key, None)
+            prune_response.status = "OK"  # Clear this so we can continue without overlaying
+
+    # Create results and rank them as appropriate
+    resultifier.apply(prune_response, {})
+    if rank_results:
+        try:
+            log.debug(f"Applying ranker to Expand's intermediate pruning results")
+            ranker = ARAXRanker()
+            ranker.aggregate_scores_dmk(prune_response)
+        except Exception as error:
+            exception_type, exception_value, exception_traceback = sys.exc_info()
+            log.error(f"An uncaught error occurred when attempting to rank results during Expand's pruning: "
+                      f"{error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}."
+                      f"Log was: {prune_response.show()}",
+                      error_code="UncaughtARAXiError")
+            # Give any unranked results a score of 0
+            for result in prune_response.envelope.message.results:
+                if result.score is None:
+                    result.score = 0
+    return prune_response
 
 
 def get_all_kps() -> Set[str]:
