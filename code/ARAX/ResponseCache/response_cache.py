@@ -356,6 +356,20 @@ class ResponseCache:
                            for i in range(len(envelope['logs'])):
                                if isinstance(envelope['logs'][i],str):
                                    envelope['logs'][i] = { 'level': 'INFO', 'message': 'ARS info: ' + envelope['logs'][i] }
+
+                           try:
+                               #eprint(f"INFO: Actual response: {actual_response}")
+                               import html
+                               actual_response = html.unescape(actual_response)
+                               #eprint(f"INFO: Actual decoded response: {actual_response}")
+                               actual_response_dict = json.loads(actual_response)
+                               if 'message' in actual_response_dict:
+                                   is_trapi = True
+                                   envelope = actual_response_dict
+                           except:
+                               eprint("WARNING: tried to convert the response to JSON and it did not work")
+                               eprint(f"It was: {envelope['logs'][0]}")
+
                 else:
                     #eprint("INFO: envelope has no message")
                     is_trapi = False
