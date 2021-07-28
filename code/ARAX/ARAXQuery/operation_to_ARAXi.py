@@ -11,6 +11,11 @@ class WorkflowToARAXi:
                             'bind',
                             'fill',
                             'filter_kgraph_orphans',
+                            'filter_kgraph_top_n',
+                            'filter_kgraph_std_dev',
+                            'filter_kgraph_percentile',
+                            'filter_kgraph_discrete_kedge_attribute',
+                            'filter_kgraph_continuous_attribute',
                             'score',
                             'complete_results'}
 
@@ -93,7 +98,7 @@ class WorkflowToARAXi:
         else:
             direction = 'above'
         # FW: need to update this to handle qedge_keys and qnode_keys
-        araxi_string = f"filter_kg(action=remove_edges_by_top_n,edge_attribute={parameters['edge_attribute']},threshold={threshold},direction={direction},top={top == 'top'}"
+        araxi_string = f"filter_kg(action=remove_edges_by_top_n,edge_attribute={parameters['edge_attribute']},n={threshold},direction={direction},top={top == 'top'}"
         if "qnode_keys" in parameters:
             araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
         if "qedge_keys" in parameters:

@@ -36,8 +36,8 @@ def main():
         return
 
     response_dict['components'] = {}
-    response_dict['components']['schemas'] = response_dict['definitions']
-    del response_dict['definitions']
+    response_dict['components']['schemas'] = response_dict['$defs']
+    del response_dict['$defs']
     
     print(yaml.dump(response_dict))
 
