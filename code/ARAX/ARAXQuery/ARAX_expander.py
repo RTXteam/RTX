@@ -46,7 +46,6 @@ class ARAXExpander:
         :return:
         """
         considered_kps = sorted(list(set(self.kp_command_definitions)))
-        kg2_definition = self.kp_command_definitions["RTX-KG2"]
         kp_less = {
                 "dsl_command": "expand()",
                 "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
@@ -55,11 +54,7 @@ class ARAXExpander:
                                f"their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick "
                                f"but useful answers. For each QEdge, it queries the selected KPs in parallel; it will "
                                f"timeout for a particular KP if it decides it's taking too long to respond.",
-                "parameters": {
-                    "edge_key": kg2_definition["parameters"]["edge_key"],
-                    "node_key": kg2_definition["parameters"]["node_key"],
-                    "enforce_directionality": kg2_definition["parameters"]["enforce_directionality"]
-                }
+                "parameters": eu.get_standard_parameters()
             }
         return [kp_less] + list(self.kp_command_definitions.values())
 
@@ -177,15 +172,26 @@ class ARAXExpander:
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
 
-                # Prune back any nodes with more than the specified max of answers
-                prune_threshold = 1000 if len([qnode for qnode in one_hop_qg.nodes.values() if qnode.ids]) < 2 else 8000
-                non_pinned_qnode_keys = {qnode_key for qnode_key, qnode in one_hop_qg.nodes.items() if not query_graph.nodes[qnode_key].ids}
-                for non_pinned_qnode_key in non_pinned_qnode_keys:
-                    decorated_qnode = one_hop_qg.nodes[non_pinned_qnode_key]
-                    if decorated_qnode.ids and len(decorated_qnode.ids) > prune_threshold:
-                        overarching_kg = self._prune_kg(non_pinned_qnode_key, prune_threshold, overarching_kg, query_graph, log)
-                        # Re-formulate the QG for this edge now that the KG has been slimmed down
-                        one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
+                if mode == "ARAX":
+                    # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
+                    prune_threshold = parameters["prune_threshold"]
+                    if not parameters.get("user_specified_prune_threshold"):
+                        subject_qnode = one_hop_qg.nodes[qedge.subject]
+                        object_qnode = one_hop_qg.nodes[qedge.object]
+                        open_ended_qnode = subject_qnode if not subject_qnode.ids else object_qnode
+                        if subject_qnode.ids and object_qnode.ids:
+                            prune_threshold = 5000  # Be more lenient for doubly-pinned qedges
+                        elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
+                            if prune_threshold > 200:
+                                prune_threshold = 200  # NamedThing really explodes the results, so be more strict
+                    log.debug(f"Prune threshold is {prune_threshold} for this expansion")
+                    # Prune back any nodes with more than the specified max of answers
+                    for qnode_key in one_hop_qg.nodes:
+                        local_qnode = one_hop_qg.nodes[qnode_key]
+                        if local_qnode.ids and len(local_qnode.ids) > prune_threshold:
+                            overarching_kg = self._prune_kg(qnode_key, prune_threshold, overarching_kg, query_graph, log)
+                            # Re-formulate the QG for this edge now that the KG has been slimmed down
+                            one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
 
                 if log.status != 'OK':
                     return response
@@ -553,6 +559,7 @@ class ARAXExpander:
                 else:
                     overarching_kg.add_node(node_key, node, qnode_key)
         for qedge_key, edges_dict in answer_kg.edges_by_qg_id.items():
+            num_orphan_edges_removed = 0
             qedge = overarching_qg.edges[qedge_key]
             for edge_key, edge in edges_dict.items():
                 if (edge.subject in overarching_kg.nodes_by_qg_id[qedge.subject] and
@@ -561,7 +568,8 @@ class ARAXExpander:
                          edge.object in overarching_kg.nodes_by_qg_id[qedge.subject]):
                     overarching_kg.add_edge(edge_key, edge, qedge_key)
                 else:
-                    log.debug(f"Removing edge {edge_key} (fulfilling {qedge_key}) from the KG because it's orphaned")
+                    num_orphan_edges_removed += 1
+            log.debug(f"Removed {num_orphan_edges_removed} edges fulfilling {qedge_key} from the KG because they were orphaned")
 
     @staticmethod
     def _store_kryptonite_edge_info(kryptonite_kg: QGOrganizedKnowledgeGraph, kryptonite_qedge_key: str, qg: QueryGraph,
@@ -648,6 +656,13 @@ class ARAXExpander:
                  f"{prune_threshold} in the KG (there are {len(kg.nodes_by_qg_id[qnode_key_to_prune])})")
         kg_copy = copy.deepcopy(kg)
         qg_expanded_thus_far = eu.get_qg_expanded_thus_far(qg,  kg)
+        # Handle (probably unusual) case where
+        if not qg_expanded_thus_far.edges or not qg_expanded_thus_far.nodes:
+            qnode_exceeding_threshold = qg.nodes[qnode_key_to_prune]
+            if qnode_exceeding_threshold.ids and len(qnode_exceeding_threshold.ids) > prune_threshold:
+                log.warning(f"Qnode {qnode_key_to_prune} has {len(qnode_exceeding_threshold.ids)} IDs specified, "
+                            f"which will break our system. Truncating these to a list of {prune_threshold}.")
+                qnode_exceeding_threshold.ids = qnode_exceeding_threshold.ids[:prune_threshold]
         qg_expanded_thus_far.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
         intermediate_results_response = eu.create_results(qg_expanded_thus_far, kg_copy, log,
                                                           rank_results=True, overlay_fet=True,
@@ -816,13 +831,15 @@ class ARAXExpander:
         parameters = {"kp": kp}
         if not kp:
             kp = "RTX-KG2"  # We'll use a standard set of parameters (like for KG2)
+
+        # First set parameters to their defaults
         for kp_parameter_name, info_dict in self.kp_command_definitions[kp]["parameters"].items():
             if info_dict["type"] == "boolean":
                 parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
             else:
                 parameters[kp_parameter_name] = info_dict.get("default", None)
 
-        # Override default values for any parameters passed in
+        # Then override default values for any parameters passed in
         parameter_names_for_all_kps = {param for kp_documentation in self.kp_command_definitions.values() for param in
                                        kp_documentation["parameters"]}
         for param_name, value in input_parameters.items():
@@ -830,8 +847,16 @@ class ARAXExpander:
                 kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
                 log.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}",
                           error_code="InvalidParameter")
-            else:
-                parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
+            elif param_name in self.kp_command_definitions[kp]["parameters"]:
+                param_info_dict = self.kp_command_definitions[kp]["parameters"][param_name]
+                if param_info_dict.get("type") == "boolean":
+                    parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
+                elif param_info_dict.get("type") == "integer":
+                    parameters[param_name] = int(value)
+                else:
+                    parameters[param_name] = value
+                if param_name == "prune_threshold":
+                    parameters["user_specified_prune_threshold"] = True
 
         return parameters
 

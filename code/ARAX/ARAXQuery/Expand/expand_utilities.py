@@ -651,37 +651,54 @@ def get_all_kps() -> Set[str]:
     return set(get_kp_command_definitions().keys())
 
 
+def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:
+    new_dict = copy.deepcopy(dict_a)
+    new_dict.update(dict_b)
+    return new_dict
+
+
+def get_standard_parameters() -> dict:
+    standard_parameters = {
+        "edge_key": {
+            "is_required": False,
+            "examples": ["e00", "[e00, e01]"],
+            "type": "string",
+            "description": "A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."
+        },
+        "node_key": {
+            "is_required": False,
+            "examples": ["n00", "[n00, n01]"],
+            "type": "string",
+            "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
+        },
+        "enforce_directionality": {
+            "is_required": False,
+            "examples": ["true", "false"],
+            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+            "default": "false",
+            "type": "boolean",
+            "description": "Whether to obey (vs. ignore) edge directions in the query graph."
+        },
+        "prune_threshold": {
+            "is_required": False,
+            "type": "integer",
+            "default": 1000,
+            "examples": [500, 2000],
+            "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of "
+                           "this threshold will be pruned, using Fisher Exact Test to rank answers."
+        }
+    }
+    return standard_parameters
+
+
 def get_kp_command_definitions() -> dict:
-    edge_key_parameter_info = {
-        "is_required": False,
-        "examples": ["e00", "[e00, e01]"],
-        "type": "string",
-        "description": "A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."
-    }
-    node_key_parameter_info = {
-        "is_required": False,
-        "examples": ["n00", "[n00, n01]"],
-        "type": "string",
-        "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
-    }
-    enforce_directionality_parameter_info = {
-        "is_required": False,
-        "examples": ["true", "false"],
-        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-        "default": "false",
-        "type": "boolean",
-        "description": "Whether to obey (vs. ignore) edge directions in the query graph."
-    }
+    standard_parameters = get_standard_parameters()
     return {
         "RTX-KG2": {
             "dsl_command": "expand(kp=RTX-KG2)",
             "description": "This command reaches out to the RTX-KG2 API to find all bioentity subpaths "
                            "that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "enforce_directionality": enforce_directionality_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "BTE": {
             "dsl_command": "expand(kp=BTE)",
@@ -691,19 +708,13 @@ def get_kp_command_definitions() -> dict:
                            "supported (the ARAX system knows how to ignore edge direction when deciding which "
                            "query node for a query edge will be the 'input' qnode, but BTE itself returns only "
                            "answers matching the input edge direction).",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "enforce_directionality": enforce_directionality_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "COHD": {
             "dsl_command": "expand(kp=COHD)",
             "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
                            " satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
+            "parameters": merge_two_dicts(standard_parameters, {
                 "COHD_method": {
                     "is_required": False,
                     "examples": ["paired_concept_freq", "chi_square"],
@@ -737,61 +748,43 @@ def get_kp_command_definitions() -> dict:
                     "type": "boolean",
                     "description": "Whether to call COHD API when the local COHD database doesn't return the expected results."
                 }
-            }
+            })
         },
         "GeneticsKP": {
             "dsl_command": "expand(kp=GeneticsKP)",
             "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
                            "satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "MolePro": {
             "dsl_command": "expand(kp=MolePro)",
             "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
                            "subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "ClinicalRiskKP": {
             "dsl_command": "expand(kp=ClinicalRiskKP)",
             "description": "This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity "
                            "subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "WellnessKP": {
             "dsl_command": "expand(kp=WellnessKP)",
             "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
                            "subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "DrugResponseKP": {
             "dsl_command": "expand(kp=DrugResponseKP)",
             "description": "This command reaches out to the Multiomics Big GIM II Drug Response KP to find all "
                            "bioentity subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "TumorGeneMutationKP": {
             "dsl_command": "expand(kp=TumorGeneMutationKP)",
             "description": "This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find "
                            "all bioentity subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "NGD": {
             "dsl_command": "expand(kp=NGD)",
@@ -799,28 +792,19 @@ def get_kp_command_definitions() -> dict:
                            "a query graph; it returns edges between nodes with an NGD value below a certain "
                            "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
                            "configurable/smarter in the future.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "ICEES-DILI": {
             "dsl_command": "expand(kp=ICEES-DILI)",
             "description": "This command reaches out to the ICEES knowledge provider's DILI instance to find "
                            "all bioentity subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "ICEES-Asthma": {
             "dsl_command": "expand(kp=ICEES-Asthma)",
             "description": "This command reaches out to the ICEES knowledge provider's Asthma instance to find "
                            "all bioentity subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "CHP": {
             "dsl_command": "expand(kp=CHP)",
@@ -830,9 +814,7 @@ def get_kp_command_definitions() -> dict:
                            "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
                            "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
                            "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
+            "parameters": merge_two_dicts(standard_parameters, {
                 "CHP_survival_threshold": {
                     "is_required": False,
                     "examples": [200, 100],
@@ -841,8 +823,8 @@ def get_kp_command_definitions() -> dict:
                     "default": 500,
                     "type": "int",
                     "description": "What cut-off/threshold for surivial time (day) to estimate probability."
-                },
-            }
+                }
+            })
         },
         "DTD": {
             "dsl_command": "expand(kp=DTD)",
@@ -854,9 +836,7 @@ def get_kp_command_definitions() -> dict:
                            "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
                            "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to "
                            "to call DTD model to do a real-time calculation.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
+            "parameters": merge_two_dicts(standard_parameters, {
                 "DTD_threshold": {
                     "is_required": False,
                     "examples": [0.8, 0.5],
@@ -874,6 +854,6 @@ def get_kp_command_definitions() -> dict:
                     "type": "boolean",
                     "description": "Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability."
                 }
-            }
+            })
         }
     }
