@@ -1126,6 +1126,7 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 			    td.appendChild(document.createTextNode(pc));
 			    tr.appendChild(td);
 			}
+			td.style.textAlign = "right";  // last td is always the count number
 			table.appendChild(tr);
 		    }
 		    tnode.appendChild(table);
@@ -1160,6 +1161,7 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 			td.appendChild(document.createTextNode(pred));
 			tr.appendChild(td);
 			td = document.createElement("td");
+			td.style.textAlign = "right";
 			td.appendChild(document.createTextNode(jsonObj2.validation_result.provenance_summary.predicate_counts[pred]));
 			tr.appendChild(td);
 			table.appendChild(tr);
@@ -1489,18 +1491,43 @@ function render_response(respObj,dispjson) {
 	table.className = 'sumtab';
         var tr = document.createElement("tr");
         var td = document.createElement("th");
-	td.colSpan = "4";
+	td.colSpan = "5";
 	td.appendChild(document.createTextNode("Provenance Counts: "+respObj.validation_result.provenance_summary["n_sources"]));
 	tr.appendChild(td);
 	table.appendChild(tr);
+	var previous = '';
 	for (var prov in respObj.validation_result.provenance_summary.provenance_counts) {
+	    var changed = false;
+	    if (previous && previous != respObj.validation_result.provenance_summary.provenance_counts[prov][0])
+		changed = true;
+            previous = respObj.validation_result.provenance_summary.provenance_counts[prov][0];
+
 	    tr = document.createElement("tr");
             tr.className = 'hoverable';
 	    for (var pc of respObj.validation_result.provenance_summary.provenance_counts[prov]) {
 		td = document.createElement("td");
+		if (changed)
+		    td.style.borderTop = "2px solid #444";
 		td.appendChild(document.createTextNode(pc));
 		tr.appendChild(td);
 	    }
+	    td.style.textAlign = "right";  // last td is always the count number
+
+	    // fancy bar bar
+	    td = document.createElement("td");
+            if (changed)
+		td.style.borderTop = "2px solid #444";
+	    var span = document.createElement("span");
+	    span.className = "bar";
+	    var barw = 0.5*Number(respObj.validation_result.provenance_summary.provenance_counts[prov][3]);
+	    if (barw > 500) {
+		barw = 501;
+		span.style.background = "#3d6d98";
+	    }
+	    span.style.width = barw + "px";
+	    td.appendChild(span);
+            tr.appendChild(td);
+
 	    table.appendChild(tr);
 	}
 	div.appendChild(table);
@@ -1510,7 +1537,7 @@ function render_response(respObj,dispjson) {
 	table.className = 'sumtab';
 	tr = document.createElement("tr");
 	td = document.createElement("th");
-	td.colSpan = "2";
+	td.colSpan = "3";
 	td.appendChild(document.createTextNode("Predicate Counts"));
 	tr.appendChild(td);
 	table.appendChild(tr);
@@ -1521,8 +1548,22 @@ function render_response(respObj,dispjson) {
 	    td.appendChild(document.createTextNode(pred));
 	    tr.appendChild(td);
 	    td = document.createElement("td");
+	    td.style.textAlign = "right";
 	    td.appendChild(document.createTextNode(respObj.validation_result.provenance_summary.predicate_counts[pred]));
 	    tr.appendChild(td);
+            // fancy bar bar
+	    td = document.createElement("td");
+	    var span = document.createElement("span");
+	    span.className = "bar";
+	    var barw = 0.5*Number(respObj.validation_result.provenance_summary.predicate_counts[pred]);
+	    if (barw > 500) {
+		barw = 501;
+		span.style.background = "#3d6d98";
+	    }
+	    span.style.width = barw + "px";
+	    td.appendChild(span);
+	    tr.appendChild(td);
+
 	    table.appendChild(tr);
 	}
 	div.appendChild(table);

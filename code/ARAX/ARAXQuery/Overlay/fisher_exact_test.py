@@ -336,7 +336,7 @@ class ComputeFTEST:
             del_list = []
             for node in object_node_dict:
                 temp = [len(object_node_dict[node]), size_of_object[node]-len(object_node_dict[node]), size_of_query_sample - len(object_node_dict[node]), (size_of_total - size_of_object[node]) - (size_of_query_sample - len(object_node_dict[node]))]
-                if any([value < 0 for value in temp]) < 0:
+                if any([value < 0 for value in temp]) is True:
                     del_list.append(node)
                     self.response.warning(f"Skipping node {node} to calculate FET p-value due to issue1438 (which causes negative value).")
 
