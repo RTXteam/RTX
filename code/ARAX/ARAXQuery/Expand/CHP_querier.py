@@ -1,4 +1,4 @@
-#!/bin/env python3
+../ARAXQuery/Expand/CHP_querier.py#!/bin/env python3
 import sys
 import os
 import traceback
@@ -10,6 +10,7 @@ from typing import List, Dict, Tuple
 from neo4j import GraphDatabase
 import json
 import requests
+import requests_cache
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
@@ -404,15 +405,17 @@ class CHPQuerier:
     @staticmethod
     def _query_CHP_curies():
 
-        r = requests.get('http://chp.thayer.dartmouth.edu/curies/')
-        allowable_curies = eval(r.content)
+        with requests_cache.disabled():
+            r = requests.get('http://chp.thayer.dartmouth.edu/curies/')
+            allowable_curies = eval(r.content)
 
         return allowable_curies
 
     @staticmethod
     def _query_CHP_api(query):
 
-        r = requests.post('http://chp.thayer.dartmouth.edu/query/', json=query)
+        with requests_cache.disabled():
+            r = requests.post('http://chp.thayer.dartmouth.edu/query/', json=query)
 
         return json.loads(r.content)
 
