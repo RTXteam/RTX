@@ -22,11 +22,20 @@ info:
   x-trapi:
     version: 1.1.0
     operations:
-    - filter_results_top_n
-    - overlay_compute_ngd
-    - bind
-    - fill
-    - filter_kgraph_orphans
+      - filter_results_top_n
+      - overlay_compute_ngd
+      - overlay_compute_jaccard
+      - overlay_fisher_exact_test
+      - bind
+      - fill
+      - filter_kgraph_orphans
+      - score
+      - complete_results
+      - filter_kgraph_top_n
+      - filter_kgraph_std_dev
+      - filter_kgraph_percentile
+      - filter_kgraph_discrete_kedge_attribute
+      - filter_kgraph_continuous_attribute
     externalDocs:
       description: The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
@@ -351,16 +360,32 @@ components:
           description: A list of operations to be applied
           items:
             oneOf:
-            - $ref: '#/components/schemas/OperationOverlay'
-            - $ref: '#/components/schemas/OperationBind'
-            - $ref: '#/components/schemas/OperationOverlayComputeNgd'
-            - $ref: '#/components/schemas/OperationFill'
-            - $ref: '#/components/schemas/OperationFilterResults'
-            - $ref: '#/components/schemas/OperationFilterKgraph'
-            - $ref: '#/components/schemas/OperationRestate'
-            - $ref: '#/components/schemas/OperationCompleteResults'
-            - $ref: '#/components/schemas/OperationFilterResultsTopN'
-            - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+              - $ref: '#/components/schemas/OperationAnnotate'
+              - $ref: '#/components/schemas/OperationAnnotateEdges'
+              - $ref: '#/components/schemas/OperationBind'
+              - $ref: '#/components/schemas/OperationCompleteResults'
+              - $ref: '#/components/schemas/OperationFill'
+              - $ref: '#/components/schemas/OperationFilterKgraph'
+              - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+              - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
+              - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
+              - $ref: '#/components/schemas/OperationFilterKgraphTopN'
+              - $ref: '#/components/schemas/OperationFilterResults'
+              - $ref: '#/components/schemas/OperationFilterResultsTopN'
+              - $ref: '#/components/schemas/OperationLookup'
+              - $ref: '#/components/schemas/OperationOverlay'
+              - $ref: '#/components/schemas/OperationOverlayComputeJaccard'
+              - $ref: '#/components/schemas/OperationOverlayComputeNgd'
+              - $ref: '#/components/schemas/OperationOverlayConnectKnodes'
+              - $ref: '#/components/schemas/OperationOverlayFisherExactTest'
+              - $ref: '#/components/schemas/OperationRestate'
+              - $ref: '#/components/schemas/OperationScore'
+              - $ref: '#/components/schemas/OperationSortResults'
+              - $ref: '#/components/schemas/OperationSortResultsEdgeAttribute'
+              - $ref: '#/components/schemas/OperationSortResultsNodeAttribute'
+              - $ref: '#/components/schemas/OperationSortResultsScore'
           nullable: true
           type: array
         bypass_cache:
@@ -491,16 +516,32 @@ components:
           description: A list of operations that were applied
           items:
             oneOf:
-            - $ref: '#/components/schemas/OperationOverlay'
-            - $ref: '#/components/schemas/OperationBind'
-            - $ref: '#/components/schemas/OperationOverlayComputeNgd'
-            - $ref: '#/components/schemas/OperationFill'
-            - $ref: '#/components/schemas/OperationFilterResults'
-            - $ref: '#/components/schemas/OperationFilterKgraph'
-            - $ref: '#/components/schemas/OperationRestate'
-            - $ref: '#/components/schemas/OperationCompleteResults'
-            - $ref: '#/components/schemas/OperationFilterResultsTopN'
-            - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+              - $ref: '#/components/schemas/OperationAnnotate'
+              - $ref: '#/components/schemas/OperationAnnotateEdges'
+              - $ref: '#/components/schemas/OperationBind'
+              - $ref: '#/components/schemas/OperationCompleteResults'
+              - $ref: '#/components/schemas/OperationFill'
+              - $ref: '#/components/schemas/OperationFilterKgraph'
+              - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+              - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
+              - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
+              - $ref: '#/components/schemas/OperationFilterKgraphTopN'
+              - $ref: '#/components/schemas/OperationFilterResults'
+              - $ref: '#/components/schemas/OperationFilterResultsTopN'
+              - $ref: '#/components/schemas/OperationLookup'
+              - $ref: '#/components/schemas/OperationOverlay'
+              - $ref: '#/components/schemas/OperationOverlayComputeJaccard'
+              - $ref: '#/components/schemas/OperationOverlayComputeNgd'
+              - $ref: '#/components/schemas/OperationOverlayConnectKnodes'
+              - $ref: '#/components/schemas/OperationOverlayFisherExactTest'
+              - $ref: '#/components/schemas/OperationRestate'
+              - $ref: '#/components/schemas/OperationScore'
+              - $ref: '#/components/schemas/OperationSortResults'
+              - $ref: '#/components/schemas/OperationSortResultsEdgeAttribute'
+              - $ref: '#/components/schemas/OperationSortResultsNodeAttribute'
+              - $ref: '#/components/schemas/OperationSortResultsScore'
           type: array
         operations:
           allOf:
@@ -564,6 +605,11 @@ components:
           description: URI for this response
           example: https://arax.ncats.io/api/rtx/v1.0/response/123
           type: string
+        validation_result:
+          type: object
+          description: >-
+            Validation results and other summary stats computed
+            for this Response.
       required:
       - message
       type: object
@@ -1362,6 +1408,38 @@ components:
           format: float
           type: number
       type: object
+    OperationAnnotate:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - annotate
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationAnnotateEdges:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - annotate_edges
+          type: string
+        parameters:
+          properties:
+            attributes:
+              description: A list of attributes to annotate the edges with. If not
+                included then all available data will be annotated.
+              example:
+              - pmids
+              items:
+                type: string
+              type: array
+          type: object
+      required:
+      - id
+      type: object
     OperationBind:
       additionalProperties: false
       properties:
@@ -1404,7 +1482,6 @@ components:
                   type: string
                 minLength: 1
                 type: array
-            type: object
           - additionalProperties: false
             properties:
               denylist:
@@ -1416,7 +1493,6 @@ components:
                   type: string
                 minLength: 1
                 type: array
-            type: object
           type: object
       required:
       - id
@@ -1432,6 +1508,101 @@ components:
       required:
       - id
       type: object
+    OperationFilterKgraphContinuousAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_continuous_attribute
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: normalized_google_distance
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to remove edges with specific
+                edge_keys. If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering. Allows us to know what to
+                do with the nodes connected to edges that are removed.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+            remove_above_or_below:
+              description: Indicates whether to remove above or below the given threshold.
+              enum:
+              - above
+              - below
+              type: string
+            threshold:
+              description: The value to compare attribute values to.
+              example: 1.2
+              type: number
+          required:
+          - edge_attribute
+          - threshold
+          - remove_above_or_below
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphDiscreteKedgeAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_discrete_kedge_attribute
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: provided_by
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to remove edges with specific
+                edge_keys. If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering. Allows us to know what to
+                do with the nodes connected to edges that are removed
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+            remove_value:
+              description: The value for which all edges containing this value in
+                the specified edge_attribute should be removed.
+              example: infores:semmeddb
+          required:
+          - edge_attribute
+          - remove_value
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
     OperationFilterKgraphOrphans:
       additionalProperties: false
       properties:
@@ -1442,6 +1613,174 @@ components:
         parameters: {}
       required:
       - id
+      type: object
+    OperationFilterKgraphPercentile:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_percentile
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: normalized_google_distance
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to filter on specific edge_keys.
+                If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering. Allows us to know what to
+                do with the nodes connected to edges that are removed.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+            remove_above_or_below:
+              default: below
+              description: Indicates whether to remove above or below the given threshold.
+              enum:
+              - above
+              - below
+              type: string
+            threshold:
+              default: 95
+              description: The percentile to threshold on.
+              example: 96.8
+              maximum: 100
+              minimum: 0
+              type: number
+          required:
+          - edge_attribute
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphStdDev:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_std_dev
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: normalized_google_distance
+              type: string
+            num_sigma:
+              default: 1
+              description: The number of standard deviations to threshold on.
+              example: 1.2
+              minimum: 0
+              type: number
+            plus_or_minus_std_dev:
+              default: plus
+              description: Indicate whether or not the threshold should be found using
+                plus or minus the standard deviation. E.g. when plus_or_minus_std_dev
+                is set to plus will set the cutoff for filtering as the mean + num_sigma
+                * std_dev while setting plus_or_minus_std_dev to minus will set the
+                cutoff as the mean - num_sigma * std_dev.
+              enum:
+              - plus
+              - minus
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to filter on specific edge_keys.
+                If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+            remove_above_or_below:
+              default: below
+              description: Indictes whether to remove above or below the given threshold.
+              enum:
+              - above
+              - below
+              type: string
+          required:
+          - edge_attribute
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphTopN:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_top_n
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: normalized_google_distance
+              type: string
+            keep_top_or_bottom:
+              default: top
+              description: Indicate whether or not the the top or bottom n values
+                should be kept.
+              enum:
+              - top
+              - bottom
+              type: string
+            max_edges:
+              default: 50
+              description: The number of edges to keep.
+              example: 10
+              minimum: 0
+              type: integer
+            qedge_keys:
+              description: This indicates if you only want to filter on specific edge_keys.
+                If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering. Allows us to know what to
+                do with the nodes connected to edges that are removed.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+          required:
+          - edge_attribute
+          type: object
+      required:
+      - id
+      - parameters
       type: object
     OperationFilterResults:
       additionalProperties: false
@@ -1462,10 +1801,29 @@ components:
           - filter_results_top_n
           type: string
         parameters:
-          $ref: '#/components/schemas/OperationFilterResultsTopN_parameters'
+          properties:
+            max_results:
+              description: The maximum number of results to return.
+              example: 50
+              minimum: 0
+              type: integer
+          required:
+          - max_results
+          type: object
       required:
       - id
       - parameters
+      type: object
+    OperationLookup:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - lookup
+          type: string
+        parameters: {}
+      required:
+      - id
       type: object
     OperationOverlay:
       additionalProperties: false
@@ -1478,6 +1836,41 @@ components:
       required:
       - id
       type: object
+    OperationOverlayComputeJaccard:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_compute_jaccard
+          type: string
+        parameters:
+          properties:
+            end_node_keys:
+              description: A list of qnode keys specifying the ending nodes.
+              example:
+              - n0
+              - n2
+              items:
+                type: string
+              type: array
+            intermediate_node_key:
+              description: A qnode key specifying the intermediate node.
+              example: n1
+              type: string
+            virtual_relation_label:
+              description: The key of the query graph edge that corresponds to the
+                knowledge graph edges that were added by this operation.
+              example: J1
+              type: string
+          required:
+          - intermediate_node_key
+          - end_node_keys
+          - virtual_relation_label
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
     OperationOverlayComputeNgd:
       additionalProperties: false
       properties:
@@ -1486,7 +1879,72 @@ components:
           - overlay_compute_ngd
           type: string
         parameters:
-          $ref: '#/components/schemas/OperationOverlayComputeNgd_parameters'
+          properties:
+            qnode_keys:
+              description: A list of qnode keys to overlay pairwise edges onto. Must
+                be be a list of at least 2 valid qnodes.
+              example:
+              - n00
+              - n01
+              items:
+                type: string
+              type: array
+            virtual_relation_label:
+              description: An label to help identify the virtual edge in the relation
+                field
+              example: NGD1
+              type: string
+          required:
+          - virtual_relation_label
+          - qnode_keys
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationOverlayConnectKnodes:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_connect_knodes
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationOverlayFisherExactTest:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_fisher_exact_test
+          type: string
+        parameters:
+          properties:
+            object_qnode_key:
+              description: A specific object query node id.
+              example: n2
+              type: string
+            rel_edge_key:
+              description: A specific Qedge id connected to both subject nodes and
+                object nodes in message KG (optional, otherwise all edges connected
+                to both subject nodes and object nodes in message KG are considered).
+              example: e01
+              type: string
+            subject_qnode_key:
+              description: A specific subject query node id.
+              example: n1
+              type: string
+            virtual_relation_label:
+              description: An label to help identify the virtual edge.
+              example: f1
+              type: string
+          required:
+          - subject_qnode_key
+          - object_qnode_key
+          - virtual_relation_label
+          type: object
       required:
       - id
       - parameters
@@ -1502,33 +1960,122 @@ components:
       required:
       - id
       type: object
-    OperationFilterResultsTopN_parameters:
+    OperationScore:
+      additionalProperties: false
       properties:
-        max_results:
-          description: The maximum number of results to return.
-          example: 50
-          minimum: 0
-          type: integer
-      required:
-      - max_results
-      type: object
-    OperationOverlayComputeNgd_parameters:
-      properties:
-        qnode_keys:
-          description: A list of qnode keys to overlay pairwise edges onto. Must be
-            be a list of at least 2 valid qnodes.
-          example:
-          - n00
-          - n01
-          items:
-            type: string
-          type: array
-        virtual_relation_label:
-          description: An label to help identify the virtual edge in the relation
-            field
-          example: NGD1
+        id:
+          enum:
+          - score
           type: string
+        parameters: {}
       required:
-      - qnode_keys
-      - virtual_relation_label
+      - id
+      type: object
+    OperationSortResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - sort_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationSortResultsEdgeAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - sort_results_edge_attribute
+          type: string
+        parameters:
+          properties:
+            ascending_or_descending:
+              description: Indicates whether results should be sorted in ascending
+                or descending order.
+              enum:
+              - ascending
+              - descending
+              type: string
+            edge_attribute:
+              description: The name of the edge attribute to order by.
+              example: normalized_google_distance
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to consider edges with
+                specific edge_keys. If not provided or empty, all edges will be looked
+                at.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+          required:
+          - edge_attribute
+          - ascending_or_descending
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationSortResultsNodeAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - sort_results_node_attribute
+          type: string
+        parameters:
+          properties:
+            ascending_or_descending:
+              description: Indicates whether results should be sorted in ascending
+                or descending order.
+              enum:
+              - ascending
+              - descending
+              type: string
+            node_attribute:
+              description: The name of the node attribute to order by.
+              example: normalized_google_distance
+              type: string
+            qnode_keys:
+              description: This indicates if you only want to consider nodes with
+                specific node_keys. If not provided or empty, all nodes will be looked
+                at.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+          required:
+          - node_attribute
+          - ascending_or_descending
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationSortResultsScore:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - sort_results_score
+          type: string
+        parameters:
+          properties:
+            ascending_or_descending:
+              description: Indicates whether results should be sorted in ascending
+                or descending order.
+              enum:
+              - ascending
+              - descending
+              type: string
+          required:
+          - ascending_or_descending
+          type: object
+      required:
+      - id
+      - parameters
       type: object
