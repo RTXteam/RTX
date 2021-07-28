@@ -1,4 +1,4 @@
-../ARAXQuery/Expand/CHP_querier.py#!/bin/env python3
+#!/bin/env python3
 import sys
 import os
 import traceback
