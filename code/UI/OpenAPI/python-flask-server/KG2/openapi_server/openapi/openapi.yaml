@@ -9,7 +9,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2
-  version: 2.5.2
+  version: 2.6.7
   x-translator:
     component: KP
     team:

@@ -100,7 +100,7 @@ def get_kg2_predicate_triples_examples():
                 "node2, value.subject as subject, value.object as object"
     results = run_neo4j_query(cypher, "KG2", "predicate triples")
     triples_dict = {"subject":[], "predicate":[], "object":[]}
-    examples_json = {"url": "https://arax.ncats.io/kg2/api/rtxkg2/v1.0/ui/",
+    examples_json = {"url": "https://arax.ncats.io/api/rtxkg2/v1.1/query",
                     "TRAPI": True,
                     "edges": []}
     for result in results:
@@ -131,7 +131,7 @@ def get_kg2c_predicate_triples_examples():
                 "node2, value.subject as subject, value.object as object"
     results = run_neo4j_query(cypher, "KG2c", "predicate triples")
     triples_dict = {"subject":[], "predicate":[], "object":[]}
-    examples_json = {"url": "https://arax.ncats.io/kg2/api/rtxkg2/v1.0/ui/",
+    examples_json = {"url": "https://arax.ncats.io/api/rtxkg2/v1.1/query",
                     "TRAPI": True,
                     "edges": []}
     for result in results:
@@ -211,10 +211,10 @@ def get_kg2c_relationship_types():
 def main():
     print("----- starting script -----")
     
-    kg1_triple_df = get_kg1_predicate_triples()
+    #kg1_triple_df = get_kg1_predicate_triples()
     kg2_triple_df, KG2_examples_json = get_kg2_predicate_triples_examples()
     kg2c_triple_df, KG2c_examples_json = get_kg2c_predicate_triples_examples()
-    kg1_triple_df.to_csv("KG1_allowed_predicate_triples.csv", index=False)
+    #kg1_triple_df.to_csv("KG1_allowed_predicate_triples.csv", index=False)
     kg2_triple_df.to_csv("KG2_allowed_predicate_triples.csv", index=False)
     with open('RTX_KG2_Data.json','w') as fid:
         json.dump(KG2_examples_json, fid, indent=4)
@@ -222,17 +222,17 @@ def main():
     with open('RTX_KG2c_Data.json','w') as fid:
         json.dump(KG2c_examples_json, fid, indent=4)
 
-    kg1_labels_df = get_kg1_node_labels()
+    #kg1_labels_df = get_kg1_node_labels()
     kg2_labels_df = get_kg2_node_labels()
     kg2c_labels_df = get_kg2c_node_labels()
-    kg1_labels_df.to_csv("KG1_allowed_node_labels.csv", index=False)
+    #kg1_labels_df.to_csv("KG1_allowed_node_labels.csv", index=False)
     kg2_labels_df.to_csv("KG2_allowed_node_labels.csv", index=False)
     kg2c_labels_df.to_csv("KG2c_allowed_node_labels.csv", index=False)
 
-    kg1_labels_df = get_kg1_relationship_types()
+    #kg1_labels_df = get_kg1_relationship_types()
     kg2_labels_df = get_kg2_relationship_types()
     kg2c_labels_df = get_kg2c_relationship_types()
-    kg1_labels_df.to_csv("KG1_allowed_relationship_types.csv", index=False)
+    #kg1_labels_df.to_csv("KG1_allowed_relationship_types.csv", index=False)
     kg2_labels_df.to_csv("KG2_allowed_relationship_types.csv", index=False)
     kg2c_labels_df.to_csv("KG2c_allowed_relationship_types.csv", index=False)
     print("----- script finished -----")

@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=2">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="config.js"></script>
@@ -35,6 +35,8 @@
 <br>
 &nbsp;Output<br>
 <div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
+<div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">
+  <span class="explevel p3" style="font-size:x-small;" title="new!">New</span>&nbsp;Provenance</div>
 <div id="kgMenu" onclick="openSection('kg');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge<br>Graph</div>
 <div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
 <div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
@@ -203,8 +205,9 @@
     <div class="sampleqs">
       <select id="qid" onchange="pasteId(this.value);">
 	<option style="border-bottom:1px solid black;" value="">Example Ids&nbsp;&nbsp;&nbsp;&#8675;</option>
-	<option value="12175">ARAX example: 12175</option>
-	<option value="e8fc474f-ee73-4a5c-a024-c051680f3b88">ARS example: e8fc474f-ee73-4a5c-a024-c051680f3b88</option>
+	<option value="16892">ARAX example: 16892</option>
+	<option value="5ebf6d71-79f5-4243-ab61-3f0b4556b6ac">ARS example 1: 5ebf6d71-79f5-4243-ab61-3f0b4556b6ac</option>
+	<option value="4d463c9a-756c-44e5-a191-e8fa7b4d8e49">ARS example 2: 4d463c9a-756c-44e5-a191-e8fa7b4d8e49</option>
       </select>
     </div>
 
@@ -259,6 +262,10 @@
 <div id="summary_container"></div>
 </div>
 
+
+<div class="pagesection" id="provenanceDiv">
+  <div id="provenance_container"></div>
+</div>
 
 
 <div class="pagesection" id="kgDiv">

@@ -16,7 +16,7 @@ echo "================= starting tsv-to-neo4j-canonicalized.sh =================
 date
 
 config_dir=`dirname "$0"`
-source ${config_dir}/../master-config.shinc
+source ${config_dir}/master-config.shinc
 
 neo4j_config=/etc/neo4j/neo4j.conf
 database_path=`grep dbms.directories.data ${neo4j_config} | cut -f2 -d=`

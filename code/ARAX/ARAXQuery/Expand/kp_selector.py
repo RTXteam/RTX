@@ -22,7 +22,7 @@ from openapi_server.models.query_graph import QueryGraph
 class KPSelector:
 
     def __init__(self, log: ARAXResponse):
-        self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map.pickle"
+        self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.biolink_version = "1.7.0"
         self.descendants_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/descendants_biolink{self.biolink_version}.pickle"
         self.log = log
@@ -91,6 +91,27 @@ class KPSelector:
 
         return kp_accepts
 
+    def convert_curies_to_supported_prefixes(self, curies: List[str], categories: List[str], kp: str) -> List[str]:
+        """
+        This function looks up what curie prefixes the KP says it knows about, and makes the query graph
+        only use (synonymous) curies with those prefixes.
+        """
+        self.log.debug(f"Converting curies in the QG to kinds that {kp} can answer")
+        if not self.meta_map.get(kp):
+            self.log.warning(f"Somehow missing meta info for {kp}. Cannot do curie prefix conversion; will send "
+                             f"curies as they are.")
+            return curies
+        elif not self.meta_map[kp].get("prefixes"):
+            self.log.warning(f"No supported prefix info is available for {kp}. Will send curies as they are.")
+            return curies
+        else:
+            supported_prefixes = {prefix.upper() for category in categories
+                                  for prefix in self.meta_map[kp]["prefixes"].get(category, set())}
+            self.log.debug(f"Prefixes {kp} supports for {categories} are: {supported_prefixes}")
+            synonymous_curies = eu.get_curie_synonyms(curies)
+            final_curies = [curie for curie in synonymous_curies if curie.split(":")[0].upper() in supported_prefixes]
+            return final_curies
+
     # returns True if at least one possible triple exists in the KP's meta map
     def _triple_is_in_meta_map(self, kp: str, subject_categories: Set[str], predicates: Set[str], object_categories: Set[str]) -> bool:
         kp_meta_map = self.meta_map.get(kp)
@@ -101,12 +122,13 @@ class KPSelector:
                 self.log.warning(f"Somehow missing meta info for {kp}.")
             return False
         else:
+            predicates_map = kp_meta_map["predicates"]
             # handle potential emptiness of sub, obj, predicate lists
             if not subject_categories:  # any subject
-                subject_categories = set(kp_meta_map.keys())
+                subject_categories = set(predicates_map.keys())
             if not object_categories:  # any object
                 object_set = set()
-                _ = [object_set.add(obj) for obj_dict in kp_meta_map.values() for obj in obj_dict.keys()]
+                _ = [object_set.add(obj) for obj_dict in predicates_map.values() for obj in obj_dict.keys()]
                 object_categories = object_set
             any_predicate = False if predicates or kp == "NGD" else True
 
@@ -116,17 +138,17 @@ class KPSelector:
                 qg_sub_obj_dict[sub].add(obj)
 
             # check for subjects
-            kp_allowed_subs = set(kp_meta_map.keys())
+            kp_allowed_subs = set(predicates_map.keys())
             accepted_subs = kp_allowed_subs.intersection(set(qg_sub_obj_dict.keys()))
 
             # check for objects
             for sub in accepted_subs:
-                kp_allowed_objs = set(kp_meta_map[sub].keys())
+                kp_allowed_objs = set(predicates_map[sub].keys())
                 accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub])
                 if len(accepted_objs) > 0:
                     # check predicates
                     for obj in accepted_objs:
-                        if any_predicate or predicates.intersection(kp_meta_map[sub][obj]):
+                        if any_predicate or predicates.intersection(predicates_map[sub][obj]):
                             return True
             return False
 
@@ -213,15 +235,20 @@ class KPSelector:
                 else:
                     if kp_response.status_code == 200:
                         kp_meta_kg = kp_response.json()
-                        meta_map[kp] = self._convert_to_meta_map(kp_meta_kg)
+                        meta_map[kp] = {"predicates": self._convert_to_meta_map(kp_meta_kg),
+                                        "prefixes": {category: meta_node["id_prefixes"]
+                                                     for category, meta_node in kp_meta_kg["nodes"].items()}}
                     else:
                         self.log.warning(f"Unable to access {kp}'s /meta_knowledge_graph endpoint (returned status of "
                                          f"{kp_response.status_code})")
             elif kp == "DTD":
-                meta_map[kp] = self._get_dtd_meta_map()
+                meta_map[kp] = {"predicates": self._get_dtd_meta_map(),
+                                "prefixes": dict()}
             elif kp == "NGD":
                 # This is just a placeholder; not really used for KP selection
-                meta_map[kp] = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:has_normalized_google_distance_with"}}}
+                predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:has_normalized_google_distance_with"}}}
+                meta_map[kp] = {"predicates": predicates,
+                                "prefixes": dict()}
 
         # Save our big combined metamap to a local json file
         with open(self.meta_map_path, "wb") as map_file:

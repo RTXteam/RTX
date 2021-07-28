@@ -9,6 +9,7 @@ var summary_table_html = '';
 var summary_tsv = [];
 var compare_tsv = [];
 var columnlist = [];
+var response_cache = {};
 var UIstate = {};
 
 // defaults
@@ -28,13 +29,33 @@ var providers = {
     "ARS"  : { "url" : baseAPI + "/response/" }
 };
 
+// these attributes are floats; truncate them
+const attributes_to_truncate = [
+    "Contribution",
+    "chi_square",
+    "confidence",
+    "fisher_exact_test_p-value",
+    "jaccard_index",
+    "ln_ratio",
+    "ngd",
+    "normalized_google_distance",
+    "observed_expected_ratio",
+    "pValue",
+    "paired_concept_freq",
+    "paired_concept_frequency",
+    "probability",
+    "probability_drug_treats",
+    "relative_frequency_object",
+    "relative_frequency_subject"
+];
+
 
 function main() {
     UIstate["version"] = checkUIversion(false);
     document.getElementById("menuapiurl").href = baseAPI + "/ui/";
 
     get_example_questions();
-    load_nodes_and_predicates();
+    load_meta_knowledge_graph();
     populate_dsl_commands();
     display_list('A');
     display_list('B');
@@ -77,6 +98,7 @@ function main() {
 	lookup_synonym(syn,false);
     }
     openSection(tab);
+    //dragElement(document.getElementById('nodeeditor'));
 }
 
 function sesame(head,content) {
@@ -168,9 +190,10 @@ function pasteExample(type) {
 function reset_vars() {
     add_status_divs();
     checkUIversion(true);
-    document.getElementById("result_container").innerHTML = "";
     if (cyobj[0]) {cyobj[0].elements().remove();}
+    document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
+    document.getElementById("provenance_container").innerHTML = "";
     document.getElementById("menunummessages").innerHTML = "--";
     document.getElementById("menunummessages").className = "numold menunum";
     document.getElementById("menunumresults").innerHTML = "--";
@@ -723,6 +746,7 @@ function getIdStats(id) {
 	document.getElementById("numresults_"+id).innerHTML = '';
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
+	document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	var wait = document.createElement("span");
 	wait.className = 'loading_cell';
@@ -746,10 +770,11 @@ function checkRefreshARS() {
 		clearInterval(timeout);
                 sendId();
 		document.getElementById("ars_refresh").innerHTML = "";
-	    } else {
+	    }
+	    else {
 		moon--;
 		if (moon == 127760) moon = 127768;
-		document.getElementById("ars_refresh").innerHTML =  "&#"+moon;
+		document.getElementById("ars_refresh").innerHTML = "&#"+moon;
 		timetogo--;
 	    }
 	}
@@ -769,6 +794,7 @@ function sendId() {
 	document.getElementById("numresults_"+id).innerHTML = '';
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
+        document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	var wait = document.createElement("span");
 	wait.className = 'loading_cell';
@@ -908,6 +934,7 @@ function process_ars_message(ars_msg, level) {
 	div2.appendChild(span);
 
 	var div2 = document.createElement("div");
+	div2.id = "arsresultsdiv";
 	div2.className = "status";
 
 	table = document.createElement("table");
@@ -915,7 +942,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges"] ) {
+	for (var head of ["","Agent","Status","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges","Sources"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -981,6 +1008,11 @@ function process_ars_message(ars_msg, level) {
     td.style.textAlign = "center";
     tr.appendChild(td);
 
+    td = document.createElement("td");
+    td.id = "nsources_"+ars_msg.message;
+    td.style.textAlign = "center";
+    tr.appendChild(td);
+
     table.appendChild(tr);
 
     if (go)
@@ -989,8 +1021,180 @@ function process_ars_message(ars_msg, level) {
 	checkRefreshARS();
 
     level++;
-    for (let child of ars_msg["children"].sort(function(a, b) { return a.actor.agent > b.actor.agent; }))
+    for (let child of ars_msg["children"].sort(function(a, b) { return a.actor.agent > b.actor.agent ? 1 : -1; }))
 	process_ars_message(child, level);
+}
+
+
+function process_response(provider, resp_url, resp_id, type, jsonObj2) {
+    if (type == "all") {
+	var devdiv = document.getElementById("devdiv");
+	devdiv.appendChild(document.createElement("br"));
+	devdiv.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE REQUEST::"));
+	var link = document.createElement("a");
+	link.target = '_blank';
+	link.href = resp_url;
+	link.style.position = "relative";
+	link.style.left = "30px";
+	link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
+	devdiv.appendChild(link);
+	var pre = document.createElement("pre");
+	pre.id = 'responseJSON';
+	pre.textContent = JSON.stringify(jsonObj2,null,2);
+	devdiv.appendChild(pre);
+    }
+
+    if (jsonObj2["children"]) {
+	process_ars_message(jsonObj2,0);
+	selectInput("qid");
+	return;
+    }
+
+    if (jsonObj2["restated_question"]) {
+	statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
+	document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
+    }
+    else {
+	document.getElementById("questionForm").elements["questionText"].value = "";
+    }
+
+    jsonObj2.araxui_provider = provider;
+    jsonObj2.araxui_response = resp_id;
+
+    if (jsonObj2.validation_result) {
+	var nr = document.createElement("span");
+        if (type == "all")
+	    statusdiv.innerHTML += "<br>TRAPI v"+jsonObj2.validation_result.version+" validation: <b>"+jsonObj2.validation_result.status+"</b><br>";
+	if (jsonObj2.validation_result.status == "FAIL") {
+	    if (type == "all")
+		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
+	    nr.innerHTML = '&cross;';
+	    nr.className = 'explevel p1';
+	    nr.title = 'Failed TRAPI 1.1 validation';
+	}
+        else if (jsonObj2.validation_result.status == "NA") {
+            if (type == "all")
+		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
+	    nr.innerHTML = '&nsub;';
+	    nr.className = 'explevel p0';
+            nr.title = 'Response is non-TRAPI';
+	}
+	else {
+	    nr.innerHTML = '&check;';
+	    nr.className = 'explevel p9';
+	    nr.title = 'Passed TRAPI 1.1 validation';
+	}
+
+	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
+	    document.getElementById("istrapi_"+jsonObj2.araxui_response).innerHTML = '';
+	    document.getElementById("istrapi_"+jsonObj2.araxui_response).appendChild(nr);
+
+	    var num = parseFloat(jsonObj2.validation_result.size.match(/[\d\.]+/));
+	    if (num && num > 2 && jsonObj2.validation_result.size.includes("MB")) {
+		document.getElementById("respsize_"+jsonObj2.araxui_response).className = "error";
+		document.getElementById("respsize_"+jsonObj2.araxui_response).title = "Warning: Very large responses might render slowly";
+	    }
+	    document.getElementById("respsize_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.size;
+
+	    if (jsonObj2.validation_result.n_nodes)
+		document.getElementById("nodedges_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.n_nodes+' / '+jsonObj2.validation_result.n_edges;
+
+	    if (jsonObj2.validation_result.provenance_summary) {
+		var html_node = document.getElementById("nsources_"+jsonObj2.araxui_response);
+		html_node.innerHTML = jsonObj2.validation_result.provenance_summary.n_sources;
+
+		if (jsonObj2.validation_result.n_edges > 0) {
+		    var table, tr, td;
+		    html_node.className = "tooltip";
+		    var tnode = document.createElement("span");
+		    tnode.className = 'tooltiptext';
+		    table = document.createElement("table");
+		    table.style.width = "100%";
+		    table.style.borderCollapse = "collapse";
+		    tr = document.createElement("tr");
+		    td = document.createElement("th");
+		    td.colSpan = "4";
+		    td.style.background = "#3d6d98";
+		    td.style.padding = "5px 0px";
+		    td.appendChild(document.createTextNode("Provenance Counts"));
+		    tr.appendChild(td);
+		    table.appendChild(tr);
+		    for (var prov in jsonObj2.validation_result.provenance_summary.provenance_counts) {
+			tr = document.createElement("tr");
+			tr.style.background = "initial";
+			for (var pc of jsonObj2.validation_result.provenance_summary.provenance_counts[prov]) {
+			    td = document.createElement("td");
+			    td.appendChild(document.createTextNode(pc));
+			    tr.appendChild(td);
+			}
+			td.style.textAlign = "right";  // last td is always[?] the count number
+			table.appendChild(tr);
+		    }
+		    tnode.appendChild(table);
+		    html_node.appendChild(tnode);
+		    // trickery to fix FF annoying h-scrollbar issue
+		    tnode.style.visibility = "visible";
+		    if (tnode.scrollWidth > 440)
+			tnode.style.width = tnode.scrollWidth + 15 + "px";
+		    tnode.style.visibility = "";
+
+		    // do predicates
+                    html_node = document.getElementById("nodedges_"+jsonObj2.araxui_response);
+		    html_node.className = "tooltip";
+		    tnode = document.createElement("span");
+		    tnode.className = 'tooltiptext';
+		    table = document.createElement("table");
+		    table.style.width = "100%";
+                    table.style.borderCollapse = "collapse";
+                    tr = document.createElement("tr");
+		    tr.style.background = "initial";
+		    td = document.createElement("th");
+		    td.colSpan = "2";
+                    td.style.background = "#3d6d98";
+		    td.style.padding = "5px 0px";
+		    td.appendChild(document.createTextNode("Predicate Counts"));
+		    tr.appendChild(td);
+		    table.appendChild(tr);
+		    for (var pred in jsonObj2.validation_result.provenance_summary.predicate_counts) {
+			tr = document.createElement("tr");
+                        tr.style.background = "initial";
+			td = document.createElement("td")
+			td.appendChild(document.createTextNode(pred));
+			tr.appendChild(td);
+			td = document.createElement("td");
+			td.style.textAlign = "right";
+			td.appendChild(document.createTextNode(jsonObj2.validation_result.provenance_summary.predicate_counts[pred]));
+			tr.appendChild(td);
+			table.appendChild(tr);
+		    }
+		    tnode.appendChild(table);
+		    html_node.appendChild(tnode);
+		}
+	    }
+	    checkRefreshARS();
+	}
+    }
+
+    if (document.getElementById("arsresultsdiv"))
+	document.getElementById("arsresultsdiv").style.height = document.getElementById("arsresultsdiv").scrollHeight + "px";
+
+    if (type == "all") {
+	statusdiv.innerHTML += "<br>";
+	if (jsonObj2.description)
+            statusdiv.innerHTML += "<h3><i>"+jsonObj2.description+"</i></h3>";
+	if (jsonObj2.status)
+            statusdiv.innerHTML += "<h3><i>"+jsonObj2.status+"</i></h3>";
+        statusdiv.innerHTML += "<br>";
+    }
+    sesame('openmax',statusdiv);
+
+    if (type == "stats")
+	render_response_stats(jsonObj2);
+    else
+	render_response(jsonObj2,true);
+
+    if (!response_cache[provider+":"+resp_id])
+	response_cache[provider+":"+resp_id] = jsonObj2;
 }
 
 
@@ -998,6 +1202,18 @@ function retrieve_response(provider, resp_url, resp_id, type) {
     if (type == null) type = "all";
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("Retrieving "+provider+" response id = " + resp_id));
+
+    if (response_cache[provider+":"+resp_id]) {
+        if (document.getElementById("istrapi_"+resp_id))
+	    document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
+	statusdiv.appendChild(document.createTextNode(" ...from cache"));
+	statusdiv.appendChild(document.createElement("hr"));
+	sesame('openmax',statusdiv);
+	// 50ms timeout allows css animation to start before processing locks the thread
+        var timeout = setTimeout(function() { process_response(provider, resp_url, resp_id, type,response_cache[provider+":"+resp_id]); }, 50 );
+	return;
+    }
+
     statusdiv.appendChild(document.createElement("hr"));
     sesame('openmax',statusdiv);
 
@@ -1007,99 +1223,17 @@ function retrieve_response(provider, resp_url, resp_id, type) {
     xhr.send(null);
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
-	    var jsonObj2 = JSON.parse(xhr.responseText);
+            if (document.getElementById("istrapi_"+resp_id))
+		document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
+	    process_response(provider, resp_url, resp_id, type,JSON.parse(xhr.responseText));
 
-	    if (type == "all") {
-		var devdiv = document.getElementById("devdiv");
-		devdiv.appendChild(document.createElement("br"));
-		devdiv.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE REQUEST::"));
-		var link = document.createElement("a");
-		link.target = '_blank';
-		link.href = resp_url;
-		link.style.position = "relative";
-		link.style.left = "30px";
-		link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
-		devdiv.appendChild(link);
-		var pre = document.createElement("pre");
-		pre.id = 'responseJSON';
-		pre.textContent = JSON.stringify(jsonObj2,null,2);
-		devdiv.appendChild(pre);
-	    }
-
-            if (jsonObj2["children"]) {
-		process_ars_message(jsonObj2,0);
-		selectInput("qid");
-		return;
-	    }
-
-	    if (jsonObj2["restated_question"]) {
-		statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
-		document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
-	    }
-	    else {
-		document.getElementById("questionForm").elements["questionText"].value = "";
-	    }
-
-	    jsonObj2.araxui_provider = provider;
-	    jsonObj2.araxui_response = resp_id;
-
-	    if (jsonObj2.validation_result) {
-		var nr = document.createElement("span");
-                if (type == "all")
-		    statusdiv.innerHTML += "<br>TRAPI v"+jsonObj2.validation_result.version+" validation: <b>"+jsonObj2.validation_result.status+"</b><br>";
-		if (jsonObj2.validation_result.status == "FAIL") {
-		    if (type == "all")
-			statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
-		    nr.innerHTML = '&cross;';
-		    nr.className = 'explevel p1';
-		    nr.title = 'Failed TRAPI 1.1 validation';
-		}
-                else if (jsonObj2.validation_result.status == "NA") {
-                    if (type == "all")
-			statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
-		    nr.innerHTML = '&nsub;';
-		    nr.className = 'explevel p0';
-                    nr.title = 'Response is non-TRAPI';
-		}
-		else {
-		    nr.innerHTML = '&check;';
-		    nr.className = 'explevel p9';
-		    nr.title = 'Passed TRAPI 1.1 validation';
-		}
-
-	        if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
-		    document.getElementById("istrapi_"+jsonObj2.araxui_response).innerHTML = '';
-		    document.getElementById("istrapi_"+jsonObj2.araxui_response).appendChild(nr);
-
-		    document.getElementById("respsize_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.size;
-
-		    if (jsonObj2.validation_result.n_nodes)
-			document.getElementById("nodedges_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.n_nodes+' / '+jsonObj2.validation_result.n_edges;
-
-		    checkRefreshARS();
-		}
-	    }
-
-            if (type == "all") {
-		statusdiv.innerHTML += "<br>";
-		if (jsonObj2.description)
-                    statusdiv.innerHTML += "<h3><i>"+jsonObj2.description+"</i></h3>";
-		if (jsonObj2.status)
-                    statusdiv.innerHTML += "<h3><i>"+jsonObj2.status+"</i></h3>";
-                statusdiv.innerHTML += "<br>";
-	    }
-	    sesame('openmax',statusdiv);
-
-	    if (type == "stats")
-		render_response_stats(jsonObj2);
-	    else
-		render_response(jsonObj2,true);
 	}
 	else if ( xhr.status == 404 ) {
 	    if (document.getElementById("numresults_"+resp_id)) {
 		document.getElementById("numresults_"+resp_id).innerHTML = '';
                 document.getElementById("respsize_"+resp_id).innerHTML = '---';
 		document.getElementById("nodedges_"+resp_id).innerHTML = '';
+		document.getElementById("nsources_"+id).innerHTML = '';
 		document.getElementById("istrapi_"+resp_id).innerHTML = '';
 		var nr = document.createElement("span");
 		nr.className = 'explevel p0';
@@ -1115,6 +1249,7 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 		document.getElementById("numresults_"+resp_id).innerHTML = '';
 		document.getElementById("respsize_"+resp_id).innerHTML = '---';
 		document.getElementById("nodedges_"+resp_id).innerHTML = '';
+		document.getElementById("nsources_"+id).innerHTML = '';
 		document.getElementById("istrapi_"+resp_id).innerHTML = '';
 		var nr = document.createElement("span");
 		nr.className = 'explevel p0';
@@ -1256,7 +1391,7 @@ function render_response(respObj,dispjson) {
     if ( respObj["table_column_names"] )
 	add_to_summary(respObj["table_column_names"],0);
     else
-	add_to_summary(["'Guessence'"],0);
+	add_to_summary(["score","'guessence'"],0);
 
     if ( respObj.message["results"] ) {
 	if (!respObj.message["knowledge_graph"] ) {
@@ -1272,6 +1407,13 @@ function render_response(respObj,dispjson) {
 	    document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
             document.getElementById("menunumresults").classList.add("numnew");
 	    document.getElementById("menunumresults").classList.remove("numold");
+
+	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
+	    var respreas = 'n/a';
+	    if (respObj.reasoner_id)
+		respreas = respObj.reasoner_id;
+	    process_results(respObj.message["results"],respObj.message["knowledge_graph"], respreas);
+
 	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
 		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
 		var nr = document.createElement("span");
@@ -1284,17 +1426,12 @@ function render_response(respObj,dispjson) {
 		nr.innerHTML = '&nbsp;'+respObj.message.results.length+'&nbsp;';
 		document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
 	    }
-
-	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
-	    respreas = 'n/a';
-	    if (respObj.reasoner_id)
-		respreas = respObj.reasoner_id;
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"], respreas);
 	}
     }
     else {
         document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
         document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
+	document.getElementById("provenance_container").innerHTML += "<h2>No results...</h2>";
         if (document.getElementById("numresults_"+respObj.araxui_response)) {
 	    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
 	    var nr = document.createElement("span");
@@ -1332,13 +1469,122 @@ function render_response(respObj,dispjson) {
 	table.className = 'sumtab';
 	table.innerHTML = summary_table_html;
         div.appendChild(table);
-
 	div.appendChild(document.createElement("br"));
 
 	document.getElementById("summary_container").appendChild(div);
     }
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
+
+
+    if (respObj.validation_result && respObj.validation_result.provenance_summary) {
+	var div = document.createElement("div");
+	div.className = 'statushead';
+	div.appendChild(document.createTextNode("Provenance Summary"));
+	document.getElementById("provenance_container").appendChild(div);
+
+	div = document.createElement("div");
+	div.className = 'status';
+	div.id = 'provenancediv';
+	div.appendChild(document.createElement("br"));
+
+        var table = document.createElement("table");
+	table.className = 'sumtab';
+        var tr = document.createElement("tr");
+        var td = document.createElement("th");
+	td.colSpan = "2";
+	td.appendChild(document.createTextNode("Provenance Counts"));
+	tr.appendChild(td);
+        td = document.createElement("th");
+	td.appendChild(document.createTextNode("[ "+respObj.validation_result.provenance_summary["n_sources"]+" sources ]"));
+	tr.appendChild(td);
+	td = document.createElement("th");
+	td.colSpan = "2";
+	tr.appendChild(td);
+	table.appendChild(tr);
+	var previous = 'RandomTextToPurposelyTriggerThickTopBorderForFirstRow';
+	for (var prov in respObj.validation_result.provenance_summary.provenance_counts) {
+	    var changed = false;
+	    if (previous != respObj.validation_result.provenance_summary.provenance_counts[prov][0])
+		changed = true;
+            previous = respObj.validation_result.provenance_summary.provenance_counts[prov][0];
+
+	    tr = document.createElement("tr");
+            tr.className = 'hoverable';
+	    for (var pc of respObj.validation_result.provenance_summary.provenance_counts[prov]) {
+		td = document.createElement("td");
+		if (changed)
+		    td.style.borderTop = "2px solid #444";
+		td.appendChild(document.createTextNode(pc));
+		tr.appendChild(td);
+	    }
+	    td.style.textAlign = "right";  // last td is always[?] the count number
+
+	    // fancy bar bar
+	    td = document.createElement("td");
+            if (changed)
+		td.style.borderTop = "2px solid #444";
+	    var span = document.createElement("span");
+	    span.className = "bar";
+	    var barw = 0.5*Number(respObj.validation_result.provenance_summary.provenance_counts[prov][3]);
+	    if (barw > 500) {
+		barw = 501;
+		span.style.background = "#3d6d98";
+	    }
+	    if (respObj.validation_result.provenance_summary.provenance_counts[prov][2] == 'no provenance')
+		span.style.background = "#b00";
+	    span.style.width = barw + "px";
+	    span.style.height = "8px";
+	    td.appendChild(span);
+            tr.appendChild(td);
+
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+	div.appendChild(document.createElement("br"));
+
+	table = document.createElement("table");
+	table.className = 'sumtab';
+	tr = document.createElement("tr");
+	td = document.createElement("th");
+	td.colSpan = "3";
+	td.appendChild(document.createTextNode("Predicate Counts"));
+	tr.appendChild(td);
+	table.appendChild(tr);
+        for (var pred in respObj.validation_result.provenance_summary.predicate_counts) {
+	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(pred));
+	    tr.appendChild(td);
+	    td = document.createElement("td");
+	    td.style.textAlign = "right";
+	    td.appendChild(document.createTextNode(respObj.validation_result.provenance_summary.predicate_counts[pred]));
+	    tr.appendChild(td);
+            // fancy bar bar
+	    td = document.createElement("td");
+	    var span = document.createElement("span");
+	    span.className = "bar";
+	    var barw = 0.5*Number(respObj.validation_result.provenance_summary.predicate_counts[pred]);
+	    if (barw > 500) {
+		barw = 501;
+		span.style.background = "#3d6d98";
+	    }
+	    span.style.width = barw + "px";
+	    span.style.height = "8px";
+	    td.appendChild(span);
+	    tr.appendChild(td);
+
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+	div.appendChild(document.createElement("br"));
+
+	document.getElementById("provenance_container").appendChild(div);
+    }
+    else
+	document.getElementById("provenance_container").innerHTML += "<h2>Provenance information not available for this response</h2>";
+
 
     add_cyto(0);
     if (!UIstate.hasNodeArray)
@@ -1347,7 +1593,7 @@ function render_response(respObj,dispjson) {
     statusdiv.appendChild(document.createElement("br"));
     var nr = document.createElement("span");
     nr.className = 'essence';
-    nr.appendChild(document.createTextNode("Click on Results, Summary, or Knowledge Graph links on the left to explore results."));
+    nr.appendChild(document.createTextNode("Click on Results, Summary, Provenance, or Knowledge Graph links on the left to explore results."));
     statusdiv.appendChild(nr);
     statusdiv.appendChild(document.createElement("br"));
     sesame('openmax',statusdiv);
@@ -1515,7 +1761,7 @@ function add_to_summary(rowdata, num) {
 
 	if (cell == 'th') {
 	    //columnlist[i] = [];
-	    if (rowdata[i] != 'confidence') {
+	    if (rowdata[i] == 'essence' || rowdata[i] == "'guessence'") {
 		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
 		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
 	    }
@@ -1564,7 +1810,7 @@ function process_graph(gne,gid,trapi) {
         gnode.id = id;
 
 	if (!gnode.name) {
-	    if (gnode.categories)
+	    if (gnode.categories && gnode.categories[0])
 		gnode.name = gnode.categories[0] + "s?";
 	    else
 		gnode.name = "(Any)";
@@ -1634,6 +1880,7 @@ function eau_du_essence(result) {
 }
 
 function process_results(reslist,kg,mainreasoner) {
+    // do this only once
     if (Object.keys(all_nodes).length === 0 && all_nodes.constructor === Object) {
 	for (var result of reslist)
             for (var nbid in result.node_bindings)
@@ -1660,17 +1907,17 @@ function process_results(reslist,kg,mainreasoner) {
 		ess = kg.nodes[ess].fulltextname;
 	}
 
-        if (result.row_data)
-            add_to_summary(result.row_data, num);
-	else
-            add_to_summary([ess], num);
-
 	var cnf = 'n/a';
 	if (Number(result.score))
 	    cnf = Number(result.score).toFixed(3);
 	else if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
 	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
+
+        if (result.row_data)
+            add_to_summary(result.row_data, num);
+	else
+            add_to_summary([cnf,ess], num);
 
 	var rsrc = mainreasoner;
 	if (result.reasoner_id)
@@ -2005,28 +2252,15 @@ function show_attributes_1point1(html_div, atts) {
 	snippet += "<tr><td><b>value</b>: </td><td>";
 	if (value) {
             var fixit = true;
-	    // truncate floats
-            if (att.original_attribute_name == "normalized_google_distance" ||
-		att.original_attribute_name == "fisher_exact_test_p-value"  ||
-		att.original_attribute_name == "probability_drug_treats"    ||
-		att.original_attribute_name == "observed_expected_ratio"    ||
-		att.original_attribute_name == "paired_concept_frequency"   ||
-		att.original_attribute_name == "paired_concept_freq"        ||
-		att.original_attribute_name == "jaccard_index"              ||
-		att.original_attribute_name == "Contribution"               ||
-		att.original_attribute_name == "probability"                ||
-		att.original_attribute_name == "confidence"                 ||
-		att.original_attribute_name == "chi_square"                 ||
-		att.original_attribute_name == "pValue"                     ||
-		att.original_attribute_name == "ngd") {
-		snippet += Number(att.value).toPrecision(3);
-		fixit = false;
-	    }
-	    else if (Array.isArray(att.value))
+	    if (Array.isArray(att.value))
 		for (var val of att.value) {
 		    snippet += "<br>";
 		    if (val == null) {
 			snippet += "--NULL--";
+		    }
+		    else if (typeof val === 'object') {
+			snippet += "<pre>"+JSON.stringify(val,null,2)+"</pre>";
+			fixit = false;
 		    }
 		    else if (val.toString().startsWith("PMID:")) {
 			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
@@ -2046,7 +2280,10 @@ function show_attributes_1point1(html_div, atts) {
 		}
 	    else if (typeof att.value === 'object') {
 		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
-
+		fixit = false;
+	    }
+            else if (attributes_to_truncate.includes(att.original_attribute_name)) {
+		snippet += Number(att.value).toPrecision(3);
 		fixit = false;
 	    }
 	    else if (value.toString().startsWith("http")) {
@@ -2063,7 +2300,7 @@ function show_attributes_1point1(html_div, atts) {
 	    }
 	}
 	else {
-            snippet += "<i>no value!</i>";
+            snippet += "<i>-- no value! --</i>";
 	}
 	snippet += "</td></tr>";
 
@@ -2095,19 +2332,8 @@ function show_attributes_1point0(html_div, atts) {
 
 	if (att.value != null) {
 	    var fixit = true;
-	    if (att.name == "normalized_google_distance" ||
-		att.name == "fisher_exact_test_p-value"  ||
-		att.name == "probability_drug_treats"    ||
-		att.name == "observed_expected_ratio"    ||
-		att.name == "paired_concept_frequency"   ||
-		att.name == "paired_concept_freq"        ||
-		att.name == "jaccard_index"              ||
-		att.name == "Contribution"               ||
-		att.name == "probability"                ||
-		att.name == "confidence"                 ||
-		att.name == "chi_square"                 ||
-		att.name == "pValue"                     ||
-		att.name == "ngd") {
+            // truncate floats
+	    if (attributes_to_truncate.includes(att.name)) {
 		snippet += Number(att.value).toPrecision(3);
 		fixit = false;
 	    }
@@ -2135,7 +2361,6 @@ function show_attributes_1point0(html_div, atts) {
 		}
 	    else if (typeof att.value === 'object') {
 		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
-
 		fixit = false;
 	    }
 	    else
@@ -2186,7 +2411,7 @@ function cylayout(index,layname) {
 }
 
 function mapNodeShape(ele) {
-    var ntype = ele.data().categories ? ele.data().categories[0] : "NA";
+    var ntype = ele.data().categories ? ele.data().categories[0] ? ele.data().categories[0] : "NA" : "NA";
     if (ntype.endsWith("microRNA"))           { return "hexagon";} //??
     if (ntype.endsWith("Metabolite"))         { return "heptagon";}
     if (ntype.endsWith("Protein"))            { return "octagon";}
@@ -2202,7 +2427,7 @@ function mapNodeShape(ele) {
 }
 
 function mapNodeColor(ele) {
-    var ntype = ele.data().categories ? ele.data().categories[0] : "NA";
+    var ntype = ele.data().categories ? ele.data().categories[0] ? ele.data().categories[0] : "NA" : "NA";
     if (ntype.endsWith("microRNA"))           { return "orange";} //??
     if (ntype.endsWith("Metabolite"))         { return "aqua";}
     if (ntype.endsWith("Protein"))            { return "black";}
@@ -2301,7 +2526,6 @@ function display_query_graph_items() {
 
     var nitems = 0;
 
-    //1.1x input_qg.nodes.forEach(function(result, index) {
     for (nid in input_qg.nodes) {
 	var result = input_qg.nodes[nid];
 	nitems++;
@@ -2333,9 +2557,8 @@ function display_query_graph_items() {
         tr.appendChild(td);
 
 	table.appendChild(tr);
-    } //1.1x );
+    }
 
-    // 1.1x input_qg.edges.forEach(function(result, index) {
     for (eid in input_qg.edges) {
 	var result = input_qg.edges[eid];
         tr = document.createElement("tr");
@@ -2365,7 +2588,7 @@ function display_query_graph_items() {
 	tr.appendChild(td);
 
         table.appendChild(tr);
-    }; // 1.1x );
+    };
 
     document.getElementById("qg_items").innerHTML = '';
     if (nitems > 0)
@@ -2434,7 +2657,6 @@ function update_kg_edge_input() {
 	return;
     }
 
-    //1.1x input_qg.nodes.forEach(function(qgnode) {
     for (nid in input_qg.nodes) {
 	var qgnode = input_qg.nodes[nid];
 	for (var x = 1; x <=2; x++) {
@@ -2443,7 +2665,7 @@ function update_kg_edge_input() {
 	    opt.innerHTML = qgnode["_name"] ? qgnode["_name"] : qgnode["_desc"] ? qgnode["_desc"] : qgnode.categories[0] ? qgnode.categories[0] : nid;
 	    document.getElementById("qg_edge_n"+x).appendChild(opt);
 	}
-    } //1.1x );
+    }
     get_possible_edges();
 }
 
@@ -2468,12 +2690,8 @@ function get_possible_edges() {
 	return;
     }
 
-    var nt1 = input_qg.nodes[edge1]; //1.1x .filter(function(node){
-    //1.1x return node["id"] == edge1;
-    //1.1x });
-    var nt2 = input_qg.nodes[edge2]; //1.1x .filter(function(node){
-	//1.1x return node["id"] == edge2;
-    //1.1x });
+    var nt1 = input_qg.nodes[edge1];
+    var nt2 = input_qg.nodes[edge2];
 
     qet_node.innerHTML = '';
     opt = document.createElement('option');
@@ -2498,7 +2716,6 @@ function get_possible_edges() {
 	relation = "B --> A";
     }
 
-    //1.1x if (nt2[0].type in predicates[nt1[0].type]) {
     if (nt2.categories[0] in predicates[nt1.categories[0]]) {
 	if (predicates[nt1.categories[0]][nt2.categories[0]].length == 1) {
 	    qet_node.innerHTML = '';
@@ -2981,18 +3198,17 @@ function get_example_questions() {
 }
 
 
-function load_nodes_and_predicates() {
+function load_meta_knowledge_graph() {
     var allnodes_node = document.getElementById("allnodetypes");
     allnodes_node.innerHTML = '';
 
-    fetch(baseAPI + "/predicates")
+    fetch(baseAPI + "/meta_knowledge_graph")
 	.then(response => {
 	    if (response.ok) return response.json();
-	    else throw new Error('Something went wrong');
+	    else throw new Error('Something went wrong with /meta_knowledge_graph');
 	})
         .then(data => {
-	    //add_to_dev_info("PREDICATES",data);
-	    predicates = data;
+	    //add_to_dev_info("META_KNOWLEDGE_GRAPH",data);
 
 	    var opt = document.createElement('option');
 	    opt.value = '';
@@ -3000,17 +3216,27 @@ function load_nodes_and_predicates() {
 	    opt.innerHTML = "Add Node by Type&nbsp;&nbsp;&nbsp;&#8675;";
 	    allnodes_node.appendChild(opt);
 
-            for (const p in predicates) {
+            for (const n in data.nodes) {
 		opt = document.createElement('option');
-		opt.value = p;
-		opt.innerHTML = p;
+		opt.value = n;
+		opt.innerHTML = n;
 		allnodes_node.appendChild(opt);
-
-		for (const n in predicates[p])
-		    for (const r of predicates[p][n])
-			all_predicates[r] = 1;
+		// recreate old /predicates structure (simpler/faster lookups)
+		predicates[n] = {};
+		for (const o in data.nodes)
+		    predicates[n][o] = [];
 	    }
-            opt = document.createElement('option');
+            for (const e of data.edges) {
+		predicates[e.subject][e.object].push(e.predicate);
+		all_predicates[e.predicate] = 1;
+	    }
+	    // clean up empty ones
+            for (var s in predicates)
+		for (var o in predicates[s])
+		    if (predicates[s][o].length < 1)
+			delete predicates[s][o];
+
+	    opt = document.createElement('option');
 	    opt.value = 'NONSPECIFIC';
 	    opt.innerHTML = "Unspecified/Non-specific";
 	    allnodes_node.appendChild(opt);
@@ -3607,7 +3833,7 @@ function checkUIversion(compare) {
 		showVersionAlert(response);
 	    else {
 		UIstate["version"] = response;
-		document.getElementById("uiversionstring").innerHTML = '&nbsp;&nbsp;v.'+response;
+		document.getElementById("uiversionstring").innerHTML = '&nbsp;&nbsp;'+response;
 	    }
 	})
 	.catch(error => { //log and ignore...

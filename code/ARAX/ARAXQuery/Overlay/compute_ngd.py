@@ -107,7 +107,7 @@ class ComputeNGD:
                     relation = parameters['virtual_relation_label']
                     is_defined_by = "ARAX"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                    provided_by = "ARAX"
+                    provided_by = "infores:arax-reasoner-ara"
                     confidence = None
                     weight = None  # TODO: could make the actual value of the attribute
                     subject_key = subject_curie
@@ -125,7 +125,7 @@ class ComputeNGD:
                         pmid_attribute,
                         EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
-                        EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:provided_by"),
+                        EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
                         #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                         #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
                         #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)

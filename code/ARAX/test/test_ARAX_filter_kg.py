@@ -55,7 +55,7 @@ def test_warnings():
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
             "filter_kg(action=remove_edges_by_discrete_attribute, edge_attribute=asdfghjkl, value=qwertyuiop)",
             "filter_kg(action=remove_edges_by_std_dev, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)",
-            "filter_kg(action=remove_edges_by_top_n, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=50, top=f, direction=above)",
+            "filter_kg(action=remove_edges_by_top_n, edge_attribute=asdfghjkl, remove_connected_nodes=f, n=50, top=f, direction=above)",
             "filter_kg(action=remove_edges_by_percentile, edge_attribute=asdfghjkl, remove_connected_nodes=f, threshold=25, top=f, direction=above)",
             "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n01)",
             "resultify(ignore_edge_direction=true)",
@@ -73,13 +73,32 @@ def test_error():
             "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
             "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
             "expand(edge_key=e00, kp=RTX-KG2)",
-            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=t)",
+            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=t, qedge_keys=[e00])",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query, False)
     assert response.status == 'ERROR'
     assert response.error_code == "RemovedQueryNode"
+
+def test_edge_key_removal():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=DOID:11086, key=n00)",
+            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:Disease, key=n02)",
+            "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
+            "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:treats)",
+            "expand(kp=RTX-KG2)",
+            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=f, qedge_keys=[e01])",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query, False)
+    assert response.status == 'OK'
+    edge_key_set = set()
+    for edge in message.knowledge_graph.edges.values():
+        edge_key_set = edge_key_set.union(edge.qedge_keys)
+    assert 'e01' not in edge_key_set
 
 def test_default_std_dev():
     query = {"operations": {"actions": [
@@ -223,7 +242,7 @@ def  test_remove_attribute_known_attributes():
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_keys=[n02])",
         #"filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by, value=Pharos)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
         "resultify(ignore_edge_direction=true)",
@@ -241,8 +260,9 @@ def test_provided_by_filter():
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2,enforce_directionality=true)",
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:knowledge_source,value=infores:semmeddb,remove_connected_nodes=false)",
-        # The below line is now an outdated way of doing it, but including for now to prevent error until new code is rolled out to KG2 API
-        "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:original_source,value=infores:semmeddb,remove_connected_nodes=false)",
+        # The below lines are now outdated ways of doing it, but including for now to prevent error until new code is rolled out to KG2 API
+        # "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:original_source,value=infores:semmeddb,remove_connected_nodes=false)",
+        # "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by,value=infores:semmeddb,remove_connected_nodes=false)",
         "resultify()",
         #"filter_results(action=limit_number_of_results, max_results=30)",
         "return(message=true, store=false)",
@@ -287,10 +307,26 @@ def test_stats_error_int_threshold():
         "expand(edge_key=[e1,e2])",
         # Rank drugs by Jaccard Index
         "overlay(action=compute_jaccard,start_node_key=n0,intermediate_node_key=n2,end_node_key=n1,virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_top_n,edge_attribute=jaccard_index, threshold=10,remove_connected_nodes=true,qnode_key=n2)",
+        "filter_kg(action=remove_edges_by_top_n,edge_attribute=jaccard_index, n=10,remove_connected_nodes=true,qnode_keys=[n2])",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
         "overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n0, object_qnode_key=n2)",
         "resultify()",
+        "return(message=true, store=false)",
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
+def test_tuple_bug():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(key=n00,ids=DRUGBANK:DB00150,categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n01,categories=biolink:Protein)",
+        "add_qedge(key=e00,subject=n00,object=n01)",
+        "expand(edge_key=e00, kp=RTX-KG2)",
+        "overlay(action=fisher_exact_test,subject_qnode_key=n00,virtual_relation_label=F0,object_qnode_key=n01)",
+        "filter_kg(action=remove_edges_by_top_n,edge_attribute=fisher_exact_test_p-value,direction=below,n=10,remove_connected_nodes=true,qnode_key=[n01])",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=100)",
         "return(message=true, store=false)",
         ]}}
     [response, message] = _do_arax_query(query)

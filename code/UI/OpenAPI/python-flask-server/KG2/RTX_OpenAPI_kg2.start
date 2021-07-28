@@ -1,0 +1,23 @@
+#!/bin/bash
+
+export DEVAREA=kg2
+
+LOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.log
+ELOGFILE=/tmp/RTX_OpenAPI_$DEVAREA.elog
+
+if [ -e $LOGFILE ]
+then
+    /bin/rm $LOGFILE
+fi
+
+if [ -e $ELOGFILE ]
+then
+    /bin/rm $ELOGFILE
+fi
+
+cd /mnt/data/orangeboard/$DEVAREA/RTX/code/UI/OpenAPI/python-flask-server/KG2
+
+export PATH=/mnt/data/python/Python-3.7.3/bin:$PATH
+
+exec python3 -m openapi_server 1>$LOGFILE 2>$ELOGFILE
+

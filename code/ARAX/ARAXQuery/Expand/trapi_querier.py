@@ -1,4 +1,5 @@
 #!/bin/env python3
+import copy
 import json
 import sys
 import os
@@ -21,12 +22,12 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
-from openapi_server.models.attribute import Attribute
 
 
 class TRAPIQuerier:
 
-    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, force_local: bool = False):
+    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, kp_selector: KPSelector,
+                 force_local: bool = False):
         self.log = response_object
         self.kp_name = kp_name
         self.user_specified_kp = user_specified_kp
@@ -34,6 +35,7 @@ class TRAPIQuerier:
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.kp_preferred_prefixes = eu.get_kp_preferred_prefixes(kp_name)
         self.predicates_timeout = 5
+        self.kp_selector = kp_selector
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -44,17 +46,21 @@ class TRAPIQuerier:
         """
         log = self.log
         final_kg = QGOrganizedKnowledgeGraph()
-        qg_copy = eu.copy_qg(query_graph)  # Create a copy so we don't modify the original
+        qg_copy = copy.deepcopy(query_graph)  # Create a copy so we don't modify the original
 
-        # Verify this query graph is valid and make sure it's answerable by the KP
         self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg
-        if self.user_specified_kp and self.kp_name != "RTX-KG2":
-            kp_selector = KPSelector(log)
-            if not kp_selector.kp_accepts_single_hop_qg(query_graph, self.kp_name):
-                log.error(f"{self.kp_name} cannot answer queries with the specified categories/predicates",
-                          error_code="UnsupportedQG")
+
+        # Verify that the KP accepts these predicates/categories/prefixes
+        if self.kp_name != "RTX-KG2":
+            if self.user_specified_kp:  # This is already done if expand chose the KP itself
+                if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_name):
+                    log.error(f"{self.kp_name} cannot answer queries with the specified categories/predicates",
+                              error_code="UnsupportedQG")
+                    return final_kg
+            qg_copy = eu.make_qg_use_supported_prefixes(self.kp_selector, qg_copy, self.kp_name, log)
+            if not qg_copy:  # Means no equivalent curies with supported prefixes were found
                 return final_kg
 
         # Answer the query using the KP and load its answers into our object model
@@ -70,7 +76,7 @@ class TRAPIQuerier:
         """
         log = self.log
         final_kg = QGOrganizedKnowledgeGraph()
-        qg_copy = eu.copy_qg(single_node_qg)
+        qg_copy = copy.deepcopy(single_node_qg)
 
         # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
         self._verify_is_single_node_query_graph(qg_copy)
@@ -96,22 +102,6 @@ class TRAPIQuerier:
         if len(query_graph.edges) > 0:
             self.log.error(f"answer_single_node_query() was passed a query graph that has edges: "
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
-
-    def _convert_to_accepted_curie_prefixes(self, query_graph: QueryGraph) -> QueryGraph:
-        for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.ids:
-                equivalent_curies = eu.get_curie_synonyms(qnode.ids, self.log)
-                # TODO: Right to take first category here?
-                preferred_prefix = self.kp_preferred_prefixes.get(qnode.categories[0]) if qnode.categories else None
-                if preferred_prefix:
-                    desired_curies = [curie for curie in equivalent_curies if curie.startswith(f"{preferred_prefix}:")]
-                    if desired_curies:
-                        qnode.ids = desired_curies
-                        self.log.debug(f"{self.kp_name}: Converted qnode {qnode_key} curie to {qnode.ids}")
-                    else:
-                        self.log.warning(f"{self.kp_name}: Could not convert qnode {qnode_key} curie(s) to preferred prefix "
-                                         f"({self.kp_preferred_prefixes[qnode.categories[0]]})")
-        return query_graph
 
     @staticmethod
     def _get_kg_to_qg_mappings_from_results(results: List[Result]) -> Dict[str, Dict[str, Set[str]]]:
@@ -203,13 +193,23 @@ class TRAPIQuerier:
             for attribute in returned_edge.attributes:
                 if not attribute.attribute_type_id:
                     attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
-            returned_edge.attributes.append(eu.get_knowledge_provider_source_attribute(self.kp_name))
+
+            # Check if KPs are properly indicating that these edges came from them (indicate it ourselves if not)
+            kp_infores_curie = eu.get_translator_infores_curie(self.kp_name)
+            if not any(attribute.value == kp_infores_curie for attribute in returned_edge.attributes):
+                returned_edge.attributes.append(eu.get_kp_source_attribute(self.kp_name))
+            # Add an attribute to indicate that this edge passed through ARAX
+            returned_edge.attributes.append(eu.get_arax_source_attribute())
 
             for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
                 answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
         for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
-            for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
-                answer_kg.add_node(returned_node_key, returned_node, qnode_key)
+            if returned_node_key not in kg_to_qg_mappings['nodes']:
+                self.log.warning(f"{self.kp_name}: Node {returned_node_key} was found in {self.kp_name}'s "
+                                 f"answer KnowledgeGraph but not in its Results. Skipping since there is no binding.")
+            else:
+                for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
+                    answer_kg.add_node(returned_node_key, returned_node, qnode_key)
             if returned_node.attributes:
                 for attribute in returned_node.attributes:
                     if not attribute.attribute_type_id:
@@ -229,12 +229,27 @@ class TRAPIQuerier:
 
     def _get_query_timeout_length(self, qg: QueryGraph) -> int:
         # Returns the number of seconds we should wait for a response based on the number of curies in the QG
-        num_total_curies = sum([len(qnode.ids) for qnode in qg.nodes.values() if qnode.ids])
+        node_curie_counts = [len(qnode.ids) for qnode in qg.nodes.values() if qnode.ids]
+        num_total_curies_in_qg = sum(node_curie_counts)
+        num_qnodes_with_curies = len(node_curie_counts)
         if self.kp_name == "RTX-KG2":
             return 600
         elif self.user_specified_kp:
-            return 120
-        elif num_total_curies < 30:
-            return 15
-        else:
-            return 120
+            return 300
+        elif num_qnodes_with_curies == 1:
+            if num_total_curies_in_qg < 30:
+                return 15
+            elif num_total_curies_in_qg < 100:
+                return 30
+            elif num_total_curies_in_qg < 200:
+                return 60
+            else:
+                return 120
+        else:  # Both nodes in the one-hop query must have curies specified
+            if num_total_curies_in_qg < 30:
+                return 15
+            elif num_total_curies_in_qg < 200:
+                return 30
+            else:
+                return 60
+

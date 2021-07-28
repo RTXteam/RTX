@@ -110,6 +110,7 @@ hr {
     border-bottom: 2px solid black;
     text-align: center;
     margin-left: 20px;
+    padding-bottom: 2px;
 }
 
 .slink {
@@ -349,7 +350,7 @@ hr {
     display: inline-block;
     overflow: hidden;
     padding: 0;
-    height: 16px;
+    height: 12px;
     margin: 0;
     width: 100%;
     border: 1px solid #000;
@@ -613,4 +614,50 @@ input:checked + .slider:before {
     background-color: rgba(221,221,221,0.7);
     border: 2px solid #002664;
     padding: 40px;
+}
+
+
+.tooltip {
+    position: relative;
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    cursor: zoom-in;
+}
+.tooltip .tooltiptext {
+    visibility: hidden;
+    background-color: rgba(85,150,208,0.95);
+    color: #fff;
+    text-align: center;
+    border-radius: 12px;
+    border: 1px solid #000;
+    box-shadow: 0 6px 8px 0 rgb(0 0 0 / 30%);
+    top: 100%;
+    right: -100px;
+    white-space: nowrap;
+    position: absolute;
+    z-index: 3;
+    max-height: 400px;
+    min-width:  450px;
+    overflow-y: auto;
+    scrollbar-color: #c40 transparent;
+    scrollbar-width: thin;
+}
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
+.tooltip:hover::after {
+    content: " ";
+    position: absolute;
+    top: 65%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent black transparent;
+}
+.tooltiptext::-webkit-scrollbar {
+    width: 7.5px;
+}
+.tooltiptext::-webkit-scrollbar-thumb {
+    background: #c40;
 }

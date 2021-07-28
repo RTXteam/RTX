@@ -58,7 +58,7 @@ templates:
       - expand()
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
 
   one_hop_classic_question:
     name: One hop question with one curie and one categories node
@@ -72,7 +72,7 @@ templates:
       - expand()
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
 
   one_hop_two_curie_question:
     name: One hop question where both nodes are provided
@@ -85,7 +85,7 @@ templates:
     DSL:
       - expand()
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
 
   one_hop_all_connections:
     name: One hop question with one curie and one totally generic
@@ -98,7 +98,7 @@ templates:
     DSL:
       - expand()
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
 
   one_hop_drug_treats_disease:
     name: one hop with start node drug, end node disease
@@ -112,7 +112,7 @@ templates:
       - expand()
       - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
 
   one_hop_drug_somehow_related_to_disease:
     name: one hop with start node drug, end node disease
@@ -129,7 +129,7 @@ templates:
       - filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)
       - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
       - resultify(ignore_edge_direction=true)
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
 
   two_hop_drug_disease:
     name: one hop with start node drug, end node disease
@@ -150,7 +150,7 @@ templates:
       - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n02)
       - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n01, object_qnode_key=n02)
       - resultify(ignore_edge_direction=true)
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
 
   ####################################################################################################
   #### Three node, two-hop questions
@@ -167,8 +167,11 @@ templates:
     DSL:
       - expand()
       - overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n01, object_qnode_key=n02)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
 
   two_hop_curie-categories-curie_question:
     name: Two hop question where both end nodes are provided and a categories in the middle
@@ -182,8 +185,11 @@ templates:
       - n02(ids)
     DSL:
       - expand()
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n01, object_qnode_key=n02)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
 
   two_hop_two_curie_question:
     name: Two hop question where both end nodes are provided and no categories in the middle
@@ -197,8 +203,108 @@ templates:
       - n02(ids)
     DSL:
       - expand()
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n00, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n01, object_qnode_key=n02)
       - resultify()
-      - filter_results(action=limit_number_of_results, max_results=100)
+      - filter_results(action=limit_number_of_results, max_results=500)
+
+  ####################################################################################################
+  #### Four node, three-hop questions
+  three_hop_classic_question:
+    name: Three hop question with one curie and three more nodes
+    description: Four nodes, one of which has a curie and the others can be anything
+    restated_question: Which?
+    template:
+      - n00(ids)
+      - e00()
+      - n01()
+      - e01()
+      - n02()
+      - e02()
+      - n03()
+    DSL:
+      - expand()
+      - overlay(action=fisher_exact_test,subject_qnode_key=n01,virtual_relation_label=F1,object_qnode_key=n02,filter_type=top_n,value=30)
+      - overlay(action=fisher_exact_test,subject_qnode_key=n02,virtual_relation_label=F2,object_qnode_key=n03,filter_type=top_n,value=30)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n01, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n02, object_qnode_key=n03)
+      - resultify()
+      - filter_results(action=limit_number_of_results, max_results=500)
+
+  #### Four node, three-hop questions, with end curies pinned
+  three_hop_two_pinned_question:
+    name: Three hop question with one curie and three more nodes
+    description: Four nodes, one of which has a curie and the others can be anything
+    restated_question: Which?
+    template:
+      - n00(ids)
+      - e00()
+      - n01()
+      - e01()
+      - n02()
+      - e02()
+      - n03(ids)
+    DSL:
+      - expand()
+      - overlay(action=fisher_exact_test,subject_qnode_key=n01,virtual_relation_label=F1,object_qnode_key=n02,filter_type=top_n,value=30)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n01, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n02, object_qnode_key=n03)
+      - resultify()
+      - filter_results(action=limit_number_of_results, max_results=500)
+
+  #### four node, forked question
+  # FIXME: Query graph interpreter does not like non-linear queries
+  four_node_forked_two_pinned_question:
+    name: Four node forked, two pinned node question
+    description: Four nodes, one unpinned ancestor with two pinned descendants
+    restated_question: Which?
+    template:
+      - n01(ids)
+      - e00()
+      - n00()
+      - e01()
+      - n02(ids)
+      - n00()
+      - e03()
+      - n03()
+    DSL:
+      - expand()
+      - overlay(action=compute_jaccard,start_node_key=n01,intermediate_node_key=n00,end_node_key=n03,virtual_relation_label=J1)
+      - overlay(action=compute_jaccard,start_node_key=n02,intermediate_node_key=n00,end_node_key=n03,virtual_relation_label=J2)
+      - overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N1,subject_qnode_key=n03,object_qnode_key=n02)
+      - overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N2,subject_qnode_key=n03,object_qnode_key=n01)
+      - resultify()
+      - filter_results(action=limit_number_of_results, max_results=500, prune_kg=true)
+  ####################################################################################################
+  #### Five node, four-hop questions
+  four_hop_classic_question:
+    name: Four hop question with one curie and four more nodes
+    description: Five nodes, one of which has a curie and the others can be anything. FET to decrease combinatorial explosion
+    restated_question: Which?
+    template:
+      - n00(ids)
+      - e00()
+      - n01()
+      - e01()
+      - n02()
+      - e02()
+      - n03()
+      - e03()
+      - n04()
+    DSL:
+      - expand()
+      - overlay(action=fisher_exact_test,subject_qnode_key=n01,virtual_relation_label=F1,object_qnode_key=n02,filter_type=top_n,value=20)
+      - overlay(action=fisher_exact_test,subject_qnode_key=n02,virtual_relation_label=F2,object_qnode_key=n03,filter_type=top_n,value=20)
+      - overlay(action=fisher_exact_test,subject_qnode_key=n03,virtual_relation_label=F3,object_qnode_key=n04,filter_type=top_n,value=20)
+      - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n01, object_qnode_key=n02)
+      - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n02, object_qnode_key=n03)
+      - overlay(action=compute_ngd, virtual_relation_label=N4, subject_qnode_key=n03, object_qnode_key=n04)
+      - resultify()
+      - filter_results(action=limit_number_of_results, max_results=500)
 
 
 

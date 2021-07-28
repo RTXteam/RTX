@@ -14,6 +14,7 @@ from typing import List, Dict, Tuple, Set, Union
 from datetime import datetime, timedelta
 
 import requests
+import yaml
 from neo4j import GraphDatabase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -35,10 +36,10 @@ class KG2Querier:
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
         self.enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
-        self.infores_curie_tsv_name = "kg2-provided-by-curie-to-infores-curie.tsv"
-        self.infores_curie_tsv_path = f"{os.path.dirname(os.path.abspath(__file__))}/{self.infores_curie_tsv_name}"
+        self.infores_curie_yaml_name = "kg2-provided-by-curie-to-infores-curie.yaml"
+        self.infores_curie_yaml_path = f"{os.path.dirname(os.path.abspath(__file__))}/{self.infores_curie_yaml_name}"
         self.infores_curie_map = self._initiate_infores_curie_map(self.response)
-        self.canonical_predicate_map = eu.load_canonical_predicates_map(self.response)
+        self.canonical_predicates_map = eu.load_canonical_predicates_map(self.response)
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -105,6 +106,11 @@ class KG2Querier:
         log.debug(f"Sending query to Plover")
         dict_qg = qg.to_dict()
         dict_qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)
+        # Allow subclass_of reasoning for qnodes with a small number of curies
+        for qnode in dict_qg["nodes"].values():
+            if qnode.get("ids") and len(qnode["ids"]) < 5:
+                if "allow_subclasses" not in qnode or qnode["allow_subclasses"] is None:
+                    qnode["allow_subclasses"] = True
         response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, timeout=60,
                                  headers={'accept': 'application/json'})
         if response.status_code == 200:
@@ -213,38 +219,43 @@ class KG2Querier:
         edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
         provided_bys = edge_tuple[3]
         publications = edge_tuple[4]
-        # Add any missing provided_bys to our map
+        # Add any provided_bys missing from the spreadsheet to our map
         missing_provided_bys = set(provided_bys).difference(set(self.infores_curie_map))
         for source in missing_provided_bys:
-            self.infores_curie_map[source] = {"curie": self._get_infores_curie_from_provided_by(source, log),
-                                              "type": "biolink:knowledge_source"}
+            self.infores_curie_map[source] = {"infores_curie": self._get_infores_curie_from_provided_by(source, log),
+                                              "knowledge_type": "biolink:knowledge_source"}
 
-        # Create edge attributes containing infores/publications info
-        provided_by_attributes = [Attribute(attribute_type_id=self.infores_curie_map[source]["type"],
-                                            value=self.infores_curie_map[source]["curie"],
+        # Indicate that this edge came from the KG2 KP
+        kg2_infores_curie = eu.get_translator_infores_curie("RTX-KG2")
+        edge.attributes.append(Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
+                                         value=kg2_infores_curie,
+                                         value_type_id="biolink:InformationResource",
+                                         attribute_source=kg2_infores_curie))
+        # Create knowledge source attributes for each of the provided_bys
+        provided_by_attributes = [Attribute(attribute_type_id=self.infores_curie_map[source]["knowledge_type"],
+                                            value=self.infores_curie_map[source]["infores_curie"],
                                             value_type_id="biolink:InformationResource",
                                             attribute_source=eu.get_translator_infores_curie("RTX-KG2"))
                                   for source in provided_bys]
         edge.attributes += provided_by_attributes
+        # Create an attribute containing any publications
         if publications:
             infores_curies = {attribute.value for attribute in provided_by_attributes}
             edge.attributes.append(Attribute(attribute_type_id="biolink:has_supporting_publications",
                                              value_type_id="biolink:Publication",
                                              value=publications,
-                                             attribute_source=list(infores_curies) if len(infores_curies) > 1 or len(infores_curies) == 0 else list(infores_curies)[0]))
+                                             attribute_source=list(infores_curies)[0] if len(infores_curies) == 1 else None))
 
         # Switch to canonical predicate as needed (temporary patch until KG2 uses only canonical predicates)
-        if edge.predicate in self.canonical_predicate_map:
-            edge.predicate = self.canonical_predicate_map[edge.predicate]
-            original_subject = edge.subject
-            edge.subject = edge.object
-            edge.object = original_subject
+        if edge.predicate in self.canonical_predicates_map:
+            canonical_predicate = self.canonical_predicates_map[edge.predicate]
+            edge = eu.flip_edge(edge, canonical_predicate)
 
         return edge
 
     def _get_infores_curie_from_provided_by(self, provided_by: str, log: ARAXResponse) -> str:
         # This is a backup method in case a provided_by is missing from the infores mappings
-        log.warning(f"KG2 edge uses a provided_by not listed in {self.infores_curie_tsv_name}: {provided_by}")
+        log.warning(f"KG2 edge uses a provided_by not listed in {self.infores_curie_yaml_name}: {provided_by}")
         stripped = provided_by.strip(":")  # Handle SEMMEDDB: situation
         local_id = stripped.split(":")[-1]
         before_dot = local_id.split(".")[0]
@@ -254,34 +265,41 @@ class KG2Querier:
 
     def _initiate_infores_curie_map(self, log: ARAXResponse) -> Dict[str, Dict[str, str]]:
         # Grab (or refresh) the spreadsheet of mappings from the KG2 repo
-        infores_map_file = pathlib.Path(self.infores_curie_tsv_path)
+        infores_map_file = pathlib.Path(self.infores_curie_yaml_path)
         twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
         if not infores_map_file.exists() or datetime.fromtimestamp(infores_map_file.stat().st_mtime) < twenty_four_hours_ago:
-            log.debug(f"Grabbing provided-by-to-infores-curie TSV from RTX-KG2 repo")
+            log.debug(f"Grabbing {self.infores_curie_yaml_name} from RTX-KG2 repo")
             with requests_cache.disabled():
-                response = requests.get(f"https://raw.githubusercontent.com/RTXteam/RTX-KG2/master/{self.infores_curie_tsv_name}", timeout=10)
+                response = requests.get(f"https://raw.githubusercontent.com/RTXteam/RTX-KG2/master/{self.infores_curie_yaml_name}", timeout=10)
                 if response.status_code == 200:
-                    # Save this as a tsv file locally
-                    with open(self.infores_curie_tsv_path, "w+") as local_tsv_file:
-                        local_tsv_file.write(response.text)
+                    # Save this file locally
+                    with open(self.infores_curie_yaml_path, "w+") as local_file:
+                        local_file.write(response.text)
                 else:
-                    log.warning(f"Unable to grab provided-by-to-infores-curie TSV from RTX-KG2 repo; will proceed but "
+                    log.warning(f"Unable to grab {self.infores_curie_yaml_name} from RTX-KG2 repo; will proceed but "
                                 f"infores curies may not be accurate")
-        # Now that we have the TSV locally, load it into a dictionary
-        log.debug(f"Loading provided-by-to-infores-curie info into a map")
+        # Now that we have the file locally, load it into a dictionary
+        log.debug(f"Loading {self.infores_curie_yaml_name} into a map")
         infores_curie_map = dict()
         try:
-            with open(self.infores_curie_tsv_path) as tsv_file:
-                reader = csv.reader(tsv_file, delimiter="\t")
-                next(reader)  # Skip headers
-                for row in reader:
-                    source_type = f"biolink:{row[2]}" if not row[2].startswith("biolink:") else row[2]
-                    infores_curie_map[row[0]] = {"curie": row[1], "type": source_type}
+            with open(self.infores_curie_yaml_path) as yaml_file:
+                infores_curie_map = yaml.safe_load(yaml_file)
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
-            log.warning(f"Ran into a problem parsing provided-by-to-infores-curie TSV; will proceed but infores curies"
+            log.warning(f"Ran into a problem parsing {self.infores_curie_yaml_name}; will proceed but infores curies"
                         f"may not be accurate. {tb}")
+
+        # Make sure "infores:" and "biolink:" prefixes are included
+        for key in infores_curie_map:
+            infores_info = infores_curie_map[key]
+            if not infores_info["infores_curie"].startswith("infores:"):
+                local_infores_id = infores_info["infores_curie"]
+                infores_info["infores_curie"] = f"infores:{local_infores_id}"
+            if not infores_info["knowledge_type"].startswith("biolink:"):
+                local_knowledge_type_id = infores_info["knowledge_type"]
+                infores_info["knowledge_type"] = f"biolink:{local_knowledge_type_id}"
+
         return infores_curie_map
 
     # -------------- LEGACY FUNCTIONS (EXPAND NO LONGER USES THESE, BUT OTHER MODULES MAY) ------------------------ #
