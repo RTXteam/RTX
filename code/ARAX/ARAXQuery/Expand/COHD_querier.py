@@ -59,7 +59,7 @@ class COHDQuerier:
             except ValueError:
                 log.error("The 'COHD_method_top_N' in Expander should be numeric", error_code="ParameterError")
                 return final_kg
-        else:
+        elif type(COHD_method_top_N) is not int:
             log.error("The 'COHD_method_top_N' in Expander should be an int", error_code="ParameterError")
             return final_kg
 

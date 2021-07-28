@@ -537,7 +537,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     # Handle case where QG contains multiple qnodes and no qedges (we'll dump everything in one result)
     if not qg.edges and len(qg.nodes) > 1:
         log.debug(f"QG contains only qnodes (no qedges); will create only one result with all qnodes.")
-        result_graph = _create_new_empty_result_graph(qg)
+        result_graph = _create_new_empty_result_graph()
         result_graph["nodes"] = kg_node_keys_by_qg_key
         final_result_graphs = [result_graph]
     else:
@@ -601,7 +601,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             log.info(f"Creating result graphs for option group {option_group_id}")
             result_graphs_for_option_group = _create_result_graphs(kg, option_group_qg, kg_node_keys_by_qg_key,
                                                                    edge_keys_by_subject, edge_keys_by_object,
-                                                                   edge_keys_by_node_pair, ignore_edge_direction, log)
+                                                                   edge_keys_by_node_pair, ignore_edge_direction, log,
+                                                                   base_result_graphs=copy.deepcopy(result_graphs_required))
             log.debug(f"Created {len(result_graphs_for_option_group)} option group {option_group_id} result graphs")
             option_group_results_dict[option_group_id] = result_graphs_for_option_group
 
@@ -745,9 +746,9 @@ def _get_connected_qnode_keys(qnode_key: str, query_graph: QueryGraph) -> Set[st
     return qnode_keys_used_on_same_qedges.difference({qnode_key})
 
 
-def _create_new_empty_result_graph(query_graph: QueryGraph) -> Dict[str, Dict[str, Set[str]]]:
-    empty_result_graph = {'nodes': {qnode_key: set() for qnode_key in query_graph.nodes},
-                          'edges': {qedge_key: set() for qedge_key in query_graph.edges}}
+def _create_new_empty_result_graph() -> Dict[str, Dict[str, Set[str]]]:
+    empty_result_graph = {'nodes': collections.defaultdict(set),
+                          'edges': collections.defaultdict(set)}
     return empty_result_graph
 
 
@@ -805,10 +806,12 @@ def _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key: Dict[str, Set[str]], 
 
 
 def _result_graph_is_fulfilled(result_graph: Dict[str, Dict[str, Set[str]]], query_graph: QueryGraph) -> bool:
-    if not set(query_graph.nodes).issubset(set(result_graph['nodes'])):
-        return False
-    if not set(query_graph.edges).issubset(set(result_graph['edges'])):
-        return False
+    for qnode_key in query_graph.nodes:
+        if not result_graph['nodes'].get(qnode_key):
+            return False
+    for qedge_key in query_graph.edges:
+        if not result_graph['edges'].get(qedge_key):
+            return False
     return True
 
 
@@ -904,15 +907,22 @@ def _create_result_graphs(kg: KnowledgeGraph,
                           edge_keys_by_object: DefaultDict[str, DefaultDict[str, set]],
                           edge_keys_by_node_pair: DefaultDict[str, DefaultDict[str, set]],
                           ignore_edge_direction: bool = True,
-                          log: ARAXResponse = ARAXResponse()) -> List[Result]:
-    result_graphs = []
+                          log: ARAXResponse = ARAXResponse(),
+                          base_result_graphs: Optional[List[dict]] = None) -> List[dict]:
     kg_node_adj_map_by_qg_key = _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key, kg, qg)
     qg_adj_map = _get_qg_adj_map_undirected(qg)
 
     # Iteratively construct "result graphs" (initially containing only nodes, not edges) by walking through all qnodes
     log.debug(f"Constructing result graphs qnode by qnode")
-    qnode_keys_remaining = set(qg.nodes)
-    qnode_keys_already_handled = set()
+    if base_result_graphs:
+        # We'll build off of the 'base' result graphs rather than start anew
+        result_graphs = base_result_graphs
+        qnode_keys_already_handled = set(result_graphs[0]["nodes"])
+        qnode_keys_remaining = set(qg.nodes).difference(qnode_keys_already_handled)
+    else:
+        result_graphs = []
+        qnode_keys_already_handled = set()
+        qnode_keys_remaining = set(qg.nodes)
     while qnode_keys_remaining:
         # Start with a random qnode if this is our first iteration
         if not qnode_keys_already_handled:
@@ -930,13 +940,13 @@ def _create_result_graphs(kg: KnowledgeGraph,
             # We'll start with one result graph with ALL corresponding nodes in the KG in this spot if is_set=True
             if current_qnode.is_set:
                 log.debug(f"Starting with one result graph because is_set=True for {current_qnode_key}")
-                new_result_graph = _create_new_empty_result_graph(qg)
+                new_result_graph = _create_new_empty_result_graph()
                 new_result_graph["nodes"][current_qnode_key] = all_node_keys_in_kg_for_this_qnode_key
                 result_graphs.append(new_result_graph)
             # Otherwise, we'll start with a result graph for EACH corresponding node in the KG
             else:
                 for node_key in all_node_keys_in_kg_for_this_qnode_key:
-                    new_result_graph = _create_new_empty_result_graph(qg)
+                    new_result_graph = _create_new_empty_result_graph()
                     new_result_graph["nodes"][current_qnode_key] = {node_key}
                     result_graphs.append(new_result_graph)
         # Otherwise fan out our existing result graphs, filling out this qnode spot in them based on prior contents
@@ -980,7 +990,8 @@ def _create_result_graphs(kg: KnowledgeGraph,
     # Then add edges to our result graphs as appropriate
     log.debug(f"Adding edges to result graphs")
     for result_graph in result_graphs:
-        for qedge_key in result_graph['edges']:
+        qedge_keys = set(qg.edges)
+        for qedge_key in qedge_keys:
             qedge = qg.edges[qedge_key]
             qedge_source_node_ids = result_graph['nodes'][qedge.subject]
             qedge_target_node_ids = result_graph['nodes'][qedge.object]

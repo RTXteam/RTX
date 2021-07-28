@@ -1,4 +1,5 @@
 #!/bin/env python3
+import copy
 import multiprocessing
 import sys
 import os
@@ -9,7 +10,6 @@ from typing import List, Dict, Tuple, Union, Set, Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_decorator import ARAXDecorator
-from ARAX_resultify import ARAXResultify
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -20,8 +20,6 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
-from openapi_server.models.message import Message
-from openapi_server.models.response import Response
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -48,7 +46,6 @@ class ARAXExpander:
         :return:
         """
         considered_kps = sorted(list(set(self.kp_command_definitions)))
-        kg2_definition = self.kp_command_definitions["RTX-KG2"]
         kp_less = {
                 "dsl_command": "expand()",
                 "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
@@ -57,11 +54,7 @@ class ARAXExpander:
                                f"their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick "
                                f"but useful answers. For each QEdge, it queries the selected KPs in parallel; it will "
                                f"timeout for a particular KP if it decides it's taking too long to respond.",
-                "parameters": {
-                    "edge_key": kg2_definition["parameters"]["edge_key"],
-                    "node_key": kg2_definition["parameters"]["node_key"],
-                    "enforce_directionality": kg2_definition["parameters"]["enforce_directionality"]
-                }
+                "parameters": eu.get_standard_parameters()
             }
         return [kp_less] + list(self.kp_command_definitions.values())
 
@@ -114,7 +107,7 @@ class ARAXExpander:
             parameters['node_key'] = self._get_orphan_qnode_keys(message.query_graph)
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
-        query_graph = eu.copy_qg(message.query_graph)
+        query_graph = copy.deepcopy(message.query_graph)
 
         # Verify we understand all constraints (right now we don't support any)
         for qnode_key, qnode in query_graph.nodes.items():
@@ -149,6 +142,8 @@ class ARAXExpander:
                 # Infer categories for expand's internal use (in KP selection and etc.)
                 qnode.categories = eu.get_preferred_categories(qnode.ids, log)
                 log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
+            elif not qnode.categories:
+                qnode.categories = ["biolink:NamedThing"]
             if qnode.categories and set(qnode.categories).intersection(self.category_equivalencies):
                 equivalent_categories = {equivalent_category for category in qnode.categories
                                          for equivalent_category in self.category_equivalencies.get(category, [])}
@@ -172,9 +167,32 @@ class ARAXExpander:
             # Expand the query graph edge-by-edge
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
             for qedge_key in ordered_qedge_keys_to_expand:
+                log.debug(f"Expanding qedge {qedge_key}")
                 qedge = query_graph.edges[qedge_key]
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
+
+                if mode == "ARAX":
+                    # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
+                    prune_threshold = parameters["prune_threshold"]
+                    if not parameters.get("user_specified_prune_threshold"):
+                        subject_qnode = one_hop_qg.nodes[qedge.subject]
+                        object_qnode = one_hop_qg.nodes[qedge.object]
+                        open_ended_qnode = subject_qnode if not subject_qnode.ids else object_qnode
+                        if subject_qnode.ids and object_qnode.ids:
+                            prune_threshold = 5000  # Be more lenient for doubly-pinned qedges
+                        elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
+                            if prune_threshold > 200:
+                                prune_threshold = 200  # NamedThing really explodes the results, so be more strict
+                    log.debug(f"Prune threshold is {prune_threshold} for this expansion")
+                    # Prune back any nodes with more than the specified max of answers
+                    for qnode_key in one_hop_qg.nodes:
+                        local_qnode = one_hop_qg.nodes[qnode_key]
+                        if local_qnode.ids and len(local_qnode.ids) > prune_threshold:
+                            overarching_kg = self._prune_kg(qnode_key, prune_threshold, overarching_kg, query_graph, log)
+                            # Re-formulate the QG for this edge now that the KG has been slimmed down
+                            one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
+
                 if log.status != 'OK':
                     return response
 
@@ -209,6 +227,7 @@ class ARAXExpander:
                     return response
 
                 # Post-process all the KPs' answers and merge into our overarching KG
+                log.debug(f"Got answers from all KPs; merging them into one KG")
                 for answer_kg, kp_log in kp_answers:
                     if len(kps_to_query) > 1:
                         if kp_log.status != 'OK':
@@ -223,12 +242,13 @@ class ARAXExpander:
                         self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, mode, response)
                     if response.status != 'OK':
                         return response
+                log.debug(f"After merging KPs' answers, total KG counts are: {eu.get_printable_counts_by_qg_id(overarching_kg)}")
 
                 # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
                 if mode == "ARAX":
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
-                    overarching_kg = self._prune_dead_end_paths(overarching_kg, query_graph, response)
+                    overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
                     if response.status != 'OK':
                         return response
 
@@ -387,7 +407,7 @@ class ARAXExpander:
         qnode_keys = [qedge.subject, qedge.object]
 
         # Add (a copy of) this qedge to our edge query graph
-        edge_qg.edges[qedge_key] = eu.copy_qedge(qedge)
+        edge_qg.edges[qedge_key] = copy.deepcopy(qedge)
 
         # Update this qedge's qnodes as appropriate and add (copies of) them to the edge query graph
         required_qedge_keys = {qe_key for qe_key, qe in full_qg.edges.items() if not qe.option_group_id}
@@ -396,7 +416,7 @@ class ARAXExpander:
         qedge_is_required = qedge_key in required_qedge_keys
         for qnode_key in qnode_keys:
             qnode = full_qg.nodes[qnode_key]
-            qnode_copy = eu.copy_qnode(qnode)
+            qnode_copy = copy.deepcopy(qnode)
             # Feed in curies from a prior Expand() step as the curie for this qnode as necessary
             qnode_already_fulfilled = qnode_key in overarching_kg.nodes_by_qg_id
             if qnode_already_fulfilled and not qnode_copy.ids:
@@ -504,11 +524,11 @@ class ARAXExpander:
                 return None
 
             # Add (copies of) this qedge and its two qnodes to our new query sub graph
-            qedge_copy = eu.copy_qedge(qedge)
+            qedge_copy = copy.deepcopy(qedge)
             if qedge_key not in sub_query_graph.edges:
                 sub_query_graph.edges[qedge_key] = qedge_copy
             for qnode_key in [qedge_copy.subject, qedge_copy.object]:
-                qnode_copy = eu.copy_qnode(query_graph.nodes[qnode_key])
+                qnode_copy = copy.deepcopy(query_graph.nodes[qnode_key])
                 if qnode_key not in sub_query_graph.nodes:
                     sub_query_graph.nodes[qnode_key] = qnode_copy
 
@@ -539,6 +559,7 @@ class ARAXExpander:
                 else:
                     overarching_kg.add_node(node_key, node, qnode_key)
         for qedge_key, edges_dict in answer_kg.edges_by_qg_id.items():
+            num_orphan_edges_removed = 0
             qedge = overarching_qg.edges[qedge_key]
             for edge_key, edge in edges_dict.items():
                 if (edge.subject in overarching_kg.nodes_by_qg_id[qedge.subject] and
@@ -547,7 +568,8 @@ class ARAXExpander:
                          edge.object in overarching_kg.nodes_by_qg_id[qedge.subject]):
                     overarching_kg.add_edge(edge_key, edge, qedge_key)
                 else:
-                    log.debug(f"Removing edge {edge_key} (fulfilling {qedge_key}) from the KG because it's orphaned")
+                    num_orphan_edges_removed += 1
+            log.debug(f"Removed {num_orphan_edges_removed} edges fulfilling {qedge_key} from the KG because they were orphaned")
 
     @staticmethod
     def _store_kryptonite_edge_info(kryptonite_kg: QGOrganizedKnowledgeGraph, kryptonite_qedge_key: str, qg: QueryGraph,
@@ -628,33 +650,70 @@ class ARAXExpander:
                     organized_kg.edges_by_qg_id[qedge_key].pop(edge_key)
 
     @staticmethod
-    def _prune_dead_end_paths(organized_kg: QGOrganizedKnowledgeGraph, qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        # This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
-        # found in the last expansion will connect to edges in the next one)
-        log.debug(f"Pruning any paths that are now dead ends (with help of Resultify)")
-        expanded_qnodes = {qnode_key for qnode_key in qg.nodes if organized_kg.nodes_by_qg_id.get(qnode_key)}
-        expanded_qedges = {qedge_key for qedge_key in qg.edges if organized_kg.edges_by_qg_id.get(qedge_key)}
-        qg_expanded_thus_far = QueryGraph(nodes={qnode_key: qg.nodes[qnode_key] for qnode_key in expanded_qnodes},
-                                          edges={qedge_key: qg.edges[qedge_key] for qedge_key in expanded_qedges})
-        regular_format_kg = eu.convert_qg_organized_kg_to_standard_kg(organized_kg)
-
-        # Use resultify to remove dead ends from our (thus far) KG
-        resultifier = ARAXResultify()
-        prune_response = ARAXResponse()
-        prune_response.envelope = Response()
-        prune_response.envelope.message = Message()
-        prune_message = prune_response.envelope.message
-        prune_message.query_graph = qg_expanded_thus_far
-        prune_message.knowledge_graph = regular_format_kg
-        resultify_response = resultifier.apply(prune_response, {})
-        if resultify_response.status == "OK":
-            pruned_organized_kg = eu.convert_standard_kg_to_qg_organized_kg(prune_message.knowledge_graph)
+    def _prune_kg(qnode_key_to_prune: str, prune_threshold: int, kg: QGOrganizedKnowledgeGraph,
+                  qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        log.info(f"Pruning back {qnode_key_to_prune} nodes because there are more than "
+                 f"{prune_threshold} in the KG (there are {len(kg.nodes_by_qg_id[qnode_key_to_prune])})")
+        kg_copy = copy.deepcopy(kg)
+        qg_expanded_thus_far = eu.get_qg_expanded_thus_far(qg,  kg)
+        # Handle (probably unusual) case where
+        if not qg_expanded_thus_far.edges or not qg_expanded_thus_far.nodes:
+            qnode_exceeding_threshold = qg.nodes[qnode_key_to_prune]
+            if qnode_exceeding_threshold.ids and len(qnode_exceeding_threshold.ids) > prune_threshold:
+                log.warning(f"Qnode {qnode_key_to_prune} has {len(qnode_exceeding_threshold.ids)} IDs specified, "
+                            f"which will break our system. Truncating these to a list of {prune_threshold}.")
+                qnode_exceeding_threshold.ids = qnode_exceeding_threshold.ids[:prune_threshold]
+        qg_expanded_thus_far.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
+        intermediate_results_response = eu.create_results(qg_expanded_thus_far, kg_copy, log,
+                                                          rank_results=True, overlay_fet=True,
+                                                          qnode_key_to_prune=qnode_key_to_prune)
+        log.debug(f"A total of {len(intermediate_results_response.envelope.message.results)} "
+                  f"intermediate results were created/ranked")
+        if intermediate_results_response.status == "OK":
+            # Filter down so we only keep the top X nodes
+            results = intermediate_results_response.envelope.message.results
+            results.sort(key=lambda x: x.score, reverse=True)
+            kept_nodes = set()
+            scores = []
+            counter = 0
+            while len(kept_nodes) < prune_threshold and counter < len(results):
+                current_result = intermediate_results_response.envelope.message.results[counter]
+                scores.append(current_result.score)
+                kept_nodes.update({binding.id for binding in current_result.node_bindings[qnode_key_to_prune]})
+                counter += 1
+            log.info(f"Kept top {len(kept_nodes)} answers for {qnode_key_to_prune}. "
+                     f"Best score was {round(max(scores), 5)}, worst kept was {round(min(scores), 5)}.")
+            # Actually eliminate them from the KG
+            nodes_to_delete = set(kg.nodes_by_qg_id[qnode_key_to_prune]).difference(kept_nodes)
+            for node_key in nodes_to_delete:
+                del kg.nodes_by_qg_id[qnode_key_to_prune][node_key]
+            eu.remove_orphan_edges(kg, qg_expanded_thus_far)
         else:
-            pruned_organized_kg = QGOrganizedKnowledgeGraph()
-            log.error(f"Ran into an issue trying to prune using Resultify: {prune_response.show()}", error_code="PruneError")
+            log.error(f"Ran into an issue using Resultify when trying to prune {qnode_key_to_prune} answers: "
+                      f"{intermediate_results_response.show()}", error_code="PruneError")
 
-        log.debug(f"After pruning, KG counts are: {eu.get_printable_counts_by_qg_id(pruned_organized_kg)}")
-        return pruned_organized_kg
+        log.debug(f"After pruning {qnode_key_to_prune} nodes, KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
+        return kg
+
+    @staticmethod
+    def _remove_dead_end_paths(full_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+        """
+        This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
+        found in the last expansion will connect to edges in the next one)
+        """
+        log.debug(f"Pruning any paths that are now dead ends (with help of Resultify)")
+        qg_expanded_thus_far = eu.get_qg_expanded_thus_far(full_qg, kg)
+        for qnode in qg_expanded_thus_far.nodes.values():
+            qnode.is_set = True  # This makes resultify run faster and doesn't hurt in this case
+        resultify_response = eu.create_results(qg_expanded_thus_far, kg, log)
+        if resultify_response.status == "OK":
+            pruned_kg = eu.convert_standard_kg_to_qg_organized_kg(resultify_response.envelope.message.knowledge_graph)
+        else:
+            pruned_kg = QGOrganizedKnowledgeGraph()
+            log.error(f"Ran into an issue trying to prune using Resultify: {resultify_response.show()}",
+                      error_code="PruneError")
+        log.debug(f"After removing dead-end paths, KG counts are: {eu.get_printable_counts_by_qg_id(pruned_kg)}")
+        return pruned_kg
 
     @staticmethod
     def _add_node_connection_to_map(qnode_key_a: str, qnode_key_b: str, edge: Edge,
@@ -772,13 +831,15 @@ class ARAXExpander:
         parameters = {"kp": kp}
         if not kp:
             kp = "RTX-KG2"  # We'll use a standard set of parameters (like for KG2)
+
+        # First set parameters to their defaults
         for kp_parameter_name, info_dict in self.kp_command_definitions[kp]["parameters"].items():
             if info_dict["type"] == "boolean":
                 parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
             else:
                 parameters[kp_parameter_name] = info_dict.get("default", None)
 
-        # Override default values for any parameters passed in
+        # Then override default values for any parameters passed in
         parameter_names_for_all_kps = {param for kp_documentation in self.kp_command_definitions.values() for param in
                                        kp_documentation["parameters"]}
         for param_name, value in input_parameters.items():
@@ -786,8 +847,16 @@ class ARAXExpander:
                 kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
                 log.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}",
                           error_code="InvalidParameter")
-            else:
-                parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
+            elif param_name in self.kp_command_definitions[kp]["parameters"]:
+                param_info_dict = self.kp_command_definitions[kp]["parameters"][param_name]
+                if param_info_dict.get("type") == "boolean":
+                    parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
+                elif param_info_dict.get("type") == "integer":
+                    parameters[param_name] = int(value)
+                else:
+                    parameters[param_name] = value
+                if param_name == "prune_threshold":
+                    parameters["user_specified_prune_threshold"] = True
 
         return parameters
 
