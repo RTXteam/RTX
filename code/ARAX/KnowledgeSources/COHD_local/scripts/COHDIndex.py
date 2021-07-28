@@ -34,7 +34,7 @@ class COHDIndex:
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         self.databaseLocation = filepath
         # lastest_version = "v1.0"
-        # kg = 'KG2.6.7'
+        # kg = 'KG2.6.7.1'
         # self.databaseName = f"COHDdatabase_{lastest_version}_{kg}.db"
         self.databaseName = RTXConfig.cohd_database_path.split('/')[-1]
         self.success_con = self.connect()
@@ -54,7 +54,7 @@ class COHDIndex:
             print("INFO: Connecting to database", flush=True)
             return True
         else:
-            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_6_7_with_concepts.pkl', 'concepts_table_Athena.txt']
+            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_6_7_1_with_concepts.pkl', 'concepts_table_Athena.txt']
             # has_files = [f for f in os.listdir(self.databaseLocation) if os.path.isfile(os.path.join(self.databaseLocation, f))]
             # for file in required_files:
             #     if file in has_files:
@@ -206,7 +206,7 @@ class COHDIndex:
         #     # for key in kg1_mapping:
         #     #     if key not in kg_mapping:
         #     #         kg_mapping[key] = kg1_mapping[key]
-        #     with open(f"{self.databaseLocation}/preferred_synonyms_kg2_6_7_with_concepts.pkl", "rb") as file:
+        #     with open(f"{self.databaseLocation}/preferred_synonyms_kg2_6_7_1_with_concepts.pkl", "rb") as file:
         #         kg = pickle.load(file)
 
         #     insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,concept_id) values (?,?)'
