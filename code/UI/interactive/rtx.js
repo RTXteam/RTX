@@ -98,6 +98,7 @@ function main() {
 	lookup_synonym(syn,false);
     }
     openSection(tab);
+    //dragElement(document.getElementById('nodeeditor'));
 }
 
 function sesame(head,content) {
@@ -1126,7 +1127,7 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 			    td.appendChild(document.createTextNode(pc));
 			    tr.appendChild(td);
 			}
-			td.style.textAlign = "right";  // last td is always the count number
+			td.style.textAlign = "right";  // last td is always[?] the count number
 			table.appendChild(tr);
 		    }
 		    tnode.appendChild(table);
@@ -1491,14 +1492,20 @@ function render_response(respObj,dispjson) {
 	table.className = 'sumtab';
         var tr = document.createElement("tr");
         var td = document.createElement("th");
-	td.colSpan = "5";
-	td.appendChild(document.createTextNode("Provenance Counts: "+respObj.validation_result.provenance_summary["n_sources"]));
+	td.colSpan = "2";
+	td.appendChild(document.createTextNode("Provenance Counts"));
+	tr.appendChild(td);
+        td = document.createElement("th");
+	td.appendChild(document.createTextNode("[ "+respObj.validation_result.provenance_summary["n_sources"]+" sources ]"));
+	tr.appendChild(td);
+	td = document.createElement("th");
+	td.colSpan = "2";
 	tr.appendChild(td);
 	table.appendChild(tr);
-	var previous = '';
+	var previous = 'RandomTextToPurposelyTriggerThickTopBorderForFirstRow';
 	for (var prov in respObj.validation_result.provenance_summary.provenance_counts) {
 	    var changed = false;
-	    if (previous && previous != respObj.validation_result.provenance_summary.provenance_counts[prov][0])
+	    if (previous != respObj.validation_result.provenance_summary.provenance_counts[prov][0])
 		changed = true;
             previous = respObj.validation_result.provenance_summary.provenance_counts[prov][0];
 
@@ -1511,7 +1518,7 @@ function render_response(respObj,dispjson) {
 		td.appendChild(document.createTextNode(pc));
 		tr.appendChild(td);
 	    }
-	    td.style.textAlign = "right";  // last td is always the count number
+	    td.style.textAlign = "right";  // last td is always[?] the count number
 
 	    // fancy bar bar
 	    td = document.createElement("td");
@@ -1524,7 +1531,10 @@ function render_response(respObj,dispjson) {
 		barw = 501;
 		span.style.background = "#3d6d98";
 	    }
+	    if (respObj.validation_result.provenance_summary.provenance_counts[prov][2] == 'no provenance')
+		span.style.background = "#b00";
 	    span.style.width = barw + "px";
+	    span.style.height = "8px";
 	    td.appendChild(span);
             tr.appendChild(td);
 
@@ -1561,6 +1571,7 @@ function render_response(respObj,dispjson) {
 		span.style.background = "#3d6d98";
 	    }
 	    span.style.width = barw + "px";
+	    span.style.height = "8px";
 	    td.appendChild(span);
 	    tr.appendChild(td);
 
@@ -3822,7 +3833,7 @@ function checkUIversion(compare) {
 		showVersionAlert(response);
 	    else {
 		UIstate["version"] = response;
-		document.getElementById("uiversionstring").innerHTML = '&nbsp;&nbsp;v.'+response;
+		document.getElementById("uiversionstring").innerHTML = '&nbsp;&nbsp;'+response;
 	    }
 	})
 	.catch(error => { //log and ignore...
