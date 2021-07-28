@@ -1403,7 +1403,7 @@ class NodeSynonymizer:
             drug_score = 0
             disease_score = 0
             protein_score = 0
-            if 'biolink:Drug' in concept['all_categories'] or 'biolink:ChemicalSubstance' in concept['all_categories']:
+            if 'biolink:Drug' in concept['all_categories'] or 'biolink:ChemicalEntity' in concept['all_categories'] or 'biolink:SmallMolecule' in concept['all_categories'] or 'biolink:MolecularEntity' in concept['all_categories']:
                 drug_score = 1
             if 'biolink:Disease' in concept['all_categories'] or 'biolink:PhenotypicFeature' in concept['all_categories'] or 'biolink:DiseaseOrPhenotypicFeature' in concept['all_categories']:
                 disease_score = 1
@@ -1436,7 +1436,7 @@ class NodeSynonymizer:
                     final_category = 'CONFLICT'
 
                 is_problem = False
-                if final_category == 'biolink:Drug' and concept['best_category'] != 'biolink:Drug' and concept['best_category'] != 'biolink:ChemicalSubstance':
+                if final_category == 'biolink:Drug' and concept['best_category'] != 'biolink:Drug' and concept['best_category'] != 'biolink:ChemicalEntity' and concept['best_category'] != 'biolink:MolecularEntity' and concept['best_category'] != 'biolink:SmallMolecule':
                     is_problem = True
                 if final_category == 'biolink:Disease' and concept['best_category'] != 'biolink:PhenotypicFeature' and concept['best_category'] != 'biolink:DiseaseOrPhenotypicFeature':
                     is_problem = True
@@ -1586,7 +1586,7 @@ class NodeSynonymizer:
                     drug_score = 0
                     disease_score = 0
                     protein_score = 0
-                    if 'biolink:Drug' in concept['all_categories'] or 'biolink:ChemicalSubstance' in concept['all_categories']:
+                    if 'biolink:Drug' in concept['all_categories'] or 'biolink:ChemicalEntity' in concept['all_categories'] or 'biolink:SmallMolecule' in concept['all_categories'] or 'biolink:MolecularEntity' in concept['all_categories']:
                         drug_score = 1
                     if 'biolink:Disease' in concept['all_categories'] or 'biolink:PhenotypicFeature' in concept['all_categories'] or 'biolink:DiseaseOrPhenotypicFeature' in concept['all_categories']:
                         disease_score = 1
@@ -2331,7 +2331,7 @@ def run_example_7():
     for kg_name in [ 'KG1', 'KG2' ]:
         print(f"==== Get total number of concepts for several types for {kg_name} ============================")
         t0 = timeit.default_timer()
-        for entity_type in [ 'biolink:ChemicalSubstance', 'biolink:Drug', 'biolink:Disease', 'biolink:Protein', 'biolink:Gene', 'cheesecake' ]:
+        for entity_type in [ 'biolink:ChemicalEntity', 'biolink:Drug', 'biolink:Disease', 'biolink:Protein', 'biolink:Gene', 'cheesecake' ]:
             print(f"count({entity_type}) = {synonymizer.get_total_entity_count(entity_type, kg_name=kg_name)}")
         t1 = timeit.default_timer()
         print("Elapsed time: "+str(t1-t0))
