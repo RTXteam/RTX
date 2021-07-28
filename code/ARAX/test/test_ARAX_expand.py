@@ -1000,11 +1000,11 @@ def test_auto_pruning_two_hop():
         "add_qnode(categories=biolink:ChemicalSubstance, key=n2)",
         "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:related_to)",
         "add_qedge(subject=n1, object=n2, key=e1, predicates=biolink:related_to)",
-        "expand()",
+        "expand(prune_threshold=200)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id["n1"]) <= 1000
+    assert len(nodes_by_qg_id["n1"]) <= 200
 
 
 if __name__ == "__main__":
