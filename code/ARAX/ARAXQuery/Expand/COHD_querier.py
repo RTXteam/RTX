@@ -1411,7 +1411,9 @@ class COHDQuerier:
                 name = key
                 value = str(info_dict[key])
                 swagger_edge.attributes += [Attribute(attribute_type_id=type, original_attribute_name=name, value=value, value_url=url)]
-            swagger_edge.attributes += [eu.get_kp_source_attribute("COHD", arax_kp=True, description=description),eu.get_arax_source_attribute()]
+            swagger_edge.attributes += [eu.get_kp_source_attribute("COHD", arax_kp=True, description=description),
+                                        eu.get_arax_source_attribute(),
+                                        eu.get_computed_value_attribute()]
         else:
             swagger_edge.predicate = f"biolink:has_{name}_with"
             swagger_edge_key = f"COHD:{subject}-has_{name}_with-{object}"

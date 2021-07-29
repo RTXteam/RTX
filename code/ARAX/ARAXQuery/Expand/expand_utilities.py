@@ -514,6 +514,16 @@ def get_kp_source_attribute(kp_name: str, arax_kp: bool = False, description: Op
                      attribute_source=get_translator_infores_curie("ARAX"))
 
 
+def get_computed_value_attribute() -> Attribute:
+    arax_infores_curie = get_translator_infores_curie("ARAX")
+    return Attribute(attribute_type_id="biolink:computed_value",
+                     value=True,
+                     value_type_id="metatype:Boolean",
+                     attribute_source=arax_infores_curie,
+                     description="This edge is a container for a computed value between two nodes that is not "
+                                 "directly attachable to other edges.")
+
+
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
         "BTE": "https://api.bte.ncats.io/v1",
