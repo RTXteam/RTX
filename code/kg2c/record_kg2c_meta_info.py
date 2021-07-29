@@ -19,14 +19,11 @@ KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
 
 PROTEIN_CONFLATIONS = {"biolink:Protein", "biolink:Gene"}
 DISEASE_CONFLATIONS = {"biolink:Disease", "biolink:PhenotypicFeature", "biolink:DiseaseOrPhenotypicFeature"}
-DRUG_CONFLATIONS = {"biolink:Drug", "biolink:ChemicalSubstance"}
 CONFLATIONS_MAP = {"biolink:Protein": PROTEIN_CONFLATIONS,
                    "biolink:Gene": PROTEIN_CONFLATIONS,
                    "biolink:Disease": DISEASE_CONFLATIONS,
                    "biolink:PhenotypicFeature": DISEASE_CONFLATIONS,
-                   "biolink:DiseaseOrPhenotypicFeature": DISEASE_CONFLATIONS,
-                   "biolink:Drug": DRUG_CONFLATIONS,
-                   "biolink:ChemicalSubstance": DRUG_CONFLATIONS}
+                   "biolink:DiseaseOrPhenotypicFeature": DISEASE_CONFLATIONS}
 
 
 def serialize_with_sets(obj: any) -> any:
