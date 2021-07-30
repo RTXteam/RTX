@@ -205,10 +205,11 @@ class OverlayExposuresData:
         #             relation=self.virtual_relation_label,
         #             qedge_ids=[self.virtual_relation_label],
         #             attributes=[self._create_icees_edge_attribute(p_value)])
+        provided_by = "infores:icees"
         edge_attribute_list = [
             self._create_icees_edge_attribute(p_value),
             EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
-            EdgeAttribute(original_attribute_name="provided_by", value="ICEES+", attribute_type_id="biolink:provided_by"),
+            EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
             #EdgeAttribute(name="qedge_ids", value=[self.virtual_relation_label])
         ]
         edge = Edge(predicate=self.icees_edge_type, subject=subject_curie, object=object_curie,
