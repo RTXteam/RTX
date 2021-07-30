@@ -544,10 +544,10 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
 
 def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
     endpoint_map = {
-        "ARAX": "infores:arax-reasoner-ara",
+        "ARAX": "infores:arax",
         "BTE": "infores:biothings-explorer",
         "GeneticsKP": "infores:genetics-data-provider",
-        "MolePro": "infores:molecular-data-provider",
+        "MolePro": "infores:molepro",
         "RTX-KG2": "infores:rtx-kg2",
         "CHP": "infores:connections-hypothesis",
         "COHD": "infores:cohd",
@@ -557,8 +557,8 @@ def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
         "WellnessKP": "infores:biothings-multiomics-wellness",
         "DrugResponseKP": "infores:biothings-multiomics-drug-response",
         "TumorGeneMutationKP": "infores:biothings-tcga-mut-freq",
-        "ICEES-DILI": "infores:icees",
-        "ICEES-Asthma": "infores:icees"
+        "ICEES-DILI": "infores:icees-dili",
+        "ICEES-Asthma": "infores:icees-asthma"
     }
     return endpoint_map.get(kp_name, kp_name)
 
