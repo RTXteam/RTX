@@ -385,7 +385,7 @@ class ComputeFTEST:
                     EdgeAttribute(attribute_type_id="EDAM:data_1669", original_attribute_name="fisher_exact_test_p-value", value=str(value[1]), value_url=None),
                     EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name="provided_by", value="ARAX", attribute_type_id="biolink:provided_by"),
+                    EdgeAttribute(original_attribute_name="provided_by", value="infores:arax-reasoner-ara", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source"infores:arax-reasoner-ara", value_type_id="biolink:InformationResource"),
                     #EdgeAttribute(original_attribute_name="confidence", value=None, type="biolink:ConfidenceLevel"),
                     #EdgeAttribute(original_attribute_name="weight", value=None, type="metatype:Float")
                 ]
