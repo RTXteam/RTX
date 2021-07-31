@@ -116,58 +116,86 @@
 
   <div class="inputsection" id="qgraph_input">
     <h3 style="display:inline;">Query Graph:</h3>
-    <span style="position:relative;left:70%;top:5px;">
-      <span style="position:relative;right:100px;border:1px solid #000;color:#000;" title="edit query graph" class="clq" onclick="edit_qg(1);">&#9998;</span>
-      <span title="remove all elements from query graph" class="clq" onclick="clear_qg(1);">&#9587;</span>
+    <span class="qgmenu">
+      <span class="qgbutton" title="edit query graph" class="clq" onclick="qg_edit(true);">&#9998; Edit Graph</span>
+      <span class="qgbutton" title="add new node" class="clq" onclick="qg_node('new',true);">&#10010; Node</span>
+      <span class="qgbutton" title="add new edge" class="clq" onclick="qg_edge('new');">&#10010; Edge</span>
+      <span class="qgbutton" title="new query graph" class="clq" onclick="qg_new(true,true);">&#8886; New Graph</span>
     </span><br><br>
     <div class="cytograph_q">
       <div style="height: 100%; width: 100%" id="cy99999"></div>
     </div>
-    <div id="qg_items"></div>
 
-    <div class="pagesection" id="qg_form">
-      Enter new query node:
-      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="enter_node(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add" onClick="add_node_to_query_graph();">
+    <label><input id="showQGjson" type="checkbox">Show JSON in Status window</label>
+    <a class="qgmenu" href="javascript:qg_clean_up(true);selectInput('qjson');">Edit in JSON pane</a>
 
-      <!-- input type="text" class="questionBox" id="newquerynode" onkeydown="enter_node(this);" value="" size="30" -->
-
-      <b>&nbsp;&nbsp;&nbsp;or&nbsp;&nbsp;&nbsp;</b>
-      <span class="qgselect">
-	<select id="allnodetypes" onchange="add_nodeclass_to_query_graph(this.value);">
-	  <option style="border-bottom:1px solid black;" value="">Add a Node by Type&nbsp;&nbsp;&nbsp;&#8675;</option>
-	  <option>...loading</option>
-	</select>
-      </span>
-      <label style="margin-left:200px;">
-          <input id="showQGjson" type="checkbox">
-	  Show JSON in Status Window
-      </label>
-      <br>
-      Enter new relationship:
-      <span class="qgselect">
-	<select id="qg_edge_n1" onchange="get_possible_edges();">
-	  <option style="border-bottom:1px solid black;" value="">Source Node&nbsp;&nbsp;&nbsp;&#8675;</option>
-	  <option>Must have a minimum of 2 nodes</option>
-	</select>
-      </span>
-      <span class="qgselect">
-	<select id="qg_edge_n2" onchange="get_possible_edges();">
-	  <option style="border-bottom:1px solid black;" value="">Target Node&nbsp;&nbsp;&nbsp;&#8675;</option>
-	  <option>Must have a minimum of 2 nodes</option>
-	</select>
-      </span>
-      <span class="qgselect">
-	<select id="qg_edge_type">
-	  <option style="border-bottom:1px solid black;" value="">Edge Type&nbsp;&nbsp;&nbsp;&#8675;</option>
-	  <option>Must have a minimum of 2 nodes</option>
-	</select>
-      </span>
-      <input type="button" class="questionBox button" name="action" value="Add" onClick="add_edge_to_query_graph();">
-      <a style="margin-left:170px;" href="javascript:clean_up_qg(true);selectInput('qjson');">Edit in JSON pane</a>
-      <br>
-      <input type="button" class="questionBox button" name="action" value="QUERY (ARAX)" onClick="postQuery('qGraph','ARAX');"/>
-      <input type="button" class="questionBox button" name="action" value="QUERY (ARS)" onClick="postQuery('qGraph','ARS');"/>
+    <div id="nodeeditor" style="top:400px;left:400px;visibility:hidden;" onfocus="qg_select('node');" tabindex="9999" class="alertbox">
+      <div style="margin-top:0;" class="statushead">Edit Query Node</div>
+      <div class="status" style="cursor:auto; color:black; min-height:300px;" onmousedown="event.stopPropagation();"><br>
+	<table class="sumtab" style="width:100%">
+	  <tr><td>Node ID</td><td style="text-align:right;"><h2 class="qnodeid" id="nodeeditor_id"></h2></td></tr>
+	  <tr><td>ids</td><td id="nodeeditor_ids"></td></tr>
+	  <tr><td>categories</td><td id="nodeeditor_cat"></td></tr>
+	  <tr><td>is_set</td><td><input id="nodeeditor_set" type="checkbox" onchange="qg_setset_for_qnode();"></td></tr>
+          <tr style="background:unset;"><td colspan="2" style="border:0;"><br><br></td></tr>
+	  <tr style="background:unset;"><td style="vertical-align:revert; border:0;">Add CURIE to id list:</td>
+	    <td style="border:0;">
+	      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="qg_enter_curie(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add CURIE" onClick="qg_add_curie_to_qnode();"></td>
+	  </tr>
+          <tr style="background:unset;"><td style="vertical-align:revert; border:0;">
+	      Add Category to list:
+	    </td>
+	    <td style="border:0;">
+	      <span class="qgselect">
+		<select id="allnodetypes" onchange="qg_add_category_to_qnode(this.value);">
+		  <option style="border-bottom:1px solid black;" value="">Add Category&nbsp;&nbsp;&nbsp;&#8675;</option>
+		  <option>...loading</option>
+		</select>
+	      </span>
+            </td>
+	  </tr>
+	</table>
+	<hr>
+	<input type="button" class="questionBox button" name="action" title="Remove this Node from Query Graph" value="Delete Node" onClick="qg_remove_qnode();">
+	<a style="cursor:pointer; margin-top:10px; float:right;" title="close window" onclick="display_qg_popup('node','hide');">Dismiss</a><br><br>
+      </div>
     </div>
+
+    <div id="edgeeditor" style="top:850px;left:500px;visibility:hidden;" onfocus="qg_select('edge');" tabindex="9997" class="alertbox">
+      <div style="margin-top:0;" class="statushead">Edit Query Edge</div>
+      <div class="status" style="cursor:auto; color:black; min-height:300px;" onmousedown="event.stopPropagation();"><br>
+	<table class="sumtab" style="width:100%">
+	  <tr><td>Edge ID</td><td style="text-align:right;"><h2 class="qedgeid" id="edgeeditor_id"></h2></td></tr>
+	  <tr><td>subject</td><td><span class="qgselect"><select id="edgeeditor_subj" onchange="qg_update_qedge();"></select></span></td></tr>
+	  <tr><td>object</td><td><span class="qgselect"><select id="edgeeditor_obj" onchange="qg_update_qedge();"></select></span></td></tr>
+	  <tr><td>predicates</td><td id="edgeeditor_pred"></td></tr>
+	  <tr style="background:unset;"><td colspan="2" style="border:0;"><br><br></td></tr>
+	  <tr style="background:unset;"><td style="vertical-align:revert; border:0;">
+	      Add Predicate to list:
+	    </td>
+	    <td style="border:0;">
+	      <span class="qgselect">
+		<select id="qedgepredicatelist" onchange="qg_add_predicate_to_qedge(this.value);">
+		  <option style="border-bottom:1px solid black;" value="">Add Predicate&nbsp;&nbsp;&nbsp;&#8675;</option>
+		  <option>...loading</option>
+		</select>
+	      </span>
+	    </td>
+	  </tr>
+	  <tr style="background:unset;">
+	    <td style="vertical-align:revert; border:0;">Enter custom Predicate:</td>
+	    <td style="border:0;"><input type="text" class="questionBox" id="qedgepredicatebox" onkeydown="qg_enter_predicate(this);" size="30"></td>
+	  </tr>
+	</table>
+	<hr>
+	<input type="button" class="questionBox button" name="action" title="Remove this Edge from Query Graph" value="Delete Edge" onClick="qg_remove_qedge();">
+	<a style="cursor:pointer; margin-top:10px; float:right;" title="close window" onclick="display_qg_popup('edge','hide');">Dismiss</a><br><br>
+      </div>
+    </div>
+
+    <br>
+    <input type="button" class="questionBox button" name="action" value="QUERY (ARAX)" onClick="postQuery('qGraph','ARAX');"/>
+    <input type="button" class="questionBox button" name="action" value="QUERY (ARS)" onClick="postQuery('qGraph','ARS');"/>
   </div>
   
   <div class="inputsection" id="qjson_input">

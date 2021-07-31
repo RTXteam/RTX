@@ -538,6 +538,40 @@ td {
     color: #333;
 }
 
+.qgmenu {
+    position: relative;
+    right: 25%;
+    top: 11px;
+    float: right;
+}
+.qgbutton {
+    border:1px solid #000;
+    color:#000;
+    padding: 5px;
+}
+.qgbutton:hover {
+    cursor: pointer;
+    background-color: #9bc;
+    color: #333;
+}
+
+.qnodeid {
+    display: inline;
+    background: #ff0;
+    border: 3px solid #f80;
+    padding: 5px 20px;
+    margin-right: -5px;
+}
+.qedgeid {
+    display: inline;
+    background: #f80;
+    border: 3px solid #f80;
+    color: #fff;
+    padding: 5px 20px;
+    margin-right: -5px;
+}
+
+
 .essence {
     font-weight: bold;
     color: #e98300;
@@ -660,4 +694,21 @@ input:checked + .slider:before {
 }
 .tooltiptext::-webkit-scrollbar-thumb {
     background: #c40;
+}
+
+.shake {
+    animation: shake 0.5s;
+}
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
 }
