@@ -5,7 +5,8 @@ projectName="arax"
 namespace="rtx"
 # replace place_holder with values from env var
 # env var's key needs to be the same as the place_holder
-toReplace=('BUILD_VERSION' 'SECRET_FILE')
+# toReplace=('BUILD_VERSION' 'SECRET_FILE')
+toReplace=('BUILD_VERSION')
 
 # export .env values to env vars
 export $(egrep -v '^#' .env)
