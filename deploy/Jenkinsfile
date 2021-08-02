@@ -25,6 +25,9 @@ pipeline {
         steps {
           sh'''
             echo ${TEAM_EXPANDER_OPS_SSHKEY}
+            aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
+            kubectl -n rtx create secret generic test-sshkey --from-literal=${TEAM_EXPANDER_OPS_SSHKEY}
+            # aws --region ${AWS_REGION} sts get-caller-identity
           '''
         }
       }
