@@ -27,7 +27,6 @@ pipeline {
               sshUserPrivateKey(
                 credentialsId: 'team-expander-ops-sshkey',
                 keyFileVariable: 'keyFile',
-                passphraseVariable: 'passphrase',
                 usernameVariable: 'username')
             ]) {
               print 'keyFile=' + keyFile
@@ -35,6 +34,7 @@ pipeline {
               print 'username=' + username
               sh '''
                 echo ${keyFile}
+                kubectl -n rtx create secret generic --from-file=${keyFile}
               '''
             }
           }
