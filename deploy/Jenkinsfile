@@ -18,8 +18,17 @@ pipeline {
         DOCKER_REPO_NAME = "translator-rtx-arax"
         KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-ci-blue-cluster"
         KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
+        TEAM_EXPANDER_OPS_SSHKEY = credentials("team_expander_ops_sshkey")
     }
     stages {
+      stage('Create K8S Secret From Jenkins Secrets') {
+        steps {
+          '''
+            echo ${TEAM_EXPANDER_OPS_SSHKEY }
+          '''
+        }
+      }
+      /*
         stage('Build Version'){
             when { expression { return !params.BUILD_VERSION } }
             steps{
@@ -70,5 +79,6 @@ pipeline {
                 }
             }
         }
+        */
     }
 }
