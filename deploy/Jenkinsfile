@@ -20,6 +20,7 @@ pipeline {
         KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
     }
     stages {
+      /*
       stage('Build Version'){
           when { expression { return !params.BUILD_VERSION } }
           steps{
@@ -78,7 +79,7 @@ pipeline {
               }
           }
       }
-      /*
+      */
       stage('Create K8S Secret From Jenkins Secrets') {
         steps {
           script {
@@ -88,14 +89,16 @@ pipeline {
                 keyFileVariable: 'SECRET_FILE',
                 usernameVariable: 'username')
             ]) {
-              print 'username=' + username
-              sh '''
-                kubectl -n rtx create secret generic test-sshkey --from-file=${keyFile}
-              '''
+              withAWS(credentials:'aws-ifx-deploy') 
+              {
+                sh '''
+                  aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
+                  kubectl -n rtx create secret generic test-sshkey --from-file=${SECRET_FILE}
+                '''
+              }
             }
           }
         }
       }
-      */
     }
 }
