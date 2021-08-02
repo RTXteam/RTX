@@ -279,7 +279,7 @@ class PredictDrugTreatsDisease:
                     relation = parameters['virtual_relation_label']
                     is_defined_by = "ARAX"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                    provided_by = "infores:arax-reasoner-ara"
+                    provided_by = "infores:arax"
                     confidence = None
                     weight = None  # TODO: could make the actual value of the attribute
                     subject_key = source_curie
