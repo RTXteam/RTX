@@ -18,17 +18,26 @@ pipeline {
         DOCKER_REPO_NAME = "translator-rtx-arax"
         KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-ci-blue-cluster"
         KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
-        TEAM_EXPANDER_OPS_SSHKEY = credentials("team-expander-ops-sshkey")
     }
     stages {
       stage('Create K8S Secret From Jenkins Secrets') {
         steps {
-          sh'''
-            echo ${TEAM_EXPANDER_OPS_SSHKEY}
-            aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-            kubectl -n rtx create secret generic test-sshkey --from-literal=team-expander-ops-sshkey="${TEAM_EXPANDER_OPS_SSHKEY}"
-            # aws --region ${AWS_REGION} sts get-caller-identity
-          '''
+          script {
+            withCredentials([
+              sshUserPrivateKey(
+                credentialsId: 'team-expander-ops-sshkey',
+                keyFileVariable: 'keyFile',
+                passphraseVariable: 'passphrase',
+                usernameVariable: 'username')
+            ]) {
+              print 'keyFile=' + keyFile
+              print 'passphrase=' + passphrase
+              print 'username=' + username
+              sh '''
+                echo ${keyFile}
+              '''
+            }
+          }
         }
       }
       /*
