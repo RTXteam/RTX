@@ -4,6 +4,9 @@
 
 replicaCount: 1
 
+secret:
+  secretFile: "SECRET_FILE"
+
 image:
   repository: 853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-rtx-arax
   pullPolicy: IfNotPresent

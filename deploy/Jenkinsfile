@@ -20,76 +20,81 @@ pipeline {
         KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
     }
     stages {
+      stage('Build Version'){
+          when { expression { return !params.BUILD_VERSION } }
+          steps{
+              script {
+                  BUILD_VERSION_GENERATED = VersionNumber(
+                      versionNumberString: 'v${BUILD_YEAR, XX}.${BUILD_MONTH, XX}${BUILD_DAY, XX}.${BUILDS_TODAY}',
+                      projectStartDate:    '1970-01-01',
+                      skipFailedBuilds:    true)
+                  currentBuild.displayName = BUILD_VERSION_GENERATED
+                  env.BUILD_VERSION = BUILD_VERSION_GENERATED
+                  env.BUILD = 'true'
+              }
+          }
+      }
+      stage('Checkout source code') {
+          steps {
+              cleanWs()
+              checkout scm
+          }
+      }
+      stage('Build Docker Image') {
+         when { expression { return env.BUILD == 'true' }}
+          steps {
+            configFileProvider([
+                configFile(fileId: 'configv2.json', targetLocation: 'DockerBuild/configv2.json')
+            ]){
+                script {
+                    docker.build(env.DOCKER_REPO_NAME, "--build-arg SOURCE_FOLDER=./${BUILD_VERSION} --no-cache ./DockerBuild/")
+                    docker.withRegistry('https://853771734544.dkr.ecr.us-east-1.amazonaws.com', 'ecr:us-east-1:aws-ifx-deploy') {
+                        docker.image(env.DOCKER_REPO_NAME).push("${BUILD_VERSION}")
+                    }
+                }
+            }
+          }
+      }
+      stage('Deploy to AWS EKS Blue') {
+          steps {
+              configFileProvider([
+                  configFile(fileId: 'arax-ci-env', targetLocation: 'deploy/.env')
+              ]){
+                  withAWS(credentials:'aws-ifx-deploy') 
+                  withCredentials([
+                    sshUserPrivateKey(
+                      credentialsId: 'team-expander-ops-sshkey',
+                      keyFileVariable: 'SECRET_FILE',
+                      usernameVariable: 'username')
+                  ]) 
+                  {
+                      sh '''
+                      aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
+                      cd deploy && /bin/bash deploy.sh
+                      # aws --region ${AWS_REGION} sts get-caller-identity
+                      '''
+                  }
+              }
+          }
+      }
+      /*
       stage('Create K8S Secret From Jenkins Secrets') {
         steps {
           script {
             withCredentials([
               sshUserPrivateKey(
                 credentialsId: 'team-expander-ops-sshkey',
-                keyFileVariable: 'keyFile',
+                keyFileVariable: 'SECRET_FILE',
                 usernameVariable: 'username')
             ]) {
-              print 'keyFile=' + keyFile
               print 'username=' + username
               sh '''
-                echo ${keyFile}
                 kubectl -n rtx create secret generic test-sshkey --from-file=${keyFile}
               '''
             }
           }
         }
       }
-      /*
-        stage('Build Version'){
-            when { expression { return !params.BUILD_VERSION } }
-            steps{
-                script {
-                    BUILD_VERSION_GENERATED = VersionNumber(
-                        versionNumberString: 'v${BUILD_YEAR, XX}.${BUILD_MONTH, XX}${BUILD_DAY, XX}.${BUILDS_TODAY}',
-                        projectStartDate:    '1970-01-01',
-                        skipFailedBuilds:    true)
-                    currentBuild.displayName = BUILD_VERSION_GENERATED
-                    env.BUILD_VERSION = BUILD_VERSION_GENERATED
-                    env.BUILD = 'true'
-                }
-            }
-        }
-        stage('Checkout source code') {
-            steps {
-                cleanWs()
-                checkout scm
-            }
-        }
-        stage('Build Docker Image') {
-           when { expression { return env.BUILD == 'true' }}
-            steps {
-              configFileProvider([
-                  configFile(fileId: 'configv2.json', targetLocation: 'DockerBuild/configv2.json')
-              ]){
-                  script {
-                      docker.build(env.DOCKER_REPO_NAME, "--build-arg SOURCE_FOLDER=./${BUILD_VERSION} --no-cache ./DockerBuild/")
-                      docker.withRegistry('https://853771734544.dkr.ecr.us-east-1.amazonaws.com', 'ecr:us-east-1:aws-ifx-deploy') {
-                          docker.image(env.DOCKER_REPO_NAME).push("${BUILD_VERSION}")
-                      }
-                  }
-              }
-            }
-        }
-        stage('Deploy to AWS EKS Blue') {
-            steps {
-                configFileProvider([
-                    configFile(fileId: 'arax-ci-env', targetLocation: 'deploy/.env')
-                ]){
-                    withAWS(credentials:'aws-ifx-deploy') {
-                        sh '''
-                        aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-                        cd deploy && /bin/bash deploy.sh
-                        # aws --region ${AWS_REGION} sts get-caller-identity
-                        '''
-                    }
-                }
-            }
-        }
-        */
+      */
     }
 }
