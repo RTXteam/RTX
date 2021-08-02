@@ -30,7 +30,6 @@ pipeline {
                 usernameVariable: 'username')
             ]) {
               print 'keyFile=' + keyFile
-              print 'passphrase=' + passphrase
               print 'username=' + username
               sh '''
                 echo ${keyFile}
