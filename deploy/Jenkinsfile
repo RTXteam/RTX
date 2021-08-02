@@ -60,20 +60,21 @@ pipeline {
               configFileProvider([
                   configFile(fileId: 'arax-ci-env', targetLocation: 'deploy/.env')
               ]){
-                  withAWS(credentials:'aws-ifx-deploy') 
                   withCredentials([
                     sshUserPrivateKey(
                       credentialsId: 'team-expander-ops-sshkey',
                       keyFileVariable: 'SECRET_FILE',
                       usernameVariable: 'username')
-                  ]) 
-                  {
-                      sh '''
-                      aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-                      cd deploy && /bin/bash deploy.sh
-                      # aws --region ${AWS_REGION} sts get-caller-identity
-                      '''
-                  }
+                  ]){
+                    withAWS(credentials:'aws-ifx-deploy') 
+                    {
+                        sh '''
+                        aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
+                        cd deploy && /bin/bash deploy.sh
+                        # aws --region ${AWS_REGION} sts get-caller-identity
+                        '''
+                    }
+                  } 
               }
           }
       }
