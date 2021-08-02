@@ -11,6 +11,8 @@ toReplace=('BUILD_VERSION')
 # export .env values to env vars
 export $(egrep -v '^#' .env)
 
+printenv
+
 # replace variables in values.yaml with env vars
 
 for item in "${toReplace[@]}";
