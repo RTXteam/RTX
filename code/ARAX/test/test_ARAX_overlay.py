@@ -239,7 +239,7 @@ def test_FET_ex1():
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
         assert edge_attributes_dict['is_defined_by'] == 'ARAX'
-        assert edge_attributes_dict['provided_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'infores:arax'
         if edge.relation == 'FET1':
             assert 0 <= float(edge.attributes[0].value) < 0.001
         else:
@@ -284,7 +284,7 @@ def test_FET_ex2():
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
         assert edge_attributes_dict['is_defined_by'] == 'ARAX'
-        assert edge_attributes_dict['provided_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'infores:arax'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 1
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
