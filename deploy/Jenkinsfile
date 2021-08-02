@@ -23,7 +23,7 @@ pipeline {
     stages {
       stage('Create K8S Secret From Jenkins Secrets') {
         steps {
-          '''
+          sh'''
             echo ${TEAM_EXPANDER_OPS_SSHKEY }
           '''
         }
