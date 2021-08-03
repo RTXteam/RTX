@@ -50,20 +50,3 @@ RUN update-rc.d RTX_OpenAPI_production enable
 
 # set production flag to false
 RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py
-
-# copy over configv2.json
-# configv2.json will be served via Jenkins config file instead of from git repo
-COPY configv2.json /mnt/data/orangeboard/production/RTX/code/config_local.json
-# check if correct file has been copied over
-# RUN cat /mnt/data/orangeboard/production/RTX/code/config_local.json
-
-# run following commands to initialze the application
-# this CMD should run after we have placed the database file in the correct place
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py
-
-# run an infinite command to simulate starting service, need to be replaced with actually service command
-CMD ["tail", "-f", "/dev/null"]
-
-# CMD ["service", "apache2", "start"]
-# CMD ["service", "RTX_OpenAPI_production", "start"]
-
