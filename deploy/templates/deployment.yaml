@@ -86,7 +86,7 @@ spec:
       volumes:
         - name: ssh-key-volume
           secret:
-            secretName: test-sshkey
+            secretName: sftp-ssh-key
             defaultMode: 256
         - name: {{ include "arax.fullname" . }}-scripts
           configMap:
