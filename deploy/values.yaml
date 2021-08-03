@@ -4,14 +4,22 @@
 
 replicaCount: 1
 
-secret:
-  secretFile: "SECRET_FILE"
+initContainer:
+  image:
+    repository: 853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-utils
+    pullPolicy: IfNotPresent
+    tag: "sftp"
 
 image:
+  # repository: nginx
+  # pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  # tag: ""
   repository: 853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-rtx-arax
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "BUILD_VERSION"
+  tag: "v2021.0727.1"
+  #  # Overrides the image tag whose default is the chart appVersion.
+  #  tag: "BUILD_VERSION"
 
 imagePullSecrets: []
 nameOverride: ""
