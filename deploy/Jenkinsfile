@@ -108,7 +108,7 @@ pipeline {
                     else
                       echo "$$$$$ no configv2 ConfigMap, creating now"
                     fi
-                    kubectl -n ${NAMESPACE} create configmaps ${CONFIG_JSON_CONFIGMAP} --from-file=deploy/configv2.json
+                    kubectl -n ${NAMESPACE} create configmap ${CONFIG_JSON_CONFIGMAP} --from-file ./deploy/configv2.json
                   '''
                 }
               }
