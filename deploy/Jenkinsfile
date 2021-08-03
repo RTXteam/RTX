@@ -18,9 +18,11 @@ pipeline {
         DOCKER_REPO_NAME = "translator-rtx-arax"
         KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-ci-blue-cluster"
         KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
+        NAMESPACE = "rtx"
+        SECRET_NAME = "sftp-ssh-key"
+        CONFIG_JSON_CONFIGMAP = "configv2"
     }
     stages {
-      /*
       stage('Build Version'){
           when { expression { return !params.BUILD_VERSION } }
           steps{
@@ -41,7 +43,7 @@ pipeline {
               checkout scm
           }
       }
-      stage('Build Docker Image') {
+      stage('Build and Push Docker Image') {
          when { expression { return env.BUILD == 'true' }}
           steps {
             configFileProvider([
@@ -55,6 +57,33 @@ pipeline {
                 }
             }
           }
+      }
+      stage('Create K8S Secret From Jenkins Secrets') {
+        steps {
+          script {
+            withCredentials([
+              sshUserPrivateKey(
+                credentialsId: 'team-expander-ops-sshkey',
+                keyFileVariable: 'SECRET_FILE',
+                usernameVariable: 'username')
+            ]) {
+              withAWS(credentials:'aws-ifx-deploy') 
+              {
+                sh '''
+                  aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
+                  # delete if exists
+                  if [[ $(kubectl -n ${NAMESPACE} get secrets ${SECRET_NAME}) = 0 ]]; then
+                    echo "got secret"
+                    kubectl -n ${NAMESPACE} delete secret ${SECRET_NAME}
+                  else
+                    echo "no hello secret, creating now"
+                  fi
+                  kubectl -n ${NAMESPACE} create secret generic ${SECRET_NAME} --from-file=${SECRET_FILE}
+                '''
+              }
+            }
+          }
+        }
       }
       stage('Deploy to AWS EKS Blue') {
           steps {
@@ -78,27 +107,6 @@ pipeline {
                   } 
               }
           }
-      }
-      */
-      stage('Create K8S Secret From Jenkins Secrets') {
-        steps {
-          script {
-            withCredentials([
-              sshUserPrivateKey(
-                credentialsId: 'team-expander-ops-sshkey',
-                keyFileVariable: 'SECRET_FILE',
-                usernameVariable: 'username')
-            ]) {
-              withAWS(credentials:'aws-ifx-deploy') 
-              {
-                sh '''
-                  aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-                  kubectl -n rtx create secret generic test-sshkey --from-file=${SECRET_FILE}
-                '''
-              }
-            }
-          }
-        }
       }
     }
 }
