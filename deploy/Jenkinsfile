@@ -72,7 +72,7 @@ pipeline {
                 sh '''
                   aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
                   # delete if exists
-                  if [[ $(kubectl -n ${NAMESPACE} get secrets ${SECRET_NAME}) = 0 ]]; then
+                  if kubectl -n ${NAMESPACE} get secrets ${SECRET_NAME}; then
                     echo "got secret"
                     kubectl -n ${NAMESPACE} delete secret ${SECRET_NAME}
                   else
