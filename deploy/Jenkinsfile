@@ -73,16 +73,47 @@ pipeline {
                   aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
                   # delete if exists
                   if kubectl -n ${NAMESPACE} get secrets ${SECRET_NAME}; then
-                    echo "got secret"
+                    echo "$$$$$ got secret"
                     kubectl -n ${NAMESPACE} delete secret ${SECRET_NAME}
                   else
-                    echo "no hello secret, creating now"
+                    echo "$$$$$ no secret, creating now"
                   fi
                   kubectl -n ${NAMESPACE} create secret generic ${SECRET_NAME} --from-file=${SECRET_FILE}
                 '''
               }
             }
           }
+        }
+      }
+      stage('Create K8S ConfigMap From configv2.json') {
+        steps {
+          configFileProvider([
+              configFile(fileId: 'configv2.json', targetLocation: 'deploy/configv2.json')
+          ]){
+            script {
+              withCredentials([
+                sshUserPrivateKey(
+                  credentialsId: 'team-expander-ops-sshkey',
+                  keyFileVariable: 'SECRET_FILE',
+                  usernameVariable: 'username')
+              ]) {
+                withAWS(credentials:'aws-ifx-deploy') 
+                {
+                  sh '''
+                    aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
+                    # delete if exists
+                    if kubectl -n ${NAMESPACE} get configmaps ${CONFIG_JSON_CONFIGMAP}; then
+                      echo "$$$$$ got configv2 ConfigMap"
+                      kubectl -n ${NAMESPACE} delete configmaps ${CONFIG_JSON_CONFIGMAP}
+                    else
+                      echo "$$$$$ no configv2 ConfigMap, creating now"
+                    fi
+                    kubectl -n ${NAMESPACE} create configmaps ${CONFIG_JSON_CONFIGMAP} --from-file=deploy/configv2.json
+                  '''
+                }
+              }
+            }
+          }     
         }
       }
       stage('Deploy to AWS EKS Blue') {
