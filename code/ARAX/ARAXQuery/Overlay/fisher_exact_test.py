@@ -390,7 +390,7 @@ class ComputeFTEST:
                     #EdgeAttribute(original_attribute_name="weight", value=None, type="metatype:Float")
                 ]
                 edge_id = f"{value[0]}_{index}"
-                edge = Edge(predicate='biolink:has_fisher_exact_test_p-value_with', subject=value[2], object=value[3], relation=value[0],
+                edge = Edge(predicate='biolink:has_fisher_exact_test_p_value_with', subject=value[2], object=value[3], relation=value[0],
                             attributes=edge_attribute_list)
                 edge.qedge_keys = [value[0]]
 
@@ -403,7 +403,7 @@ class ComputeFTEST:
             # add the virtual edge to message QG
             if count > 0:
                 self.response.debug(f"Adding virtual edge to message QG")
-                edge_type = ["biolink:has_fisher_exact_test_p-value_with"]
+                edge_type = ["biolink:has_fisher_exact_test_p_value_with"]
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                           self.message.query_graph, self.response)
                 qedge_id = virtual_relation_label
