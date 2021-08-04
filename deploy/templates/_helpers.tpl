@@ -40,7 +40,6 @@ helm.sh/chart: {{ include "arax.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-app: {{ include "arax.fullname" . }}
 {{- end }}
 
 {{/*
@@ -49,7 +48,6 @@ Selector labels
 {{- define "arax.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "arax.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app: {{ include "arax.fullname" . }}
 {{- end }}
 
 {{/*
