@@ -62,7 +62,7 @@ ingress:
   hosts:
     - host: arax.ci.transltr.io
       paths:
-        - path: /*
+        - path: /
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:
