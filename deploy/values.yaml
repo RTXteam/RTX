@@ -80,7 +80,7 @@ ingress:
             service: 
               name: arax 
               port:
-                number: 443
+                number: 80
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:
