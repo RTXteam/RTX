@@ -22,5 +22,5 @@ data:
     sudo service apache2 start
     sudo service RTX_OpenAPI_production start
     # this line is added to stop container completes with exit code 0
-    # tail -f /dev/null
+    tail -f /dev/null
 
