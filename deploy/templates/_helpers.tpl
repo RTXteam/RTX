@@ -49,6 +49,7 @@ Selector labels
 {{- define "arax.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "arax.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app: {{ include "arax.fullname" . }}
 {{- end }}
 
 {{/*
