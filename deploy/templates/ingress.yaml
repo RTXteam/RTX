@@ -47,7 +47,7 @@ spec:
             service:
               name: ssl-redirect
               port: 
-                number: use-annotation
+                number: 443
         - path: /*
           backend:
             service:
