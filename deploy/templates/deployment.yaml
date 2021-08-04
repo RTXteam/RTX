@@ -4,6 +4,7 @@ metadata:
   name: {{ include "arax.fullname" . }}
   labels:
     {{- include "arax.labels" . | nindent 4 }}
+    app: {{ include "arax.fullname" . }}
 spec:
   serviceName: {{ include "arax.fullname" . }}
   {{- if not .Values.autoscaling.enabled }}

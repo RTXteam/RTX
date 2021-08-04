@@ -97,6 +97,7 @@ tolerations:
 
 # nodeSelection affinity(application=arax) such that this deployment will only select the node with that label
 affinity: 
+  # this ensures pod only runs on node with label application=arax
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
       nodeSelectorTerms:
@@ -105,4 +106,15 @@ affinity:
           operator: In
           values:
           - arax
+  # this ensures only ONE pod will run on each node
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchExpressions:
+        - key: app
+          operator: In
+          values:
+          - arax
+      topologyKey: "kubernetes.io/hostname"
+
 
