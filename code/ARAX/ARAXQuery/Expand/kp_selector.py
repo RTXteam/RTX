@@ -23,7 +23,7 @@ class KPSelector:
 
     def __init__(self, log: ARAXResponse):
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
-        self.biolink_version = "1.7.0"
+        self.biolink_version = "2.1.0"
         self.descendants_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/descendants_biolink{self.biolink_version}.pickle"
         self.log = log
         self.all_kps = eu.get_all_kps()

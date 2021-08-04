@@ -407,6 +407,7 @@ def load_canonical_predicates_map(log: ARAXResponse) -> Dict[str, str]:
     map_path = f"{os.path.dirname(os.path.abspath(__file__))}/canonical_predicates.json"
     map_file = pathlib.Path(map_path)
     two_days_ago = datetime.now() - timedelta(hours=48)
+    biolink_version = "2.1.0"
 
     # Create or refresh the map as needed
     if not map_file.exists() or datetime.fromtimestamp(map_file.stat().st_mtime) < two_days_ago:
@@ -418,15 +419,15 @@ def load_canonical_predicates_map(log: ARAXResponse) -> Dict[str, str]:
         else:
             canonical_predicates_map = dict()
 
-        # Grab the Biolink 2.0 yaml file and extract canonical predicate info
+        # Grab the Biolink yaml file and extract canonical predicate info
         try:
             with requests_cache.disabled():
-                response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/2.0.2/biolink-model.yaml",
-                                        timeout=10)  # Canonical predicates were added in 2.0
+                response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{biolink_version}/biolink-model.yaml",
+                                        timeout=10)
         except requests.exceptions.Timeout:
-            log.warning(f"Timed out trying to grab Biolink 2.0 yaml")
+            log.warning(f"Timed out trying to grab Biolink {biolink_version} yaml")
         except Exception:
-            log.warning(f"Ran into a problem grabbing Biolink 2.0 yaml file")
+            log.warning(f"Ran into a problem grabbing Biolink {biolink_version} yaml file")
         else:
             if response.status_code == 200:
                 biolink_model = yaml.safe_load(response.text)
@@ -441,7 +442,7 @@ def load_canonical_predicates_map(log: ARAXResponse) -> Dict[str, str]:
                                 inverse_info["annotations"].get("value"):
                             canonical_predicates_map[predicate] = f"biolink:{inverse_predicate_english.replace(' ', '_')}"
             else:
-                log.warning(f"Got {response.status_code} loading Biolink 2.0 yaml file. Can't refresh.")
+                log.warning(f"Got {response.status_code} loading Biolink {biolink_version} yaml file. Can't refresh.")
         # Save our refreshed data
         with open(map_path, "w+") as output_file:
             json.dump(canonical_predicates_map, output_file)
