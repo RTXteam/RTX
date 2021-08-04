@@ -273,18 +273,16 @@ class KPSelector:
     @staticmethod
     def _get_dtd_meta_map():
         dtd_predicates = {"biolink:treats", "biolink:treated_by"}
-        dtd_meta_map = {"biolink:Drug": {"biolink:Disease": dtd_predicates,
-                                         "biolink:PhenotypicFeature": dtd_predicates,
-                                         "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
-                        "biolink:ChemicalSubstance": {"biolink:Disease": dtd_predicates,
-                                                      "biolink:PhenotypicFeature": dtd_predicates,
-                                                      "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
-                        "biolink:Disease": {"biolink:Drug": dtd_predicates,
-                                            "biolink:ChemicalSubstance": dtd_predicates},
-                        "biolink:PhenotypicFeature": {"biolink:Drug": dtd_predicates,
-                                                      "biolink:ChemicalSubstance": dtd_predicates},
-                        "biolink:DiseaseOrPhenotypicFeature": {"biolink:Drug": dtd_predicates,
-                                                               "biolink:ChemicalSubstance": dtd_predicates}}
+        drug_ish_dict = {"biolink:Drug": dtd_predicates,
+                         "biolink:SmallMolecule": dtd_predicates}
+        disease_ish_dict = {"biolink:Disease": dtd_predicates,
+                            "biolink:PhenotypicFeature": dtd_predicates,
+                            "biolink:DiseaseOrPhenotypicFeature": dtd_predicates}
+        dtd_meta_map = {"biolink:Drug": disease_ish_dict,
+                        "biolink:SmallMolecule": disease_ish_dict,
+                        "biolink:Disease": drug_ish_dict,
+                        "biolink:PhenotypicFeature": drug_ish_dict,
+                        "biolink:DiseaseOrPhenotypicFeature": drug_ish_dict}
         return dtd_meta_map
 
     def _load_descendants_map(self) -> Dict[str, Set[str]]:

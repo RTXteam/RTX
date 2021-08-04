@@ -226,18 +226,6 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
     return standard_kg
 
 
-def get_kp_preferred_prefixes(kp_name: str) -> Union[Dict[str, str], None]:
-    # TODO: Dynamically determine these down the road once meta_knowledge_map endpoint is added to TRAPI
-    preferred_prefixes = {"MolePro": {"biolink:ChemicalSubstance": "CHEMBL.COMPOUND",
-                                      "biolink:Gene": "HGNC",
-                                      "biolink:Disease": "MONDO"},
-                          "GeneticsKP": {"biolink:Gene": "NCBIGene",
-                                         "biolink:Pathway": "GO",
-                                         "biolink:PhenotypicFeature": "EFO",
-                                         "biolink:Disease": "EFO"}}
-    return preferred_prefixes.get(kp_name)
-
-
 def make_qg_use_supported_prefixes(kp_selector, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
     for qnode_key, qnode in qg.nodes.items():
         if qnode.ids:
