@@ -30,8 +30,6 @@ class ARAXExpander:
     def __init__(self):
         self.category_equivalencies = {"biolink:Protein": {"biolink:Gene"},
                                        "biolink:Gene": {"biolink:Protein"},
-                                       "biolink:Drug": {"biolink:ChemicalSubstance"},
-                                       "biolink:ChemicalSubstance": {"biolink:Drug"},
                                        "biolink:Disease": {"biolink:PhenotypicFeature",
                                                            "biolink:DiseaseOrPhenotypicFeature"},
                                        "biolink:PhenotypicFeature": {"biolink:Disease",
