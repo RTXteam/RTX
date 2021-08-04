@@ -51,7 +51,7 @@ service:
   port: 80
 
 ingress:
-  enabled: true
+  enabled: false
   className: ""
   annotations: 
     # kubernete  alb.ingress.kubernetes.io/scheme: internet-facing
