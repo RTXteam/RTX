@@ -17,9 +17,8 @@ image:
   # tag: ""
   repository: 853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-rtx-arax
   pullPolicy: IfNotPresent
-  tag: "v2021.0727.1"
   #  # Overrides the image tag whose default is the chart appVersion.
-  #  tag: "BUILD_VERSION"
+  tag: "BUILD_VERSION"
 
 imagePullSecrets: []
 nameOverride: ""
