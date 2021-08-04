@@ -49,6 +49,7 @@ spec:
               port: 
                 number: 443
         - path: /*
+          pathType: Prefix
           backend:
             service:
               name: arax
