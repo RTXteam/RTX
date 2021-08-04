@@ -803,7 +803,7 @@ def test_issue680():
     actions = [
         "add_qnode(ids=DOID:14330, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -1050,7 +1050,7 @@ def test_issue720_3():
     actions = [
         "add_qnode(key=n00, ids=DOID:14330)",  # parkinson's
         "add_qnode(key=n01, categories=biolink:Protein)",
-        "add_qnode(key=n02, categories=biolink:ChemicalSubstance, ids=CHEMBL.COMPOUND:CHEMBL1489)",
+        "add_qnode(key=n02, categories=biolink:ChemicalEntity, ids=CHEMBL.COMPOUND:CHEMBL1489)",
         "add_qnode(key=n03, categories=biolink:Protein)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:interacts_with)",
@@ -1179,7 +1179,7 @@ def test_issue1119_a():
     # Run a query to identify chemical substances that are both indicated for and contraindicated for our disease
     actions = [
         "add_qnode(name=DOID:3312, key=n00, is_set=True)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, key=e01)",
         "expand(kp=RTX-KG2)",
@@ -1194,7 +1194,7 @@ def test_issue1119_a():
     # Verify those chemical substances aren't returned when we make the contraindicated_for edge kryptonite
     actions = [
         "add_qnode(name=DOID:3312, key=n00, is_set=True)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, exclude=true, key=ex0)",
         "expand(kp=RTX-KG2)",
@@ -1214,7 +1214,7 @@ def test_issue1119_b():
     actions = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:treats)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "add_qnode(categories=biolink:Pathway, key=n03)",
@@ -1236,7 +1236,7 @@ def test_issue1119_c():
     # Test a simple one-hop query with one single-edge option group
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
-        "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:predisposes, option_group_id=1)",
         "expand(kp=RTX-KG2)",
@@ -1254,7 +1254,7 @@ def test_issue1119_c():
     # Make sure the number of results is the same as if we asked only for the required portion
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
-        "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
@@ -1284,7 +1284,7 @@ def test_issue1119_d():
     # Test one-hop query with multiple single-edge option groups and a required 'not' edge
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
-        "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:treats)",
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:affects, option_group_id=1)",
         "add_qedge(key=e02, subject=n00, object=n01, predicates=biolink:disrupts, option_group_id=2)",
@@ -1309,7 +1309,7 @@ def test_issue1119_d():
 def test_issue1146_a():
     actions = [
         "add_qnode(key=n0, ids=MONDO:0008380, categories=biolink:Disease)",
-        "add_qnode(key=n2, categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n2, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n1, categories=biolink:Protein, is_set=true)",
         "add_qedge(key=e0, subject=n2, object=n1, predicates=biolink:physically_interacts_with)",
         "add_qedge(key=e1, subject=n1, object=n0, predicates=biolink:causes)",
@@ -1396,7 +1396,7 @@ def test_multi_node_edgeless_qg():
 def test_issue_1446():
     actions = [
         "add_qnode(ids=HGNC:6284, key=n0, categories=biolink:Gene)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(key=e0,subject=n0,object=n1, predicates=biolink:entity_negatively_regulates_entity)",
         "add_qedge(key=e1,subject=n0,object=n1, predicates=biolink:decreases_activity_of, option_group_id=1)",
         "add_qedge(key=e2,subject=n0,object=n1, predicates=biolink:decreases_expression_of, option_group_id=2)",

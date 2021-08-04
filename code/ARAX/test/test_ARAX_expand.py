@@ -133,7 +133,7 @@ def test_720_multiple_qg_ids_in_different_results():
     actions_list = [
         "add_qnode(key=n00, ids=MONDO:0014324)",
         "add_qnode(key=n01, categories=biolink:Protein)",
-        "add_qnode(key=n02, categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n02, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n03, categories=biolink:Protein)",
         "add_qedge(key=e00, subject=n00, object=n01)",
         "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:physically_interacts_with)",
@@ -207,7 +207,7 @@ def test_branched_query():
 def test_query_that_expands_same_edge_twice():
     actions_list = [
         "add_qnode(key=n00, ids=DOID:9065, categories=biolink:Disease)",
-        "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:treats)",
         "expand(kp=RTX-KG2)",
         "expand(kp=RTX-KG2)",
@@ -273,7 +273,7 @@ def test_query_with_intermediate_curie_node():
     actions_list = [
         "add_qnode(categories=biolink:Protein, key=n00, is_set=True)",
         "add_qnode(ids=HP:0005110, key=n01)",  # atrial fibrillation
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:treats)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
         "expand(kp=RTX-KG2)",
@@ -285,7 +285,7 @@ def test_query_with_intermediate_curie_node():
 def test_847_dont_expand_curie_less_edge():
     actions_list = [
         "add_qnode(key=n00, categories=biolink:Protein)",
-        "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01)",
         "expand(edge_key=e00, kp=RTX-KG2)",
         "return(message=true, store=false)"
@@ -351,7 +351,7 @@ def test_987_override_node_categories():
 def test_cohd_expand_all():
     actions_list = [
         "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=all, COHD_method_top_N=500)",
         "return(message=true, store=false)"
@@ -367,7 +367,7 @@ def test_cohd_expand_all():
 def test_cohd_expand_paired_concept_freq():
     actions_list = [
         "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_top_N=500)",
         "return(message=true, store=false)"
@@ -383,7 +383,7 @@ def test_cohd_expand_paired_concept_freq():
 def test_cohd_expand_observed_expected_ratio():
     actions_list = [
         "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_top_N=500)",
         "return(message=true, store=false)"
@@ -399,7 +399,7 @@ def test_cohd_expand_observed_expected_ratio():
 def test_cohd_expand_chi_square():
     actions_list = [
         "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_top_N=500)",
         "return(message=true, store=false)"
@@ -501,7 +501,7 @@ def test_genetics_kp():
 def test_molepro_query():
     actions_list = [
         "add_qnode(ids=HGNC:9379, categories=biolink:Gene, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=MolePro)",
         "return(message=true, store=false)"
@@ -514,7 +514,7 @@ def test_exclude_edge_parallel():
     # First run a query without any kryptonite edges to get a baseline
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:causes, key=e01)",
         "expand(kp=RTX-KG2)",
@@ -527,7 +527,7 @@ def test_exclude_edge_parallel():
     # Then exclude the contraindicated edge and make sure the appropriate nodes are blown away
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:causes, exclude=true, key=e01)",
         "expand(kp=RTX-KG2)",
@@ -547,7 +547,7 @@ def test_exclude_edge_perpendicular():
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
-        f"add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        f"add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
         # 'Exclude' portion (just optional for now to get a baseline)
@@ -565,7 +565,7 @@ def test_exclude_edge_perpendicular():
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
-        f"add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        f"add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
         # 'Exclude' portion
@@ -584,7 +584,7 @@ def test_exclude_edge_ordering():
     # This test makes sures that kryptonite qedges are expanded AFTER their adjacent qedges
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=e01)",
         "expand(kp=RTX-KG2, edge_key=e00)",
@@ -594,7 +594,7 @@ def test_exclude_edge_ordering():
     nodes_by_qg_id_a, edges_by_qg_id_a = _run_query_and_do_standard_testing(actions_list)
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=e01)",
         "expand(kp=RTX-KG2)",
@@ -603,7 +603,7 @@ def test_exclude_edge_ordering():
     nodes_by_qg_id_b, edges_by_qg_id_b = _run_query_and_do_standard_testing(actions_list)
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=e01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
         "expand(kp=RTX-KG2)",
@@ -619,7 +619,7 @@ def test_exclude_edge_no_results():
     # Tests query with an exclude edge that doesn't have any matches in the KP (shouldn't error out)
     actions = [
         "add_qnode(name=DOID:3312, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:not_a_real_edge_type, exclude=true, key=e01)",
         "expand(kp=RTX-KG2)",
@@ -632,7 +632,7 @@ def test_option_group_query_one_hop():
     # Tests a simple one-hop query with an optional edge
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
-        "add_qnode(key=n01, categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:affects, option_group_id=1)",
         "expand(kp=RTX-KG2)",
@@ -790,7 +790,7 @@ def test_multiomics_wellness_kp():
 def test_multiomics_drug_response_kp():
     actions_list = [
         "add_qnode(ids=NCBIGene:7157, categories=biolink:Gene, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=DrugResponseKP)",
         "return(message=true, store=false)"
@@ -859,7 +859,7 @@ def test_constraint_validation():
           },
           "nodes": {
             "n00": {
-              "categories": ["biolink:ChemicalSubstance"],
+              "categories": ["biolink:ChemicalEntity"],
               "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
             },
             "n01": {
@@ -982,7 +982,7 @@ def test_almost_cycle_1565():
     actions_list = [
         "add_qnode(ids=MONDO:0010161, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n2)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n2)",
         "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:related_to)",
         "add_qedge(subject=n1, object=n2, key=e1, predicates=biolink:related_to)",
         "add_qedge(subject=n0, object=n2, key=e2, predicates=biolink:related_to)",
@@ -997,7 +997,7 @@ def test_auto_pruning_two_hop():
     actions_list = [
         "add_qnode(ids=DOID:14330, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1, is_set=true)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n2)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n2)",
         "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:related_to)",
         "add_qedge(subject=n1, object=n2, key=e1, predicates=biolink:related_to)",
         "expand(prune_threshold=200)",
