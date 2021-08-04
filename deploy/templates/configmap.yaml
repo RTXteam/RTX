@@ -10,7 +10,7 @@ data:
     # printenv
     # cat /etc/ssh-key/ssh-key-SECRET_FILE
     echo "Calculating MD5 of all files and download if needed... "
-    # sftp -i /etc/ssh-key/ssh-key-SECRET_FILE -o StrictHostKeyChecking=no -pr team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/databases/ /
+    sftp -i /etc/ssh-key/ssh-key-SECRET_FILE -o StrictHostKeyChecking=no -pr team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/databases/ /
     # tail -f /dev/null
   start_app.sh: |-
     #!/bin/bash
