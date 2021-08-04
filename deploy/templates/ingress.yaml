@@ -42,13 +42,18 @@ spec:
       http:
         paths:
         - path: /*
+          pathType: Prefix
           backend:
-            serviceName: ssl-redirect
-            servicePort: use-annotation
+            service:
+              name: ssl-redirect
+              port: 
+                number: use-annotation
         - path: /*
           backend:
-            serviceName: arax
-            servicePort: 80
+            service:
+              name: arax
+              port:
+                number: 80
         # paths:
         #   {{- range .paths }}
         #   - path: {{ .path }}
