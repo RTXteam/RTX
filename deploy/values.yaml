@@ -7,7 +7,7 @@ replicaCount: 1
 initContainer:
   image:
     repository: 853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-utils
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "sftp"
 
 image:
