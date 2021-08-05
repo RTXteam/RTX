@@ -28,7 +28,7 @@ data:
           #                                                                              #
           ################################################################################"
     # always get new md5 info
-    printf "Getting MD5 infor from sftp server...."
+    printf "Getting MD5 info from sftp server....\n"
     sftp -i /etc/ssh-key/ssh-key-SECRET_FILE -o StrictHostKeyChecking=no -pr ${sftp_url}/md5_sums/ $md5_sums_new
     printf '\n'
     # loop through MD5 infos 
