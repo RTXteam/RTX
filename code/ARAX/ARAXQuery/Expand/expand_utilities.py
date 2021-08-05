@@ -425,10 +425,11 @@ def load_canonical_predicates_map(log: ARAXResponse) -> Dict[str, str]:
                     if info.get("inverse"):
                         inverse_predicate_english = info["inverse"]
                         inverse_info = biolink_model["slots"][inverse_predicate_english]
-                        if inverse_info.get("annotations") and \
-                                inverse_info["annotations"].get("tag") == "biolink:canonical_predicate" and \
-                                inverse_info["annotations"].get("value"):
-                            canonical_predicates_map[predicate] = f"biolink:{inverse_predicate_english.replace(' ', '_')}"
+                        if inverse_info.get("annotations"):
+                            # Hack around a bug in the biolink yaml file
+                            annotations = inverse_info["annotations"][0] if isinstance(inverse_info["annotations"], list) else inverse_info["annotations"]
+                            if annotations.get("tag") == "biolink:canonical_predicate" and annotations.get("value"):
+                                canonical_predicates_map[predicate] = f"biolink:{inverse_predicate_english.replace(' ', '_')}"
             else:
                 log.warning(f"Got {response.status_code} loading Biolink {biolink_version} yaml file. Can't refresh.")
         # Save our refreshed data
