@@ -7,6 +7,7 @@ metadata:
 data:
   download_database.sh: |-
     #!/bin/bash
+    tail -f /dev/null
     # output info used for dev
     # The MD5 "/md5_sums_new/KG2.6.7/map_v1.0_KG2.6.7.txt.md5" is different from "/md5_sums_local/KG2.6.7/map_v1.0_KG2.6.7.txt.md5"
     # team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/databases/KG2.6.7/map_v1.0_KG2.6.7.txt
