@@ -45,7 +45,7 @@ spec:
         - name: {{ .Chart.Name }}-init-container
           image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
           command:
-            - '/bin/bash ./download_database.sh'
+            - './download_database.sh'
           volumeMounts:
             - name: ssh-key-volume
               mountPath: "/etc/ssh-key"
