@@ -445,7 +445,7 @@ def test_dtd_expand_2():
 def test_ngd_expand():
     actions_list = [
         "add_qnode(name=MONDO:0007156, key=n00)",
-        "add_qnode(categories=biolink:Drug, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=NGD)",
         "return(message=true, store=false)"
@@ -457,7 +457,7 @@ def test_ngd_expand():
 def test_chp_expand_1():
     actions_list = [
         "add_qnode(ids=ENSEMBL:ENSG00000162419, key=n00)",
-        "add_qnode(categories=biolink:Drug, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=CHP, CHP_survival_threshold=500)",
         "return(message=true, store=false)"
@@ -473,7 +473,7 @@ def test_chp_expand_1():
 def test_chp_expand_2():
     actions_list = [
         "add_qnode(ids=[ENSEMBL:ENSG00000124532,ENSEMBL:ENSG00000075975,ENSEMBL:ENSG00000104774], key=n00)",
-        "add_qnode(categories=biolink:Drug, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=CHP, CHP_survival_threshold=500)",
         "return(message=true, store=false)"
@@ -551,7 +551,7 @@ def test_exclude_edge_perpendicular():
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
         # 'Exclude' portion (just optional for now to get a baseline)
-        f"add_qnode(categories=biolink:Drug, key=nx0, option_group_id=1, ids=[{exclude_curies}])",
+        f"add_qnode(categories=biolink:ChemicalEntity, key=nx0, option_group_id=1, ids=[{exclude_curies}])",
         "add_qedge(subject=n01, object=nx0, key=ex0, option_group_id=1, predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
@@ -569,7 +569,7 @@ def test_exclude_edge_perpendicular():
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
         # 'Exclude' portion
-        f"add_qnode(categories=biolink:Drug, key=nx0, ids=[{exclude_curies}])",
+        f"add_qnode(categories=biolink:ChemicalEntity, key=nx0, ids=[{exclude_curies}])",
         "add_qedge(subject=n01, object=nx0, key=ex0, exclude=True, predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
@@ -678,7 +678,7 @@ def test_category_and_predicate_format():
 def test_issue_1212():
     # If a qnode curie isn't recognized by synonymizer, shouldn't end up with results when using KG2c
     actions_list = [
-        "add_qnode(ids=FAKE:Curie, categories=biolink:Drug, key=n00)",
+        "add_qnode(ids=FAKE:Curie, categories=biolink:ChemicalEntity, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=RTX-KG2)",
@@ -690,7 +690,7 @@ def test_issue_1212():
 def test_issue_1314():
     # KG2 should return answers for "treated_by" (even though it only contains "treats" edges)
     actions_list = [
-        "add_qnode(key=n0, ids=DRUGBANK:DB00394, categories=biolink:Drug)",
+        "add_qnode(key=n0, ids=DRUGBANK:DB00394, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n1, categories=biolink:Disease)",
         "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:treated_by)",
         "expand(kp=RTX-KG2)",
@@ -736,7 +736,7 @@ def test_issue_1236_b():
 
 def test_kg2_predicate_hierarchy_reasoning():
     actions_list = [
-        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, categories=biolink:Drug, key=n00)",
+        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, categories=biolink:ChemicalEntity, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:affects)",
         "expand(kp=RTX-KG2)",
@@ -752,7 +752,7 @@ def test_issue_1373_pinned_curies():
     actions_list = [
         "add_qnode(ids=chembl.compound:CHEMBL2108129, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
-        "add_qnode(categories=biolink:Drug, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:physically_interacts_with)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(kp=RTX-KG2)",
@@ -916,7 +916,7 @@ def test_curie_prefix_conversion_1537():
                         "is_set": False
                     },
                     "n3": {
-                        "categories": ["biolink:Drug"],
+                        "categories": ["biolink:ChemicalEntity"],
                         "is_set": False
                     }
                 }
