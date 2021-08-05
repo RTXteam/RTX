@@ -58,7 +58,7 @@ pipeline {
             }
           }
       }
-      stage('Create K8S Secret From Jenkins Secrets') {
+      stage('Create K8S Secret sftp-ssh-key From Jenkins Secrets') {
         steps {
           script {
             withCredentials([
@@ -91,26 +91,19 @@ pipeline {
               configFile(fileId: 'configv2.json', targetLocation: 'deploy/configv2.json')
           ]){
             script {
-              withCredentials([
-                sshUserPrivateKey(
-                  credentialsId: 'team-expander-ops-sshkey',
-                  keyFileVariable: 'SECRET_FILE',
-                  usernameVariable: 'username')
-              ]) {
-                withAWS(credentials:'aws-ifx-deploy') 
-                {
-                  sh '''
-                    aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-                    # delete if exists
-                    if kubectl -n ${NAMESPACE} get configmaps ${CONFIG_JSON_CONFIGMAP}; then
-                      echo "$$$$$ got configv2 ConfigMap"
-                      kubectl -n ${NAMESPACE} delete configmaps ${CONFIG_JSON_CONFIGMAP}
-                    else
-                      echo "$$$$$ no configv2 ConfigMap, creating now"
-                    fi
-                    kubectl -n ${NAMESPACE} create configmap ${CONFIG_JSON_CONFIGMAP} --from-file ./deploy/configv2.json
-                  '''
-                }
+              withAWS(credentials:'aws-ifx-deploy') 
+              {
+                sh '''
+                  aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
+                  # delete if exists
+                  if kubectl -n ${NAMESPACE} get configmaps ${CONFIG_JSON_CONFIGMAP}; then
+                    echo "$$$$$ got configv2 ConfigMap"
+                    kubectl -n ${NAMESPACE} delete configmaps ${CONFIG_JSON_CONFIGMAP}
+                  else
+                    echo "$$$$$ no configv2 ConfigMap, creating now"
+                  fi
+                  kubectl -n ${NAMESPACE} create configmap ${CONFIG_JSON_CONFIGMAP} --from-file ./deploy/configv2.json
+                '''
               }
             }
           }     
