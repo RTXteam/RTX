@@ -63,4 +63,5 @@ done
 
 # rename new MD5 to local
 printf 'renaming  "%s" to "%s"...\n' $md5_sums_new $md5_sums_local
+rm -rf $md5_sums_local
 mv $md5_sums_new $md5_sums_local
