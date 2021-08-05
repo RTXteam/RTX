@@ -28,23 +28,10 @@ spec:
       serviceAccountName: {{ include "arax.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-        # initContainers:
-        #   - name: {{ .Chart.Name }}-init-container
-        #     image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
-        #     command:
-        #       - './download_database.sh'
-        #     volumeMounts:
-        #       - name: ssh-key-volume
-        #         mountPath: "/etc/ssh-key"
-        #       - name: {{ include "arax.fullname" . }}-scripts
-        #         mountPath: /download_database.sh
-        #         subPath: download_database.sh
-        #       - name: {{ include "arax.fullname" . }}-pvc
-        #         mountPath: /databases
-      containers:
+      initContainers:
         - name: {{ .Chart.Name }}-init-container
           image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: Always
+          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
           command:
             - './download_database.sh'
           volumeMounts:
@@ -55,6 +42,7 @@ spec:
               subPath: download_database.sh
             - name: {{ include "arax.fullname" . }}-pvc
               mountPath: /databases
+      containers:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
