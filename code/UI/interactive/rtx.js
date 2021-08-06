@@ -942,7 +942,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges","Sources"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges","Sources"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -973,6 +973,8 @@ function process_ars_message(ars_msg, level) {
     else if (ars_msg.status == 'Running')
 	td.className = 'essence';
     td.appendChild(document.createTextNode(ars_msg.status));
+    if (ars_msg.code)
+        td.appendChild(document.createTextNode(" / "+ars_msg.code));
     tr.appendChild(td);
     td = document.createElement("td");
 
@@ -1506,18 +1508,31 @@ function render_response(respObj,dispjson) {
 	td.colSpan = "2";
 	tr.appendChild(td);
 	table.appendChild(tr);
-	var previous = 'RandomTextToPurposelyTriggerThickTopBorderForFirstRow';
+	var previous0 = 'RandomTextToPurposelyTriggerThickTopBorderForFirstRowAndRepeatedDisplayOfPredicate';
+	var previous1 = 'RandomTextToOmitRepatedDisplayOfPredicateProviderType';
 	for (var prov in respObj.validation_result.provenance_summary.provenance_counts) {
-	    var changed = false;
-	    if (previous != respObj.validation_result.provenance_summary.provenance_counts[prov][0])
-		changed = true;
-            previous = respObj.validation_result.provenance_summary.provenance_counts[prov][0];
+	    var changed0 = false;
+	    var changed1 = false;
+	    if (previous0 != respObj.validation_result.provenance_summary.provenance_counts[prov][0]) {
+		changed0 = true;
+		changed1 = true;
+	    }
+	    else if (previous1 != respObj.validation_result.provenance_summary.provenance_counts[prov][1])
+		changed1 = true;
+
+	    previous0 = respObj.validation_result.provenance_summary.provenance_counts[prov][0];
+            previous1 = respObj.validation_result.provenance_summary.provenance_counts[prov][1];
+
+	    if (!changed0)
+		respObj.validation_result.provenance_summary.provenance_counts[prov][0] = '';
+	    if (!changed1)
+		respObj.validation_result.provenance_summary.provenance_counts[prov][1] = '';
 
 	    tr = document.createElement("tr");
             tr.className = 'hoverable';
 	    for (var pc of respObj.validation_result.provenance_summary.provenance_counts[prov]) {
 		td = document.createElement("td");
-		if (changed)
+		if (changed0)
 		    td.style.borderTop = "2px solid #444";
 		td.appendChild(document.createTextNode(pc));
 		tr.appendChild(td);
@@ -1526,7 +1541,7 @@ function render_response(respObj,dispjson) {
 
 	    // fancy bar bar
 	    td = document.createElement("td");
-            if (changed)
+            if (changed0)
 		td.style.borderTop = "2px solid #444";
 	    var span = document.createElement("span");
 	    span.className = "bar";
@@ -1545,7 +1560,7 @@ function render_response(respObj,dispjson) {
 	    table.appendChild(tr);
 	}
 
-	//// use same table so it is all nicely aligned
+	// use same table so it is all nicely aligned
         tr = document.createElement("tr");
 	td = document.createElement("td");
 	td.colSpan = "5";
@@ -1848,7 +1863,7 @@ function process_graph(gne,gid,trapi) {
 	if (gedge.predicates)
 	    gedge.type = gedge.predicates[0];
 
-        var tmpdata = { "data" : gedge }; // already contains id(?)
+        var tmpdata = { "data" : gedge };
         cytodata[gid].push(tmpdata);
     }
 
@@ -1856,14 +1871,13 @@ function process_graph(gne,gid,trapi) {
     if (gid == 99999) {
 	for (var id in gne.nodes) {
 	    var gnode = gne.nodes[id];
-
 	    qgids.push(id);
 
-	    var tmpdata = { "ids"        : gnode.ids,
+	    var tmpdata = { "ids"        : gnode.ids ? gnode.ids : [],
 			    "is_set"     : gnode.is_set,
-			    "_name"      : gnode.name,
+			    "_names"     : gnode.ids ? gnode.ids : [],
 			    "_desc"      : gnode.description,
-			    "categories" : gnode.categories
+			    "categories" : gnode.categories ? gnode.categories : []
 			  };
 
 	    input_qg.nodes[id] = tmpdata;
@@ -1871,12 +1885,11 @@ function process_graph(gne,gid,trapi) {
 
 	for (var id in gne.edges) {
             var gedge = gne.edges[id];
-
 	    qgids.push(id);
 
 	    var tmpdata = { "subject"    : gedge.subject,
 			    "object"     : gedge.object,
-			    "predicates" : gedge.predicates
+			    "predicates" : gedge.predicates ? gedge.predicates : []
 			  };
 	    input_qg.edges[id] = tmpdata;
 	}
@@ -1910,6 +1923,8 @@ function process_results(reslist,kg,mainreasoner) {
     all_nodes['n/a'] = 10000; // for eau_du_essence
 
     var num = 0;
+    var results_fragment = document.createDocumentFragment();
+
     for (var result of reslist) {
 	num++;
 
@@ -1951,8 +1966,6 @@ function process_results(reslist,kg,mainreasoner) {
 	    (rsrc=="ImProving")? "simp" :
 	    "p0";
 
-	var result_container = document.getElementById("result_container");
-
         var div = document.createElement("div");
         div.id = 'h'+num+'_div';
 	div.title = 'Click to expand / collapse result '+num;
@@ -1978,7 +1991,7 @@ function process_results(reslist,kg,mainreasoner) {
 	span100.appendChild(span);
 
 	div.appendChild(span100);
-	result_container.appendChild(div);
+	results_fragment.appendChild(div);
 
         div = document.createElement("div");
         div.id = 'a'+num+'_div';
@@ -2066,7 +2079,7 @@ function process_results(reslist,kg,mainreasoner) {
         table.appendChild(tr);
 
 	div.appendChild(table);
-	result_container.appendChild(div);
+	results_fragment.appendChild(div);
 
 
         cytodata[num] = [];
@@ -2095,6 +2108,8 @@ function process_results(reslist,kg,mainreasoner) {
 	}
 
     }
+
+    document.getElementById("result_container").appendChild(results_fragment);
 }
 
 
@@ -2497,19 +2512,21 @@ function qg_new(msg,nodes) {
 }
 
 function qg_node(id,render) {
+    var daname = 'NamedThing';
+
     if (id == 'new') {
 	id = get_qg_id('n');
 	var newqnode = {};
 	newqnode.ids = [];
 	newqnode.categories = [];
 	newqnode.is_set = false;
-	newqnode._name = 'something';
+	newqnode._names = [];
 
 	input_qg.nodes[id] = newqnode;
 
 	cyobj[99999].add( {
 	    "data" : { "id"   : id,
-		       "name" : newqnode._name,
+		       "name" : daname,
 		       "type" : '',
 		       "set"  : newqnode.is_set,
 		       "parentdivnum" : 99999 },
@@ -2521,9 +2538,33 @@ function qg_node(id,render) {
 	cyobj[99999].getElementById(id).select();
 	UIstate.shakeit = true;
     }
+    else {  // need to update name?
+	if (input_qg.nodes[id]['_names'].length > 0) {
+	    daname = input_qg.nodes[id]['_names'][0];
+	    if (input_qg.nodes[id]['_names'].length == 2)
+		daname += ", "+input_qg.nodes[id]['_names'][1];
+	    else if (input_qg.nodes[id]['_names'].length > 2)
+		daname += " +"+(input_qg.nodes[id]['_names'].length - 1);
+	}
+        else if (input_qg.nodes[id]['categories'].length > 0) {
+	    daname = '[ ' + input_qg.nodes[id]['categories'][0].replace("biolink:","");
+
+	    if (input_qg.nodes[id]['categories'].length == 2)
+		daname += ", "+input_qg.nodes[id]['categories'][1].replace("biolink:","");
+	    else if (input_qg.nodes[id]['categories'].length > 2)
+		daname += " +"+(input_qg.nodes[id]['categories'].length - 1);
+	    daname += ' ]';
+	}
+
+	if (daname != cyobj[99999].getElementById(id).data('name'))
+	    cyobj[99999].getElementById(id).data('name',daname);
+
+    }
+
     display_qg_popup('node','show');
 
     document.getElementById('nodeeditor_id').innerHTML = id;
+    document.getElementById('nodeeditor_name').innerHTML = daname;
 
     var htmlnode = document.getElementById('nodeeditor_ids');
     htmlnode.innerHTML = '';
@@ -2541,6 +2582,8 @@ function qg_node(id,render) {
 	    htmlnode.appendChild(document.createElement("br"));
 	}
     }
+    else
+	input_qg.nodes[id].ids = [];
 
     htmlnode = document.getElementById('nodeeditor_cat');
     htmlnode.innerHTML = '';
@@ -2558,6 +2601,8 @@ function qg_node(id,render) {
 	    htmlnode.appendChild(document.createElement("br"));
 	}
     }
+    else
+	input_qg.nodes[id].categories = [];
 
     document.getElementById('nodeeditor_set').checked = input_qg.nodes[id].is_set;
     UIstate.editnodeid = id;
@@ -2637,13 +2682,12 @@ async function qg_add_curie_to_qnode() {
         document.getElementById("statusdiv").innerHTML = "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+thing+"</i> in our knowledge graph.</p>";
 	sesame('openmax',statusdiv);
 
-	if (!input_qg.nodes[id]['ids'].includes(bestthing.curie))
+	if (!input_qg.nodes[id]['ids'].includes(bestthing.curie)) {
 	    input_qg.nodes[id]['ids'].push(bestthing.curie);
-
-        if (!input_qg.nodes[id]['_name'] || input_qg.nodes[id]['_name'] == 'something') {
-	    input_qg.nodes[id]['_name'] = bestthing.name;
-	    cyobj[99999].getElementById(id).data('name', bestthing.name);
+	    input_qg.nodes[id]['_names'].push(bestthing.name);
 	}
+
+	//cyobj[99999].getElementById(id).data('name', bestthing.name);
 
 	qg_add_category_to_qnode(bestthing.type);
 
@@ -2664,8 +2708,10 @@ function qg_remove_curie_from_qnode(cur) {
     if (!id) return;
 
     var idx = input_qg.nodes[id]['ids'].indexOf(cur);
-    if (idx > -1)
+    if (idx > -1) {
 	input_qg.nodes[id]['ids'].splice(idx, 1);
+	input_qg.nodes[id]['_names'].splice(idx, 1);
+    }
 
     qg_node(id);
 }
@@ -2762,6 +2808,8 @@ function qg_edge(id) {
 	    htmlnode.appendChild(document.createElement("br"));
 	}
     }
+    else
+	input_qg.edges[id].predicates = [];
 
     if (document.getElementById("showQGjson").checked) {
 	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
@@ -2775,7 +2823,7 @@ function qg_update_qnode_list() {
     for (node of Object.keys(input_qg.nodes).sort()) {
 	var opt = document.createElement('option');
 	opt.value = node;
-	opt.innerHTML = node+":"+input_qg.nodes[node]._name;
+	opt.innerHTML = node+":"+cyobj[99999].getElementById(node).data('name');
 	document.getElementById('edgeeditor_subj').appendChild(opt);
 	document.getElementById('edgeeditor_obj').appendChild(opt.cloneNode(true));
     }
@@ -2851,7 +2899,6 @@ function qg_update_qedge() {
     cylayout(99999,"breadthfirst");
 }
 
-// fix
 function qg_edit(msg) {
     cytodata[99999] = [];
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
@@ -2861,19 +2908,16 @@ function qg_edit(msg) {
 
     for (var gid in input_qg.nodes) {
 	var gnode = input_qg.nodes[gid];
-	var name = "";
-	if (gnode.name)       { name = gnode.name;}
-	else if (gnode.ids)   { name = gnode.ids[0];}
-	else if (gnode.categories)  { name = gnode.categories[0] + "s?";}
-	else                  { name = "(Any)";}
 
         cyobj[99999].add( {
 	    "data" : {
 		"id"   : gid,
-		"name" : name,
+		"name" : 'NamedThing', // placeholder
 		"type" : gnode.categories ? gnode.categories[0] : null,
 		"parentdivnum" : 99999 },
 	} );
+
+	qg_node(gid);
     }
 
     for (var eid in input_qg.edges) {
@@ -2886,6 +2930,8 @@ function qg_edit(msg) {
 		"type"   : gedge.predicates ? gedge.predicates[0] : null,
 		"parentdivnum" : 99999 }
 	} );
+
+	qg_edge(eid);
     }
 
     cylayout(99999,"breadthfirst");
@@ -3017,7 +3063,7 @@ function qg_display_edge_predicates(all) {
 	preds_node.appendChild(opt);
     }
     else {
-	opt.innerHTML = "Add Predicate&nbsp;("+preds.length+")&nbsp;&nbsp;&nbsp;&#8675;";
+	opt.innerHTML = "Add Predicate to Edge&nbsp;("+preds.length+")&nbsp;&nbsp;&nbsp;&#8675;";
 	preds_node.appendChild(opt);
 
 	for (const p of preds) {
@@ -3029,7 +3075,7 @@ function qg_display_edge_predicates(all) {
     }
 }
 
-
+// unused at the moment
 function add_nodeclass_to_query_graph(nodetype) {
     document.getElementById("allnodetypes").value = '';
     document.getElementById("allnodetypes").blur();
@@ -3040,7 +3086,7 @@ function add_nodeclass_to_query_graph(nodetype) {
 	add_nodetype_to_query_graph(nodetype);
 
 }
-
+// unused at the moment
 function add_nodetype_to_query_graph(nodetype) {
     document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
     var qgid = get_qg_id('n');
@@ -3064,7 +3110,7 @@ function add_nodetype_to_query_graph(nodetype) {
 
     input_qg.nodes[qgid] = tmpdata;
 }
-
+// unused at the moment
 function add_nodelist_to_query_graph(nodetype) {
     var list = nodetype.split("LIST_")[1];
 
@@ -3100,7 +3146,7 @@ function qg_clean_up(xfer) {
 	    gnode.ids = get_list_as_curie_array(list);
 	}
 
-	for (var att of ["_name","_desc"] ) {
+	for (var att of ["_names","_desc"] ) {
 	    if (gnode.hasOwnProperty(att))
 		delete gnode[att];
 	}
