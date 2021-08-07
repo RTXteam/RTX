@@ -1,6 +1,7 @@
 {{- $fullName := include "arax.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
-apiVersion: extensions/v1beta1
+# apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ $fullName }}
@@ -14,10 +15,18 @@ spec:
       http:
         paths:
         - path: /*
+          pathType: Prefix
           backend:
-            serviceName: ssl-redirect
-            servicePort: use-annotation
-        - path: /*
-          backend:
-            serviceName: {{ $fullName }}
-            servicePort: {{ $svcPort }} 
+            service:
+              name: {{ $fullName }}
+              port:
+                number: {{ $svPort }}
+
+          # - path: /*
+          #   backend:
+          #     serviceName: ssl-redirect
+          #     servicePort: use-annotation
+          # - path: /*
+          #   backend:
+          #     serviceName: {{ $fullName }}
+          #     servicePort: {{ $svcPort }} 
