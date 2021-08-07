@@ -25,6 +25,8 @@ spec:
           volumeMounts:
             - name: ssh-key-volume
               mountPath: "/etc/ssh-key"
+            - name: configv2
+              mountPath: /configv2
             - name: {{ include "arax.fullname" . }}-scripts
               mountPath: /download_database.sh
               subPath: download_database.sh
