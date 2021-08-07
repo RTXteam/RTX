@@ -23,13 +23,13 @@ md5_sums_local="/databases/md5_sums_local"
 
 # welcome
 echo "
-      ################################################################################
+      ################################################################################## 
       #                                                                              #
       #                                                                              #
       #                      ARAX Database Download Utility                          #
       #                                                                              #
       #                                                                              #
-      ################################################################################"
+      ##################################################################################"
 
 # build db_arr which includes all needed db files in configv2.json
 echo "Reading ${confgi_file} and building new db_arr specified in ${config_file}....."
