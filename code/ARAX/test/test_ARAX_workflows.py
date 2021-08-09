@@ -189,7 +189,7 @@ def test_FET_example_1():
     assert response.status == 'OK'
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation is not None and x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 3
@@ -208,7 +208,7 @@ def test_FET_example_1():
     assert len(query_node_keys) == 4
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p-value_with' in query_edge.predicates
+        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -247,7 +247,7 @@ def test_FET_example_2():
     assert response.status == 'OK'
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation is not None and x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 4
@@ -266,7 +266,7 @@ def test_FET_example_2():
     assert len(query_node_keys) == 5
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p-value_with' in query_edge.predicates
+        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -314,7 +314,7 @@ def test_FET_example_3():
     assert response.status == 'OK'
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 6
@@ -333,7 +333,7 @@ def test_FET_example_3():
     assert len(query_node_keys) == 5
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p-value_with' in query_edge.predicates
+        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -361,7 +361,7 @@ def test_FET_example_4():
     assert response.status == 'OK'
     assert message.n_results > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation and x.relation.find("FET") != -1]
     FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 2
@@ -383,7 +383,7 @@ def test_FET_example_4():
     assert len(query_node_keys) == 3
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p-value_with' in query_edge.predicates
+        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
