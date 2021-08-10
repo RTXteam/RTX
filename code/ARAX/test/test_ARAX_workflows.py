@@ -81,7 +81,7 @@ def test_option_group_id():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:3312, key=n00)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, predicates=biolink:indicated_for, option_group_key=a, id=e00)",
             "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, option_group_key=1, id=e01)",
             "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -97,7 +97,7 @@ def test_exclude():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:3312, key=n00)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
             "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, exclude=true, key=e01)",
             "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -116,7 +116,7 @@ def test_example_2():
         "create_message",
         "add_qnode(name=DOID:7551, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -140,7 +140,7 @@ def test_example_2():
 def test_example_3():
     query = {"operations": {"actions": [
         "add_qnode(name=DOID:9406, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
         "add_qnode(categories=biolink:Protein, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
@@ -172,7 +172,7 @@ def test_FET_example_1():
         "expand(edge_key=e00, kp=RTX-KG2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_keys=[n01])",
-        "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=e01, kp=RTX-KG2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01)",
@@ -219,7 +219,7 @@ def test_FET_example_1():
 def test_FET_example_2():
     # This a FET 4-top example: try to find the diseases connected to proteins connected to biological_process connected to protein connected to CHEMBL.COMPOUND:CHEMBL521
     query = {"operations": {"actions": [
-        "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL1472, categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL1472, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n01, is_set=true, categories=biolink:Protein)",
         "add_qedge(key=e00, subject=n00, object=n01)",
         "expand(edge_key=e00, kp=RTX-KG2)",
@@ -302,7 +302,7 @@ def test_FET_example_3():
         "expand(edge_key=e04, kp=RTX-KG2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n04, object_qnode_key=n05, virtual_relation_label=FET5, rel_edge_key=e04)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n05])",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n06)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n06)",
         "add_qedge(subject=n05, object=n06, key=e05, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=e05, kp=RTX-KG2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n05, object_qnode_key=n06, virtual_relation_label=FET6, rel_edge_key=e05)",
@@ -411,7 +411,7 @@ def test_example_2_kg2():
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
             "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
             "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -438,7 +438,7 @@ def test_clinical_overlay_example1():
         "create_message",
         "add_qnode(name=DOID:11830, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -469,7 +469,7 @@ def test_clinical_overlay_example2():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:11830, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=RTX-KG2)",
         # overlay a bunch of clinical info
@@ -503,7 +503,7 @@ def test_two_hop_based_on_types_1():
             "create_message",
             f"add_qnode(name={doid}, key=n00, categories=biolink:Disease)",
             "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(edge_key=e00, kp=RTX-KG2)",
@@ -539,7 +539,7 @@ def test_one_hop_based_on_types_1():
         query = {"operations": {"actions": [
             "create_message",
             f"add_qnode(ids={doid}, key=n00, categories=biolink:Disease)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
             "expand(edge_key=e00, kp=BTE)",
@@ -564,7 +564,7 @@ def test_one_hop_kitchen_sink_BTE_1():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(curie=DOID:11830, key=n0, categories=biolink:Disease)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e1)",
         #"expand(edge_key=e00, kp=RTX-KG2)",
         "expand(edge_key=e1, kp=BTE)",

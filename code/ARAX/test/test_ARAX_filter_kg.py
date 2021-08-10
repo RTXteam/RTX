@@ -49,7 +49,7 @@ def test_warnings():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:8741, key=n00)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=asdfghjkl, direction=below, threshold=.2)",
@@ -70,7 +70,7 @@ def test_error():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
             "expand(edge_key=e00, kp=RTX-KG2)",
             "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=t, qedge_keys=[e00])",
@@ -85,7 +85,7 @@ def test_edge_key_removal():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:11086, key=n00)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qnode(categories=biolink:Disease, key=n02)",
             "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
             "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:treats)",
@@ -105,7 +105,7 @@ def test_default_std_dev():
         "create_message",
         "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -121,7 +121,7 @@ def test_default_std_dev():
         "create_message",
         "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -141,7 +141,7 @@ def test_std_dev():
         "create_message",
         "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -160,7 +160,7 @@ def test_std_dev():
         "create_message",
         "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -181,7 +181,7 @@ def test_default_top_n():
         "create_message",
         "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -199,7 +199,7 @@ def test_default_top_n():
         "create_message",
         "add_qnode(name=DOID:0060680, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -219,7 +219,7 @@ def test_default_top_n():
 def test_remove_property_known_attributes():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
+        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalEntity, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:negatively_regulates_entity_to_entity)",
         "expand(kp=RTX-KG2,enforce_directionality=true)",
@@ -237,7 +237,7 @@ def  test_remove_attribute_known_attributes():
         "create_message",
         "add_qnode(name=DOID:14330, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -255,7 +255,7 @@ def  test_remove_attribute_known_attributes():
 def test_provided_by_filter():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
+        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalEntity, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2,enforce_directionality=true)",
@@ -273,7 +273,7 @@ def test_provided_by_filter():
     assert count1 == 0
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalSubstance, key=n0)",
+        "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalEntity, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=RTX-KG2,enforce_directionality=true)",
@@ -294,7 +294,7 @@ def test_stats_error_int_threshold():
         "create_message",
         # Multiple sclerosis -> chemical substance with "related_to" from Clinical Risk KP
         "add_qnode(ids=MONDO:0005301, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:related_to)",
         "expand(kp=ClinicalRiskKP,edge_key=e0)",
         "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
@@ -319,7 +319,7 @@ def test_stats_error_int_threshold():
 def test_tuple_bug():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(key=n00,ids=DRUGBANK:DB00150,categories=biolink:ChemicalSubstance)",
+        "add_qnode(key=n00,ids=DRUGBANK:DB00150,categories=biolink:ChemicalEntity)",
         "add_qnode(key=n01,categories=biolink:Protein)",
         "add_qedge(key=e00,subject=n00,object=n01)",
         "expand(edge_key=e00, kp=RTX-KG2)",
