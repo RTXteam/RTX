@@ -60,7 +60,7 @@ class CHPQuerier:
         log.debug(f"Processing query results for edge {qedge_key} by using CHP client")
         final_kg = QGOrganizedKnowledgeGraph()
         gene_label_list = ['gene']
-        drug_label_list = ['drug', 'chemicalsubstance']
+        drug_label_list = ['drug', 'smallmolecule']
         # use for checking the requirement
         source_pass_nodes = None
         source_category = None

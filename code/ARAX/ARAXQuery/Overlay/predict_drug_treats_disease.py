@@ -35,7 +35,7 @@ class PredictDrugTreatsDisease:
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
-        self.drug_label_list = ['chemicalsubstance','drug']
+        self.drug_label_list = ['smallmolecule','drug']
         self.disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
 
         ## check if there is LogModel.pkl
@@ -331,7 +331,7 @@ class PredictDrugTreatsDisease:
                     target_curie = edge.object
                     source_types = curie_to_type[source_curie]
                     target_types = curie_to_type[target_curie]
-                    if (("drug" in source_types) or ("chemical_substance" in source_types) or ("biolink:Drug" in source_types) or ("biolink:ChemicalSubstance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types) or ("biolink:Disease" in target_types) or ("biolink:PhenotypicFeature" in target_types) or ("biolink:DiseaseOrPhenotypicFeature" in target_types)):
+                    if (("drug" in source_types) or ("small_molecule" in source_types) or ("biolink:Drug" in source_types) or ("biolink:SmallMolecule" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types) or ("biolink:Disease" in target_types) or ("biolink:PhenotypicFeature" in target_types) or ("biolink:DiseaseOrPhenotypicFeature" in target_types)):
                         # loop over all pairs of equivalent curies and take the highest probability
                         # self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
@@ -379,7 +379,7 @@ class PredictDrugTreatsDisease:
 
                         value = max_probability
 
-                    elif (("drug" in target_types) or ("chemical_substance" in target_types) or ("biolink:Drug" in target_types) or ("biolink:ChemicalSubstance" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types) or ("biolink:Disease" in source_types) or ("biolink:PhenotypicFeature" in source_types) or ("biolink:DiseaseOrPhenotypicFeature" in source_types)):
+                    elif (("drug" in target_types) or ("small_molecule" in target_types) or ("biolink:Drug" in target_types) or ("biolink:SmallMolecule" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types) or ("biolink:Disease" in source_types) or ("biolink:PhenotypicFeature" in source_types) or ("biolink:DiseaseOrPhenotypicFeature" in source_types)):
                         #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
