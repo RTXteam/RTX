@@ -145,7 +145,7 @@ data:
 
     # Update permission on /mnt/data/orangeboard/production/RTX/code/ARAX/KnowledgeSources/db_versions.json
     # since code/ARAX/ARAXQuery/ARAX_database_manager.py will be read and write to it while its permission is 644
-    chmod 777 /mnt/data/orangeboard/production/RTX/code/ARAX/KnowledgeSources/db_versions.json
+    # chmod 777 /mnt/data/orangeboard/production/RTX/code/ARAX/KnowledgeSources/db_versions.json
 
     # the instructions below are from the deployment wiki at https://github.com/RTXteam/RTX/wiki/ARAX-Docker-Deployment
     su rt 
