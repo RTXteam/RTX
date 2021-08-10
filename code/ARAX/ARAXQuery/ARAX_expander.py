@@ -385,7 +385,7 @@ class ARAXExpander:
                 kp_querier = KG2Querier(log)
             else:
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, force_local)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, None, force_local)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 

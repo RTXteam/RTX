@@ -227,7 +227,7 @@ def test_FET_ex1():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation is not None and x.relation.find("FET") != -1]
     assert len(FET_edges) > 0
     FET_edge_labels = set([edge.relation for edge in FET_edges])
@@ -239,7 +239,7 @@ def test_FET_ex1():
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
         assert edge_attributes_dict['is_defined_by'] == 'ARAX'
-        assert edge_attributes_dict['provided_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'infores:arax'
         if edge.relation == 'FET1':
             assert 0 <= float(edge.attributes[0].value) < 0.001
         else:
@@ -250,7 +250,7 @@ def test_FET_ex1():
     assert len(query_node_keys) == 3
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p-value_with' in query_edge.predicates
+        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys
@@ -272,7 +272,7 @@ def test_FET_ex2():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'biolink:has_fisher_exact_test_p-value_with' in edge_predicates_in_kg
+    assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation and x.relation.find("FET") != -1]
     assert len(FET_edges) >= 2
     FET_edge_labels = set([edge.relation for edge in FET_edges])
@@ -284,14 +284,14 @@ def test_FET_ex2():
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
         assert edge_attributes_dict['is_defined_by'] == 'ARAX'
-        assert edge_attributes_dict['provided_by'] == 'ARAX'
+        assert edge_attributes_dict['provided_by'] == 'infores:arax'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 1
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
     assert len(query_node_keys) == 2
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p-value_with' in query_edge.predicates
+        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
         assert key == query_edge.relation
         assert query_edge.subject in query_node_keys
         assert query_edge.object in query_node_keys

@@ -83,7 +83,7 @@ class ComputeJaccard:
             relation = parameters['virtual_relation_label']
             is_defined_by = "ARAX"
             defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-            provided_by = "ARAX"
+            provided_by = "infores:arax"
             confidence = None
             weight = None  # TODO: could make the jaccard index the weight
             try:
@@ -118,7 +118,7 @@ class ComputeJaccard:
                     edge_attribute,
                     EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:provided_by"),
+                    EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
                     #EdgeAttribute(name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                     #EdgeAttribute(name="weight", value=weight, attribute_type_id="metatype:Float"),
                     #EdgeAttribute(name="qedge_ids", value=qedge_ids)

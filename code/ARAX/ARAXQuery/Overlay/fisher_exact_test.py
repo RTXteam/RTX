@@ -179,7 +179,7 @@ class ComputeFTEST:
 
                     ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
                     temp_kp = [re.sub("infores:", "", x.value) for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'biolink:aggregator_knowledge_source' or x.attribute_type_id == 'biolink:knowledge_source']
-                    temp_kp.remove('arax-reasoner-ara')
+                    temp_kp.remove('arax')
 
                     if rel_edge_key:
                         if rel_edge_key in edge.qedge_keys:
@@ -385,12 +385,12 @@ class ComputeFTEST:
                     EdgeAttribute(attribute_type_id="EDAM:data_1669", original_attribute_name="fisher_exact_test_p-value", value=str(value[1]), value_url=None),
                     EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name="provided_by", value="ARAX", attribute_type_id="biolink:provided_by"),
+                    EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     #EdgeAttribute(original_attribute_name="confidence", value=None, type="biolink:ConfidenceLevel"),
                     #EdgeAttribute(original_attribute_name="weight", value=None, type="metatype:Float")
                 ]
                 edge_id = f"{value[0]}_{index}"
-                edge = Edge(predicate='biolink:has_fisher_exact_test_p-value_with', subject=value[2], object=value[3], relation=value[0],
+                edge = Edge(predicate='biolink:has_fisher_exact_test_p_value_with', subject=value[2], object=value[3], relation=value[0],
                             attributes=edge_attribute_list)
                 edge.qedge_keys = [value[0]]
 
@@ -403,7 +403,7 @@ class ComputeFTEST:
             # add the virtual edge to message QG
             if count > 0:
                 self.response.debug(f"Adding virtual edge to message QG")
-                edge_type = ["biolink:has_fisher_exact_test_p-value_with"]
+                edge_type = ["biolink:has_fisher_exact_test_p_value_with"]
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                           self.message.query_graph, self.response)
                 qedge_id = virtual_relation_label

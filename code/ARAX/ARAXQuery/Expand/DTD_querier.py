@@ -883,7 +883,8 @@ class DTDQuerier:
         description = "ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model)."
         swagger_edge.attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
                                    eu.get_kp_source_attribute("DTD", arax_kp=True, description=description),
-                                   eu.get_arax_source_attribute()]
+                                   eu.get_arax_source_attribute(),
+                                   eu.get_computed_value_attribute()]
 
         return swagger_edge_key, swagger_edge
 
