@@ -115,7 +115,7 @@ def test_chemicals_to_gene_issue_10():
                         "categories":["biolink:Gene"]
                     },
                     "n1": {
-                        "categories": ["biolink:ChemicalSubstance"]
+                        "categories": ["biolink:ChemicalEntity"]
                     }
                 },
                 "edges": {
@@ -169,7 +169,7 @@ def test_chemical_substances_correlated_with_asthma_issue_18():
               "categories": ["biolink:Disease"]
             },
             "n1": {
-              "categories": ["biolink:ChemicalSubstance"]
+              "categories": ["biolink:ChemicalEntity"]
             }
           },
           "edges": {
@@ -248,7 +248,7 @@ def test_chemical_substances_that_down_regulate_STK11_issue_28():
               "ids": ["HGNC:11389"]
             },
             "n1": {
-              "categories": ["biolink:ChemicalSubstance"]
+              "categories": ["biolink:ChemicalEntity"]
             }
           }
         }
