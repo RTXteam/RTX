@@ -59,21 +59,21 @@ elif database == 'DTD':
 cohd_DSL_queries = [
 {"operations": {"actions": [
         "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_top_N=500)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_top_N=500)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_top_N=500)",
         "return(message=true, store=false)"
@@ -81,7 +81,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, COHD_method=paired_concept_frequency)",
@@ -91,7 +91,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio)",
@@ -101,7 +101,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, COHD_method=chi_square)",
@@ -122,7 +122,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
@@ -132,7 +132,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info,observed_expected_ratio=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
@@ -142,7 +142,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
@@ -152,7 +152,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
@@ -162,7 +162,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -172,7 +172,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=UniProtKB:P62328, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
@@ -182,7 +182,7 @@ cohd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(name=UniProtKB:P62328, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
@@ -193,7 +193,7 @@ cohd_DSL_queries = [
         "create_message",
         "add_qnode(name=DOID:11830, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
@@ -211,7 +211,7 @@ cohd_DSL_queries = [
     ]}},
 {"operations": {"actions": [
        "add_qnode(name=DOID:9406, key=n00)",
-        "add_qnode(categories=biolink:ChemicalSubstance, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
         "add_qnode(categories=biolink:Protein, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
@@ -245,7 +245,7 @@ dtd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(ids=MONDO:0004992, key=n0, categories=biolink:Disease)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
@@ -255,7 +255,7 @@ dtd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(ids=MONDO:0004992, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=predict_drug_treats_disease)",
@@ -265,7 +265,7 @@ dtd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(ids=MONDO:0004992, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
@@ -275,7 +275,7 @@ dtd_DSL_queries = [
 {"operations": {"actions": [
         "create_message",
         "add_qnode(ids=UniProtKB:P62328, key=n0)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n1)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
@@ -285,7 +285,7 @@ dtd_DSL_queries = [
 {"operations": {"actions": [
         "add_qnode(ids=DOID:11830, categories=biolink:Disease, key=n00)",
         "add_qnode(categories=biolink:Gene, ids=[UniProtKB:P39060, UniProtKB:O43829, UniProtKB:P20849], is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(kp=BTE)",
@@ -297,7 +297,7 @@ dtd_DSL_queries = [
         "create_message",
         "add_qnode(name=DOID:7551, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=[e00,e01], kp=RTX-KG2)",
