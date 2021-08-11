@@ -28,7 +28,7 @@ def test_query_by_query_graph_2():
                 "qg2": { "subject": "qg1", "object": "qg0", "predicates": ["biolink:physically_interacts_with"] }
             },
             "nodes": {
-                "qg0": { "name": "acetaminophen", "ids": ["CHEMBL.COMPOUND:CHEMBL112"], "categories": ["biolink:ChemicalSubstance"] },
+                "qg0": { "name": "acetaminophen", "ids": ["CHEMBL.COMPOUND:CHEMBL112"], "categories": ["biolink:ChemicalEntity"] },
                 "qg1": { "name": None, "ids": None, "categories": ["biolink:Protein"] }
             } } } }
     araxq = ARAXQuery()

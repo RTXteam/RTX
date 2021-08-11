@@ -2453,7 +2453,7 @@ function mapNodeShape(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "rectangle";} //??
     if (ntype.endsWith("CellularComponent"))  { return "ellipse";}
     if (ntype.endsWith("BiologicalProcess"))  { return "tag";}
-    if (ntype.endsWith("ChemicalSubstance"))  { return "diamond";}
+    if (ntype.endsWith("ChemicalEntity"))  { return "diamond";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "rhomboid";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "star";}
     return "rectangle";
@@ -2469,7 +2469,7 @@ function mapNodeColor(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "blue";} //??
     if (ntype.endsWith("CellularComponent"))  { return "purple";}
     if (ntype.endsWith("BiologicalProcess"))  { return "green";}
-    if (ntype.endsWith("ChemicalSubstance"))  { return "yellowgreen";}
+    if (ntype.endsWith("ChemicalEntity"))  { return "yellowgreen";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "violet";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "indigo";}
     return "#04c";

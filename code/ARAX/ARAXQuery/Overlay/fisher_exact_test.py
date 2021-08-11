@@ -599,7 +599,7 @@ class ComputeFTEST:
 
     @staticmethod
     def convert_string_to_snake_case(input_string: str) -> str:
-        # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
+        # Converts a string like 'ChemicalEntity' or 'chemicalEntity' to 'chemical_entity'
         if len(input_string) > 1:
             snake_string = input_string[0].lower()
             for letter in input_string[1:]:

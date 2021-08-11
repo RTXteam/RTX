@@ -396,14 +396,14 @@ def test_example1():
         { "description": "Two nodes, one edge linking them, 1 CURIE",
           "nodes": {
             "n00": { "ids": [ "MONDO:0001627" ] },
-            "n01": { "categories": [ "biolink:ChemicalSubstance" ] } },
+            "n01": { "categories": [ "biolink:ChemicalEntity" ] } },
           "edges": {
             "e00": { "subject": "n00", "object": "n01", "predicates": [ "biolink:physically_interacts_with" ] } } },
 
         { "description": "Two nodes, two edges linking them, 1 CURIE, one of which is excluded",
           "nodes": {
             "n00": { "ids": [ "MONDO:0001627" ] },
-            "n01": { "categories": [ "biolink:ChemicalSubstance" ] } },
+            "n01": { "categories": [ "biolink:ChemicalEntity" ] } },
           "edges": {
             "e00": { "subject": "n00", "object": "n01" },
             "e01": { "subject": "n00", "object":"n01", "predicates": [ "biolink:contraindicated_for" ], "exclude": True } } },
@@ -418,7 +418,7 @@ def test_example1():
         { "description": "Three nodes, 2 edges, 1 CURIE, simple linear chain",
           "nodes": {
             "n00": { "ids": [ "MONDO:0001627" ] },
-            "n01": { "categories": [ "biolink:ChemicalSubstance" ] },
+            "n01": { "categories": [ "biolink:ChemicalEntity" ] },
             "n02": { "categories": [ "biolink:Protein" ] } },
           "edges": {
             "e00": { "subject": "n00", "object": "n01", "predicates": [ "biolink:physically_interacts_with" ] },
@@ -426,7 +426,7 @@ def test_example1():
 
         { "description": "Three nodes, 2 edges, but the CURIE is in the middle. What does that even mean?",
           "nodes": {
-            "n00": { "categories": [ "biolink:ChemicalSubstance" ] },
+            "n00": { "categories": [ "biolink:ChemicalEntity" ] },
             "n01": { "ids": [ "MONDO:0001627" ] },
             "n02": { "categories": [ "biolink:Protein" ] } },
           "edges": {
@@ -436,7 +436,7 @@ def test_example1():
         { "description": "Four nodes, 3 edges, 1 CURIE, simple linear chain",
           "nodes": {
             "n00": { "ids": [ "MONDO:0001627" ] },
-            "n01": { "categories": [ "biolink:ChemicalSubstance" ] },
+            "n01": { "categories": [ "biolink:ChemicalEntity" ] },
             "n02": { "categories": [ "biolink:Protein" ] },
             "n03": { "categories": [ "biolink:Disease" ] } },
           "edges": {
@@ -447,7 +447,7 @@ def test_example1():
         { "description": "Two nodes, one edge linking them, 0 CURIEs",
           "nodes": {
             "n00": { "categories": [ "biolink:Drug" ] },
-            "n01": { "categories": [ "biolink:ChemicalSubstance" ] } },
+            "n01": { "categories": [ "biolink:ChemicalEntity" ] } },
           "edges": {
             "e00": { "subject": "n00", "object": "n01", "predicates": [ "biolink:physically_interacts_with" ] } } },
 

@@ -105,7 +105,7 @@ def remove_orphan_edges(kg: QGOrganizedKnowledgeGraph, qg: QueryGraph) -> QGOrga
 
 
 def convert_string_to_pascal_case(input_string: str) -> str:
-    # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
+    # Converts a string like 'chemical_entity' or 'chemicalEntity' to 'ChemicalEntity'
     if not input_string:
         return ""
     elif "_" in input_string:
@@ -118,7 +118,7 @@ def convert_string_to_pascal_case(input_string: str) -> str:
 
 
 def convert_string_to_snake_case(input_string: str) -> str:
-    # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
+    # Converts a string like 'ChemicalEntity' or 'chemicalEntity' to 'chemical_entity'
     if len(input_string) > 1:
         snake_string = input_string[0].lower()
         for letter in input_string[1:]:

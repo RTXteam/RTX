@@ -377,12 +377,12 @@ def QGI_test2():
     input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "category": "chemical_substance" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "predicate": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
     # TRAPI 1.0.0
     input_query_graph = { "message": { "query_graph": { 
-        "nodes": { "n1": { "category": "biolink:ChemicalSubstance" }, "n2": { "id": "UMLS:C0002395" } },
+        "nodes": { "n1": { "category": "biolink:ChemicalEntity" }, "n2": { "id": "UMLS:C0002395" } },
         "edges": { "e1": { "predicate": "clinically_tested_approved_unknown_phase", "subject": "n1", "object": "n2" } }
         } } }
     # TRAPI 1.1.0
     input_query_graph = { "message": { "query_graph": { 
-        "nodes": { "n1": { "categories": [ "biolink:ChemicalSubstance" ] }, "n2": { "ids": [ "UMLS:C0002395" ] } },
+        "nodes": { "n1": { "categories": [ "biolink:ChemicalEntity" ] }, "n2": { "ids": [ "UMLS:C0002395" ] } },
         "edges": { "e1": { "predicates": [ "biolink:clinically_tested_approved_unknown_phase" ], "subject": "n1", "object": "n2" } }
         } } }
 
@@ -420,7 +420,7 @@ def QGI_test3():
             "ids": [ "MONDO:0002715" ]
             },
             "n01": {
-            "categories": [ "biolink:ChemicalSubstance" ]
+            "categories": [ "biolink:ChemicalEntity" ]
             },
             "n02": {
             "categories": [ "biolink:Gene" ]
@@ -534,14 +534,14 @@ def QGI_test5():
                 },
                 "n1": {
                     "ids": ["CHEBI:45783"],
-                    "categories": ["biolink:ChemicalSubstance"]
+                    "categories": ["biolink:ChemicalEntity"]
                 },
                 "n2": {
                     "ids": ["MONDO:0005301"],
                     "categories": ["biolink:Disease"]
                 },
                 "n3": {
-                    "categories": ["biolink:ChemicalSubstance"]
+                    "categories": ["biolink:ChemicalEntity"]
                 }
             },
             "edges": {
@@ -611,7 +611,7 @@ def QGI_test6():
           "nodes": {
             "n00": {
               "categories": [
-                "biolink:ChemicalSubstance"
+                "biolink:ChemicalEntity"
               ],
               "ids": [
                 "DRUGBANK:DB00150"
@@ -629,7 +629,7 @@ def QGI_test6():
             },
             "n03": {
               "categories": [
-                "biolink:ChemicalSubstance"
+                "biolink:ChemicalEntity"
               ],
               "ids": [
                 "KEGG.COMPOUND:C02700"
@@ -707,7 +707,7 @@ def QGI_test7():
                 "nodes": {
                     "n00": {
                         "categories": [
-                            "biolink:ChemicalSubstance"
+                            "biolink:ChemicalEntity"
                         ],
                         "ids": [
                             "DRUGBANK:DB00150"
@@ -725,7 +725,7 @@ def QGI_test7():
                     },
                     "n03": {
                         "categories": [
-                            "biolink:ChemicalSubstance"
+                            "biolink:ChemicalEntity"
                         ]
                     }
                 }

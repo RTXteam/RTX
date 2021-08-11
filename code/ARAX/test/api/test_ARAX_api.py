@@ -28,7 +28,7 @@ def test_api_status():
           },
           "nodes": {
             "n00": {
-              "categories": ["biolink:ChemicalSubstance"],
+              "categories": ["biolink:ChemicalEntity"],
               "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
             },
             "n01": {
@@ -60,7 +60,7 @@ def test_kitchen_sink_api():
     "operations": {"actions": [
             "add_qnode(name=arthritis, key=n00)",
             "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(categories=biolink:ChemicalSubstance, key=n02)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
             "expand(edge_key=[e00,e01], kp=RTX-KG2)",
