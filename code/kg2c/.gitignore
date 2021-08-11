@@ -1,0 +1,5 @@
+*.log
+kg2c*.tsv
+kg2c*_test.json
+master-config.shinc
+setup-kg2-neo4j.sh

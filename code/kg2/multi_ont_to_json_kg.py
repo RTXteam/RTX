@@ -27,6 +27,7 @@ import sys
 import urllib.parse
 import urllib.request
 from typing import Dict
+import json # temporary addition for Ontobio Issue #507
 
 # -------------- define globals here ---------------
 
@@ -37,6 +38,7 @@ REGEX_MONTH_YEAR = re.compile('([0-9]{1,2})_[12][90][0-9]{2}')
 REGEX_YEAR_MONTH = re.compile('[12][90][0-9]{2}_([0-9]{1,2})')
 REGEX_PUBLICATIONS = re.compile(r'((?:(?:PMID)|(?:ISBN)):\d+)')
 REGEX_XREF_END_DESCRIP = re.compile(r'.*\[([^\]]+)\]$')
+REGEX_OBSOLETE = re.compile("^obsolete|\(obsolete||obsolete$", re.IGNORECASE)
 
 IRI_OBO_XREF = kg2_util.IRI_OBO_FORMAT_XREF
 CURIE_OBO_XREF = kg2_util.CURIE_ID_OBO_FORMAT_XREF
@@ -117,6 +119,7 @@ def make_kg2(curies_to_categories: dict,
              curie_to_uri_expander: callable,
              ont_urls_and_files: tuple,
              output_file_name: str,
+             node_datatype_properties_file: str, # temporary addition for Ontobio Issue #507
              test_mode: bool = False,
              save_pickle: bool = False):
 
@@ -142,10 +145,16 @@ def make_kg2(curies_to_categories: dict,
 
     kg2_util.log_message('Calling make_nodes_dict_from_ontologies_list')
 
+    # Temporary addition for addressing Ontobio Issue #507
+    select_datatype_properties = dict()
+    with open(node_datatype_properties_file, 'r') as node_properties:
+        select_datatype_properties = json.load(node_properties)
+
     nodes_dict = make_nodes_dict_from_ontologies_list(ont_file_information_dict_list,
                                                       curies_to_categories,
                                                       uri_to_curie_shortener,
-                                                      curie_to_uri_expander)
+                                                      curie_to_uri_expander,
+                                                      select_datatype_properties) # temporary addition for Ontobio Issue #507
 
     kg2_util.log_message('Calling make_map_of_node_ontology_ids_to_curie_ids')
 
@@ -159,6 +168,9 @@ def make_kg2(curies_to_categories: dict,
                                   uri_to_curie_shortener,
                                   curie_to_uri_expander,
                                   map_of_node_ontology_ids_to_curie_ids)
+
+    biolink_inverses = get_inverse_rels(ont_file_information_dict_list[0]['ontology'], ont_file_information_dict_list[0], uri_to_curie_shortener)
+    print(json.dumps(biolink_inverses, indent=4, sort_keys=True))
 
     kg2_dict = dict()
     kg2_dict['edges'] = [rel_dict for rel_dict in all_rels_dict.values()]
@@ -451,7 +463,7 @@ def find_common_ancestor(tui_categories: list, biolink_category_tree: dict):
                 path_list2 = []
                 path_list2.append(pair[1])
                 get_path(biolink_category_tree, "named thing", pair[1], path_list2)
-                print(f"list1: {path_list1!s} list2: {path_list2!s}", file=sys.stderr)
+#                print(f"list1: {path_list1!s} list2: {path_list2!s}", file=sys.stderr)
                 tui_split[tui_split.index(pair)] = compare_two_lists_in_reverse(path_list1,
                                                                                 path_list2)
 
@@ -478,8 +490,10 @@ def get_category_for_multiple_tui(biolink_category_tree: dict,
 def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                                          curies_to_categories: dict,
                                          uri_to_curie_shortener: callable,
-                                         curie_to_uri_expander: callable) -> Dict[str, dict]:
+                                         curie_to_uri_expander: callable,
+                                         select_datatype_properties: dict) -> Dict[str, dict]: # temporary addition for Ontobio Issue #507
     ret_dict = dict()
+    omim_to_hgnc_symbol = dict()
     ontologies_iris_to_curies = dict()
 
     tuis_not_in_mappings_but_in_kg2 = set()
@@ -596,6 +610,14 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
             if curie_prefix == kg2_util.CURIE_PREFIX_UMLS_STY and node_curie_id.split(':')[1].startswith('T') and ontology.id != kg2_util.BASE_URL_UMLS_STY:
                 # this is a UMLS semantic type TUI node from a non-STY UMLS source, ignore it
                 continue
+            # to address issue #1361
+            if curie_prefix == kg2_util.CURIE_PREFIX_ENSEMBL and REGEX_ENSEMBL.match(node_curie_id.replace(curie_prefix + ':', '')) is None:
+                node_curie_id = node_curie_id.replace(kg2_util.CURIE_PREFIX_ENSEMBL, kg2_util.CURIE_PREFIX_ENSEMBL_GENOMES)
+                iri = curie_to_uri_expander(node_curie_id)
+                kg2_util.log_message(message="Switching Ensembl: prefix to EnsemblGenomes:",
+                                     ontology_name=iri_of_ontology,
+                                     node_curie_id=node_curie_id,
+                                     output_stream=sys.stderr)
 
             [node_category_label, node_with_category] = get_biolink_category_for_node(ontology_node_id,
                                                                                       node_curie_id,
@@ -618,6 +640,7 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
             node_tui = None
             node_has_cui = False
             node_tui_category_label = None
+            node_gene_symbol = None
 
             node_meta = onto_node_dict.get('meta', None)
             if node_meta is not None:
@@ -688,12 +711,14 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                                 if node_name is None:
                                     node_name = node_full_name
                         elif bpv_pred_curie == kg2_util.CURIE_ID_SKOS_ALT_LABEL:
+                            if node_curie_id.startswith(kg2_util.CURIE_PREFIX_HGNC + ':') and bpv_val.endswith(' gene'):
+                                node_gene_symbol = bpv_val.replace(' gene', '')
                             node_synonyms.add(bpv_val)
                         elif bpv_pred_curie == kg2_util.CURIE_ID_SKOS_DEFINITION:
                             node_description = kg2_util.strip_html(bpv_val)
                         elif bpv_pred_curie == kg2_util.CURIE_ID_HGNC_GENE_SYMBOL:
-                            node_name = bpv_val
-                            node_synonyms.add(bpv_val)
+                            node_gene_symbol = bpv_val
+                            node_synonyms.add(node_gene_symbol)
                         elif bpv_pred_curie == kg2_util.CURIE_ID_UMLS_HAS_CUI:
                             node_has_cui = True
                     if len(node_tui_list) == 1:
@@ -719,10 +744,9 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                     else:
                         node_description = comments_str
 
-            if node_category_label is None:
-                node_type = onto_node_dict.get('type', None)
-                if node_type is not None and node_type == 'PROPERTY':
-                    node_category_label = kg2_util.BIOLINK_CATEGORY_ATTRIBUTE
+            node_type = onto_node_dict.get('type', None)
+            if node_type is not None and node_type == 'PROPERTY':
+                node_category_label = kg2_util.BIOLINK_CATEGORY_ATTRIBUTE
 
             if node_category_label is None:
                 node_category_label = 'named thing'
@@ -790,16 +814,55 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                 node_name = kg2_util.allcaps_to_only_first_letter_capitalized(node_name)
 
             if node_name is not None:
-                if node_name.lower().startswith('obsolete:'):
-                    continue
+                if node_name.lower().startswith('obsolete:') or \
+                   (node_curie_id.startswith(kg2_util.CURIE_PREFIX_GO + ':') and node_name.lower().startswith('obsolete ')):
+                    node_deprecated = True
+                if REGEX_OBSOLETE.match(node_name) is not None:
+                    node_deprecated = True
 
             if node_description is not None:
                 if node_description.lower().startswith('obsolete:') or node_description.lower().startswith('obsolete.'):
-                    continue
+                    node_deprecated = True
 
             provided_by = ontology_curie_id
-            if node_category_label == kg2_util.BIOLINK_CATEGORY_ATTRIBUTE:
-                provided_by = kg2_util.CURIE_ID_UMLS_STY
+
+            if node_name is None:
+                if node_gene_symbol is not None:
+                    node_name = node_gene_symbol
+
+            # Temporary code to address Ontobio Issue #507
+            if ontology_info_dict['file'] in select_datatype_properties:
+                filename = ontology_info_dict['file']
+                if filename == 'umls-omim.ttl':
+                    mimtype = select_datatype_properties[filename].get(node_curie_id, {}).get('MIMTYPE', None)
+                    if mimtype is not None:
+                        # 0, 3, 5 are phenotypes
+                        # 1, 4 are genes
+                        # There isn't a 2 anymore
+                        if mimtype == "1" or mimtype == "4":
+                            node_category_label = kg2_util.BIOLINK_CATEGORY_GENE
+                            gene_symbol = omim_to_hgnc_symbol.get(node_curie_id, None)
+                            if gene_symbol is not None:
+                                old_name = node_name
+                                node_name = gene_symbol
+                        else:
+                            node_name += " related phenotypic feature"
+                    else:
+                        node_category_label = kg2_util.BIOLINK_CATEGORY_NAMED_THING
+                if filename == 'umls-hgnc.ttl':
+                    hgnc_properties = select_datatype_properties[filename].get(node_curie_id, {})
+                    omim_id = hgnc_properties.get('OMIM_ID', None)
+                    gene_symbol = hgnc_properties.get('GENESYMBOL', None)
+                    if omim_id is not None:
+                        if isinstance(omim_id, list):
+                            for id in omim_id:
+                                omim_to_hgnc_symbol[kg2_util.CURIE_PREFIX_OMIM + ':' + id] = gene_symbol
+                        else:
+                            omim_to_hgnc_symbol[kg2_util.CURIE_PREFIX_OMIM + ':' + omim_id] = gene_symbol
+                    locus_group = hgnc_properties.get('LOCUS_GROUP', None)
+                    if locus_group is not None:
+                        if locus_group == "phenotype":
+                            continue
 
             node_dict = kg2_util.make_node(node_curie_id,
                                            iri,
@@ -807,7 +870,8 @@ def make_nodes_dict_from_ontologies_list(ontology_info_list: list,
                                            node_category_label,
                                            node_update_date,
                                            provided_by)
-
+            if node_gene_symbol is not None:
+                node_dict['name'] = node_gene_symbol
             node_dict['full_name'] = node_full_name
             node_dict['description'] = node_description
             node_dict['creation_date'] = node_creation_date      # slot name is not biolink standard
@@ -998,7 +1062,17 @@ def get_rels_dict(nodes: dict,
                     predicate_label = pred_node['name']
                     assert predicate_label is not None
                     if predicate_label[0].isupper():
-                        predicate_label = predicate_label[0].lower() + predicate_label[1:]
+                        predicate_label = predicate_label[0].lower() +\
+                            predicate_label[1:]
+                else:
+                    # attempted fix for issue #1381
+                    predicate_label = predicate_curie.split(':')[1]
+                    print(ontology_curie_id + 
+                          ": guessing at predicate label based on the " +
+                          "predicate CURIE: " +
+                          predicate_curie + "; guessed label is: " +
+                          predicate_label,
+                          file=sys.stderr)
 
             assert predicate_label is not None
             predicate_label = predicate_label.replace(' ', '_')
@@ -1029,6 +1103,40 @@ def get_rels_dict(nodes: dict,
                             rels_dict[key] = edge
 
     return rels_dict
+
+
+def get_inverse_rels(biolink_ontology, metadata_dict, uri_to_curie_shortener):
+    ontology_curie_id = uri_to_curie_shortener(metadata_dict['id'])
+    umls_sver = metadata_dict.get('umls-sver', None)
+    updated_date = None
+    if umls_sver is not None:
+        # if you can, parse sver string into a date string
+        updated_date = parse_umls_sver_date(umls_sver, ontology_curie_id.split(':')[1])
+
+    if updated_date is None:
+        updated_date = metadata_dict.get('source-file-date', None)
+
+    if updated_date is None:
+        umls_release = metadata_dict.get('umls-release', None)
+        if umls_release is not None:
+            updated_date = re.sub(r'\D', '', umls_release)
+
+    if updated_date is None:
+        updated_date = metadata_dict['file last modified timestamp']
+
+    edges = []
+    assert biolink_ontology.id == kg2_util.BASE_URL_BIOLINK_ONTOLOGY
+    for ontology_node_id in biolink_ontology.nodes():
+        relations = {neighbor: next(iter(biolink_ontology.child_parent_relations(neighbor, ontology_node_id))) for neighbor in list(biolink_ontology.get_graph().neighbors(ontology_node_id))}
+        for relation in relations:
+            if relations[relation] == "inverseOf":
+                subject_id = ontology_node_id
+                object_id = relation
+                predicate = 'owl:inverseOf'
+                relation_label = 'inverse_of'
+                edge = kg2_util.make_edge(subject_id, object_id, predicate, relation_label, ontology_curie_id, updated_date)
+                edges.append(edge)
+    return edges
 
 
 def get_node_curie_id_from_ontology_node_id(ontology_node_id: str,
@@ -1183,6 +1291,7 @@ def make_arg_parser():
     arg_parser.add_argument('curiesToURIFile', type=str)
     arg_parser.add_argument('ontLoadInventoryFile', type=str)
     arg_parser.add_argument('outputFile', type=str)
+    arg_parser.add_argument('nodeDatatypePropertiesFile', type=str) # temporary addition for Ontobio Issue #507
     return arg_parser
 
 
@@ -1195,6 +1304,7 @@ if __name__ == '__main__':
     curies_to_uri_file_name = args.curiesToURIFile
     ont_load_inventory_file = args.ontLoadInventoryFile
     output_file = args.outputFile
+    node_datatype_properties_file = args.nodeDatatypePropertiesFile # temporary addition for Ontobio Issue #507
     save_pickle = args.save_pickle
     test_mode = args.test
     curies_to_categories = kg2_util.safe_load_yaml_from_string(kg2_util.read_file_to_string(curies_to_categories_file_name))
@@ -1208,5 +1318,6 @@ if __name__ == '__main__':
              curie_to_uri_expander,
              ont_urls_and_files,
              output_file,
+             node_datatype_properties_file, # temporary addition for Ontobio Issue #507
              test_mode,
              save_pickle)

@@ -9,20 +9,18 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX
 from node_synonymizer import NodeSynonymizer
 
 
-def get_entity_by_string(search_string):  # noqa: E501
-    """Obtain the CURIE and type of some entity by name
+def get_entity(q):  # noqa: E501
+    """Obtain CURIE and synonym information about a search term
 
      # noqa: E501
 
-    :param search_string: Some string to search by (name, abbreviation, CURIE, etc.)
-    :type search_string: str
+    :param q: A string to search by (name, abbreviation, CURIE, etc.). The parameter may be repeated for multiple search strings.
+    :type q: List[str]
 
-    :rtype: List[object]
+    :rtype: object
     """
     synonymizer = NodeSynonymizer()
-    result = synonymizer.get_canonical_curies(curies=search_string,names=search_string)
-    response = {}
-    if result[search_string] is not None:
-        response = { 'curie': result[search_string]['preferred_curie'], 'name': result[search_string]['preferred_name'], 'type': result[search_string]['preferred_type'] }
+    response = synonymizer.get_normalizer_results(q)
+
     return response
 

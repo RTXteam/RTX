@@ -22,7 +22,8 @@ for module in modules.keys():
     m = importlib.import_module(module)
     dsl_name = modules[module]["command"]
 
-    for dic in getattr(m, modules[module]["class"])().describe_me():
+    ## for dic in getattr(m, modules[module]["class"])().describe_me():
+    for dic in sorted(getattr(m, modules[module]["class"])().describe_me(), key=lambda i: i['dsl_command']):
         #print(dic)
 
         if 'action' in dic:  # for classes that use the `action=` paradigm
@@ -36,7 +37,7 @@ for module in modules.keys():
 
         dsl_name = re.sub('\`','', dsl_name)
         print(dsl_name, end='')
-        print('.' * (50-len(dsl_name)), end='')
+        print('.' * (60-len(dsl_name)), end='')
         
         araxi_json[dsl_name] = {}
         araxi_json[dsl_name]['parameters'] = {}

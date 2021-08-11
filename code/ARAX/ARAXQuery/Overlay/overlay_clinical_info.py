@@ -16,8 +16,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-f
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/kg-construction/")
-from QueryCOHD import QueryCOHD as COHD
 # FIXME:^ this should be pulled from a YAML file pointing to the parser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../KnowledgeSources/COHD_local/scripts/")
 from COHDIndex import COHDIndex
@@ -34,7 +32,8 @@ class OverlayClinicalInfo:
         self.response = response
         self.message = message
         self.parameters = params
-        self.who_knows_about_what = {'COHD': ['chemical_substance', 'phenotypic_feature', 'disease']}  # FIXME: replace this with information about the KP's, KS's, and their API's
+        self.who_knows_about_what = {'COHD': ['small_molecule', 'phenotypic_feature', 'disease', 'drug',
+                                                'biolink:SmallMolecule', 'biolink:PhenotypicFeature', 'biolink:Disease', 'biolink:Drug']}  # FIXME: replace this with information about the KP's, KS's, and their API's
         self.node_curie_to_type = dict()
         self.global_iter = 0
         try:
@@ -55,7 +54,7 @@ class OverlayClinicalInfo:
         self.response.info("Converting CURIE identifiers to human readable names")
         try:
             for key, node in self.message.knowledge_graph.nodes.items():
-                self.node_curie_to_type[key] = node.category  # WARNING: this is a list
+                self.node_curie_to_type[key] = node.categories  # WARNING: this is a list
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -125,6 +124,7 @@ class OverlayClinicalInfo:
                 # see which KP's can label both subjects of information
                 if self.in_common(subject_type, self.who_knows_about_what[KP]) and self.in_common(object_type, self.who_knows_about_what[KP]):
                     KP_to_use = KP
+
             if KP_to_use == 'COHD':
                 self.response.debug(f"Querying Columbia Open Health data for info about {subject_name} and {object_name}")
                 # convert CURIE to OMOP identifiers
@@ -242,7 +242,7 @@ class OverlayClinicalInfo:
                             value = minimum_pvalue
 
                 # create the edge attribute
-                edge_attribute = EdgeAttribute(type=type, name=name, value=str(value), url=url)  # populate the edge attribute # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
+                edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url)  # populate the edge attribute # FIXME: unclear in object model if attribute type dictates value type, or if value always needs to be a string
                 return edge_attribute
             else:
                 return None
@@ -272,6 +272,7 @@ class OverlayClinicalInfo:
                     curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         added_flag = False  # check to see if any edges where added
         # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
+
         for (subject_curie, object_curie) in itertools.product(subject_curies_to_decorate, object_curies_to_decorate):
             # create the edge attribute if it can be
             edge_attribute = self.make_edge_attribute_from_curies(subject_curie, object_curie,
@@ -285,12 +286,12 @@ class OverlayClinicalInfo:
 
                 # edge properties
                 now = datetime.now()
-                edge_type = f"has_{name}_with"
+                edge_type = f"biolink:has_{name}_with"
                 qedge_keys = [parameters['virtual_relation_label']]
                 relation = parameters['virtual_relation_label']
                 is_defined_by = "ARAX"
                 defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                provided_by = "ARAX"
+                provided_by = "infores:arax"
                 confidence = None
                 weight = None  # TODO: could make the actual value of the attribute
                 subject_key = subject_curie
@@ -305,11 +306,11 @@ class OverlayClinicalInfo:
                 self.global_iter += 1
                 edge_attribute_list = [
                     edge_attribute,
-                    EdgeAttribute(name="is_defined_by", value=is_defined_by),
-                    EdgeAttribute(name="defined_datetime", value=defined_datetime),
-                    EdgeAttribute(name="provided_by", value=provided_by),
-                    EdgeAttribute(name="confidence", value=confidence),
-                    EdgeAttribute(name="weight", value=weight),
+                    EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
+                    EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                    EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+                    #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
+                    #EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
                     #EdgeAttribute(name="qedge_ids", value=qedge_ids)
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key,
@@ -324,7 +325,7 @@ class OverlayClinicalInfo:
 
         # Now add a q_edge the query_graph since I've added an extra edge to the KG
         if added_flag:
-            edge_type = f"has_{name}_with"
+            edge_type = f"biolink:has_{name}_with"
             relation = parameters['virtual_relation_label']
             qedge_keys = [parameters['virtual_relation_label']]
             subject_qnode_key = parameters['subject_qnode_key']
@@ -334,7 +335,7 @@ class OverlayClinicalInfo:
             # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
             #                subject_key=subject_qnode_key, object_key=object_qnode_key,
             #                option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
-            q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key,
+            q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
             self.message.query_graph.edges[relation]=q_edge
 

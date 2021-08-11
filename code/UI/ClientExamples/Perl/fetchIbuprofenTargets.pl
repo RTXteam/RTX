@@ -7,8 +7,29 @@ use HTTP::Request;
 use LWP::UserAgent;
 use JSON::Parse;
 
-my $url = 'http://rtx.ncats.io/devED/api/rtx/v1/query';
-my $json = '{"query_type_id": "Q3", "terms": { "chemical_substance": "CHEMBL:CHEMBL521" } }';
+my $url = 'https://arax.ncats.io/api/arax/v1.1/query';
+my $json = '{ "message": { "query_graph":
+{
+   "edges": {
+      "e00": {
+         "subject":   "n00",
+         "object":    "n01",
+         "predicates": ["biolink:physically_interacts_with"]
+      }
+   },
+   "nodes": {
+      "n00": {
+         "ids":        ["CHEMBL.COMPOUND:CHEMBL112"]
+      },
+      "n01": {
+         "categories":  ["biolink:Protein"]
+      }
+   }
+}
+
+} }
+';
+
 my $request = HTTP::Request->new( 'POST', $url );
 $request->header( 'Content-Type' => 'application/json' );
 $request->content( $json );
@@ -17,20 +38,16 @@ my $lwp = LWP::UserAgent->new;
 my $lwp_response = $lwp->request( $request );
 
 my @results_list = ();
+my $counter = 1;
 
 if ( $lwp_response->is_success() ) {
   my $response = JSON::Parse::parse_json($lwp_response->content());
-  if ( $response->{'result_list'} ) {
-    my @result_list = @{$response->{'result_list'}};
+  if ( $response->{'message'} && $response->{'message'}->{'results'} ) {
+    my @result_list = @{$response->{'message'}->{'results'}};
     foreach my $result (@result_list) {
-      my $text_result = $result->{'text'};
-      if ( $result->{result_graph} ) {
-        foreach my $node ( @{$result->{result_graph}->{node_list}} ) {
-          if ( $node->{type} eq 'protein' ) {
-            push( @results_list, [ $node->{id}, $node->{name} ] );
-          }
-        }
-      }
+      my $essence = $result->{'essence'};
+      push(@results_list,[ $counter, $essence ]);
+      $counter++;
     }
   } else {
     print($response->{message}."\n")

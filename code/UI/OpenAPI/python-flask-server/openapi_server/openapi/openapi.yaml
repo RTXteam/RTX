@@ -2,61 +2,95 @@ openapi: 3.0.1
 info:
   contact:
     email: edeutsch@systemsbiology.org
-  description: TRAPI 1.0 endpoint for the NCATS Biomedical Translator Reasoner called
+  description: TRAPI 1.1 endpoint for the NCATS Biomedical Translator Reasoner called
     ARAX
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: ARAX Translator Reasoner
-  version: 1.0.0
+  version: 1.1.1
   x-translator:
     component: ARA
-    team: Expander Agent
+    team:
+    - Expander Agent
+    biolink-version: 2.1.0
+    externalDocs:
+      description: The values for component and team are restricted according to this
+        external JSON schema. See schema and examples at url
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
+  x-trapi:
+    version: 1.1.0
+    operations:
+      - filter_results_top_n
+      - overlay_compute_ngd
+      - overlay_compute_jaccard
+      - overlay_fisher_exact_test
+      - bind
+      - fill
+      - filter_kgraph_orphans
+      - score
+      - complete_results
+      - filter_kgraph_top_n
+      - filter_kgraph_std_dev
+      - filter_kgraph_percentile
+      - filter_kgraph_discrete_kedge_attribute
+      - filter_kgraph_continuous_attribute
+    externalDocs:
+      description: The values for version are restricted according to the regex in
+        this external JSON schema. See schema and examples at url
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-trapi/
 externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
 - description: ARAX Translator Reasoner API
-  url: https://arax.ncats.io/devED/api/arax/v1.0
+  url: https://arax.ncats.io/api/arax/v1.1
 tags:
 - description: Get supported relationships by source and target
   externalDocs:
     description: Documentation for the reasoner predicates function
-    url: http://arax.ncats.io/devED/overview.html#predicates
+    url: http://arax.ncats.io/overview.html#predicates
   name: predicates
+- description: Get supported relationships
+  externalDocs:
+    description: Documentation for the reasoner predicates function
+    url: http://arax.ncats.io/overview.html#predicates
+  name: meta_knowledge_graph
 - description: Query reasoner using a predefined question type
   externalDocs:
     description: Documentation for the reasoner query function
-    url: http://arax.ncats.io/devED/overview.html#query
+    url: http://arax.ncats.io/overview.html#query
   name: query
-- name: translator
-- name: reasoner
+- description: Required for SmartAPI validation of x-translator
+  name: translator
+- description: Required for SmartAPI validation of x-trapi
+  name: trapi
 - description: Request a previously stored response from the server
   externalDocs:
     description: Documentation for the reasoner response function
-    url: https://arax.ncats.io/devED/overview.html#response
+    url: https://arax.ncats.io/overview.html#response
   name: response
 - description: Translate natural language question into a standardized query
   externalDocs:
     description: Documentation for the reasoner translate function
-    url: https://arax.ncats.io/devED/overview.html#translate
+    url: https://arax.ncats.io/overview.html#translate
   name: translate
 - description: Return identifier and type of some entity in the knowledge graph
   externalDocs:
     description: Documentation for the reasoner entity function
-    url: https://arax.ncats.io/devED/overview.html#entity
+    url: https://arax.ncats.io/overview.html#entity
   name: entity
 - description: Return a list of example questions that the reasoner can answer
   externalDocs:
     description: Documentation for the reasoner exampleQuestions function
-    url: https://arax.ncats.io/devED/overview.html#exampleQuestions
+    url: https://arax.ncats.io/overview.html#exampleQuestions
   name: exampleQuestions
 - description: Query to get the Normalized Google Distance between two MeSH terms
     based on co-occurance in all PubMed article annotations
   externalDocs:
     description: Documentation for the reasoner PubmedMeshNgd function
-    url: https://arax.ncats.io/devED/overview.html#PubmedMeshNgd
+    url: https://arax.ncats.io/overview.html#PubmedMeshNgd
   name: PubmedMeshNgd
 paths:
   /PubmedMeshNgd/{term1}/{term2}:
@@ -93,30 +127,34 @@ paths:
       tags:
       - PubmedMeshNgd
       x-openapi-router-controller: openapi_server.controllers.pubmed_mesh_ngd_controller
-  /entity/{search_string}:
+  /entity:
     get:
-      operationId: get_entity_by_string
+      operationId: get_entity
       parameters:
-      - description: Some string to search by (name, abbreviation, CURIE, etc.)
-        explode: false
-        in: path
-        name: search_string
+      - description: A string to search by (name, abbreviation, CURIE, etc.). The
+          parameter may be repeated for multiple search strings.
+        explode: true
+        in: query
+        name: q
         required: true
         schema:
-          type: string
-        style: simple
+          example:
+          - MESH:D014867
+          - NCIT:C34373
+          items:
+            type: string
+          type: array
+        style: form
       responses:
         "200":
           content:
             application/json:
               schema:
-                items:
-                  type: object
-                type: array
+                type: object
           description: successful operation
         "404":
           description: Entity not found
-      summary: Obtain the CURIE and type of some entity by name
+      summary: Obtain CURIE and synonym information about a search term
       tags:
       - entity
       x-openapi-router-controller: openapi_server.controllers.entity_controller
@@ -136,8 +174,24 @@ paths:
       tags:
       - exampleQuestions
       x-openapi-router-controller: openapi_server.controllers.example_questions_controller
+  /meta_knowledge_graph:
+    get:
+      operationId: meta_knowledge_graph
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetaKnowledgeGraph'
+          description: Returns meta knowledge graph representation of this TRAPI web
+            service.
+      summary: Meta knowledge graph representation of this TRAPI web service.
+      tags:
+      - meta_knowledge_graph
+      x-openapi-router-controller: openapi_server.controllers.meta_knowledge_graph_controller
   /predicates:
     get:
+      deprecated: true
       operationId: predicates
       responses:
         "200":
@@ -167,17 +221,6 @@ paths:
   /query:
     post:
       operationId: query
-      parameters:
-      - description: |
-          Set to true in order to bypass any possible cached response and try to answer the query over again
-        explode: true
-        in: query
-        name: bypass_cache
-        required: false
-        schema:
-          default: false
-          type: boolean
-        style: form
       requestBody:
         content:
           application/json:
@@ -227,7 +270,7 @@ paths:
         name: response_id
         required: true
         schema:
-          type: integer
+          type: string
         style: simple
       responses:
         "200":
@@ -278,70 +321,117 @@ components:
         a log level could allow a user to override the default log level in order
         to receive more fine-grained log information when debugging an issue.
       example:
-        bypass_cache: "true"
+        bypass_cache: false
         page_number: 1
-        asynchronous: "false"
+        operations: null
+        workflow: null
+        log_level: "DEBUG"
+        enforce_edge_directionality: false
+        return_minimal_metadata: false
         max_results: 100
+        stream_progress: false
         message:
           query_graph:
             edges:
               e00:
                 subject: n00
                 object: n01
-                predicate: biolink:physically_interacts_with
+                predicates:
+                - biolink:physically_interacts_with
             nodes:
               n00:
-                id: CHEMBL.COMPOUND:CHEMBL112
-                category: biolink:ChemicalSubstance
+                ids:
+                - CHEMBL.COMPOUND:CHEMBL112
+                categories:
+                - biolink:ChemicalSubstance
               n01:
-                category: biolink:Protein
-        page_size: 50
+                categories:
+                - biolink:Protein
+        page_size: 100
       properties:
         message:
+          $ref: '#/components/schemas/Message'
+        log_level:
           allOf:
-          - $ref: '#/components/schemas/Message'
-          description: The query Message is a serialization of the user request. Content
-            of the Message object depends on the intended TRAPI operation. For example,
-            the fill operation requires a non-empty query_graph field as part of the
-            Message, whereas other operations, e.g. overlay, require non-empty results
-            and knowledge_graph fields.
+          - $ref: '#/components/schemas/LogLevel'
+          description: The least critical level of logs to return
+          nullable: true
+        workflow:
+          description: A list of operations to be applied
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/OperationAnnotate'
+              - $ref: '#/components/schemas/OperationAnnotateEdges'
+              - $ref: '#/components/schemas/OperationBind'
+              - $ref: '#/components/schemas/OperationCompleteResults'
+              - $ref: '#/components/schemas/OperationFill'
+              - $ref: '#/components/schemas/OperationFilterKgraph'
+              - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+              - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
+              - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
+              - $ref: '#/components/schemas/OperationFilterKgraphTopN'
+              - $ref: '#/components/schemas/OperationFilterResults'
+              - $ref: '#/components/schemas/OperationFilterResultsTopN'
+              - $ref: '#/components/schemas/OperationLookup'
+              - $ref: '#/components/schemas/OperationOverlay'
+              - $ref: '#/components/schemas/OperationOverlayComputeJaccard'
+              - $ref: '#/components/schemas/OperationOverlayComputeNgd'
+              - $ref: '#/components/schemas/OperationOverlayConnectKnodes'
+              - $ref: '#/components/schemas/OperationOverlayFisherExactTest'
+              - $ref: '#/components/schemas/OperationRestate'
+              - $ref: '#/components/schemas/OperationScore'
+              - $ref: '#/components/schemas/OperationSortResults'
+              - $ref: '#/components/schemas/OperationSortResultsEdgeAttribute'
+              - $ref: '#/components/schemas/OperationSortResultsNodeAttribute'
+              - $ref: '#/components/schemas/OperationSortResultsScore'
+          nullable: true
+          type: array
         bypass_cache:
-          description: Set to true in order to bypass any possible cached message
-            and try to answer the query over again
-          example: "true"
-          type: string
-        asynchronous:
-          description: Set to true in order to receive an incomplete message_id if
-            the query will take a while. Client can then periodically request that
-            message_id for a status update and eventual complete message
-          example: "false"
-          type: string
+          default: false
+          description: Set to true in order to bypass any possible cached response
+            and try to answer the query from scratch
+          type: boolean
+        stream_progress:
+          default: false
+          description: Set to true in order to receive a stream of LogEntry objects
+            as the query is progressing
+          type: boolean
+        enforce_edge_directionality:
+          default: false
+          description: Set to true in order to enforce edge directionality during
+            queries. By default, edge directionality can be reversed without penalty.
+          type: boolean
+        return_minimal_metadata:
+          default: false
+          description: Set to true in order to return only the most minimal metadata.
+            By default, rich metadata for nodes and edges are supplied, which may
+            cause a very large and slower Response.
+          type: boolean
         max_results:
+          default: 100
           description: Maximum number of individual results to return
           example: 100
           type: integer
         page_size:
+          default: 100
           description: Split the results into pages with this number of results each
-          example: 20
+          example: 100
           type: integer
         page_number:
+          default: 1
           description: Page number of results when the number of results exceeds the
-            page_size
+            page_size, with page 1 as the first page
           example: 1
           type: integer
-        reasoner_ids:
-          description: List of reasoners to consult for the query. By default it is
-            assumed to be the current reasoner being queried, but this mechanism could
-            be used to proxy queries to other reasoners.
-          items:
-            type: string
-          type: array
         operations:
           allOf:
           - $ref: '#/components/schemas/Operations'
           description: Container for one or more Message objects or identifiers for
             one or more Messages along with a processing plan and options for how
             those messages should be processed and returned
+          nullable: true
       required:
       - message
       type: object
@@ -355,42 +445,55 @@ components:
         and logs properties provide additional details about the response.
       example:
         original_question: what proteins are affected by sickle cell anemia
+        workflow:
+        - ""
+        - ""
         query_options:
           coalesce: true
           threshold: 0.9
         restated_question: Which proteins are affected by sickle cell anemia?
         description: Success. 42 results found.
-        message: ""
+        message:
+          query_graph:
+            edges:
+              e00:
+                subject: n00
+                object: n01
+                predicates:
+                - biolink:physically_interacts_with
+            nodes:
+              n00:
+                ids:
+                - CHEMBL.COMPOUND:CHEMBL112
+                categories:
+                - biolink:ChemicalSubstance
+              n01:
+                categories:
+                - biolink:Protein
         type: TranslatorAPIResponse
-        query_type_id: Q2
         schema_version: 1.0.0
         datetime: 2021-01-09 12:34:45
         operations: ""
         table_column_names:
         - chemical_substance.name
         - chemical_substance.id
-        tool_version: ARAX 0.7.0
-        terms:
-          key: '{}'
+        tool_version: ARAX 0.8.0
         context: https://rtx.ncats.io/ns/translator.jsonld
         reasoner_id: ARAX
-        id: https://arax.ncats.io/devED/api/rtx/v1.0/response/123
+        id: https://arax.ncats.io/api/rtx/v1.0/response/123
         logs:
         - code: code
-          level: ERROR
+          level: ""
           message: message
           timestamp: 2020-09-03T18:13:49Z
         - code: code
-          level: ERROR
+          level: ""
           message: message
           timestamp: 2020-09-03T18:13:49Z
         status: Success
       properties:
         message:
-          allOf:
-          - $ref: '#/components/schemas/Message'
-          description: Contains the knowledge of the response (query graph, knowledge
-            graph, and results).
+          $ref: '#/components/schemas/Message'
         status:
           description: One of a standardized set of short codes, e.g. Success, QueryNotTraversable,
             KPsNotAvailable
@@ -409,6 +512,37 @@ components:
             $ref: '#/components/schemas/LogEntry'
           nullable: true
           type: array
+        workflow:
+          description: A list of operations that were applied
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/OperationAnnotate'
+              - $ref: '#/components/schemas/OperationAnnotateEdges'
+              - $ref: '#/components/schemas/OperationBind'
+              - $ref: '#/components/schemas/OperationCompleteResults'
+              - $ref: '#/components/schemas/OperationFill'
+              - $ref: '#/components/schemas/OperationFilterKgraph'
+              - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+              - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
+              - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
+              - $ref: '#/components/schemas/OperationFilterKgraphTopN'
+              - $ref: '#/components/schemas/OperationFilterResults'
+              - $ref: '#/components/schemas/OperationFilterResultsTopN'
+              - $ref: '#/components/schemas/OperationLookup'
+              - $ref: '#/components/schemas/OperationOverlay'
+              - $ref: '#/components/schemas/OperationOverlayComputeJaccard'
+              - $ref: '#/components/schemas/OperationOverlayComputeNgd'
+              - $ref: '#/components/schemas/OperationOverlayConnectKnodes'
+              - $ref: '#/components/schemas/OperationOverlayFisherExactTest'
+              - $ref: '#/components/schemas/OperationRestate'
+              - $ref: '#/components/schemas/OperationScore'
+              - $ref: '#/components/schemas/OperationSortResults'
+              - $ref: '#/components/schemas/OperationSortResultsEdgeAttribute'
+              - $ref: '#/components/schemas/OperationSortResultsNodeAttribute'
+              - $ref: '#/components/schemas/OperationSortResultsScore'
+          type: array
         operations:
           allOf:
           - $ref: '#/components/schemas/Operations'
@@ -422,7 +556,7 @@ components:
           type: string
         tool_version:
           description: Version label of the tool that generated this response
-          example: ARAX 0.7.0
+          example: ARAX 0.8.0
           type: string
         schema_version:
           description: Version label of this TRAPI schema
@@ -452,31 +586,6 @@ components:
             might not).
           example: Which proteins are affected by sickle cell anemia?
           type: string
-        query_type_id:
-          description: The query type id if one is known for the query/message (as
-            defined in a shared manner)
-          example: Q2
-          type: string
-        terms:
-          additionalProperties: true
-          description: Dict of terms needed by the specific query type
-          properties:
-            disease:
-              example: malaria
-              type: string
-            protein:
-              example: P12345
-              type: string
-            anatomical_entity:
-              example: liver
-              type: string
-            chemical_substance:
-              example: ibuprofen
-              type: string
-            metabolite:
-              example: ibuprofen
-              type: string
-          type: object
         query_options:
           description: Dict of options that can be sent with the query. Options are
             tool specific and not stipulated here
@@ -494,8 +603,13 @@ components:
           type: string
         id:
           description: URI for this response
-          example: https://arax.ncats.io/devED/api/rtx/v1.0/response/123
+          example: https://arax.ncats.io/api/rtx/v1.0/response/123
           type: string
+        validation_result:
+          type: object
+          description: >-
+            Validation results and other summary stats computed
+            for this Response.
       required:
       - message
       type: object
@@ -514,13 +628,17 @@ components:
             e00:
               subject: n00
               object: n01
-              predicate: biolink:physically_interacts_with
+              predicates:
+              - biolink:physically_interacts_with
           nodes:
             n00:
-              id: CHEMBL.COMPOUND:CHEMBL112
-              category: biolink:ChemicalSubstance
+              ids:
+              - CHEMBL.COMPOUND:CHEMBL112
+              categories:
+              - biolink:ChemicalSubstance
             n01:
-              category: biolink:Protein
+              categories:
+              - biolink:Protein
       properties:
         results:
           description: List of all returned Result objects for the query posed
@@ -552,7 +670,7 @@ components:
         the condition of the component sending the message.
       example:
         code: code
-        level: ERROR
+        level: ""
         message: message
         timestamp: 2020-09-03T18:13:49Z
       properties:
@@ -563,14 +681,9 @@ components:
           nullable: true
           type: string
         level:
-          description: Logging level
-          enum:
-          - ERROR
-          - WARNING
-          - INFO
-          - DEBUG
+          allOf:
+          - $ref: '#/components/schemas/LogLevel'
           nullable: true
-          type: string
         code:
           description: One of a standardized set of short codes e.g. QueryNotTraversable,
             KPNotAvailable, KPResponseMalformed
@@ -581,6 +694,16 @@ components:
           nullable: true
           type: string
       type: object
+    LogLevel:
+      description: Logging level
+      enum:
+      - ERROR
+      - WARNING
+      - INFO
+      - DEBUG
+      example: DEBUG
+      type: string
+      x-nullable: true
     Result:
       additionalProperties: true
       description: A Result object specifies the nodes and edges in the knowledge
@@ -616,21 +739,25 @@ components:
         id:
           description: URI for this result
           example: result:234
+          nullable: true
           type: string
         description:
           description: A free text description of this result answer from the reasoner
           example: The genetic condition sickle cell anemia may provide protection
             from cerebral malaria via genetic alterations of proteins HBB (P68871)
             and HMOX1 (P09601).
+          nullable: true
           type: string
         essence:
           description: A single string that is the terse essence of the result (useful
             for simple answers)
           example: ibuprofen
+          nullable: true
           type: string
         essence_category:
           description: A Translator BioLink bioentity category of the essence
           example: biolink:ChemicalSubstance
+          nullable: true
           type: string
         row_data:
           description: An arbitrary list of values that captures the essence of the
@@ -640,21 +767,27 @@ components:
           - ibuprofen
           - CHEMBL:CHEMBL521
           items:
-            type: string
+            oneOf:
+            - type: string
+            - type: number
+          nullable: true
           type: array
         score:
           description: Any type of score associated with this result
           example: 163.233
           format: float
+          nullable: true
           type: number
         score_name:
           description: Name for the score
           example: Jaccard distance
+          nullable: true
           type: string
         score_direction:
           description: 'Sorting indicator for the score: one of higher_is_better or
             lower_is_better'
           example: lower_is_better
+          nullable: true
           type: string
         confidence:
           description: |-
@@ -662,23 +795,27 @@ components:
              0.0 (no confidence) and 1.0 (highest confidence)
           example: 0.9234
           format: float
+          nullable: true
           type: number
         result_group:
           description: An integer group number for results for use in cases where
             several results should be grouped together. Also useful to control sorting
             ascending.
           example: 1
+          nullable: true
           type: integer
         result_group_similarity_score:
           description: A score that denotes the similarity of this result to other
             members of the result_group
           example: 0.95
           format: float
+          nullable: true
           type: number
         reasoner_id:
           description: Identifier string of the reasoner that provided this result
             (e.g., ARAX, Robokop, etc.)
           example: ARAX
+          nullable: true
           type: string
       required:
       - edge_bindings
@@ -688,12 +825,13 @@ components:
       additionalProperties: true
       properties:
         id:
-          allOf:
-          - $ref: '#/components/schemas/CURIE'
-          description: An instance of NodeBinding is a single KnowledgeGraph Node
-            mapping, identified by the corresponding 'id' object key identifier of
-            the Node within the Knowledge Graph. Instances of NodeBinding may include
-            extra annotation (such annotation is not yet fully standardized).
+          description: A Compact URI, consisting of a prefix and a reference separated
+            by a colon, such as UniProtKB:P00738. Via an external context definition,
+            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
+            to form a full URI.
+          externalDocs:
+            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          type: string
       required:
       - id
       type: object
@@ -734,6 +872,7 @@ components:
       - edges
       - nodes
       type: object
+      x-nullable: true
     QueryGraph:
       additionalProperties: true
       description: A graph representing a biomedical question. It serves as a template
@@ -764,22 +903,21 @@ components:
         If a CURIE is not specified, any nodes matching the category of the QNode
         will be returned in the Results.
       properties:
-        id:
+        ids:
           description: CURIE identifier for this node
-          example: OMIM:603903
+          example:
+          - OMIM:603903
+          items:
+            $ref: '#/components/schemas/CURIE'
+          minItems: 1
           nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/CURIE'
-          - items:
-              $ref: '#/components/schemas/CURIE'
-            type: array
-        category:
+          type: array
+        categories:
+          items:
+            $ref: '#/components/schemas/BiolinkEntity'
+          minItems: 1
           nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/BiolinkEntity'
-          - items:
-              $ref: '#/components/schemas/BiolinkEntity'
-            type: array
+          type: array
         is_set:
           default: false
           description: Boolean that if set to true, indicates that this QNode MAY
@@ -792,6 +930,13 @@ components:
             QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=True,
             each n1 must be connected to at least one n2.
           type: boolean
+        constraints:
+          description: A list of contraints applied to a query node. If there are
+            multiple items, they must all be true (equivalent to AND)
+          items:
+            $ref: '#/components/schemas/QueryConstraint'
+          nullable: true
+          type: array
         option_group_id:
           description: 'Optional string acting as a label on a set of nodes and/or
             edges indicating that they belong to a group that are to be evaluated
@@ -808,13 +953,12 @@ components:
         to the given QEdge predicate or relation term ('class'), or to a term which
         is a subclass of the QEdge specified term.
       properties:
-        predicate:
+        predicates:
+          items:
+            $ref: '#/components/schemas/BiolinkPredicate'
+          minItems: 1
           nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/BiolinkPredicate'
-          - items:
-              $ref: '#/components/schemas/BiolinkPredicate'
-            type: array
+          type: array
         relation:
           description: Query constraint against the relationship type term of this
             edge, as originally specified by, or curated by inference from, the original
@@ -833,6 +977,13 @@ components:
             node anchoring the query filter pattern for the query relationship edge.
           example: https://www.uniprot.org/uniprot/P00738
           type: string
+        constraints:
+          description: A list of contraints applied to a query edge. If there are
+            multiple items, they must all be true (equivalent to AND)
+          items:
+            $ref: '#/components/schemas/QueryConstraint'
+          nullable: true
+          type: array
         exclude:
           description: If set to true, then all subgraphs containing this edge are
             excluded from the final results. (optional)
@@ -856,13 +1007,11 @@ components:
           example: Haptoglobin
           nullable: true
           type: string
-        category:
+        categories:
+          items:
+            $ref: '#/components/schemas/BiolinkEntity'
           nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/BiolinkEntity'
-          - items:
-              $ref: '#/components/schemas/BiolinkEntity'
-            type: array
+          type: array
         attributes:
           description: A list of attributes describing the node
           items:
@@ -872,42 +1021,63 @@ components:
       type: object
     Attribute:
       additionalProperties: false
-      description: Generic attribute for a node or an edge that expands key-value
-        pair concept by including a type of this attribute from a suitable ontology,
-        a source of this attribute, and (optionally) a url with additional information
-        about this attribute.
+      description: Generic attribute for a node or an edge that expands the key-value
+        pair concept by including fields for additional metadata. These fields can
+        be used to describe the source of the statement made in key-value pair of
+        the attribute object, or describe the attribute's value itself including its
+        semantic type, or a url providing additional information about it.
       properties:
-        name:
-          description: Human-readable name or label for the attribute. If appropriate,
-            should be the name of the semantic type term.
-          example: PubMed Identifier
+        attribute_type_id:
+          description: A Compact URI, consisting of a prefix and a reference separated
+            by a colon, such as UniProtKB:P00738. Via an external context definition,
+            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
+            to form a full URI.
+          externalDocs:
+            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          type: string
+        original_attribute_name:
+          description: The term used by the original source of an attribute to describe
+            the meaning or significance of the value it captures. This may be a column
+            name in a source tsv file, or a key in a source json document for the
+            field in the data that held the attribute's value. Capturing this information  where
+            possible lets us preserve what the original source said. Note that the
+            data type is string' but the contents of the field could also be a CURIE
+            of a third party ontology term.
+          example: p-value
           nullable: true
           type: string
         value:
           description: Value of the attribute. May be any data type, including a list.
-          example: 32529952
-        type:
-          allOf:
-          - $ref: '#/components/schemas/CURIE'
-          description: CURIE of the semantic type of the attribute. For properties
-            defined by the Biolink model this should be a biolink CURIE, otherwise,
-            if possible, from the EDAM ontology. If a suitable identifier does not
-            exist, enter a descriptive phrase here and submit the new type for consideration
-            by the appropriate authority.
-          example: EDAM:data_1187
-        url:
-          description: Human-consumable URL to link out and provide additional information
-            about the attribute (not the node or the edge).
-          example: https://pubmed.ncbi.nlm.nih.gov/32529952
-          nullable: true
+          example: 0.000153
+        value_type_id:
+          description: A Compact URI, consisting of a prefix and a reference separated
+            by a colon, such as UniProtKB:P00738. Via an external context definition,
+            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
+            to form a full URI.
+          externalDocs:
+            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
           type: string
-        source:
-          description: Source of the attribute, preferably as a CURIE prefix.
+        attribute_source:
+          description: The source of the core assertion made by the key-value pair
+            of an attribute object. Use a CURIE or namespace designator for this resource
+            where possible.
           example: UniProtKB
           nullable: true
           type: string
+        value_url:
+          description: Human-consumable URL linking to a web document that provides
+            additional information about an  attribute's value (not the node or the
+            edge fom which it hangs).
+          example: https://pubmed.ncbi.nlm.nih.gov/32529952
+          nullable: true
+          type: string
+        description:
+          description: Human-readable description for the attribute and its value.
+          example: Assertion Authored By Dr. Trans L. Ator
+          nullable: true
+          type: string
       required:
-      - type
+      - attribute_type_id
       - value
       type: object
     Edge:
@@ -928,17 +1098,21 @@ components:
           nullable: true
           type: string
         subject:
-          allOf:
-          - $ref: '#/components/schemas/CURIE'
-          description: Corresponds to the map key CURIE of the subject concept node
-            of this relationship edge.
-          example: OMIM:603903
+          description: A Compact URI, consisting of a prefix and a reference separated
+            by a colon, such as UniProtKB:P00738. Via an external context definition,
+            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
+            to form a full URI.
+          externalDocs:
+            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          type: string
         object:
-          allOf:
-          - $ref: '#/components/schemas/CURIE'
-          description: Corresponds to the map key CURIE of the object concept node
-            of this relationship edge.
-          example: UniProtKB:P00738
+          description: A Compact URI, consisting of a prefix and a reference separated
+            by a colon, such as UniProtKB:P00738. Via an external context definition,
+            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
+            to form a full URI.
+          externalDocs:
+            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          type: string
         attributes:
           description: A list of additional attributes for this edge
           items:
@@ -978,6 +1152,187 @@ components:
       externalDocs:
         url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
       type: string
+    MetaKnowledgeGraph:
+      description: Knowledge-map representation of this TRAPI web service.
+      example:
+        nodes:
+          key:
+            id_prefixes:
+            - CHEMBL.COMPOUND
+            - INCHIKEY
+        edges:
+        - predicate: biolink:interacts_with
+          subject: biolink:PhenotypicFeature
+          relations:
+          - inhibits
+          - activates
+          object: biolink:PhenotypicFeature
+        - predicate: biolink:interacts_with
+          subject: biolink:PhenotypicFeature
+          relations:
+          - inhibits
+          - activates
+          object: biolink:PhenotypicFeature
+      properties:
+        nodes:
+          additionalProperties:
+            $ref: '#/components/schemas/MetaNode'
+          description: Collection of node categories provided by this TRAPI web service,
+            indexed by Biolink class CURIEs.
+          type: object
+        edges:
+          description: List of edges/predicates provided by this TRAPI web service.
+          items:
+            $ref: '#/components/schemas/MetaEdge'
+          minItems: 1
+          type: array
+      type: object
+    MetaNode:
+      additionalProperties: false
+      description: Description of a node category provided by this TRAPI web service.
+      example:
+        id_prefixes:
+        - CHEMBL.COMPOUND
+        - INCHIKEY
+      properties:
+        id_prefixes:
+          description: List of CURIE prefixes for the node category that this TRAPI
+            web service understands and accepts on the input.
+          example:
+          - CHEMBL.COMPOUND
+          - INCHIKEY
+          items:
+            type: string
+          minItems: 1
+          type: array
+      required:
+      - id_prefixes
+      type: object
+    MetaEdge:
+      additionalProperties: false
+      description: Edge in a meta knowledge map describing relationship between a
+        subject Biolink class and an object Biolink class.
+      example:
+        predicate: biolink:interacts_with
+        subject: biolink:PhenotypicFeature
+        relations:
+        - inhibits
+        - activates
+        object: biolink:PhenotypicFeature
+      properties:
+        subject:
+          description: Compact URI (CURIE) for a Biolink class, biolink:NamedThing
+            or a child thereof. The CURIE must use the prefix 'biolink:' followed
+            by the PascalCase class name.
+          example: biolink:PhenotypicFeature
+          externalDocs:
+            description: Biolink model entities
+            url: https://biolink.github.io/biolink-model/docs/NamedThing.html
+          pattern: ^biolink:[A-Z][a-zA-Z]*$
+          type: string
+        predicate:
+          description: CURIE for a Biolink 'predicate' slot, taken from the Biolink
+            slot ('is_a') hierarchy rooted in biolink:related_to (snake_case). This
+            predicate defines the Biolink relationship between the subject and object
+            nodes of a biolink:Association defining a knowledge graph edge.
+          example: biolink:interacts_with
+          externalDocs:
+            description: Biolink model predicates
+            url: https://biolink.github.io/biolink-model/docs/related_to.html
+          pattern: ^biolink:[a-z][a-z_]*$
+          type: string
+        object:
+          description: Compact URI (CURIE) for a Biolink class, biolink:NamedThing
+            or a child thereof. The CURIE must use the prefix 'biolink:' followed
+            by the PascalCase class name.
+          example: biolink:PhenotypicFeature
+          externalDocs:
+            description: Biolink model entities
+            url: https://biolink.github.io/biolink-model/docs/NamedThing.html
+          pattern: ^biolink:[A-Z][a-zA-Z]*$
+          type: string
+        relations:
+          description: Low-level relations from the underlying source.
+          example:
+          - inhibits
+          - activates
+          items:
+            type: string
+          type: array
+      required:
+      - object
+      - predicate
+      - subject
+      type: object
+    QueryConstraint:
+      additionalProperties: false
+      description: Generic query constraint for a query node or query edge
+      properties:
+        id:
+          allOf:
+          - $ref: '#/components/schemas/CURIE'
+          description: CURIE of the concept being constrained. For properties defined
+            by the Biolink model this SHOULD be a biolink CURIE. otherwise, if possible,
+            from the EDAM ontology. If a suitable CURIE does not exist, enter a descriptive
+            phrase here and submit the new type for consideration by the appropriate
+            authority.
+          example: EDAM:data_0844
+          nullable: false
+        name:
+          description: Human-readable name or label for the constraint concept. If
+            appropriate, it SHOULD be the term name of the CURIE used as the 'id'.
+            This is redundant but required for human readability.
+          example: molecular mass
+          nullable: false
+          type: string
+        not:
+          default: false
+          type: boolean
+        operator:
+          description: Relationship between the database value and the constraint
+            value for the specified id. The operators ==, >, and < mean is exactly
+            equal to, is greater than, and is less than, respectively. The 'matches'
+            operator indicates that the value is a regular expression to be evaluated.
+            If value is a list type, then at least one evaluation must be true (equivalent
+            to OR). This means that the == operator with a list acts like a SQL 'IN'
+            clause. The 'not' property negates the operator such that not and == means
+            'not equal to' (or 'not in' for a list), and not > means <=, and not <
+            means >=, and not matches means does not match. The '==' operator SHOULD
+            NOT be used in a manner that describes an "is a" subclass relationship
+            for the parent QNode.
+          enum:
+          - ==
+          - '>'
+          - <
+          - matches
+          type: string
+        value:
+          description: Value of the attribute. May be any data type, including a list.
+            If the value is a list and there are multiple items, at least one comparison
+            must be true (equivalent to OR). If 'value' is of data type 'object',
+            the keys of the object MAY be treated as a list. A 'list' data type paired
+            with the '>' or '<' operators will encode extraneous comparisons, but
+            this is permitted as it is in SQL and other languages.
+          example: 57.0
+        unit_id:
+          description: CURIE of the units of the value or list of values in the 'value'
+            property. The Units of Measurement Ontology (UO) should be used if possible.
+            The unit_id MUST be provided for (lists of) numerical values that correspond
+            to a quantity that has units.
+          example: UO:0000222
+        unit_name:
+          description: Term name that is associated with the CURIE of the units of
+            the value or list of values in the 'value' property. The Units of Measurement
+            Ontology (UO) SHOULD be used if possible. This property SHOULD be provided
+            if a unit_id is provided. This is redundant but recommended for human
+            readability.
+          example: kilodalton
+      required:
+      - id
+      - name
+      - operator
+      - value
+      type: object
     Operations:
       additionalProperties: true
       description: Container for one or more Message objects or identifiers for one
@@ -987,7 +1342,7 @@ components:
         message_uris:
           description: List of URIs for Message or Response objects to fetch and process
           example:
-          - https://arax.ncats.io/devED/api/arax/v1.0/response/38
+          - https://arax.ncats.io/api/arax/v1.0/response/38
           items:
             type: string
           type: array
@@ -1015,6 +1370,7 @@ components:
             halt_on_warning: false
           type: object
       type: object
+      nullable: true
     Question:
       additionalProperties: true
       properties:
@@ -1051,4 +1407,675 @@ components:
           example: 0.714
           format: float
           type: number
+      type: object
+    OperationAnnotate:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - annotate
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationAnnotateEdges:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - annotate_edges
+          type: string
+        parameters:
+          properties:
+            attributes:
+              description: A list of attributes to annotate the edges with. If not
+                included then all available data will be annotated.
+              example:
+              - pmids
+              items:
+                type: string
+              type: array
+          type: object
+      required:
+      - id
+      type: object
+    OperationBind:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - bind
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationCompleteResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - complete_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFill:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - fill
+          type: string
+        parameters:
+          oneOf:
+          - additionalProperties: false
+            properties:
+              allowlist:
+                description: List of knowledge providers/sources that may be used
+                  to provide knowledge.
+                example:
+                - icees
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - additionalProperties: false
+            properties:
+              denylist:
+                description: List of knowledge providers/sources that may NOT be used
+                  to provide knowledge.
+                example:
+                - ctd
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+      required:
+      - id
+      type: object
+    OperationFilterKgraph:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterKgraphContinuousAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_continuous_attribute
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: normalized_google_distance
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to remove edges with specific
+                edge_keys. If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering. Allows us to know what to
+                do with the nodes connected to edges that are removed.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+            remove_above_or_below:
+              description: Indicates whether to remove above or below the given threshold.
+              enum:
+              - above
+              - below
+              type: string
+            threshold:
+              description: The value to compare attribute values to.
+              example: 1.2
+              type: number
+          required:
+          - edge_attribute
+          - threshold
+          - remove_above_or_below
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphDiscreteKedgeAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_discrete_kedge_attribute
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: provided_by
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to remove edges with specific
+                edge_keys. If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering. Allows us to know what to
+                do with the nodes connected to edges that are removed
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+            remove_value:
+              description: The value for which all edges containing this value in
+                the specified edge_attribute should be removed.
+              example: infores:semmeddb
+          required:
+          - edge_attribute
+          - remove_value
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphOrphans:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_orphans
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterKgraphPercentile:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_percentile
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: normalized_google_distance
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to filter on specific edge_keys.
+                If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering. Allows us to know what to
+                do with the nodes connected to edges that are removed.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+            remove_above_or_below:
+              default: below
+              description: Indicates whether to remove above or below the given threshold.
+              enum:
+              - above
+              - below
+              type: string
+            threshold:
+              default: 95
+              description: The percentile to threshold on.
+              example: 96.8
+              maximum: 100
+              minimum: 0
+              type: number
+          required:
+          - edge_attribute
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphStdDev:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_std_dev
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: normalized_google_distance
+              type: string
+            num_sigma:
+              default: 1
+              description: The number of standard deviations to threshold on.
+              example: 1.2
+              minimum: 0
+              type: number
+            plus_or_minus_std_dev:
+              default: plus
+              description: Indicate whether or not the threshold should be found using
+                plus or minus the standard deviation. E.g. when plus_or_minus_std_dev
+                is set to plus will set the cutoff for filtering as the mean + num_sigma
+                * std_dev while setting plus_or_minus_std_dev to minus will set the
+                cutoff as the mean - num_sigma * std_dev.
+              enum:
+              - plus
+              - minus
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to filter on specific edge_keys.
+                If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+            remove_above_or_below:
+              default: below
+              description: Indictes whether to remove above or below the given threshold.
+              enum:
+              - above
+              - below
+              type: string
+          required:
+          - edge_attribute
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphTopN:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_top_n
+          type: string
+        parameters:
+          properties:
+            edge_attribute:
+              description: The name of the edge attribute to filter on.
+              example: normalized_google_distance
+              type: string
+            keep_top_or_bottom:
+              default: top
+              description: Indicate whether or not the the top or bottom n values
+                should be kept.
+              enum:
+              - top
+              - bottom
+              type: string
+            max_edges:
+              default: 50
+              description: The number of edges to keep.
+              example: 10
+              minimum: 0
+              type: integer
+            qedge_keys:
+              description: This indicates if you only want to filter on specific edge_keys.
+                If not provided or empty, all edges will be filtered on.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+            qnode_keys:
+              default: []
+              description: This indicates if you only want nodes corresponding to
+                a specific list of qnode_keys to be removed. If not provided or empty,
+                no nodes will be removed when filtering. Allows us to know what to
+                do with the nodes connected to edges that are removed.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+          required:
+          - edge_attribute
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationFilterResultsTopN:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_results_top_n
+          type: string
+        parameters:
+          properties:
+            max_results:
+              description: The maximum number of results to return.
+              example: 50
+              minimum: 0
+              type: integer
+          required:
+          - max_results
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationLookup:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - lookup
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationOverlay:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationOverlayComputeJaccard:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_compute_jaccard
+          type: string
+        parameters:
+          properties:
+            end_node_keys:
+              description: A list of qnode keys specifying the ending nodes.
+              example:
+              - n0
+              - n2
+              items:
+                type: string
+              type: array
+            intermediate_node_key:
+              description: A qnode key specifying the intermediate node.
+              example: n1
+              type: string
+            virtual_relation_label:
+              description: The key of the query graph edge that corresponds to the
+                knowledge graph edges that were added by this operation.
+              example: J1
+              type: string
+          required:
+          - intermediate_node_key
+          - end_node_keys
+          - virtual_relation_label
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationOverlayComputeNgd:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_compute_ngd
+          type: string
+        parameters:
+          properties:
+            qnode_keys:
+              description: A list of qnode keys to overlay pairwise edges onto. Must
+                be be a list of at least 2 valid qnodes.
+              example:
+              - n00
+              - n01
+              items:
+                type: string
+              type: array
+            virtual_relation_label:
+              description: An label to help identify the virtual edge in the relation
+                field
+              example: NGD1
+              type: string
+          required:
+          - virtual_relation_label
+          - qnode_keys
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationOverlayConnectKnodes:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_connect_knodes
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationOverlayFisherExactTest:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay_fisher_exact_test
+          type: string
+        parameters:
+          properties:
+            object_qnode_key:
+              description: A specific object query node id.
+              example: n2
+              type: string
+            rel_edge_key:
+              description: A specific Qedge id connected to both subject nodes and
+                object nodes in message KG (optional, otherwise all edges connected
+                to both subject nodes and object nodes in message KG are considered).
+              example: e01
+              type: string
+            subject_qnode_key:
+              description: A specific subject query node id.
+              example: n1
+              type: string
+            virtual_relation_label:
+              description: An label to help identify the virtual edge.
+              example: f1
+              type: string
+          required:
+          - subject_qnode_key
+          - object_qnode_key
+          - virtual_relation_label
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationRestate:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - restate
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationScore:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - score
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationSortResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - sort_results
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationSortResultsEdgeAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - sort_results_edge_attribute
+          type: string
+        parameters:
+          properties:
+            ascending_or_descending:
+              description: Indicates whether results should be sorted in ascending
+                or descending order.
+              enum:
+              - ascending
+              - descending
+              type: string
+            edge_attribute:
+              description: The name of the edge attribute to order by.
+              example: normalized_google_distance
+              type: string
+            qedge_keys:
+              description: This indicates if you only want to consider edges with
+                specific edge_keys. If not provided or empty, all edges will be looked
+                at.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+          required:
+          - edge_attribute
+          - ascending_or_descending
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationSortResultsNodeAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - sort_results_node_attribute
+          type: string
+        parameters:
+          properties:
+            ascending_or_descending:
+              description: Indicates whether results should be sorted in ascending
+                or descending order.
+              enum:
+              - ascending
+              - descending
+              type: string
+            node_attribute:
+              description: The name of the node attribute to order by.
+              example: normalized_google_distance
+              type: string
+            qnode_keys:
+              description: This indicates if you only want to consider nodes with
+                specific node_keys. If not provided or empty, all nodes will be looked
+                at.
+              example:
+              - e01
+              items:
+                type: string
+              type: array
+          required:
+          - node_attribute
+          - ascending_or_descending
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationSortResultsScore:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - sort_results_score
+          type: string
+        parameters:
+          properties:
+            ascending_or_descending:
+              description: Indicates whether results should be sorted in ascending
+                or descending order.
+              enum:
+              - ascending
+              - descending
+              type: string
+          required:
+          - ascending_or_descending
+          type: object
+      required:
+      - id
+      - parameters
       type: object

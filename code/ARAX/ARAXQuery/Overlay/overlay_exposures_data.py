@@ -36,7 +36,7 @@ class OverlayExposuresData:
         self.synonyms_dict = self._get_node_synonyms(self.message.knowledge_graph)
         self.icees_attribute_name = "icees_p-value"
         self.icees_attribute_type = "EDAM:data_1669"
-        self.icees_edge_type = "has_icees_p-value_with"
+        self.icees_edge_type = "biolink:has_icees_p-value_with"
         self.icees_knowledge_graph_overlay_url = "https://icees.renci.org:16340/knowledge_graph_overlay"
         self.virtual_relation_label = self.parameters.get('virtual_relation_label')
 
@@ -159,7 +159,7 @@ class OverlayExposuresData:
         if self.icees_known_curies:
             return self.icees_known_curies.intersection(formatted_synonyms)
         else:
-            return formatted_synonyms
+            return set(list(formatted_synonyms)[:5])  # Only use first few equivalent curies if we don't know which they like
 
     def _get_icees_p_value_for_edge(self, qedge, log):
         # Note: ICEES doesn't quite accept ReasonerStdAPI, so we transform to what works
@@ -190,9 +190,9 @@ class OverlayExposuresData:
         return None
 
     def _create_icees_edge_attribute(self, p_value):
-        return EdgeAttribute(name=self.icees_attribute_name,
+        return EdgeAttribute(original_attribute_name=self.icees_attribute_name,
                              value=p_value,
-                             type=self.icees_attribute_type)
+                             attribute_type_id=self.icees_attribute_type)
 
     def _create_icees_virtual_edge(self, subject_curie, object_curie, p_value):
         id = f"ICEES:{subject_curie}--{object_curie}"
@@ -205,10 +205,11 @@ class OverlayExposuresData:
         #             relation=self.virtual_relation_label,
         #             qedge_ids=[self.virtual_relation_label],
         #             attributes=[self._create_icees_edge_attribute(p_value)])
+        provided_by = "infores:icees"
         edge_attribute_list = [
             self._create_icees_edge_attribute(p_value),
-            EdgeAttribute(name="is_defined_by", value="ARAX"),
-            EdgeAttribute(name="provided_by", value="ICEES+"),
+            EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
+            EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
             #EdgeAttribute(name="qedge_ids", value=[self.virtual_relation_label])
         ]
         edge = Edge(predicate=self.icees_edge_type, subject=subject_curie, object=object_curie,
@@ -230,7 +231,7 @@ class OverlayExposuresData:
     def _get_node_synonyms(knowledge_graph):
         synonymizer = NodeSynonymizer()
         node_keys = {key for key in knowledge_graph.nodes.keys()}
-        equivalent_curie_info = synonymizer.get_equivalent_nodes(node_keys, kg_name='KG2')
+        equivalent_curie_info = synonymizer.get_equivalent_nodes(node_keys)
         return {node_key: set(equivalent_curies_dict) for node_key, equivalent_curies_dict in equivalent_curie_info.items()}
 
     @staticmethod

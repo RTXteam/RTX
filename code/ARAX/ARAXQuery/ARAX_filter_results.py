@@ -27,7 +27,7 @@ class ARAXFilterResults:
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
-        #parameter descriptions
+        #Parameter descriptions
         self.edge_attribute_info = {
             "is_required": True,
             "examples": ["jaccard_index", "observed_expected_ratio", "normalized_google_distance"],
@@ -216,7 +216,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                 response.debug(f"Query graph is {message.query_graph}")
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
-                response.debug(f"Number of nodes in KG by type is {Counter([x.category[0] for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
+                response.debug(f"Number of nodes in KG by type is {Counter([x.categories[0] for x in message.knowledge_graph.nodes.values() if x.categories is not None])}")  # type is a list, just get the first one
                 #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")  # don't really need to worry about this now
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
                 response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges.values()])}")
@@ -226,7 +226,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                 for x in message.knowledge_graph.edges.values():
                     if x.attributes:
                         for attr in x.attributes:
-                            attribute_names.append(attr.name)
+                            attribute_names.append(attr.original_attribute_name)
                 response.debug(f"Number of edges in KG by attribute {Counter(attribute_names)}")
         return response
 
@@ -321,7 +321,10 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                 if hasattr(edge, 'attributes'):
                     if edge.attributes:
                         for attribute in edge.attributes:
-                            known_attributes.add(attribute.name)
+                            if hasattr(attribute,"original_attribute_name"):
+                                known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute,"attribute_type_id"):
+                                known_attributes.add(attribute.attribute_type_id)
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': known_attributes,
@@ -421,11 +424,14 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                 if hasattr(node, 'attributes'):
                     if node.attributes:
                         for attribute in node.attributes:
-                            known_attributes.add(attribute.name)
+                            if hasattr(attribute,"original_attribute_name"):
+                                known_attributes.add(attribute.original_attribute_name)
+                            if hasattr(attribute,"attribute_type_id"):
+                                known_attributes.add(attribute.attribute_type_id)
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_node_attribute'},
                                     'node_attribute': known_attributes,
-                                    'node_category': set([t for x in self.message.knowledge_graph.nodes.values() for t in x.category]),
+                                    'node_category': set([t for x in self.message.knowledge_graph.nodes.values() for t in x.categories]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()},
                                     'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}

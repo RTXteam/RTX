@@ -3,16 +3,28 @@ import argparse
 import sqlite3
 import pickle
 import os
+import sys
+
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+
+RTXConfig = RTXConfiguration()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--inputfolder", type=str, help="The path of folder containing individual disease's results")
 parser.add_argument("-o", "--outpath", type=str, help="The output path")
+parser.add_argument("-l", "--live", type=str, help="Live parameter for RTXConfiguration", default="Production", required=False)
 
 args = parser.parse_args()
 
+RTXConfig.live = args.live
+
 file_list = os.listdir(args.inputfolder)
 databasefile = pd.concat([pd.read_csv(os.path.join(args.inputfolder, file_name), sep='\t', header=None) for file_name in file_list]).rename(columns={0:'disease', 1:'drug', 2:'prob'})
-lastest_version = "v1.0"
+#lastest_version = "v1.0"
+lastest_version = RTXConfig.dtd_prob_version
 
 ## generate database text file
 outfile = f"{args.outpath}/databasefile_{lastest_version}.pkl"

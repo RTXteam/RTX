@@ -10,31 +10,173 @@ import subprocess
 import gzip
 import csv
 import numpy as np
+import json
+import multiprocessing
+from itertools import cycle
 from neo4j import GraphDatabase
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
-sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'reasoningtool','kg-construction']))
-from QueryMyChem import QueryMyChem
+
+class QueryMyChem:
+    TIMEOUT_SEC = 120
+    API_BASE_URL = 'http://mychem.info/v1/chem/'
+
+    @staticmethod
+    def _handle_clean_cache(drug_uses):
+        indications = []
+        contraindications = []
+        if isinstance(drug_uses, list):
+            drug_uses = drug_uses[0]
+        if isinstance(drug_uses, dict) and 'contraindication' in drug_uses.keys():
+            if isinstance(drug_uses['contraindication'], list):
+                contraindications = drug_uses['contraindication']
+            elif isinstance(drug_uses['contraindication'], dict):
+                contraindications.append(drug_uses['contraindication'])
+        if isinstance(drug_uses, dict) and 'indication' in drug_uses.keys():
+            if isinstance(drug_uses['indication'], list):
+                indications = drug_uses['indication']
+            elif isinstance(drug_uses['indication'], dict):
+                indications.append(drug_uses['indication'])
+        return indications, contraindications
+
+    @staticmethod
+    def _has_dirty_cache(drug_uses):
+        if isinstance(drug_uses, list):
+            d_u = drug_uses[0]
+            if isinstance(d_u, dict) and 'snomed_id' in d_u.keys():
+                return True
+        if isinstance(drug_uses, dict) and 'snomed_id' in drug_uses.keys():
+            return True
+        return False
+
+    @staticmethod
+    def _handle_dirty_cache(drug_uses):
+        indications = []
+        contraindications = []
+        if isinstance(drug_uses, list):
+            for drug_use in drug_uses:
+                if isinstance(drug_use, dict) and 'relation' in drug_use.keys() and 'snomed_id' in drug_use.keys():
+                    drug_use['snomed_concept_id'] = drug_use['snomed_id']
+                    if drug_use['relation'] == 'indication':
+                        indications.append(drug_use)
+                    elif drug_use['relation'] == 'contraindication':
+                        contraindications.append(drug_use)
+        if isinstance(drug_uses, dict):
+            if 'relation' in drug_uses.keys():
+                drug_uses['snomed_concept_id'] = drug_uses['snomed_id']
+                if drug_uses['relation'] == 'indication':
+                    indications.append(drug_uses)
+                elif drug_uses['relation'] == 'contraindication':
+                    contraindications.append(drug_uses)
+        return indications, contraindications
+
+    @staticmethod
+    def _access_api(chem_id):
+
+        url = QueryMyChem.API_BASE_URL + chem_id
+
+        try:
+            res = requests.get(url, timeout=QueryMyChem.TIMEOUT_SEC)
+        except requests.exceptions.Timeout:
+            print(url, file=sys.stderr)
+            print('Timeout in QueryMyChem for URL: ' + url, file=sys.stderr)
+            return None
+        except BaseException as e:
+            print(url, file=sys.stderr)
+            print('%s received in QueryMyChem for URL: %s' % (e, url), file=sys.stderr)
+            return None
+        status_code = res.status_code
+        if status_code != 200:
+            print(url, file=sys.stderr)
+            print('Status code ' + str(status_code) + ' for url: ' + url, file=sys.stderr)
+            return None
+        return res.text
+
+    @staticmethod
+    def get_drug_use(chem_id):
+        """
+        Retrieving the indication and contraindication of a drug from MyChem
+        :param chem_id: The CHEMBL ID/Drugbank ID/CHEBI ID for a drug
+        :return: A dictionary with two fields ('indication' and 'contraindication'). Each field is an array containing
+            'snomed_id' and 'snomed_name'.
+            Example:
+            {'indications':
+                [
+                    {'concept_name': 'Nosocomial Pneumonia due to Klebsiella Pneumoniae'},
+                    {'concept_name': 'Acute bacterial sinusitis',
+                     'cui_semantic_type': 'T047',
+                     'snomed_concept_id': 75498004,
+                     'snomed_full_name': 'Acute bacterial sinusitis',
+                     'umls_cui': 'C0275556'},
+                    {'concept_name': 'Acute Moraxella catarrhalis bronchitis',
+                     'cui_semantic_type': 'T047',
+                     'snomed_concept_id': 195722003,
+                     'snomed_full_name': 'Acute Moraxella catarrhalis bronchitis',
+                     'umls_cui': 'C0339932'},
+                    ...
+                ],
+            'contraindications':
+                [
+                    {'concept_name': 'Diabetes mellitus',
+                     'cui_semantic_type': 'T047',
+                     'snomed_concept_id': 73211009,
+                     'snomed_full_name': 'Diabetes mellitus',
+                     'umls_cui': 'C0011849'},
+                    {'concept_name': 'Pancytopenia',
+                     'cui_semantic_type': 'T047',
+                     'snomed_concept_id': 127034005,
+                     'snomed_full_name': 'Pancytopenia',
+                     'umls_cui': 'C0030312'},
+                    ...
+                ]
+            }
+        """
+        print(chem_id, file=sys.stderr)
+        indications = []
+        contraindications = []
+        if not isinstance(chem_id, str):
+            return {'indications': indications, "contraindications": contraindications}
+
+        results = QueryMyChem._access_api(chem_id)
+        if results is not None:
+            json_dict = json.loads(results)
+            if "drugcentral" in json_dict.keys():
+                drugcentral = json_dict['drugcentral']
+                if isinstance(drugcentral, list):
+                    drugcentral = drugcentral[0]
+                if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
+                    drug_uses = drugcentral['drug_use']
+                    if QueryMyChem._has_dirty_cache(drug_uses):
+                        indications, contraindications = QueryMyChem._handle_dirty_cache(drug_uses)
+                    else:
+                        indications, contraindications = QueryMyChem._handle_clean_cache(drug_uses)
+        return {'indications': indications, "contraindications": contraindications}
 
 class DataGeneration:
 
     #### Constructor
-    def __init__(self, graph_bolt_uri):
+    def __init__(self):
         ## Connect to neo4j database
         rtxc = RTXConfiguration()
-        self.driver = GraphDatabase.driver(graph_bolt_uri, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
+        rtxc.live = 'KG2c'
+        print(f"You're using '{rtxc.neo4j_bolt}'", flush=True)
+        self.driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 
     def get_drug_curies_from_graph(self):
         ## Pulls a dataframe of all of the graph drug-associated nodes
-        query = f"match (n:chemical_substance) with distinct n.id as id, n.name as name return id, name union match (n:drug) with distinct n.id as id, n.name as name return id, name"
+        query = "match (n) where n.category in ['biolink:Drug', 'biolink:SmallMolecule'] with distinct n.id as id, n.name as name, n.equivalent_curies as equivalent_curies return id, name, equivalent_curies"
         session = self.driver.session()
         res = session.run(query)
         drugs = pd.DataFrame(res.data())
+        select_rows = [index for index in range(len(drugs.equivalent_curies)) if type(drugs.equivalent_curies[index]) is list]
+        drugs = drugs.loc[select_rows,:].reset_index(drop=True)
+        drugs = pd.DataFrame([(curie, drugs.loc[index, 'name']) for index in range(drugs.shape[0]) for curie in drugs.loc[index,'equivalent_curies'] if curie.upper().startswith('CHEMBL') or curie.upper().startswith('CHEBI') or curie.upper().startswith('DRUGBANK')]).rename(columns={0:'id',1:'name'})
         return drugs
 
-    def call_oxo_API(self, uid, dist=2):
+    @staticmethod
+    def call_oxo_API(uid, dist=2):
         """Call OxO (the EMBL-EBI Ontology Xref Service) API to find ontology mapping.
 
         Args:
@@ -65,7 +207,8 @@ class DataGeneration:
             res = None
         return res
 
-    def get_all_from_oxo(self, curie_id, map_to=None, dist=2):
+    @staticmethod
+    def get_all_from_oxo(curie_id, map_to=None, dist=2):
         """
         this takes a curie id and gets all the mappings that oxo has for the given id
 
@@ -79,12 +222,12 @@ class DataGeneration:
             curie_id = str(curie_id)
         if curie_id.startswith('REACT:'):
             curie_id = curie_id.replace('REACT', 'Reactome')
-        res = self.call_oxo_API(curie_id, dist=dist)
+        res = DataGeneration.call_oxo_API(curie_id, dist=dist)
         synonym_ids = None
         if res is not None:
             res = res.json()
             synonym_ids = set()
-            synonym_ids = list(set([curie['curie'] for item in res['_embedded']['searchResults'] if len(item['mappingResponseList']) != 0 for curie in item['mappingResponseList']]))
+            synonym_ids = list(set([curie['curie'].upper() for item in res['_embedded']['searchResults'] if len(item['mappingResponseList']) != 0 for curie in item['mappingResponseList']]))
             if map_to is not None:
                 if not isinstance(map_to, list):
                     map_to = [map_to]
@@ -93,7 +236,8 @@ class DataGeneration:
                 synonym_ids = None
         return synonym_ids
 
-    def map_drug_to_ontology(self, chembl_id, dist=2):
+    @staticmethod
+    def map_drug_to_ontology(chembl_id, dist=2):
         """
         mapping between a drug and Disease Ontology IDs and/or Human Phenotype Ontology IDs corresponding to indications
         :param chembl_id: The CHEMBL ID for a drug
@@ -110,36 +254,50 @@ class DataGeneration:
         contraindications = drug_use['contraindications']
         for indication in indications:
             if 'snomed_concept_id' in indication.keys():
-                oxo_results = self.get_all_from_oxo(curie_id='SNOMEDCT:' + str(indication['snomed_concept_id']), map_to=['DOID', 'OMIM', 'HP'], dist=dist)
+                oxo_results = DataGeneration.get_all_from_oxo(curie_id='SNOMEDCT:' + str(indication['snomed_concept_id']), map_to=['DOID', 'OMIM', 'HP', 'UMLS', 'MESH', 'EFO', 'NCIT', 'KEGG', 'ORPHANET', 'MONDO'], dist=dist)
                 if oxo_results is not None:
                     for oxo_result in oxo_results:
                         indication_onto_set.add(oxo_result)
-                else:
-                    oxo_results = self.get_all_from_oxo(curie_id='SNOMEDCT:' + str(indication['snomed_concept_id']), map_to=['UMLS'], dist=dist)
-                    if oxo_results is not None:
-                        for oxo_result in oxo_results:
-                            indication_onto_set.add(oxo_result)
+
         for contraindication in contraindications:
             if 'snomed_concept_id' in contraindication.keys():
-                oxo_results = self.get_all_from_oxo(curie_id='SNOMEDCT:' + str(contraindication['snomed_concept_id']), map_to=['DOID', 'OMIM', 'HP'], dist=dist)
+                oxo_results = DataGeneration.get_all_from_oxo(curie_id='SNOMEDCT:' + str(contraindication['snomed_concept_id']), map_to=['DOID', 'OMIM', 'HP', 'UMLS', 'MESH', 'EFO', 'NCIT', 'KEGG', 'ORPHANET', 'MONDO'], dist=dist)
                 if oxo_results is not None:
                     for oxo_result in oxo_results:
                         contraindication_onto_set.add(oxo_result)
-                else:
-                    oxo_results = self.get_all_from_oxo(curie_id='SNOMEDCT:' + str(contraindication['snomed_concept_id']), map_to=['UMLS'], dist=dist)
-                    if oxo_results is not None:
-                        for oxo_result in oxo_results:
-                            contraindication_onto_set.add(oxo_result)
+
         return {'indications': indication_onto_set, "contraindications": contraindication_onto_set}
 
-    def generate_MyChemData(self, drugs=None, output_path=os.getcwd(), dist=2):
+    @staticmethod
+    def run_in_parallel(params):
+        drug_id, dist = params
+        tag, _ = drug_id.split(':')
+        select_type = ['CHEBI', 'CHEMBL.COMPOUND', 'CHEMBL.TARGET', 'DRUGBANK']
+        if tag in select_type:
+            if tag == 'CHEMBL.COMPOUND':
+                chembl_id = drug_id.replace('CHEMBL.COMPOUND:','')
+            elif tag == 'CHEMBL.TARGET':
+                chembl_id = drug_id.replace('CHEMBL.TARGET:','')
+            elif tag == 'DRUGBANK':
+                chembl_id = drug_id.replace('DRUGBANK:','')
+            else:
+                chembl_id = drug_id
+            res = DataGeneration.map_drug_to_ontology(chembl_id, dist=dist)
+        else:
+            indication_onto_set = set()
+            contraindication_onto_set = set()
+            res = {'indications': indication_onto_set, "contraindications": contraindication_onto_set}
+
+        return res
+
+    def generate_MyChemData(self, drugs=None, output_path=os.getcwd(), dist=2, batchsize=10):
         """Generate MyChem Training Data"""
         # Initialized the lists used to create the dataframes
         mychem_tp_list = []
         mychem_tn_list = []
         # UMLS targets will be seperated to be converted into DOID, HP, or OMIM
-        umls_tn_list = []
-        umls_tp_list = []
+        # umls_tn_list = []
+        # umls_tp_list = []
 
         d = 0
         first_flag = True
@@ -147,62 +305,44 @@ class DataGeneration:
             drugs = self.get_drug_curies_from_graph()
         else:
             drugs = drugs
-        drugs = drugs.loc[drugs["id"].str.upper().str.startswith('CHEMBL', na=False)].reset_index(drop=True)
-        print("Generating MyChem Data", flush=True)
-        for drug in drugs['id']:
-            chembl_id = drug.split(':')[1]
-            if not chembl_id.startswith('CHEMBL'):
-                chembl_id = 'CHEMBL' + chembl_id
-            elif chembl_id.startswith('CHEMBL.COMPOUND'):
-                chembl_id = chembl_id.split(':')[1]
-            res = self.map_drug_to_ontology(chembl_id, dist=dist)
-            # Load indications and contraintications into their respective lists
-            for ind in res['indications']:
-                if ind.startswith('UMLS:'):
-                    # umls_tp_list += [[drug, ind.split(':')[1]]]
-                    umls_tp_list += [[drug, ind]]
-                else:
-                    mychem_tp_list += [[drug, ind]]
-            for cont in res['contraindications']:
-                if cont.startswith('UMLS:'):
-                    #umls_tn_list += [[drug, cont.split(':')[1]]]
-                    umls_tn_list += [[drug, ind]]
-                else:
-                    mychem_tn_list += [[drug, cont]]
 
-            d += 1
-            if d % int(len(drugs)/1000 + 1) == 0:
-                # Convert lists to dataframes
-                tp_df = pd.DataFrame(mychem_tp_list,columns = ['source','target'])
-                tn_df = pd.DataFrame(mychem_tn_list,columns = ['source','target'])
-                umls_tp_df = pd.DataFrame(umls_tp_list,columns = ['source','target'])
-                umls_tn_df = pd.DataFrame(umls_tn_list,columns = ['source','target'])
-                # Save dataframes as txt
-                if first_flag:
-                    tp_df.to_csv(output_path+"/mychem_tp.txt",sep='\t',index=False)
-                    tn_df.to_csv(output_path+"mychem_tn.txt",sep='\t',index=False)
-                    umls_tp_df.to_csv(output_path+"/mychem_tp_umls.txt",sep='\t',index=False)
-                    umls_tn_df.to_csv(output_path+"/mychem_tn_umls.txt",sep='\t',index=False)
-                    first_flag = False
-                else:
-                    tp_df.to_csv(output_path+"/mychem_tp.txt",mode='a',sep='\t',header=False,index=False)
-                    tn_df.to_csv(output_path+"/mychem_tn.txt",mode='a',sep='\t',header=False,index=False)
-                    umls_tp_df.to_csv(output_path+"/mychem_tp_umls.txt",mode='a',sep='\t',header=False,index=False)
-                    umls_tn_df.to_csv(output_path+"/mychem_tn_umls.txt",mode='a',sep='\t',header=False,index=False)
-                # This prints percentage progress every 1%
-                print(str(round((d/len(drugs))*100,2))+"%", end='..', flush=True)
+        query_id = list(drugs['id'])
+        print(f'Total curies: {len(query_id)}', flush=True)
 
+        batch = list(range(0, len(query_id), batchsize))
+        batch.append(len(query_id))
+        print(f'Total batches: {len(batch)-1}', flush=True)
 
-        # Convert lists to dataframes
-        tp_df = pd.DataFrame(mychem_tp_list,columns = ['source','target'])
-        tn_df = pd.DataFrame(mychem_tn_list,columns = ['source','target'])
-        umls_tp_df = pd.DataFrame(umls_tp_list,columns = ['source','target'])
-        umls_tn_df = pd.DataFrame(umls_tn_list,columns = ['source','target'])
-        # Save dataframes as txt
-        tp_df.to_csv(output_path+"/mychem_tp.txt",mode='a',sep='\t',header=False,index=False)
-        tn_df.to_csv(output_path+"/mychem_tn.txt",mode='a',sep='\t',header=False,index=False)
-        umls_tp_df.to_csv(output_path+"/mychem_tp_umls.txt",mode='a',sep='\t',header=False,index=False)
-        umls_tn_df.to_csv(output_path+"/mychem_tn_umls.txt",mode='a',sep='\t',header=False,index=False)
+        for i in range(len(batch)):
+            if (i + 1) < len(batch):
+                print(f'Here is batch{i + 1}', flush=True)
+                start = batch[i]
+                end = batch[i + 1]
+                sub_query_key = query_id[start:end]
+                with multiprocessing.Pool(processes=100) as executor:
+                    query_res = [elem for elem in executor.map(DataGeneration.run_in_parallel, zip(sub_query_key,cycle([dist])))]
+
+                for pair in zip(sub_query_key, query_res):
+                    drug, res = pair
+                    # Load indications and contraintications into their respective lists
+                    mychem_tp_list += [[drug, ind] for ind in res['indications']]
+                    mychem_tn_list += [[drug, cont] for cont in res['contraindications']]
+
+                    # Convert lists to dataframes
+                    tp_df = pd.DataFrame(mychem_tp_list, columns = ['source','target'])
+                    tn_df = pd.DataFrame(mychem_tn_list, columns = ['source','target'])
+                    # Save dataframes as txt
+                    if first_flag:
+                        tp_df.to_csv(output_path+"/mychem_tp.txt",sep='\t',index=False)
+                        tn_df.to_csv(output_path+"/mychem_tn.txt",sep='\t',index=False)
+                        first_flag = False
+                        mychem_tp_list = []
+                        mychem_tn_list = []
+                    else:
+                        tp_df.to_csv(output_path+"/mychem_tp.txt",mode='a',sep='\t',header=False,index=False)
+                        tn_df.to_csv(output_path+"/mychem_tn.txt",mode='a',sep='\t',header=False,index=False)
+                        mychem_tp_list = []
+                        mychem_tn_list = []
 
     @staticmethod
     def is_insert(line):
@@ -360,10 +500,10 @@ class DataGeneration:
 
 
 if __name__ == "__main__":
-    dataGenerator = DataGeneration(graph_bolt_uri="bolt://kg2canonicalized2.rtx.ai:7687")
+    dataGenerator = DataGeneration()
     drugs = dataGenerator.get_drug_curies_from_graph()
-    drugs.to_csv('~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data/drugs.txt',sep='\t',index=False)
-    dataGenerator.generate_MyChemData(drugs=drugs, output_path='~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data',dist=2)
-    ## For semmedVER43_2020_R_PREDICATION.sql.gz, you might dowload from /data/orangeboard/databases/KG2.3.4/semmedVER43_2020_R_PREDICATION.sql.gz on arax.ncats.io server or directly download the latest one from semmedb website
-    dataGenerator.generate_SemmedData(mysqldump_path='~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data/semmedVER43_2020_R_PREDICATION.sql.gz', output_path='~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_3_4/raw_training_data')
+    drugs.to_csv('/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_1/raw_training_data/drugs.txt',sep='\t',index=False)
+    dataGenerator.generate_MyChemData(drugs=drugs, output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_1/raw_training_data',dist=2, batchsize=50)
+#     For semmedVER43_2020_R_PREDICATION.sql.gz, you might dowload from /data/orangeboard/databases/KG2.3.4/semmedVER43_2020_R_PREDICATION.sql.gz on arax.ncats.io server or directly download the latest one from semmedb website
+#     dataGenerator.generate_SemmedData(mysqldump_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/semmedVER43_2020_R_PREDICATION.sql.gz', output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_5_1/raw_training_data/')
     

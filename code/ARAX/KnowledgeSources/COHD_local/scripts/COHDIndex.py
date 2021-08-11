@@ -12,6 +12,11 @@ import sqlite3
 import pickle
 import itertools
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")
+from RTXConfiguration import RTXConfiguration
+RTXConfig = RTXConfiguration()
+RTXConfig.live = "Production"
+
 # import internal modules
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -28,8 +33,10 @@ class COHDIndex:
     def __init__(self):
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         self.databaseLocation = filepath
-        lastest_version = "v2.0"
-        self.databaseName = f"COHDdatabase_{lastest_version}.db"
+        # lastest_version = "v1.0"
+        # kg = 'KG2.7.1'
+        # self.databaseName = f"COHDdatabase_{lastest_version}_{kg}.db"
+        self.databaseName = RTXConfig.cohd_database_path.split('/')[-1]
         self.success_con = self.connect()
         self.synonymizer = NodeSynonymizer()
 
@@ -47,7 +54,7 @@ class COHDIndex:
             print("INFO: Connecting to database", flush=True)
             return True
         else:
-            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_3_4_with_concepts.pkl']
+            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_7_1_with_concepts.pkl', 'concepts_table_Athena.txt']
             # has_files = [f for f in os.listdir(self.databaseLocation) if os.path.isfile(os.path.join(self.databaseLocation, f))]
             # for file in required_files:
             #     if file in has_files:
@@ -57,11 +64,12 @@ class COHDIndex:
             #         return False
 
             # delete the old version of COHD database
-            old_version_database = "COHDdatabase_v1.0.db"
-            if os.path.exists(f"{self.databaseLocation}/{old_version_database}"):
-                os.remove(f"{self.databaseLocation}/{old_version_database}")
+            # old_version_database = "COHDdatabase_v1.0.db"
+            # if os.path.exists(f"{self.databaseLocation}/{old_version_database}"):
+            #     os.remove(f"{self.databaseLocation}/{old_version_database}")
             # copy the database file to local if it doesn't exist
-            os.system(f"scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/{self.databaseName} {database}")
+            # os.system(f"scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/{self.databaseName} {database}")
+            os.system(f"scp {RTXConfig.cohd_database_username}@{RTXConfig.cohd_database_host}:{RTXConfig.cohd_database_path} {database}")
 
             self.connection = sqlite3.connect(database)
             print("INFO: Connecting to database", flush=True)
@@ -83,10 +91,12 @@ class COHDIndex:
     def create_tables(self):
 
         return
-        # # if self.success_con is True:
+        # if self.success_con is True:
         #     print("INFO: Creating database " + self.databaseName, flush=True)
         #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
         #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
+        #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING_ATHENA")
+        #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING_ATHENA( curie VARCHAR(255), concept_id INT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS SINGLE_CONCEPT_COUNTS")
         #     self.connection.execute(f"CREATE TABLE SINGLE_CONCEPT_COUNTS( dataset_id TINYINT, concept_id INT, concept_count INT, concept_prevalence FLOAT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS CONCEPTS")
@@ -153,19 +163,37 @@ class COHDIndex:
         #         insert_command = insert_command1 + ")" + insert_command2 + ")"
         #         insert_command = insert_command.replace(',)', ')')
 
-        #     if DEBUG:
-        #         print(insert_command, flush=True)
-        #         content_col = content_list[0].strip().split("\t")
-        #         concept_pair_id = f"{content_col[1]}_{content_col[2]}"
-        #         content_col.insert(0, concept_pair_id)
-        #         print(tuple(content_col), flush=True)
+        #         if DEBUG:
+        #             print(insert_command, flush=True)
+        #             content_col = content_list[0].strip().split("\t")
+        #             concept_pair_id = f"{content_col[1]}_{content_col[2]}"
+        #             content_col.insert(0, concept_pair_id)
+        #             print(tuple(content_col), flush=True)
 
-        #     for line in content_list:
-        #         content_col = line.strip().split("\t")
-        #         concept_pair_id = f"{content_col[1]}_{content_col[2]}"
-        #         content_col.insert(0, concept_pair_id)
-        #         record = tuple(content_col)
-        #         self.connection.execute(insert_command, record)
+        #         for line in content_list:
+        #             content_col = line.strip().split("\t")
+        #             concept_pair_id = f"{content_col[1]}_{content_col[2]}"
+        #             content_col.insert(0, concept_pair_id)
+        #             record = tuple(content_col)
+        #             self.connection.execute(insert_command, record)
+
+        #     self.connection.commit()
+
+        #     concepts_table_Athena_file = 'concepts_table_Athena.txt'
+        #     current_table_name = paired_file.replace('.txt', '').upper()
+        #     print(f"INFO: Populating table {current_table_name}", flush=True)
+        #     with open(f"{self.databaseLocation}/{concepts_table_Athena_file}", 'r') as file:
+        #         content_list = file.readlines()
+        #         col_name = content_list.pop(0)
+        #         insert_command1 = f"INSERT INTO CURIE_TO_OMOP_MAPPING_ATHENA(curie, concept_id)"
+        #         insert_command2 = f" values (?,?)"
+
+        #         insert_command = insert_command1 + insert_command2
+
+        #         for line in content_list:
+        #             content_col = line.strip().split("\t")
+        #             record = tuple([content_col[1],content_col[0]])
+        #             self.connection.execute(insert_command, record)
 
         #     self.connection.commit()
 
@@ -178,7 +206,7 @@ class COHDIndex:
         #     # for key in kg1_mapping:
         #     #     if key not in kg_mapping:
         #     #         kg_mapping[key] = kg1_mapping[key]
-        #     with open(f"{self.databaseLocation}/preferred_synonyms_kg2_3_4_with_concepts.pkl", "rb") as file:
+        #     with open(f"{self.databaseLocation}/preferred_synonyms_kg2_7_1_with_concepts.pkl", "rb") as file:
         #         kg = pickle.load(file)
 
         #     insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,concept_id) values (?,?)'
@@ -217,6 +245,10 @@ class COHDIndex:
         #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_preferred_curie ON CURIE_TO_OMOP_MAPPING(preferred_curie)")
         #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_concept_id ON CURIE_TO_OMOP_MAPPING(concept_id)")
 
+        #     print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING_ATHENA", flush=True)
+        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_curie ON CURIE_TO_OMOP_MAPPING_ATHENA(curie)")
+        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_concept_id ON CURIE_TO_OMOP_MAPPING_ATHENA(concept_id)")
+
         #     print(f"INFO: Creating INDEXes on SINGLE_CONCEPT_COUNTS", flush=True)
         #     self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_dataset_id ON SINGLE_CONCEPT_COUNTS(dataset_id)")
         #     self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_concept_id ON SINGLE_CONCEPT_COUNTS(concept_id)")
@@ -232,6 +264,62 @@ class COHDIndex:
 
         #     print(f"INFO: Creating INDEXes is completed", flush=True)
 
+    @staticmethod
+    def _change_format_bk(synonym):
+
+        synonym = synonym.upper()
+
+        try:
+            vocabulary_id, concept_code = synonym.split(':')
+        except ValueError:
+            vocabulary_id, concept_code = synonym.split(':')[1:]
+
+        if vocabulary_id == "ICD10":
+            synonym = synonym.replace('ICD10','ICD-10')
+        elif vocabulary_id == "ICD9CM":
+            synonym = synonym.replace('ICD9CM','ICD-9')
+        # elif vocabulary_id == "MESH":
+        #     synonym = synonym.replace('MESH', 'MeSH')
+        # elif vocabulary_id == "RXNORM":
+        #     synonym = synonym.replace('RXNORM', 'RxNorm')
+        elif vocabulary_id == "SNOMEDCT":
+            synonym = synonym.replace('SNOMED','SNOMEDCT')
+        # elif vocabulary_id == "MEDDRA":
+        #     synonym = synonym.replace('MEDDRA', 'MedDRA')
+        else:
+            pass
+
+        return synonym
+
+    @staticmethod
+    def _change_format(synonym):
+
+        synonym = synonym.upper()
+
+        try:
+            vocabulary_id, concept_code = synonym.split(':')
+        except ValueError:
+            vocabulary_id, concept_code = synonym.split(':')[1:]
+
+        if vocabulary_id == "ICD-10":
+            synonym = synonym.replace('ICD-10', 'ICD10')
+        elif vocabulary_id == "ICD-9":
+            synonym = synonym.replace('ICD-9', 'ICD9CM')
+        # elif vocabulary_id == "MESH":
+        #     synonym = synonym.replace('MESH', 'MeSH')
+        # elif vocabulary_id == "RXNORM":
+        #     synonym = synonym.replace('RXNORM', 'RxNorm')
+        elif vocabulary_id == "SNOMEDCT":
+            synonym = synonym.replace('SNOMEDCT', 'SNOMED')
+        elif vocabulary_id == "SNOMEDCT_VET":
+            synonym = synonym.replace('SNOMEDCT_VET', 'SNOMED')
+        # elif vocabulary_id == "MEDDRA":
+        #     synonym = synonym.replace('MEDDRA', 'MedDRA')
+        else:
+            pass
+
+        return synonym
+
     def get_concept_ids(self, curie):
         """Search for OMOP concept ids by curie id.
 
@@ -243,25 +331,30 @@ class COHDIndex:
             example:
                 [75617, 80180, 1570333, 4025957, 4035441, 4079750, 4083695, 4083696, 4110738, 36516824, 36569386, 45618044]
         """
+        cursor = self.connection.cursor()
+        results_list = []
         if isinstance(curie, str):
             preferred_curie = self.synonymizer.get_canonical_curies(curie)[curie]
             if preferred_curie is None:
-                print("Can't convert {curie} to preferred curie in get_concept_ids", flush=True)
-                return []
+                print(f"Can't convert {curie} to preferred curie in get_concept_ids and thus use its original curie", flush=True)
+                cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where curie='{self._change_format(curie)}';")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    return results_list
+                else:
+                    results_list = [row[1] for row in res]
+                    return results_list
             else:
                 preferred_curie = preferred_curie['preferred_curie']
+                cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where preferred_curie='{preferred_curie}';")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    return results_list
+                else:
+                    results_list = [row[1] for row in res]
+                    return results_list
         else:
             print("The 'curie' in get_concept_ids should be a str", flush=True)
-            return []
-
-        results_list = []
-        cursor = self.connection.cursor()
-        cursor.execute(f"select distinct t1.preferred_curie, t1.concept_id from CURIE_TO_OMOP_MAPPING t1 inner join CONCEPTS t2 on t1.concept_id = t2.concept_id where preferred_curie='{preferred_curie}';")
-        res = cursor.fetchall()
-        if len(res) == 0:
-            return []
-        else:
-            results_list = [row[1] for row in res]
             return results_list
 
     def get_curies_from_concept_id(self, concept_id):
@@ -287,10 +380,338 @@ class COHDIndex:
         res = cursor.fetchall()
         if len(res) != 0:
             results_list = list(set([record[0] for record in res]))
+            # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
+            # res = cursor.fetchall()
+            # if len(res) != 0:
+            #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
         else:
-            results_list = []
+            pass
+            # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
+            # res = cursor.fetchall()
+            # if len(res) != 0:
+            #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
 
         return results_list
+
+    def get_all_concept_pair_info(self, concept_id_1=[], concept_id_2=[], concept_id_pair=None, dataset_id=1):
+        """Retrieve chi-square p-value(chi_square_p), observed-expected frequency ratio(ln_ratio), relative frequency of concept id 1, relative frequency of concept id 2,
+        observed concept count of a pair of concepts, expected concept count of a pair of concepts, observed clinical frequencies of a pair of concepts
+
+        Args:
+            concept_id_1 (optional, list): an OMOP id, e.g., [192855] or [192855, 8507]
+            concept_id_2 (optional, list): an OMOP id, e.g., [2008271] or [2008271, 939259] If concept_id_2 is unspecified, then this method
+                will return all pairs of concepts with concept_id_1.
+            concept_id_pair (optional, str or list): the concatenation of two concept ids, e.g. "192855_2008271" or ["192855_2008271","8507_939259"]
+            dataset_id (optional, int): The dataset_id of the dataset to query. Default dataset is the 5-year dataset e.g. 1,2,3
+
+        Returns:
+            array: an array of dictionaries which contains all concept pair info of given concept pair
+            example:
+            [
+                {
+                    "concept_count": 10,
+                    "expected_count": 0.3070724,
+                    "chi_square_pvalue": 1.410153e-68,
+                    "ln_ratio": 3.483257,
+                    "rel_freq_concept_id_1" 0.02717391,
+                    "rel_freq_concept_id_2" 0.00669344,
+                    "concept_frequency": 0.000005585247351056813,
+                    "concept_id_1": 192855,
+                    "concept_id_2": 2008271,
+                    "dataset_id": 1
+                }
+            ]
+        """
+        if concept_id_pair is None:
+            if not isinstance(concept_id_1, list):
+                print("Please provide either 'concept_id_1' or 'concept_id_pair'. The 'concept_id_1' in get_all_concept_pair_info should be a list", flush=True)
+                return []
+            else:
+                if len(concept_id_1) == 0:
+                    print("The 'concept_id_1' in get_all_concept_pair_info should not be a empty list", flush=True)
+                    return []
+
+            if not isinstance(concept_id_2, list):
+                print("The 'concept_id_2' in get_all_concept_pair_info should be a list", flush=True)
+                return []
+        else:
+            if isinstance(concept_id_pair, str):
+                concept_id_pair1 = concept_id_pair
+                concept_id_pair2 = f"{concept_id_pair.split('_')[1]}_{concept_id_pair.split('_')[0]}"
+            elif isinstance(concept_id_pair, list):
+                if len(concept_id_pair) == 0:
+                    print("The 'concept_id_pair' in get_all_concept_pair_info is an empty list", flush=True)
+                    return []
+                else:
+                    concept_id_pair1 = concept_id_pair
+                    concept_id_pair2 = [f"{pair.split('_')[1]}_{pair.split('_')[0]}" for pair in concept_id_pair]
+            else:
+                print("The 'concept_id_pair' in get_all_concept_pair_info should be a str or a list", flush=True)
+                return []
+
+        if not isinstance(dataset_id, int):
+            print("The 'dataset_id' in get_all_concept_pair_info should be an int", flush=True)
+            return []
+        else:
+            if dataset_id == 1 or dataset_id == 2 or dataset_id == 3:
+                pass
+            else:
+                print("The 'dataset_id' in get_all_concept_pair_info should be 1, 2 or 3", flush=True)
+                return []
+
+        results_array = []
+        cursor = self.connection.cursor()
+        if concept_id_pair is None:
+            if len(concept_id_2) == 0:
+                if len(concept_id_1) == 1:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_1,rel_freq_2,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]};")
+                else:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_1,rel_freq_2,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))};")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]};")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))};")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[0] == dataset_id:
+                                results_array.append({'dataset_id': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_count': row[3],
+                                                        'expected_count': row[4],
+                                                        'chi_square_pvalue': row[5],
+                                                        'ln_ratio': row[6],
+                                                        'rel_freq_concept_id_1': row[7],
+                                                        'rel_freq_concept_id_2': row[8],
+                                                        'concept_frequency': row[9]})
+                else:
+                    for row in res:
+                        if row[0] == dataset_id:
+                            results_array.append({'dataset_id': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_count': row[3],
+                                                    'expected_count': row[4],
+                                                    'chi_square_pvalue': row[5],
+                                                    'ln_ratio': row[6],
+                                                    'rel_freq_concept_id_1': row[7],
+                                                    'rel_freq_concept_id_2': row[8],
+                                                    'concept_frequency': row[9]})
+
+                    if len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]};")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))};")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[0] == dataset_id:
+                                results_array.append({'dataset_id': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_count': row[3],
+                                                        'expected_count': row[4],
+                                                        'chi_square_pvalue': row[5],
+                                                        'ln_ratio': row[6],
+                                                        'rel_freq_concept_id_1': row[7],
+                                                        'rel_freq_concept_id_2': row[8],
+                                                        'concept_frequency': row[9]})
+            else:
+                if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_1,rel_freq_2,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]} and concept_id_2={concept_id_2[0]};")
+                elif len(concept_id_1) == 1:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_1,rel_freq_2,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1={concept_id_1[0]} and concept_id_2 in {tuple(set(concept_id_2))};")
+                elif len(concept_id_2) == 1:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_1,rel_freq_2,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))} and concept_id_2={concept_id_2[0]};")
+                else:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_1,rel_freq_2,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(set(concept_id_1))} and concept_id_2 in {tuple(set(concept_id_2))};")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]} and concept_id_1={concept_id_2[0]};")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]} and concept_id_1 in {tuple(set(concept_id_2))};")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))} and concept_id_1={concept_id_2[0]};")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))} and concept_id_1 in {tuple(set(concept_id_2))};")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[0] == dataset_id:
+                                results_array.append({'dataset_id': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_count': row[3],
+                                                        'expected_count': row[4],
+                                                        'chi_square_pvalue': row[5],
+                                                        'ln_ratio': row[6],
+                                                        'rel_freq_concept_id_1': row[7],
+                                                        'rel_freq_concept_id_2': row[8],
+                                                        'concept_frequency': row[9]})
+                else:
+                    for row in res:
+                        if row[0] == dataset_id:
+                            results_array.append({'dataset_id': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_count': row[3],
+                                                    'expected_count': row[4],
+                                                    'chi_square_pvalue': row[5],
+                                                    'ln_ratio': row[6],
+                                                    'rel_freq_concept_id_1': row[7],
+                                                    'rel_freq_concept_id_2': row[8],
+                                                    'concept_frequency': row[9]})
+
+                    if len(concept_id_1) == 1 and len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]} and concept_id_1={concept_id_2[0]};")
+                    elif len(concept_id_1) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2={concept_id_1[0]} and concept_id_1 in {tuple(set(concept_id_2))};")
+                    elif len(concept_id_2) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))} and concept_id_1={concept_id_2[0]};")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_2 in {tuple(set(concept_id_1))} and concept_id_1 in {tuple(set(concept_id_2))};")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[0] == dataset_id:
+                                results_array.append({'dataset_id': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_count': row[3],
+                                                        'expected_count': row[4],
+                                                        'chi_square_pvalue': row[5],
+                                                        'ln_ratio': row[6],
+                                                        'rel_freq_concept_id_1': row[7],
+                                                        'rel_freq_concept_id_2': row[8],
+                                                        'concept_frequency': row[9]})
+        else:
+            if isinstance(concept_id_pair, str):
+                cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_1,rel_freq_2,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_pair_id='{concept_id_pair1}';")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_pair_id='{concept_id_pair2}';")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[0] == dataset_id:
+                                results_array.append({'dataset_id': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_count': row[3],
+                                                        'expected_count': row[4],
+                                                        'chi_square_pvalue': row[5],
+                                                        'ln_ratio': row[6],
+                                                        'rel_freq_concept_id_1': row[7],
+                                                        'rel_freq_concept_id_2': row[8],
+                                                        'concept_frequency': row[9]})
+                else:
+                    for row in res:
+                        if row[0] == dataset_id:
+                            results_array.append({'dataset_id': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_count': row[3],
+                                                    'expected_count': row[4],
+                                                    'chi_square_pvalue': row[5],
+                                                    'ln_ratio': row[6],
+                                                    'rel_freq_concept_id_1': row[7],
+                                                    'rel_freq_concept_id_2': row[8],
+                                                    'concept_frequency': row[9]})
+
+                    cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_pair_id='{concept_id_pair2}';")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[0] == dataset_id:
+                                results_array.append({'dataset_id': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_count': row[3],
+                                                        'expected_count': row[4],
+                                                        'chi_square_pvalue': row[5],
+                                                        'ln_ratio': row[6],
+                                                        'rel_freq_concept_id_1': row[7],
+                                                        'rel_freq_concept_id_2': row[8],
+                                                        'concept_frequency': row[9]})
+            else:
+                if len(concept_id_pair) == 1:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_1,rel_freq_2,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_pair_id='{concept_id_pair1[0]}';")
+                else:
+                    cursor.execute(f"select distinct dataset_id,concept_id_1,concept_id_2,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_1,rel_freq_2,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_pair_id in {tuple(set(concept_id_pair1))};")
+                res = cursor.fetchall()
+                if len(res) == 0:
+                    if len(concept_id_pair) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_pair_id='{concept_id_pair2[0]}';")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_pair_id in {tuple(set(concept_id_pair2))};")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[0] == dataset_id:
+                                results_array.append({'dataset_id': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_count': row[3],
+                                                        'expected_count': row[4],
+                                                        'chi_square_pvalue': row[5],
+                                                        'ln_ratio': row[6],
+                                                        'rel_freq_concept_id_1': row[7],
+                                                        'rel_freq_concept_id_2': row[8],
+                                                        'concept_frequency': row[9]})
+                else:
+                    for row in res:
+                        if row[0] == dataset_id:
+                            results_array.append({'dataset_id': row[0],
+                                                    'concept_id_1': row[1],
+                                                    'concept_id_2': row[2],
+                                                    'concept_count': row[3],
+                                                    'expected_count': row[4],
+                                                    'chi_square_pvalue': row[5],
+                                                    'ln_ratio': row[6],
+                                                    'rel_freq_concept_id_1': row[7],
+                                                    'rel_freq_concept_id_2': row[8],
+                                                    'concept_frequency': row[9]})
+
+                    if len(concept_id_pair) == 1:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_pair_id='{concept_id_pair2[0]}';")
+                    else:
+                        cursor.execute(f"select distinct dataset_id,concept_id_2,concept_id_1,concept_count,expected_count,chi_square_p,ln_ratio,rel_freq_2,rel_freq_1,concept_prevalence from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_pair_id in {tuple(set(concept_id_pair2))};")
+                    res = cursor.fetchall()
+                    if len(res) == 0:
+                        pass
+                    else:
+                        for row in res:
+                            if row[0] == dataset_id:
+                                results_array.append({'dataset_id': row[0],
+                                                        'concept_id_1': row[1],
+                                                        'concept_id_2': row[2],
+                                                        'concept_count': row[3],
+                                                        'expected_count': row[4],
+                                                        'chi_square_pvalue': row[5],
+                                                        'ln_ratio': row[6],
+                                                        'rel_freq_concept_id_1': row[7],
+                                                        'rel_freq_concept_id_2': row[8],
+                                                        'concept_frequency': row[9]})
+
+        return results_array
 
     def get_paired_concept_freq(self, concept_id_1=[], concept_id_2=[], concept_id_pair=None, dataset_id=1):
         """Retrieve observed clinical frequencies of a pair of concepts.
@@ -566,34 +987,50 @@ class COHDIndex:
                     "dataset_id": 1
                 }
         """
-        if not isinstance(concept_id, int):
-            print("The 'concept_id' in get_individual_concept_freq should be an int", flush=True)
-            return {}
+        if isinstance(concept_id, int):
+            pass
+        elif isinstance(concept_id, list):
+            pass
+        else:
+            print("The 'concept_id' in get_individual_concept_freq should be an int or a list", flush=True)
+            return []
 
         if not isinstance(dataset_id, int):
             print("The 'dataset_id' in get_individual_concept_freq should be an int", flush=True)
-            return {}
+            return []
         else:
             if dataset_id == 1 or dataset_id == 2 or dataset_id == 3:
                 pass
             else:
                 print("The 'dataset_id' in get_individual_concept_freq should be 1, 2 or 3", flush=True)
-                return {}
+                return []
 
-        results_dict = {}
+        results_array = []
         cursor = self.connection.cursor()
-        cursor.execute(f"select distinct * from SINGLE_CONCEPT_COUNTS where concept_id = {concept_id} and dataset_id = {dataset_id};")
-        res = cursor.fetchone()
-
-        if len(res) == 0:
-            pass
+        if isinstance(concept_id, int):
+            cursor.execute(f"select distinct * from SINGLE_CONCEPT_COUNTS where concept_id = {concept_id} and dataset_id = {dataset_id};")
+            res = cursor.fetchall()
+            if len(res) == 0:
+                pass
+            else:
+                for row in res:
+                    results_array.append({'dataset_id': row[0],
+                        'concept_id': row[1],
+                        'concept_count': row[2],
+                        'concept_frequency': row[3]})
         else:
-            results_dict["dataset_id"] = res[0]
-            results_dict["concept_id"] = res[1]
-            results_dict["concept_count"] = res[2]
-            results_dict["concept_frequency"] = res[3]
+            cursor.execute(f"select distinct * from SINGLE_CONCEPT_COUNTS where concept_id in {tuple(set(concept_id))} and dataset_id = {dataset_id};")
+            res = cursor.fetchall()
+            if len(res) == 0:
+                pass
+            else:
+                for row in res:
+                    results_array.append({'dataset_id': row[0],
+                        'concept_id': row[1],
+                        'concept_count': row[2],
+                        'concept_frequency': row[3]})
 
-        return results_dict
+        return results_array
 
     def get_associated_concept_domain_freq(self, concept_id, domain, dataset_id=1):
         """Retrieve observed clinical frequencies of all pairs of concepts given a concept id restricted by domain of the associated concept_id.
@@ -1014,7 +1451,7 @@ class COHDIndex:
             Expected count is calculated from the single concept frequencies and assuming independence between the concepts. Results are returned in descending order of ln_ratio.
 
             expected_count = Count_1_and_2 * num_patients / (Count_1 * Count_2)
-            ln_ratio = ln( expected_count )
+            ln_ratio = ln( observed_count/ expected_count )
             This method has overloaded behavior based on the specified parameters:
                 1. concept_id_1 and concept_id_2: Results for the pair (concept_id_1, concept_id_2)
                 2. concept_id_1: Results for all pairs of concepts that include concept_id_1

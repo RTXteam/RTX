@@ -7,26 +7,36 @@
     - [add_qnode()](#add_qnode)
     - [add_qedge()](#add_qedge)
   - [ARAX_expander](#arax_expander)
-    - [expand(kp=ARAX/KG1)](#expandkparaxkg1)
-    - [expand(kp=ARAX/KG2)](#expandkparaxkg2)
+    - [expand()](#expand)
+    - [expand(kp=RTX-KG2)](#expandkprtx-kg2)
     - [expand(kp=BTE)](#expandkpbte)
     - [expand(kp=COHD)](#expandkpcohd)
     - [expand(kp=GeneticsKP)](#expandkpgeneticskp)
     - [expand(kp=MolePro)](#expandkpmolepro)
+    - [expand(kp=ClinicalRiskKP)](#expandkpclinicalriskkp)
+    - [expand(kp=WellnessKP)](#expandkpwellnesskp)
+    - [expand(kp=DrugResponseKP)](#expandkpdrugresponsekp)
+    - [expand(kp=TumorGeneMutationKP)](#expandkptumorgenemutationkp)
     - [expand(kp=NGD)](#expandkpngd)
+    - [expand(kp=ICEES-DILI)](#expandkpicees-dili)
+    - [expand(kp=ICEES-Asthma)](#expandkpicees-asthma)
+    - [expand(kp=CHP)](#expandkpchp)
+    - [expand(kp=DTD)](#expandkpdtd)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
-    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
+    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
     - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
     - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
     - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
-    - [filter_kg(action=remove_edges_by_attribute)](#filter_kgactionremove_edges_by_attribute)
-    - [filter_kg(action=remove_edges_by_property)](#filter_kgactionremove_edges_by_property)
-    - [filter_kg(action=remove_edges_by_stats)](#filter_kgactionremove_edges_by_stats)
+    - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
+    - [filter_kg(action=remove_edges_by_discrete_attribute)](#filter_kgactionremove_edges_by_discrete_attribute)
+    - [filter_kg(action=remove_edges_by_std_dev)](#filter_kgactionremove_edges_by_std_dev)
+    - [filter_kg(action=remove_edges_by_percentile)](#filter_kgactionremove_edges_by_percentile)
+    - [filter_kg(action=remove_edges_by_top_n)](#filter_kgactionremove_edges_by_top_n)
     - [filter_kg(action=remove_nodes_by_category)](#filter_kgactionremove_nodes_by_category)
     - [filter_kg(action=remove_nodes_by_property)](#filter_kgactionremove_nodes_by_property)
     - [filter_kg(action=remove_orphaned_nodes)](#filter_kgactionremove_orphaned_nodes)
@@ -88,9 +98,9 @@ The `add_qnode` method adds an additional QNode to the QueryGraph in the Message
 
     - If not specified the default input will be . 
 
-* ##### id
+* ##### ids
 
-    - Any compact URI (CURIE) (e.g. DOID:9281) (May also be a list like [UniProtKB:P12345,UniProtKB:Q54321])
+    - A list (n >= 1) of compact URI (CURIE) (e.g. [DOID:9281] or [UniProtKB:P12345,UniProtKB:Q54321])
 
     - Acceptable input types: string.
 
@@ -108,9 +118,9 @@ The `add_qnode` method adds an additional QNode to the QueryGraph in the Message
 
     - `hypertension` and `insulin` are examples of valid inputs.
 
-* ##### category
+* ##### categories
 
-    - Any valid Translator bioentity category (e.g. protein, chemical_substance, disease)
+    - A list (n >= 1) of valid BioLink bioentity categories (e.g. biolink:Protein, biolink:ChemicalSubstance, biolink:Disease)
 
     - Acceptable input types: ARAXnode.
 
@@ -180,15 +190,15 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 
     - `n01` and `n02` are examples of valid inputs.
 
-* ##### predicate
+* ##### predicates
 
-    - Any valid Translator/BioLink relationship predicate (e.g. physically_interacts_with, participates_in)
+    - A list (n >= 1) of valid BioLink relationship predicates (e.g. [physically_interacts_with], [participates_in])
 
     - Acceptable input types: ARAXedge.
 
     - This is not a required parameter and may be omitted.
 
-    - `protein`, `physically_interacts_with`, and `participates_in` are examples of valid inputs.
+    - `['biolink:physically_interacts_with']` and `['biolink:participates_in']` are examples of valid inputs.
 
 * ##### option_group_id
 
@@ -213,8 +223,8 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
     - `true` and `false` are all possible valid inputs.
 
 ## ARAX_expander
-### expand(kp=ARAX/KG1)
-This command reaches out to the RTX KG1 Neo4j instance to find all bioentity subpaths that satisfy the query graph.
+### expand()
+This command will expand (aka, answer/fill) your query graph in an edge-by-edge fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: BTE, CHP, COHD, ClinicalRiskKP, DTD, DrugResponseKP, GeneticsKP, ICEES-Asthma, ICEES-DILI, MolePro, NGD, RTX-KG2, TumorGeneMutationKP, WellnessKP. It selects KPs based on the meta information provided by their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick but useful answers. For each QEdge, it queries the selected KPs in parallel; it will timeout for a particular KP if it decides it's taking too long to respond.
 
 #### parameters: 
 
@@ -238,20 +248,6 @@ This command reaches out to the RTX KG1 Neo4j instance to find all bioentity sub
 
     - `n00` and `[n00, n01]` are examples of valid inputs.
 
-* ##### continue_if_no_results
-
-    - Whether to continue execution if no paths are found matching the query graph.
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
-
-    - If not specified the default input will be false. 
-
 * ##### enforce_directionality
 
     - Whether to obey (vs. ignore) edge directions in the query graph.
@@ -266,22 +262,20 @@ This command reaches out to the RTX KG1 Neo4j instance to find all bioentity sub
 
     - If not specified the default input will be false. 
 
-* ##### use_synonyms
+* ##### prune_threshold
 
-    - Whether to consider curie synonyms and merge synonymous nodes.
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
 
-    - Acceptable input types: boolean.
+    - Acceptable input types: integer.
 
     - This is not a required parameter and may be omitted.
 
-    - `true` and `false` are examples of valid inputs.
+    - `500` and `2000` are examples of valid inputs.
 
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+    - If not specified the default input will be 1000. 
 
-    - If not specified the default input will be true. 
-
-### expand(kp=ARAX/KG2)
-This command reaches out to the RTX KG2 knowledge graph to find all bioentity subpaths that satisfy the query graph. If use_synonyms=true, it uses the KG2canonicalized ('KG2c') Neo4j instance; otherwise, the regular KG2 Neo4j instance is used.
+### expand(kp=RTX-KG2)
+This command reaches out to the RTX-KG2 API to find all bioentity subpaths that satisfy the query graph.
 
 #### parameters: 
 
@@ -305,20 +299,6 @@ This command reaches out to the RTX KG2 knowledge graph to find all bioentity su
 
     - `n00` and `[n00, n01]` are examples of valid inputs.
 
-* ##### continue_if_no_results
-
-    - Whether to continue execution if no paths are found matching the query graph.
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
-
-    - If not specified the default input will be false. 
-
 * ##### enforce_directionality
 
     - Whether to obey (vs. ignore) edge directions in the query graph.
@@ -333,19 +313,17 @@ This command reaches out to the RTX KG2 knowledge graph to find all bioentity su
 
     - If not specified the default input will be false. 
 
-* ##### use_synonyms
+* ##### prune_threshold
 
-    - Whether to consider curie synonyms and merge synonymous nodes.
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
 
-    - Acceptable input types: boolean.
+    - Acceptable input types: integer.
 
     - This is not a required parameter and may be omitted.
 
-    - `true` and `false` are examples of valid inputs.
+    - `500` and `2000` are examples of valid inputs.
 
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
-
-    - If not specified the default input will be true. 
+    - If not specified the default input will be 1000. 
 
 ### expand(kp=BTE)
 This command uses BioThings Explorer (from the Service Provider) to find all bioentity subpaths that satisfy the query graph. Of note, all query nodes must have a type specified for BTE queries. In addition, bi-directional queries are only partially supported (the ARAX system knows how to ignore edge direction when deciding which query node for a query edge will be the 'input' qnode, but BTE itself returns only answers matching the input edge direction).
@@ -372,20 +350,6 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 
     - `n00` and `[n00, n01]` are examples of valid inputs.
 
-* ##### continue_if_no_results
-
-    - Whether to continue execution if no paths are found matching the query graph.
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
-
-    - If not specified the default input will be false. 
-
 * ##### enforce_directionality
 
     - Whether to obey (vs. ignore) edge directions in the query graph.
@@ -400,19 +364,17 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 
     - If not specified the default input will be false. 
 
-* ##### use_synonyms
+* ##### prune_threshold
 
-    - Whether to consider curie synonyms and merge synonymous nodes.
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
 
-    - Acceptable input types: boolean.
+    - Acceptable input types: integer.
 
     - This is not a required parameter and may be omitted.
 
-    - `true` and `false` are examples of valid inputs.
+    - `500` and `2000` are examples of valid inputs.
 
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
-
-    - If not specified the default input will be true. 
+    - If not specified the default input will be 1000. 
 
 ### expand(kp=COHD)
 This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that satisfy the query graph.
@@ -439,9 +401,9 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - `n00` and `[n00, n01]` are examples of valid inputs.
 
-* ##### continue_if_no_results
+* ##### enforce_directionality
 
-    - Whether to continue execution if no paths are found matching the query graph.
+    - Whether to obey (vs. ignore) edge directions in the query graph.
 
     - Acceptable input types: boolean.
 
@@ -453,19 +415,17 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - If not specified the default input will be false. 
 
-* ##### use_synonyms
+* ##### prune_threshold
 
-    - Whether to consider curie synonyms and merge synonymous nodes.
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
 
-    - Acceptable input types: boolean.
+    - Acceptable input types: integer.
 
     - This is not a required parameter and may be omitted.
 
-    - `true` and `false` are examples of valid inputs.
+    - `500` and `2000` are examples of valid inputs.
 
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
-
-    - If not specified the default input will be true. 
+    - If not specified the default input will be 1000. 
 
 * ##### COHD_method
 
@@ -477,26 +437,54 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
 
     - `paired_concept_freq` and `chi_square` are examples of valid inputs.
 
-    - `paired_concept_freq`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
+    - `all`, `paired_concept_freq`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
 
-    - If not specified the default input will be paired_concept_freq. 
+    - If not specified the default input will be all. 
 
-* ##### COHD_method_percentile
+* ##### COHD_method_top_N
 
-    - What percentile to use as a cut-off/threshold for the specified COHD method.
+    - What top N to use as a cut-off/threshold for the specified COHD method.
 
     - Acceptable input types: integer.
 
     - This is not a required parameter and may be omitted.
 
-    - `95` and `80` are examples of valid inputs.
+    - `500` and `1000` are examples of valid inputs.
 
-    - The values for this parameter can range from a minimum value of 0 to a maximum value of 100.
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of 1000000000000000000.
 
-    - If not specified the default input will be 99. 
+    - If not specified the default input will be 1000. 
+
+* ##### sorted_by
+
+    - If COHD_method=='all', then what statistics the 'COHD_method_top_N' is based on.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `paired_concept_freq` and `chi_square` are examples of valid inputs.
+
+    - `paired_concept_freq`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
+
+    - If not specified the default input will be paired_concept_freq. 
+
+* ##### COHD_slow_mode
+
+    - Whether to call COHD API when the local COHD database doesn't return the expected results.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
 
 ### expand(kp=GeneticsKP)
-This command reaches out to the Genetics Provider to find all bioentity subpaths that satisfy the query graph. It currently can answer questions involving the following node types: gene, protein, disease, phenotypic_feature, pathway. QNode types are required for GeneticsKP queries and it is sensitive to the use of disease vs. phenotypic_feature. Note that QEdge types are irrelevant for GeneticsKP queries, since GeneticsKP only outputs edges with a type of 'associated' (so Expand always uses that as the QEdge type behind the scenes). Only MAGMA p-value edges are added by default, but setting 'include_all_scores=true' will return all edges/scores the GeneticsKP returns, including genetics-quantile scores.
+This command reaches out to the Genetics Provider to find all bioentity subpaths that satisfy the query graph.
 
 #### parameters: 
 
@@ -520,37 +508,9 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 
     - `n00` and `[n00, n01]` are examples of valid inputs.
 
-* ##### continue_if_no_results
+* ##### enforce_directionality
 
-    - Whether to continue execution if no paths are found matching the query graph.
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
-
-    - If not specified the default input will be false. 
-
-* ##### use_synonyms
-
-    - Whether to consider curie synonyms and merge synonymous nodes.
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
-
-    - If not specified the default input will be true. 
-
-* ##### include_all_scores
-
-    - Whether to return all scores/edges returned from the GeneticsKP (including genetics-quantile edges) or only MAGMA p-value edges.
+    - Whether to obey (vs. ignore) edge directions in the query graph.
 
     - Acceptable input types: boolean.
 
@@ -561,9 +521,21 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
     - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
 
     - If not specified the default input will be false. 
+
+* ##### prune_threshold
+
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
 
 ### expand(kp=MolePro)
-This command reaches out to MolePro (the Molecular Provider) to find all bioentity subpaths that satisfy the query graph. It currently can answer questions involving the following node types: gene, protein, disease, chemical_substance. QNode types are required for MolePro queries. Generally you should not specify a QEdge type for MolePro queries (Expand uses 'correlated_with' by default behind the scenes, which is the primary edge type of interest for ARAX in MolePro).
+This command reaches out to MolePro (the Molecular Provider) to find all bioentity subpaths that satisfy the query graph.
 
 #### parameters: 
 
@@ -587,9 +559,9 @@ This command reaches out to MolePro (the Molecular Provider) to find all bioenti
 
     - `n00` and `[n00, n01]` are examples of valid inputs.
 
-* ##### continue_if_no_results
+* ##### enforce_directionality
 
-    - Whether to continue execution if no paths are found matching the query graph.
+    - Whether to obey (vs. ignore) edge directions in the query graph.
 
     - Acceptable input types: boolean.
 
@@ -601,9 +573,46 @@ This command reaches out to MolePro (the Molecular Provider) to find all bioenti
 
     - If not specified the default input will be false. 
 
-* ##### use_synonyms
+* ##### prune_threshold
 
-    - Whether to consider curie synonyms and merge synonymous nodes.
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
+
+### expand(kp=ClinicalRiskKP)
+This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity subpaths that satisfy the query graph.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### enforce_directionality
+
+    - Whether to obey (vs. ignore) edge directions in the query graph.
 
     - Acceptable input types: boolean.
 
@@ -613,7 +622,172 @@ This command reaches out to MolePro (the Molecular Provider) to find all bioenti
 
     - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
 
-    - If not specified the default input will be true. 
+    - If not specified the default input will be false. 
+
+* ##### prune_threshold
+
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
+
+### expand(kp=WellnessKP)
+This command reaches out to the Multiomics Wellness KP to find all bioentity subpaths that satisfy the query graph.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### enforce_directionality
+
+    - Whether to obey (vs. ignore) edge directions in the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### prune_threshold
+
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
+
+### expand(kp=DrugResponseKP)
+This command reaches out to the Multiomics Big GIM II Drug Response KP to find all bioentity subpaths that satisfy the query graph.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### enforce_directionality
+
+    - Whether to obey (vs. ignore) edge directions in the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### prune_threshold
+
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
+
+### expand(kp=TumorGeneMutationKP)
+This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find all bioentity subpaths that satisfy the query graph.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### enforce_directionality
+
+    - Whether to obey (vs. ignore) edge directions in the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### prune_threshold
+
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
 
 ### expand(kp=NGD)
 This command uses ARAX's in-house normalized google distance (NGD) database to expand a query graph; it returns edges between nodes with an NGD value below a certain threshold. This threshold is currently hardcoded as 0.5, though this will be made configurable/smarter in the future.
@@ -640,9 +814,9 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
     - `n00` and `[n00, n01]` are examples of valid inputs.
 
-* ##### continue_if_no_results
+* ##### enforce_directionality
 
-    - Whether to continue execution if no paths are found matching the query graph.
+    - Whether to obey (vs. ignore) edge directions in the query graph.
 
     - Acceptable input types: boolean.
 
@@ -654,9 +828,46 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
     - If not specified the default input will be false. 
 
-* ##### use_synonyms
+* ##### prune_threshold
 
-    - Whether to consider curie synonyms and merge synonymous nodes.
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
+
+### expand(kp=ICEES-DILI)
+This command reaches out to the ICEES knowledge provider's DILI instance to find all bioentity subpaths that satisfy the query graph.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### enforce_directionality
+
+    - Whether to obey (vs. ignore) edge directions in the query graph.
 
     - Acceptable input types: boolean.
 
@@ -666,9 +877,367 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
 
     - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
 
-    - If not specified the default input will be true. 
+    - If not specified the default input will be false. 
+
+* ##### prune_threshold
+
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
+
+### expand(kp=ICEES-Asthma)
+This command reaches out to the ICEES knowledge provider's Asthma instance to find all bioentity subpaths that satisfy the query graph.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### enforce_directionality
+
+    - Whether to obey (vs. ignore) edge directions in the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### prune_threshold
+
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
+
+### expand(kp=CHP)
+This command reaches out to CHP (the Connections Hypothesis Provider) to query the probability of the form P(Outcome | Gene Mutations, Disease, Therapeutics, ...). It currently can answer a question like 'Given a gene or a batch of genes, what is the probability that the survival time (day) >= a given threshold for this gene paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### enforce_directionality
+
+    - Whether to obey (vs. ignore) edge directions in the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### prune_threshold
+
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
+
+* ##### CHP_survival_threshold
+
+    - What cut-off/threshold for surivial time (day) to estimate probability.
+
+    - Acceptable input types: int.
+
+    - This is not a required parameter and may be omitted.
+
+    - `200` and `100` are examples of valid inputs.
+
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of 1000000000000.
+
+    - If not specified the default input will be 500. 
+
+### expand(kp=DTD)
+This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand a query graph; it returns edges between nodes with an DTD probability above a certain threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to to call DTD model to do a real-time calculation.
+
+#### parameters: 
+
+* ##### edge_key
+
+    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `[e00, e01]` are examples of valid inputs.
+
+* ##### node_key
+
+    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `[n00, n01]` are examples of valid inputs.
+
+* ##### enforce_directionality
+
+    - Whether to obey (vs. ignore) edge directions in the query graph.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### prune_threshold
+
+    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be 1000. 
+
+* ##### DTD_threshold
+
+    - What cut-off/threshold to use for expanding the DTD virtual edges.
+
+    - Acceptable input types: float.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0.8` and `0.5` are examples of valid inputs.
+
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of 1.
+
+    - If not specified the default input will be 0.8. 
+
+* ##### DTD_slow_mode
+
+    - Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true` and `false` are examples of valid inputs.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
 
 ## ARAX_overlay
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be 100. 
+
+### overlay(action=overlay_clinical_info)
+
+`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+These virtual edges have the following types:
+
+* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
+* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
+* `chi_square` has the virtual edge type `has_chi_square_with`
+
+Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
+
+* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge subject and object nodes and adds these values as edge attributes.
+* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge subject and object nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
+* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge subject/object nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+**NOTE:** The parameters `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are mutually exclusive and thus will cause an error when more than one is included.
+
+#### parameters: 
+
+* ##### COHD_method
+
+    - Which measure from COHD should be considered.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
+
+    - If not specified the default input will be paired_concept_frequency. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
 ### overlay(action=fisher_exact_test)
 
 `fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
@@ -811,157 +1380,6 @@ This can be applied to an arbitrary knowledge graph (i.e. not just those created
 
     - `n00` and `n01` are examples of valid inputs.
 
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
-
-### overlay(action=overlay_clinical_info)
-
-`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
-All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
-This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
-This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
-These virtual edges have the following types:
-
-* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
-* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
-* `chi_square` has the virtual edge type `has_chi_square_with`
-
-Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
-
-* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge subject and object nodes and adds these values as edge attributes.
-* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge subject and object nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
-* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge subject/object nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
-* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-**NOTE:** The parameters `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are mutually exclusive and thus will cause an error when more than one is included.
-
-#### parameters: 
-
-* ##### COHD_method
-
-    - Which measure from COHD should be considered.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
-
-    - If not specified the default input will be paired_concept_frequency. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=compute_ngd)
-
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### default_value
-
-    - The default value of the normalized Google distance (if its value cannot be determined)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0` and `inf` are examples of valid inputs.
-
-    - If not specified the default input will be inf. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
 ### overlay(action=predict_drug_treats_disease)
 
 `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
@@ -1009,6 +1427,32 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
+
+* ##### threshold
+
+    - What cut-off/threshold to use for DTD probability (optional, the default is 0.8)
+
+    - Acceptable input types: int or float or None.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0.8`, `0.95`, and `0.5` are examples of valid inputs.
+
+    - If not specified the default input will be 0.8. 
+
+* ##### slow_mode
+
+    - Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `True` and `False` are examples of valid inputs.
+
+    - `T`, `t`, `True`, `F`, `f`, and `False` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
 
 ### overlay(action=compute_jaccard)
 
@@ -1102,19 +1546,29 @@ This can be applied to an arbitrary knowledge graph as possible edge predicates 
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
 
-    - Acceptable input types: string.
+    - Acceptable input types: list.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
-### filter_kg(action=remove_edges_by_attribute)
+* ##### qedge_keys
 
-`remove_edges_by_attribute` removes edges from the knowledge graph (KG) based on a a certain edge attribute.
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+### filter_kg(action=remove_edges_by_continuous_attribute)
+
+`remove_edges_by_continuous_attribute` removes edges from the knowledge graph (KG) based on the value of a continuous edge attribute.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
 Use cases include:
@@ -1176,25 +1630,35 @@ This can be applied to an arbitrary knowledge graph as possible edge attributes 
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
 
-    - Acceptable input types: string.
+    - Acceptable input types: list.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
-### filter_kg(action=remove_edges_by_property)
+* ##### qedge_keys
 
-`remove_edges_by_property` removes edges from the knowledge graph (KG) based on a given edge property.
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+### filter_kg(action=remove_edges_by_discrete_attribute)
+
+`remove_edges_by_discrete_attribute` removes edges from the knowledge graph (KG) based on a given dicrete edge property or attribute.
 Use cases include:
                 
-* removing all edges that were provided by a certain knowledge provider (KP) via `edge_property=provided, property_value=Pharos` to remove all edges provided by the KP Pharos.
-* removing all edges that connect to a certain node via `edge_property=subject, property_value=DOID:8398`
-* removing all edges with a certain relation via `edge_property=relation, property_value=upregulates`
-* removing all edges provided by another ARA via `edge_property=is_defined_by, property_value=ARAX/RTX`
+* removing all edges that were provided by a certain knowledge provider (KP) via `edge_attribute=biolink:original_source, value=infores:semmeddb` to remove all edges provided by SemMedDB.
+* removing all edges that connect to a certain node via `edge_attribute=subject, value=DOID:8398`
+* removing all edges with a certain relation via `edge_attribute=relation, value=upregulates`
+* removing all edges provided by another ARA via `edge_attribute=is_defined_by, value=RTX-KG2`
 * etc. etc.
                 
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -1205,7 +1669,7 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 
 #### parameters: 
 
-* ##### edge_property
+* ##### edge_attribute
 
     - The name of the edge property to filter on.
 
@@ -1215,7 +1679,7 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 
     - `subject`, `provided_by`, and `is_defined_by` are examples of valid inputs.
 
-* ##### property_value
+* ##### value
 
     - The edge property value to indicate which edges to remove.
 
@@ -1237,28 +1701,36 @@ This can be applied to an arbitrary knowledge graph as possible edge properties 
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
 
-    - Acceptable input types: string.
+    - Acceptable input types: list.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
-### filter_kg(action=remove_edges_by_stats)
+* ##### qedge_keys
 
-`remove_edges_by_stats` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+### filter_kg(action=remove_edges_by_std_dev)
+
+`remove_edges_by_std_dev` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
 Edge attributes are a list of additional attributes for an edge.
 This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
-there are two heuristic options: `n` for removing all but the 50 best results, `std`/`std_dev` for removing all but 
-the best results more than 1 standard deviation from the mean, or `percentile` to remove all but the best 
-5% of results. (if not supplied this defaults to `n`)
+By default `std_dev` removes all but the best results more than 1 standard deviation from the mean
 Use cases include:
 
-* removing all edges with normalized google distance scores but the top 50 `edge_attribute=ngd, type=n` (i.e. remove edges that aren't represented well in the literature)
-* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index, type=std` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* removing all edges with normalized google distance scores more than 1 standard deviation below the mean `edge_attribute=ngd` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than 1 standard deviation above the mean. `edge_attribute=jaccard_index` (i.e. all edges that have less than 20% of intermediate nodes in common)
 * etc. etc.
                 
 You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -1269,7 +1741,7 @@ You also have the option of specifying the direction to remove and location of t
 * `threshold` specified by a floating point number
 * `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
 e.g. to remove all the edges with jaccard_index values greater than 0.25 standard deviations below the mean you can run the following:
-`filter_kg(action=remove_edges_by_stats, edge_attribute=jaccard_index, type=std, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
+`filter_kg(action=remove_edges_by_std_dev, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=0.25, top=f, direction=above)`
                     
 
 #### parameters: 
@@ -1283,18 +1755,6 @@ e.g. to remove all the edges with jaccard_index values greater than 0.25 standar
     - This is a required parameter and must be included.
 
     - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
-
-* ##### type
-
-    - The statistic to use for filtering.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n`, `std`, `std_dev`, `percentile`, and `p` are all possible valid inputs.
-
-    - If not specified the default input will be n. 
 
 * ##### direction
 
@@ -1316,17 +1776,17 @@ e.g. to remove all the edges with jaccard_index values greater than 0.25 standar
 
     - This is not a required parameter and may be omitted.
 
-    - `5` and `0.45` are examples of valid inputs.
+    - `1` and `0.45` are examples of valid inputs.
 
-    - The values for this parameter can range from a minimum value of 0 to a maximum value of inf (or 100 if type=percentile or p).
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
 
-    - If not specified the default input will be a value dictated by the `type` parameter. If `type` is 'n' then `threshold` will default to 50. If `type` is 'std_dev' or 'std' then `threshold` will default to 1.If `type` is 'percentile' or 'p' then `threshold` will default to 95 unless `edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `threshold` will default to 5.. 
+    - If not specified the default input will be 1. 
 
 * ##### top
 
     - Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.
 
-    - Acceptable input types: string.
+    - Acceptable input types: boolean.
 
     - This is not a required parameter and may be omitted.
 
@@ -1346,15 +1806,233 @@ e.g. to remove all the edges with jaccard_index values greater than 0.25 standar
 
     - If not specified the default input will be false. 
 
-* ##### qnode_key
+* ##### qnode_keys
 
-    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to a specific qnode_key to be removed.If not provided the qnode_key will not be considered when filtering.
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+* ##### qedge_keys
+
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+### filter_kg(action=remove_edges_by_percentile)
+
+`remove_edges_by_percentile` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+By default `percentile` removes all but the best 5% of results.
+Use cases include:
+
+* removing all edges with normalized google distance scores but the 5% smallest values `edge_attribute=ngd` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than the top 5% of values. `edge_attribute=jaccard_index` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* etc. etc.
+                
+You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
+
+You also have the option of specifying the direction to remove and location of the split by using the options 
+* `direction` with options `above`,`below`
+* `threshold` specified by a floating point number
+* `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
+e.g. to remove all the edges with jaccard_index values greater than the bottom 25% of values you can run the following:
+`filter_kg(action=remove_edges_by_percentile, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=25, top=f, direction=above)`
+                    
+
+#### parameters: 
+
+* ##### edge_attribute
+
+    - The name of the edge attribute to filter on.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
+
+* ##### direction
+
+    - Indictes whether to remove above or below the given threshold.
 
     - Acceptable input types: string.
 
     - This is not a required parameter and may be omitted.
 
-    - `n01` and `n02` are examples of valid inputs.
+    - `above` and `below` are all possible valid inputs.
+
+    - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.. 
+
+* ##### threshold
+
+    - 95 unless `edge_attribute` is also 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `threshold` will default to 5.
+
+    - Acceptable input types: float.
+
+    - This is not a required parameter and may be omitted.
+
+    - `5` and `0.45` are examples of valid inputs.
+
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of 100.
+
+* ##### top
+
+    - Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True.. 
+
+* ##### remove_connected_nodes
+
+    - Indicates whether or not to remove the nodes connected to the edge.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### qnode_keys
+
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+* ##### qedge_keys
+
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+### filter_kg(action=remove_edges_by_top_n)
+
+`remove_edges_by_top_n` removes edges from the knowledge graph (KG) based on a certain edge attribute using default heuristics.
+Edge attributes are a list of additional attributes for an edge.
+This action interacts particularly well with `overlay()` as `overlay()` frequently adds additional edge attributes.
+By default `top_n` removes all but the 50 best results.
+Use cases include:
+
+* removing all edges with normalized google distance scores but the 50 smallest values `edge_attribute=ngd` (i.e. remove edges that aren't represented well in the literature)
+* removing all edges that Jaccard index less than the 50 largest values. `edge_attribute=jaccard_index` (i.e. all edges that have less than 20% of intermediate nodes in common)
+* etc. etc.
+                
+You have the option (this defaults to false) to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
+else, only remove a single subject/object node based on a query node id (via `remove_connected_nodes=t, qnode_key=<a query node id.>`
+
+You also have the option of specifying the direction to remove and location of the split by using the options 
+* `direction` with options `above`,`below`
+* `threshold` specified by a floating point number
+* `top` which is boolean specified by `t`, `true`, `T`, `True` and `f`, `false`, `F`, `False`
+e.g. to remove all the edges with jaccard_index values greater than the 25 smallest values you can run the following:
+`filter_kg(action=remove_edges_by_top_n, edge_attribute=jaccard_index, remove_connected_nodes=f, threshold=25, top=f, direction=above)`
+                    
+
+#### parameters: 
+
+* ##### edge_attribute
+
+    - The name of the edge attribute to filter on.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `jaccard_index`, `observed_expected_ratio`, and `normalized_google_distance` are examples of valid inputs.
+
+* ##### direction
+
+    - Indictes whether to remove above or below the given threshold.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `above` and `below` are all possible valid inputs.
+
+    - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `direction` defaults to above. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `direction` defaults to below.. 
+
+* ##### n
+
+    - The threshold to filter with.
+
+    - Acceptable input types: int.
+
+    - This is not a required parameter and may be omitted.
+
+    - `5`, `10`, and `50` are examples of valid inputs.
+
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
+
+    - If not specified the default input will be 50. 
+
+* ##### top
+
+    - Indicate whether or not the threshold should be placed in top of the list. E.g. top set as True with type set as std_dev will set the cutoff for filtering as the mean + threshold * std_dev while setting top to False will set the cutoff as the mean - std_dev * threshold.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be a value dictated by the `edge_attribute` parameter. If `edge attribute` is 'ngd', 'chi_square', 'fisher_exact', or 'normalized_google_distance' then `top` defaults to False. If `edge_attribute` is 'jaccard_index', 'observed_expected_ratio', 'probability_treats' or anything else not listed then `top` defaults to True.. 
+
+* ##### remove_connected_nodes
+
+    - Indicates whether or not to remove the nodes connected to the edge.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+* ##### qnode_keys
+
+    - If remove_connected_nodes is set to True this indicates if you only want nodes corresponding to one of the listed qnode_keys to be removed.If not provided the qnode_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
+
+* ##### qedge_keys
+
+    - If included this indicates if you only want edge with one of the listed qedge_keys to be removed.If not provided the qedge_key will not be considered when filtering.
+
+    - Acceptable input types: list.
+
+    - This is not a required parameter and may be omitted.
+
+    - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
 ### filter_kg(action=remove_nodes_by_category)
 

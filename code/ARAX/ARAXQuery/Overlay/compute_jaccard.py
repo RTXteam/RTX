@@ -54,10 +54,14 @@ class ComputeJaccard:
             for edge in message.knowledge_graph.edges.values():
                 if edge.subject in intermediate_nodes:  # if subject is intermediate
                     if edge.object in end_node_to_intermediate_node_set:
-                        end_node_to_intermediate_node_set[edge.object].add((edge.subject, edge.predicate))  # add subject
+                        # end_node_to_intermediate_node_set[edge.object].add((edge.subject, edge.predicate))  # add subjectend_node_to_intermediate_node_set[edge.object].add((edge.subject, edge.predicate))
+                        # FW: Old way was to add in unique predicate, node id pairs but then count total number of intermediate nodes.
+                        # I've now changed this to add only node ids on both but we could change back but instead count all pairs for the demoninator.
+                        end_node_to_intermediate_node_set[edge.object].add(edge.subject)
                 elif edge.object in intermediate_nodes:  # if object is intermediate
                     if edge.subject in end_node_to_intermediate_node_set:
-                        end_node_to_intermediate_node_set[edge.subject].add((edge.object, edge.predicate))  # add object
+                        # end_node_to_intermediate_node_set[edge.subject].add((edge.object, edge.predicate))  # add object
+                        end_node_to_intermediate_node_set[edge.subject].add(edge.object)
 
             # now compute the actual jaccard indexes
             denom = len(intermediate_nodes)
@@ -74,12 +78,12 @@ class ComputeJaccard:
             j_iter = 0
             now = datetime.now()
             #edge_type = parameters['virtual_edge_type']
-            edge_type = 'has_jaccard_index_with'
+            edge_type = 'biolink:has_jaccard_index_with'
             qedge_keys = [parameters['virtual_relation_label']]
             relation = parameters['virtual_relation_label']
             is_defined_by = "ARAX"
             defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-            provided_by = "ARAX"
+            provided_by = "infores:arax"
             confidence = None
             weight = None  # TODO: could make the jaccard index the weight
             try:
@@ -99,7 +103,7 @@ class ComputeJaccard:
 
             # now actually add the virtual edges in
             for end_node_key, value in end_node_to_jaccard.items():
-                edge_attribute = EdgeAttribute(type=attribute_type, name=name, value=value, url=url)
+                edge_attribute = EdgeAttribute(attribute_type_id=attribute_type, original_attribute_name=name, value=value, value_url=url)
                 # try to ensure a unique edge id
                 id = f"J{j_iter}"
                 # if by chance you get the same id then loop until a unique one is generated
@@ -112,11 +116,11 @@ class ComputeJaccard:
                 # Do these need a attribute type and url?
                 edge_attribute_list = [
                     edge_attribute,
-                    EdgeAttribute(name="is_defined_by", value=is_defined_by),
-                    EdgeAttribute(name="defined_datetime", value=defined_datetime),
-                    EdgeAttribute(name="provided_by", value=provided_by),
-                    EdgeAttribute(name="confidence", value=confidence),
-                    EdgeAttribute(name="weight", value=weight),
+                    EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
+                    EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                    EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+                    #EdgeAttribute(name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
+                    #EdgeAttribute(name="weight", value=weight, attribute_type_id="metatype:Float"),
                     #EdgeAttribute(name="qedge_ids", value=qedge_ids)
                 ]
                 # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key, object_key=object_key,
@@ -136,7 +140,7 @@ class ComputeJaccard:
             #                object_key=object_qnode_key, option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
             
             # Does not look to be a way to add option group ids to the new QEdge in TRAPI 1.0? Will error as written now
-            q_edge = QEdge(predicate=edge_type, relation=relation, subject=subject_qnode_key,
+            q_edge = QEdge(predicates=[edge_type], relation=relation, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
             # Need to fix this for TRAPI 1.0
             self.message.query_graph.edges[relation] = q_edge

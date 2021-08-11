@@ -4,12 +4,14 @@
 graphsage_folder=~/work/Graphsage/GraphSAGE
 
 ## set your working path
-work_path=~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage
+work_path=~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_6_3/temp
 
 ## set python path (Please use python 2.7 to run graphsage as graphsage was written by python2.7)
 ppath=~/anaconda3/envs/graphsage_p2.7env/bin/python
 
 ## set model name
+ 10 ppath=~/anaconda3/envs/graphsage_p2.7env/bin/python
+ 11
 model='graphsage_mean'
 ## model option:
 #graphsage_mean -- GraphSage with mean-based aggregator
@@ -20,7 +22,7 @@ model='graphsage_mean'
 #n2v -- an implementation of DeepWalk
 
 ## set data input folder and training data prefix
-train_prefix=~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/graphsage_input/data #note: here 'data' is the training data prefix
+train_prefix=~/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_6_3/graphsage_input/data #note: here 'data' is the training data prefix
 
 ## other parameters
 model_size='big' #Can be big or small

@@ -21,17 +21,16 @@ from ARAX_response import ARAXResponse
 
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
-from swagger_server.models.edge import Edge
-from swagger_server.models.node import Node
-from swagger_server.models.q_edge import QEdge
-from swagger_server.models.q_node import QNode
-from swagger_server.models.query_graph import QueryGraph
-from swagger_server.models.knowledge_graph import KnowledgeGraph
-from swagger_server.models.node_binding import NodeBinding
-from swagger_server.models.edge_binding import EdgeBinding
-from swagger_server.models.biolink_entity import BiolinkEntity
-from swagger_server.models.result import Result
-from swagger_server.models.message import Message
+from openapi_server.models.edge import Edge
+from openapi_server.models.node import Node
+from openapi_server.models.q_edge import QEdge
+from openapi_server.models.q_node import QNode
+from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.node_binding import NodeBinding
+from openapi_server.models.edge_binding import EdgeBinding
+from openapi_server.models.result import Result
+from openapi_server.models.message import Message
 
 
 def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
@@ -50,9 +49,9 @@ def test_n_results():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=ARAX/KG1)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
@@ -60,30 +59,30 @@ def test_n_results():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert message.n_results == len(message.results)
+    assert message.n_results == len(message.results) == 20
 
 def test_no_results():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=ARAX/KG1)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
-    assert 'WARNING: filter_results called with no results.' in response.show(level=ARAXResponse.WARNING)
+    assert 'WARNING: [] filter_results called with no results.' in response.show(level=ARAXResponse.WARNING)
     assert response.status == 'OK'
 
 def test_prune():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=ARAX/KG1)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20, prune_kg=f)",
@@ -93,9 +92,9 @@ def test_prune():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=ARAX/KG1)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
@@ -123,9 +122,9 @@ def test_warning():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=ARAX/KG1)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
@@ -140,9 +139,9 @@ def test_sort():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
-            "add_qnode(category=chemical_substance, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=ARAX/KG1)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
@@ -152,6 +151,24 @@ def test_sort():
     assert response.status == 'OK'
     assert len(message.results) == 20
     # add something to test if the results are assending and the correct numbers
+
+    
+@pytest.mark.external
+def test_issue1506():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(ids=MONDO:0005301, key=n00)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+            "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:related_to)",
+            "expand(kp=ClinicalRiskKP, edge_key=e00)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n00)",
+            "resultify()",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=feature_coefficient, direction=descending, max_results=30, prune_kg=true)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 30
 
 
 if __name__ == "__main__":

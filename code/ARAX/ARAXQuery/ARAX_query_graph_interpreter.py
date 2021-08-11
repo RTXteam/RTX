@@ -61,7 +61,7 @@ class ARAXQueryGraphInterpreter:
         result = query_graph_info.assess(message)
         response.merge(result)
         if result.status != 'OK':
-            print(response.show(level=ARAXResponse.DEBUG))
+            #print(response.show(level=ARAXResponse.DEBUG))
             return response
 
         query_graph_template = query_graph_info.query_graph_templates['detailed']
@@ -87,22 +87,22 @@ class ARAXQueryGraphInterpreter:
             if component['component_type'] == 'node':
 
                 # Go through the list of possible things it could be and those or lesser possible next steps
-                if component['has_id'] and component['has_category'] and component['category_value']:
-                    possible_next_steps.append( { 'content': f"id,category={component['category_value']}", 'score': 10000 } )
-                    possible_next_steps.append( { 'content': 'id', 'score': 1000 } )
+                if component['has_ids'] and component['has_categories'] and component['categories_value']:
+                    possible_next_steps.append( { 'content': f"ids,categories={component['categories_value']}", 'score': 10000 } )
+                    possible_next_steps.append( { 'content': 'ids', 'score': 1000 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_id']:
-                    possible_next_steps.append( { 'content': 'id', 'score': 1000 } )
+                elif component['has_ids']:
+                    possible_next_steps.append( { 'content': 'ids', 'score': 1000 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_category'] and component['category_value']:
-                    possible_next_steps.append( { 'content': f"category={component['category_value']}", 'score': 100 } )
-                    possible_next_steps.append( { 'content': 'category', 'score': 10 } )
+                elif component['has_categories'] and component['categories_value']:
+                    possible_next_steps.append( { 'content': f"categories={component['categories_value']}", 'score': 100 } )
+                    possible_next_steps.append( { 'content': 'categories', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_category']:
-                    possible_next_steps.append( { 'content': 'category', 'score': 10 } )
+                elif component['has_categories']:
+                    possible_next_steps.append( { 'content': 'categories', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
                 else:
@@ -111,13 +111,13 @@ class ARAXQueryGraphInterpreter:
             # Else it's an edge. Don't do anything with those currently
             else:
                 # Go through the list of possible things it could be and those or lesser possible next steps
-                if component['has_predicate'] and component['predicate_value']:
-                    possible_next_steps.append( { 'content': f"predicate={component['predicate_value']}", 'score': 90 } )
-                    possible_next_steps.append( { 'content': 'predicate', 'score': 10 } )
+                if component['has_predicates'] and component['predicates_value']:
+                    possible_next_steps.append( { 'content': f"predicates={component['predicates_value']}", 'score': 90 } )
+                    possible_next_steps.append( { 'content': 'predicates', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
-                elif component['has_predicate']:
-                    possible_next_steps.append( { 'content': 'predicate', 'score': 10 } )
+                elif component['has_predicates']:
+                    possible_next_steps.append( { 'content': 'predicates', 'score': 10 } )
                     possible_next_steps.append( { 'content': '', 'score': 0 } )
 
                 else:
@@ -163,18 +163,39 @@ class ARAXQueryGraphInterpreter:
             araxi_commands = self.query_graph_templates['templates'][query_graph_template_name]['DSL']
 
             # Need to remap the theoretical node and edge ids into the actual ones
+            # Do it in two passes in case there are overlaps in the names. Issue #1457
             new_araxi_commands = []
+            tmp_araxi_commands = []
             for command in araxi_commands:
                 node_index = 0
                 new_command = command
                 for node in query_graph_info.node_order:
                     template_id = f"n{node_index:02}"
-                    new_command = re.sub(template_id,node['key'],new_command)
+                    temp_template_id = f"zzxxyqn{node_index:02}"
+                    new_command = re.sub(template_id,temp_template_id,new_command)
                     node_index += 1
 
                 edge_index = 0
                 for edge in query_graph_info.edge_order:
                     template_id = f"e{edge_index:02}"
+                    temp_template_id = f"zzxxyqe{node_index:02}"
+                    new_command = re.sub(template_id,temp_template_id,new_command)
+                    edge_index += 1
+
+                tmp_araxi_commands.append(new_command)
+
+            #### Second pass remapping the temporary names
+            for command in tmp_araxi_commands:
+                node_index = 0
+                new_command = command
+                for node in query_graph_info.node_order:
+                    template_id = f"zzxxyqn{node_index:02}"
+                    new_command = re.sub(template_id,node['key'],new_command)
+                    node_index += 1
+
+                edge_index = 0
+                for edge in query_graph_info.edge_order:
+                    template_id = f"zzxxyqe{edge_index:02}"
                     new_command = re.sub(template_id,edge['key'],new_command)
                     edge_index += 1
 
@@ -184,7 +205,16 @@ class ARAXQueryGraphInterpreter:
             response.data['araxi_commands'] = new_araxi_commands
             return response
 
-        response.error("QueryGraphInterpreter cannot interpret this QueryGraph", error_code="QueryGraphInterpreterUnsupportedGraph")
+        # response.error("QueryGraphInterpreter cannot interpret this QueryGraph", error_code="QueryGraphInterpreterUnsupportedGraph")
+
+        # If we got here, then no templates matches, so try to assign a bland program and hope for the best
+        response.warning("QueryGraphInterpreter cannot match this QueryGraph to a known template, just running a default template")
+        response.data['araxi_commands'] = [
+            'expand()',
+            'resultify()',
+            'filter_results(action=limit_number_of_results, max_results=100)'
+        ]
+
         return response
 
 
@@ -216,12 +246,12 @@ class ARAXQueryGraphInterpreter:
             self.response.error(f"Missing version number in QueryGraphInterpreter templates file {template_file}", error_code="MissingQueryGraphInterpreterTemplateFileVersion")
             self.query_graph_templates = None
             return self.response
-        if self.query_graph_templates['ARAX_QG_DSL_mapping'] != 0.1:
+        if self.query_graph_templates['ARAX_QG_DSL_mapping'] != 0.2:
             self.response.error(f"Incorrect version number in QueryGraphInterpreter templates file {template_file}", error_code="BadQueryGraphInterpreterTemplateFileVersion")
             self.query_graph_templates = None
             return self.response
 
-        # We will create dict lookup table of all the template string [e.g. 'n00(id)-e00()-n01(category)' -> template_name]
+        # We will create dict lookup table of all the template string [e.g. 'n00(ids)-e00()-n01(categories)' -> template_name]
         self.query_graph_templates['template_strings'] = {}
 
         # We will also create dict tree of all templates organized by the number of nodes and then by each component
@@ -347,9 +377,69 @@ def QGI_test2():
     input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "category": "chemical_substance" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "predicate": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
     # TRAPI 1.0.0
     input_query_graph = { "message": { "query_graph": { 
-        "nodes": { "n1": { "category": "biolink:ChemicalSubstance" }, "n2": { "id": "UMLS:C0002395" } },
+        "nodes": { "n1": { "category": "biolink:ChemicalEntity" }, "n2": { "id": "UMLS:C0002395" } },
         "edges": { "e1": { "predicate": "clinically_tested_approved_unknown_phase", "subject": "n1", "object": "n2" } }
         } } }
+    # TRAPI 1.1.0
+    input_query_graph = { "message": { "query_graph": { 
+        "nodes": { "n1": { "categories": [ "biolink:ChemicalEntity" ] }, "n2": { "ids": [ "UMLS:C0002395" ] } },
+        "edges": { "e1": { "predicates": [ "biolink:clinically_tested_approved_unknown_phase" ], "subject": "n1", "object": "n2" } }
+        } } }
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    print('-------------------------')
+    print(response.show(level=ARAXResponse.DEBUG))
+    print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+
+
+##########################################################################################
+
+def QGI_test3():
+
+    input_query_graph = { "message": { "query_graph": 
+        {
+        "nodes": {
+            "n00": {
+            "ids": [ "MONDO:0002715" ]
+            },
+            "n01": {
+            "categories": [ "biolink:ChemicalEntity" ]
+            },
+            "n02": {
+            "categories": [ "biolink:Gene" ]
+            }
+        },
+        "edges": {
+            "e00": {
+            "predicates": [ "biolink:correlated_with" ],
+            "subject": "n00",
+            "object": "n01"
+            },
+            "e01": {
+            "predicates": [ "biolink:related_to" ],
+            "subject": "n01",
+            "object": "n02"
+            }
+        }
+        }
+    } }
 
     #### Create a template Message
     response = ARAXResponse()
@@ -376,7 +466,316 @@ def QGI_test2():
 
 
 
+##########################################################################################
 
+def QGI_test4():
+
+    input_query_graph = { "message": { "query_graph": 
+            {
+            "nodes": {
+                "n00": {
+                "categories": [
+                    "biolink:Gene"
+                ],
+                "is_set": False
+                },
+                "n01": {
+                "ids": [
+                    "MONDO:0018177"
+                ],
+                "categories": [
+                    "biolink:Disease"
+                ],
+                "is_set": False
+                }
+            },
+            "edges": {
+                "e00": {
+                "subject": "n00",
+                "object": "n01",
+                "exclude": False
+                }
+            }
+            }
+    } }
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    #print('-------------------------')
+    #print(response.show(level=ARAXResponse.DEBUG))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+    #sys.exit(1)
+
+
+def QGI_test5():
+    # This is to test forked/non-linear queries (currently not working properly)
+    input_query_graph = {
+    "message": {
+        "query_graph": {
+            "nodes": {
+                "n0": {
+                    "categories": ["biolink:Gene"]
+                },
+                "n1": {
+                    "ids": ["CHEBI:45783"],
+                    "categories": ["biolink:ChemicalEntity"]
+                },
+                "n2": {
+                    "ids": ["MONDO:0005301"],
+                    "categories": ["biolink:Disease"]
+                },
+                "n3": {
+                    "categories": ["biolink:ChemicalEntity"]
+                }
+            },
+            "edges": {
+                "e01": {
+                    "subject": "n0",
+                    "object": "n1",
+                    "predicates": ["biolink:related_to"]
+                },
+                "e02": {
+                    "subject": "n0",
+                    "object": "n2",
+                    "predicates": ["biolink:related_to"]
+                },
+                "e03": {
+                    "subject": "n0",
+                    "object": "n3",
+                    "predicates": ["biolink:related_to"]
+                }
+            }
+        }
+    }
+    }
+
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    #print('-------------------------')
+    #print(response.show(level=ARAXResponse.DEBUG))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+    #sys.exit(1)
+
+def QGI_test6():
+    # This is to test a three hop query with ends pinned (should result in FET ARAXi commands), and actually run the query
+    input_query_graph = {
+            "message": {
+                "query_graph": {
+          "edges": {
+            "e00": {
+              "object": "n01",
+              "subject": "n00"
+            },
+            "e01": {
+              "object": "n02",
+              "subject": "n01"
+            },
+            "e02": {
+              "object": "n03",
+              "subject": "n02"
+            }
+          },
+          "nodes": {
+            "n00": {
+              "categories": [
+                "biolink:ChemicalEntity"
+              ],
+              "ids": [
+                "DRUGBANK:DB00150"
+              ]
+            },
+            "n01": {
+              "categories": [
+                "biolink:Protein"
+              ]
+            },
+            "n02": {
+              "categories": [
+                "biolink:MolecularActivity"
+              ]
+            },
+            "n03": {
+              "categories": [
+                "biolink:ChemicalEntity"
+              ],
+              "ids": [
+                "KEGG.COMPOUND:C02700"
+              ]
+            }
+          }
+        }
+
+    }
+    }
+
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    #print('-------------------------')
+    #print(response.show(level=ARAXResponse.DEBUG))
+    #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+
+    #### Actually run the query
+    from ARAX_query import ARAXQuery
+    import ast
+    araxq = ARAXQuery()
+    # Run the query
+    araxq.query({**input_query_graph, "operations": {"actions":araxi_commands}})
+    # unpack the response
+    response = araxq.response
+    envelope = response.envelope
+    message = envelope.message  # overrides the current message
+    envelope.status = response.error_code
+    envelope.description = response.message
+    # return the message ID
+    print(f"Returned response id: {envelope.id}")
+    print('-------------------------')
+    # print the whole message
+    #print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+    # save message to file (since I can't get the UI working locally for some reason)
+    with open('QGI_test6.json', 'w', encoding='utf-8') as f:
+        json.dump(ast.literal_eval(repr(envelope)), f, ensure_ascii=False, indent=4)
+
+def QGI_test7():
+    # This is to test a three hop query with one end pinned (should result in FET ARAXi commands), and actually run the query
+    input_query_graph = {
+        "message": {
+            "query_graph": {
+                "edges": {
+                    "e00": {
+                        "object": "n01",
+                        "subject": "n00"
+                    },
+                    "e01": {
+                        "object": "n02",
+                        "subject": "n01"
+                    },
+                    "e02": {
+                        "object": "n03",
+                        "subject": "n02"
+                    }
+                },
+                "nodes": {
+                    "n00": {
+                        "categories": [
+                            "biolink:ChemicalEntity"
+                        ],
+                        "ids": [
+                            "DRUGBANK:DB00150"
+                        ]
+                    },
+                    "n01": {
+                        "categories": [
+                            "biolink:Protein"
+                        ]
+                    },
+                    "n02": {
+                        "categories": [
+                            "biolink:MolecularActivity"
+                        ]
+                    },
+                    "n03": {
+                        "categories": [
+                            "biolink:ChemicalEntity"
+                        ]
+                    }
+                }
+            }
+
+        }
+    }
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    #### Show the final result
+    # print('-------------------------')
+    # print(response.show(level=ARAXResponse.DEBUG))
+    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
+
+    #### Actually run the query
+    from ARAX_query import ARAXQuery
+    import ast
+    araxq = ARAXQuery()
+    # Run the query
+    araxq.query({**input_query_graph, "operations": {"actions": araxi_commands}})
+    # unpack the response
+    response = araxq.response
+    envelope = response.envelope
+    message = envelope.message  # overrides the current message
+    envelope.status = response.error_code
+    envelope.description = response.message
+    # return the message ID
+    print(f"Returned response id: {envelope.id}")
+    print('-------------------------')
+    # print the whole message
+    # print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+    # save message to file (since I can't get the UI working locally for some reason)
+    with open('QGI_test7.json', 'w', encoding='utf-8') as f:
+        json.dump(ast.literal_eval(repr(envelope)), f, ensure_ascii=False, indent=4)
 ##########################################################################################
 def main():
 
@@ -389,6 +788,16 @@ def main():
     #print(params.test_number)
     if params.test_number[0] == '2':
         QGI_test2()
+    elif params.test_number[0] == '3':
+        QGI_test3()
+    elif params.test_number[0] == '4':
+        QGI_test4()
+    elif params.test_number[0] == '5':
+        QGI_test5()
+    elif params.test_number[0] == '6':
+        QGI_test6()
+    elif params.test_number[0] == '7':
+        QGI_test7()
     else:
         QGI_test1()
 
