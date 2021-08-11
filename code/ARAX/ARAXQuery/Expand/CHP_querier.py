@@ -28,12 +28,13 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
-
+from category_manager import CategoryManager
 class CHPQuerier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
         self.synonymizer = NodeSynonymizer()
+        self.categorymanager = CategoryManager()
         self.kp_name = "CHP"
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -60,7 +61,7 @@ class CHPQuerier:
         log.debug(f"Processing query results for edge {qedge_key} by using CHP client")
         final_kg = QGOrganizedKnowledgeGraph()
         gene_label_list = ['gene']
-        drug_label_list = ['drug', 'chemicalsubstance']
+        drug_label_list = list(set([drug_category_ancestor.replace('biolink:','').replace('_','').lower() for drug_cateogry in ['biolink:Drug','biolink:SmallMolecule'] for drug_category_ancestor in self.categorymanager.get_expansive_categories(drug_cateogry)]))
         # use for checking the requirement
         source_pass_nodes = None
         source_category = None
@@ -150,7 +151,7 @@ class CHPQuerier:
             if len(set(categories).intersection(set(drug_label_list))) > 0 or len(set(categories).intersection(set(gene_label_list))) > 0:
                 target_category = categories
             else:
-                log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug/chemical_substance or gene", error_code="CategoryError")
+                log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug/small_molecule or gene", error_code="CategoryError")
                 return final_kg
 
         if (source_pass_nodes is None) and (target_pass_nodes is None):
