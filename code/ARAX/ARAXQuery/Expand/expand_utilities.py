@@ -30,6 +30,8 @@ from ARAX_overlay import ARAXOverlay
 from ARAX_ranker import ARAXRanker
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 
 class QGOrganizedKnowledgeGraph:
@@ -391,57 +393,6 @@ def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
 
 
-def load_canonical_predicates_map(log: ARAXResponse) -> Dict[str, str]:
-    map_path = f"{os.path.dirname(os.path.abspath(__file__))}/canonical_predicates.json"
-    map_file = pathlib.Path(map_path)
-    two_days_ago = datetime.now() - timedelta(hours=48)
-    biolink_version = "2.1.0"
-
-    # Create or refresh the map as needed
-    if not map_file.exists() or datetime.fromtimestamp(map_file.stat().st_mtime) < two_days_ago:
-        log.debug(f"Refreshing canonical predicates map")
-        # First load any cached data in case we fail at grabbing the Biolink yaml file
-        if map_file.exists():
-            with open(map_path, "r") as input_file:
-                canonical_predicates_map = json.load(input_file)
-        else:
-            canonical_predicates_map = dict()
-
-        # Grab the Biolink yaml file and extract canonical predicate info
-        try:
-            with requests_cache.disabled():
-                response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{biolink_version}/biolink-model.yaml",
-                                        timeout=10)
-        except requests.exceptions.Timeout:
-            log.warning(f"Timed out trying to grab Biolink {biolink_version} yaml")
-        except Exception:
-            log.warning(f"Ran into a problem grabbing Biolink {biolink_version} yaml file")
-        else:
-            if response.status_code == 200:
-                biolink_model = yaml.safe_load(response.text)
-                canonical_predicates_map = dict()  # Clear cached data since we successfully got new data
-                for slot_name_english, info in biolink_model["slots"].items():
-                    predicate = f"biolink:{slot_name_english.replace(' ', '_')}"
-                    if info.get("inverse"):
-                        inverse_predicate_english = info["inverse"]
-                        inverse_info = biolink_model["slots"][inverse_predicate_english]
-                        if inverse_info.get("annotations"):
-                            # Hack around a bug in the biolink yaml file
-                            annotations = inverse_info["annotations"][0] if isinstance(inverse_info["annotations"], list) else inverse_info["annotations"]
-                            if annotations.get("tag") == "biolink:canonical_predicate" and annotations.get("value"):
-                                canonical_predicates_map[predicate] = f"biolink:{inverse_predicate_english.replace(' ', '_')}"
-            else:
-                log.warning(f"Got {response.status_code} loading Biolink {biolink_version} yaml file. Can't refresh.")
-        # Save our refreshed data
-        with open(map_path, "w+") as output_file:
-            json.dump(canonical_predicates_map, output_file)
-
-    # Now that we know the map exists/is current, load it
-    with open(map_path, "r") as input_file:
-        predicates_map = json.load(input_file)
-    return predicates_map
-
-
 def flip_edge(edge: Edge, new_predicate: str) -> Edge:
     edge.predicate = new_predicate
     original_subject = edge.subject
@@ -450,14 +401,14 @@ def flip_edge(edge: Edge, new_predicate: str) -> Edge:
     return edge
 
 
-def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, canonical_predicates_map: Dict[str, str],
-                                   kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
     non_canonical_predicates_used = set()
+    biolink_helper = BiolinkHelper()
     for qedge_id, edges in kg.edges_by_qg_id.items():
         for edge in edges.values():
-            if edge.predicate in canonical_predicates_map:
+            canonical_predicate = biolink_helper.get_canonical_predicates(edge.predicate)[0]
+            if canonical_predicate != edge.predicate:
                 non_canonical_predicates_used.add(edge.predicate)
-                canonical_predicate = canonical_predicates_map[edge.predicate]
                 _ = flip_edge(edge, canonical_predicate)
     if non_canonical_predicates_used:
         log.warning(f"{kp_name}: Found edges in {kp_name}'s answer that use non-canonical "
