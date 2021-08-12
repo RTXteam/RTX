@@ -22,11 +22,13 @@ from openapi_server.models.query_graph import QueryGraph
 class KPSelector:
 
     def __init__(self, log: ARAXResponse):
-        self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.biolink_version = "2.1.0"
+        self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.descendants_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/descendants_biolink{self.biolink_version}.pickle"
+        self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
         self.all_kps = eu.get_all_kps()
+        self.timeout_record = self._load_timeout_record()
         self.meta_map = self._load_meta_map()
         self.descendants_map = self._load_descendants_map()
 
@@ -193,7 +195,7 @@ class KPSelector:
             # Check for any missing KPs
             missing_kps = self.all_kps.difference(set(meta_map))
             if missing_kps:
-                self.log.debug(f"Missing meta info for {missing_kps}; will try to get this info")
+                self.log.debug(f"Missing meta info for {missing_kps}")
                 meta_map = self._refresh_meta_map(missing_kps, meta_map)
 
         # Make sure the map doesn't contain any 'stale' KPs
@@ -221,7 +223,14 @@ class KPSelector:
                 meta_map = dict()
 
         # Then (try to) get updated meta info from each KP
-        for kp in kps_to_update:
+        ten_minutes_ago = datetime.now() - timedelta(minutes=10)
+        non_functioning_kps = [kp for kp in kps_to_update if self.timeout_record.get(kp) and
+                               self.timeout_record[kp] > ten_minutes_ago]
+        if non_functioning_kps:
+            self.log.debug(f"Not trying to grab meta info for {non_functioning_kps} because they timed out "
+                           f"within the last 10 minutes")
+        functioning_kps_to_update = set(kps_to_update).difference(set(non_functioning_kps))
+        for kp in functioning_kps_to_update:
             kp_endpoint = eu.get_kp_endpoint_url(kp)
             if kp_endpoint:
                 try:
@@ -229,7 +238,9 @@ class KPSelector:
                     with requests_cache.disabled():
                         kp_response = requests.get(f"{kp_endpoint}/meta_knowledge_graph", timeout=10)
                 except requests.exceptions.Timeout:
-                    self.log.warning(f"Timed out when trying to hit {kp}'s /meta_knowledge_graph endpoint")
+                    self.log.warning(f"Timed out when trying to hit {kp}'s /meta_knowledge_graph endpoint "
+                                     f"(waited 10 seconds)")
+                    self.timeout_record[kp] = datetime.now()
                 except Exception:
                     self.log.warning(f"Ran into a problem getting {kp}'s meta info")
                 else:
@@ -253,6 +264,8 @@ class KPSelector:
         # Save our big combined metamap to a local json file
         with open(self.meta_map_path, "wb") as map_file:
             pickle.dump(meta_map, map_file)
+        with open(self.timeout_record_path, "wb") as timeout_file:
+            pickle.dump(self.timeout_record, timeout_file)
 
         return meta_map
 
@@ -294,6 +307,15 @@ class KPSelector:
             with open(self.descendants_map_path, "rb") as descendants_file:
                 descendants_map = pickle.load(descendants_file)
             return descendants_map
+
+    def _load_timeout_record(self) -> Dict[str, datetime]:
+        self.log.debug(f"Loading record of KP timeouts")
+        timeout_record_file = pathlib.Path(self.timeout_record_path)
+        if not timeout_record_file.exists():
+            return dict()
+        else:
+            with open(self.timeout_record_path, "rb") as timeout_file:
+                return pickle.load(timeout_file)
 
     def _get_category_descendants(self, categories: Optional[List[str]]) -> Set[str]:
         if categories:
