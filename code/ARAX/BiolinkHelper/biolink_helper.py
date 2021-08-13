@@ -11,7 +11,7 @@ import requests
 import yaml
 from treelib import Tree
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_response import ARAXResponse
 
 
@@ -311,3 +311,52 @@ class BiolinkHelper:
     @staticmethod
     def serialize_with_sets(obj: any) -> any:
         return list(obj) if isinstance(obj, set) else obj
+
+
+def main():
+    bh = BiolinkHelper()
+
+    # Test descendants
+    chemical_entity_descendants = bh.get_descendants("biolink:ChemicalEntity", include_mixins=True)
+    assert "biolink:Drug" in chemical_entity_descendants
+    assert "biolink:PhysicalEssence" in chemical_entity_descendants
+    assert "biolink:NamedThing" not in chemical_entity_descendants
+    chemical_entity_descenants_no_mixins = bh.get_descendants("biolink:ChemicalEntity", include_mixins=False)
+    assert "biolink:Drug" in chemical_entity_descenants_no_mixins
+    assert "biolink:PhysicalEssence" not in chemical_entity_descenants_no_mixins
+    assert "biolink:NamedThing" not in chemical_entity_descenants_no_mixins
+
+    # Test ancestors
+    protein_ancestors = bh.get_ancestors("biolink:Protein", include_mixins=True)
+    assert "biolink:NamedThing" in protein_ancestors
+    assert "biolink:ProteinIsoform" not in protein_ancestors
+    protein_ancestors_no_mixins = bh.get_ancestors("biolink:Protein", include_mixins=False)
+    assert "biolink:NamedThing" in protein_ancestors_no_mixins
+    assert "biolink:ProteinIsoform" not in protein_ancestors_no_mixins
+    assert len(protein_ancestors_no_mixins) < len(protein_ancestors)
+
+    # Test lists
+    gene_like_ancestors = bh.get_ancestors(["biolink:Gene", "biolink:Protein"])
+    assert "biolink:Protein" in gene_like_ancestors
+    assert "biolink:Gene" in gene_like_ancestors
+    assert "biolink:BiologicalEntity" in gene_like_ancestors
+
+    # Test canonical predicates
+    canonical_treated_by = bh.get_canonical_predicates("biolink:treated_by")
+    canonical_treats = bh.get_canonical_predicates("biolink:treats")
+    assert canonical_treated_by == ["biolink:treats"]
+    assert canonical_treats == ["biolink:treats"]
+
+    # Test filtering out mixins
+    mixin_less_list = bh.filter_out_mixins(["biolink:Protein", "biolink:Drug", "biolink:PhysicalEssence"])
+    assert set(mixin_less_list) == {"biolink:Protein", "biolink:Drug"}
+
+    # Test getting biolink version
+    biolink_version = bh.get_current_arax_biolink_version()
+    assert biolink_version >= "2.1.0"
+
+    print("All BiolinkHelper tests passed!")
+
+
+if __name__ == "__main__":
+    main()

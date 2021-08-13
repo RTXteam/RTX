@@ -24,7 +24,6 @@ from openapi_server.models.query_graph import QueryGraph
 class KPSelector:
 
     def __init__(self, log: ARAXResponse):
-        self.biolink_version = "2.1.0"
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
