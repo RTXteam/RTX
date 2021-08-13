@@ -10,6 +10,8 @@ from typing import List, Dict, Tuple, Union, Set, Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_decorator import ARAXDecorator
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -37,6 +39,7 @@ class ARAXExpander:
                                        "biolink:DiseaseOrPhenotypicFeature": {"biolink:Disease",
                                                                               "biolink:PhenotypicFeature"}}
         self.kp_command_definitions = eu.get_kp_command_definitions()
+        self.biolink_helper = BiolinkHelper()
 
     def describe_me(self):
         """
@@ -132,7 +135,6 @@ class ARAXExpander:
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
-        canonical_predicates_map = eu.load_canonical_predicates_map(log)
 
         # Add in any category equivalencies to the QG (e.g., protein == gene, since KPs handle these differently)
         for qnode_key, qnode in query_graph.nodes.items():
@@ -152,8 +154,7 @@ class ARAXExpander:
             log.debug(f"Making sure QG only uses canonical predicates")
             for qedge in query_graph.edges.values():
                 if qedge.predicates:
-                    canonical_predicates = {canonical_predicates_map.get(predicate, predicate) for predicate in qedge.predicates}
-                    qedge.predicates = list(canonical_predicates)
+                    qedge.predicates = self.biolink_helper.get_canonical_predicates(qedge.predicates)
 
         # Expand any specified edges
         if input_qedge_keys:
@@ -209,8 +210,7 @@ class ARAXExpander:
                     kp_selector = KPSelector(empty_log)
                     with multiprocessing.Pool(num_cpus) as pool:
                         kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                       mode, user_specified_kp,
-                                                                       force_local, canonical_predicates_map,
+                                                                       mode, user_specified_kp, force_local,
                                                                        kp_selector, empty_log]
                                                                       for kp_to_use in kps_to_query])
                 elif len(kps_to_query) == 1:
@@ -218,8 +218,7 @@ class ARAXExpander:
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
                     kp_selector = KPSelector(log)
                     kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, mode,
-                                                    user_specified_kp, force_local, canonical_predicates_map,
-                                                    kp_selector, log)]
+                                                    user_specified_kp, force_local, kp_selector, log)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
@@ -285,8 +284,8 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], mode: str,
-                     user_specified_kp: bool, force_local: bool, canonical_predicates_map: Dict[str, str],
-                     kp_selector: KPSelector, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     user_specified_kp: bool, force_local: bool, kp_selector: KPSelector,
+                     log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
@@ -352,7 +351,7 @@ class ARAXExpander:
 
         # Make sure the KP's answer only uses canonical predicates (KG2 already does this, so no need to check it)
         if not isinstance(kp_querier, KG2Querier):
-            answer_kg = eu.check_for_canonical_predicates(answer_kg, canonical_predicates_map, kp_to_use, log)
+            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
 
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
