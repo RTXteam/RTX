@@ -15,6 +15,8 @@ Examples of ways to get **ancestors**:
 biolink_helper.get_ancestors("biolink:Drug")
 biolink_helper.get_ancestors(["biolink:Drug", "biolink:Protein"])
 biolink_helper.get_ancestors("biolink:Drug", include_mixins=False)
+biolink_helper.get_ancestors("biolink:Protein", include_conflations=False)
+biolink_helper.get_ancestors("biolink:treats")
 ```
 
 Examples of ways to get **descendants**:
@@ -22,9 +24,11 @@ Examples of ways to get **descendants**:
 biolink_helper.get_descendants("biolink:ChemicalEntity")
 biolink_helper.get_descendants(["biolink:ChemicalEntity", "biolink:Protein"])
 biolink_helper.get_descendants("biolink:ChemicalEntity", include_mixins=False)
+biolink_helper.get_descendants("biolink:Protein", include_conflations=False)
+biolink_helper.get_descendants("biolink:related_to")
 ```
 
-Ancestors/descendants are always returned in a list. Relevant mixins are included in the returned list by default, but you can turn that behavior off via the `include_mixins` parameter, as shown in some of the above examples.
+Ancestors/descendants are always returned in a list. Relevant mixins are included in the returned list by default, but you can turn that behavior off via the `include_mixins` parameter, as shown in some of the above examples. Inclusion of ARAX-defined conflations can be controlled via the `include_conflations` parameter (default is True).
 
 Other available methods include getting **canonical predicates**:
 

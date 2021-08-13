@@ -23,12 +23,22 @@ class BiolinkHelper:
         biolink_helper_dir = os.path.dirname(os.path.abspath(__file__))
         self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}.pickle"
         self.biolink_lookup_map = self._load_biolink_lookup_map()
+        protein_like_categories = {"biolink:Protein", "biolink:Gene"}
+        disease_like_categories = {"biolink:Disease", "biolink:PhenotypicFeature", "biolink:DiseaseOrPhenotypicFeature"}
+        self.arax_conflations = {
+            "biolink:Protein": protein_like_categories,
+            "biolink:Gene": protein_like_categories,
+            "biolink:Disease": disease_like_categories,
+            "biolink:PhenotypicFeature": disease_like_categories,
+            "biolink:DiseaseOrPhenotypicFeature": disease_like_categories
+        }
 
-    def get_ancestors(self, biolink_items: Union[str, List[str]], include_mixins: bool = True) -> List[str]:
+    def get_ancestors(self, biolink_items: Union[str, List[str]], include_mixins: bool = True, include_conflations: bool = True) -> List[str]:
         """
         Returns the ancestors of Biolink categories, predicates, category mixins, or predicate mixins. Input
         categories/predicates/mixins are themselves included in the returned ancestor list. For categories/predicates,
-        inclusion of mixin ancestors can be turned on or off via the include_mixins flag.
+        inclusion of mixin ancestors can be turned on or off via the include_mixins flag. Inclusion of ARAX-defined
+        conflations (e.g., gene == protein) can be controlled via the include_conflations parameter.
         """
         input_item_set = self._convert_to_set(biolink_items)
         categories = input_item_set.intersection(set(self.biolink_lookup_map["categories"]))
@@ -37,6 +47,9 @@ class BiolinkHelper:
         predicate_mixins = input_item_set.intersection(set(self.biolink_lookup_map["predicate_mixins"]))
         ancestors = input_item_set.copy()
         ancestor_property = "ancestors_with_mixins" if include_mixins else "ancestors"
+        if include_conflations:
+            categories = {conflated_category for category in categories
+                          for conflated_category in self.arax_conflations.get(category, {category})}
         for category in categories:
             ancestors.update(self.biolink_lookup_map["categories"][category][ancestor_property])
         for predicate in predicates:
@@ -47,11 +60,12 @@ class BiolinkHelper:
             ancestors.update(self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["ancestors"])
         return list(ancestors)
 
-    def get_descendants(self, biolink_items: Union[str, List[str]], include_mixins: bool = True) -> List[str]:
+    def get_descendants(self, biolink_items: Union[str, List[str]], include_mixins: bool = True, include_conflations: bool = True) -> List[str]:
         """
         Returns the descendants of Biolink categories, predicates, category mixins, or predicate mixins. Input
         categories/predicates/mixins are themselves included in the returned descendant list. For categories/predicates,
-        inclusion of mixin descendants can be turned on or off via the include_mixins flag.
+        inclusion of mixin descendants can be turned on or off via the include_mixins flag. Inclusion of ARAX-defined
+        conflations (e.g., gene == protein) can be controlled via the include_conflations parameter.
         """
         input_item_set = self._convert_to_set(biolink_items)
         categories = input_item_set.intersection(set(self.biolink_lookup_map["categories"]))
@@ -60,6 +74,9 @@ class BiolinkHelper:
         predicate_mixins = input_item_set.intersection(set(self.biolink_lookup_map["predicate_mixins"]))
         descendants = input_item_set.copy()
         descendant_property = "descendants_with_mixins" if include_mixins else "descendants"
+        if include_conflations:
+            categories = {conflated_category for category in categories
+                          for conflated_category in self.arax_conflations.get(category, {category})}
         for category in categories:
             descendants.update(self.biolink_lookup_map["categories"][category][descendant_property])
         for predicate in predicates:
@@ -135,8 +152,6 @@ class BiolinkHelper:
             biolink_model = yaml.safe_load(response.text)
             predicate_tree, canonical_predicate_map, predicate_to_mixins_map, predicate_mixin_tree = self._build_predicate_trees(biolink_model)
             category_tree, category_to_mixins_map, category_mixin_tree = self._build_category_trees(biolink_model)
-            print(predicate_mixin_tree)
-            print(category_mixin_tree)
 
             # Then flatmap all info we need for easy access
             for predicate_mixin_node in predicate_mixin_tree.all_nodes():
@@ -335,11 +350,23 @@ def main():
     assert "biolink:ProteinIsoform" not in protein_ancestors_no_mixins
     assert len(protein_ancestors_no_mixins) < len(protein_ancestors)
 
+    # Test predicates
+    treats_ancestors = bh.get_ancestors("biolink:treats")
+    assert "biolink:related_to" in treats_ancestors
+    affects_descendants = bh.get_descendants("biolink:affects")
+    assert "biolink:treats" in affects_descendants
+
     # Test lists
-    gene_like_ancestors = bh.get_ancestors(["biolink:Gene", "biolink:Protein"])
-    assert "biolink:Protein" in gene_like_ancestors
-    assert "biolink:Gene" in gene_like_ancestors
-    assert "biolink:BiologicalEntity" in gene_like_ancestors
+    combined_ancestors = bh.get_ancestors(["biolink:Gene", "biolink:Drug"])
+    assert "biolink:Drug" in combined_ancestors
+    assert "biolink:Gene" in combined_ancestors
+    assert "biolink:BiologicalEntity" in combined_ancestors
+
+    # Test conflations
+    protein_ancestors = bh.get_ancestors("biolink:Protein", include_conflations=True)
+    assert "biolink:Gene" in protein_ancestors
+    gene_descendants = bh.get_descendants("biolink:Gene", include_conflations=True)
+    assert "biolink:Protein" in gene_descendants
 
     # Test canonical predicates
     canonical_treated_by = bh.get_canonical_predicates("biolink:treated_by")
