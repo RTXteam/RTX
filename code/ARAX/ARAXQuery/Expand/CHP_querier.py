@@ -28,13 +28,14 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
-from category_manager import CategoryManager
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 class CHPQuerier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
         self.synonymizer = NodeSynonymizer()
-        self.categorymanager = CategoryManager()
+        self.biolink_helper = BiolinkHelper()
         self.kp_name = "CHP"
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -61,7 +62,8 @@ class CHPQuerier:
         log.debug(f"Processing query results for edge {qedge_key} by using CHP client")
         final_kg = QGOrganizedKnowledgeGraph()
         gene_label_list = ['gene']
-        drug_label_list = list(set([drug_category_ancestor.replace('biolink:','').replace('_','').lower() for drug_cateogry in ['biolink:Drug','biolink:SmallMolecule'] for drug_category_ancestor in self.categorymanager.get_expansive_categories(drug_cateogry)]))
+        # drug_label_list = list(set([drug_category_ancestor.replace('biolink:','').replace('_','').lower() for drug_cateogry in ['biolink:Drug','biolink:SmallMolecule'] for drug_category_ancestor in self.categorymanager.get_expansive_categories(drug_cateogry)]))
+        drug_label_list = [ancestor.replace('biolink:','').replace('_','').lower() for ancestor in self.biolink_helper.get_ancestors(['biolink:Drug','biolink:SmallMolecule'],include_mixins=False)]
         # use for checking the requirement
         source_pass_nodes = None
         source_category = None
