@@ -174,10 +174,11 @@ class BiolinkHelper:
                 predicate = predicate_node.identifier
                 ancestors = self._get_ancestors_from_tree(predicate, predicate_tree)
                 descendants = self._get_descendants_from_tree(predicate, predicate_tree)
-                direct_mixins = predicate_to_mixins_map[predicate]
-                mixin_ancestors = {mixin_ancestor for mixin in direct_mixins
+                mixin_ancestors = {mixin_ancestor for ancestor in ancestors
+                                   for mixin in predicate_to_mixins_map[ancestor]
                                    for mixin_ancestor in biolink_lookup_map["predicate_mixins"][mixin]["ancestors"]}
-                mixin_descendants = {mixin_descendant for mixin in direct_mixins
+                mixin_descendants = {mixin_descendant for descendant in descendants
+                                     for mixin in predicate_to_mixins_map[descendant]
                                      for mixin_descendant in biolink_lookup_map["predicate_mixins"][mixin]["descendants"]}
                 biolink_lookup_map["predicates"][predicate] = {
                     "ancestors": ancestors,
@@ -185,23 +186,24 @@ class BiolinkHelper:
                     "ancestors_with_mixins": ancestors.union(mixin_ancestors),
                     "descendants_with_mixins": descendants.union(mixin_descendants),
                     "canonical_predicate": canonical_predicate_map.get(predicate, predicate),
-                    "direct_mixins": direct_mixins,
+                    "direct_mixins": predicate_to_mixins_map[predicate],
                 }
             for category_node in category_tree.all_nodes():
                 category = category_node.identifier
                 ancestors = self._get_ancestors_from_tree(category, category_tree)
                 descendants = self._get_descendants_from_tree(category, category_tree)
-                direct_mixins = category_to_mixins_map[category]
-                mixin_ancestors = {mixin_ancestor for mixin in direct_mixins
+                mixin_ancestors = {mixin_ancestor for ancestor in ancestors
+                                   for mixin in category_to_mixins_map[ancestor]
                                    for mixin_ancestor in biolink_lookup_map["category_mixins"][mixin]["ancestors"]}
-                mixin_descendants = {mixin_descendant for mixin in direct_mixins
+                mixin_descendants = {mixin_descendant for descendant in descendants
+                                     for mixin in category_to_mixins_map[descendant]
                                      for mixin_descendant in biolink_lookup_map["category_mixins"][mixin]["descendants"]}
                 biolink_lookup_map["categories"][category] = {
                     "ancestors": ancestors,
                     "descendants": descendants,
                     "ancestors_with_mixins": ancestors.union(mixin_ancestors),
                     "descendants_with_mixins": descendants.union(mixin_descendants),
-                    "direct_mixins": direct_mixins,
+                    "direct_mixins": category_to_mixins_map[category],
                 }
 
             # And cache it (never needs to be refreshed for the given Biolink version)
