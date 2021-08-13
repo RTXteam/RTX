@@ -148,12 +148,12 @@ class BiolinkHelper:
         response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{self.biolink_version}/biolink-model.yaml",
                                 timeout=10)
         if response.status_code == 200:
-            # Build predicate and category trees from the Biolink yaml
+            # Build predicate, category, and mixin trees from the Biolink yaml
             biolink_model = yaml.safe_load(response.text)
             predicate_tree, canonical_predicate_map, predicate_to_mixins_map, predicate_mixin_tree = self._build_predicate_trees(biolink_model)
             category_tree, category_to_mixins_map, category_mixin_tree = self._build_category_trees(biolink_model)
 
-            # Then flatmap all info we need for easy access
+            # Then flatmap all info we need (for mixins, predicates, and categories) for easy access
             for predicate_mixin_node in predicate_mixin_tree.all_nodes():
                 predicate_mixin = predicate_mixin_node.identifier
                 ancestors = self._get_ancestors_from_tree(predicate_mixin, predicate_mixin_tree)
@@ -161,6 +161,7 @@ class BiolinkHelper:
                     "ancestors": ancestors.difference({"MIXIN"}),  # Our made-up root doesn't count as an ancestor
                     "descendants": self._get_descendants_from_tree(predicate_mixin, predicate_mixin_tree)
                 }
+            del biolink_lookup_map["predicate_mixins"]["MIXIN"]  # No longer need this imaginary root node
             for category_mixin_node in category_mixin_tree.all_nodes():
                 category_mixin = category_mixin_node.identifier
                 ancestors = self._get_ancestors_from_tree(category_mixin, category_mixin_tree)
@@ -168,6 +169,7 @@ class BiolinkHelper:
                     "ancestors": ancestors.difference({"MIXIN"}),  # Our made-up root doesn't count as an ancestor
                     "descendants": self._get_descendants_from_tree(category_mixin, category_mixin_tree)
                 }
+            del biolink_lookup_map["category_mixins"]["MIXIN"]  # No longer need this imaginary root node
             for predicate_node in predicate_tree.all_nodes():
                 predicate = predicate_node.identifier
                 ancestors = self._get_ancestors_from_tree(predicate, predicate_tree)
