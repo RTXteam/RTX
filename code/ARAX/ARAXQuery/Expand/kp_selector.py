@@ -30,7 +30,7 @@ class KPSelector:
         self.all_kps = eu.get_all_kps()
         self.timeout_record = self._load_timeout_record()
         self.meta_map = self._load_meta_map()
-        self.biolink_helper = BiolinkHelper(log=self.log)
+        self.biolink_helper = BiolinkHelper()
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
         """

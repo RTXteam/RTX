@@ -3,7 +3,6 @@ import json
 import os
 import pathlib
 import pickle
-import sys
 from collections import defaultdict
 from typing import Optional, List, Set, Dict, Union, Tuple
 
@@ -11,14 +10,10 @@ import requests
 import yaml
 from treelib import Tree
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-from ARAX_response import ARAXResponse
-
 
 class BiolinkHelper:
 
-    def __init__(self, biolink_version: Optional[str] = None, log: ARAXResponse = ARAXResponse()):
-        self.log = log
+    def __init__(self, biolink_version: Optional[str] = None):
         self.biolink_version = biolink_version if biolink_version else self.get_current_arax_biolink_version()
         biolink_helper_dir = os.path.dirname(os.path.abspath(__file__))
         self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}.pickle"
@@ -97,7 +92,7 @@ class BiolinkHelper:
         valid_predicates = input_predicate_set.intersection(self.biolink_lookup_map["predicates"])
         invalid_predicates = input_predicate_set.difference(valid_predicates)
         if invalid_predicates:
-            self.log.warning(f"Provided predicate(s) {invalid_predicates} do not exist in Biolink {self.biolink_version}")
+            print(f"WARNING: Provided predicate(s) {invalid_predicates} do not exist in Biolink {self.biolink_version}")
         canonical_predicates = {self.biolink_lookup_map["predicates"][predicate]["canonical_predicate"]
                                 for predicate in valid_predicates}
         canonical_predicates.update(invalid_predicates)  # Go ahead and include those we don't have canonical info for
@@ -134,14 +129,13 @@ class BiolinkHelper:
             return self._create_biolink_lookup_map()
         else:
             # A local file already exists for this Biolink version, so just load it
-            self.log.debug(f"Loading Biolink {self.biolink_version} lookup map")
             with open(self.biolink_lookup_map_path, "rb") as biolink_map_file:
                 biolink_lookup_map = pickle.load(biolink_map_file)
             return biolink_lookup_map
 
     def _create_biolink_lookup_map(self) -> Dict[str, Dict[str, Dict[str, Union[str, List[str]]]]]:
-        self.log.debug(f"Building local Biolink {self.biolink_version} ancestor/descendant lookup map because one "
-                       f"doesn't yet exist")
+        print(f"INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map because one "
+              f"doesn't yet exist")
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
                               "predicate_mixins": dict(), "category_mixins": dict()}
         # Grab the relevant Biolink yaml file
@@ -214,7 +208,8 @@ class BiolinkHelper:
             with open(json_file_path, "w+") as output_json_file:
                 json.dump(biolink_lookup_map, output_json_file, default=self.serialize_with_sets, indent=4)
         else:
-            self.log.error(f"Unable to load Biolink yaml file.", error_code="BiolinkLoadError")
+            raise RuntimeError(f"ERROR: Request to get Biolink {self.biolink_version} YAML file returned "
+                               f"{response.status_code} response. Cannot load BiolinkHelper.")
 
         return biolink_lookup_map
 
