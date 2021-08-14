@@ -130,10 +130,25 @@ def add_category_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], sqlite
     connection.close()
 
 
+def generate_fda_approved_drugs_pickle(edges_by_id: Dict[str, Dict[str, any]], fda_approved_file_name: str):
+    # Extract the IDs of FDA-approved drug nodes per DRUGBANK (they're attached to the "fda approved drug" node)
+    fda_approved_drug_node = "MI:2099"
+    fda_approved_drugs = set()
+    for edge_id, edge in edges_by_id.items():
+        node_ids = {edge["subject"], edge["object"]}
+        if fda_approved_drug_node in node_ids:
+            drug_node_id = next(node_id for node_id in node_ids.difference({fda_approved_drug_node}))
+            fda_approved_drugs.add(drug_node_id)
+    logging.info(f"Saving IDs of {len(fda_approved_drugs)} FDA-approved drugs to {fda_approved_file_name}")
+    with open(fda_approved_file_name, "wb") as pickle_file:
+        pickle.dump(fda_approved_drugs, pickle_file)
+
+
 def record_meta_kg_info(is_test: bool):
     input_kg_file_name = f"kg2c_lite{'_test' if is_test else ''}.json"
     meta_kg_file_name = f"kg2c_meta_kg{'_test' if is_test else ''}.json"
     sqlite_file_name = f"kg2c{'_test' if is_test else ''}.sqlite"
+    fda_approved_file_name = f"fda_approved_drugs{'_test' if is_test else ''}.pickle"
     label_property_name = "expanded_categories"
 
     start = time.time()
@@ -147,6 +162,7 @@ def record_meta_kg_info(is_test: bool):
     build_meta_kg(nodes_by_id, edges_by_id, meta_kg_file_name, is_test)
     add_neighbor_counts_to_sqlite(nodes_by_id, edges_by_id, sqlite_file_name, label_property_name, is_test)
     add_category_counts_to_sqlite(nodes_by_id, sqlite_file_name, label_property_name)
+    generate_fda_approved_drugs_pickle(edges_by_id, fda_approved_file_name)
 
     logging.info(f"Recording meta KG info took {round((time.time() - start) / 60, 1)} minutes.")
 
