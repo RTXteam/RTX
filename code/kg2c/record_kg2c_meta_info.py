@@ -10,20 +10,16 @@ import logging
 import os
 import pickle
 import sqlite3
+import sys
 import time
 from collections import defaultdict
 from typing import Dict, Set
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
+
 
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
-
-PROTEIN_CONFLATIONS = {"biolink:Protein", "biolink:Gene"}
-DISEASE_CONFLATIONS = {"biolink:Disease", "biolink:PhenotypicFeature", "biolink:DiseaseOrPhenotypicFeature"}
-CONFLATIONS_MAP = {"biolink:Protein": PROTEIN_CONFLATIONS,
-                   "biolink:Gene": PROTEIN_CONFLATIONS,
-                   "biolink:Disease": DISEASE_CONFLATIONS,
-                   "biolink:PhenotypicFeature": DISEASE_CONFLATIONS,
-                   "biolink:DiseaseOrPhenotypicFeature": DISEASE_CONFLATIONS}
 
 
 def serialize_with_sets(obj: any) -> any:
@@ -37,6 +33,7 @@ def serialize_with_sets(obj: any) -> any:
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
                   meta_kg_file_name: str, is_test: bool):
     logging.info("Gathering all meta triples..")
+    biolink_helper = BiolinkHelper()
     meta_triples = set()
     for edge in edges_by_id.values():
         subject_node_id = edge["subject"]
@@ -44,8 +41,8 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
         if not is_test or (subject_node_id in nodes_by_id and object_node_id in nodes_by_id):
             subject_node = nodes_by_id[subject_node_id]
             object_node = nodes_by_id[object_node_id]
-            subject_categories = get_conflated_categories(subject_node["category"])
-            object_categories = get_conflated_categories(object_node["category"])
+            subject_categories = biolink_helper.add_conflations(subject_node["category"])
+            object_categories = biolink_helper.add_conflations(object_node["category"])
             predicate = edge["predicate"]
             for subject_category in subject_categories:
                 for object_category in object_categories:
@@ -60,7 +57,7 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
     for node_id, node in nodes_by_id.items():
         equivalent_curies = equivalent_curies_dict.get(node_id, [node_id])
         prefixes = {curie.split(":")[0] for curie in equivalent_curies}
-        categories = get_conflated_categories(node["category"])
+        categories = biolink_helper.add_conflations(node["category"])
         for category in categories:
             meta_nodes[category]["id_prefixes"].update(prefixes)
     logging.info(f"Created {len(meta_nodes)} meta nodes")
@@ -69,10 +66,6 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
     meta_kg = {"nodes": meta_nodes, "edges": meta_edges}
     with open(f"{KG2C_DIR}/{meta_kg_file_name}", "w+") as meta_kg_file:
         json.dump(meta_kg, meta_kg_file, default=serialize_with_sets)
-
-
-def get_conflated_categories(category: str) -> Set[str]:
-    return CONFLATIONS_MAP.get(category, {category})
 
 
 def add_neighbor_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],

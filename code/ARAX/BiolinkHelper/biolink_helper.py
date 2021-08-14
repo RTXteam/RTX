@@ -43,8 +43,7 @@ class BiolinkHelper:
         ancestors = input_item_set.copy()
         ancestor_property = "ancestors_with_mixins" if include_mixins else "ancestors"
         if include_conflations:
-            categories = {conflated_category for category in categories
-                          for conflated_category in self.arax_conflations.get(category, {category})}
+            categories = set(self.add_conflations(categories))
         for category in categories:
             ancestors.update(self.biolink_lookup_map["categories"][category][ancestor_property])
         for predicate in predicates:
@@ -55,7 +54,7 @@ class BiolinkHelper:
             ancestors.update(self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["ancestors"])
         return list(ancestors)
 
-    def get_descendants(self, biolink_items: Union[str, List[str]], include_mixins: bool = True, include_conflations: bool = True) -> List[str]:
+    def get_descendants(self, biolink_items: Union[str, List[str], Set[str]], include_mixins: bool = True, include_conflations: bool = True) -> List[str]:
         """
         Returns the descendants of Biolink categories, predicates, category mixins, or predicate mixins. Input
         categories/predicates/mixins are themselves included in the returned descendant list. For categories/predicates,
@@ -70,8 +69,7 @@ class BiolinkHelper:
         descendants = input_item_set.copy()
         descendant_property = "descendants_with_mixins" if include_mixins else "descendants"
         if include_conflations:
-            categories = {conflated_category for category in categories
-                          for conflated_category in self.arax_conflations.get(category, {category})}
+            categories = set(self.add_conflations(categories))
         for category in categories:
             descendants.update(self.biolink_lookup_map["categories"][category][descendant_property])
         for predicate in predicates:
@@ -82,7 +80,7 @@ class BiolinkHelper:
             descendants.update(self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["descendants"])
         return list(descendants)
 
-    def get_canonical_predicates(self, predicates: Union[str, List[str]]) -> List[str]:
+    def get_canonical_predicates(self, predicates: Union[str, List[str], Set[str]]) -> List[str]:
         """
         Returns the canonical version of the input predicate(s). Accepts a single predicate or multiple predicates as
         input and always returns the canonical predicate(s) in a list.
@@ -98,15 +96,23 @@ class BiolinkHelper:
         canonical_predicates.update(invalid_predicates)  # Go ahead and include those we don't have canonical info for
         return list(canonical_predicates)
 
-    def filter_out_mixins(self, biolink_items: List[str]) -> List[str]:
+    def filter_out_mixins(self, biolink_items: Union[List[str], Set[str]]) -> List[str]:
         """
         Removes any predicate or category mixins in the input list.
         """
-        input_item_set = set(biolink_items)
+        input_item_set = self._convert_to_set(biolink_items)
         all_predicate_mixins = set(self.biolink_lookup_map["predicate_mixins"])
         all_category_mixins = set(self.biolink_lookup_map["category_mixins"])
         non_mixin_items = input_item_set.difference(all_predicate_mixins).difference(all_category_mixins)
         return list(non_mixin_items)
+
+    def add_conflations(self, categories: Union[str, List[str], Set[str]]) -> List[str]:
+        """
+        Adds any "equivalent" categories (according to ARAX) to the input categories.
+        """
+        category_set = self._convert_to_set(categories)
+        return list({conflated_category for category in category_set
+                     for conflated_category in self.arax_conflations.get(category, {category})})
 
     @staticmethod
     def get_current_arax_biolink_version() -> str:
@@ -319,6 +325,8 @@ class BiolinkHelper:
             return {items}
         elif isinstance(items, list):
             return set(items)
+        elif isinstance(items, set):
+            return items
         else:
             return set()
 
@@ -366,6 +374,8 @@ def main():
     assert "biolink:Gene" in protein_ancestors
     gene_descendants = bh.get_descendants("biolink:Gene", include_conflations=True)
     assert "biolink:Protein" in gene_descendants
+    gene_conflations = bh.add_conflations("biolink:Gene")
+    assert set(gene_conflations) == {"biolink:Gene", "biolink:Protein"}
 
     # Test canonical predicates
     canonical_treated_by = bh.get_canonical_predicates("biolink:treated_by")
