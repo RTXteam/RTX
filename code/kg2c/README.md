@@ -78,23 +78,28 @@ The `kg2_ids` property captures the IDs of the edges in KG2pre that this KG2c ed
         1. If you wish to upload your eventual output KG2c files to S3:
             1. Install AWS CLI: `sudo apt-get install -y awscli`
             1. And configure it: `aws configure`
+            1. You will need write permission for the `kg2` S3 bucket
     1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
         1. Create a copy of `configv2.json` that contains the proper secrets for your own KG2pre endpoint
+        1. Note that you will not be able to upload to S3 or arax.ncats.io
 1. Make sure you have the **latest code** from whatever branch you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
 1. Locally modify the KG2c build **config file** (`RTX/code/kg2c/kg2c_config.json`) for your particular needs:
-    - `kg2pre_version`: Should be the name of the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
-    - `kg2pre_neo4j_endpoint`: Should point to the correct endpoint for your specified KG2pre version
+    - `kg2pre_version`: Specify the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
+    - `kg2pre_neo4j_endpoint`: Should point to the Neo4j endpoint for your specified KG2pre version (e.g., `kg2endpoint-kg2-6-7.rtx.ai`)
     - `biolink_version`: Should match the Biolink version used by the KG2pre you specified (e.g., 1.8.1)
-    - Under the `kg2c` slot:
-        - `build`: Specify whether you want a KG2c to be built (sometimes it can be useful to build only a synonymizer and not a KG2c).
-        - `use_nlp_to_choose_descriptions`: This should generally be set to `true`, unless you're doing a 'debugging' build that doesn't involve debugging of node descriptions. In that case you may want to set this to `false` because it will shave a few hours off the build time. (When `true`, an NLP method will be used to choose the best node descriptions; when `false`, the longest description under a certain limit will be chosen.)
-        - `upload_to_s3`: Indicates whether you want the final output KG2c files (JSON and a tarball of TSVs) to automatically be uploaded to the KG2 S3 bucket (this should generally be `true` unless you're doing a 'debugging' build)
+    - `upload_to_arax.ncats.io`: Specify whether build artifacts should be uploaded to arax.ncats.io (generally should be `true` unless you're doing a debugging build)
+    - `upload_directory`: The path to the directory on arax.ncats.io where artifacts should be uploaded (e.g., `/translator/data/orangeboard/databases/KG2.6.7`)
+        - NOTE: You must manually create this directory on `arax.ncats.io` before kicking off the build (if it doesn't already exist)
+        - **WARNING**: If this is pointing to the wrong directory on arax.ncats.io, data may be overwritten! Be careful.
     - Under the `synonymizer` slot:
         - `build`: Set this to true if you want to build a **new** synonymizer (from your specified KG2pre version), false otherwise
         - `name`: The name of the synonymizer to use (if you're building a new synonymizer, it will be given this name)
             - NOTE: If you're not building a new synonymizer, you must ensure that a synonymizer with the name specified in this slot already exists in the `RTX/code/ARAX/NodeSynonymizer` directory in your clone of the repo
-        - `upload_artifacts_to_arax.ncats.io`: Indicates whether you want the artifacts of the `NodeSynonymizer` build to automatically be uploaded to `arax.ncats.io`
-        - `upload_directory`: The path to the directory on `arax.ncats.io` the synonymizer artifacts should be uploaded to (e.g., `"/translator/data/orangeboard/databases/KG2.6.7/synonymizer"`). Note that this directory must already exist on `arax.ncats.io`.
+            - **WARNING**: Always double-check this slot; if an old synonymizer name is specified here, things can get very confusing downstream!
+    - Under the `kg2c` slot:
+        - `build`: Specify whether you want a KG2c to be built (sometimes it can be useful to build only a synonymizer and not a KG2c)
+        - `use_nlp_to_choose_descriptions`: This should generally be set to `true`, unless you're doing a 'debugging' build that doesn't involve debugging of node descriptions. In that case you may want to set this to `false` because it will shave a few hours off the build time. (When `true`, an NLP method will be used to choose the best node descriptions; when `false`, the longest description under a certain limit will be chosen.)
+        - `upload_to_s3`: Indicates whether you want the final output KG2c files (JSON and a tarball of TSVs) to automatically be uploaded to the KG2 S3 bucket (this should generally be `true` unless you're doing a 'debugging' build)
 1. Then do the actual build (should take ~200GB of RAM and 2-11 hours depending on your settings in `kg2c_config.json`):
     - `python3 RTX/code/kg2c/build_kg2c.py`
 
