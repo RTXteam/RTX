@@ -11,3 +11,4 @@ cd ${script_dir}
 scp kg2c.sqlite rtxconfig@arax.ncats.io:${remote_destination}
 scp kg2c_meta_kg.json rtxconfig@arax.ncats.io:${remote_destination}
 scp kg2c-tsv.tar.gz rtxconfig@arax.ncats.io:${remote_destination}
+scp fda_approved_drugs.pickle rtxconfig@arax.ncats.io:${remote_destination}
