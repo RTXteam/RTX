@@ -64,6 +64,16 @@ class QGOrganizedKnowledgeGraph:
             self.edges_by_qg_id[qedge_key] = dict()
         self.edges_by_qg_id[qedge_key][edge_key] = edge
 
+    def remove_nodes(self, node_keys_to_delete: Set[str], qnode_key: str, qg: QueryGraph):
+        for node_key in node_keys_to_delete:
+            del self.nodes_by_qg_id[qnode_key][node_key]
+        connected_qedges = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == qnode_key or qedge.object == qnode_key}
+        for connected_qedge_key in connected_qedges.intersection(set(self.edges_by_qg_id)):
+            edges_to_delete = {edge_key for edge_key, edge in self.edges_by_qg_id[connected_qedge_key].items()
+                               if {edge.subject, edge.object}.intersection(node_keys_to_delete)}
+            for edge_key in edges_to_delete:
+                del self.edges_by_qg_id[connected_qedge_key][edge_key]
+
     def get_all_node_keys_used_by_edges(self) -> Set[str]:
         return {node_key for edges in self.edges_by_qg_id.values() for edge in edges.values()
                 for node_key in [edge.subject, edge.object]}

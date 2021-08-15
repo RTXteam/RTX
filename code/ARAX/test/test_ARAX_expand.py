@@ -27,7 +27,7 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
     # Run the query
     araxq = ARAXQuery()
     assert actions or json_query  # Must provide some sort of query to run
-    response = araxq.query({"operations": {"actions": actions}}) if actions else araxq.query(json_query)
+    response = araxq.query({"operations": {"actions": actions}}) if actions else araxq.query({"message": {"query_graph": json_query}})
     message = araxq.message
     if response.status != 'OK':
         print(response.show(level=ARAXResponse.DEBUG))
@@ -846,27 +846,23 @@ def test_1516_single_quotes_in_ids():
 
 def test_constraint_validation():
     query = {
-      "message": {
-        "query_graph": {
-          "edges": {
-            "e00": {
-              "object": "n01",
-              "predicates": ["biolink:physically_interacts_with"],
-              "subject": "n00",
-              "constraints": [{"id": "test_edge_constraint_1", "name": "test name edge", "operator": "<", "value": 1.0},
-                              {"id": "test_edge_constraint_2", "name": "test name edge", "operator": ">", "value": 0.5}]
-            }
-          },
-          "nodes": {
-            "n00": {
-              "categories": ["biolink:ChemicalEntity"],
-              "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
-            },
-            "n01": {
-              "categories": ["biolink:Protein"],
-              "constraints": [{"id": "test_node_constraint", "name": "test name node", "operator": "<", "value": 1.0}]
-            }
-          }
+      "edges": {
+        "e00": {
+          "object": "n01",
+          "predicates": ["biolink:physically_interacts_with"],
+          "subject": "n00",
+          "constraints": [{"id": "test_edge_constraint_1", "name": "test name edge", "operator": "<", "value": 1.0},
+                          {"id": "test_edge_constraint_2", "name": "test name edge", "operator": ">", "value": 0.5}]
+        }
+      },
+      "nodes": {
+        "n00": {
+          "categories": ["biolink:ChemicalEntity"],
+          "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
+        },
+        "n01": {
+          "categories": ["biolink:Protein"],
+          "constraints": [{"id": "test_node_constraint", "name": "test name node", "operator": "<", "value": 1.0}]
         }
       }
     }
@@ -1005,6 +1001,128 @@ def test_auto_pruning_two_hop():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert len(nodes_by_qg_id["n1"]) <= 200
+
+
+def test_fda_approved_query_workflow_a9_egfr_advanced():
+    query = {
+      "nodes": {
+        "n0": {
+          "categories": [
+            "biolink:SmallMolecule"
+          ],
+          "constraints": [
+            {
+              "id": "biolink:highest_FDA_approval_status",
+              "name": "highest FDA approval status",
+              "operator": "==",
+              "value": "regular approval"
+            }
+          ]
+        },
+        "n1": {
+          "ids": [
+            "NCBIGene:1956"
+          ]
+        }
+      },
+      "edges": {
+        "e0": {
+          "subject": "n0",
+          "object": "n1",
+          "predicates": [
+            "biolink:decreases_abundance_of",
+            "biolink:decreases_activity_of",
+            "biolink:decreases_expression_of",
+            "biolink:decreases_synthesis_of",
+            "biolink:increases_degradation_of",
+            "biolink:disrupts",
+            "biolink:entity_negatively_regulates_entity"
+          ]
+        }
+      }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+def test_fda_approved_query_simple():
+    query = {
+        "nodes": {
+            "n0": {
+                "ids": [
+                    "MONDO:0000888"
+                ]
+            },
+            "n1": {
+                "categories": [
+                    "biolink:ChemicalEntity"
+                ],
+                "constraints": [
+                    {
+                        "id": "biolink:highest_FDA_approval_status",
+                        "name": "highest FDA approval status",
+                        "operator": "==",
+                        "value": "regular approval"
+                    }
+                ]
+            }
+        },
+        "edges": {
+            "e0": {
+                "subject": "n1",
+                "object": "n0",
+                "predicates": [
+                    "biolink:treats"
+                ]
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+@pytest.mark.slow
+def test_fda_approved_query_workflow_a9_egfr_advanced():
+    query_unconstrained = {
+      "nodes": {
+        "n0": {
+          "categories": [
+            "biolink:SmallMolecule"
+          ]
+        },
+        "n1": {
+          "ids": [
+            "NCBIGene:1956"
+          ]
+        }
+      },
+      "edges": {
+        "e0": {
+          "subject": "n0",
+          "object": "n1",
+          "predicates": [
+            "biolink:decreases_abundance_of",
+            "biolink:decreases_activity_of",
+            "biolink:decreases_expression_of",
+            "biolink:decreases_synthesis_of",
+            "biolink:increases_degradation_of",
+            "biolink:disrupts",
+            "biolink:entity_negatively_regulates_entity"
+          ]
+        }
+      }
+    }
+    nodes_by_qg_id_unconstrained, edges_by_qg_id_unconstrained = _run_query_and_do_standard_testing(json_query=query_unconstrained)
+
+    query_constrained = query_unconstrained
+    fda_approved_constraint = {
+        "id": "biolink:highest_FDA_approval_status",
+        "name": "highest FDA approval status",
+        "operator": "==",
+        "value": "regular approval"
+    }
+    query_constrained["nodes"]["n0"]["constraints"] = [fda_approved_constraint]
+    nodes_by_qg_id_constrained, edges_by_qg_id_constrained = _run_query_and_do_standard_testing(json_query=query_constrained)
+
+    assert len(nodes_by_qg_id_constrained["n0"]) < len(nodes_by_qg_id_unconstrained["n0"])
 
 
 if __name__ == "__main__":
