@@ -43,8 +43,8 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
         if not is_test or (subject_node_id in nodes_by_id and object_node_id in nodes_by_id):
             subject_node = nodes_by_id[subject_node_id]
             object_node = nodes_by_id[object_node_id]
-            subject_categories = biolink_helper.add_conflations(subject_node["category"])
-            object_categories = biolink_helper.add_conflations(object_node["category"])
+            subject_categories = biolink_helper.add_conflations(subject_node["all_categories"])
+            object_categories = biolink_helper.add_conflations(object_node["all_categories"])
             predicate = edge["predicate"]
             for subject_category in subject_categories:
                 for object_category in object_categories:
@@ -67,7 +67,7 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
     logging.info("Saving meta KG to JSON file..")
     meta_kg = {"nodes": meta_nodes, "edges": meta_edges}
     with open(f"{KG2C_DIR}/{meta_kg_file_name}", "w+") as meta_kg_file:
-        json.dump(meta_kg, meta_kg_file, default=serialize_with_sets)
+        json.dump(meta_kg, meta_kg_file, default=serialize_with_sets, indent=2)
 
 
 def add_neighbor_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
@@ -151,7 +151,7 @@ def record_meta_kg_info(is_test: bool):
     meta_kg_file_name = f"kg2c_meta_kg{'_test' if is_test else ''}.json"
     sqlite_file_name = f"kg2c{'_test' if is_test else ''}.sqlite"
     fda_approved_file_name = f"fda_approved_drugs{'_test' if is_test else ''}.pickle"
-    label_property_name = "expanded_categories"
+    label_property_name = "all_categories"
 
     start = time.time()
     with open(f"{KG2C_DIR}/{input_kg_file_name}", "r") as input_kg_file:
