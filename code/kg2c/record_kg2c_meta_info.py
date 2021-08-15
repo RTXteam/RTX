@@ -33,7 +33,9 @@ def serialize_with_sets(obj: any) -> any:
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
                   meta_kg_file_name: str, is_test: bool):
     logging.info("Gathering all meta triples..")
-    biolink_helper = BiolinkHelper()
+    with open("kg2c_config.json") as config_file:
+        config_info = json.load(config_file)
+    biolink_helper = BiolinkHelper(config_info["biolink_version"])
     meta_triples = set()
     for edge in edges_by_id.values():
         subject_node_id = edge["subject"]
