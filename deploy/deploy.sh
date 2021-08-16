@@ -8,7 +8,7 @@ namespace="rtx"
 toReplace=('BUILD_VERSION')
 
 # export .env values to env vars
-export $(egrep -v '^#' .env)
+# export $(egrep -v '^#' .env)
 
 # printenv
 
