@@ -130,9 +130,10 @@ pipeline {
                     {
                         sh '''
                         # Need to save the credential to a file with base64 encoded under deploy/secret
+                        printenv
                         echo $SECRET | base64 >> deploy/secret/team-expander-ops-sshkey
                         aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-                        cd deploy && /bin/bash deploy.sh
+                        # cd deploy && /bin/bash deploy.sh
                         # aws --region ${AWS_REGION} sts get-caller-identity
                         '''
                     }
