@@ -23,7 +23,7 @@ spec:
           command:
             - './download_database.sh'
           volumeMounts:
-            - name: ssh-key-volume
+            - name: {{ include "arax.fullname" . }}-secret-volume
               mountPath: "/etc/ssh-key"
             - name: {{ include "arax.fullname" . }}-configs-volume
               mountPath: /configv2
