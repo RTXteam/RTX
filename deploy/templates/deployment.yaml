@@ -43,6 +43,8 @@ spec:
               containerPort: 80
               protocol: TCP
           volumeMounts:
+            - name: ssh-key-volume
+              mountPath: "/etc/ssh-key"
             - name: {{ include "arax.fullname" . }}-pvc
               mountPath: /mnt/data/orangeboard/databases/
             - name: {{ include "arax.fullname" . }}-configs
