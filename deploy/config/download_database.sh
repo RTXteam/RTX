@@ -18,6 +18,7 @@ config_file="/configv2/configv2.json"
 declare -A db_arr new_db_MD5_arr
 db_folder="/databases"
 sftp_url="team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander"
+sftp_key="/etc/ssh-key/team-expander-ops-sshkey"
 md5_sums_new="/databases/md5_sums_new"
 md5_sums_local="/databases/md5_sums_local"
 
@@ -74,7 +75,7 @@ printf "\n"
 
 # always get new md5 info
 echo "Getting MD5 info from sftp server...."
-sftp -i /etc/ssh-key/ssh-key-SECRET_FILE -o StrictHostKeyChecking=no -pr ${sftp_url}/md5_sums/ $md5_sums_new
+sftp -i $sftp_key -o StrictHostKeyChecking=no -pr ${sftp_url}/md5_sums/ $md5_sums_new
 printf '\n'
 
 # this is tricky, we download all MD5 info, some are needed, some are not
@@ -118,7 +119,7 @@ do
       fi
       # download the file
       printf 'Downloading from "%s" to "%s"...\n' "$file2download" "$file2download_localpath"
-      sftp -i /etc/ssh-key/ssh-key-SECRET_FILE -o StrictHostKeyChecking=no -p $file2download $file2download_localpath
+      sftp -i $sftp_key -o StrictHostKeyChecking=no -p $file2download $file2download_localpath
       printf '\n'
     fi
 done
