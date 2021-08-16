@@ -25,7 +25,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/Kno
 from COHDIndex import COHDIndex
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
-from category_manager import CategoryManager
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 class COHDQuerier:
 
@@ -33,7 +34,7 @@ class COHDQuerier:
         self.response = response_object
         self.cohdindex = COHDIndex()
         self.synonymizer = NodeSynonymizer()
-        self.categorymanager = CategoryManager()
+        self.biolink_helper = BiolinkHelper()
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -265,7 +266,7 @@ class COHDQuerier:
                     pass
                 else:
                     if self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]:
-                        if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
+                        if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
                             pass
                         else:
                             log.warning(f"The preferred type of source preferred id '{source_preferred_key}' can't match to anyone of the given source type '{source_qnode.categories}''")
@@ -296,7 +297,7 @@ class COHDQuerier:
                             temp = self.cohdindex.get_curies_from_concept_id(res_data['concept_id_2'])
                             for preferred_target_curie in temp:
                                 if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]:
-                                    if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                                    if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                                         preferred_target_list += [preferred_target_curie]
                                 else:
                                     preferred_target_list += [preferred_target_curie]
@@ -319,7 +320,7 @@ class COHDQuerier:
                             temp = self.cohdindex.get_curies_from_concept_id(res_data['concept_id_2'])
                             for preferred_target_curie in temp:
                                 if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]:
-                                    if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(target_qnode.categories)) > 0:
+                                    if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(target_qnode.categories)) > 0:
                                         preferred_target_list += [preferred_target_curie]
                                 else:
                                     preferred_target_list += [preferred_target_curie]
@@ -342,7 +343,7 @@ class COHDQuerier:
                             temp = self.cohdindex.get_curies_from_concept_id(res_data['concept_id_2'])
                             for preferred_target_curie in temp:
                                 if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]:
-                                    if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                                    if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                                         preferred_target_list += [preferred_target_curie]
                                 else:
                                     preferred_target_list += [preferred_target_curie]
@@ -408,7 +409,7 @@ class COHDQuerier:
                     pass
                 else:
                     if self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]:
-                        if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                        if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                             pass
                         else:
                             log.warning(f"The preferred type of target preferred id '{target_preferred_key}' can't match to anyone of the given target type '{target_qnode.categories}''")
@@ -439,7 +440,7 @@ class COHDQuerier:
                             temp = self.cohdindex.get_curies_from_concept_id(res_data['concept_id_2'])
                             for preferred_source_curie in temp:
                                 if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]:
-                                    if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                                    if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                                         preferred_source_list += [preferred_source_curie]
                                 else:
                                     preferred_source_list += [preferred_source_curie]
@@ -462,7 +463,7 @@ class COHDQuerier:
                             temp = self.cohdindex.get_curies_from_concept_id(res_data['concept_id_2'])
                             for preferred_source_curie in temp:
                                 if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]:
-                                    if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                                    if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                                         preferred_source_list += [preferred_source_curie]
                                 else:
                                     preferred_source_list += [preferred_source_curie]
@@ -485,7 +486,7 @@ class COHDQuerier:
                             temp = self.cohdindex.get_curies_from_concept_id(res_data['concept_id_2'])
                             for preferred_source_curie in temp:
                                 if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]:
-                                    if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                                    if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                                         preferred_source_list += [preferred_source_curie]
                                 else:
                                     preferred_source_list += [preferred_source_curie]
@@ -667,7 +668,7 @@ class COHDQuerier:
                     pass
                 else:
                     if self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]:
-                        if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
+                        if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
                             pass
                         else:
                             log.warning(f"The preferred type of source preferred id '{source_preferred_key}' can't match to anyone of the given source type '{source_qnode.categories}''")
@@ -697,7 +698,7 @@ class COHDQuerier:
                         temp = self.cohdindex.get_curies_from_concept_id(freq_data['concept_id_2'])
                         for preferred_target_curie in temp:
                             if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]:
-                                if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                                if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                                     preferred_target_list += [preferred_target_curie]
                             else:
                                 preferred_target_list += [preferred_target_curie]
@@ -745,7 +746,7 @@ class COHDQuerier:
                     pass
                 else:
                     if self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]:
-                        if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                        if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                             pass
                         else:
                             log.warning(f"The preferred type of target preferred id '{target_preferred_key}' can't match to anyone of the given target type '{target_qnode.categories}''")
@@ -775,7 +776,7 @@ class COHDQuerier:
                         temp = self.cohdindex.get_curies_from_concept_id(freq_data['concept_id_2'])
                         for preferred_source_curie in temp:
                             if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]:
-                                if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
+                                if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
                                     preferred_source_list += [preferred_source_curie]
                             else:
                                 preferred_source_list += [preferred_source_curie]
@@ -938,7 +939,7 @@ class COHDQuerier:
                     pass
                 else:
                     if self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]:
-                        if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
+                        if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
                             pass
                         else:
                             log.warning(f"The preferred type of source preferred id '{source_preferred_key}' can't match to anyone of the given source type '{source_qnode.categories}''")
@@ -968,7 +969,7 @@ class COHDQuerier:
                         temp = self.cohdindex.get_curies_from_concept_id(ln_ratio_data['concept_id_2'])
                         for preferred_target_curie in temp:
                             if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]:
-                                if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                                if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                                     preferred_target_list += [preferred_target_curie]
                             else:
                                 preferred_target_list += [preferred_target_curie]
@@ -1015,7 +1016,7 @@ class COHDQuerier:
                     pass
                 else:
                     if self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]:
-                        if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                        if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                             pass
                         else:
                             log.warning(f"The preferred type of target preferred id '{target_preferred_key}' can't match to anyone of the given target type '{target_qnode.categories}''")
@@ -1045,7 +1046,7 @@ class COHDQuerier:
                         temp = self.cohdindex.get_curies_from_concept_id(ln_ratio_data['concept_id_2'])
                         for preferred_source_curie in temp:
                             if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]:
-                                if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
+                                if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
                                     preferred_source_list += [preferred_source_curie]
                             else:
                                 preferred_source_list += [preferred_source_curie]
@@ -1209,7 +1210,7 @@ class COHDQuerier:
                     pass
                 else:
                     if self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]:
-                        if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
+                        if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(source_preferred_key)[source_preferred_key]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
                             pass
                         else:
                             log.warning(f"The preferred type of source preferred id '{source_preferred_key}' can't match to anyone of the given source type '{source_qnode.categories}''")
@@ -1239,7 +1240,7 @@ class COHDQuerier:
                         temp = self.cohdindex.get_curies_from_concept_id(pvalue_data['concept_id_2'])
                         for preferred_target_curie in temp:
                             if self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]:
-                                if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                                if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_target_curie)[preferred_target_curie]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                                     preferred_target_list += [preferred_target_curie]
                             else:
                                 preferred_target_list += [preferred_target_curie]
@@ -1286,7 +1287,7 @@ class COHDQuerier:
                 if target_qnode.categories is None:
                     pass
                 else:
-                    if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key] and self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
+                    if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key] and self.synonymizer.get_canonical_curies(target_preferred_key)[target_preferred_key]['preferred_category'])).intersection(set(target_qnode.categories))) > 0:
                         pass
                     else:
                         continue
@@ -1312,7 +1313,7 @@ class COHDQuerier:
                         temp = self.cohdindex.get_curies_from_concept_id(pvalue_data['concept_id_2'])
                         for preferred_source_curie in temp:
                             if self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]:
-                                if len(set(self.categorymanager.get_expansive_categories(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
+                                if len(set(self.biolink_helper.get_ancestors(self.synonymizer.get_canonical_curies(preferred_source_curie)[preferred_source_curie]['preferred_category'])).intersection(set(source_qnode.categories))) > 0:
                                     preferred_source_list += [preferred_source_curie]
                             else:
                                 preferred_source_list += [preferred_source_curie]

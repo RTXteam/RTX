@@ -10,20 +10,16 @@ import logging
 import os
 import pickle
 import sqlite3
+import sys
 import time
 from collections import defaultdict
 from typing import Dict, Set
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
+
 
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
-
-PROTEIN_CONFLATIONS = {"biolink:Protein", "biolink:Gene"}
-DISEASE_CONFLATIONS = {"biolink:Disease", "biolink:PhenotypicFeature", "biolink:DiseaseOrPhenotypicFeature"}
-CONFLATIONS_MAP = {"biolink:Protein": PROTEIN_CONFLATIONS,
-                   "biolink:Gene": PROTEIN_CONFLATIONS,
-                   "biolink:Disease": DISEASE_CONFLATIONS,
-                   "biolink:PhenotypicFeature": DISEASE_CONFLATIONS,
-                   "biolink:DiseaseOrPhenotypicFeature": DISEASE_CONFLATIONS}
 
 
 def serialize_with_sets(obj: any) -> any:
@@ -37,6 +33,9 @@ def serialize_with_sets(obj: any) -> any:
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
                   meta_kg_file_name: str, is_test: bool):
     logging.info("Gathering all meta triples..")
+    with open("kg2c_config.json") as config_file:
+        config_info = json.load(config_file)
+    biolink_helper = BiolinkHelper(config_info["biolink_version"])
     meta_triples = set()
     for edge in edges_by_id.values():
         subject_node_id = edge["subject"]
@@ -44,8 +43,8 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
         if not is_test or (subject_node_id in nodes_by_id and object_node_id in nodes_by_id):
             subject_node = nodes_by_id[subject_node_id]
             object_node = nodes_by_id[object_node_id]
-            subject_categories = get_conflated_categories(subject_node["category"])
-            object_categories = get_conflated_categories(object_node["category"])
+            subject_categories = biolink_helper.add_conflations(subject_node["all_categories"])
+            object_categories = biolink_helper.add_conflations(object_node["all_categories"])
             predicate = edge["predicate"]
             for subject_category in subject_categories:
                 for object_category in object_categories:
@@ -60,7 +59,7 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
     for node_id, node in nodes_by_id.items():
         equivalent_curies = equivalent_curies_dict.get(node_id, [node_id])
         prefixes = {curie.split(":")[0] for curie in equivalent_curies}
-        categories = get_conflated_categories(node["category"])
+        categories = biolink_helper.add_conflations(node["category"])
         for category in categories:
             meta_nodes[category]["id_prefixes"].update(prefixes)
     logging.info(f"Created {len(meta_nodes)} meta nodes")
@@ -68,11 +67,7 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
     logging.info("Saving meta KG to JSON file..")
     meta_kg = {"nodes": meta_nodes, "edges": meta_edges}
     with open(f"{KG2C_DIR}/{meta_kg_file_name}", "w+") as meta_kg_file:
-        json.dump(meta_kg, meta_kg_file, default=serialize_with_sets)
-
-
-def get_conflated_categories(category: str) -> Set[str]:
-    return CONFLATIONS_MAP.get(category, {category})
+        json.dump(meta_kg, meta_kg_file, default=serialize_with_sets, indent=2)
 
 
 def add_neighbor_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
@@ -137,11 +132,26 @@ def add_category_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], sqlite
     connection.close()
 
 
+def generate_fda_approved_drugs_pickle(edges_by_id: Dict[str, Dict[str, any]], fda_approved_file_name: str):
+    # Extract the IDs of FDA-approved drug nodes per DRUGBANK (they're attached to the "fda approved drug" node)
+    fda_approved_drug_node = "MI:2099"
+    fda_approved_drugs = set()
+    for edge_id, edge in edges_by_id.items():
+        node_ids = {edge["subject"], edge["object"]}
+        if fda_approved_drug_node in node_ids:
+            drug_node_id = next(node_id for node_id in node_ids.difference({fda_approved_drug_node}))
+            fda_approved_drugs.add(drug_node_id)
+    logging.info(f"Saving IDs of {len(fda_approved_drugs)} FDA-approved drugs to {fda_approved_file_name}")
+    with open(fda_approved_file_name, "wb") as pickle_file:
+        pickle.dump(fda_approved_drugs, pickle_file)
+
+
 def record_meta_kg_info(is_test: bool):
     input_kg_file_name = f"kg2c_lite{'_test' if is_test else ''}.json"
     meta_kg_file_name = f"kg2c_meta_kg{'_test' if is_test else ''}.json"
     sqlite_file_name = f"kg2c{'_test' if is_test else ''}.sqlite"
-    label_property_name = "expanded_categories"
+    fda_approved_file_name = f"fda_approved_drugs{'_test' if is_test else ''}.pickle"
+    label_property_name = "all_categories"
 
     start = time.time()
     with open(f"{KG2C_DIR}/{input_kg_file_name}", "r") as input_kg_file:
@@ -154,6 +164,7 @@ def record_meta_kg_info(is_test: bool):
     build_meta_kg(nodes_by_id, edges_by_id, meta_kg_file_name, is_test)
     add_neighbor_counts_to_sqlite(nodes_by_id, edges_by_id, sqlite_file_name, label_property_name, is_test)
     add_category_counts_to_sqlite(nodes_by_id, sqlite_file_name, label_property_name)
+    generate_fda_approved_drugs_pickle(edges_by_id, fda_approved_file_name)
 
     logging.info(f"Recording meta KG info took {round((time.time() - start) / 60, 1)} minutes.")
 

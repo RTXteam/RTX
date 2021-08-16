@@ -33,7 +33,6 @@ class TRAPIQuerier:
         self.user_specified_kp = user_specified_kp
         self.force_local = force_local
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
-        self.predicates_timeout = 5
         self.kp_selector = kp_selector
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
