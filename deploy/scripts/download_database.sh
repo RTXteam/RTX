@@ -18,7 +18,7 @@ config_file="/configv2/configv2.json"
 declare -A db_arr new_db_MD5_arr
 db_folder="/databases"
 sftp_url="team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander"
-sftp_key="/etc/ssh-key/team-expander-ops-sshkey.secret"
+sftp_key="/etc/ssh-key/team-expander-ops-sshkey-secret"
 md5_sums_new="/databases/md5_sums_new"
 md5_sums_local="/databases/md5_sums_local"
 

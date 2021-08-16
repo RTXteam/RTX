@@ -1,8 +1,19 @@
+---
 apiVersion: v1
 kind: ConfigMap
 metadata: 
-  name: {{ include "arax.fullname" . }}-configmap
+  name: {{ include "arax.fullname" . }}-scripts
   labels:
     {{- include "arax.labels" . | nindent 4 }}
 data:
-  {{- (.Files.Glob "config/*").AsConfig | nindent 2 }}
+  {{- (.Files.Glob "scripts/*").AsConfig | nindent 2 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: 
+  name: {{ include "arax.fullname" . }}-configs
+  labels:
+    {{- include "arax.labels" . | nindent 4 }}
+data:
+  {{- (.Files.Glob "configs/*").AsConfig | nindent 2 }}
