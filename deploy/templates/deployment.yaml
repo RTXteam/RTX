@@ -25,9 +25,9 @@ spec:
           volumeMounts:
             - name: ssh-key-volume
               mountPath: "/etc/ssh-key"
-            - name: {{ include "arax.fullname" . }}-configs
+            - name: {{ include "arax.fullname" . }}-configs-volume
               mountPath: /configv2
-            - name: {{ include "arax.fullname" . }}-scripts
+            - name: {{ include "arax.fullname" . }}-scripts-volume
               mountPath: /download_database.sh
               subPath: download_database.sh
             - name: {{ include "arax.fullname" . }}-pvc
@@ -45,9 +45,9 @@ spec:
           volumeMounts:
             - name: {{ include "arax.fullname" . }}-pvc
               mountPath: /mnt/data/orangeboard/databases/
-            - name: {{ include "arax.fullname" . }}-configs
+            - name: {{ include "arax.fullname" . }}-configs-volume
               mountPath: /configv2
-            - name: {{ include "arax.fullname" . }}-scripts
+            - name: {{ include "arax.fullname" . }}-scripts-volume
               mountPath: /start_app.sh
               subPath: start_app.sh
           livenessProbe:
@@ -67,15 +67,15 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        - name: ssh-key-volume
+        - name: {{ include "arax.fullname" . }}-secret-volume
           secret:
             secretName: {{ include "arax.fullname" . }}-secret
             defaultMode: 0400
-        - name: {{ include "arax.fullname" . }}-scripts
+        - name: {{ include "arax.fullname" . }}-scripts-volume
           configMap:
             name: {{ include "arax.fullname" . }}-scripts
             defaultMode: 0777
-        - name: {{ include "arax.fullname" . }}-configs
+        - name: {{ include "arax.fullname" . }}-configs-volume
           configMap:
             name: {{ include "arax.fullname" . }}-configs
             defaultMode: 0777
