@@ -16,22 +16,22 @@ spec:
         {{- include "arax.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "arax.serviceAccountName" . }}
-        #      initContainers:
-        #        - name: {{ .Chart.Name }}-init-container
-        #          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
-        #          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
-        #          command:
-        #            - './download_database.sh'
-        #          volumeMounts:
-        #            - name: ssh-key-volume
-        #              mountPath: "/etc/ssh-key"
-        #            - name: {{ include "arax.fullname" . }}-configs
-        #              mountPath: /configv2
-        #            - name: {{ include "arax.fullname" . }}-scripts
-        #              mountPath: /download_database.sh
-        #              subPath: download_database.sh
-        #            - name: {{ include "arax.fullname" . }}-pvc
-        #              mountPath: /databases
+      initContainers:
+        - name: {{ .Chart.Name }}-init-container
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
+          command:
+            - './download_database.sh'
+          volumeMounts:
+            - name: ssh-key-volume
+              mountPath: "/etc/ssh-key"
+            - name: {{ include "arax.fullname" . }}-configs
+              mountPath: /configv2
+            - name: {{ include "arax.fullname" . }}-scripts
+              mountPath: /download_database.sh
+              subPath: download_database.sh
+            - name: {{ include "arax.fullname" . }}-pvc
+              mountPath: /databases
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -43,8 +43,6 @@ spec:
               containerPort: 80
               protocol: TCP
           volumeMounts:
-            - name: ssh-key-volume
-              mountPath: "/etc/ssh-key"
             - name: {{ include "arax.fullname" . }}-pvc
               mountPath: /mnt/data/orangeboard/databases/
             - name: {{ include "arax.fullname" . }}-configs
@@ -72,7 +70,7 @@ spec:
         - name: ssh-key-volume
           secret:
             secretName: {{ include "arax.fullname" . }}-secret
-            defaultMode: 256
+            defaultMode: 0400
         - name: {{ include "arax.fullname" . }}-scripts
           configMap:
             name: {{ include "arax.fullname" . }}-scripts
