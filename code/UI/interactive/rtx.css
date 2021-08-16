@@ -350,7 +350,7 @@ hr {
     display: inline-block;
     overflow: hidden;
     padding: 0;
-    height: 16px;
+    height: 12px;
     margin: 0;
     width: 100%;
     border: 1px solid #000;
@@ -538,6 +538,43 @@ td {
     color: #333;
 }
 
+.qgmenu {
+    position: relative;
+    right: 25%;
+    top: 11px;
+    float: right;
+}
+.qgbutton {
+    border:1px solid #000;
+    color:#000;
+    padding: 5px;
+}
+.qgbutton:hover {
+    cursor: pointer;
+    background-color: #9bc;
+    color: #333;
+}
+
+.qnodeid {
+    float: right;
+    background: #ff0;
+    border: 3px solid #f80;
+    padding: 5px 20px;
+    margin-top: -8px;
+    margin-right: -5px;
+    margin-bottom: 0px;
+    margin-left: 15px;
+}
+.qedgeid {
+    display: inline;
+    background: #f80;
+    border: 3px solid #f80;
+    color: #fff;
+    padding: 5px 20px;
+    margin-right: -5px;
+}
+
+
 .essence {
     font-weight: bold;
     color: #e98300;
@@ -614,4 +651,67 @@ input:checked + .slider:before {
     background-color: rgba(221,221,221,0.7);
     border: 2px solid #002664;
     padding: 40px;
+}
+
+
+.tooltip {
+    position: relative;
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    cursor: zoom-in;
+}
+.tooltip .tooltiptext {
+    visibility: hidden;
+    background-color: rgba(85,150,208,0.95);
+    color: #fff;
+    text-align: center;
+    border-radius: 12px;
+    border: 1px solid #000;
+    box-shadow: 0 6px 8px 0 rgb(0 0 0 / 30%);
+    top: 100%;
+    right: -100px;
+    white-space: nowrap;
+    position: absolute;
+    z-index: 3;
+    max-height: 400px;
+    min-width:  450px;
+    overflow-y: auto;
+    scrollbar-color: #c40 transparent;
+    scrollbar-width: thin;
+}
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
+.tooltip:hover::after {
+    content: " ";
+    position: absolute;
+    top: 65%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent black transparent;
+}
+.tooltiptext::-webkit-scrollbar {
+    width: 7.5px;
+}
+.tooltiptext::-webkit-scrollbar-thumb {
+    background: #c40;
+}
+
+.shake {
+    animation: shake 0.5s;
+}
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
 }

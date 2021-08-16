@@ -10,6 +10,7 @@ from typing import List, Dict, Tuple
 from neo4j import GraphDatabase
 import json
 import requests
+import requests_cache
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
@@ -27,12 +28,14 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 class CHPQuerier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
         self.synonymizer = NodeSynonymizer()
+        self.biolink_helper = BiolinkHelper()
         self.kp_name = "CHP"
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -47,7 +50,7 @@ class CHPQuerier:
         self.CHP_survival_threshold = float(self.response.data['parameters']['CHP_survival_threshold'])
         allowable_curies = CHPQuerier._query_CHP_curies()
         self.allowable_gene_curies = list(allowable_curies['biolink:Gene'].keys())
-        self.allowable_drug_curies = [curie_id.replace('CHEMBL:','CHEMBL.COMPOUND:') for curie_id in list(allowable_curies['biolink:Drug'].keys())]
+        self.allowable_drug_curies = list(allowable_curies['biolink:Drug'].keys())
         final_kg = QGOrganizedKnowledgeGraph()
 
         final_kg = self._answer_query_using_CHP_client(query_graph, log)
@@ -59,7 +62,8 @@ class CHPQuerier:
         log.debug(f"Processing query results for edge {qedge_key} by using CHP client")
         final_kg = QGOrganizedKnowledgeGraph()
         gene_label_list = ['gene']
-        drug_label_list = ['drug', 'chemicalsubstance']
+        # drug_label_list = list(set([drug_category_ancestor.replace('biolink:','').replace('_','').lower() for drug_cateogry in ['biolink:Drug','biolink:SmallMolecule'] for drug_category_ancestor in self.categorymanager.get_expansive_categories(drug_cateogry)]))
+        drug_label_list = [ancestor.replace('biolink:','').replace('_','').lower() for ancestor in self.biolink_helper.get_ancestors(['biolink:Drug','biolink:SmallMolecule'],include_mixins=False)]
         # use for checking the requirement
         source_pass_nodes = None
         source_category = None
@@ -149,7 +153,7 @@ class CHPQuerier:
             if len(set(categories).intersection(set(drug_label_list))) > 0 or len(set(categories).intersection(set(gene_label_list))) > 0:
                 target_category = categories
             else:
-                log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug/chemical_substance or gene", error_code="CategoryError")
+                log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug/small_molecule or gene", error_code="CategoryError")
                 return final_kg
 
         if (source_pass_nodes is None) and (target_pass_nodes is None):
@@ -173,7 +177,8 @@ class CHPQuerier:
                 for (source_curie, target_curie) in itertools.product(source_pass_nodes, target_pass_nodes):
 
                     if source_category_temp == 'drug':
-                        source_curie_temp = source_curie.replace('CHEMBL.COMPOUND:','CHEMBL:')
+                        # source_curie_temp = source_curie.replace('CHEMBL.COMPOUND:','CHEMBL:')
+                        source_curie_temp = source_curie
                         # Let's build a simple single query
                         q = CHPQuerier._build_standard_query(gene=target_curie, drug=source_curie_temp, disease='MONDO:0007254', outcome='EFO:0000714', outcome_name='survival_time', outcome_op='>', outcome_value=self.CHP_survival_threshold, trapi_version='1.1')
 
@@ -181,7 +186,8 @@ class CHPQuerier:
                         max_probability = CHPQuerier._get_outcome_prob(response)
                         swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, source_curie, "paired_with", max_probability)
                     else:
-                        target_curie_temp = target_curie.replace('CHEMBL.COMPOUND:','CHEMBL:')
+                        # target_curie_temp = target_curie.replace('CHEMBL.COMPOUND:','CHEMBL:')
+                        target_curie_temp = target_curie
                         # Let's build a simple single query
                         q = CHPQuerier._build_standard_query(gene=source_curie, drug=target_curie_temp, disease='MONDO:0007254', outcome='EFO:0000714', outcome_name='survival_time', outcome_op='>', outcome_value=self.CHP_survival_threshold, trapi_version='1.1')
 
@@ -227,7 +233,8 @@ class CHPQuerier:
                     for source_curie in source_pass_nodes:
 
                         genes = [curie for curie in self.allowable_gene_curies if self.synonymizer.get_canonical_curies(curie)[curie] is not None and len(set(target_category).intersection(set([category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie, return_all_categories=True)[curie]['all_categories'].keys())]))) > 0]
-                        drug = source_curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:')
+                        # drug = source_curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:')
+                        drug = source_curie
 
                         for gene in genes:
 
@@ -246,12 +253,12 @@ class CHPQuerier:
                     for source_curie in source_pass_nodes:
 
                         gene = source_curie
-                        drugs = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and len(set(target_category).intersection(set([category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_categories=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_categories'].keys())]))) > 0]
+                        # drugs = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and len(set(target_category).intersection(set([category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_categories=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_categories'].keys())]))) > 0]
+                        drugs = [curie for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie)[curie] is not None and len(set(target_category).intersection(set([category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie, return_all_categories=True)[curie]['all_categories'].keys())]))) > 0]
 
                         for drug in drugs:
                             q = CHPQuerier._build_standard_query(gene=gene, drug=drug, disease='MONDO:0007254', outcome='EFO:0000714', outcome_name='survival_time', outcome_op='>', outcome_value=self.CHP_survival_threshold, trapi_version='1.1')
-                            drug = drug.replace('CHEMBL:', 'CHEMBL.COMPOUND:')
-
+                            # drug = drug.replace('CHEMBL:', 'CHEMBL.COMPOUND:')
                             result = CHPQuerier._query_CHP_api(q)
                             prob = CHPQuerier._get_outcome_prob(result)
                             swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, drug, "paired_with", prob)
@@ -293,7 +300,8 @@ class CHPQuerier:
                     for target_curie in target_pass_nodes:
 
                         genes = [curie for curie in self.allowable_gene_curies if self.synonymizer.get_canonical_curies(curie)[curie] is not None and len(set(source_category).intersection(set([category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie, return_all_categories=True)[curie]['all_categories'].keys())]))) > 0]
-                        drug = target_curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:')
+                        # drug = target_curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:')
+                        drug = target_curie
 
                         for gene in genes:
 
@@ -313,11 +321,12 @@ class CHPQuerier:
                     for target_curie in target_pass_nodes:
 
                         gene = target_curie
-                        drugs = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and len(set(source_category).intersection(set([category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_categories=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_categories'].keys())]))) > 0]
+                        # drugs = [curie.replace('CHEMBL.COMPOUND:', 'CHEMBL:') for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'))[curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:')] is not None and len(set(source_category).intersection(set([category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie.replace('CHEMBL:', 'CHEMBL.COMPOUND:'), return_all_categories=True)[curie.replace('CHEMBL:','CHEMBL.COMPOUND:')]['all_categories'].keys())]))) > 0]
+                        drugs = [curie for curie in self.allowable_drug_curies if self.synonymizer.get_canonical_curies(curie)[curie] is not None and len(set(source_category).intersection(set([category.replace('biolink:','').replace('_','').lower() for category in list(self.synonymizer.get_canonical_curies(curie, return_all_categories=True)[curie]['all_categories'].keys())]))) > 0]
 
                         for drug in drugs:
                             q = CHPQuerier._build_standard_query(gene=gene, drug=drug, disease='MONDO:0007254', outcome='EFO:0000714', outcome_name='survival_time', outcome_op='>', outcome_value=self.CHP_survival_threshold, trapi_version='1.1')
-                            drug = drug.replace('CHEMBL:', 'CHEMBL.COMPOUND:')
+                            # drug = drug.replace('CHEMBL:', 'CHEMBL.COMPOUND:')
 
                             result = CHPQuerier._query_CHP_api(q)
                             prob = CHPQuerier._get_outcome_prob(result)
@@ -398,33 +407,112 @@ class CHPQuerier:
     @staticmethod
     def _query_CHP_curies():
 
-        r = requests.get('http://chp.thayer.dartmouth.edu/curies/')
-        allowable_curies = eval(r.content)
+        with requests_cache.disabled():
+            r = requests.get('http://chp.thayer.dartmouth.edu/curies/')
+            allowable_curies = eval(r.content)
 
         return allowable_curies
 
     @staticmethod
     def _query_CHP_api(query):
 
-        r = requests.post('http://chp.thayer.dartmouth.edu/query/', json=query)
+        with requests_cache.disabled():
+            r = requests.post('http://chp.thayer.dartmouth.edu/query/', json=query)
 
         return json.loads(r.content)
 
     @staticmethod
     def _build_standard_query(
-            gene=None,
-            drug=None,
-            outcome=None,
-            outcome_name=None,
-            outcome_op=None,
-            outcome_value=None,
-            disease=None,
-            trapi_version='1.1',
-            ):
+        gene=None,
+        drug=None,
+        outcome=None,
+        outcome_name=None,
+        outcome_op=None,
+        outcome_value=None,
+        disease=None,
+        trapi_version='1.1',
+        ):
 
-        query = "{'message': {'query_graph': {'nodes': {'n0': {'ids': ['" + disease + "'], 'categories': ['biolink:Disease'], 'constraints': []}, 'n1': {'ids': ['" + gene + "'], 'categories': ['biolink:Gene'], 'constraints': []}, 'n2': {'ids': ['" + drug + "'], 'categories': ['biolink:Drug'], 'constraints': []}, 'n3': {'ids': ['" + outcome + "'], 'categories': ['biolink:PhenotypicFeature'], 'constraints': []}}, 'edges': {'e0': {'predicates': ['biolink:gene_associated_with_condition'], 'relation': None, 'subject': 'n1', 'object': 'n0', 'constraints': []}, 'e1': {'predicates': ['biolink:treats'], 'relation': None, 'subject': 'n2', 'object': 'n0', 'constraints': []}, 'e2': {'predicates': ['biolink:has_phenotype'], 'relation': None, 'subject': 'n0', 'object': 'n3', 'constraints': [{'name': '" + outcome_name + "', 'id': '" + outcome + "', 'operator': '" + outcome_op + "', 'value': " + str(outcome_value) + ", 'unit_id': None, 'unit_name': None, 'not': False}]}}}, 'knowledge_graph': {'nodes': {}, 'edges': {}}, 'results': []}, 'max_results': 10, 'trapi_version': '" + trapi_version + "', 'biolink_version': None}"
+        query = {
+                'message': { 
+                    'query_graph': {
+                        'nodes': {
+                            'n0': {
+                                'ids': [drug], 
+                                'categories': ['biolink:SmallMolecule'],
+                                'constraints': []
+                                }, 
+                            'n1': {
+                                'ids': [disease],
+                                'categories': ['biolink:Disease'],
+                                'constraints': []
+                                },
+                            },
+                        'edges': {
+                            'e0': {
+                                'predicates': ['biolink:treats'],
+                                'relation': None,
+                                'subject': 'n0',
+                                'object': 'n1',
+                                "constraints": [
+                                    {
+                                        "id": "CHP:PredicateProxy",
+                                        "not": False,
+                                        "name": "predicate_proxy",
+                                        "value": [
+                                            outcome
+                                        ],
+                                        "unit_id": None,
+                                        "operator": "==",
+                                        "unit_name": None
+                                        },
+                                    {
+                                        "id": outcome,
+                                        "not": False,
+                                        "name": outcome_name,
+                                        "value": outcome_value,
+                                        "unit_id": None,
+                                        "operator": outcome_op,
+                                        "unit_name": None
+                                        },
+                                    {
+                                        "id": "CHP:PredicateContext",
+                                        "not": False,
+                                        "name": "predicate_context",
+                                        "value": [
+                                            "gene"
+                                        ],
+                                        "unit_id": None,
+                                        "operator": "==",
+                                        "unit_name": None
+                                        },
+                                    {
+                                        "id": "gene",
+                                        "not": False,
+                                        "name": "gene",
+                                        "value": [
+                                            gene
+                                        ],
+                                        "unit_id": None,
+                                        "operator": "matches",
+                                        "unit_name": None
+                                        }
+                                    ]     
+                                }
+                            },
+                        },
+                    'knowledge_graph': {
+                        'nodes': {},
+                        'edges': {}
+                        }, 
+                    'results': []
+                    }, 
+                    'max_results': 10, 
+                    'trapi_version': trapi_version, 
+                    'biolink_version': None
+                    }
 
-        return eval(query)
+        return query
 
     @staticmethod
     def _get_outcome_prob(q_resp):
@@ -439,12 +527,12 @@ class CHPQuerier:
         kg = message["knowledge_graph"]
         res = message["results"][0]
         # Find the outcome edge
-        for qg_id, edge_bind  in res["edge_bindings"].items():
+        for qg_id, edge_bind in res["edge_bindings"].items():
             edge = kg["edges"][edge_bind[0]["id"]]
-            if edge["predicate"] == 'biolink:has_phenotype':
-                try:
-                    prob = edge["attributes"][0]["value"]
-                    break
-                except KeyError:
-                    raise KeyError('Could not find associated probability of query. Possible ill-formed query.')
+            # if edge["predicate"] == 'biolink:has_phenotype':
+            try:
+                prob = edge["attributes"][0]["value"]
+                break
+            except KeyError:
+                raise KeyError('Could not find associated probability of query. Possible ill-formed query.')
         return prob

@@ -15,6 +15,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper")
+from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 
@@ -23,12 +25,12 @@ class KPSelector:
 
     def __init__(self, log: ARAXResponse):
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
-        self.biolink_version = "1.7.0"
-        self.descendants_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/descendants_biolink{self.biolink_version}.pickle"
+        self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
         self.all_kps = eu.get_all_kps()
+        self.timeout_record = self._load_timeout_record()
         self.meta_map = self._load_meta_map()
-        self.descendants_map = self._load_descendants_map()
+        self.biolink_helper = BiolinkHelper()
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
         """
@@ -38,15 +40,14 @@ class KPSelector:
         qedge_key = next(qedge_key for qedge_key in qg.edges)
         qedge = qg.edges[qedge_key]
         self.log.debug(f"Selecting KPs to use for qedge {qedge_key}")
-        starting_descendants = set(self.descendants_map)
         # confirm that the qg is one hop
         if len(qg.edges) > 1:
             self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.", error_code="UnexpectedQG")
             return None
         # isolate possible subject predicate object from qg
-        sub_categories = self._get_category_descendants(qg.nodes[qedge.subject].categories)
-        obj_categories = self._get_category_descendants(qg.nodes[qedge.object].categories)
-        predicates = self._get_predicate_descendants(qedge.predicates)
+        sub_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.subject].categories))
+        obj_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.object].categories))
+        predicates = set(self.biolink_helper.get_descendants(qedge.predicates))
         
         # use metamap to check kp for predicate triple
         accepting_kps = set()
@@ -56,12 +57,6 @@ class KPSelector:
 
         kps_to_return = self._select_best_kps(accepting_kps, qg)
 
-        # Cache any new category/predicate descendants we learned
-        ending_descendants = set(self.descendants_map)
-        if ending_descendants != starting_descendants:
-            with open(self.descendants_map_path, "wb") as descendants_file:
-                pickle.dump(self.descendants_map, descendants_file)
-
         return kps_to_return
 
     def kp_accepts_single_hop_qg(self, qg: QueryGraph, kp: str) -> Optional[bool]:
@@ -70,7 +65,6 @@ class KPSelector:
         used in the query graph.
         """
         self.log.debug(f"Verifying that {kp} can answer this kind of one-hop query")
-        starting_descendants = set(self.descendants_map)
         # Confirm that the qg is one-hop
         if len(qg.edges) > 1:
             self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.",
@@ -78,16 +72,10 @@ class KPSelector:
             return None
 
         qedge = list(qg.edges.values())[0]
-        sub_categories = self._get_category_descendants(qg.nodes[qedge.subject].categories)
-        obj_categories = self._get_category_descendants(qg.nodes[qedge.object].categories)
-        predicates = self._get_predicate_descendants(qedge.predicates)
+        sub_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.subject].categories))
+        obj_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.object].categories))
+        predicates = set(self.biolink_helper.get_descendants(qedge.predicates))
         kp_accepts = self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories)
-
-        # Cache any new category/predicate descendants we learned
-        ending_descendants = set(self.descendants_map)
-        if ending_descendants != starting_descendants:
-            with open(self.descendants_map_path, "wb") as descendants_file:
-                pickle.dump(self.descendants_map, descendants_file)
 
         return kp_accepts
 
@@ -193,7 +181,7 @@ class KPSelector:
             # Check for any missing KPs
             missing_kps = self.all_kps.difference(set(meta_map))
             if missing_kps:
-                self.log.debug(f"Missing meta info for {missing_kps}; will try to get this info")
+                self.log.debug(f"Missing meta info for {missing_kps}")
                 meta_map = self._refresh_meta_map(missing_kps, meta_map)
 
         # Make sure the map doesn't contain any 'stale' KPs
@@ -221,7 +209,14 @@ class KPSelector:
                 meta_map = dict()
 
         # Then (try to) get updated meta info from each KP
-        for kp in kps_to_update:
+        ten_minutes_ago = datetime.now() - timedelta(minutes=10)
+        non_functioning_kps = [kp for kp in kps_to_update if self.timeout_record.get(kp) and
+                               self.timeout_record[kp] > ten_minutes_ago]
+        if non_functioning_kps:
+            self.log.debug(f"Not trying to grab meta info for {non_functioning_kps} because they timed out "
+                           f"within the last 10 minutes")
+        functioning_kps_to_update = set(kps_to_update).difference(set(non_functioning_kps))
+        for kp in functioning_kps_to_update:
             kp_endpoint = eu.get_kp_endpoint_url(kp)
             if kp_endpoint:
                 try:
@@ -229,7 +224,9 @@ class KPSelector:
                     with requests_cache.disabled():
                         kp_response = requests.get(f"{kp_endpoint}/meta_knowledge_graph", timeout=10)
                 except requests.exceptions.Timeout:
-                    self.log.warning(f"Timed out when trying to hit {kp}'s /meta_knowledge_graph endpoint")
+                    self.log.warning(f"Timed out when trying to hit {kp}'s /meta_knowledge_graph endpoint "
+                                     f"(waited 10 seconds)")
+                    self.timeout_record[kp] = datetime.now()
                 except Exception:
                     self.log.warning(f"Ran into a problem getting {kp}'s meta info")
                 else:
@@ -253,6 +250,8 @@ class KPSelector:
         # Save our big combined metamap to a local json file
         with open(self.meta_map_path, "wb") as map_file:
             pickle.dump(meta_map, map_file)
+        with open(self.timeout_record_path, "wb") as timeout_file:
+            pickle.dump(self.timeout_record, timeout_file)
 
         return meta_map
 
@@ -273,68 +272,23 @@ class KPSelector:
     @staticmethod
     def _get_dtd_meta_map():
         dtd_predicates = {"biolink:treats", "biolink:treated_by"}
-        dtd_meta_map = {"biolink:Drug": {"biolink:Disease": dtd_predicates,
-                                         "biolink:PhenotypicFeature": dtd_predicates,
-                                         "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
-                        "biolink:ChemicalSubstance": {"biolink:Disease": dtd_predicates,
-                                                      "biolink:PhenotypicFeature": dtd_predicates,
-                                                      "biolink:DiseaseOrPhenotypicFeature": dtd_predicates},
-                        "biolink:Disease": {"biolink:Drug": dtd_predicates,
-                                            "biolink:ChemicalSubstance": dtd_predicates},
-                        "biolink:PhenotypicFeature": {"biolink:Drug": dtd_predicates,
-                                                      "biolink:ChemicalSubstance": dtd_predicates},
-                        "biolink:DiseaseOrPhenotypicFeature": {"biolink:Drug": dtd_predicates,
-                                                               "biolink:ChemicalSubstance": dtd_predicates}}
+        drug_ish_dict = {"biolink:Drug": dtd_predicates,
+                         "biolink:SmallMolecule": dtd_predicates}
+        disease_ish_dict = {"biolink:Disease": dtd_predicates,
+                            "biolink:PhenotypicFeature": dtd_predicates,
+                            "biolink:DiseaseOrPhenotypicFeature": dtd_predicates}
+        dtd_meta_map = {"biolink:Drug": disease_ish_dict,
+                        "biolink:SmallMolecule": disease_ish_dict,
+                        "biolink:Disease": drug_ish_dict,
+                        "biolink:PhenotypicFeature": drug_ish_dict,
+                        "biolink:DiseaseOrPhenotypicFeature": drug_ish_dict}
         return dtd_meta_map
 
-    def _load_descendants_map(self) -> Dict[str, Set[str]]:
-        self.log.debug(f"Loading category/predicate descendants map (Biolink model version {self.biolink_version})")
-        descendants_map_file = pathlib.Path(self.descendants_map_path)
-        if not descendants_map_file.exists():
+    def _load_timeout_record(self) -> Dict[str, datetime]:
+        self.log.debug(f"Loading record of KP timeouts")
+        timeout_record_file = pathlib.Path(self.timeout_record_path)
+        if not timeout_record_file.exists():
             return dict()
         else:
-            with open(self.descendants_map_path, "rb") as descendants_file:
-                descendants_map = pickle.load(descendants_file)
-            return descendants_map
-
-    def _get_category_descendants(self, categories: Optional[List[str]]) -> Set[str]:
-        if categories:
-            all_descendants = set(categories)
-            for category in categories:
-                category_descendants = self._get_descendants(category)
-                all_descendants.update(category_descendants)
-            return all_descendants
-        else:
-            return set()
-
-    def _get_predicate_descendants(self, predicates: Optional[List[str]]) -> Set[str]:
-        if predicates:
-            all_descendants = set(predicates)
-            for predicate in predicates:
-                predicate_descendants = self._get_descendants(predicate)
-                all_descendants.update(predicate_descendants)
-            return all_descendants
-        else:
-            return set()
-
-    def _get_descendants(self, term: str) -> Set[str]:
-        term_descendants = {term}
-        if term in self.descendants_map:
-            term_descendants.update(self.descendants_map[term])
-        else:
-            self.log.debug(f"Querying Biolink Model Lookup API for descendants of {term}")
-            try:
-                bl_url = f"https://bl-lookup-sri.renci.org/bl/{term}/descendants?version={self.biolink_version}"
-                response = requests.get(bl_url, timeout=10)
-            except requests.exceptions.Timeout:
-                self.log.warning(f"Timed out when trying to get descendants from Biolink Model Lookup API")
-            except Exception:
-                self.log.warning(f"Ran into a problem using Biolink Model Lookup API")
-            else:
-                if response.status_code == 200:
-                    term_descendants = set(response.json())
-                    self.descendants_map[term] = term_descendants  # Save these for easy lookup later
-                else:
-                    self.log.warning(
-                        f"Biolink Model Lookup API returned {response.status_code} response: {response.text}")
-        return term_descendants
+            with open(self.timeout_record_path, "rb") as timeout_file:
+                return pickle.load(timeout_file)

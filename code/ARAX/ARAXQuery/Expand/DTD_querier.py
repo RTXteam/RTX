@@ -142,7 +142,7 @@ class DTDQuerier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD database")
         final_kg = QGOrganizedKnowledgeGraph()
-        drug_label_list = ['chemicalsubstance', 'drug', 'biolink:ChemicalSubstance', 'biolink:Drug']
+        drug_label_list = ['smallmolecule', 'drug', 'biolink:SmallMolecule', 'biolink:Drug']
         disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature', 'biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
         # use for checking the requirement
         source_pass_nodes = None
@@ -431,7 +431,7 @@ class DTDQuerier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         log.debug(f"Processing query results for edge {qedge_key} by using DTD model")
         final_kg = QGOrganizedKnowledgeGraph()
-        drug_label_list = ['chemicalsubstance','drug']
+        drug_label_list = ['smallmolecule','drug']
         disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
         # use for checking the requirement
         source_pass_nodes = None
@@ -779,7 +779,7 @@ class DTDQuerier:
 
     def _check_id(self, qnode_id, log):
 
-        drug_label_list = ['chemicalsubstance','drug', 'biolink:ChemicalSubstance', 'biolink:Drug']
+        drug_label_list = ['smallmolecule','drug', 'biolink:SmallMolecule', 'biolink:Drug']
         disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature', 'biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
 
         if type(qnode_id) is str:
@@ -883,7 +883,8 @@ class DTDQuerier:
         description = "ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model)."
         swagger_edge.attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
                                    eu.get_kp_source_attribute("DTD", arax_kp=True, description=description),
-                                   eu.get_arax_source_attribute()]
+                                   eu.get_arax_source_attribute(),
+                                   eu.get_computed_value_attribute()]
 
         return swagger_edge_key, swagger_edge
 

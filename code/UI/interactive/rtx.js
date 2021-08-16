@@ -55,14 +55,12 @@ function main() {
     document.getElementById("menuapiurl").href = baseAPI + "/ui/";
 
     get_example_questions();
-    load_meta_knowledge_graph(); //load_nodes_and_predicates();
+    load_meta_knowledge_graph();
     populate_dsl_commands();
     display_list('A');
     display_list('B');
     add_status_divs();
     cytodata[99999] = 'dummy';
-    UIstate.nodedd = 1;
-    UIstate.hasNodeArray = false;
 
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
@@ -98,6 +96,8 @@ function main() {
 	lookup_synonym(syn,false);
     }
     openSection(tab);
+    dragElement(document.getElementById('nodeeditor'));
+    dragElement(document.getElementById('edgeeditor'));
 }
 
 function sesame(head,content) {
@@ -126,6 +126,9 @@ function openSection(sect) {
     if (!document.getElementById(sect+"Menu") || !document.getElementById(sect+"Div"))
 	sect = "query";
 
+    display_qg_popup('node','hide');
+    display_qg_popup('edge','hide');
+
     var e = document.getElementsByClassName("menucurrent");
     if (e) e[0].className = "menuleftitem";
     document.getElementById(sect+"Menu").className = "menucurrent";
@@ -144,6 +147,9 @@ function selectInput (input_id) {
     var e = document.getElementsByClassName("slink_on");
     if (e[0]) { e[0].classList.remove("slink_on"); }
     document.getElementById(input_id+"_link").classList.add("slink_on");
+
+    display_qg_popup('node','hide');
+    display_qg_popup('edge','hide');
 
     for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qid_input','resp_input']) {
 	document.getElementById(s).style.maxHeight = null;
@@ -189,9 +195,12 @@ function pasteExample(type) {
 function reset_vars() {
     add_status_divs();
     checkUIversion(true);
-    document.getElementById("result_container").innerHTML = "";
     if (cyobj[0]) {cyobj[0].elements().remove();}
+    display_qg_popup('node','hide');
+    display_qg_popup('edge','hide');
+    document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
+    document.getElementById("provenance_container").innerHTML = "";
     document.getElementById("menunummessages").innerHTML = "--";
     document.getElementById("menunummessages").className = "numold menunum";
     document.getElementById("menunumresults").innerHTML = "--";
@@ -202,8 +211,6 @@ function reset_vars() {
     all_nodes = {};
     cyobj = [];
     cytodata = [];
-    UIstate.nodedd = 1;
-    UIstate.hasNodeArray = false;
 }
 
 function viewResponse() {
@@ -267,24 +274,21 @@ function postQuery(qtype,agent) {
 	    return;
 	}
 	queryObj.message = { "query_graph" :jsonInput };
-	queryObj.max_results = 100;
+	//queryObj.max_results = 100;
 
-	clear_qg();
+	qg_new(false,false);
     }
     else {  // qGraph
 	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via graph --';
 	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
         statusdiv.appendChild(document.createElement("br"));
 
-	document.getElementById('qg_form').style.visibility = 'hidden';
-	document.getElementById('qg_form').style.maxHeight = null;
-
-	clean_up_qg(true);
+	qg_clean_up(true);
 	queryObj.message = { "query_graph" :input_qg };
 	//queryObj.bypass_cache = bypass_cache;
-	queryObj.max_results = 100;
+	//queryObj.max_results = 100;
 
-	clear_qg();
+	qg_new(false,false);
     }
 
     if (agent == 'ARS')
@@ -474,7 +478,7 @@ function postQuery_ARAX(qtype,queryObj) {
 	    sesame('openmax',statusdiv);
 
 	    if (data["status"] == "QueryGraphZeroNodes") {
-		clear_qg();
+		qg_new(false,false);
 	    }
 	    else if (data["status"] == "OK") {
 		input_qg = { "edges": {}, "nodes": {} };
@@ -744,6 +748,7 @@ function getIdStats(id) {
 	document.getElementById("numresults_"+id).innerHTML = '';
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
+	document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	var wait = document.createElement("span");
 	wait.className = 'loading_cell';
@@ -791,6 +796,7 @@ function sendId() {
 	document.getElementById("numresults_"+id).innerHTML = '';
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
+        document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	var wait = document.createElement("span");
 	wait.className = 'loading_cell';
@@ -825,8 +831,6 @@ function sendQuestion(e) {
     document.getElementById("devdiv").innerHTML = " (bypassing cache : " + bypass_cache + ")";
 
     sesame('openmax',statusdiv);
-    document.getElementById('qg_form').style.visibility = 'hidden';
-    document.getElementById('qg_form').style.maxHeight = null;
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
@@ -853,7 +857,7 @@ function sendQuestion(e) {
                 var queryObj = jsonObj;
                 queryObj["message"] = { };
                 queryObj.bypass_cache = bypass_cache;
-                queryObj.max_results = 100;
+                //queryObj.max_results = 100;
 
 		add_to_dev_info("Posted to QUERY",queryObj);
 		xhr2.send(JSON.stringify(queryObj));
@@ -930,6 +934,7 @@ function process_ars_message(ars_msg, level) {
 	div2.appendChild(span);
 
 	var div2 = document.createElement("div");
+	div2.id = "arsresultsdiv";
 	div2.className = "status";
 
 	table = document.createElement("table");
@@ -937,7 +942,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges","Sources"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -963,7 +968,13 @@ function process_ars_message(ars_msg, level) {
     td.appendChild(document.createTextNode(ars_msg.actor.agent));
     tr.appendChild(td);
     td = document.createElement("td");
+    if (ars_msg.status == 'Error')
+	td.className = 'error';
+    else if (ars_msg.status == 'Running')
+	td.className = 'essence';
     td.appendChild(document.createTextNode(ars_msg.status));
+    if (ars_msg.code)
+        td.appendChild(document.createTextNode(" / "+ars_msg.code));
     tr.appendChild(td);
     td = document.createElement("td");
 
@@ -1000,6 +1011,11 @@ function process_ars_message(ars_msg, level) {
 
     td = document.createElement("td");
     td.id = "nodedges_"+ars_msg.message;
+    td.style.textAlign = "center";
+    tr.appendChild(td);
+
+    td = document.createElement("td");
+    td.id = "nsources_"+ars_msg.message;
     td.style.textAlign = "center";
     tr.appendChild(td);
 
@@ -1079,14 +1095,94 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 	    document.getElementById("istrapi_"+jsonObj2.araxui_response).innerHTML = '';
 	    document.getElementById("istrapi_"+jsonObj2.araxui_response).appendChild(nr);
 
+	    var num = parseFloat(jsonObj2.validation_result.size.match(/[\d\.]+/));
+	    if (num && num > 2 && jsonObj2.validation_result.size.includes("MB")) {
+		document.getElementById("respsize_"+jsonObj2.araxui_response).className = "error";
+		document.getElementById("respsize_"+jsonObj2.araxui_response).title = "Warning: Very large responses might render slowly";
+	    }
 	    document.getElementById("respsize_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.size;
 
 	    if (jsonObj2.validation_result.n_nodes)
 		document.getElementById("nodedges_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.n_nodes+' / '+jsonObj2.validation_result.n_edges;
 
+	    if (jsonObj2.validation_result.provenance_summary) {
+		var html_node = document.getElementById("nsources_"+jsonObj2.araxui_response);
+		html_node.innerHTML = jsonObj2.validation_result.provenance_summary.n_sources;
+
+		if (jsonObj2.validation_result.n_edges > 0) {
+		    var table, tr, td;
+		    html_node.className = "tooltip";
+		    var tnode = document.createElement("span");
+		    tnode.className = 'tooltiptext';
+		    table = document.createElement("table");
+		    table.style.width = "100%";
+		    table.style.borderCollapse = "collapse";
+		    tr = document.createElement("tr");
+		    td = document.createElement("th");
+		    td.colSpan = "4";
+		    td.style.background = "#3d6d98";
+		    td.style.padding = "5px 0px";
+		    td.appendChild(document.createTextNode("Provenance Counts"));
+		    tr.appendChild(td);
+		    table.appendChild(tr);
+		    for (var prov in jsonObj2.validation_result.provenance_summary.provenance_counts) {
+			tr = document.createElement("tr");
+			tr.style.background = "initial";
+			for (var pc of jsonObj2.validation_result.provenance_summary.provenance_counts[prov]) {
+			    td = document.createElement("td");
+			    td.appendChild(document.createTextNode(pc));
+			    tr.appendChild(td);
+			}
+			td.style.textAlign = "right";  // last td is always[?] the count number
+			table.appendChild(tr);
+		    }
+		    tnode.appendChild(table);
+		    html_node.appendChild(tnode);
+		    // trickery to fix FF annoying h-scrollbar issue
+		    tnode.style.visibility = "visible";
+		    if (tnode.scrollWidth > 440)
+			tnode.style.width = tnode.scrollWidth + 15 + "px";
+		    tnode.style.visibility = "";
+
+		    // do predicates
+                    html_node = document.getElementById("nodedges_"+jsonObj2.araxui_response);
+		    html_node.className = "tooltip";
+		    tnode = document.createElement("span");
+		    tnode.className = 'tooltiptext';
+		    table = document.createElement("table");
+		    table.style.width = "100%";
+                    table.style.borderCollapse = "collapse";
+                    tr = document.createElement("tr");
+		    tr.style.background = "initial";
+		    td = document.createElement("th");
+		    td.colSpan = "2";
+                    td.style.background = "#3d6d98";
+		    td.style.padding = "5px 0px";
+		    td.appendChild(document.createTextNode("Predicate Counts"));
+		    tr.appendChild(td);
+		    table.appendChild(tr);
+		    for (var pred in jsonObj2.validation_result.provenance_summary.predicate_counts) {
+			tr = document.createElement("tr");
+                        tr.style.background = "initial";
+			td = document.createElement("td")
+			td.appendChild(document.createTextNode(pred));
+			tr.appendChild(td);
+			td = document.createElement("td");
+			td.style.textAlign = "right";
+			td.appendChild(document.createTextNode(jsonObj2.validation_result.provenance_summary.predicate_counts[pred]));
+			tr.appendChild(td);
+			table.appendChild(tr);
+		    }
+		    tnode.appendChild(table);
+		    html_node.appendChild(tnode);
+		}
+	    }
 	    checkRefreshARS();
 	}
     }
+
+    if (document.getElementById("arsresultsdiv"))
+	document.getElementById("arsresultsdiv").style.height = document.getElementById("arsresultsdiv").scrollHeight + "px";
 
     if (type == "all") {
 	statusdiv.innerHTML += "<br>";
@@ -1114,10 +1210,13 @@ function retrieve_response(provider, resp_url, resp_id, type) {
     statusdiv.appendChild(document.createTextNode("Retrieving "+provider+" response id = " + resp_id));
 
     if (response_cache[provider+":"+resp_id]) {
+        if (document.getElementById("istrapi_"+resp_id))
+	    document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
 	statusdiv.appendChild(document.createTextNode(" ...from cache"));
 	statusdiv.appendChild(document.createElement("hr"));
 	sesame('openmax',statusdiv);
-        process_response(provider, resp_url, resp_id, type,response_cache[provider+":"+resp_id]);
+	// 50ms timeout allows css animation to start before processing locks the thread
+	var timeout = setTimeout(function() { process_response(provider, resp_url, resp_id, type,response_cache[provider+":"+resp_id]); }, 50 );
 	return;
     }
 
@@ -1130,6 +1229,8 @@ function retrieve_response(provider, resp_url, resp_id, type) {
     xhr.send(null);
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
+            if (document.getElementById("istrapi_"+resp_id))
+		document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
 	    process_response(provider, resp_url, resp_id, type,JSON.parse(xhr.responseText));
 
 	}
@@ -1138,6 +1239,7 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 		document.getElementById("numresults_"+resp_id).innerHTML = '';
                 document.getElementById("respsize_"+resp_id).innerHTML = '---';
 		document.getElementById("nodedges_"+resp_id).innerHTML = '';
+		document.getElementById("nsources_"+id).innerHTML = '';
 		document.getElementById("istrapi_"+resp_id).innerHTML = '';
 		var nr = document.createElement("span");
 		nr.className = 'explevel p0';
@@ -1153,6 +1255,7 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 		document.getElementById("numresults_"+resp_id).innerHTML = '';
 		document.getElementById("respsize_"+resp_id).innerHTML = '---';
 		document.getElementById("nodedges_"+resp_id).innerHTML = '';
+		document.getElementById("nsources_"+id).innerHTML = '';
 		document.getElementById("istrapi_"+resp_id).innerHTML = '';
 		var nr = document.createElement("span");
 		nr.className = 'explevel p0';
@@ -1294,7 +1397,7 @@ function render_response(respObj,dispjson) {
     if ( respObj["table_column_names"] )
 	add_to_summary(respObj["table_column_names"],0);
     else
-	add_to_summary(["'Guessence'"],0);
+	add_to_summary(["score","'guessence'"],0);
 
     if ( respObj.message["results"] ) {
 	if (!respObj.message["knowledge_graph"] ) {
@@ -1310,6 +1413,13 @@ function render_response(respObj,dispjson) {
 	    document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
             document.getElementById("menunumresults").classList.add("numnew");
 	    document.getElementById("menunumresults").classList.remove("numold");
+
+	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
+	    var respreas = 'n/a';
+	    if (respObj.reasoner_id)
+		respreas = respObj.reasoner_id;
+	    process_results(respObj.message["results"],respObj.message["knowledge_graph"], respreas);
+
 	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
 		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
 		var nr = document.createElement("span");
@@ -1322,17 +1432,12 @@ function render_response(respObj,dispjson) {
 		nr.innerHTML = '&nbsp;'+respObj.message.results.length+'&nbsp;';
 		document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
 	    }
-
-	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
-	    respreas = 'n/a';
-	    if (respObj.reasoner_id)
-		respreas = respObj.reasoner_id;
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"], respreas);
 	}
     }
     else {
         document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
         document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
+	document.getElementById("provenance_container").innerHTML += "<h2>No results...</h2>";
         if (document.getElementById("numresults_"+respObj.araxui_response)) {
 	    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
 	    var nr = document.createElement("span");
@@ -1370,7 +1475,6 @@ function render_response(respObj,dispjson) {
 	table.className = 'sumtab';
 	table.innerHTML = summary_table_html;
         div.appendChild(table);
-
 	div.appendChild(document.createElement("br"));
 
 	document.getElementById("summary_container").appendChild(div);
@@ -1378,14 +1482,149 @@ function render_response(respObj,dispjson) {
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
+
+    if (respObj.validation_result && respObj.validation_result.provenance_summary) {
+	var div = document.createElement("div");
+	div.className = 'statushead';
+	div.appendChild(document.createTextNode("Provenance Summary"));
+	document.getElementById("provenance_container").appendChild(div);
+
+	div = document.createElement("div");
+	div.className = 'status';
+	div.id = 'provenancediv';
+	div.appendChild(document.createElement("br"));
+
+        var table = document.createElement("table");
+	table.className = 'sumtab';
+        var tr = document.createElement("tr");
+        var td = document.createElement("th");
+	td.colSpan = "2";
+	td.appendChild(document.createTextNode("Provenance Counts"));
+	tr.appendChild(td);
+        td = document.createElement("th");
+	td.appendChild(document.createTextNode("[ "+respObj.validation_result.provenance_summary["n_sources"]+" sources ]"));
+	tr.appendChild(td);
+	td = document.createElement("th");
+	td.colSpan = "2";
+	tr.appendChild(td);
+	table.appendChild(tr);
+	var previous0 = 'RandomTextToPurposelyTriggerThickTopBorderForFirstRowAndRepeatedDisplayOfPredicate';
+	var previous1 = 'RandomTextToOmitRepatedDisplayOfPredicateProviderType';
+	for (var prov in respObj.validation_result.provenance_summary.provenance_counts) {
+	    var changed0 = false;
+	    var changed1 = false;
+	    if (previous0 != respObj.validation_result.provenance_summary.provenance_counts[prov][0]) {
+		changed0 = true;
+		changed1 = true;
+	    }
+	    else if (previous1 != respObj.validation_result.provenance_summary.provenance_counts[prov][1])
+		changed1 = true;
+
+	    previous0 = respObj.validation_result.provenance_summary.provenance_counts[prov][0];
+            previous1 = respObj.validation_result.provenance_summary.provenance_counts[prov][1];
+
+	    if (!changed0)
+		respObj.validation_result.provenance_summary.provenance_counts[prov][0] = '';
+	    if (!changed1)
+		respObj.validation_result.provenance_summary.provenance_counts[prov][1] = '';
+
+	    tr = document.createElement("tr");
+            tr.className = 'hoverable';
+	    for (var pc of respObj.validation_result.provenance_summary.provenance_counts[prov]) {
+		td = document.createElement("td");
+		if (changed0)
+		    td.style.borderTop = "2px solid #444";
+		td.appendChild(document.createTextNode(pc));
+		tr.appendChild(td);
+	    }
+	    td.style.textAlign = "right";  // last td is always[?] the count number
+
+	    // fancy bar bar
+	    td = document.createElement("td");
+            if (changed0)
+		td.style.borderTop = "2px solid #444";
+	    var span = document.createElement("span");
+	    span.className = "bar";
+	    var barw = 0.5*Number(respObj.validation_result.provenance_summary.provenance_counts[prov][3]);
+	    if (barw > 500) {
+		barw = 501;
+		span.style.background = "#3d6d98";
+	    }
+	    if (respObj.validation_result.provenance_summary.provenance_counts[prov][2] == 'no provenance')
+		span.style.background = "#b00";
+	    span.style.width = barw + "px";
+	    span.style.height = "8px";
+	    td.appendChild(span);
+            tr.appendChild(td);
+
+	    table.appendChild(tr);
+	}
+
+	// use same table so it is all nicely aligned
+        tr = document.createElement("tr");
+	td = document.createElement("td");
+	td.colSpan = "5";
+	td.style.background = '#fff';
+	td.style.border = '0';
+	td.appendChild(document.createElement("br"));
+	td.appendChild(document.createElement("br"));
+        tr.appendChild(td);
+	table.appendChild(tr);
+
+	tr = document.createElement("tr");
+	td = document.createElement("th");
+	td.colSpan = "2";
+	td.style.background = '#fff';
+	td.appendChild(document.createTextNode("Predicate Counts"));
+	tr.appendChild(td);
+        td = document.createElement("th");
+	td.style.background = '#fff';
+	td.colSpan = "3";
+	tr.appendChild(td);
+	table.appendChild(tr);
+        for (var pred in respObj.validation_result.provenance_summary.predicate_counts) {
+	    tr = document.createElement("tr");
+	    tr.className = 'hoverable';
+	    td = document.createElement("td")
+	    td.colSpan = "3";
+	    td.appendChild(document.createTextNode(pred));
+	    tr.appendChild(td);
+	    td = document.createElement("td");
+	    td.style.textAlign = "right";
+	    td.appendChild(document.createTextNode(respObj.validation_result.provenance_summary.predicate_counts[pred]));
+	    tr.appendChild(td);
+            // fancy bar bar
+	    td = document.createElement("td");
+	    var span = document.createElement("span");
+	    span.className = "bar";
+	    var barw = 0.5*Number(respObj.validation_result.provenance_summary.predicate_counts[pred]);
+	    if (barw > 500) {
+		barw = 501;
+		span.style.background = "#3d6d98";
+	    }
+	    span.style.width = barw + "px";
+	    span.style.height = "8px";
+	    td.appendChild(span);
+	    tr.appendChild(td);
+
+	    table.appendChild(tr);
+	}
+	div.appendChild(table);
+	div.appendChild(document.createElement("br"));
+
+	document.getElementById("provenance_container").appendChild(div);
+    }
+    else
+	document.getElementById("provenance_container").innerHTML += "<h2>Provenance information not available for this response</h2>";
+
+
     add_cyto(0);
-    if (!UIstate.hasNodeArray)
-	add_cyto(99999);
+    add_cyto(99999);
     statusdiv.appendChild(document.createTextNode("done."));
     statusdiv.appendChild(document.createElement("br"));
     var nr = document.createElement("span");
     nr.className = 'essence';
-    nr.appendChild(document.createTextNode("Click on Results, Summary, or Knowledge Graph links on the left to explore results."));
+    nr.appendChild(document.createTextNode("Click on Results, Summary, Provenance, or Knowledge Graph links on the left to explore results."));
     statusdiv.appendChild(nr);
     statusdiv.appendChild(document.createElement("br"));
     sesame('openmax',statusdiv);
@@ -1553,7 +1792,7 @@ function add_to_summary(rowdata, num) {
 
 	if (cell == 'th') {
 	    //columnlist[i] = [];
-	    if (rowdata[i] != 'confidence') {
+	    if (rowdata[i] == 'essence' || rowdata[i] == "'guessence'") {
 		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"A\",\"" +i+ "\");' title='Add column items to list A'>&nbsp;[+A]&nbsp;</a>";
 		listlink += "&nbsp;<a href='javascript:add_items_to_list(\"B\",\"" +i+ "\");' title='Add column items to list B'>&nbsp;[+B]&nbsp;</a>";
 	    }
@@ -1588,10 +1827,9 @@ function process_graph(gne,gid,trapi) {
 	//gnode.id = id;
 
         if (gnode.ids) {
-	    if (gnode.ids.length == 1)
-		gnode.id = gnode.ids[0];
-	    else
-		UIstate.hasNodeArray = true;
+	    gnode.id = gnode.ids[0];
+	    if (gnode.ids.length > 1)
+		gnode.id += " (+"+(gnode.ids.length-1)+")";
 
 	    if (gnode.name)
 		gnode.name += " ("+gnode.id+")";
@@ -1625,7 +1863,7 @@ function process_graph(gne,gid,trapi) {
 	if (gedge.predicates)
 	    gedge.type = gedge.predicates[0];
 
-        var tmpdata = { "data" : gedge }; // already contains id(?)
+        var tmpdata = { "data" : gedge };
         cytodata[gid].push(tmpdata);
     }
 
@@ -1633,14 +1871,13 @@ function process_graph(gne,gid,trapi) {
     if (gid == 99999) {
 	for (var id in gne.nodes) {
 	    var gnode = gne.nodes[id];
-
 	    qgids.push(id);
 
-	    var tmpdata = { "ids"        : gnode.ids,
+	    var tmpdata = { "ids"        : gnode.ids ? gnode.ids : [],
 			    "is_set"     : gnode.is_set,
-			    "_name"      : gnode.name,
+			    "_names"     : gnode.ids ? gnode.ids : [],
 			    "_desc"      : gnode.description,
-			    "categories" : gnode.categories
+			    "categories" : gnode.categories ? gnode.categories : []
 			  };
 
 	    input_qg.nodes[id] = tmpdata;
@@ -1648,12 +1885,11 @@ function process_graph(gne,gid,trapi) {
 
 	for (var id in gne.edges) {
             var gedge = gne.edges[id];
-
 	    qgids.push(id);
 
 	    var tmpdata = { "subject"    : gedge.subject,
 			    "object"     : gedge.object,
-			    "predicates" : gedge.predicates
+			    "predicates" : gedge.predicates ? gedge.predicates : []
 			  };
 	    input_qg.edges[id] = tmpdata;
 	}
@@ -1687,6 +1923,8 @@ function process_results(reslist,kg,mainreasoner) {
     all_nodes['n/a'] = 10000; // for eau_du_essence
 
     var num = 0;
+    var results_fragment = document.createDocumentFragment();
+
     for (var result of reslist) {
 	num++;
 
@@ -1699,17 +1937,17 @@ function process_results(reslist,kg,mainreasoner) {
 		ess = kg.nodes[ess].fulltextname;
 	}
 
-        if (result.row_data)
-            add_to_summary(result.row_data, num);
-	else
-            add_to_summary([ess], num);
-
 	var cnf = 'n/a';
 	if (Number(result.score))
 	    cnf = Number(result.score).toFixed(3);
 	else if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
 	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
+
+        if (result.row_data)
+            add_to_summary(result.row_data, num);
+	else
+            add_to_summary([cnf,ess], num);
 
 	var rsrc = mainreasoner;
 	if (result.reasoner_id)
@@ -1727,8 +1965,6 @@ function process_results(reslist,kg,mainreasoner) {
 	    (rsrc=="Unsecret") ? "suns" :
 	    (rsrc=="ImProving")? "simp" :
 	    "p0";
-
-	var result_container = document.getElementById("result_container");
 
         var div = document.createElement("div");
         div.id = 'h'+num+'_div';
@@ -1755,7 +1991,7 @@ function process_results(reslist,kg,mainreasoner) {
 	span100.appendChild(span);
 
 	div.appendChild(span100);
-	result_container.appendChild(div);
+	results_fragment.appendChild(div);
 
         div = document.createElement("div");
         div.id = 'a'+num+'_div';
@@ -1843,7 +2079,7 @@ function process_results(reslist,kg,mainreasoner) {
         table.appendChild(tr);
 
 	div.appendChild(table);
-	result_container.appendChild(div);
+	results_fragment.appendChild(div);
 
 
         cytodata[num] = [];
@@ -1872,6 +2108,8 @@ function process_results(reslist,kg,mainreasoner) {
 	}
 
     }
+
+    document.getElementById("result_container").appendChild(results_fragment);
 }
 
 
@@ -1937,11 +2175,14 @@ function add_cyto(i) {
 
     if (i > 99998) {
 	cyobj[i].on('tap','node', function() {
-	    document.getElementById('qg_edge_n'+UIstate.nodedd).value = this.data('id');
-	    UIstate.nodedd = 3 - UIstate.nodedd;
-	    get_possible_edges();
+	    UIstate.shakeit = true;
+	    qg_node(this.data('id'));
 	});
 
+	cyobj[i].on('tap','edge', function() {
+	    UIstate.shakeit = true;
+	    qg_edge(this.data('id'));
+	});
 	return;
     }
 
@@ -2212,7 +2453,7 @@ function mapNodeShape(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "rectangle";} //??
     if (ntype.endsWith("CellularComponent"))  { return "ellipse";}
     if (ntype.endsWith("BiologicalProcess"))  { return "tag";}
-    if (ntype.endsWith("ChemicalSubstance"))  { return "diamond";}
+    if (ntype.endsWith("ChemicalEntity"))  { return "diamond";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "rhomboid";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "star";}
     return "rectangle";
@@ -2228,7 +2469,7 @@ function mapNodeColor(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "blue";} //??
     if (ntype.endsWith("CellularComponent"))  { return "purple";}
     if (ntype.endsWith("BiologicalProcess"))  { return "green";}
-    if (ntype.endsWith("ChemicalSubstance"))  { return "yellowgreen";}
+    if (ntype.endsWith("ChemicalEntity"))  { return "yellowgreen";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "violet";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "indigo";}
     return "#04c";
@@ -2248,27 +2489,435 @@ function mapEdgeColor(ele) {
     return "#aaf";
 }
 
-function edit_qg(m) {
+
+// build-a-qGraph
+function qg_new(msg,nodes) {
+    if (cyobj[99999]) { cyobj[99999].elements().remove(); }
+    else add_cyto(99999);
+    input_qg = { "edges": {}, "nodes": {} };
+    qgids = [];
+    UIstate.editedgeid = null;
+    UIstate.editnodeid = null;
+
+    if (msg)
+	document.getElementById("statusdiv").innerHTML = "<p>A new Query Graph has been created.</p>";
+    else
+	document.getElementById("showQGjson").checked = false;
+
+    if (nodes) {
+	qg_node('new',false);
+	qg_node('new',false);
+	qg_edge('new');
+    }
+}
+
+function qg_node(id,render) {
+    var daname = 'NamedThing';
+
+    if (id == 'new') {
+	id = get_qg_id('n');
+	var newqnode = {};
+	newqnode.ids = [];
+	newqnode.categories = [];
+	newqnode.is_set = false;
+	newqnode._names = [];
+
+	input_qg.nodes[id] = newqnode;
+
+	cyobj[99999].add( {
+	    "data" : { "id"   : id,
+		       "name" : daname,
+		       "type" : '',
+		       "set"  : newqnode.is_set,
+		       "parentdivnum" : 99999 },
+	} );
+	if (render) {
+	    cyobj[99999].reset();
+	    cylayout(99999,"breadthfirst");
+	}
+	cyobj[99999].getElementById(id).select();
+	UIstate.shakeit = true;
+    }
+    else {  // need to update name?
+	if (input_qg.nodes[id]['_names'].length > 0) {
+	    daname = input_qg.nodes[id]['_names'][0];
+	    if (input_qg.nodes[id]['_names'].length == 2)
+		daname += ", "+input_qg.nodes[id]['_names'][1];
+	    else if (input_qg.nodes[id]['_names'].length > 2)
+		daname += " +"+(input_qg.nodes[id]['_names'].length - 1);
+	}
+        else if (input_qg.nodes[id]['categories'].length > 0) {
+	    daname = '[ ' + input_qg.nodes[id]['categories'][0].replace("biolink:","");
+
+	    if (input_qg.nodes[id]['categories'].length == 2)
+		daname += ", "+input_qg.nodes[id]['categories'][1].replace("biolink:","");
+	    else if (input_qg.nodes[id]['categories'].length > 2)
+		daname += " +"+(input_qg.nodes[id]['categories'].length - 1);
+	    daname += ' ]';
+	}
+
+	if (daname != cyobj[99999].getElementById(id).data('name'))
+	    cyobj[99999].getElementById(id).data('name',daname);
+
+    }
+
+    display_qg_popup('node','show');
+
+    document.getElementById('nodeeditor_id').innerHTML = id;
+    document.getElementById('nodeeditor_name').innerHTML = daname;
+
+    var htmlnode = document.getElementById('nodeeditor_ids');
+    htmlnode.innerHTML = '';
+    if (input_qg.nodes[id].ids) {
+	for (curie of input_qg.nodes[id].ids.sort()) {
+	    htmlnode.appendChild(document.createTextNode(curie));
+
+	    var link = document.createElement("a");
+	    link.style.float = "right";
+	    link.href = 'javascript:qg_remove_curie_from_qnode("'+curie+'");';
+	    link.title = "remove "+curie+" from Qnode ids list";
+	    link.appendChild(document.createTextNode(" [ remove ] "));
+	    htmlnode.appendChild(link);
+
+	    htmlnode.appendChild(document.createElement("br"));
+	}
+    }
+    else
+	input_qg.nodes[id].ids = [];
+
+    htmlnode = document.getElementById('nodeeditor_cat');
+    htmlnode.innerHTML = '';
+    if (input_qg.nodes[id].categories) {
+	for (category of input_qg.nodes[id].categories.sort()) {
+	    htmlnode.appendChild(document.createTextNode(category));
+
+	    var link = document.createElement("a");
+	    link.style.float = "right";
+	    link.href = 'javascript:qg_remove_category_from_qnode("'+category+'");';
+	    link.title = "remove "+category+" from Qnode categories list";
+	    link.appendChild(document.createTextNode(" [ remove ] "));
+	    htmlnode.appendChild(link);
+
+	    htmlnode.appendChild(document.createElement("br"));
+	}
+    }
+    else
+	input_qg.nodes[id].categories = [];
+
+    document.getElementById('nodeeditor_set').checked = input_qg.nodes[id].is_set;
+    UIstate.editnodeid = id;
+
+    qg_update_qnode_list();
+    qg_display_edge_predicates(false);
+
+    if (document.getElementById("showQGjson").checked) {
+	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
+	sesame('openmax',statusdiv);
+    }
+}
+
+function qg_remove_qnode() {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+
+    cyobj[99999].remove("#"+id);
+    delete input_qg.nodes[id];
+
+    var idx = qgids.indexOf(id);
+    if (idx > -1)
+	qgids.splice(idx, 1);
+
+    var delstat = "<p>Deleted node <i>"+id+"</i>";
+
+    for (eid in input_qg.edges) {
+	var killit = false
+	if (input_qg.edges[eid].subject == id)
+	    killit = true;
+	else if (input_qg.edges[eid].object == id)
+	    killit = true;
+
+	if (killit) {
+	    delete input_qg.edges[eid];
+	    delstat += ", and edge <i>"+eid+"</i>";
+	    var idx = qgids.indexOf(eid);
+	    if (idx > -1)
+		qgids.splice(idx, 1);
+	    if (UIstate.editedgeid == eid) {
+		display_qg_popup('edge','hide');
+		UIstate.editedgeid = null;
+	    }
+	}
+    }
+    delstat += "</p>";
+
+    qg_update_qnode_list();
+    qg_display_edge_predicates(false);
+
+    document.getElementById("statusdiv").innerHTML = delstat;
+    display_qg_popup('node','hide');
+    UIstate.editnodeid = null;
+}
+
+function qg_enter_curie(ele) {
+    if (event.key === 'Enter')
+	qg_add_curie_to_qnode();
+}
+
+async function qg_add_curie_to_qnode() {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+
+    var thing = document.getElementById("newquerynode").value.trim();
+    document.getElementById("newquerynode").value = '';
+
+    if (thing == '') {
+        document.getElementById("statusdiv").innerHTML = "<p class='error'>Please enter a node value</p>";
+	return;
+    }
+
+    var bestthing = await check_entity(thing,false);
+    document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
+
+    if (bestthing.found) {
+        document.getElementById("statusdiv").innerHTML = "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+thing+"</i> in our knowledge graph.</p>";
+	sesame('openmax',statusdiv);
+
+	if (!input_qg.nodes[id]['ids'].includes(bestthing.curie)) {
+	    input_qg.nodes[id]['ids'].push(bestthing.curie);
+	    input_qg.nodes[id]['_names'].push(bestthing.name);
+	}
+
+	//cyobj[99999].getElementById(id).data('name', bestthing.name);
+
+	qg_add_category_to_qnode(bestthing.type);
+
+	document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + bestthing.curie + "<br>";
+
+	cyobj[99999].reset();
+	cylayout(99999,"breadthfirst");
+    }
+    else {
+        document.getElementById("statusdiv").innerHTML = "<p><span class='error'>" + thing + "</span> is not in our knowledge graph.</p>";
+	sesame('openmax',statusdiv);
+    }
+
+}
+
+function qg_remove_curie_from_qnode(cur) {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+
+    var idx = input_qg.nodes[id]['ids'].indexOf(cur);
+    if (idx > -1) {
+	input_qg.nodes[id]['ids'].splice(idx, 1);
+	input_qg.nodes[id]['_names'].splice(idx, 1);
+    }
+
+    qg_node(id);
+}
+
+function qg_add_category_to_qnode(cat) {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+
+    document.getElementById("allnodetypes").value = '';
+    document.getElementById("allnodetypes").blur();
+
+    if (!input_qg.nodes[id]['categories'].includes(cat))
+	input_qg.nodes[id]['categories'].push(cat);
+
+    qg_node(id);
+}
+
+function qg_remove_category_from_qnode(cat) {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+
+    var idx = input_qg.nodes[id]['categories'].indexOf(cat);
+    if (idx > -1)
+	input_qg.nodes[id]['categories'].splice(idx, 1);
+
+    qg_node(id);
+}
+
+function qg_setset_for_qnode() {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+
+    input_qg.nodes[id].is_set = document.getElementById('nodeeditor_set').checked;
+    qg_node(id);
+
+    cyobj[99999].getElementById(id).data('set', input_qg.nodes[id].is_set);
+    cyobj[99999].reset();
+    cylayout(99999,"breadthfirst");
+}
+
+function qg_edge(id) {
+    if (id == 'new') {
+	var nodes = Object.keys(input_qg.nodes);
+	if (nodes.length < 2) { // just add them...
+	    qg_node('new',false);
+	    if (nodes.length < 1)
+		qg_node('new',false);
+
+	    nodes = Object.keys(input_qg.nodes);
+	}
+
+	id = get_qg_id('e');
+	var newqedge = {};
+	newqedge.predicates = [];
+	// join last two nodes if not specified otherwise [ToDo: specify]
+	newqedge.subject = nodes[nodes.length - 2];
+	newqedge.object = nodes[nodes.length - 1];
+
+	input_qg.edges[id] = newqedge;
+
+	cyobj[99999].add( {
+	    "data" : { "id"     : id,
+		       "source" : newqedge.subject,
+		       "target" : newqedge.object,
+		       "npreds" : 0,
+		       "parentdivnum" : 99999 },
+	} );
+	cyobj[99999].reset();
+	cylayout(99999,"breadthfirst");
+	cyobj[99999].getElementById(id).select();
+	UIstate.shakeit = true;
+    }
+    display_qg_popup('edge','show');
+
+    document.getElementById('edgeeditor_id').innerHTML = id;
+
+    UIstate.editedgeid = id;
+    qg_update_qnode_list();
+    qg_display_edge_predicates(false);
+
+    var htmlnode = document.getElementById('edgeeditor_pred');
+    htmlnode.innerHTML = '';
+    if (input_qg.edges[id].predicates) {
+	for (predicate of input_qg.edges[id].predicates.sort()) {
+	    htmlnode.appendChild(document.createTextNode(predicate));
+
+	    var link = document.createElement("a");
+	    link.style.float = "right";
+	    link.href = 'javascript:qg_remove_predicate_from_qedge("'+predicate+'");';
+	    link.title = "remove "+predicate+" from Qedge predicate list";
+	    link.appendChild(document.createTextNode(" [ remove ] "));
+	    htmlnode.appendChild(link);
+
+	    htmlnode.appendChild(document.createElement("br"));
+	}
+    }
+    else
+	input_qg.edges[id].predicates = [];
+
+    if (document.getElementById("showQGjson").checked) {
+	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
+	sesame('openmax',statusdiv);
+    }
+}
+
+function qg_update_qnode_list() {
+    document.getElementById('edgeeditor_subj').innerHTML = '';
+    document.getElementById('edgeeditor_obj').innerHTML = '';
+    for (node of Object.keys(input_qg.nodes).sort()) {
+	var opt = document.createElement('option');
+	opt.value = node;
+	opt.innerHTML = node+":"+cyobj[99999].getElementById(node).data('name');
+	document.getElementById('edgeeditor_subj').appendChild(opt);
+	document.getElementById('edgeeditor_obj').appendChild(opt.cloneNode(true));
+    }
+
+    var id = UIstate.editedgeid;
+    if (!id) return;
+
+    document.getElementById('edgeeditor_subj').value = input_qg.edges[id]['subject'];
+    document.getElementById('edgeeditor_obj').value = input_qg.edges[id]['object'];
+}
+
+function qg_remove_qedge() {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+
+    cyobj[99999].remove("#"+id);
+    delete input_qg.edges[id];
+
+    var idx = qgids.indexOf(id);
+    if (idx > -1)
+	qgids.splice(idx, 1);
+
+    document.getElementById("statusdiv").innerHTML = "<p>Deleted edge <i>"+id+"</i>";
+
+    display_qg_popup('edge','hide');
+    UIstate.editedgeid = null;
+}
+
+function qg_enter_predicate(ele) {
+    if (event.key === 'Enter')
+	qg_add_predicate_to_qedge(ele.value);
+}
+
+function qg_add_predicate_to_qedge(pred) {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+
+    document.getElementById("qedgepredicatelist").value = '';
+    document.getElementById("qedgepredicatelist").blur();
+    document.getElementById("qedgepredicatebox").value = '';
+    document.getElementById("qedgepredicatebox").blur();
+
+    if (!input_qg.edges[id]['predicates'].includes(pred))
+	input_qg.edges[id]['predicates'].push(pred);
+
+    qg_edge(id);
+}
+
+function qg_remove_predicate_from_qedge(pred) {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+
+    var idx = input_qg.edges[id]['predicates'].indexOf(pred);
+    if (idx > -1)
+	input_qg.edges[id]['predicates'].splice(idx, 1);
+
+    qg_edge(id);
+}
+
+function qg_update_qedge() {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+
+    input_qg.edges[id]['subject'] = document.getElementById('edgeeditor_subj').value;
+    input_qg.edges[id]['object'] = document.getElementById('edgeeditor_obj').value;
+    qg_edge(id);
+
+    cyobj[99999].getElementById(id).move({
+	'source' : input_qg.edges[id].subject,
+	'target' : input_qg.edges[id].object
+    });
+    cyobj[99999].reset();
+    cylayout(99999,"breadthfirst");
+}
+
+function qg_edit(msg) {
     cytodata[99999] = [];
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
+    else add_cyto(99999);
+    UIstate.editedgeid = null;
+    UIstate.editnodeid = null;
 
     for (var gid in input_qg.nodes) {
 	var gnode = input_qg.nodes[gid];
-	var name = "";
-
-	if (gnode.name)       { name = gnode.name;}
-	else if (gnode.ids)   { name = gnode.ids[0];}
-	else if (gnode.categories)  { name = gnode.categories[0] + "s?";}
-	else                  { name = "(Any)";}
 
         cyobj[99999].add( {
 	    "data" : {
 		"id"   : gid,
-		"name" : name,
+		"name" : 'NamedThing', // placeholder
 		"type" : gnode.categories ? gnode.categories[0] : null,
 		"parentdivnum" : 99999 },
-//	    "position" : {x:100*(qgid-nn), y:50+nn*50}
 	} );
+
+	qg_node(gid);
     }
 
     for (var eid in input_qg.edges) {
@@ -2281,29 +2930,24 @@ function edit_qg(m) {
 		"type"   : gedge.predicates ? gedge.predicates[0] : null,
 		"parentdivnum" : 99999 }
 	} );
+
+	qg_edge(eid);
     }
 
     cylayout(99999,"breadthfirst");
-    document.getElementById('qg_form').style.visibility = 'visible';
-    document.getElementById('qg_form').style.maxHeight = "100%";
 
-    if (m==1)
+    if (msg)
 	document.getElementById("statusdiv").innerHTML = "<p>Copied Query Graph to visual edit window.</p>";
     else
 	document.getElementById("showQGjson").checked = false;
 
-    update_kg_edge_input();
-    display_query_graph_items();
-
     document.getElementById("devdiv").innerHTML +=  "Copied query_graph to edit window<br>";
 }
 
-
-function display_query_graph_items() {
-    if (document.getElementById("showQGjson").checked) {
-	document.getElementById("statusdiv").innerHTML += "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
-	sesame('openmax',statusdiv);
-    }
+// unused at the moment
+function qg_display_items() {
+    if (!document.getElementById("qg_items"))
+	return;
 
     var table = document.createElement("table");
     table.className = 'sumtab';
@@ -2389,165 +3033,49 @@ function display_query_graph_items() {
 }
 
 
-function add_edge_to_query_graph() {
-    var n1 = document.getElementById("qg_edge_n1").value;
-    var n2 = document.getElementById("qg_edge_n2").value;
-    var et = document.getElementById("qg_edge_type").value;
+function qg_display_edge_predicates(all) {
+    var preds_node = document.getElementById("qedgepredicatelist");
+    var subj = document.getElementById('edgeeditor_subj').value;
+    var obj = document.getElementById('edgeeditor_obj').value;
 
-    if (n1=='' || n2=='' || et=='') {
-	document.getElementById("statusdiv").innerHTML = "<p class='error'>Please select two nodes and a valid edge type</p>";
-	return;
+    if (!all) {
+	if (!input_qg.nodes[subj]['categories'] ||
+	    input_qg.nodes[subj]['categories'] == null ||
+	    input_qg.nodes[subj]['categories'].length != 1 ||
+	    !input_qg.nodes[obj]['categories'] ||
+	    input_qg.nodes[obj]['categories'] == null ||
+	    input_qg.nodes[obj]['categories'].length != 1)
+	    all = true;
     }
 
-    document.getElementById("statusdiv").innerHTML = "<p>Added an edge of type <i>"+et+"</i></p>";
-    var qgid = get_qg_id('e');
+    var preds = [];
+    if (all)
+	preds = Object.keys(all_predicates).sort();
+    else if (input_qg.nodes[obj]['categories'][0] in predicates[input_qg.nodes[subj]['categories'][0]])
+	preds = predicates[input_qg.nodes[subj]['categories'][0]][input_qg.nodes[obj]['categories'][0]].sort();
 
-    if (et=='NONSPECIFIC') { et = null; }
-
-    cyobj[99999].add( {
-	"data" : { "id"     : qgid,
-		   "source" : n1,
-		   "target" : n2,
-		   "type"   : et,
-		   "parentdivnum" : 99999 }
-    } );
-    cylayout(99999,"breadthfirst");
-
-    var tmpdata = {};
-    tmpdata["subject"] = n1;
-    tmpdata["object"]  = n2;
-    if (et)
-	tmpdata["predicates"] = [et];
-
-    input_qg.edges[qgid] = tmpdata;    
-    display_query_graph_items();
-}
-
-
-function update_kg_edge_input() {
-    document.getElementById("qg_edge_n1").innerHTML = '';
-    document.getElementById("qg_edge_n2").innerHTML = '';
-
+    preds_node.innerHTML = '';
     var opt = document.createElement('option');
-    opt.style.borderBottom = "1px solid black";
     opt.value = '';
-    opt.innerHTML = "Source Node ("+Object.keys(input_qg.nodes).length+")&nbsp;&nbsp;&nbsp;&#8675;";
-    document.getElementById("qg_edge_n1").appendChild(opt);
 
-    opt = document.createElement('option');
-    opt.style.borderBottom = "1px solid black";
-    opt.value = '';
-    opt.innerHTML = "Target Node ("+Object.keys(input_qg.nodes).length+")&nbsp;&nbsp;&nbsp;&#8675;";
-    document.getElementById("qg_edge_n2").appendChild(opt);
-
-    if (Object.keys(input_qg.nodes).length < 2) {
-	opt = document.createElement('option');
-	opt.value = '';
-	opt.innerHTML = "Must have 2 nodes minimum";
-	document.getElementById("qg_edge_n1").appendChild(opt);
-	document.getElementById("qg_edge_n2").appendChild(opt.cloneNode(true));
-	return;
-    }
-
-    for (nid in input_qg.nodes) {
-	var qgnode = input_qg.nodes[nid];
-	for (var x = 1; x <=2; x++) {
-            opt = document.createElement('option');
-	    opt.value = nid;
-	    opt.innerHTML = qgnode["_name"] ? qgnode["_name"] : qgnode["_desc"] ? qgnode["_desc"] : qgnode.categories[0] ? qgnode.categories[0] : nid;
-	    document.getElementById("qg_edge_n"+x).appendChild(opt);
-	}
-    }
-    get_possible_edges();
-}
-
-function get_possible_edges() {
-    var qet_node = document.getElementById("qg_edge_type");
-    qet_node.innerHTML = '';
-
-    var opt = document.createElement('option');
-    opt.style.borderBottom = "1px solid black";
-    opt.value = '';
-    opt.innerHTML = "Edge Type&nbsp;&nbsp;&nbsp;&#8675;";
-    qet_node.appendChild(opt);
-
-    var edge1 = document.getElementById("qg_edge_n1").value;
-    var edge2 = document.getElementById("qg_edge_n2").value;
-
-    if (!(edge1 && edge2) || (edge1 == edge2)) {
-	opt = document.createElement('option');
-	opt.value = '';
-	opt.innerHTML = "Please select 2 different nodes";
-	qet_node.appendChild(opt);
-	return;
-    }
-
-    var nt1 = input_qg.nodes[edge1];
-    var nt2 = input_qg.nodes[edge2];
-
-    qet_node.innerHTML = '';
-    opt = document.createElement('option');
-    opt.style.borderBottom = "1px solid black";
-    opt.value = '';
-    opt.innerHTML = "Populating edges...";
-    qet_node.appendChild(opt);
-
-    if (nt1.categories == null || nt2.categories == null) {
-	// NONSPECIFIC nodes only get NONSPECIFIC edges...for now
-        qet_node.innerHTML = '';
-        opt = document.createElement('option');
-	opt.value = 'NONSPECIFIC';
-	opt.innerHTML = "Unspecified/Non-specific";
-	qet_node.appendChild(opt);
-	return;
-    }
-
-    var relation = "A --> B";
-    if (!(nt2.categories[0] in predicates[nt1.categories[0]])) {
-	[nt1, nt2] = [nt2, nt1]; // swap
-	relation = "B --> A";
-    }
-
-    if (nt2.categories[0] in predicates[nt1.categories[0]]) {
-	if (predicates[nt1.categories[0]][nt2.categories[0]].length == 1) {
-	    qet_node.innerHTML = '';
-	    opt = document.createElement('option');
-	    opt.value = predicates[nt1.categories[0]][nt2.categories[0]][0];
-	    opt.innerHTML = predicates[nt1.categories[0]][nt2.categories[0]][0] + " ["+relation+"]";
-	    qet_node.appendChild(opt);
-	}
-	else {
-	    qet_node.innerHTML = '';
-	    opt = document.createElement('option');
-	    opt.style.borderBottom = "1px solid black";
-	    opt.value = '';
-            opt.innerHTML = "Edge Type ["+relation+"]&nbsp; ("+predicates[nt1.categories[0]][nt2.categories[0]].length+")&nbsp;&nbsp;&nbsp;&#8675;";
-	    qet_node.appendChild(opt);
-
-	    for (var pred of predicates[nt1.categories[0]][nt2.categories[0]].sort()) {
-		var opt = document.createElement('option');
-		opt.value = pred;
-		opt.innerHTML = pred;
-		qet_node.appendChild(opt);
-	    }
-
-            opt = document.createElement('option');
-	    opt.value = 'NONSPECIFIC';
-	    opt.innerHTML = "Unspecified/Non-specific";
-	    qet_node.appendChild(opt);
-	}
-
+    if (preds.length < 1) {
+	opt.innerHTML = "-- No Predicates found --";
+	preds_node.appendChild(opt);
     }
     else {
-        qet_node.innerHTML = '';
-	opt = document.createElement('option');
-	opt.value = '';
-	opt.innerHTML = "-- No edge types found --";
-	qet_node.appendChild(opt);
+	opt.innerHTML = "Add Predicate to Edge&nbsp;("+preds.length+")&nbsp;&nbsp;&nbsp;&#8675;";
+	preds_node.appendChild(opt);
+
+	for (const p of preds) {
+	    opt = document.createElement('option');
+	    opt.value = p;
+	    opt.innerHTML = p;
+	    preds_node.appendChild(opt);
+	}
     }
 }
 
-
+// unused at the moment
 function add_nodeclass_to_query_graph(nodetype) {
     document.getElementById("allnodetypes").value = '';
     document.getElementById("allnodetypes").blur();
@@ -2557,11 +3085,8 @@ function add_nodeclass_to_query_graph(nodetype) {
     else
 	add_nodetype_to_query_graph(nodetype);
 
-    update_kg_edge_input();
-    display_query_graph_items();
 }
-
-
+// unused at the moment
 function add_nodetype_to_query_graph(nodetype) {
     document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
     var qgid = get_qg_id('n');
@@ -2585,7 +3110,7 @@ function add_nodetype_to_query_graph(nodetype) {
 
     input_qg.nodes[qgid] = tmpdata;
 }
-
+// unused at the moment
 function add_nodelist_to_query_graph(nodetype) {
     var list = nodetype.split("LIST_")[1];
 
@@ -2611,104 +3136,7 @@ function add_nodelist_to_query_graph(nodetype) {
 }
 
 
-function enter_node(ele) {
-    if (event.key === 'Enter')
-	add_node_to_query_graph();
-}
-
-async function add_node_to_query_graph() {
-    var thing = document.getElementById("newquerynode").value;
-    document.getElementById("newquerynode").value = '';
-
-    if (thing == '') {
-        document.getElementById("statusdiv").innerHTML = "<p class='error'>Please enter a node value</p>";
-	return;
-    }
-
-    var bestthing = await check_entity(thing,false);
-    document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
-
-    if (bestthing.found) {
-        document.getElementById("statusdiv").innerHTML = "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+thing+"</i> in our knowledge graph.</p>";
-	sesame('openmax',statusdiv);
-
-	var qgid = get_qg_id('n');
-
-	cyobj[99999].add( {
-	    "data" : { "id"   : qgid,
-		       "name" : bestthing.name,
-		       "type" : bestthing.type,
-		       "parentdivnum" : 99999 },
-	    //		"position" : {x:100*(qgid-nn), y:50+nn*50}
-	} );
-
-	var tmpdata = { "ids"    : [bestthing.curie],
-			"is_set" : false,
-			"_name"  : bestthing.name,
-			"categories" : [bestthing.type]
-		      };
-
-	document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + bestthing.curie + "<br>";
-	input_qg.nodes[qgid] = tmpdata;
-
-	cyobj[99999].reset();
-	cylayout(99999,"breadthfirst");
-
-	update_kg_edge_input();
-	display_query_graph_items();
-    }
-    else {
-        document.getElementById("statusdiv").innerHTML = "<p><span class='error'>" + thing + "</span> is not in our knowledge graph.</p>";
-	sesame('openmax',statusdiv);
-    }
-}
-
-
-function remove_edge_from_query_graph(edgeid) {
-    cyobj[99999].remove("#"+edgeid);
-    delete input_qg.edges[edgeid];
-
-    var idx = qgids.indexOf(edgeid);
-    if (idx > -1)
-	qgids.splice(idx, 1);
-
-    document.getElementById("statusdiv").innerHTML = "<p>Deleted edge <i>"+edgeid+"</i></p>";
-    display_query_graph_items();
-}
-
-function remove_node_from_query_graph(nodeid) {
-    cyobj[99999].remove("#"+nodeid);
-    delete input_qg.nodes[nodeid];
-
-    var idx = qgids.indexOf(nodeid);
-    if (idx > -1)
-	qgids.splice(idx, 1);
-
-    var delstat = "<p>Deleted node <i>"+nodeid+"</i>";
-
-    for (eid in input_qg.edges) {
-	var killit = false
-	if (input_qg.edges[eid].subject == nodeid)
-	    killit = true;
-	else if (input_qg.edges[eid].object == nodeid)
-	    killit = true;
-
-	if (killit) {
-	    delete input_qg.edges[eid];
-	    delstat += ", and edge <i>"+eid+"</i>";
-	    var idx = qgids.indexOf(eid);
-	    if (idx > -1)
-		qgids.splice(idx, 1);
-	}
-    }
-    delstat += "</p>";
-
-    document.getElementById("statusdiv").innerHTML = delstat;
-    update_kg_edge_input();
-    display_query_graph_items();
-}
-
-function clean_up_qg(xfer) {
+function qg_clean_up(xfer) {
     // clean up non-TRAPI attributes and null arrays
     for (var nid in input_qg.nodes) {
 	var gnode = input_qg.nodes[nid];
@@ -2718,7 +3146,7 @@ function clean_up_qg(xfer) {
 	    gnode.ids = get_list_as_curie_array(list);
 	}
 
-	for (var att of ["_name","_desc"] ) {
+	for (var att of ["_names","_desc"] ) {
 	    if (gnode.hasOwnProperty(att))
 		delete gnode[att];
 	}
@@ -2738,22 +3166,41 @@ function clean_up_qg(xfer) {
 	document.getElementById("jsonText").value = JSON.stringify(input_qg,null,2);
 }
 
-function clear_qg(m) {
-    if (cyobj[99999]) { cyobj[99999].elements().remove(); }
-    input_qg = { "edges": {}, "nodes": {} };
+function qg_select(what) {
+    var id = null;
 
-    if (m==1)
-	document.getElementById("statusdiv").innerHTML = "<p>Query Graph has been cleared.</p>";
-    else
-	document.getElementById("showQGjson").checked = false;
+    if (what == 'node')
+	id = UIstate.editnodeid;
+    else if (what == 'edge')
+	id = UIstate.editedgeid;
 
-    update_kg_edge_input();
-    get_possible_edges();
-    display_query_graph_items();
-    qgids = [];
-    document.getElementById('qg_form').style.visibility = 'visible';
-    document.getElementById('qg_form').style.maxHeight = "100%";
+    if (id)
+	cyobj[99999].getElementById(id).select();
 }
+
+function display_qg_popup(which,how) {
+    var popup;
+    if (which == 'edge')
+	popup = document.getElementById('edgeeditor');
+    else
+	popup = document.getElementById('nodeeditor');
+
+    popup.classList.remove('shake');
+    if (how == 'show') {
+	if (UIstate.shakeit && popup.style.visibility == 'visible')
+	    var timeout = setTimeout(function() { popup.classList.add('shake'); }, 50 );
+	else
+	    popup.style.visibility = 'visible';
+	UIstate.shakeit = false;
+    }
+    else if (how == 'hide')
+	popup.style.visibility = 'hidden';
+    else if (popup.style.visibility == 'visible')
+	popup.style.visibility = 'hidden';
+    else
+	popup.style.visibility = 'visible';
+}
+
 
 function get_qg_id(prefix) {
     var new_id = 0;
@@ -2997,7 +3444,7 @@ function load_meta_knowledge_graph() {
     fetch(baseAPI + "/meta_knowledge_graph")
 	.then(response => {
 	    if (response.ok) return response.json();
-	    else throw new Error('Something went wrong');
+	    else throw new Error('Something went wrong with /meta_knowledge_graph');
 	})
         .then(data => {
 	    //add_to_dev_info("META_KNOWLEDGE_GRAPH",data);
@@ -3005,7 +3452,7 @@ function load_meta_knowledge_graph() {
 	    var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.style.borderBottom = "1px solid black";
-	    opt.innerHTML = "Add Node by Type&nbsp;&nbsp;&nbsp;&#8675;";
+	    opt.innerHTML = "Add Category to Node&nbsp;&nbsp;&nbsp;&#8675;";
 	    allnodes_node.appendChild(opt);
 
             for (const n in data.nodes) {
@@ -3046,64 +3493,8 @@ function load_meta_knowledge_graph() {
             opt.title = "Set of Nodes from List [B]";
 	    opt.innerHTML = "List [B]";
 	    allnodes_node.appendChild(opt);
-	})
-        .catch(error => {
-	    var opt = document.createElement('option');
-	    opt.value = '';
-	    opt.style.borderBottom = "1px solid black";
-	    opt.innerHTML = "-- Error Loading Node Types --";
-	    allnodes_node.appendChild(opt);
-        });
-}
 
-
-function load_nodes_and_predicates() {
-    var allnodes_node = document.getElementById("allnodetypes");
-    allnodes_node.innerHTML = '';
-
-    fetch(baseAPI + "/predicates")
-	.then(response => {
-	    if (response.ok) return response.json();
-	    else throw new Error('Something went wrong');
-	})
-        .then(data => {
-	    //add_to_dev_info("PREDICATES",data);
-	    predicates = data;
-
-	    var opt = document.createElement('option');
-	    opt.value = '';
-	    opt.style.borderBottom = "1px solid black";
-	    opt.innerHTML = "Add Node by Type&nbsp;&nbsp;&nbsp;&#8675;";
-	    allnodes_node.appendChild(opt);
-
-            for (const p in predicates) {
-		opt = document.createElement('option');
-		opt.value = p;
-		opt.innerHTML = p;
-		allnodes_node.appendChild(opt);
-
-		for (const n in predicates[p])
-		    for (const r of predicates[p][n])
-			all_predicates[r] = 1;
-	    }
-            opt = document.createElement('option');
-	    opt.value = 'NONSPECIFIC';
-	    opt.innerHTML = "Unspecified/Non-specific";
-	    allnodes_node.appendChild(opt);
-
-            opt = document.createElement('option');
-	    opt.id = 'nodesetA';
-	    opt.value = 'LIST_A';
-	    opt.title = "Set of Nodes from List [A]";
-	    opt.innerHTML = "List [A]";
-	    allnodes_node.appendChild(opt);
-
-            opt = document.createElement('option');
-	    opt.id = 'nodesetB';
-	    opt.value = 'LIST_B';
-            opt.title = "Set of Nodes from List [B]";
-	    opt.innerHTML = "List [B]";
-	    allnodes_node.appendChild(opt);
+	    qg_display_edge_predicates(true);
 	})
         .catch(error => {
 	    var opt = document.createElement('option');
@@ -3683,7 +4074,7 @@ function checkUIversion(compare) {
 		showVersionAlert(response);
 	    else {
 		UIstate["version"] = response;
-		document.getElementById("uiversionstring").innerHTML = '&nbsp;&nbsp;v.'+response;
+		document.getElementById("uiversionstring").innerHTML = '&nbsp;&nbsp;'+response;
 	    }
 	})
 	.catch(error => { //log and ignore...

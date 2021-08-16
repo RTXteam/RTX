@@ -15,6 +15,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Overlay.predictor.predictor import predictor
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+from category_manager import CategoryManager
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 
@@ -35,7 +36,8 @@ class PredictDrugTreatsDisease:
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
-        self.drug_label_list = ['chemicalsubstance','drug']
+        self.categorymanager = CategoryManager()
+        self.drug_label_list = list(set([drug_category_ancestor.replace('biolink:','').replace('_','').lower() for drug_cateogry in ['biolink:Drug','biolink:SmallMolecule'] for drug_category_ancestor in self.categorymanager.get_expansive_categories(drug_cateogry)]))
         self.disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
 
         ## check if there is LogModel.pkl
@@ -279,7 +281,7 @@ class PredictDrugTreatsDisease:
                     relation = parameters['virtual_relation_label']
                     is_defined_by = "ARAX"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                    provided_by = "ARAX"
+                    provided_by = "infores:arax"
                     confidence = None
                     weight = None  # TODO: could make the actual value of the attribute
                     subject_key = source_curie
@@ -292,7 +294,7 @@ class PredictDrugTreatsDisease:
                         edge_attribute,
                         EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
-                        EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:provided_by"),
+                        EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
                         #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
                         #EdgeAttribute(name="weight", value=weight, type="metatype:Float")
                     ]
@@ -331,7 +333,7 @@ class PredictDrugTreatsDisease:
                     target_curie = edge.object
                     source_types = curie_to_type[source_curie]
                     target_types = curie_to_type[target_curie]
-                    if (("drug" in source_types) or ("chemical_substance" in source_types) or ("biolink:Drug" in source_types) or ("biolink:ChemicalSubstance" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types) or ("biolink:Disease" in target_types) or ("biolink:PhenotypicFeature" in target_types) or ("biolink:DiseaseOrPhenotypicFeature" in target_types)):
+                    if (("drug" in source_types) or ("small_molecule" in source_types) or ("biolink:Drug" in source_types) or ("biolink:SmallMolecule" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types) or ("biolink:Disease" in target_types) or ("biolink:PhenotypicFeature" in target_types) or ("biolink:DiseaseOrPhenotypicFeature" in target_types)):
                         # loop over all pairs of equivalent curies and take the highest probability
                         # self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
@@ -379,7 +381,7 @@ class PredictDrugTreatsDisease:
 
                         value = max_probability
 
-                    elif (("drug" in target_types) or ("chemical_substance" in target_types) or ("biolink:Drug" in target_types) or ("biolink:ChemicalSubstance" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types) or ("biolink:Disease" in source_types) or ("biolink:PhenotypicFeature" in source_types) or ("biolink:DiseaseOrPhenotypicFeature" in source_types)):
+                    elif (("drug" in target_types) or ("small_molecule" in target_types) or ("biolink:Drug" in target_types) or ("biolink:SmallMolecule" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types) or ("biolink:Disease" in source_types) or ("biolink:PhenotypicFeature" in source_types) or ("biolink:DiseaseOrPhenotypicFeature" in source_types)):
                         #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]

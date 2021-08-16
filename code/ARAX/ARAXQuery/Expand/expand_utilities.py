@@ -1,5 +1,6 @@
 #!/bin/env python3
 # This file contains utilities/helper functions for general use within the Expand module
+import copy
 import json
 import pathlib
 import sys
@@ -20,10 +21,17 @@ from openapi_server.models.q_edge import QEdge
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
+from openapi_server.models.message import Message
+from openapi_server.models.response import Response
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
+from ARAX_resultify import ARAXResultify
+from ARAX_overlay import ARAXOverlay
+from ARAX_ranker import ARAXRanker
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 
 class QGOrganizedKnowledgeGraph:
@@ -56,6 +64,16 @@ class QGOrganizedKnowledgeGraph:
             self.edges_by_qg_id[qedge_key] = dict()
         self.edges_by_qg_id[qedge_key][edge_key] = edge
 
+    def remove_nodes(self, node_keys_to_delete: Set[str], qnode_key: str, qg: QueryGraph):
+        for node_key in node_keys_to_delete:
+            del self.nodes_by_qg_id[qnode_key][node_key]
+        connected_qedges = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == qnode_key or qedge.object == qnode_key}
+        for connected_qedge_key in connected_qedges.intersection(set(self.edges_by_qg_id)):
+            edges_to_delete = {edge_key for edge_key, edge in self.edges_by_qg_id[connected_qedge_key].items()
+                               if {edge.subject, edge.object}.intersection(node_keys_to_delete)}
+            for edge_key in edges_to_delete:
+                del self.edges_by_qg_id[connected_qedge_key][edge_key]
+
     def get_all_node_keys_used_by_edges(self) -> Set[str]:
         return {node_key for edges in self.edges_by_qg_id.values() for edge in edges.values()
                 for node_key in [edge.subject, edge.object]}
@@ -85,29 +103,21 @@ def get_attribute_triple(attribute: Attribute) -> str:
     return f"{attribute.attribute_type_id}--{attribute.value}--{attribute.attribute_source}"
 
 
-def copy_qedge(old_qedge: QEdge) -> QEdge:
-    new_qedge = QEdge()
-    for edge_property in new_qedge.to_dict():
-        value = getattr(old_qedge, edge_property)
-        setattr(new_qedge, edge_property, value)
-    return new_qedge
-
-
-def copy_qnode(old_qnode: QNode) -> QNode:
-    new_qnode = QNode()
-    for node_property in new_qnode.to_dict():
-        value = getattr(old_qnode, node_property)
-        setattr(new_qnode, node_property, value)
-    return new_qnode
-
-
-def copy_qg(qg: QueryGraph) -> QueryGraph:
-    return QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
-                      edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+def remove_orphan_edges(kg: QGOrganizedKnowledgeGraph, qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
+    fulfilled_qedge_keys = set(kg.edges_by_qg_id)
+    for qedge_key in fulfilled_qedge_keys:
+        qedge = qg.edges[qedge_key]
+        edge_keys = set(kg.edges_by_qg_id[qedge_key])
+        for edge_key in edge_keys:
+            edge = kg.edges_by_qg_id[qedge_key][edge_key]
+            if not ((edge.subject in kg.nodes_by_qg_id[qedge.subject] and edge.object in kg.nodes_by_qg_id[qedge.object]) or
+                    (edge.object in kg.nodes_by_qg_id[qedge.subject] and edge.subject in kg.nodes_by_qg_id[qedge.object])):
+                del kg.edges_by_qg_id[qedge_key][edge_key]
+    return kg
 
 
 def convert_string_to_pascal_case(input_string: str) -> str:
-    # Converts a string like 'chemical_substance' or 'chemicalSubstance' to 'ChemicalSubstance'
+    # Converts a string like 'chemical_entity' or 'chemicalEntity' to 'ChemicalEntity'
     if not input_string:
         return ""
     elif "_" in input_string:
@@ -120,7 +130,7 @@ def convert_string_to_pascal_case(input_string: str) -> str:
 
 
 def convert_string_to_snake_case(input_string: str) -> str:
-    # Converts a string like 'ChemicalSubstance' or 'chemicalSubstance' to 'chemical_substance'
+    # Converts a string like 'ChemicalEntity' or 'chemicalEntity' to 'chemical_entity'
     if len(input_string) > 1:
         snake_string = input_string[0].lower()
         for letter in input_string[1:]:
@@ -226,18 +236,6 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
                 edge.qedge_keys = [qedge_key]
                 standard_kg.edges[edge_key] = edge
     return standard_kg
-
-
-def get_kp_preferred_prefixes(kp_name: str) -> Union[Dict[str, str], None]:
-    # TODO: Dynamically determine these down the road once meta_knowledge_map endpoint is added to TRAPI
-    preferred_prefixes = {"MolePro": {"biolink:ChemicalSubstance": "CHEMBL.COMPOUND",
-                                      "biolink:Gene": "HGNC",
-                                      "biolink:Disease": "MONDO"},
-                          "GeneticsKP": {"biolink:Gene": "NCBIGene",
-                                         "biolink:Pathway": "GO",
-                                         "biolink:PhenotypicFeature": "EFO",
-                                         "biolink:Disease": "EFO"}}
-    return preferred_prefixes.get(kp_name)
 
 
 def make_qg_use_supported_prefixes(kp_selector, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
@@ -405,55 +403,6 @@ def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
 
 
-def load_canonical_predicates_map(log: ARAXResponse) -> Dict[str, str]:
-    map_path = f"{os.path.dirname(os.path.abspath(__file__))}/canonical_predicates.json"
-    map_file = pathlib.Path(map_path)
-    two_days_ago = datetime.now() - timedelta(hours=48)
-
-    # Create or refresh the map as needed
-    if not map_file.exists() or datetime.fromtimestamp(map_file.stat().st_mtime) < two_days_ago:
-        log.debug(f"Refreshing canonical predicates map")
-        # First load any cached data in case we fail at grabbing the Biolink yaml file
-        if map_file.exists():
-            with open(map_path, "r") as input_file:
-                canonical_predicates_map = json.load(input_file)
-        else:
-            canonical_predicates_map = dict()
-
-        # Grab the Biolink 2.0 yaml file and extract canonical predicate info
-        try:
-            with requests_cache.disabled():
-                response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/2.0.2/biolink-model.yaml",
-                                        timeout=10)  # Canonical predicates were added in 2.0
-        except requests.exceptions.Timeout:
-            log.warning(f"Timed out trying to grab Biolink 2.0 yaml")
-        except Exception:
-            log.warning(f"Ran into a problem grabbing Biolink 2.0 yaml file")
-        else:
-            if response.status_code == 200:
-                biolink_model = yaml.safe_load(response.text)
-                canonical_predicates_map = dict()  # Clear cached data since we successfully got new data
-                for slot_name_english, info in biolink_model["slots"].items():
-                    predicate = f"biolink:{slot_name_english.replace(' ', '_')}"
-                    if info.get("inverse"):
-                        inverse_predicate_english = info["inverse"]
-                        inverse_info = biolink_model["slots"][inverse_predicate_english]
-                        if inverse_info.get("annotations") and \
-                                inverse_info["annotations"].get("tag") == "biolink:canonical_predicate" and \
-                                inverse_info["annotations"].get("value"):
-                            canonical_predicates_map[predicate] = f"biolink:{inverse_predicate_english.replace(' ', '_')}"
-            else:
-                log.warning(f"Got {response.status_code} loading Biolink 2.0 yaml file. Can't refresh.")
-        # Save our refreshed data
-        with open(map_path, "w+") as output_file:
-            json.dump(canonical_predicates_map, output_file)
-
-    # Now that we know the map exists/is current, load it
-    with open(map_path, "r") as input_file:
-        predicates_map = json.load(input_file)
-    return predicates_map
-
-
 def flip_edge(edge: Edge, new_predicate: str) -> Edge:
     edge.predicate = new_predicate
     original_subject = edge.subject
@@ -462,14 +411,14 @@ def flip_edge(edge: Edge, new_predicate: str) -> Edge:
     return edge
 
 
-def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, canonical_predicates_map: Dict[str, str],
-                                   kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
     non_canonical_predicates_used = set()
+    biolink_helper = BiolinkHelper()
     for qedge_id, edges in kg.edges_by_qg_id.items():
         for edge in edges.values():
-            if edge.predicate in canonical_predicates_map:
+            canonical_predicate = biolink_helper.get_canonical_predicates(edge.predicate)[0]
+            if canonical_predicate != edge.predicate:
                 non_canonical_predicates_used.add(edge.predicate)
-                canonical_predicate = canonical_predicates_map[edge.predicate]
                 _ = flip_edge(edge, canonical_predicate)
     if non_canonical_predicates_used:
         log.warning(f"{kp_name}: Found edges in {kp_name}'s answer that use non-canonical "
@@ -516,6 +465,16 @@ def get_kp_source_attribute(kp_name: str, arax_kp: bool = False, description: Op
                      attribute_source=get_translator_infores_curie("ARAX"))
 
 
+def get_computed_value_attribute() -> Attribute:
+    arax_infores_curie = get_translator_infores_curie("ARAX")
+    return Attribute(attribute_type_id="biolink:computed_value",
+                     value=True,
+                     value_type_id="metatype:Boolean",
+                     attribute_source=arax_infores_curie,
+                     description="This edge is a container for a computed value between two nodes that is not "
+                                 "directly attachable to other edges.")
+
+
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
         "BTE": "https://api.bte.ncats.io/v1",
@@ -536,10 +495,10 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
 
 def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
     endpoint_map = {
-        "ARAX": "infores:arax-reasoner-ara",
+        "ARAX": "infores:arax",
         "BTE": "infores:biothings-explorer",
         "GeneticsKP": "infores:genetics-data-provider",
-        "MolePro": "infores:molecular-data-provider",
+        "MolePro": "infores:molepro",
         "RTX-KG2": "infores:rtx-kg2",
         "CHP": "infores:connections-hypothesis",
         "COHD": "infores:cohd",
@@ -549,16 +508,15 @@ def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
         "WellnessKP": "infores:biothings-multiomics-wellness",
         "DrugResponseKP": "infores:biothings-multiomics-drug-response",
         "TumorGeneMutationKP": "infores:biothings-tcga-mut-freq",
-        "ICEES-DILI": "infores:icees",
-        "ICEES-Asthma": "infores:icees"
+        "ICEES-DILI": "infores:icees-dili",
+        "ICEES-Asthma": "infores:icees-asthma"
     }
     return endpoint_map.get(kp_name, kp_name)
 
 
 def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
     # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
-    qg_copy = QueryGraph(nodes={qnode_key: copy_qnode(qnode) for qnode_key, qnode in qg.nodes.items()},
-                         edges={qedge_key: copy_qedge(qedge) for qedge_key, qedge in qg.edges.items()})
+    qg_copy = copy.deepcopy(qg)
     for qnode in qg_copy.nodes.values():
         if qnode.categories:
             prefixless_categories = [category.split(":")[-1] for category in qnode.categories]
@@ -569,41 +527,139 @@ def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
     return qg_copy
 
 
+def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
+    edge_keys = set(kg.edges)
+    for edge_key in edge_keys:
+        edge = kg.edges[edge_key]
+        if qedge_key in edge.qedge_keys:
+            del kg.edges[edge_key]
+
+
+def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False,
+                   rank_results: bool = False, qnode_key_to_prune: Optional[str] = None,) -> Response:
+    regular_format_kg = convert_qg_organized_kg_to_standard_kg(kg)
+    resultifier = ARAXResultify()
+    prune_response = ARAXResponse()
+    prune_response.envelope = Response()
+    prune_response.envelope.message = Message()
+    prune_message = prune_response.envelope.message
+    prune_message.query_graph = qg
+    prune_message.knowledge_graph = regular_format_kg
+    if overlay_fet:
+        log.debug(f"Using FET to assess quality of intermediate answers in Expand")
+        connected_qedges = [qedge for qedge in qg.edges.values()
+                            if qedge.subject == qnode_key_to_prune or qedge.object == qnode_key_to_prune]
+        qnode_pairs_to_overlay = {(qedge.subject if qedge.subject != qnode_key_to_prune else qedge.object, qnode_key_to_prune)
+                                  for qedge in connected_qedges}
+        for qnode_pair in qnode_pairs_to_overlay:
+            pair_string_id = f"{qnode_pair[0]}-->{qnode_pair[1]}"
+            log.debug(f"Overlaying FET for {pair_string_id} (from Expand)")
+            fet_qedge_key = f"FET{pair_string_id}"
+            try:
+                overlayer = ARAXOverlay()
+                params = {"action": "fisher_exact_test",
+                          "subject_qnode_key": qnode_pair[0],
+                          "object_qnode_key": qnode_pair[1],
+                          "virtual_relation_label": fet_qedge_key}
+                overlayer.apply(prune_response, params)
+            except Exception as error:
+                exception_type, exception_value, exception_traceback = sys.exc_info()
+                log.error(f"An uncaught error occurred when overlaying with FET during expand's pruning: "
+                          f"{error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}",
+                          error_code="UncaughtARAXiError")
+            if prune_response.status != "OK":
+                log.warning(f"FET produced an error when Expand tried to use it to prune the KG. "
+                            f"Log was: {prune_response.show()}")
+                log.debug(f"Will continue pruning without overlaying FET")
+                # Get rid of any FET edges that might be in the KG/QG, since this step failed
+                remove_edges_with_qedge_key(prune_response.envelope.message.knowledge_graph, fet_qedge_key)
+                qg.edges.pop(fet_qedge_key, None)
+                prune_response.status = "OK"  # Clear this so we can continue without overlaying
+            else:
+                # Make this virtual edge optional (don't want to lose results that had no FET value)
+                qg.edges[fet_qedge_key].option_group_id = f"FET_VIRTUAL_GROUP_{pair_string_id}"
+
+    # Create results and rank them as appropriate
+    log.debug(f"Calling Resultify from Expand for pruning")
+    resultifier.apply(prune_response, {})
+    if rank_results:
+        try:
+            log.debug(f"Ranking Expand's intermediate pruning results")
+            ranker = ARAXRanker()
+            ranker.aggregate_scores_dmk(prune_response)
+        except Exception as error:
+            exception_type, exception_value, exception_traceback = sys.exc_info()
+            log.error(f"An uncaught error occurred when attempting to rank results during Expand's pruning: "
+                      f"{error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}."
+                      f"Log was: {prune_response.show()}",
+                      error_code="UncaughtARAXiError")
+            # Give any unranked results a score of 0
+            for result in prune_response.envelope.message.results:
+                if result.score is None:
+                    result.score = 0
+    return prune_response
+
+
+def get_qg_expanded_thus_far(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph) -> QueryGraph:
+    expanded_qnodes = {qnode_key for qnode_key in qg.nodes if kg.nodes_by_qg_id.get(qnode_key)}
+    expanded_qedges = {qedge_key for qedge_key in qg.edges if kg.edges_by_qg_id.get(qedge_key)}
+    qg_expanded_thus_far = QueryGraph(nodes={qnode_key: copy.deepcopy(qg.nodes[qnode_key]) for qnode_key in expanded_qnodes},
+                                      edges={qedge_key: copy.deepcopy(qg.edges[qedge_key]) for qedge_key in expanded_qedges})
+    return qg_expanded_thus_far
+
+
 def get_all_kps() -> Set[str]:
     return set(get_kp_command_definitions().keys())
 
 
+def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:
+    new_dict = copy.deepcopy(dict_a)
+    new_dict.update(dict_b)
+    return new_dict
+
+
+def get_standard_parameters() -> dict:
+    standard_parameters = {
+        "edge_key": {
+            "is_required": False,
+            "examples": ["e00", "[e00, e01]"],
+            "type": "string",
+            "description": "A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."
+        },
+        "node_key": {
+            "is_required": False,
+            "examples": ["n00", "[n00, n01]"],
+            "type": "string",
+            "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
+        },
+        "enforce_directionality": {
+            "is_required": False,
+            "examples": ["true", "false"],
+            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+            "default": "false",
+            "type": "boolean",
+            "description": "Whether to obey (vs. ignore) edge directions in the query graph."
+        },
+        "prune_threshold": {
+            "is_required": False,
+            "type": "integer",
+            "default": 1000,
+            "examples": [500, 2000],
+            "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of "
+                           "this threshold will be pruned, using Fisher Exact Test to rank answers."
+        }
+    }
+    return standard_parameters
+
+
 def get_kp_command_definitions() -> dict:
-    edge_key_parameter_info = {
-        "is_required": False,
-        "examples": ["e00", "[e00, e01]"],
-        "type": "string",
-        "description": "A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."
-    }
-    node_key_parameter_info = {
-        "is_required": False,
-        "examples": ["n00", "[n00, n01]"],
-        "type": "string",
-        "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
-    }
-    enforce_directionality_parameter_info = {
-        "is_required": False,
-        "examples": ["true", "false"],
-        "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-        "default": "false",
-        "type": "boolean",
-        "description": "Whether to obey (vs. ignore) edge directions in the query graph."
-    }
+    standard_parameters = get_standard_parameters()
     return {
         "RTX-KG2": {
             "dsl_command": "expand(kp=RTX-KG2)",
             "description": "This command reaches out to the RTX-KG2 API to find all bioentity subpaths "
                            "that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "enforce_directionality": enforce_directionality_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "BTE": {
             "dsl_command": "expand(kp=BTE)",
@@ -613,24 +669,18 @@ def get_kp_command_definitions() -> dict:
                            "supported (the ARAX system knows how to ignore edge direction when deciding which "
                            "query node for a query edge will be the 'input' qnode, but BTE itself returns only "
                            "answers matching the input edge direction).",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
-                "enforce_directionality": enforce_directionality_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "COHD": {
             "dsl_command": "expand(kp=COHD)",
             "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
                            " satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
+            "parameters": merge_two_dicts(standard_parameters, {
                 "COHD_method": {
                     "is_required": False,
                     "examples": ["paired_concept_freq", "chi_square"],
-                    "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
-                    "default": "paired_concept_freq",
+                    "enum": ["all", "paired_concept_freq", "observed_expected_ratio", "chi_square"],
+                    "default": "all",
                     "type": "string",
                     "description": "Which measure from COHD should be considered."
                 },
@@ -642,62 +692,60 @@ def get_kp_command_definitions() -> dict:
                     "default": 1000,
                     "type": "integer",
                     "description": "What top N to use as a cut-off/threshold for the specified COHD method."
+                },
+                "sorted_by": {
+                    "is_required": False,
+                    "examples": ["paired_concept_freq", "chi_square"],
+                    "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
+                    "default": "paired_concept_freq",
+                    "type": "string",
+                    "description": "If COHD_method=='all', then what statistics the 'COHD_method_top_N' is based on."
+                },
+                "COHD_slow_mode": {
+                    "is_required": False,
+                    "examples": ["true", "false"],
+                    "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+                    "default": "false",
+                    "type": "boolean",
+                    "description": "Whether to call COHD API when the local COHD database doesn't return the expected results."
                 }
-            }
+            })
         },
         "GeneticsKP": {
             "dsl_command": "expand(kp=GeneticsKP)",
             "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
                            "satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "MolePro": {
             "dsl_command": "expand(kp=MolePro)",
             "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
                            "subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "ClinicalRiskKP": {
             "dsl_command": "expand(kp=ClinicalRiskKP)",
             "description": "This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity "
                            "subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "WellnessKP": {
             "dsl_command": "expand(kp=WellnessKP)",
             "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
                            "subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "DrugResponseKP": {
             "dsl_command": "expand(kp=DrugResponseKP)",
             "description": "This command reaches out to the Multiomics Big GIM II Drug Response KP to find all "
                            "bioentity subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "TumorGeneMutationKP": {
             "dsl_command": "expand(kp=TumorGeneMutationKP)",
             "description": "This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find "
                            "all bioentity subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "NGD": {
             "dsl_command": "expand(kp=NGD)",
@@ -705,28 +753,19 @@ def get_kp_command_definitions() -> dict:
                            "a query graph; it returns edges between nodes with an NGD value below a certain "
                            "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
                            "configurable/smarter in the future.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "ICEES-DILI": {
             "dsl_command": "expand(kp=ICEES-DILI)",
             "description": "This command reaches out to the ICEES knowledge provider's DILI instance to find "
                            "all bioentity subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "ICEES-Asthma": {
             "dsl_command": "expand(kp=ICEES-Asthma)",
             "description": "This command reaches out to the ICEES knowledge provider's Asthma instance to find "
                            "all bioentity subpaths that satisfy the query graph.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info
-            }
+            "parameters": standard_parameters
         },
         "CHP": {
             "dsl_command": "expand(kp=CHP)",
@@ -736,9 +775,7 @@ def get_kp_command_definitions() -> dict:
                            "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
                            "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
                            "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
+            "parameters": merge_two_dicts(standard_parameters, {
                 "CHP_survival_threshold": {
                     "is_required": False,
                     "examples": [200, 100],
@@ -747,8 +784,8 @@ def get_kp_command_definitions() -> dict:
                     "default": 500,
                     "type": "int",
                     "description": "What cut-off/threshold for surivial time (day) to estimate probability."
-                },
-            }
+                }
+            })
         },
         "DTD": {
             "dsl_command": "expand(kp=DTD)",
@@ -760,9 +797,7 @@ def get_kp_command_definitions() -> dict:
                            "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
                            "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to "
                            "to call DTD model to do a real-time calculation.",
-            "parameters": {
-                "edge_key": edge_key_parameter_info,
-                "node_key": node_key_parameter_info,
+            "parameters": merge_two_dicts(standard_parameters, {
                 "DTD_threshold": {
                     "is_required": False,
                     "examples": [0.8, 0.5],
@@ -780,6 +815,6 @@ def get_kp_command_definitions() -> dict:
                     "type": "boolean",
                     "description": "Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability."
                 }
-            }
+            })
         }
     }

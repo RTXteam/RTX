@@ -1,4 +1,5 @@
 #!/bin/env python3
+import copy
 import json
 import sys
 import os
@@ -32,8 +33,6 @@ class TRAPIQuerier:
         self.user_specified_kp = user_specified_kp
         self.force_local = force_local
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
-        self.kp_preferred_prefixes = eu.get_kp_preferred_prefixes(kp_name)
-        self.predicates_timeout = 5
         self.kp_selector = kp_selector
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -45,7 +44,7 @@ class TRAPIQuerier:
         """
         log = self.log
         final_kg = QGOrganizedKnowledgeGraph()
-        qg_copy = eu.copy_qg(query_graph)  # Create a copy so we don't modify the original
+        qg_copy = copy.deepcopy(query_graph)  # Create a copy so we don't modify the original
 
         self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
@@ -75,7 +74,7 @@ class TRAPIQuerier:
         """
         log = self.log
         final_kg = QGOrganizedKnowledgeGraph()
-        qg_copy = eu.copy_qg(single_node_qg)
+        qg_copy = copy.deepcopy(single_node_qg)
 
         # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
         self._verify_is_single_node_query_graph(qg_copy)
@@ -228,14 +227,27 @@ class TRAPIQuerier:
 
     def _get_query_timeout_length(self, qg: QueryGraph) -> int:
         # Returns the number of seconds we should wait for a response based on the number of curies in the QG
-        num_total_curies = sum([len(qnode.ids) for qnode in qg.nodes.values() if qnode.ids])
+        node_curie_counts = [len(qnode.ids) for qnode in qg.nodes.values() if qnode.ids]
+        num_total_curies_in_qg = sum(node_curie_counts)
+        num_qnodes_with_curies = len(node_curie_counts)
         if self.kp_name == "RTX-KG2":
             return 600
         elif self.user_specified_kp:
             return 300
-        elif num_total_curies < 15:
-            return 15
-        elif num_total_curies < 30:
-            return 30
-        else:
-            return 120
+        elif num_qnodes_with_curies == 1:
+            if num_total_curies_in_qg < 30:
+                return 15
+            elif num_total_curies_in_qg < 100:
+                return 30
+            elif num_total_curies_in_qg < 200:
+                return 60
+            else:
+                return 120
+        else:  # Both nodes in the one-hop query must have curies specified
+            if num_total_curies_in_qg < 30:
+                return 15
+            elif num_total_curies_in_qg < 200:
+                return 30
+            else:
+                return 60
+

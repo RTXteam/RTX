@@ -11,6 +11,7 @@ import ast
 import time
 import pickle
 import re
+import copy
 
 import requests
 import requests_cache
@@ -33,8 +34,12 @@ class CategoryManager:
         self.approved_conflations = {
             'biolink:Gene': [ 'biolink:Protein' ],
             'biolink:Protein': [ 'biolink:Gene' ],
-            'biolink:Drug': [ 'biolink:ChemicalSubstance' ],
-            'biolink:ChemicalSubstance': [ 'biolink:Drug' ],
+            # Decided 2021-07-28 mini-hackathon that we may be best off NOT doing conflation here. Just use
+            # ChemicalEntity to refer to everything
+            # #'biolink:Drug': [ 'biolink:ChemicalEntity', 'biolink:MolecularEntity', 'biolink:SmallMolecule' ],
+            #'biolink:ChemicalEntity': [ 'biolink:Drug', 'biolink:MolecularEntity', 'biolink:SmallMolecule' ],
+            #'biolink:SmallMolecule': [ 'biolink:Drug', 'biolink:MolecularEntity', 'biolink:ChemicalEntity' ],
+            #'biolink:MolecularEntity': [ 'biolink:Drug', 'biolink:SmallMolecule', 'biolink:ChemicalEntity' ],
             'biolink:Disease': [ 'biolink:PhenotypicFeature' ],
             'biolink:PhenotypicFeature': [ 'biolink:Disease' ],
             'biolink:DiseaseOrPhenotypicFeature': [ 'biolink:Disease', 'biolink:PhenotypicFeature' ],
@@ -82,7 +87,7 @@ class CategoryManager:
             return self.categories['ancestors'][category]
 
         # Build the URL and fetch the result
-        url = f"https://bl-lookup-sri.renci.org/bl/{category}/ancestors?version=latest"
+        url = f"https://bl-lookup-sri.renci.org/bl/{category}/ancestors?version=2.1.0"
         response_content = requests.get(url, headers={'accept': 'application/json'})
         status_code = response_content.status_code
 
@@ -129,21 +134,24 @@ class CategoryManager:
                 for conflated_category in self.approved_conflations[category]:
                     expansive_categories[conflated_category] = True
 
-            # Get the ancestors of this category
-            ancestors = self.get_ancestors(category)
+            parent_expansive_categories = copy.copy(expansive_categories)
+            for parent_category in parent_expansive_categories:
 
-            # If we didn't get any, that's fine, just move on
-            if ancestors is None:
-                continue
+                # Get the ancestors of this category
+                ancestors = self.get_ancestors(parent_category)
 
-            # For each discovered ancestor, add it to the dict and also add any approved conflations
-            for ancestor in ancestors:
-                if ancestor == 'biolink:Entity':
+                # If we didn't get any, that's fine, just move on
+                if ancestors is None:
                     continue
-                expansive_categories[ancestor] = True
-                if ancestor in self.approved_conflations:
-                    for conflated_category in self.approved_conflations[ancestor]:
-                        expansive_categories[conflated_category] = True
+
+                # For each discovered ancestor, add it to the dict and also add any approved conflations
+                for ancestor in ancestors:
+                    if ancestor == 'biolink:Entity':
+                        continue
+                    expansive_categories[ancestor] = True
+                    if ancestor in self.approved_conflations:
+                        for conflated_category in self.approved_conflations[ancestor]:
+                            expansive_categories[conflated_category] = True
 
 
         return expansive_categories

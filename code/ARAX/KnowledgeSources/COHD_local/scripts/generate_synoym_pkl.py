@@ -28,10 +28,10 @@ for index, curie in enumerate(NodeNamesDescriptions['curie']):
     preferred_curie = synonymizer.get_canonical_curies(curies=curie)[curie]
     if preferred_curie is None:
         print(f"{curie} doesn't have preferred curies", flush=True)
-        preferred_synonyms[preferred_curie['preferred_curie']] = dict()
-        preferred_synonyms[preferred_curie['preferred_curie']]['preferred_name'] = NodeNamesDescriptions.loc[index, 'name']
-        preferred_synonyms[preferred_curie['preferred_curie']]['preferred_type'] = NodeNamesDescriptions.loc[index, 'type']
-        preferred_synonyms[preferred_curie['preferred_curie']]['synonyms'] = [curie]
+        # preferred_synonyms[preferred_curie['preferred_curie']] = dict()
+        # preferred_synonyms[preferred_curie['preferred_curie']]['preferred_name'] = NodeNamesDescriptions.loc[index, 'name']
+        # preferred_synonyms[preferred_curie['preferred_curie']]['preferred_type'] = NodeNamesDescriptions.loc[index, 'type']
+        # preferred_synonyms[preferred_curie['preferred_curie']]['synonyms'] = [curie]
     else:
         if preferred_curie['preferred_curie'] not in preferred_synonyms:
             preferred_synonyms[preferred_curie['preferred_curie']] = dict()

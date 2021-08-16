@@ -22,12 +22,12 @@ def main():
     # Get master-config.shinc from the KG2 repo
     logging.info("Getting master-config.shinc from KG2pre repo")
     rtx_kg2_repo_url = "https://github.com/RTXteam/RTX-KG2/blob/master"
-    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/master-config.shinc?raw=true", "-o", KG2C_DIR])
+    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/master-config.shinc?raw=true", "-o", f"{KG2C_DIR}/master-config.shinc"])
 
     # Get the Neo4j setup script from the KG2 repo
     setup_script_name = "setup-kg2-neo4j.sh"
     logging.info(f"Getting {setup_script_name} from KG2pre repo")
-    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/{setup_script_name}?raw=true", "-o", KG2C_DIR])
+    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/{setup_script_name}?raw=true", "-o", f"{KG2C_DIR}/{setup_script_name}"])
 
     # Now run the Neo4j setup script
     logging.info(f"Running {setup_script_name}")

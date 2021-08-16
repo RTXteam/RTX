@@ -160,7 +160,7 @@ class ARAXMessenger:
                     'is_required': False,
                     'examples': [ 'protein', 'chemical_substance', 'disease' ],
                     'type': 'ARAXnode',
-                    'description': 'A list (n >= 1) of valid BioLink bioentity categories (e.g. biolink:Protein, biolink:ChemicalSubstance, biolink:Disease)',
+                    'description': 'A list (n >= 1) of valid BioLink bioentity categories (e.g. biolink:Protein, biolink:ChemicalEntity, biolink:Disease)',
                     },
                 'is_set': {
                     'is_required': False,
@@ -898,7 +898,7 @@ def main():
     parameters_sets = [
         { 'ids': ['DOID:9281']},
         { 'ids': ['Orphanet:673']},
-        { 'name': 'acetaminophen', 'categories': ['biolink:ChemicalSubstance'] },
+        { 'name': 'acetaminophen', 'categories': ['biolink:ChemicalEntity'] },
         { 'ids': ['NCIT:C198']},
         { 'ids': ['UMLS:C4710278']},
         { 'categories': ['biolink:Protein'], 'key': 'n10'},
