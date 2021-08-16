@@ -1,6 +1,7 @@
 import connexion
 import six
 
+from openapi_server.models.entity_query import EntityQuery  # noqa: E501
 from openapi_server import util
 
 import os
@@ -21,6 +22,23 @@ def get_entity(q):  # noqa: E501
     """
     synonymizer = NodeSynonymizer()
     response = synonymizer.get_normalizer_results(q)
+
+    return response
+
+
+def post_entity(body):  # noqa: E501
+    """Obtain CURIE and synonym information about search terms
+
+     # noqa: E501
+
+    :param body: List of terms to get information about
+    :type body: 
+
+    :rtype: EntityQuery
+    """
+
+    synonymizer = NodeSynonymizer()
+    response = synonymizer.get_normalizer_results(body)
 
     return response
 
