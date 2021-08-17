@@ -37,7 +37,9 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             # - '/bin/bash /scripts/start_app.sh'
-            - ["tail","-f","/dev/null"]
+            - "tail"
+            - "-f"
+            - "/dev/null"
           ports:
             - name: http
               containerPort: 80
