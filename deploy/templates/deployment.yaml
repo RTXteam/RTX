@@ -21,7 +21,7 @@ spec:
           image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
           command:
-            - '/bin/bash /scripts/download_database.sh'
+            - 'ls -al /scripts'
           volumeMounts:
             - name: {{ include "arax.fullname" . }}-secret-volume
               mountPath: "/etc/ssh-key"
