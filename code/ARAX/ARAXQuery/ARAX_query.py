@@ -260,11 +260,6 @@ class ARAXQuery:
             response.error("RTXKG2 does not support operations in Query", error_code="OperationsNotSupported")
             return response
 
-        # RTXKG2 does not support workflow
-        if mode == 'RTXKG2' and "have_workflow" in response.data:
-            response.error("RTXKG2 does not support workflow in Query", error_code="WorkflowNotSupported")
-            return response
-
         #### If we got this far, then everything seems to be good enough to proceed
         return response
 
