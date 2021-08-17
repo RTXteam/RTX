@@ -14,7 +14,7 @@ var UIstate = {};
 
 // defaults
 var base = "";
-var baseAPI = base + "api/arax/v1.1";
+var baseAPI = base + "api/arax/v1.2";
 
 // possibly imported by calling page (e.g. index.html)
 if (typeof config !== 'undefined') {
