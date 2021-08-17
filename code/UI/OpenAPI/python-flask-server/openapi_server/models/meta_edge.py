@@ -6,9 +6,11 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from openapi_server.models.base_model_ import Model
+from openapi_server.models.meta_attribute import MetaAttribute
 import re
 from openapi_server import util
 
+from openapi_server.models.meta_attribute import MetaAttribute  # noqa: E501
 import re  # noqa: E501
 
 class MetaEdge(Model):
@@ -17,7 +19,7 @@ class MetaEdge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, subject=None, predicate=None, object=None, relations=None):  # noqa: E501
+    def __init__(self, subject=None, predicate=None, object=None, attributes=None):  # noqa: E501
         """MetaEdge - a model defined in OpenAPI
 
         :param subject: The subject of this MetaEdge.  # noqa: E501
@@ -26,27 +28,27 @@ class MetaEdge(Model):
         :type predicate: str
         :param object: The object of this MetaEdge.  # noqa: E501
         :type object: str
-        :param relations: The relations of this MetaEdge.  # noqa: E501
-        :type relations: List[str]
+        :param attributes: The attributes of this MetaEdge.  # noqa: E501
+        :type attributes: List[MetaAttribute]
         """
         self.openapi_types = {
             'subject': str,
             'predicate': str,
             'object': str,
-            'relations': List[str]
+            'attributes': List[MetaAttribute]
         }
 
         self.attribute_map = {
             'subject': 'subject',
             'predicate': 'predicate',
             'object': 'object',
-            'relations': 'relations'
+            'attributes': 'attributes'
         }
 
         self._subject = subject
         self._predicate = predicate
         self._object = object
-        self._relations = relations
+        self._attributes = attributes
 
     @classmethod
     def from_dict(cls, dikt) -> 'MetaEdge':
@@ -141,24 +143,24 @@ class MetaEdge(Model):
         self._object = object
 
     @property
-    def relations(self):
-        """Gets the relations of this MetaEdge.
+    def attributes(self):
+        """Gets the attributes of this MetaEdge.
 
-        Low-level relations from the underlying source.  # noqa: E501
+        Edge attributes provided by this TRAPI web service.  # noqa: E501
 
-        :return: The relations of this MetaEdge.
-        :rtype: List[str]
+        :return: The attributes of this MetaEdge.
+        :rtype: List[MetaAttribute]
         """
-        return self._relations
+        return self._attributes
 
-    @relations.setter
-    def relations(self, relations):
-        """Sets the relations of this MetaEdge.
+    @attributes.setter
+    def attributes(self, attributes):
+        """Sets the attributes of this MetaEdge.
 
-        Low-level relations from the underlying source.  # noqa: E501
+        Edge attributes provided by this TRAPI web service.  # noqa: E501
 
-        :param relations: The relations of this MetaEdge.
-        :type relations: List[str]
+        :param attributes: The attributes of this MetaEdge.
+        :type attributes: List[MetaAttribute]
         """
 
-        self._relations = relations
+        self._attributes = attributes
