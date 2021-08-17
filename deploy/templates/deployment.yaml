@@ -16,21 +16,22 @@ spec:
         {{- include "arax.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "arax.serviceAccountName" . }}
-        # initContainers:
-        #   - name: {{ .Chart.Name }}-init-container
-        #     image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
-        #     imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
-        #     command:
-        #       - '/bin/bash /scripts/download_database.sh'
-        #     volumeMounts:
-        #       - name: {{ include "arax.fullname" . }}-secret-volume
-        #         mountPath: "/etc/ssh-key"
-        #       - name: {{ include "arax.fullname" . }}-configs-volume
-        #         mountPath: "/configs"
-        #       - name: {{ include "arax.fullname" . }}-scripts-volume
-        #         mountPath: "/scripts"
-        #       - name: {{ include "arax.fullname" . }}-pvc
-        #         mountPath: /databases
+      initContainers:
+        - name: {{ .Chart.Name }}-init-container
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
+          command:
+            - "/bin/bash"
+            - "/scripts/download_database.sh"
+          volumeMounts:
+            - name: {{ include "arax.fullname" . }}-secret-volume
+              mountPath: "/etc/ssh-key"
+            - name: {{ include "arax.fullname" . }}-configs-volume
+              mountPath: "/configs"
+            - name: {{ include "arax.fullname" . }}-scripts-volume
+              mountPath: "/scripts"
+            - name: {{ include "arax.fullname" . }}-pvc
+              mountPath: /databases
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
