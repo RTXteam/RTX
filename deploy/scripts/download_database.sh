@@ -10,7 +10,7 @@
 # sftp -i /etc/ssh-key/ssh-key-SECRET_FILE -o StrictHostKeyChecking=no -pr team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/databases/ /
 
 # variables
-config_file="/configv2/configv2.json"
+config_file="/configs/configv2.json"
 # associative array serves as dict
 # here we build db_arr with db_path_pvc as its key and 1 as its value, which equivilent to "set"
 # db_arr:     most updated db file path on PVC (in this case, /databases)
