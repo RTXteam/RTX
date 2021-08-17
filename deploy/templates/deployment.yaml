@@ -21,15 +21,14 @@ spec:
           image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
           command:
-            - './download_database.sh'
+            - '/bin/bash /scripts/download_database.sh'
           volumeMounts:
             - name: {{ include "arax.fullname" . }}-secret-volume
               mountPath: "/etc/ssh-key"
             - name: {{ include "arax.fullname" . }}-configs-volume
-              mountPath: /configv2
+              mountPath: /configs
             - name: {{ include "arax.fullname" . }}-scripts-volume
-              mountPath: /download_database.sh
-              subPath: download_database.sh
+              mountPath: /scripts
             - name: {{ include "arax.fullname" . }}-pvc
               mountPath: /databases
       containers:
@@ -37,7 +36,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - './start_app.sh'
+            - '/bin/bash /scripts/start_app.sh'
           ports:
             - name: http
               containerPort: 80
@@ -46,10 +45,9 @@ spec:
             - name: {{ include "arax.fullname" . }}-pvc
               mountPath: /mnt/data/orangeboard/databases/
             - name: {{ include "arax.fullname" . }}-configs-volume
-              mountPath: /configv2
+              mountPath: /configs
             - name: {{ include "arax.fullname" . }}-scripts-volume
-              mountPath: /start_app.sh
-              subPath: start_app.sh
+              mountPath: /scripts
           livenessProbe:
             httpGet:
               path: /
@@ -74,11 +72,11 @@ spec:
         - name: {{ include "arax.fullname" . }}-scripts-volume
           configMap:
             name: {{ include "arax.fullname" . }}-scripts
-            defaultMode: 0777
+            defaultMode: 0755
         - name: {{ include "arax.fullname" . }}-configs-volume
           configMap:
             name: {{ include "arax.fullname" . }}-configs
-            defaultMode: 0777
+            defaultMode: 0755
   volumeClaimTemplates:
     - metadata:
         name: {{ include "arax.fullname" . }}-pvc
