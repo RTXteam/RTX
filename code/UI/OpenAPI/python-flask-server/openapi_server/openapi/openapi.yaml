@@ -21,6 +21,7 @@ info:
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
     version: 1.2.0
+    asyncquery: true
     operations:
     - filter_results_top_n
     - overlay_compute_ngd

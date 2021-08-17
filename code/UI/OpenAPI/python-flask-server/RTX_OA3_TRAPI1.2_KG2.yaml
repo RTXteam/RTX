@@ -21,6 +21,7 @@ info:
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
     version: 1.2.0
+    asyncquery: false
     operations:
       - lookup
     externalDocs:
@@ -1365,6 +1366,17 @@ components:
           additionalProperties: true
       additionalProperties: true
       nullable: true
+    EntityQuery:
+      type: object
+      properties:
+        terms:
+          type: array
+          description: List of term strings to search for
+          items:
+            type: string
+        format:
+          type: string
+          description: Format of the response (full or compact)
     OperationLookup:
       additionalProperties: false
       properties:
