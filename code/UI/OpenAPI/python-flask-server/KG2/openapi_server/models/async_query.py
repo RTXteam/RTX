@@ -8,13 +8,13 @@ from typing import List, Dict  # noqa: F401
 from openapi_server.models.base_model_ import Model
 from openapi_server.models.log_level import LogLevel
 from openapi_server.models.message import Message
-from openapi_server.models.one_of_operation_lookup import OneOfOperationLookup
+from openapi_server.models.any_type import AnyType
 import re
 from openapi_server import util
 
 from openapi_server.models.log_level import LogLevel  # noqa: E501
 from openapi_server.models.message import Message  # noqa: E501
-from openapi_server.models.one_of_operation_lookup import OneOfOperationLookup  # noqa: E501
+from openapi_server.models.any_type import AnyType  # noqa: E501
 import re  # noqa: E501
 
 class AsyncQuery(Model):
@@ -33,13 +33,13 @@ class AsyncQuery(Model):
         :param log_level: The log_level of this AsyncQuery.  # noqa: E501
         :type log_level: LogLevel
         :param workflow: The workflow of this AsyncQuery.  # noqa: E501
-        :type workflow: List[OneOfOperationLookup]
+        :type workflow: List[AnyType]
         """
         self.openapi_types = {
             'callback': str,
             'message': Message,
             'log_level': LogLevel,
-            'workflow': List[OneOfOperationLookup]
+            'workflow': List[AnyType]
         }
 
         self.attribute_map = {
@@ -145,7 +145,7 @@ class AsyncQuery(Model):
         List of workflow steps to be executed.  # noqa: E501
 
         :return: The workflow of this AsyncQuery.
-        :rtype: List[OneOfOperationLookup]
+        :rtype: List[AnyType]
         """
         return self._workflow
 
@@ -156,7 +156,7 @@ class AsyncQuery(Model):
         List of workflow steps to be executed.  # noqa: E501
 
         :param workflow: The workflow of this AsyncQuery.
-        :type workflow: List[OneOfOperationLookup]
+        :type workflow: List[AnyType]
         """
 
         self._workflow = workflow
