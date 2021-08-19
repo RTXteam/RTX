@@ -242,7 +242,7 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     bh = BiolinkHelper(biolink_version)
     # Convert array fields into the format neo4j wants and do some final processing
     for canonicalized_node in canonicalized_nodes_dict.values():
-        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node['all_categories'])
+        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node['all_categories'], include_mixins=False)
         for list_node_property in ARRAY_NODE_PROPERTIES + ['node_labels']:
             canonicalized_node[list_node_property] = _convert_list_to_string_encoded_format(canonicalized_node[list_node_property])
     for canonicalized_edge in canonicalized_edges_dict.values():
