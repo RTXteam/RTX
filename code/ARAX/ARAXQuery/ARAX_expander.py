@@ -25,6 +25,7 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
+from openapi_server.models.query_constraint import QueryConstraint
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -43,8 +44,9 @@ class ARAXExpander:
                                                                               "biolink:PhenotypicFeature"}}
         self.kp_command_definitions = eu.get_kp_command_definitions()
         self.biolink_helper = BiolinkHelper()
-        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status"}
-        self.supported_qedge_constraints = set()
+        # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
+        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
+        self.supported_qedge_constraints = dict()
 
     def describe_me(self):
         """
@@ -115,27 +117,21 @@ class ARAXExpander:
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = copy.deepcopy(message.query_graph)
 
-        # Verify we understand all constraints and organize those we do for later handling
-        # TODO: Also verify we understand the value for each supported constraint?
-        constraints_to_apply = {"nodes": defaultdict(set), "edges": defaultdict(set)}
+        # Verify we understand all constraints
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.constraints:
-                qnode_constraints = {constraint.id for constraint in qnode.constraints}
-                unsupported_constraints = qnode_constraints.difference(self.supported_qnode_constraints)
-                if unsupported_constraints:
-                    log.error(f"Unsupported constraint(s) detected on qnode {qnode_key}: {unsupported_constraints}. "
-                              f"Don't know how to handle!", error_code="UnsupportedConstraint")
-                else:
-                    for constraint in qnode.constraints:
-                        constraints_to_apply["nodes"][qnode_key].add((constraint.id, constraint.value))
-            log.debug(f"Constraints to apply for qnode {qnode_key} are: {constraints_to_apply['nodes'][qnode_key]}")
+                for constraint in qnode.constraints:
+                    if not self.is_supported_constraint(constraint, self.supported_qnode_constraints):
+                        log.error(f"Unsupported constraint(s) detected on qnode {qnode_key}: \n{constraint}\n"
+                                  f"Don't know how to handle! Supported qnode constraints are: "
+                                  f"{self.supported_qnode_constraints}", error_code="UnsupportedConstraint")
         for qedge_key, qedge in query_graph.edges.items():
             if qedge.constraints:
-                qedge_constraints = {constraint.id for constraint in qedge.constraints}
-                unsupported_qedge_constraints = qedge_constraints.difference(self.supported_qedge_constraints)
-                if unsupported_qedge_constraints:
-                    log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: {unsupported_qedge_constraints}. "
-                              f"Don't know how to handle!", error_code="UnsupportedConstraint")
+                for constraint in qedge.constraints:
+                    if not self.is_supported_constraint(constraint, self.supported_qedge_constraints):
+                        log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
+                                  f"Don't know how to handle! Supported qedge constraints are: "
+                                  f"{self.supported_qedge_constraints}", error_code="UnsupportedConstraint")
 
         if response.status != 'OK':
             return response
@@ -260,18 +256,19 @@ class ARAXExpander:
                 qnode_keys = {qedge.subject, qedge.object}
                 qnode_keys_with_answers = qnode_keys.intersection(set(overarching_kg.nodes_by_qg_id))
                 for qnode_key in qnode_keys_with_answers:
-                    for constraint_to_apply in constraints_to_apply["nodes"][qnode_key]:
-                        constraint_id = constraint_to_apply[0]
-                        constraint_value = constraint_to_apply[1]
-                        log.debug(f"Applying qnode constraint {constraint_id} with value '{constraint_value}'")
-                        # Handle FDA-approved drugs constraint TODO: check value later on? unclear what means..
-                        if constraint_id == "biolink:highest_FDA_approval_status":
-                            fda_approved_drug_ids = self._load_fda_approved_drug_ids()
-                            answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
-                            non_fda_approved_ids = answer_node_ids.difference(fda_approved_drug_ids)
-                            log.info(f"Removing {len(non_fda_approved_ids)} nodes fulfilling {qnode_key} that are not "
-                                     f"FDA approved ({round((len(non_fda_approved_ids) / len(answer_node_ids)) * 100)}%)")
-                            overarching_kg.remove_nodes(non_fda_approved_ids, qnode_key, query_graph)
+                    qnode = query_graph.nodes[qnode_key]
+                    if qnode.constraints and any(constraint for constraint in qnode.constraints if
+                                                 constraint.id == "biolink:highest_FDA_approval_status" and
+                                                 constraint.operator == "==" and
+                                                 constraint.value == "regular approval"):
+                        log.info(f"Applying qnode {qnode_key} constraint: biolink:highest_FDA_approval_status "
+                                 f"== regular approval")
+                        fda_approved_drug_ids = self._load_fda_approved_drug_ids()
+                        answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
+                        non_fda_approved_ids = answer_node_ids.difference(fda_approved_drug_ids)
+                        log.debug(f"Removing {len(non_fda_approved_ids)} nodes fulfilling {qnode_key} that are not "
+                                  f"FDA approved ({round((len(non_fda_approved_ids) / len(answer_node_ids)) * 100)}%)")
+                        overarching_kg.remove_nodes(non_fda_approved_ids, qnode_key, query_graph)
 
                 # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
                 if mode == "ARAX":
@@ -888,6 +885,18 @@ class ARAXExpander:
                     parameters["user_specified_prune_threshold"] = True
 
         return parameters
+
+    @staticmethod
+    def is_supported_constraint(constraint: QueryConstraint, supported_constraints_map: Dict[str, Dict[str, Set[str]]]) -> bool:
+        if constraint.id not in supported_constraints_map:
+            return False
+        elif constraint.value not in supported_constraints_map[constraint.id]:
+            return False
+        elif constraint.operator not in supported_constraints_map[constraint.id][constraint.value]:
+            return False
+        else:
+            return True
+
 
     @staticmethod
     def _load_fda_approved_drug_ids() -> Set[str]:
