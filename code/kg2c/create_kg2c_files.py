@@ -408,13 +408,13 @@ def create_kg2c_files(is_test=False):
     num_cpus = os.cpu_count()
     logging.info(f" Detected {num_cpus} cpus; will use all of them to choose best descriptions")
     pool = Pool(num_cpus)
+    start = time.time()
     if use_nlp_to_choose_descriptions:
         logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
         best_descriptions = pool.map(_get_best_description_nlp, description_lists)
     else:
         logging.info(f"  Choosing best descriptions (longest under 10,000 characters)..")
         best_descriptions = pool.map(_get_best_description_length, description_lists)
-    start = time.time()
 
     logging.info(f" Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
     # Actually decorate nodes with their 'best' description
