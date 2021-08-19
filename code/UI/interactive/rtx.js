@@ -1875,7 +1875,7 @@ function process_graph(gne,gid,trapi) {
 
 	    var tmpdata = { "ids"        : gnode.ids ? gnode.ids : [],
 			    "is_set"     : gnode.is_set,
-			    "_names"     : gnode.ids ? gnode.ids : [],
+			    "_names"     : gnode.ids ? gnode.ids.slice() : [], // make a copy!
 			    "_desc"      : gnode.description,
 			    "categories" : gnode.categories ? gnode.categories : []
 			  };
@@ -2476,8 +2476,10 @@ function mapNodeColor(ele) {
 }
 
 function mapEdgeLineStyle(ele) {
-    var etype = ele.data().predicate ? ele.data().predicate : ele.data().predicates ? ele.data().predicates[0] : "NA";
-    if (etype == "biolink:has_normalized_google_distance_with") return 'dashed';
+    if (ele.data().attributes)
+	for (var att of ele.data().attributes)
+	    if (att["attribute_type_id"] == "biolink:computed_value")
+		return 'dashed';
     return 'solid';
 }
 
@@ -2542,18 +2544,17 @@ function qg_node(id,render) {
 	if (input_qg.nodes[id]['_names'].length > 0) {
 	    daname = input_qg.nodes[id]['_names'][0];
 	    if (input_qg.nodes[id]['_names'].length == 2)
-		daname += ", "+input_qg.nodes[id]['_names'][1];
+		daname = "[ "+daname+", "+input_qg.nodes[id]['_names'][1]+" ]";
 	    else if (input_qg.nodes[id]['_names'].length > 2)
-		daname += " +"+(input_qg.nodes[id]['_names'].length - 1);
+		daname = "[ "+daname+" +"+(input_qg.nodes[id]['_names'].length - 1)+" ]";
 	}
         else if (input_qg.nodes[id]['categories'].length > 0) {
-	    daname = '[ ' + input_qg.nodes[id]['categories'][0].replace("biolink:","");
+	    daname = input_qg.nodes[id]['categories'][0];
 
 	    if (input_qg.nodes[id]['categories'].length == 2)
-		daname += ", "+input_qg.nodes[id]['categories'][1].replace("biolink:","");
+		daname = "[ "+daname+", "+input_qg.nodes[id]['categories'][1]+" ]";
 	    else if (input_qg.nodes[id]['categories'].length > 2)
-		daname += " +"+(input_qg.nodes[id]['categories'].length - 1);
-	    daname += ' ]';
+		daname = "[ "+daname+" +"+(input_qg.nodes[id]['categories'].length - 1)+" ]";
 	}
 
 	if (daname != cyobj[99999].getElementById(id).data('name'))
@@ -2569,7 +2570,8 @@ function qg_node(id,render) {
     var htmlnode = document.getElementById('nodeeditor_ids');
     htmlnode.innerHTML = '';
     if (input_qg.nodes[id].ids) {
-	for (curie of input_qg.nodes[id].ids.sort()) {
+	var theids = input_qg.nodes[id].ids.slice();  // creates a copy (instead of a reference)
+	for (curie of theids.sort()) {
 	    htmlnode.appendChild(document.createTextNode(curie));
 
 	    var link = document.createElement("a");
@@ -2784,6 +2786,19 @@ function qg_edge(id) {
 	cyobj[99999].getElementById(id).select();
 	UIstate.shakeit = true;
     }
+    else {  // need to update label?
+	if (input_qg.edges[id]['predicates'] && input_qg.edges[id]['predicates'].length > 0) {
+	    dalabel = input_qg.edges[id]['predicates'][0];
+            if (input_qg.edges[id]['predicates'].length > 1)
+                dalabel = "[ "+dalabel+" +"+(input_qg.edges[id]['predicates'].length - 1)+" ]";
+	}
+	else
+	    dalabel = ' n/a ';
+
+        if (dalabel != cyobj[99999].getElementById(id).data('type'))
+	    cyobj[99999].getElementById(id).data('type',dalabel);
+    }
+
     display_qg_popup('edge','show');
 
     document.getElementById('edgeeditor_id').innerHTML = id;

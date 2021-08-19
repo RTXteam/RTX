@@ -1,6 +1,7 @@
 #!/bin/env python3
 import copy
 import multiprocessing
+import pickle
 import sys
 import os
 import traceback
@@ -10,6 +11,8 @@ from typing import List, Dict, Tuple, Union, Set, Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_decorator import ARAXDecorator
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
 from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
@@ -22,6 +25,7 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
+from openapi_server.models.query_constraint import QueryConstraint
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -40,6 +44,9 @@ class ARAXExpander:
                                                                               "biolink:PhenotypicFeature"}}
         self.kp_command_definitions = eu.get_kp_command_definitions()
         self.biolink_helper = BiolinkHelper()
+        # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
+        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
+        self.supported_qedge_constraints = dict()
 
     def describe_me(self):
         """
@@ -110,17 +117,21 @@ class ARAXExpander:
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = copy.deepcopy(message.query_graph)
 
-        # Verify we understand all constraints (right now we don't support any)
+        # Verify we understand all constraints
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.constraints:
-                constraint_ids = {constraint.id for constraint in qnode.constraints}
-                log.error(f"Unsupported constraint(s) detected on qnode {qnode_key} for {constraint_ids}. "
-                          f"Don't know how to handle these!", error_code="UnsupportedConstraint")
+                for constraint in qnode.constraints:
+                    if not self.is_supported_constraint(constraint, self.supported_qnode_constraints):
+                        log.error(f"Unsupported constraint(s) detected on qnode {qnode_key}: \n{constraint}\n"
+                                  f"Don't know how to handle! Supported qnode constraints are: "
+                                  f"{self.supported_qnode_constraints}", error_code="UnsupportedConstraint")
         for qedge_key, qedge in query_graph.edges.items():
             if qedge.constraints:
-                constraint_ids = {constraint.id for constraint in qedge.constraints}
-                log.error(f"Unsupported constraint(s) detected on qedge {qedge_key} for {constraint_ids}. "
-                          f"Don't know how to handle these!", error_code="UnsupportedConstraint")
+                for constraint in qedge.constraints:
+                    if not self.is_supported_constraint(constraint, self.supported_qedge_constraints):
+                        log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
+                                  f"Don't know how to handle! Supported qedge constraints are: "
+                                  f"{self.supported_qedge_constraints}", error_code="UnsupportedConstraint")
 
         if response.status != 'OK':
             return response
@@ -240,6 +251,24 @@ class ARAXExpander:
                     if response.status != 'OK':
                         return response
                 log.debug(f"After merging KPs' answers, total KG counts are: {eu.get_printable_counts_by_qg_id(overarching_kg)}")
+
+                # Handle any constraints for this qedge and/or its qnodes (that require post-filtering)
+                qnode_keys = {qedge.subject, qedge.object}
+                qnode_keys_with_answers = qnode_keys.intersection(set(overarching_kg.nodes_by_qg_id))
+                for qnode_key in qnode_keys_with_answers:
+                    qnode = query_graph.nodes[qnode_key]
+                    if qnode.constraints and any(constraint for constraint in qnode.constraints if
+                                                 constraint.id == "biolink:highest_FDA_approval_status" and
+                                                 constraint.operator == "==" and
+                                                 constraint.value == "regular approval"):
+                        log.info(f"Applying qnode {qnode_key} constraint: biolink:highest_FDA_approval_status "
+                                 f"== regular approval")
+                        fda_approved_drug_ids = self._load_fda_approved_drug_ids()
+                        answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
+                        non_fda_approved_ids = answer_node_ids.difference(fda_approved_drug_ids)
+                        log.debug(f"Removing {len(non_fda_approved_ids)} nodes fulfilling {qnode_key} that are not "
+                                  f"FDA approved ({round((len(non_fda_approved_ids) / len(answer_node_ids)) * 100)}%)")
+                        overarching_kg.remove_nodes(non_fda_approved_ids, qnode_key, query_graph)
 
                 # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
                 if mode == "ARAX":
@@ -856,6 +885,32 @@ class ARAXExpander:
                     parameters["user_specified_prune_threshold"] = True
 
         return parameters
+
+    @staticmethod
+    def is_supported_constraint(constraint: QueryConstraint, supported_constraints_map: Dict[str, Dict[str, Set[str]]]) -> bool:
+        if constraint.id not in supported_constraints_map:
+            return False
+        elif constraint.value not in supported_constraints_map[constraint.id]:
+            return False
+        elif constraint.operator not in supported_constraints_map[constraint.id][constraint.value]:
+            return False
+        else:
+            return True
+
+
+    @staticmethod
+    def _load_fda_approved_drug_ids() -> Set[str]:
+        # Determine the local path to the FDA-approved drugs pickle
+        path_list = os.path.realpath(__file__).split(os.path.sep)
+        rtx_index = path_list.index("RTX")
+        rtxc = RTXConfiguration()
+        pickle_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources'])
+        pickle_name = rtxc.fda_approved_drugs_path.split('/')[-1]
+        pickle_file_path = f"{pickle_dir_path}{os.path.sep}{pickle_name}"
+        # Load the pickle's data
+        with open(pickle_file_path, "rb") as fda_pickle:
+            fda_approved_drug_ids = pickle.load(fda_pickle)
+        return fda_approved_drug_ids
 
     @staticmethod
     def _override_node_categories(kg: KnowledgeGraph, qg: QueryGraph):

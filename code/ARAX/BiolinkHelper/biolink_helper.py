@@ -3,7 +3,6 @@ import json
 import os
 import pathlib
 import pickle
-import sys
 from collections import defaultdict
 from typing import Optional, List, Set, Dict, Union, Tuple
 
@@ -11,14 +10,10 @@ import requests
 import yaml
 from treelib import Tree
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-from ARAX_response import ARAXResponse
-
 
 class BiolinkHelper:
 
-    def __init__(self, biolink_version: Optional[str] = None, log: ARAXResponse = ARAXResponse()):
-        self.log = log
+    def __init__(self, biolink_version: Optional[str] = None):
         self.biolink_version = biolink_version if biolink_version else self.get_current_arax_biolink_version()
         biolink_helper_dir = os.path.dirname(os.path.abspath(__file__))
         self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}.pickle"
@@ -48,8 +43,7 @@ class BiolinkHelper:
         ancestors = input_item_set.copy()
         ancestor_property = "ancestors_with_mixins" if include_mixins else "ancestors"
         if include_conflations:
-            categories = {conflated_category for category in categories
-                          for conflated_category in self.arax_conflations.get(category, {category})}
+            categories = set(self.add_conflations(categories))
         for category in categories:
             ancestors.update(self.biolink_lookup_map["categories"][category][ancestor_property])
         for predicate in predicates:
@@ -60,7 +54,7 @@ class BiolinkHelper:
             ancestors.update(self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["ancestors"])
         return list(ancestors)
 
-    def get_descendants(self, biolink_items: Union[str, List[str]], include_mixins: bool = True, include_conflations: bool = True) -> List[str]:
+    def get_descendants(self, biolink_items: Union[str, List[str], Set[str]], include_mixins: bool = True, include_conflations: bool = True) -> List[str]:
         """
         Returns the descendants of Biolink categories, predicates, category mixins, or predicate mixins. Input
         categories/predicates/mixins are themselves included in the returned descendant list. For categories/predicates,
@@ -75,8 +69,7 @@ class BiolinkHelper:
         descendants = input_item_set.copy()
         descendant_property = "descendants_with_mixins" if include_mixins else "descendants"
         if include_conflations:
-            categories = {conflated_category for category in categories
-                          for conflated_category in self.arax_conflations.get(category, {category})}
+            categories = set(self.add_conflations(categories))
         for category in categories:
             descendants.update(self.biolink_lookup_map["categories"][category][descendant_property])
         for predicate in predicates:
@@ -87,7 +80,7 @@ class BiolinkHelper:
             descendants.update(self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["descendants"])
         return list(descendants)
 
-    def get_canonical_predicates(self, predicates: Union[str, List[str]]) -> List[str]:
+    def get_canonical_predicates(self, predicates: Union[str, List[str], Set[str]]) -> List[str]:
         """
         Returns the canonical version of the input predicate(s). Accepts a single predicate or multiple predicates as
         input and always returns the canonical predicate(s) in a list.
@@ -97,21 +90,29 @@ class BiolinkHelper:
         valid_predicates = input_predicate_set.intersection(self.biolink_lookup_map["predicates"])
         invalid_predicates = input_predicate_set.difference(valid_predicates)
         if invalid_predicates:
-            self.log.warning(f"Provided predicate(s) {invalid_predicates} do not exist in Biolink {self.biolink_version}")
+            print(f"WARNING: Provided predicate(s) {invalid_predicates} do not exist in Biolink {self.biolink_version}")
         canonical_predicates = {self.biolink_lookup_map["predicates"][predicate]["canonical_predicate"]
                                 for predicate in valid_predicates}
         canonical_predicates.update(invalid_predicates)  # Go ahead and include those we don't have canonical info for
         return list(canonical_predicates)
 
-    def filter_out_mixins(self, biolink_items: List[str]) -> List[str]:
+    def filter_out_mixins(self, biolink_items: Union[List[str], Set[str]]) -> List[str]:
         """
         Removes any predicate or category mixins in the input list.
         """
-        input_item_set = set(biolink_items)
+        input_item_set = self._convert_to_set(biolink_items)
         all_predicate_mixins = set(self.biolink_lookup_map["predicate_mixins"])
         all_category_mixins = set(self.biolink_lookup_map["category_mixins"])
         non_mixin_items = input_item_set.difference(all_predicate_mixins).difference(all_category_mixins)
         return list(non_mixin_items)
+
+    def add_conflations(self, categories: Union[str, List[str], Set[str]]) -> List[str]:
+        """
+        Adds any "equivalent" categories (according to ARAX) to the input categories.
+        """
+        category_set = self._convert_to_set(categories)
+        return list({conflated_category for category in category_set
+                     for conflated_category in self.arax_conflations.get(category, {category})})
 
     @staticmethod
     def get_current_arax_biolink_version() -> str:
@@ -134,14 +135,13 @@ class BiolinkHelper:
             return self._create_biolink_lookup_map()
         else:
             # A local file already exists for this Biolink version, so just load it
-            self.log.debug(f"Loading Biolink {self.biolink_version} lookup map")
             with open(self.biolink_lookup_map_path, "rb") as biolink_map_file:
                 biolink_lookup_map = pickle.load(biolink_map_file)
             return biolink_lookup_map
 
     def _create_biolink_lookup_map(self) -> Dict[str, Dict[str, Dict[str, Union[str, List[str]]]]]:
-        self.log.debug(f"Building local Biolink {self.biolink_version} ancestor/descendant lookup map because one "
-                       f"doesn't yet exist")
+        print(f"INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map because one "
+              f"doesn't yet exist")
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
                               "predicate_mixins": dict(), "category_mixins": dict()}
         # Grab the relevant Biolink yaml file
@@ -174,10 +174,11 @@ class BiolinkHelper:
                 predicate = predicate_node.identifier
                 ancestors = self._get_ancestors_from_tree(predicate, predicate_tree)
                 descendants = self._get_descendants_from_tree(predicate, predicate_tree)
-                direct_mixins = predicate_to_mixins_map[predicate]
-                mixin_ancestors = {mixin_ancestor for mixin in direct_mixins
+                mixin_ancestors = {mixin_ancestor for ancestor in ancestors
+                                   for mixin in predicate_to_mixins_map[ancestor]
                                    for mixin_ancestor in biolink_lookup_map["predicate_mixins"][mixin]["ancestors"]}
-                mixin_descendants = {mixin_descendant for mixin in direct_mixins
+                mixin_descendants = {mixin_descendant for descendant in descendants
+                                     for mixin in predicate_to_mixins_map[descendant]
                                      for mixin_descendant in biolink_lookup_map["predicate_mixins"][mixin]["descendants"]}
                 biolink_lookup_map["predicates"][predicate] = {
                     "ancestors": ancestors,
@@ -185,23 +186,24 @@ class BiolinkHelper:
                     "ancestors_with_mixins": ancestors.union(mixin_ancestors),
                     "descendants_with_mixins": descendants.union(mixin_descendants),
                     "canonical_predicate": canonical_predicate_map.get(predicate, predicate),
-                    "direct_mixins": direct_mixins,
+                    "direct_mixins": predicate_to_mixins_map[predicate],
                 }
             for category_node in category_tree.all_nodes():
                 category = category_node.identifier
                 ancestors = self._get_ancestors_from_tree(category, category_tree)
                 descendants = self._get_descendants_from_tree(category, category_tree)
-                direct_mixins = category_to_mixins_map[category]
-                mixin_ancestors = {mixin_ancestor for mixin in direct_mixins
+                mixin_ancestors = {mixin_ancestor for ancestor in ancestors
+                                   for mixin in category_to_mixins_map[ancestor]
                                    for mixin_ancestor in biolink_lookup_map["category_mixins"][mixin]["ancestors"]}
-                mixin_descendants = {mixin_descendant for mixin in direct_mixins
+                mixin_descendants = {mixin_descendant for descendant in descendants
+                                     for mixin in category_to_mixins_map[descendant]
                                      for mixin_descendant in biolink_lookup_map["category_mixins"][mixin]["descendants"]}
                 biolink_lookup_map["categories"][category] = {
                     "ancestors": ancestors,
                     "descendants": descendants,
                     "ancestors_with_mixins": ancestors.union(mixin_ancestors),
                     "descendants_with_mixins": descendants.union(mixin_descendants),
-                    "direct_mixins": direct_mixins,
+                    "direct_mixins": category_to_mixins_map[category],
                 }
 
             # And cache it (never needs to be refreshed for the given Biolink version)
@@ -212,7 +214,8 @@ class BiolinkHelper:
             with open(json_file_path, "w+") as output_json_file:
                 json.dump(biolink_lookup_map, output_json_file, default=self.serialize_with_sets, indent=4)
         else:
-            self.log.error(f"Unable to load Biolink yaml file.", error_code="BiolinkLoadError")
+            raise RuntimeError(f"ERROR: Request to get Biolink {self.biolink_version} YAML file returned "
+                               f"{response.status_code} response. Cannot load BiolinkHelper.")
 
         return biolink_lookup_map
 
@@ -322,6 +325,8 @@ class BiolinkHelper:
             return {items}
         elif isinstance(items, list):
             return set(items)
+        elif isinstance(items, set):
+            return items
         else:
             return set()
 
@@ -369,6 +374,8 @@ def main():
     assert "biolink:Gene" in protein_ancestors
     gene_descendants = bh.get_descendants("biolink:Gene", include_conflations=True)
     assert "biolink:Protein" in gene_descendants
+    gene_conflations = bh.add_conflations("biolink:Gene")
+    assert set(gene_conflations) == {"biolink:Gene", "biolink:Protein"}
 
     # Test canonical predicates
     canonical_treated_by = bh.get_canonical_predicates("biolink:treated_by")
