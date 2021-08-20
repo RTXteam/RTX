@@ -190,7 +190,7 @@ class ARAXQuery:
             response.envelope.message.query_graph = query['message'].query_graph
 
             #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
-            if mode == 'ARAX':
+            if mode == 'ARAX' or mode == 'asynchronous':
                 response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
                 interpreter = ARAXQueryGraphInterpreter()
                 interpreter.translate_to_araxi(response)
@@ -488,6 +488,19 @@ class ARAXQuery:
             #### Create some empty stubs if they don't exist
             if message.results is None:
                 message.results = []
+
+
+            #### If the mode is asynchronous, then fork here and return acceptance of query
+            if mode == 'asynchronous':
+                callback = input_operations_dict['callback']
+                response.info(f"Everything seems in order to begin processing the query. Processing will continue and Response will be posted to {callback}")
+                return response
+
+
+
+
+
+
 
             #### Process each action in order
             action_stats = { }
