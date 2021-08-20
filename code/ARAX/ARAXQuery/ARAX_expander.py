@@ -257,18 +257,20 @@ class ARAXExpander:
                 qnode_keys_with_answers = qnode_keys.intersection(set(overarching_kg.nodes_by_qg_id))
                 for qnode_key in qnode_keys_with_answers:
                     qnode = query_graph.nodes[qnode_key]
-                    if qnode.constraints and any(constraint for constraint in qnode.constraints if
-                                                 constraint.id == "biolink:highest_FDA_approval_status" and
-                                                 constraint.operator == "==" and
-                                                 constraint.value == "regular approval"):
-                        log.info(f"Applying qnode {qnode_key} constraint: biolink:highest_FDA_approval_status "
-                                 f"== regular approval")
-                        fda_approved_drug_ids = self._load_fda_approved_drug_ids()
-                        answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
-                        non_fda_approved_ids = answer_node_ids.difference(fda_approved_drug_ids)
-                        log.debug(f"Removing {len(non_fda_approved_ids)} nodes fulfilling {qnode_key} that are not "
-                                  f"FDA approved ({round((len(non_fda_approved_ids) / len(answer_node_ids)) * 100)}%)")
-                        overarching_kg.remove_nodes(non_fda_approved_ids, qnode_key, query_graph)
+                    if qnode.constraints:
+                        for constraint in qnode.constraints:
+                            if constraint.id == "biolink:highest_FDA_approval_status" and constraint.operator == "==" and constraint.value == "regular approval":
+                                log.info(f"Applying qnode {qnode_key} constraint: {'NOT ' if constraint._not else ''}"
+                                         f"biolink:highest_FDA_approval_status == regular approval")
+                                fda_approved_drug_ids = self._load_fda_approved_drug_ids()
+                                answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
+                                if constraint._not:
+                                    nodes_to_remove = answer_node_ids.intersection(fda_approved_drug_ids)
+                                else:
+                                    nodes_to_remove = answer_node_ids.difference(fda_approved_drug_ids)
+                                log.debug(f"Removing {len(nodes_to_remove)} nodes fulfilling {qnode_key} for FDA "
+                                          f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
+                                overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
 
                 # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
                 if mode == "ARAX":
