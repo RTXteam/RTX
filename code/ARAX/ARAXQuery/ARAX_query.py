@@ -490,16 +490,14 @@ class ARAXQuery:
                 message.results = []
 
 
-            #### If the mode is asynchronous, then fork here and return acceptance of query
+            #### If the mode is asynchronous, then fork here. The parent returns the response thus far
+            # and the child keeps working eventually to finish and exit()
             if mode == 'asynchronous':
                 callback = input_operations_dict['callback']
-                response.info(f"Everything seems in order to begin processing the query. Processing will continue and Response will be posted to {callback}")
-                return response
-
-
-
-
-
+                response.info(f"Everything seems in order to begin processing the query asynchronously. Processing will continue and Response will be posted to {callback}")
+                newpid = os.fork()
+                if newpid > 0:
+                    return response
 
 
             #### Process each action in order
@@ -640,8 +638,12 @@ class ARAXQuery:
                 
             #### If asking for the full message back
             if return_action['parameters']['response'] == 'true':
-                response.info(f"Processing is complete. Transmitting resulting Message back to client.")
-                return response
+                if mode == 'asynchronous':
+                    response.info(f"Processing is complete. Attempting to the result to the callback URL.")
+                    self.send_to_callback(callback, response)
+                else:
+                    response.info(f"Processing is complete. Transmitting resulting Message back to client.")
+                    return response
 
             #### Else just the id is returned
             else:
@@ -659,6 +661,12 @@ class ARAXQuery:
 
                 return( { "status": 200, "response_id": str(response_id), "n_results": n_results, "url": url }, 200)
 
+
+
+    ############################################################################################
+    def send_to_callback(self, callback, response):
+        response.info(f"Attempting to send to callback URL: {callback}")
+        os.exit()
 
 
 ##################################################################################################
