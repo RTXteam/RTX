@@ -52,6 +52,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
 
 from ARAX_database_manager import ARAXDatabaseManager
+from reasoner_validator import validate
+from jsonschema.exceptions import ValidationError
 
 
 class ARAXQuery:
@@ -491,17 +493,18 @@ class ARAXQuery:
                 message.results = []
 
 
-            #### If the mode is asynchronous, then fork here. The parent returns the response thus far
-            # and the child keeps working eventually to finish and exit()
+            #### If the mode is asynchronous, then fork here. The parent returns the response thus far that everything checks out and is proceeding
+            #### and the child continues to work on the query, eventually to finish and exit()
             if mode == 'asynchronous':
                 callback = input_operations_dict['callback']
                 response.info(f"Everything seems in order to begin processing the query asynchronously. Processing will continue and Response will be posted to {callback}")
                 newpid = os.fork()
+                #### The parent returns to tell the caller that work will proceed
                 if newpid > 0:
                     return response
-
+                #### The child continues
+                #### The child loses the MySQL connection of the parent, so need to reconnect
                 response_cache.connect()
-
                 
 
             #### Process each action in order
@@ -564,26 +567,33 @@ class ARAXQuery:
                         response.info(f"Running experimental reranker on results")
                         try:
                             ranker = ARAXRanker()
-                            #ranker.aggregate_scores(message, response=response)
                             ranker.aggregate_scores_dmk(response)
                         except Exception as error:
                             exception_type, exception_value, exception_traceback = sys.exc_info()
                             response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                            if mode == 'asynchronous':
+                                self.send_to_callback(callback, response)
                             return response
 
                     else:
                         response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
+                        if mode == 'asynchronous':
+                            self.send_to_callback(callback, response)
                         return response
 
                 except Exception as error:
                     exception_type, exception_value, exception_traceback = sys.exc_info()
                     response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                    if mode == 'asynchronous':
+                        self.send_to_callback(callback, response)
                     return response
 
                 #### If we're in an error state return now
                 if response.status != 'OK':
                     response.envelope.status = response.error_code
                     response.envelope.description = response.message
+                    if mode == 'asynchronous':
+                        self.send_to_callback(callback, response)
                     return response
 
                 #### Immediately after resultify, run the experimental ranker
@@ -591,11 +601,12 @@ class ARAXQuery:
                     response.info(f"Running experimental reranker on results")
                     try:
                         ranker = ARAXRanker()
-                        #ranker.aggregate_scores(message, response=response)
                         ranker.aggregate_scores_dmk(response)
                     except Exception as error:
                         exception_type, exception_value, exception_traceback = sys.exc_info()
                         response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                        if mode == 'asynchronous':
+                            self.send_to_callback(callback, response)
                         return response
 
             #### At the end, process the explicit return() action, or implicitly perform one
@@ -626,12 +637,13 @@ class ARAXQuery:
                 if result.reasoner_id is None:
                     result.reasoner_id = 'ARAX'
 
-            # Store the provenance information
-            # This doesn't work because it needs to be added to the schema!
-            #response.envelope.validation_results = { 'status': '?', 'version': '?', 'size': '?', 'message': '' }
+            # Store the validation and provenance metadata
+            #trapi_version = '1.2.0'
+            #validate(response.envelope,'Response',trapi_version)
+            #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
             #from ARAX_attribute_parser import ARAXAttributeParser
-            #attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
-            #envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
+            #attribute_parser = ARAXAttributeParser(response.envelope,response.envelope['message'])
+            #response.envelope.validation_result['provenance_summary'] = attribute_parser.summarize_provenance_info()
 
 
             # If store=true, then put the message in the database
