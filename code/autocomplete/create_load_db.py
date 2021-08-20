@@ -34,7 +34,7 @@ uc_terms = {}
 with open(arguments.input, 'r', encoding="latin-1", errors="replace") as nodeData:
     print("Loading node names")
     for line in nodeData:
-        curie, name, type = line[:-1].split("\t")
+        curie, name, full_name, type = line[:-1].split("\t")
         #c.execute("INSERT INTO term(curie,name,type,rank) VALUES(?,?,?,?)" % (tablename), (curie,name,type,rank,))
 
         for term in [ name, curie ]:
