@@ -24,7 +24,7 @@ def asyncquery_post(request_body):  # noqa: E501
     query = connexion.request.get_json()
     araxq = ARAXQuery()
 
-    envelope = araxq.query_return_message(query)
+    envelope = araxq.query_return_message(query, mode='asynchronous')
     http_status = 200
     if hasattr(envelope, 'http_status'):
         http_status = envelope.http_status
