@@ -1877,7 +1877,8 @@ function process_graph(gne,gid,trapi) {
 			    "is_set"     : gnode.is_set,
 			    "_names"     : gnode.ids ? gnode.ids.slice() : [], // make a copy!
 			    "_desc"      : gnode.description,
-			    "categories" : gnode.categories ? gnode.categories : []
+			    "categories" : gnode.categories ? gnode.categories : [],
+			    "constraints": gnode.constraints ? gnode.constraints : []
 			  };
 
 	    input_qg.nodes[id] = tmpdata;
@@ -1889,7 +1890,8 @@ function process_graph(gne,gid,trapi) {
 
 	    var tmpdata = { "subject"    : gedge.subject,
 			    "object"     : gedge.object,
-			    "predicates" : gedge.predicates ? gedge.predicates : []
+			    "predicates" : gedge.predicates ? gedge.predicates : [],
+			    "constraints": gedge.constraints ? gedge.constraints : []
 			  };
 	    input_qg.edges[id] = tmpdata;
 	}
@@ -2521,6 +2523,7 @@ function qg_node(id,render) {
 	var newqnode = {};
 	newqnode.ids = [];
 	newqnode.categories = [];
+	newqnode.constraints = [];
 	newqnode.is_set = false;
 	newqnode._names = [];
 
@@ -2605,6 +2608,30 @@ function qg_node(id,render) {
     }
     else
 	input_qg.nodes[id].categories = [];
+
+    htmlnode = document.getElementById('nodeeditor_cons');
+    htmlnode.innerHTML = '';
+    if (input_qg.nodes[id].constraints) {
+	var cindex = 0;
+	for (constraint of input_qg.nodes[id].constraints) {
+	    htmlnode.appendChild(document.createTextNode(constraint.name+" "));
+	    if (constraint.not)
+		htmlnode.appendChild(document.createTextNode("NOT "));
+	    htmlnode.appendChild(document.createTextNode(constraint.operator + " " +constraint.value));
+	    if (constraint.unit_name)
+		htmlnode.appendChild(document.createTextNode(" ("+constraint.unit_name+")"));
+
+            var link = document.createElement("a");
+	    link.style.float = "right";
+	    link.href = 'javascript:qg_remove_constraint_from_qnode('+cindex+');';
+	    link.title = "remove "+constraint.id+" from Qnode constraints list";
+	    link.appendChild(document.createTextNode(" [ remove ] "));
+	    htmlnode.appendChild(link);
+
+	    htmlnode.appendChild(document.createElement("br"));
+	    cindex++;
+	}
+    }
 
     document.getElementById('nodeeditor_set').checked = input_qg.nodes[id].is_set;
     UIstate.editnodeid = id;
@@ -2742,6 +2769,70 @@ function qg_remove_category_from_qnode(cat) {
     qg_node(id);
 }
 
+function qg_add_constraint_to_qgitem(what) {
+    var id = null;
+    if (what == 'qedge')
+	id = UIstate.editedgeid;
+    else if (what == 'qnode')
+	id = UIstate.editnodeid;
+    if (!id) return;
+
+    var constraint = {};
+
+    var val = document.getElementById(what+"constraintIDbox").value.trim();
+    if (!val) return;
+    constraint.id = val;
+
+    val = document.getElementById(what+"constraintNAMEbox").value.trim();
+    if (!val) return;
+    constraint.name = val;
+
+    val = document.getElementById(what+"constraintVALUEbox").value.trim();
+    if (!val) return;
+    constraint.value = val;
+
+    constraint.not = document.getElementById(what+"constraintNOT").checked;
+    constraint.operator = document.getElementById(what+"constraintOPERATOR").value;
+    constraint.unit_id = document.getElementById(what+"constraintUNITIDbox").value.trim();
+    constraint.unit_name = document.getElementById(what+"constraintUNITNAMEbox").value.trim();
+
+    document.getElementById(what+"constraintIDbox").value = '';
+    document.getElementById(what+"constraintNAMEbox").value = '';
+    document.getElementById(what+"constraintVALUEbox").value = '';
+    document.getElementById(what+"constraintUNITIDbox").value = '';
+    document.getElementById(what+"constraintUNITNAMEbox").value = '';
+    document.getElementById(what+"constraintNOT").checked = false;
+    document.getElementById(what+"constraintOPERATOR").value = '==';
+
+    if (what == 'qedge') {
+	input_qg.edges[id]['constraints'].push(constraint);
+	qg_edge(id);
+    }
+    else {
+	input_qg.nodes[id]['constraints'].push(constraint);
+	qg_node(id);
+    }
+}
+
+function qg_remove_constraint_from_qnode(idx) {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+
+    if (idx > -1)
+	input_qg.nodes[id]['constraints'].splice(idx, 1);
+
+    qg_node(id);
+}
+function qg_remove_constraint_from_qedge(idx) {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+
+    if (idx > -1)
+	input_qg.edges[id]['constraints'].splice(idx, 1);
+
+    qg_edge(id);
+}
+
 function qg_setset_for_qnode() {
     var id = UIstate.editnodeid;
     if (!id) return;
@@ -2768,6 +2859,7 @@ function qg_edge(id) {
 	id = get_qg_id('e');
 	var newqedge = {};
 	newqedge.predicates = [];
+	newqedge.constraints = [];
 	// join last two nodes if not specified otherwise [ToDo: specify]
 	newqedge.subject = nodes[nodes.length - 2];
 	newqedge.object = nodes[nodes.length - 1];
@@ -2825,6 +2917,30 @@ function qg_edge(id) {
     }
     else
 	input_qg.edges[id].predicates = [];
+
+    htmlnode = document.getElementById('edgeeditor_cons');
+    htmlnode.innerHTML = '';
+    if (input_qg.edges[id].constraints) {
+	var cindex = 0;
+	for (constraint of input_qg.edges[id].constraints) {
+	    htmlnode.appendChild(document.createTextNode(constraint.name+" "));
+	    if (constraint.not)
+		htmlnode.appendChild(document.createTextNode("NOT "));
+	    htmlnode.appendChild(document.createTextNode(constraint.operator + " " +constraint.value));
+	    if (constraint.unit_name)
+		htmlnode.appendChild(document.createTextNode(" ("+constraint.unit_name+")"));
+
+            var link = document.createElement("a");
+	    link.style.float = "right";
+	    link.href = 'javascript:qg_remove_constraint_from_qedge('+cindex+');';
+	    link.title = "remove "+constraint.id+" from Qedge constraints list";
+	    link.appendChild(document.createTextNode(" [ remove ] "));
+	    htmlnode.appendChild(link);
+
+	    htmlnode.appendChild(document.createElement("br"));
+	    cindex++;
+	}
+    }
 
     if (document.getElementById("showQGjson").checked) {
 	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
@@ -3169,12 +3285,16 @@ function qg_clean_up(xfer) {
 	    delete gnode.ids;
 	if (gnode.categories && gnode.categories[0] == null)
 	    delete gnode.categories;
+	if (gnode.constraints && gnode.constraints[0] == null)
+	    delete gnode.constraints;
     }
 
     for (var eid in input_qg.edges) {
 	var gedge = input_qg.edges[eid];
 	if (gedge.predicates && gedge.predicates[0] == null)
 	    delete gedge.predicates;
+	if (gedge.constraints && gedge.constraints[0] == null)
+	    delete gedge.constraints;
     }
 
     if (xfer)

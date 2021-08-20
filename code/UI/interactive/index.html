@@ -129,7 +129,7 @@
     <label><input id="showQGjson" type="checkbox">Show JSON in Status window</label>
     <a class="qgmenu" href="javascript:qg_clean_up(true);selectInput('qjson');">Edit in JSON pane</a>
 
-    <div id="nodeeditor" style="top:400px;left:400px;visibility:hidden;" onfocus="qg_select('node');" tabindex="9999" class="alertbox">
+    <div id="nodeeditor" style="top:400px;left:50px;visibility:hidden;" onfocus="qg_select('node');" tabindex="9999" class="alertbox">
       <div style="margin-top:0;" class="statushead">Edit Query Node</div>
       <div class="status" style="cursor:auto; color:black; min-height:300px;" onmousedown="event.stopPropagation();"><br>
 	<table class="sumtab" style="width:100%">
@@ -150,7 +150,40 @@
 	      </span>
             </td>
 	  </tr>
-	  <tr style="background:#eee;"><td>is_set</td><td><input id="nodeeditor_set" type="checkbox" onchange="qg_setset_for_qnode();"></td></tr>
+          <tr style="background:#eee;"><td style="border:0;">constraints</td><td style="border:0;" id="nodeeditor_cons"></td></tr>
+          <tr style="background:#eee;">
+            <td class="tiny" style="border:0;text-align:right;vertical-align:revert;">New constraint Id:</td>
+            <td style="border:0;"><input type="text" style="margin:0;" class="questionBox" id="qnodeconstraintIDbox" size="30"></td>
+	  </tr>
+          <tr style="background:#eee;">
+            <td class="tiny" style="border:0;text-align:right;vertical-align:revert;">Name:</td>
+            <td style="border:0;"><input type="text" style="margin:0;" class="questionBox" id="qnodeconstraintNAMEbox" size="30"></td>
+	  </tr>
+          <tr style="background:#eee;">
+            <td class="tiny" style="border:0;text-align:right;vertical-align:revert;">Value:</td>
+            <td style="border:0;">
+	      <label><input id="qnodeconstraintNOT" type="checkbox">not </label>
+              <span style="width:unset;" class="qgselect">
+		<select style="width:unset;" id="qnodeconstraintOPERATOR">
+		  <option value="==">==</option>
+		  <option value=">">&gt;</option>
+		  <option value="<">&lt;</option>
+		  <option value="matches">matches</option>
+		</select>
+	      </span>
+	      <input type="text" style="margin:0;" class="questionBox" id="qnodeconstraintVALUEbox" size="10">
+	    </td>
+	  </tr>
+          <tr style="background:#eee;">
+	    <td class="tiny" style="text-align:right;vertical-align:revert;">Unit Id and Name:</td>
+	    <td>
+	      <input type="text" style="margin:0;" class="questionBox" id="qnodeconstraintUNITIDbox" size="13">
+	      <input type="text" style="margin:0;" class="questionBox" id="qnodeconstraintUNITNAMEbox" size="10">
+	      <input type="button" style="margin:0;" class="questionBox button" name="action" value="Add CONSTRAINT" onClick="qg_add_constraint_to_qgitem('qnode');">
+	    </td>
+	  </tr>
+
+	  <tr style="background:#fff;"><td>is_set</td><td><input id="nodeeditor_set" type="checkbox" onchange="qg_setset_for_qnode();"></td></tr>
 	</table>
 	<br><br>
 	<input type="button" class="questionBox button" name="action" title="Remove this Node from Query Graph" value="Delete Node" onClick="qg_remove_qnode();">
@@ -158,7 +191,7 @@
       </div>
     </div>
 
-    <div id="edgeeditor" style="top:850px;left:500px;visibility:hidden;" onfocus="qg_select('edge');" tabindex="9997" class="alertbox">
+    <div id="edgeeditor" style="top:410px;left:650px;visibility:hidden;" onfocus="qg_select('edge');" tabindex="9997" class="alertbox">
       <div style="margin-top:0;" class="statushead">Edit Query Edge</div>
       <div class="status" style="cursor:auto; color:black; min-height:300px;" onmousedown="event.stopPropagation();"><br>
 	<table class="sumtab" style="width:100%">
@@ -180,6 +213,40 @@
 	    <td class="tiny" style="vertical-align:revert;">Enter custom Predicate:</td>
 	    <td style="text-align:right;"><input type="text" class="questionBox" id="qedgepredicatebox" onkeydown="qg_enter_predicate(this);" size="30"></td>
 	  </tr>
+
+          <tr style="background:#fff;"><td style="border:0;">constraints</td><td style="border:0;" id="edgeeditor_cons"></td></tr>
+          <tr style="background:#fff;">
+            <td class="tiny" style="border:0;text-align:right;vertical-align:revert;">New constraint Id:</td>
+            <td style="border:0;"><input type="text" style="margin:0;" class="questionBox" id="qedgeconstraintIDbox" size="30"></td>
+	  </tr>
+          <tr style="background:#fff;">
+            <td class="tiny" style="border:0;text-align:right;vertical-align:revert;">Name:</td>
+            <td style="border:0;"><input type="text" style="margin:0;" class="questionBox" id="qedgeconstraintNAMEbox" size="30"></td>
+	  </tr>
+          <tr style="background:#fff;">
+            <td class="tiny" style="border:0;text-align:right;vertical-align:revert;">Value:</td>
+            <td style="border:0;">
+	      <label><input id="qedgeconstraintNOT" type="checkbox">not </label>
+              <span style="width:unset;" class="qgselect">
+		<select style="width:unset;" id="qedgeconstraintOPERATOR">
+		  <option value="==">==</option>
+		  <option value=">">&gt;</option>
+		  <option value="<">&lt;</option>
+		  <option value="matches">matches</option>
+		</select>
+	      </span>
+	      <input type="text" style="margin:0;" class="questionBox" id="qedgeconstraintVALUEbox" size="10">
+	    </td>
+	  </tr>
+          <tr style="background:#fff;">
+	    <td class="tiny" style="text-align:right;vertical-align:revert;">Unit Id and Name:</td>
+	    <td>
+	      <input type="text" style="margin:0;" class="questionBox" id="qedgeconstraintUNITIDbox" size="13">
+	      <input type="text" style="margin:0;" class="questionBox" id="qedgeconstraintUNITNAMEbox" size="10">
+	      <input type="button" style="margin:0;" class="questionBox button" name="action" value="Add CONSTRAINT" onClick="qg_add_constraint_to_qgitem('qedge');">
+	    </td>
+	  </tr>
+
 	</table>
 	<br><br>
 	<input type="button" class="questionBox button" name="action" title="Remove this Edge from Query Graph" value="Delete Edge" onClick="qg_remove_qedge();">
