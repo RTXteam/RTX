@@ -1,6 +1,17 @@
 import sqlite3
 import re
 import timeit
+import sys
+import os
+
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+
+RTXConfig = RTXConfiguration()
+autocomplete_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'autocomplete'])
+
 
 conn = None
 cursor = None
@@ -9,7 +20,7 @@ cursor = None
 def load():
     global conn
     global cursor
-    database_name = 'autocomplete.sqlite'
+    database_name = f"{autocomplete_filepath}{os.path.sep}{RTXConfig.autocomplete_path.split('/')[-1]}"
     conn = sqlite3.connect(database_name)
     cursor = conn.cursor()
     return True
