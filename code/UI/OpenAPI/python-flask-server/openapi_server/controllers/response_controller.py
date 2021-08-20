@@ -36,5 +36,7 @@ def post_response(body):  # noqa: E501
 
     :rtype: object
     """
-    return 'do some magic!'
+    import json
+    print(json.dumps(body, indent=2, sort_keys=True), file=sys.stderr)
+    return 'received!'
 
