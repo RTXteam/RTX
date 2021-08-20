@@ -15,6 +15,7 @@ import numpy as np
 import threading
 import json
 import uuid
+import requests
 
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -499,6 +500,9 @@ class ARAXQuery:
                 if newpid > 0:
                     return response
 
+                response_cache.connect()
+
+                
 
             #### Process each action in order
             action_stats = { }
@@ -635,6 +639,7 @@ class ARAXQuery:
             if return_action['parameters']['store'] == 'true':
                 response.debug(f"Storing resulting Message")
                 response_id = response_cache.add_new_response(response)
+                response.info(f"Result was stored with id {response_id}. It can be viewed at https://arax.ncats.io/?r={response_id}")
                 
             #### If asking for the full message back
             if return_action['parameters']['response'] == 'true':
@@ -666,7 +671,14 @@ class ARAXQuery:
     ############################################################################################
     def send_to_callback(self, callback, response):
         response.info(f"Attempting to send to callback URL: {callback}")
-        os.exit()
+        envelope_dict = response.envelope.to_dict()
+        try:
+            post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'})
+            status_code = post_response_content.status_code
+            response.info(f"Response from POST to callback URL was {status_code}")
+        except:
+            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost")
+        exit(0)
 
 
 ##################################################################################################
