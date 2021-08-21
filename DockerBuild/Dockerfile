@@ -48,6 +48,13 @@ RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flas
 RUN update-rc.d RTX_OpenAPI_production defaults
 RUN update-rc.d RTX_OpenAPI_production enable
 
+# autocomplete
+RUN cat /mnt/data/orangeboard/production/RTX/code/autocomplete/RTX_Complete | sed 's/devED/production/g' > /etc/init.d/RTX_Complete
+RUN chmod 700 /etc/init.d/RTX_Complete
+RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED/production/g' RTX_Complete.start
+RUN update-rc.d RTX_Complete defaults
+RUN update-rc.d RTX_Complete enable
+
 # set production flag to false
 RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py
 
