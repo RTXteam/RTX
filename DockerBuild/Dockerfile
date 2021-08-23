@@ -37,7 +37,7 @@ RUN cd /var/www && /usr/sbin/apachectl configtest
 # install python and packages
 RUN apt-get update
 RUN apt-get install -y python3 python3-dev python3-pip python3-venv
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && pip3 install -r requirements.txt && pip3 install flask_cors connexion[swagger-ui]
+RUN su rt && cd /mnt/data/orangeboard/production/RTX && pip3 install -r requirements.txt && pip3 install flask_cors connexion[swagger-ui] tornado
 
 # setup services
 RUN export DEVAREA=production
