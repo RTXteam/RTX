@@ -12,5 +12,6 @@ python3 code/ARAX/ARAXQuery/ARAX_database_manager.py
 
 sudo service apache2 start
 sudo service RTX_OpenAPI_production start
+sudo service RTX_Complete start
 # this line is added to stop container completes with exit code 0
 tail -f /dev/null
