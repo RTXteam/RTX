@@ -15,6 +15,8 @@ class BiolinkHelper:
 
     def __init__(self, biolink_version: Optional[str] = None):
         self.biolink_version = biolink_version if biolink_version else self.get_current_arax_biolink_version()
+        self.root_category = "biolink:NamedThing"
+        self.root_predicate = "biolink:related_to"
         biolink_helper_dir = os.path.dirname(os.path.abspath(__file__))
         self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}_v3.pickle"
         self.biolink_lookup_map = self._load_biolink_lookup_map()
@@ -136,6 +138,12 @@ class BiolinkHelper:
         return list({conflated_category for category in category_set
                      for conflated_category in self.arax_conflations.get(category, {category})})
 
+    def get_root_category(self) -> str:
+        return self.root_category
+
+    def get_root_predicate(self) -> str:
+        return self.root_predicate
+
     @staticmethod
     def get_current_arax_biolink_version() -> str:
         """
@@ -248,7 +256,6 @@ class BiolinkHelper:
         return biolink_lookup_map
 
     def _build_predicate_trees(self, biolink_model: dict) -> Tuple[Tree, Dict[str, str], Dict[str, Set[str]], Tree, Set[str]]:
-        root_predicate = "biolink:related_to"
         root_mixin = "MIXIN"  # This is made up for easier parsing
 
         # Build helper maps for predicates and their mixins
@@ -286,8 +293,8 @@ class BiolinkHelper:
 
         # Recursively build the predicates trees starting with the root
         predicate_tree = Tree()
-        predicate_tree.create_node(root_predicate, root_predicate)
-        self._create_tree_recursive(root_predicate, parent_to_child_dict, predicate_tree)
+        predicate_tree.create_node(self.root_predicate, self.root_predicate)
+        self._create_tree_recursive(self.root_predicate, parent_to_child_dict, predicate_tree)
         predicate_mixin_tree = Tree()
         predicate_mixin_tree.create_node(root_mixin, root_mixin)
         self._create_tree_recursive(root_mixin, parent_to_child_dict, predicate_mixin_tree)
@@ -295,7 +302,6 @@ class BiolinkHelper:
         return predicate_tree, canonical_predicate_map, predicate_to_mixins_map, predicate_mixin_tree, symmetric_predicates
 
     def _build_category_trees(self, biolink_model: dict) -> Tuple[Tree, Dict[str, Set[str]], Tree]:
-        root_category = "biolink:NamedThing"
         root_mixin = "MIXIN"  # This is made up for easier parsing
 
         # Build helper maps for categories and their mixins
@@ -318,8 +324,8 @@ class BiolinkHelper:
 
         # Recursively build the category trees starting with the root
         category_tree = Tree()
-        category_tree.create_node(root_category, root_category)
-        self._create_tree_recursive(root_category, parent_to_child_dict, category_tree)
+        category_tree.create_node(self.root_category, self.root_category)
+        self._create_tree_recursive(self.root_category, parent_to_child_dict, category_tree)
         category_mixin_tree = Tree()
         category_mixin_tree.create_node(root_mixin, root_mixin)
         self._create_tree_recursive(root_mixin, parent_to_child_dict, category_mixin_tree)
