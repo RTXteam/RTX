@@ -1,5 +1,6 @@
 #!/bin/env python3
 import copy
+import logging
 import multiprocessing
 import pickle
 import sys
@@ -34,6 +35,11 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXExpander:
 
     def __init__(self):
+        self.logger = logging.getLogger('log')
+        self.logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(os.path.dirname(os.path.abspath(__file__)) + "/Expand/expand.log")
+        handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+        self.logger.addHandler(handler)
         self.category_equivalencies = {"biolink:Protein": {"biolink:Gene"},
                                        "biolink:Gene": {"biolink:Protein"},
                                        "biolink:Disease": {"biolink:PhenotypicFeature",
@@ -165,6 +171,7 @@ class ARAXExpander:
             log.debug(f"Making sure QG only uses canonical predicates")
             for qedge in query_graph.edges.values():
                 if qedge.predicates:
+                    # TODO: worry about flipping query subject/object?! relevant once do predicate symmetry..
                     qedge.predicates = self.biolink_helper.get_canonical_predicates(qedge.predicates)
 
         # Expand any specified edges
@@ -216,14 +223,15 @@ class ARAXExpander:
 
                 # Send this query to each KP selected to answer it (in parallel)
                 if len(kps_to_query) > 1:
-                    num_cpus = multiprocessing.cpu_count()
                     empty_log = ARAXResponse()  # We'll have to merge processes' logs together afterwards
                     kp_selector = KPSelector(empty_log)
-                    with multiprocessing.Pool(num_cpus) as pool:
+                    self.logger.info(f"BEFORE pool: About to create {len(kps_to_query)} child processes from {multiprocessing.current_process()}")
+                    with multiprocessing.Pool(len(kps_to_query)) as pool:
                         kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
                                                                        mode, user_specified_kp, force_local,
-                                                                       kp_selector, empty_log]
+                                                                       kp_selector, empty_log, True]
                                                                       for kp_to_use in kps_to_query])
+                    self.logger.info(f"AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
@@ -316,7 +324,9 @@ class ARAXExpander:
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], mode: str,
                      user_specified_kp: bool, force_local: bool, kp_selector: KPSelector,
-                     log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     log: ARAXResponse, multi_threaded: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+        if multi_threaded:
+            self.logger.info(f"{kp_to_use}: Entered child process {multiprocessing.current_process()}")
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
@@ -392,6 +402,8 @@ class ARAXExpander:
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
 
+        if multi_threaded:
+            self.logger.info(f"{kp_to_use}: About to exit child process {multiprocessing.current_process()}")
         return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, query_graph: QueryGraph, mode: str, user_specified_kp: bool,
