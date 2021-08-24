@@ -242,9 +242,9 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     bh = BiolinkHelper(biolink_version)
     # Convert array fields into the format neo4j wants and do some final processing
     for canonicalized_node in canonicalized_nodes_dict.values():
-        for list_node_property in ARRAY_NODE_PROPERTIES:
+        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node['all_categories'], include_mixins=False)
+        for list_node_property in ARRAY_NODE_PROPERTIES + ['node_labels']:
             canonicalized_node[list_node_property] = _convert_list_to_string_encoded_format(canonicalized_node[list_node_property])
-        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node['all_categories'])
     for canonicalized_edge in canonicalized_edges_dict.values():
         if not is_test:  # Make sure we don't have any orphan edges
             assert canonicalized_edge['subject'] in canonicalized_nodes_dict
@@ -408,13 +408,13 @@ def create_kg2c_files(is_test=False):
     num_cpus = os.cpu_count()
     logging.info(f" Detected {num_cpus} cpus; will use all of them to choose best descriptions")
     pool = Pool(num_cpus)
+    start = time.time()
     if use_nlp_to_choose_descriptions:
         logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
         best_descriptions = pool.map(_get_best_description_nlp, description_lists)
     else:
         logging.info(f"  Choosing best descriptions (longest under 10,000 characters)..")
         best_descriptions = pool.map(_get_best_description_length, description_lists)
-    start = time.time()
 
     logging.info(f" Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
     # Actually decorate nodes with their 'best' description

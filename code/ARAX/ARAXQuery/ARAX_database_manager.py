@@ -52,6 +52,10 @@ class ARAXDatabaseManager:
         if not os.path.exists(fda_approved_drugs_filepath):
             os.system(f"mkdir -p {fda_approved_drugs_filepath}")
 
+        autocomplete_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'autocomplete'])
+        if not os.path.exists(autocomplete_filepath):
+            os.system(f"mkdir -p {autocomplete_filepath}")
+
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
@@ -61,7 +65,8 @@ class ARAXDatabaseManager:
             'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}",
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
             'kg2c_meta_kg': f"{kg2c_meta_kg_filepath}{os.path.sep}{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}",
-            'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}"
+            'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
+            'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}"
         }
         # user, host, and paths to databases on remote server
         self.remote_locations = {
@@ -73,7 +78,8 @@ class ARAXDatabaseManager:
             'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}",
             'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_username}@{self.RTXConfig.kg2c_sqlite_host}:{self.RTXConfig.kg2c_sqlite_path}",
             'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_username}@{self.RTXConfig.kg2c_meta_kg_host}:{self.RTXConfig.kg2c_meta_kg_path}",
-            'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_username}@{self.RTXConfig.fda_approved_drugs_host}:{self.RTXConfig.fda_approved_drugs_path}"
+            'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_username}@{self.RTXConfig.fda_approved_drugs_host}:{self.RTXConfig.fda_approved_drugs_path}",
+            'autocomplete': f"{self.RTXConfig.autocomplete_username}@{self.RTXConfig.autocomplete_host}:{self.RTXConfig.autocomplete_path}"
         }
         # database locations if inside rtx1 docker container
         self.docker_paths = {
@@ -86,6 +92,7 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace('/translator/', '/mnt/')}",
             'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_path.replace('/translator/', '/mnt/')}",
             'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_path.replace('/translator/', '/mnt/')}",
+            'autocomplete': f"{self.RTXConfig.autocomplete_path.replace('/translator/', '/mnt/')}"
         }
 
         # database local paths + version numbers
@@ -125,6 +132,10 @@ class ARAXDatabaseManager:
             'fda_approved_drugs': {
                 'path': self.local_paths['fda_approved_drugs'],
                 'version': self.RTXConfig.fda_approved_drugs_version
+            },
+            'autocomplete': {
+                'path': self.local_paths['autocomplete'],
+                'version': self.RTXConfig.autocomplete_version
             }
         }
 

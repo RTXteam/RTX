@@ -1,5 +1,6 @@
 #!/bin/env python3
 import copy
+import logging
 import multiprocessing
 import pickle
 import sys
@@ -25,6 +26,7 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
+from openapi_server.models.query_constraint import QueryConstraint
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -33,6 +35,13 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXExpander:
 
     def __init__(self):
+        self.logger = logging.getLogger('log')
+        self.logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(os.path.dirname(os.path.abspath(__file__)) + "/Expand/expand.log")
+        handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+        if self.logger.hasHandlers():
+            self.logger.handlers.clear()
+        self.logger.addHandler(handler)
         self.category_equivalencies = {"biolink:Protein": {"biolink:Gene"},
                                        "biolink:Gene": {"biolink:Protein"},
                                        "biolink:Disease": {"biolink:PhenotypicFeature",
@@ -43,8 +52,9 @@ class ARAXExpander:
                                                                               "biolink:PhenotypicFeature"}}
         self.kp_command_definitions = eu.get_kp_command_definitions()
         self.biolink_helper = BiolinkHelper()
-        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status"}
-        self.supported_qedge_constraints = set()
+        # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
+        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
+        self.supported_qedge_constraints = dict()
 
     def describe_me(self):
         """
@@ -115,27 +125,21 @@ class ARAXExpander:
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = copy.deepcopy(message.query_graph)
 
-        # Verify we understand all constraints and organize those we do for later handling
-        # TODO: Also verify we understand the value for each supported constraint?
-        constraints_to_apply = {"nodes": defaultdict(set), "edges": defaultdict(set)}
+        # Verify we understand all constraints
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.constraints:
-                qnode_constraints = {constraint.id for constraint in qnode.constraints}
-                unsupported_constraints = qnode_constraints.difference(self.supported_qnode_constraints)
-                if unsupported_constraints:
-                    log.error(f"Unsupported constraint(s) detected on qnode {qnode_key}: {unsupported_constraints}. "
-                              f"Don't know how to handle!", error_code="UnsupportedConstraint")
-                else:
-                    for constraint in qnode.constraints:
-                        constraints_to_apply["nodes"][qnode_key].add((constraint.id, constraint.value))
-            log.debug(f"Constraints to apply for qnode {qnode_key} are: {constraints_to_apply['nodes'][qnode_key]}")
+                for constraint in qnode.constraints:
+                    if not self.is_supported_constraint(constraint, self.supported_qnode_constraints):
+                        log.error(f"Unsupported constraint(s) detected on qnode {qnode_key}: \n{constraint}\n"
+                                  f"Don't know how to handle! Supported qnode constraints are: "
+                                  f"{self.supported_qnode_constraints}", error_code="UnsupportedConstraint")
         for qedge_key, qedge in query_graph.edges.items():
             if qedge.constraints:
-                qedge_constraints = {constraint.id for constraint in qedge.constraints}
-                unsupported_qedge_constraints = qedge_constraints.difference(self.supported_qedge_constraints)
-                if unsupported_qedge_constraints:
-                    log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: {unsupported_qedge_constraints}. "
-                              f"Don't know how to handle!", error_code="UnsupportedConstraint")
+                for constraint in qedge.constraints:
+                    if not self.is_supported_constraint(constraint, self.supported_qedge_constraints):
+                        log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
+                                  f"Don't know how to handle! Supported qedge constraints are: "
+                                  f"{self.supported_qedge_constraints}", error_code="UnsupportedConstraint")
 
         if response.status != 'OK':
             return response
@@ -169,6 +173,7 @@ class ARAXExpander:
             log.debug(f"Making sure QG only uses canonical predicates")
             for qedge in query_graph.edges.values():
                 if qedge.predicates:
+                    # TODO: worry about flipping query subject/object?! relevant once do predicate symmetry..
                     qedge.predicates = self.biolink_helper.get_canonical_predicates(qedge.predicates)
 
         # Expand any specified edges
@@ -220,14 +225,17 @@ class ARAXExpander:
 
                 # Send this query to each KP selected to answer it (in parallel)
                 if len(kps_to_query) > 1:
-                    num_cpus = multiprocessing.cpu_count()
                     empty_log = ARAXResponse()  # We'll have to merge processes' logs together afterwards
                     kp_selector = KPSelector(empty_log)
-                    with multiprocessing.Pool(num_cpus) as pool:
+                    self.logger.info(f"BEFORE pool: About to create {len(kps_to_query)} child processes from {multiprocessing.current_process()}")
+                    with multiprocessing.Pool(len(kps_to_query)) as pool:
                         kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
                                                                        mode, user_specified_kp, force_local,
-                                                                       kp_selector, empty_log]
+                                                                       kp_selector, empty_log, True]
                                                                       for kp_to_use in kps_to_query])
+                        pool.close()
+                        pool.join()  # These two lines should not be necessary, but adding to be extra cautious
+                    self.logger.info(f"AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
@@ -260,18 +268,21 @@ class ARAXExpander:
                 qnode_keys = {qedge.subject, qedge.object}
                 qnode_keys_with_answers = qnode_keys.intersection(set(overarching_kg.nodes_by_qg_id))
                 for qnode_key in qnode_keys_with_answers:
-                    for constraint_to_apply in constraints_to_apply["nodes"][qnode_key]:
-                        constraint_id = constraint_to_apply[0]
-                        constraint_value = constraint_to_apply[1]
-                        log.debug(f"Applying qnode constraint {constraint_id} with value '{constraint_value}'")
-                        # Handle FDA-approved drugs constraint TODO: check value later on? unclear what means..
-                        if constraint_id == "biolink:highest_FDA_approval_status":
-                            fda_approved_drug_ids = self._load_fda_approved_drug_ids()
-                            answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
-                            non_fda_approved_ids = answer_node_ids.difference(fda_approved_drug_ids)
-                            log.info(f"Removing {len(non_fda_approved_ids)} nodes fulfilling {qnode_key} that are not "
-                                     f"FDA approved ({round((len(non_fda_approved_ids) / len(answer_node_ids)) * 100)}%)")
-                            overarching_kg.remove_nodes(non_fda_approved_ids, qnode_key, query_graph)
+                    qnode = query_graph.nodes[qnode_key]
+                    if qnode.constraints:
+                        for constraint in qnode.constraints:
+                            if constraint.id == "biolink:highest_FDA_approval_status" and constraint.operator == "==" and constraint.value == "regular approval":
+                                log.info(f"Applying qnode {qnode_key} constraint: {'NOT ' if constraint._not else ''}"
+                                         f"biolink:highest_FDA_approval_status == regular approval")
+                                fda_approved_drug_ids = self._load_fda_approved_drug_ids()
+                                answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
+                                if constraint._not:
+                                    nodes_to_remove = answer_node_ids.intersection(fda_approved_drug_ids)
+                                else:
+                                    nodes_to_remove = answer_node_ids.difference(fda_approved_drug_ids)
+                                log.debug(f"Removing {len(nodes_to_remove)} nodes fulfilling {qnode_key} for FDA "
+                                          f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
+                                overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
 
                 # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
                 if mode == "ARAX":
@@ -317,7 +328,9 @@ class ARAXExpander:
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], mode: str,
                      user_specified_kp: bool, force_local: bool, kp_selector: KPSelector,
-                     log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     log: ARAXResponse, multi_threaded: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+        if multi_threaded:
+            self.logger.info(f"{kp_to_use}: Entered child process {multiprocessing.current_process()}")
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
@@ -376,9 +389,13 @@ class ARAXExpander:
             else:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
+            if multi_threaded:
+                self.logger.info(f"{kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return QGOrganizedKnowledgeGraph(), log
 
         if log.status != 'OK':
+            if multi_threaded:
+                self.logger.info(f"{kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return answer_kg, log
 
         # Make sure the KP's answer only uses canonical predicates (KG2 already does this, so no need to check it)
@@ -393,6 +410,8 @@ class ARAXExpander:
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
 
+        if multi_threaded:
+            self.logger.info(f"{kp_to_use}: Exiting child process {multiprocessing.current_process()}")
         return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, query_graph: QueryGraph, mode: str, user_specified_kp: bool,
@@ -888,6 +907,18 @@ class ARAXExpander:
                     parameters["user_specified_prune_threshold"] = True
 
         return parameters
+
+    @staticmethod
+    def is_supported_constraint(constraint: QueryConstraint, supported_constraints_map: Dict[str, Dict[str, Set[str]]]) -> bool:
+        if constraint.id not in supported_constraints_map:
+            return False
+        elif constraint.value not in supported_constraints_map[constraint.id]:
+            return False
+        elif constraint.operator not in supported_constraints_map[constraint.id][constraint.value]:
+            return False
+        else:
+            return True
+
 
     @staticmethod
     def _load_fda_approved_drug_ids() -> Set[str]:

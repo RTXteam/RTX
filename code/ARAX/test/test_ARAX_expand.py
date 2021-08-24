@@ -432,7 +432,7 @@ def test_dtd_expand_2():
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(categories=biolink:Disease, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
+        "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)

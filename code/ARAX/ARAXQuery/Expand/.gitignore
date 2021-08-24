@@ -2,3 +2,4 @@
 *.pickle
 *.tsv
 *.yaml
+*.log
