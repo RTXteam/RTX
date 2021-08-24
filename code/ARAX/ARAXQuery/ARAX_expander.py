@@ -233,6 +233,8 @@ class ARAXExpander:
                                                                        mode, user_specified_kp, force_local,
                                                                        kp_selector, empty_log, True]
                                                                       for kp_to_use in kps_to_query])
+                        pool.close()
+                        pool.join()  # These two lines should not be necessary, but adding to be extra cautious
                     self.logger.info(f"AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
@@ -387,9 +389,13 @@ class ARAXExpander:
             else:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
+            if multi_threaded:
+                self.logger.info(f"{kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return QGOrganizedKnowledgeGraph(), log
 
         if log.status != 'OK':
+            if multi_threaded:
+                self.logger.info(f"{kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return answer_kg, log
 
         # Make sure the KP's answer only uses canonical predicates (KG2 already does this, so no need to check it)
@@ -405,7 +411,7 @@ class ARAXExpander:
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
 
         if multi_threaded:
-            self.logger.info(f"{kp_to_use}: About to exit child process {multiprocessing.current_process()}")
+            self.logger.info(f"{kp_to_use}: Exiting child process {multiprocessing.current_process()}")
         return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, query_graph: QueryGraph, mode: str, user_specified_kp: bool,
