@@ -39,6 +39,8 @@ class ARAXExpander:
         self.logger.setLevel(logging.INFO)
         handler = logging.FileHandler(os.path.dirname(os.path.abspath(__file__)) + "/Expand/expand.log")
         handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+        if self.logger.hasHandlers():
+            self.logger.handlers.clear()
         self.logger.addHandler(handler)
         self.category_equivalencies = {"biolink:Protein": {"biolink:Gene"},
                                        "biolink:Gene": {"biolink:Protein"},
