@@ -179,7 +179,8 @@ class ComputeFTEST:
 
                     ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
                     temp_kp = [re.sub("infores:", "", x.value) for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'biolink:aggregator_knowledge_source' or x.attribute_type_id == 'biolink:knowledge_source']
-                    temp_kp.remove('arax')
+                    if 'arax' in temp_kp:
+                        temp_kp.remove('arax')
 
                     if rel_edge_key:
                         if rel_edge_key in edge.qedge_keys:
@@ -441,6 +442,8 @@ class ComputeFTEST:
             mapping = {node:normalized_nodes[node]['preferred_curie'] for node in normalized_nodes if normalized_nodes[node] is not None}
             failure_nodes += list(normalized_nodes.keys() - mapping.keys())
             query_nodes = list(set(mapping.values()))
+            query_nodes = [curie_id.replace("'", "''") if "'" in curie_id else curie_id for curie_id in query_nodes if "'" not in curie_id]
+            # special_curie_ids = [curie_id for curie_id in query_nodes if "'" in curie_id]
 
             # Get connected to kg2c sqlite
             connection = sqlite3.connect(self.sqlite_file_path)

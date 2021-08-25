@@ -191,26 +191,21 @@ class ARAXExpander:
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
 
-                if mode == "ARAX":
-                    # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
-                    prune_threshold = parameters["prune_threshold"]
-                    if not parameters.get("user_specified_prune_threshold"):
-                        subject_qnode = one_hop_qg.nodes[qedge.subject]
-                        object_qnode = one_hop_qg.nodes[qedge.object]
-                        open_ended_qnode = subject_qnode if not subject_qnode.ids else object_qnode
-                        if subject_qnode.ids and object_qnode.ids:
-                            prune_threshold = 5000  # Be more lenient for doubly-pinned qedges
-                        elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
-                            if prune_threshold > 200:
-                                prune_threshold = 200  # NamedThing really explodes the results, so be more strict
-                    log.debug(f"Prune threshold is {prune_threshold} for this expansion")
-                    # Prune back any nodes with more than the specified max of answers
-                    for qnode_key in one_hop_qg.nodes:
-                        local_qnode = one_hop_qg.nodes[qnode_key]
-                        if local_qnode.ids and len(local_qnode.ids) > prune_threshold:
-                            overarching_kg = self._prune_kg(qnode_key, prune_threshold, overarching_kg, query_graph, log)
-                            # Re-formulate the QG for this edge now that the KG has been slimmed down
-                            one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
+                # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
+                if parameters.get("user_specified_prune_threshold"):
+                    pre_prune_threshold = parameters["prune_threshold"]
+                    post_prune_threshold = parameters["prune_threshold"]
+                else:
+                    pre_prune_threshold, post_prune_threshold = self._get_prune_thresholds(one_hop_qg)
+                log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}, post-prune threshold "
+                          f"is {post_prune_threshold}")
+                # Prune back any nodes with more than the specified max of answers
+                for qnode_key in one_hop_qg.nodes:
+                    local_qnode = one_hop_qg.nodes[qnode_key]  # Has been decorated with 'input' curies
+                    if local_qnode.ids and len(local_qnode.ids) > pre_prune_threshold:
+                        overarching_kg = self._prune_kg(qnode_key, pre_prune_threshold, overarching_kg, query_graph, log)
+                        # Re-formulate the QG for this edge now that the KG has been slimmed down
+                        one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
 
                 if log.status != 'OK':
                     return response
@@ -284,13 +279,17 @@ class ARAXExpander:
                                           f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
                                 overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
 
-                # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
+                # Do some pruning and apply kryptonite edges
                 if mode == "ARAX":
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
-                    overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
-                    if response.status != 'OK':
-                        return response
+                # Prune back any nodes with more than the specified max of answers
+                for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
+                    if len(nodes) > post_prune_threshold:
+                        overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
+                overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
+                if response.status != 'OK':
+                    return response
 
                 # Make sure we found at least SOME answers for this edge
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
@@ -704,13 +703,19 @@ class ARAXExpander:
                  f"{prune_threshold} in the KG (there are {len(kg.nodes_by_qg_id[qnode_key_to_prune])})")
         kg_copy = copy.deepcopy(kg)
         qg_expanded_thus_far = eu.get_qg_expanded_thus_far(qg,  kg)
-        # Handle (probably unusual) case where
+
+        # Handle (probably unusual) case where QG has too big of a list of curies
+        max_qg_input_curies = 2000 if prune_threshold <= 2000 else prune_threshold
         if not qg_expanded_thus_far.edges or not qg_expanded_thus_far.nodes:
             qnode_exceeding_threshold = qg.nodes[qnode_key_to_prune]
-            if qnode_exceeding_threshold.ids and len(qnode_exceeding_threshold.ids) > prune_threshold:
-                log.warning(f"Qnode {qnode_key_to_prune} has {len(qnode_exceeding_threshold.ids)} IDs specified, "
-                            f"which will break our system. Truncating these to a list of {prune_threshold}.")
-                qnode_exceeding_threshold.ids = qnode_exceeding_threshold.ids[:prune_threshold]
+            if qnode_exceeding_threshold.ids and len(qnode_exceeding_threshold.ids) > max_qg_input_curies:
+                log.error(f"Qnode {qnode_key_to_prune} has {len(qnode_exceeding_threshold.ids)} IDs specified, "
+                          f"which will break our system. You need to shorten your list to {max_qg_input_curies} "
+                          f"curies.", error_code="QueryTooLarge")
+                qnode_exceeding_threshold.ids = qnode_exceeding_threshold.ids[:max_qg_input_curies]
+                return kg_copy
+
+        # Handle more typical case where the larger QG is partially expanded, and this is a second+ hop
         qg_expanded_thus_far.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
         intermediate_results_response = eu.create_results(qg_expanded_thus_far, kg_copy, log,
                                                           rank_results=True, overlay_fet=True,
@@ -942,6 +947,31 @@ class ARAXExpander:
                                               eu.convert_to_list(qg.nodes[qnode_key].categories)}
             if corresponding_qnode_categories:
                 node.categories = list(corresponding_qnode_categories)
+
+    @staticmethod
+    def _get_prune_thresholds(one_hop_qg: QueryGraph) -> Tuple[int, int]:
+        """
+        Returns the prune threshold for the 'input' qnode (pinned qnode) and 'output' qnode (unpinned qnode),
+        for pruning before and after expansion of the given edge, respectively.
+        """
+        qedge = next(qedge for qedge in one_hop_qg.edges.values())
+        qnode_a = one_hop_qg.nodes[qedge.subject]
+        qnode_b = one_hop_qg.nodes[qedge.object]
+        # Handle (curie(s))--(curie(s)) queries
+        if qnode_a.ids and qnode_b.ids:
+            # Be lenient for input qnode since it will be constrained by output qnode's curies
+            return 5000, 1000
+        # Handle (curie(s))--(>=0 categories) queries
+        else:
+            open_ended_qnode = qnode_a if not qnode_a.ids else qnode_b
+            if (not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories) and \
+                    (not qedge.predicates or "biolink:related_to" in qedge.predicates):
+                # Be more strict when such broad categories/predicates are used
+                return 100, 1000
+            elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
+                return 200, 1000
+            else:
+                return 300, 1000
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):
