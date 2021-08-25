@@ -179,7 +179,8 @@ class ComputeFTEST:
 
                     ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
                     temp_kp = [re.sub("infores:", "", x.value) for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'biolink:aggregator_knowledge_source' or x.attribute_type_id == 'biolink:knowledge_source']
-                    temp_kp.remove('arax')
+                    if 'arax' in temp_kp:
+                        temp_kp.remove('arax')
 
                     if rel_edge_key:
                         if rel_edge_key in edge.qedge_keys:
