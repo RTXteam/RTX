@@ -841,7 +841,6 @@ def test_1516_single_quotes_in_ids():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
-    assert any(node_id for node_id in nodes_by_qg_id["n1"] if "'" in node_id)
 
 
 def test_constraint_validation():
