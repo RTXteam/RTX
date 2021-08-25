@@ -442,8 +442,8 @@ class ComputeFTEST:
             mapping = {node:normalized_nodes[node]['preferred_curie'] for node in normalized_nodes if normalized_nodes[node] is not None}
             failure_nodes += list(normalized_nodes.keys() - mapping.keys())
             query_nodes = list(set(mapping.values()))
-            query_nodes = [curie_id for curie_id in query_nodes if "'" not in curie_id]
-            special_curie_ids = [curie_id for curie_id in query_nodes if "'" in curie_id]
+            query_nodes = [curie_id.replace("'", "''") if "'" in curie_id else curie_id for curie_id in query_nodes if "'" not in curie_id]
+            # special_curie_ids = [curie_id for curie_id in query_nodes if "'" in curie_id]
 
             # Get connected to kg2c sqlite
             connection = sqlite3.connect(self.sqlite_file_path)
@@ -461,7 +461,7 @@ class ComputeFTEST:
             # Load the counts into a dictionary
             neighbor_counts_dict = {row[0]:eval(row[1]) for row in rows}
 
-            res_dict = {node:neighbor_counts_dict[mapping[node]].get(adjacent_type) for node in mapping if neighbor_counts_dict[mapping[node]].get(adjacent_type) is not None and node not in special_curie_ids}
+            res_dict = {node:neighbor_counts_dict[mapping[node]].get(adjacent_type) for node in mapping if neighbor_counts_dict[mapping[node]].get(adjacent_type) is not None}
             failure_nodes += list(mapping.keys() - res_dict.keys())
 
             if len(failure_nodes) != 0:
