@@ -116,7 +116,17 @@ class RTXConfiguration:
         self.kg2c_meta_kg_host = self.config["Global"]["kg2c_meta_kg"]["host"]
         self.kg2c_meta_kg_username = self.config["Global"]["kg2c_meta_kg"]["username"]
         self.kg2c_meta_kg_path = self.config["Contextual"][self.live]["kg2c_meta_kg"]["path"]
-        self.kg2c_meta_kg_version = self.config["Contextual"][self.live]["kg2c_meta_kg"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
+        self.kg2c_meta_kg_version = self.config["Contextual"][self.live]["kg2c_meta_kg"]["path"].split('/')[-1].split('_v')[-1].replace('.json','')
+
+        self.fda_approved_drugs_host = self.config["Global"]["fda_approved_drugs"]["host"]
+        self.fda_approved_drugs_username = self.config["Global"]["fda_approved_drugs"]["username"]
+        self.fda_approved_drugs_path = self.config["Contextual"][self.live]["fda_approved_drugs"]["path"]
+        self.fda_approved_drugs_version = self.config["Contextual"][self.live]["fda_approved_drugs"]["path"].split('/')[-1].split('_v')[-1].replace('.pickle','')
+
+        self.autocomplete_host = self.config["Global"]["autocomplete"]["host"]
+        self.autocomplete_username = self.config["Global"]["autocomplete"]["username"]
+        self.autocomplete_path = self.config["Contextual"][self.live]["autocomplete"]["path"]
+        self.autocomplete_version = self.config["Contextual"][self.live]["autocomplete"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
 
         self.mysql_feedback_host = self.config["Global"]["mysql_feedback"]["host"]
         self.mysql_feedback_port = self.config["Global"]["mysql_feedback"]["port"]

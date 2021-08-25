@@ -302,6 +302,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 edge_attribute_value = float(edge_attribute_value)
             except TypeError:
                 return 0.
+            except ValueError:
+                return 0.
             # check to see if it's NaN, if so, return 0
             if np.isnan(edge_attribute_value):
                 return 0.
@@ -546,10 +548,13 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 for edge_attribute in edge.attributes:
                     for attribute_name in self.known_attributes:
                         if edge_attribute.original_attribute_name == attribute_name or edge_attribute.attribute_type_id == attribute_name:
+                            try:
+                                value = float(edge_attribute.value)
+                            except ValueError:
+                                continue
+                            # initialize if not None already
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf|NaN
-                            value = float(edge_attribute.value)
-                            # initialize if not None already
                             if not np.isinf(value) and not np.isinf(-value) and not np.isnan(value):  # Ignore inf, -inf, and nan
                                 no_non_inf_float_flag = False
                                 if not score_stats[attribute_name]['minimum']:

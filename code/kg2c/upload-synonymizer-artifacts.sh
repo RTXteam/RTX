@@ -18,3 +18,4 @@ scp Problems.tsv rtxconfig@arax.ncats.io:${remote_destination}
 scp Exceptions.txt rtxconfig@arax.ncats.io:${remote_destination}
 scp sri_node_normalizer_curie_cache.pickle rtxconfig@arax.ncats.io:${remote_destination}
 scp sri_node_normalizer_requests_cache.sqlite rtxconfig@arax.ncats.io:${remote_destination}
+scp autocomplete.sqlite rtxconfig@arax.ncats.io:${remote_destination}

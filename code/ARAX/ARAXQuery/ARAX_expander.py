@@ -1,6 +1,8 @@
 #!/bin/env python3
 import copy
+import logging
 import multiprocessing
+import pickle
 import sys
 import os
 import traceback
@@ -10,6 +12,10 @@ from typing import List, Dict, Tuple, Union, Set, Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_decorator import ARAXDecorator
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+from RTXConfiguration import RTXConfiguration
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -20,6 +26,7 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
+from openapi_server.models.query_constraint import QueryConstraint
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -28,6 +35,13 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXExpander:
 
     def __init__(self):
+        self.logger = logging.getLogger('log')
+        self.logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(os.path.dirname(os.path.abspath(__file__)) + "/Expand/expand.log")
+        handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+        if self.logger.hasHandlers():
+            self.logger.handlers.clear()
+        self.logger.addHandler(handler)
         self.category_equivalencies = {"biolink:Protein": {"biolink:Gene"},
                                        "biolink:Gene": {"biolink:Protein"},
                                        "biolink:Disease": {"biolink:PhenotypicFeature",
@@ -37,6 +51,10 @@ class ARAXExpander:
                                        "biolink:DiseaseOrPhenotypicFeature": {"biolink:Disease",
                                                                               "biolink:PhenotypicFeature"}}
         self.kp_command_definitions = eu.get_kp_command_definitions()
+        self.biolink_helper = BiolinkHelper()
+        # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
+        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
+        self.supported_qedge_constraints = dict()
 
     def describe_me(self):
         """
@@ -107,17 +125,21 @@ class ARAXExpander:
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = copy.deepcopy(message.query_graph)
 
-        # Verify we understand all constraints (right now we don't support any)
+        # Verify we understand all constraints
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.constraints:
-                constraint_ids = {constraint.id for constraint in qnode.constraints}
-                log.error(f"Unsupported constraint(s) detected on qnode {qnode_key} for {constraint_ids}. "
-                          f"Don't know how to handle these!", error_code="UnsupportedConstraint")
+                for constraint in qnode.constraints:
+                    if not self.is_supported_constraint(constraint, self.supported_qnode_constraints):
+                        log.error(f"Unsupported constraint(s) detected on qnode {qnode_key}: \n{constraint}\n"
+                                  f"Don't know how to handle! Supported qnode constraints are: "
+                                  f"{self.supported_qnode_constraints}", error_code="UnsupportedConstraint")
         for qedge_key, qedge in query_graph.edges.items():
             if qedge.constraints:
-                constraint_ids = {constraint.id for constraint in qedge.constraints}
-                log.error(f"Unsupported constraint(s) detected on qedge {qedge_key} for {constraint_ids}. "
-                          f"Don't know how to handle these!", error_code="UnsupportedConstraint")
+                for constraint in qedge.constraints:
+                    if not self.is_supported_constraint(constraint, self.supported_qedge_constraints):
+                        log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
+                                  f"Don't know how to handle! Supported qedge constraints are: "
+                                  f"{self.supported_qedge_constraints}", error_code="UnsupportedConstraint")
 
         if response.status != 'OK':
             return response
@@ -132,7 +154,6 @@ class ARAXExpander:
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
         overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
-        canonical_predicates_map = eu.load_canonical_predicates_map(log)
 
         # Add in any category equivalencies to the QG (e.g., protein == gene, since KPs handle these differently)
         for qnode_key, qnode in query_graph.nodes.items():
@@ -152,8 +173,8 @@ class ARAXExpander:
             log.debug(f"Making sure QG only uses canonical predicates")
             for qedge in query_graph.edges.values():
                 if qedge.predicates:
-                    canonical_predicates = {canonical_predicates_map.get(predicate, predicate) for predicate in qedge.predicates}
-                    qedge.predicates = list(canonical_predicates)
+                    # TODO: worry about flipping query subject/object?! relevant once do predicate symmetry..
+                    qedge.predicates = self.biolink_helper.get_canonical_predicates(qedge.predicates)
 
         # Expand any specified edges
         if input_qedge_keys:
@@ -170,26 +191,21 @@ class ARAXExpander:
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
 
-                if mode == "ARAX":
-                    # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
-                    prune_threshold = parameters["prune_threshold"]
-                    if not parameters.get("user_specified_prune_threshold"):
-                        subject_qnode = one_hop_qg.nodes[qedge.subject]
-                        object_qnode = one_hop_qg.nodes[qedge.object]
-                        open_ended_qnode = subject_qnode if not subject_qnode.ids else object_qnode
-                        if subject_qnode.ids and object_qnode.ids:
-                            prune_threshold = 5000  # Be more lenient for doubly-pinned qedges
-                        elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
-                            if prune_threshold > 200:
-                                prune_threshold = 200  # NamedThing really explodes the results, so be more strict
-                    log.debug(f"Prune threshold is {prune_threshold} for this expansion")
-                    # Prune back any nodes with more than the specified max of answers
-                    for qnode_key in one_hop_qg.nodes:
-                        local_qnode = one_hop_qg.nodes[qnode_key]
-                        if local_qnode.ids and len(local_qnode.ids) > prune_threshold:
-                            overarching_kg = self._prune_kg(qnode_key, prune_threshold, overarching_kg, query_graph, log)
-                            # Re-formulate the QG for this edge now that the KG has been slimmed down
-                            one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
+                # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
+                if parameters.get("user_specified_prune_threshold"):
+                    pre_prune_threshold = parameters["prune_threshold"]
+                    post_prune_threshold = parameters["prune_threshold"]
+                else:
+                    pre_prune_threshold, post_prune_threshold = self._get_prune_thresholds(one_hop_qg)
+                log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}, post-prune threshold "
+                          f"is {post_prune_threshold}")
+                # Prune back any nodes with more than the specified max of answers
+                for qnode_key in one_hop_qg.nodes:
+                    local_qnode = one_hop_qg.nodes[qnode_key]  # Has been decorated with 'input' curies
+                    if local_qnode.ids and len(local_qnode.ids) > pre_prune_threshold:
+                        overarching_kg = self._prune_kg(qnode_key, pre_prune_threshold, overarching_kg, query_graph, log)
+                        # Re-formulate the QG for this edge now that the KG has been slimmed down
+                        one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
 
                 if log.status != 'OK':
                     return response
@@ -204,22 +220,23 @@ class ARAXExpander:
 
                 # Send this query to each KP selected to answer it (in parallel)
                 if len(kps_to_query) > 1:
-                    num_cpus = multiprocessing.cpu_count()
                     empty_log = ARAXResponse()  # We'll have to merge processes' logs together afterwards
                     kp_selector = KPSelector(empty_log)
-                    with multiprocessing.Pool(num_cpus) as pool:
+                    self.logger.info(f"BEFORE pool: About to create {len(kps_to_query)} child processes from {multiprocessing.current_process()}")
+                    with multiprocessing.Pool(len(kps_to_query)) as pool:
                         kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                       mode, user_specified_kp,
-                                                                       force_local, canonical_predicates_map,
-                                                                       kp_selector, empty_log]
+                                                                       mode, user_specified_kp, force_local,
+                                                                       kp_selector, empty_log, True]
                                                                       for kp_to_use in kps_to_query])
+                        pool.close()
+                        pool.join()  # These two lines should not be necessary, but adding to be extra cautious
+                    self.logger.info(f"AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
                 elif len(kps_to_query) == 1:
                     # Don't bother creating separate processes if we only selected one KP
                     kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
                     kp_selector = KPSelector(log)
                     kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, mode,
-                                                    user_specified_kp, force_local, canonical_predicates_map,
-                                                    kp_selector, log)]
+                                                    user_specified_kp, force_local, kp_selector, log)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
@@ -242,13 +259,37 @@ class ARAXExpander:
                         return response
                 log.debug(f"After merging KPs' answers, total KG counts are: {eu.get_printable_counts_by_qg_id(overarching_kg)}")
 
-                # Do some pruning and apply kryptonite edges (only if we're not in KG2 mode)
+                # Handle any constraints for this qedge and/or its qnodes (that require post-filtering)
+                qnode_keys = {qedge.subject, qedge.object}
+                qnode_keys_with_answers = qnode_keys.intersection(set(overarching_kg.nodes_by_qg_id))
+                for qnode_key in qnode_keys_with_answers:
+                    qnode = query_graph.nodes[qnode_key]
+                    if qnode.constraints:
+                        for constraint in qnode.constraints:
+                            if constraint.id == "biolink:highest_FDA_approval_status" and constraint.operator == "==" and constraint.value == "regular approval":
+                                log.info(f"Applying qnode {qnode_key} constraint: {'NOT ' if constraint._not else ''}"
+                                         f"biolink:highest_FDA_approval_status == regular approval")
+                                fda_approved_drug_ids = self._load_fda_approved_drug_ids()
+                                answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
+                                if constraint._not:
+                                    nodes_to_remove = answer_node_ids.intersection(fda_approved_drug_ids)
+                                else:
+                                    nodes_to_remove = answer_node_ids.difference(fda_approved_drug_ids)
+                                log.debug(f"Removing {len(nodes_to_remove)} nodes fulfilling {qnode_key} for FDA "
+                                          f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
+                                overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
+
+                # Do some pruning and apply kryptonite edges
                 if mode == "ARAX":
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
-                    overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
-                    if response.status != 'OK':
-                        return response
+                # Prune back any nodes with more than the specified max of answers
+                for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
+                    if len(nodes) > post_prune_threshold:
+                        overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
+                overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
+                if response.status != 'OK':
+                    return response
 
                 # Make sure we found at least SOME answers for this edge
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
@@ -285,8 +326,10 @@ class ARAXExpander:
         return response
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], mode: str,
-                     user_specified_kp: bool, force_local: bool, canonical_predicates_map: Dict[str, str],
-                     kp_selector: KPSelector, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     user_specified_kp: bool, force_local: bool, kp_selector: KPSelector,
+                     log: ARAXResponse, multi_threaded: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+        if multi_threaded:
+            self.logger.info(f"{kp_to_use}: Entered child process {multiprocessing.current_process()}")
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
@@ -345,14 +388,18 @@ class ARAXExpander:
             else:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
+            if multi_threaded:
+                self.logger.info(f"{kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return QGOrganizedKnowledgeGraph(), log
 
         if log.status != 'OK':
+            if multi_threaded:
+                self.logger.info(f"{kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return answer_kg, log
 
         # Make sure the KP's answer only uses canonical predicates (KG2 already does this, so no need to check it)
         if not isinstance(kp_querier, KG2Querier):
-            answer_kg = eu.check_for_canonical_predicates(answer_kg, canonical_predicates_map, kp_to_use, log)
+            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
 
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
@@ -362,6 +409,8 @@ class ARAXExpander:
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
 
+        if multi_threaded:
+            self.logger.info(f"{kp_to_use}: Exiting child process {multiprocessing.current_process()}")
         return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, query_graph: QueryGraph, mode: str, user_specified_kp: bool,
@@ -654,13 +703,19 @@ class ARAXExpander:
                  f"{prune_threshold} in the KG (there are {len(kg.nodes_by_qg_id[qnode_key_to_prune])})")
         kg_copy = copy.deepcopy(kg)
         qg_expanded_thus_far = eu.get_qg_expanded_thus_far(qg,  kg)
-        # Handle (probably unusual) case where
+
+        # Handle (probably unusual) case where QG has too big of a list of curies
+        max_qg_input_curies = 2000 if prune_threshold <= 2000 else prune_threshold
         if not qg_expanded_thus_far.edges or not qg_expanded_thus_far.nodes:
             qnode_exceeding_threshold = qg.nodes[qnode_key_to_prune]
-            if qnode_exceeding_threshold.ids and len(qnode_exceeding_threshold.ids) > prune_threshold:
-                log.warning(f"Qnode {qnode_key_to_prune} has {len(qnode_exceeding_threshold.ids)} IDs specified, "
-                            f"which will break our system. Truncating these to a list of {prune_threshold}.")
-                qnode_exceeding_threshold.ids = qnode_exceeding_threshold.ids[:prune_threshold]
+            if qnode_exceeding_threshold.ids and len(qnode_exceeding_threshold.ids) > max_qg_input_curies:
+                log.error(f"Qnode {qnode_key_to_prune} has {len(qnode_exceeding_threshold.ids)} IDs specified, "
+                          f"which will break our system. You need to shorten your list to {max_qg_input_curies} "
+                          f"curies.", error_code="QueryTooLarge")
+                qnode_exceeding_threshold.ids = qnode_exceeding_threshold.ids[:max_qg_input_curies]
+                return kg_copy
+
+        # Handle more typical case where the larger QG is partially expanded, and this is a second+ hop
         qg_expanded_thus_far.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
         intermediate_results_response = eu.create_results(qg_expanded_thus_far, kg_copy, log,
                                                           rank_results=True, overlay_fet=True,
@@ -859,6 +914,32 @@ class ARAXExpander:
         return parameters
 
     @staticmethod
+    def is_supported_constraint(constraint: QueryConstraint, supported_constraints_map: Dict[str, Dict[str, Set[str]]]) -> bool:
+        if constraint.id not in supported_constraints_map:
+            return False
+        elif constraint.value not in supported_constraints_map[constraint.id]:
+            return False
+        elif constraint.operator not in supported_constraints_map[constraint.id][constraint.value]:
+            return False
+        else:
+            return True
+
+
+    @staticmethod
+    def _load_fda_approved_drug_ids() -> Set[str]:
+        # Determine the local path to the FDA-approved drugs pickle
+        path_list = os.path.realpath(__file__).split(os.path.sep)
+        rtx_index = path_list.index("RTX")
+        rtxc = RTXConfiguration()
+        pickle_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources'])
+        pickle_name = rtxc.fda_approved_drugs_path.split('/')[-1]
+        pickle_file_path = f"{pickle_dir_path}{os.path.sep}{pickle_name}"
+        # Load the pickle's data
+        with open(pickle_file_path, "rb") as fda_pickle:
+            fda_approved_drug_ids = pickle.load(fda_pickle)
+        return fda_approved_drug_ids
+
+    @staticmethod
     def _override_node_categories(kg: KnowledgeGraph, qg: QueryGraph):
         # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
         for node in kg.nodes.values():
@@ -866,6 +947,31 @@ class ARAXExpander:
                                               eu.convert_to_list(qg.nodes[qnode_key].categories)}
             if corresponding_qnode_categories:
                 node.categories = list(corresponding_qnode_categories)
+
+    @staticmethod
+    def _get_prune_thresholds(one_hop_qg: QueryGraph) -> Tuple[int, int]:
+        """
+        Returns the prune threshold for the 'input' qnode (pinned qnode) and 'output' qnode (unpinned qnode),
+        for pruning before and after expansion of the given edge, respectively.
+        """
+        qedge = next(qedge for qedge in one_hop_qg.edges.values())
+        qnode_a = one_hop_qg.nodes[qedge.subject]
+        qnode_b = one_hop_qg.nodes[qedge.object]
+        # Handle (curie(s))--(curie(s)) queries
+        if qnode_a.ids and qnode_b.ids:
+            # Be lenient for input qnode since it will be constrained by output qnode's curies
+            return 5000, 1000
+        # Handle (curie(s))--(>=0 categories) queries
+        else:
+            open_ended_qnode = qnode_a if not qnode_a.ids else qnode_b
+            if (not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories) and \
+                    (not qedge.predicates or "biolink:related_to" in qedge.predicates):
+                # Be more strict when such broad categories/predicates are used
+                return 100, 1000
+            elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
+                return 200, 1000
+            else:
+                return 300, 1000
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):

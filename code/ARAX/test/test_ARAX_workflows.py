@@ -672,6 +672,27 @@ def test_genetics_kp_ranking():
                                     gen_kp_ranking_value[str(result.score)] = [float(attribute.value)]
     assert len(gen_kp_ranking_value) > 0
 
+def test_ranker_float_error():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n0, categories=biolink:ChemicalEntity)",
+        "add_qnode(categories=biolink:DiseaseOrPhenotypicFeature, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand()",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
+        "overlay(action=fisher_exact_test,subject_qnode_key=n0,virtual_relation_label=F1,object_qnode_key=n1)",
+        "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
+        "overlay(action=predict_drug_treats_disease,virtual_relation_label=P1,subject_qnode_key=n0,object_qnode_key=n1,threshold=0.8,slow_mode=false)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
+
+
+
 
 
 # Not working yet

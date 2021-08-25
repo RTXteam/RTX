@@ -1,16 +1,16 @@
 {
-  "kg2pre_version": "2.6.7",
-  "kg2pre_neo4j_endpoint": "kg2endpoint-kg2-6-7.rtx.ai",
-  "biolink_version": "1.8.1",
+  "kg2pre_version": "2.7.1",
+  "kg2pre_neo4j_endpoint": "kg2endpoint-kg2-7-1.rtx.ai",
+  "biolink_version": "2.1.0",
+  "upload_to_arax.ncats.io": true,
+  "upload_directory": "/data/orangeboard/databases/KG2.X.Y",
+  "synonymizer": {
+    "build": true,
+    "name": "node_synonymizer_v1.0_KG2.7.1.sqlite"
+  },
   "kg2c": {
     "build": true,
     "use_nlp_to_choose_descriptions": true,
     "upload_to_s3": true
-  },
-  "synonymizer": {
-    "build": true,
-    "name": "node_synonymizer_v1.0_KG2.6.7.sqlite",
-    "upload_artifacts_to_arax.ncats.io": true,
-    "upload_directory": null
   }
 }

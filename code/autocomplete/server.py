@@ -146,7 +146,7 @@ def make_redirect_app():
 if __name__ == "__main__":
     print("root: " + root)
 
-    if os.path.isfile("rtx.ncats.io"):
+    if True: #FW/EWD: clean this up later
         http_app = make_https_app()
         http_server = tornado.httpserver.HTTPServer(http_app)
         http_server.listen(4999)

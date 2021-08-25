@@ -28,6 +28,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # code direc
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 ARRAY_NODE_PROPERTIES = ["all_categories", "publications", "equivalent_curies", "all_names", "expanded_categories"]
 ARRAY_EDGE_PROPERTIES = ["provided_by", "publications", "kg2_ids"]
@@ -194,7 +196,7 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
                                meta_info_dict: Dict[str, str], is_test: bool):
     logging.info(f" Creating KG2c lite JSON file..")
     # Filter out all except these properties so we create a lightweight KG
-    node_lite_properties = ["id", "name", "category", "expanded_categories"]
+    node_lite_properties = ["id", "name", "category", "all_categories"]
     edge_lite_properties = ["id", "predicate", "subject", "object", "provided_by", "publications"]
     lite_kg = {"nodes": [], "edges": []}
     for node in canonicalized_nodes_dict.values():
@@ -235,12 +237,14 @@ def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]], i
 
 
 def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
-                          canonicalized_edges_dict: Dict[str, Dict[str, any]], is_test: bool):
+                          canonicalized_edges_dict: Dict[str, Dict[str, any]],
+                          biolink_version: str, is_test: bool):
+    bh = BiolinkHelper(biolink_version)
     # Convert array fields into the format neo4j wants and do some final processing
     for canonicalized_node in canonicalized_nodes_dict.values():
-        for list_node_property in ARRAY_NODE_PROPERTIES:
+        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node['all_categories'], include_mixins=False)
+        for list_node_property in ARRAY_NODE_PROPERTIES + ['node_labels']:
             canonicalized_node[list_node_property] = _convert_list_to_string_encoded_format(canonicalized_node[list_node_property])
-        canonicalized_node['node_labels'] = canonicalized_node['expanded_categories']
     for canonicalized_edge in canonicalized_edges_dict.values():
         if not is_test:  # Make sure we don't have any orphan edges
             assert canonicalized_edge['subject'] in canonicalized_nodes_dict
@@ -404,13 +408,13 @@ def create_kg2c_files(is_test=False):
     num_cpus = os.cpu_count()
     logging.info(f" Detected {num_cpus} cpus; will use all of them to choose best descriptions")
     pool = Pool(num_cpus)
+    start = time.time()
     if use_nlp_to_choose_descriptions:
         logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
         best_descriptions = pool.map(_get_best_description_nlp, description_lists)
     else:
         logging.info(f"  Choosing best descriptions (longest under 10,000 characters)..")
         best_descriptions = pool.map(_get_best_description_length, description_lists)
-    start = time.time()
 
     logging.info(f" Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
     # Actually decorate nodes with their 'best' description
@@ -439,7 +443,7 @@ def create_kg2c_files(is_test=False):
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_sqlite_db(canonicalized_nodes_dict, is_test)
-    create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
+    create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
 
 
 def main():
