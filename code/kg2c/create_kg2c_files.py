@@ -5,6 +5,7 @@ into neo4j. The files are created in the directory this script is in.
 Usage: python3 create_kg2c_files.py [--test]
 """
 import argparse
+import ast
 import csv
 import gc
 import json
@@ -102,6 +103,21 @@ def _get_best_description_length(descriptions_list: List[str]) -> Optional[str]:
         return max(candidate_descriptions, key=len)
 
 
+def _load_publications_info(publications_info_str: str, kg2_edge_id: str) -> Dict[str, any]:
+    # 'publications_info' currently has a non-standard structure in KG2; keep only the PMID-organized info
+    if publications_info_str.startswith("{'PMID:"):
+        try:
+            return ast.literal_eval(publications_info_str)
+        except Exception:
+            logging.warning(f"Failed to load publications_info string for edge {kg2_edge_id}.")
+            with open("problem_publications_info.tsv", "a+") as problem_file:
+                writer = csv.writer(problem_file, delimiter="\t")
+                writer.writerow([kg2_edge_id, publications_info_str])
+            return dict()
+    else:
+        return dict()
+
+
 def _modify_column_headers_for_neo4j(plain_column_headers: List[str], file_name_root: str) -> List[str]:
     modified_headers = []
     all_array_column_names = ARRAY_NODE_PROPERTIES + ARRAY_EDGE_PROPERTIES
@@ -149,12 +165,13 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
 
 
 def _create_edge(subject: str, object: str, predicate: str, provided_by: List[str], publications: List[str],
-                 kg2_ids: List[str]) -> Dict[str, any]:
+                 publications_info: Dict[str, any], kg2_ids: List[str]) -> Dict[str, any]:
     assert isinstance(subject, str)
     assert isinstance(object, str)
     assert isinstance(predicate, str)
     assert isinstance(provided_by, list)
     assert isinstance(publications, list)
+    assert isinstance(publications_info, dict)
     assert isinstance(kg2_ids, list)
     return {
         "subject": subject,
@@ -162,6 +179,7 @@ def _create_edge(subject: str, object: str, predicate: str, provided_by: List[st
         "predicate": predicate,
         "provided_by": provided_by,
         "publications": publications,
+        "publications_info": publications_info,
         "kg2_ids": kg2_ids
     }
 
@@ -197,7 +215,7 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
     logging.info(f" Creating KG2c lite JSON file..")
     # Filter out all except these properties so we create a lightweight KG
     node_lite_properties = ["id", "name", "category", "all_categories"]
-    edge_lite_properties = ["id", "predicate", "subject", "object", "provided_by", "publications"]
+    edge_lite_properties = ["id", "predicate", "subject", "object"]
     lite_kg = {"nodes": [], "edges": []}
     for node in canonicalized_nodes_dict.values():
         lite_node = dict()
@@ -217,14 +235,17 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
         json.dump(lite_kg, output_file)
 
 
-def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]], is_test: bool):
+def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
+                          canonicalized_edges_dict: Dict[str, Dict[str, any]], is_test: bool):
     logging.info(" Creating KG2c sqlite database..")
     db_name = f"kg2c{'_test' if is_test else ''}.sqlite"
     # Remove any preexisting version of this database
     if os.path.exists(db_name):
         os.remove(db_name)
     connection = sqlite3.connect(db_name)
+
     # Add all nodes (node object is dumped into a JSON string)
+    logging.info(f"  Creating nodes table..")
     connection.execute("CREATE TABLE nodes (id TEXT, node TEXT)")
     node_rows = [(node["id"], json.dumps(node)) for node in canonicalized_nodes_dict.values()]
     connection.executemany(f"INSERT INTO nodes (id, node) VALUES (?, ?)", node_rows)
@@ -233,6 +254,21 @@ def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]], i
     cursor = connection.execute(f"SELECT COUNT(*) FROM nodes")
     logging.info(f"  Done creating nodes table; contains {cursor.fetchone()[0]} rows.")
     cursor.close()
+
+    # Add all edges (edge object is dumped into a JSON string)
+    logging.info(f"  Creating edges table..")
+    connection.execute("CREATE TABLE edges (triple TEXT, node_pair TEXT, edge TEXT)")
+    edge_rows = [(f"{edge['subject']}--{edge['predicate']}--{edge['object']}",
+                  f"{edge['subject']}--{edge['object']}",
+                  json.dumps(edge)) for edge in canonicalized_edges_dict.values()]
+    connection.executemany(f"INSERT INTO edges (triple, node_pair, edge) VALUES (?, ?, ?)", edge_rows)
+    connection.execute("CREATE UNIQUE INDEX triple_index ON edges (triple)")
+    connection.execute("CREATE INDEX node_pair_index ON edges (node_pair)")
+    connection.commit()
+    cursor = connection.execute(f"SELECT COUNT(*) FROM edges")
+    logging.info(f"  Done creating edges table; contains {cursor.fetchone()[0]} rows.")
+    cursor.close()
+
     connection.close()
 
 
@@ -330,12 +366,14 @@ def _canonicalize_edges(neo4j_edges: List[Dict[str, any]], curie_map: Dict[str, 
         canonicalized_object = curie_map.get(original_object, original_object)
         edge_publications = neo4j_edge['publications'] if neo4j_edge.get('publications') else []
         edge_provided_by = neo4j_edge['provided_by'] if neo4j_edge.get('provided_by') else []
+        edge_publications_info = _load_publications_info(neo4j_edge['publications_info'], kg2_edge_id) if neo4j_edge.get('publications_info') else dict()
         if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
             canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, neo4j_edge['predicate'])
             if canonicalized_edge_key in canonicalized_edges:
                 canonicalized_edge = canonicalized_edges[canonicalized_edge_key]
                 canonicalized_edge['provided_by'] = _merge_two_lists(canonicalized_edge['provided_by'], edge_provided_by)
                 canonicalized_edge['publications'] = _merge_two_lists(canonicalized_edge['publications'], edge_publications)
+                canonicalized_edge['publications_info'].update(edge_publications_info)
                 canonicalized_edge['kg2_ids'].append(kg2_edge_id)
             else:
                 new_canonicalized_edge = _create_edge(subject=canonicalized_subject,
@@ -343,6 +381,7 @@ def _canonicalize_edges(neo4j_edges: List[Dict[str, any]], curie_map: Dict[str, 
                                                       predicate=neo4j_edge['predicate'],
                                                       provided_by=edge_provided_by,
                                                       publications=edge_publications,
+                                                      publications_info=edge_publications_info,
                                                       kg2_ids=[kg2_edge_id])
                 canonicalized_edges[canonicalized_edge_key] = new_canonicalized_edge
     return canonicalized_edges
@@ -367,7 +406,8 @@ def create_kg2c_files(is_test=False):
         return
     logging.info(f" Extracting edges from KG2..")
     edges_query = f"match (n)-[e]->(m) return n.id as subject, m.id as object, e.predicate as " \
-                  f"predicate, e.provided_by as provided_by, e.publications as publications, e.id as id" \
+                  f"predicate, e.provided_by as provided_by, e.publications as publications, " \
+                  f"e.publications_info as publications_info, e.id as id" \
                   f"{' limit 20000' if is_test else ''}"
     neo4j_edges = _run_kg2_cypher_query(edges_query)
     if neo4j_edges:
@@ -438,11 +478,15 @@ def create_kg2c_files(is_test=False):
         edge["id"] = edge_num
         edge_num += 1
         edge["publications"] = edge["publications"][:20]  # We don't need a ton of publications, so truncate them
+        if len(edge["publications_info"]) > 20:
+            pubs_info_to_remove = list(edge["publications_info"])[20:]
+            for pmid in pubs_info_to_remove:
+                del edge["publications_info"][pmid]
 
     # Actually create all of our output files (different formats for storing KG2c)
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
-    create_kg2c_sqlite_db(canonicalized_nodes_dict, is_test)
+    create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
     create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
 
 
