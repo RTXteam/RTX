@@ -26,6 +26,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/ARA
 from Overlay.predictor.predictor import predictor
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -38,6 +40,7 @@ class DTDQuerier:
         self.RTXConfig = RTXConfiguration()
         self.response = response_object
         self.synonymizer = NodeSynonymizer()
+        self.biolink_helper = BiolinkHelper()
 
         ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
         pathlist = os.path.realpath(__file__).split(os.path.sep)
@@ -144,6 +147,8 @@ class DTDQuerier:
         final_kg = QGOrganizedKnowledgeGraph()
         drug_label_list = ['smallmolecule', 'drug', 'biolink:SmallMolecule', 'biolink:Drug']
         disease_label_list = ['disease', 'phenotypicFeature', 'diseaseorphenotypicfeature', 'biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
+        drug_ancestor_label_list = [category.replace('biolink:','').replace('_','').lower() for category in self.biolink_helper.get_ancestors(["biolink:SmallMolecule","biolink:Drug"], include_mixins=False)]
+        disease_ancestor_label_list = [category.replace('biolink:','').replace('_','').lower() for category in self.biolink_helper.get_ancestors(["'biolink:Disease", "biolink:PhenotypicFeature", "biolink:DiseaseOrPhenotypicFeature'"], include_mixins=False)]
         # use for checking the requirement
         source_pass_nodes = None
         source_categories = None
@@ -193,10 +198,10 @@ class DTDQuerier:
             except AttributeError:
                 log.error(f"The category of query node {source_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
                 return final_kg
-            if len(set(categories).intersection(set(drug_label_list))) > 0 or len(set(categories).intersection(set(disease_label_list))) > 0:
+            if len(set(categories).intersection(set(drug_ancestor_label_list))) > 0 or len(set(categories).intersection(set(disease_ancestor_label_list))) > 0:
                 source_categories = categories
             else:
-                log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be drug or disase", error_code="CategoryError")
+                log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be drug or disase or their ancestors", error_code="CategoryError")
                 return final_kg
 
         if target_qnode.ids is not None:
@@ -230,10 +235,10 @@ class DTDQuerier:
             except AttributeError:
                 log.error(f"The category of query node {target_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
                 return final_kg
-            if len(set(categories).intersection(set(drug_label_list))) > 0 or len(set(categories).intersection(set(disease_label_list))) > 0:
+            if len(set(categories).intersection(set(drug_ancestor_label_list))) > 0 or len(set(categories).intersection(set(disease_ancestor_label_list))) > 0:
                 target_categories = categories
             else:
-                log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug or disase", error_code="CategoryError")
+                log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug or disase or their ancestors", error_code="CategoryError")
                 return final_kg
 
         if (source_pass_nodes is None) and (target_pass_nodes is None):
@@ -314,58 +319,60 @@ class DTDQuerier:
             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[source_pass_nodes[0]]['all_categories'].keys())]
             if len(set(drug_label_list).intersection(set(all_types))) > 0:
                 source_category_temp = 'drug'
+                if len(set(target_categories).intersection(set(disease_ancestor_label_list))) > 0:
+                    target_category_temp = 'disease'
+                else:
+                    log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be a disase or their ancestors", error_code="CategoryError")
+                    return final_kg
             else:
                 source_category_temp = 'disease'
-            if len(set(target_categories).intersection(set(drug_label_list))) > 0:
-                target_category_temp = 'drug'
-            else:
-                target_category_temp = 'disease'
-            if source_category_temp == target_category_temp:
-                log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg
-            else:
-                if source_category_temp == 'drug':
-                    for source_curie in source_pass_nodes:
-                        normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
-                        res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[source_curie]['preferred_curie']])
-                        if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0]
-
-                            for row in res:
-                                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, row[0], "probability_treats", row[2])
-
-                                source_dict[source_curie] = source_qnode_key
-                                target_dict[row[0]] = target_qnode_key
-
-                                # Finally add the current edge to our answer knowledge graph
-                                final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                if len(set(target_categories).intersection(set(drug_ancestor_label_list))) > 0:
+                    target_category_temp = 'drug'
                 else:
-                    for source_curie in source_pass_nodes:
-                        normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
-                        res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[source_curie]['preferred_curie']])
-                        if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0]
+                    log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be a drug or their ancestors", error_code="CategoryError")
+                    return final_kg
+            if source_category_temp == 'drug':
+                for source_curie in source_pass_nodes:
+                    normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
+                    res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[source_curie]['preferred_curie']])
+                    if res is not None:
+                        res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0]
 
-                            for row in res:
-                                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], source_curie, "probability_treats", row[2])
+                        for row in res:
+                            swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, row[0], "probability_treats", row[2])
 
-                                source_dict[source_curie] = source_qnode_key
-                                target_dict[row[1]] = target_qnode_key
+                            source_dict[source_curie] = source_qnode_key
+                            target_dict[row[0]] = target_qnode_key
 
-                                # Finally add the current edge to our answer knowledge graph
-                                final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                            # Finally add the current edge to our answer knowledge graph
+                            final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+            else:
+                for source_curie in source_pass_nodes:
+                    normalizer_result = self.synonymizer.get_canonical_curies(source_curie)
+                    res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[source_curie]['preferred_curie']])
+                    if res is not None:
+                        res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0]
 
-                # Add the nodes to our answer knowledge graph
-                if len(source_dict) != 0:
-                    for source_curie in source_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
-                if len(target_dict) != 0:
-                    for target_curie in target_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+                        for row in res:
+                            swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], source_curie, "probability_treats", row[2])
 
-                return final_kg
+                            source_dict[source_curie] = source_qnode_key
+                            target_dict[row[1]] = target_qnode_key
+
+                            # Finally add the current edge to our answer knowledge graph
+                            final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+
+            # Add the nodes to our answer knowledge graph
+            if len(source_dict) != 0:
+                for source_curie in source_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
+            if len(target_dict) != 0:
+                for target_curie in target_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+
+            return final_kg
         else:
             source_dict = dict()
             target_dict = dict()
@@ -374,58 +381,60 @@ class DTDQuerier:
             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(normalizer_result[target_pass_nodes[0]]['all_categories'].keys())]
             if len(set(drug_label_list).intersection(set(all_types))) > 0:
                 target_category_temp = 'drug'
+                if len(set(source_categories).intersection(set(disease_ancestor_label_list))) > 0:
+                    source_category_temp = 'disease'
+                else:
+                    log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be a disase or their ancestors", error_code="CategoryError")
+                    return final_kg
             else:
                 target_category_temp = 'disease'
-            if len(set(source_categories).intersection(set(set(drug_label_list)))) > 0:
-                source_category_temp = 'drug'
-            else:
-                source_category_temp = 'disease'
-            if source_category_temp == target_category_temp:
-                log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
-                return final_kg
-            else:
-                if target_category_temp == 'drug':
-                    for target_curie in target_pass_nodes:
-                        normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
-                        res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[target_curie]['preferred_curie']])
-                        if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0 ]
-
-                            for row in res:
-                                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, row[0], "probability_treats", row[2])
-
-                                source_dict[row[0]] = source_qnode_key
-                                target_dict[target_curie] = target_qnode_key
-
-                                # Finally add the current edge to our answer knowledge graph
-                                final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                if len(set(source_categories).intersection(set(drug_ancestor_label_list))) > 0:
+                    source_category_temp = 'drug'
                 else:
-                    for target_curie in target_pass_nodes:
-                        normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
-                        res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[target_curie]['preferred_curie']])
-                        if res is not None:
-                            res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0 ]
+                    log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be a drug or their ancestors", error_code="CategoryError")
+                    return final_kg
+            if target_category_temp == 'drug':
+                for target_curie in target_pass_nodes:
+                    normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
+                    res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[target_curie]['preferred_curie']])
+                    if res is not None:
+                        res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0 ]
 
-                            for row in res:
-                                swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], target_curie, "probability_treats", row[2])
+                        for row in res:
+                            swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, row[0], "probability_treats", row[2])
 
-                                source_dict[row[1]] = source_qnode_key
-                                target_dict[target_curie] = target_qnode_key
+                            source_dict[row[0]] = source_qnode_key
+                            target_dict[target_curie] = target_qnode_key
 
-                                # Finally add the current edge to our answer knowledge graph
-                                final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+                            # Finally add the current edge to our answer knowledge graph
+                            final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+            else:
+                for target_curie in target_pass_nodes:
+                    normalizer_result = self.synonymizer.get_canonical_curies(target_curie)
+                    res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[target_curie]['preferred_curie']])
+                    if res is not None:
+                        res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0 ]
 
-                # Add the nodes to our answer knowledge graph
-                if len(source_dict) != 0:
-                    for source_curie in source_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
-                if len(target_dict) != 0:
-                    for target_curie in target_dict:
-                        swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
-                        final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+                        for row in res:
+                            swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], target_curie, "probability_treats", row[2])
 
-                return final_kg
+                            source_dict[row[1]] = source_qnode_key
+                            target_dict[target_curie] = target_qnode_key
+
+                            # Finally add the current edge to our answer knowledge graph
+                            final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
+
+            # Add the nodes to our answer knowledge graph
+            if len(source_dict) != 0:
+                for source_curie in source_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(source_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, source_dict[source_curie])
+            if len(target_dict) != 0:
+                for target_curie in target_dict:
+                    swagger_node_key, swagger_node = self._convert_to_swagger_node(target_curie)
+                    final_kg.add_node(swagger_node_key, swagger_node, target_dict[target_curie])
+
+            return final_kg
 
     def _answer_query_using_DTD_model(self, query_graph: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
