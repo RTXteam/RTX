@@ -964,8 +964,11 @@ class ARAXExpander:
         # Handle (curie(s))--(>=0 categories) queries
         else:
             open_ended_qnode = qnode_a if not qnode_a.ids else qnode_b
-            if not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
-                # Be more strict when such broad categories are used
+            if (not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories) and \
+                    (not qedge.predicates or "biolink:related_to" in qedge.predicates):
+                # Be more strict when such broad categories/predicates are used
+                return 100, 1000
+            elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
                 return 200, 1000
             else:
                 return 300, 1000
