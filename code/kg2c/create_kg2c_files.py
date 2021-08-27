@@ -81,17 +81,12 @@ def _get_edge_key(subject: str, object: str, predicate: str) -> str:
     return f"{subject}--{predicate}--{object}"
 
 
-def _get_headers(header_file_path: str) -> List[str]:
+def _get_kg2pre_headers(header_file_path: str) -> List[str]:
     with open(header_file_path) as header_file:
         reader = csv.reader(header_file, delimiter="\t")
         headers = [row for row in reader][0]
     processed_headers = [header.split(":")[0] for header in headers]
     return processed_headers
-
-
-def _clean_up_description(description: str) -> str:
-    # Removes all of the "UMLS Semantic Type: UMLS_STY:XXXX;" bits from descriptions
-    return re.sub("UMLS Semantic Type: UMLS_STY:[a-zA-Z][0-9]{3}[;]?", "", description).strip().strip(";")
 
 
 def _load_property(raw_property_value_from_tsv: str, property_type: any) -> Union[list, str, dict]:
@@ -186,6 +181,38 @@ def _load_publications_info(publications_info_str: str, kg2_edge_id: str) -> Dic
             return dict()
     else:
         return dict()
+
+
+def _load_kg2pre_tsvs(local_tsv_dir_path: str) -> Tuple[List[dict], List[dict]]:
+    kg2pre_nodes = []
+    kg2pre_edges = []
+    nodes_tsv_path = f"{local_tsv_dir_path}/nodes.tsv"
+    edges_tsv_path = f"{local_tsv_dir_path}/edges.tsv"
+    logging.info(f"Loading nodes from KG2pre TSV ({nodes_tsv_path})..")
+    node_headers = _get_kg2pre_headers(f"{local_tsv_dir_path}/nodes_header.tsv")
+    edge_headers = _get_kg2pre_headers(f"{local_tsv_dir_path}/edges_header.tsv")
+    kg2pre_node_property_names = _get_kg2pre_properties("node")
+    kg2pre_edge_property_names = _get_kg2pre_properties("edge")
+    with open(nodes_tsv_path) as nodes_file:
+        reader = csv.reader(nodes_file, delimiter="\t")
+        for row in reader:
+            new_node = dict()
+            for node_property_name in kg2pre_node_property_names:
+                node_property_info = PROPERTIES_LOOKUP["nodes"][node_property_name]
+                raw_property_value = row[node_headers.index(node_property_name)]
+                new_node[node_property_name] = _load_property(raw_property_value, node_property_info["type"])
+            kg2pre_nodes.append(new_node)
+    logging.info(f"Loading edges from KG2pre TSV ({edges_tsv_path})..")
+    with open(edges_tsv_path) as edges_file:
+        reader = csv.reader(edges_file, delimiter="\t")
+        for row in reader:
+            new_edge = dict()
+            for edge_property_name in kg2pre_edge_property_names:
+                edge_property_info = PROPERTIES_LOOKUP["edges"][edge_property_name]
+                raw_property_value = row[edge_headers.index(edge_property_name)]
+                new_edge[edge_property_name] = _load_property(raw_property_value, edge_property_info["type"])
+            kg2pre_edges.append(new_edge)
+    return kg2pre_nodes, kg2pre_edges
 
 
 def _modify_column_headers_for_neo4j(plain_column_headers: List[str], file_name_root: str) -> List[str]:
@@ -376,6 +403,7 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
 
 
 def _canonicalize_nodes(neo4j_nodes: List[Dict[str, any]]) -> Tuple[Dict[str, Dict[str, any]], Dict[str, str]]:
+    logging.info(f"Canonicalizing nodes..")
     synonymizer = NodeSynonymizer()
     node_ids = [node.get('id') for node in neo4j_nodes if node.get('id')]
     logging.info(f"  Sending NodeSynonymizer.get_canonical_curies() {len(node_ids)} curies..")
@@ -432,6 +460,7 @@ def _canonicalize_nodes(neo4j_nodes: List[Dict[str, any]]) -> Tuple[Dict[str, Di
 
 
 def _canonicalize_edges(neo4j_edges: List[Dict[str, any]], curie_map: Dict[str, str], is_test: bool) -> Dict[str, Dict[str, any]]:
+    logging.info(f"Canonicalizing edges..")
     canonicalized_edges = dict()
     for neo4j_edge in neo4j_edges:
         kg2_edge_id = neo4j_edge['id']
@@ -465,85 +494,8 @@ def _canonicalize_edges(neo4j_edges: List[Dict[str, any]], curie_map: Dict[str, 
     return canonicalized_edges
 
 
-def create_kg2c_files(is_test=False):
-    """
-    This function extracts all nodes/edges from the regular KG2 Neo4j endpoint (specified in your config.json),
-    canonicalizes the nodes, merges edges (based on subject, object, predicate), and saves the resulting canonicalized
-    graph in multiple file formats: JSON, sqlite, and TSV (ready for import into Neo4j).
-    """
-    # First download the proper KG2 TSV files
-    local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
-    if not pathlib.Path(local_tsv_dir_path).exists():
-        subprocess.check_call(["mkdir", local_tsv_dir_path])
-    if not is_test:
-        kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
-        logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
-        subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
-        logging.info(f"Unpacking {kg2pre_tarball_name}..")
-        subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
-
-    # Load the KG2pre nodes and edges into dict objects
-    kg2pre_nodes = []
-    kg2pre_edges = []
-    nodes_tsv_path = f"{local_tsv_dir_path}/nodes.tsv"
-    edges_tsv_path = f"{local_tsv_dir_path}/edges.tsv"
-    logging.info(f"Loading nodes from KG2pre TSV ({nodes_tsv_path})..")
-    node_headers = _get_headers(f"{local_tsv_dir_path}/nodes_header.tsv")
-    edge_headers = _get_headers(f"{local_tsv_dir_path}/edges_header.tsv")
-    kg2pre_node_property_names = _get_kg2pre_properties("node")
-    kg2pre_edge_property_names = _get_kg2pre_properties("edge")
-    with open(nodes_tsv_path) as nodes_file:
-        reader = csv.reader(nodes_file, delimiter="\t")
-        for row in reader:
-            new_node = dict()
-            for node_property_name in kg2pre_node_property_names:
-                node_property_info = PROPERTIES_LOOKUP["nodes"][node_property_name]
-                raw_property_value = row[node_headers.index(node_property_name)]
-                new_node[node_property_name] = _load_property(raw_property_value, node_property_info["type"])
-            kg2pre_nodes.append(new_node)
-    logging.info(f"Loading edges from KG2pre TSV ({edges_tsv_path})..")
-    with open(edges_tsv_path) as edges_file:
-        reader = csv.reader(edges_file, delimiter="\t")
-        for row in reader:
-            new_edge = dict()
-            for edge_property_name in kg2pre_edge_property_names:
-                edge_property_info = PROPERTIES_LOOKUP["edges"][edge_property_name]
-                raw_property_value = row[edge_headers.index(edge_property_name)]
-                new_edge[edge_property_name] = _load_property(raw_property_value, edge_property_info["type"])
-            kg2pre_edges.append(new_edge)
-
-    # Do the actual canonicalization
-    logging.info(f"Canonicalizing nodes..")
-    canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
-    logging.info(f"Number of KG2pre nodes was reduced to {len(canonicalized_nodes_dict)} ({round((len(canonicalized_nodes_dict) / len(kg2pre_nodes)) * 100)}%)")
-    logging.info(f"Canonicalizing edges..")
-    canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
-    logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges_dict)} ({round((len(canonicalized_edges_dict) / len(kg2pre_edges)) * 100)}%)")
-
-    # Create a node containing information about this KG2C build
-    with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
-        kg2c_config_info = json.load(config_file)
-    kg2_version = kg2c_config_info.get("kg2pre_version")
-    biolink_version = kg2c_config_info.get("biolink_version")
-    description_dict = {"kg2_version": kg2_version,
-                        "biolink_version": biolink_version,
-                        "build_date": datetime.now().strftime('%Y-%m-%d %H:%M')}
-    description = f"{description_dict}"
-    name = f"RTX-KG{kg2_version}c"
-    kg2c_build_node = _create_node(preferred_curie="RTX:KG2c",
-                                   name=name,
-                                   all_categories=["biolink:InformationContentEntity"],
-                                   expanded_categories=["biolink:InformationContentEntity"],
-                                   category="biolink:InformationContentEntity",
-                                   equivalent_curies=[],
-                                   publications=[],
-                                   iri="http://rtx.ai/identifiers#KG2c",
-                                   all_names=[name],
-                                   description=description,
-                                   descriptions_list=[description])
-    canonicalized_nodes_dict[kg2c_build_node['id']] = kg2c_build_node
-
-    # Choose best descriptions using Chunyu's NLP-based method
+def _post_process_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]], kg2c_config_info: Dict[str, any]) -> Dict[str, Dict[str, any]]:
+    # Choose best descriptions for each cluster
     use_nlp_to_choose_descriptions = kg2c_config_info["kg2c"].get("use_nlp_to_choose_descriptions")
     node_ids = list(canonicalized_nodes_dict)
     description_lists = [canonicalized_nodes_dict[node_id]["descriptions_list"] for node_id in node_ids]
@@ -573,6 +525,11 @@ def create_kg2c_files(is_test=False):
     logging.info(f"Doing final clean-up/formatting of nodes")
     for node_id, node in canonicalized_nodes_dict.items():
         node["publications"] = node["publications"][:10]  # We don't need a ton of publications, so truncate them
+
+    return canonicalized_nodes_dict
+
+
+def _post_process_edges(canonicalized_edges_dict: Dict[str, Dict[str, any]]) -> Dict[str, Dict[str, any]]:
     logging.info(f"Doing final clean-up/formatting of edges")
     # Convert our edge IDs to integers (to save space downstream) and add them as actual properties on the edges
     edge_num = 1
@@ -584,6 +541,61 @@ def create_kg2c_files(is_test=False):
             pubs_info_to_remove = list(edge["publications_info"])[20:]
             for pmid in pubs_info_to_remove:
                 del edge["publications_info"][pmid]
+    return canonicalized_edges_dict
+
+
+def create_kg2c_files(is_test=False):
+    """
+    This function extracts all nodes/edges from the regular KG2 Neo4j endpoint (specified in your config.json),
+    canonicalizes the nodes, merges edges (based on subject, object, predicate), and saves the resulting canonicalized
+    graph in multiple file formats: JSON, sqlite, and TSV (ready for import into Neo4j).
+    """
+    # First download the proper KG2 TSV files
+    local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
+    if not pathlib.Path(local_tsv_dir_path).exists():
+        subprocess.check_call(["mkdir", local_tsv_dir_path])
+    if not is_test:
+        kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
+        logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
+        subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
+        logging.info(f"Unpacking {kg2pre_tarball_name}..")
+        subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
+
+    # Load the KG2pre nodes and edges into dict objects
+    kg2pre_nodes, kg2pre_edges = _load_kg2pre_tsvs(local_tsv_dir_path)
+
+    # Do the actual canonicalization
+    canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
+    logging.info(f"Number of KG2pre nodes was reduced to {len(canonicalized_nodes_dict)} ({round((len(canonicalized_nodes_dict) / len(kg2pre_nodes)) * 100)}%)")
+    canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
+    logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges_dict)} ({round((len(canonicalized_edges_dict) / len(kg2pre_edges)) * 100)}%)")
+
+    # Add a node containing information about this KG2C build
+    with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
+        kg2c_config_info = json.load(config_file)
+    kg2_version = kg2c_config_info.get("kg2pre_version")
+    biolink_version = kg2c_config_info.get("biolink_version")
+    description_dict = {"kg2_version": kg2_version,
+                        "biolink_version": biolink_version,
+                        "build_date": datetime.now().strftime('%Y-%m-%d %H:%M')}
+    description = f"{description_dict}"
+    name = f"RTX-KG{kg2_version}c"
+    kg2c_build_node = _create_node(preferred_curie="RTX:KG2c",
+                                   name=name,
+                                   all_categories=["biolink:InformationContentEntity"],
+                                   expanded_categories=["biolink:InformationContentEntity"],
+                                   category="biolink:InformationContentEntity",
+                                   equivalent_curies=[],
+                                   publications=[],
+                                   iri="http://rtx.ai/identifiers#KG2c",
+                                   all_names=[name],
+                                   description=description,
+                                   descriptions_list=[description])
+    canonicalized_nodes_dict[kg2c_build_node['id']] = kg2c_build_node
+
+    # Do some final post-processing and clean up of nodes/edges
+    canonicalized_nodes_dict = _post_process_nodes(canonicalized_nodes_dict, kg2c_config_info)
+    canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
     # Actually create all of our output files (different formats for storing KG2c)
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
