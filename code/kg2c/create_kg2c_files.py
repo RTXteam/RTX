@@ -13,7 +13,6 @@ import logging
 import os
 import pathlib
 import pickle
-import re
 import sqlite3
 import subprocess
 import sys
@@ -33,6 +32,7 @@ from biolink_helper import BiolinkHelper
 KG2C_ARRAY_DELIMITER = "ǂ"  # Need to use a delimiter that does not appear in any list items (strings)
 KG2PRE_ARRAY_DELIMITER = ";"
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
+csv.field_size_limit(sys.maxsize)  # Required because some KG2pre fields are massive
 
 
 PROPERTIES_LOOKUP = {
