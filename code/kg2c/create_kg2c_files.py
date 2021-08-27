@@ -20,7 +20,7 @@ import traceback
 
 from datetime import datetime
 from multiprocessing import Pool
-from typing import List, Dict, Tuple, Union, Optional
+from typing import List, Dict, Tuple, Union, Optional, Set
 from neo4j import GraphDatabase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -32,10 +32,32 @@ from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
 from biolink_helper import BiolinkHelper
 
-ARRAY_NODE_PROPERTIES = ["all_categories", "publications", "equivalent_curies", "all_names", "expanded_categories"]
-ARRAY_EDGE_PROPERTIES = ["provided_by", "publications", "kg2_ids"]
 DELIMITER_CHAR = "ǂ"  # Need to use a delimiter that does not appear in any list items (strings)
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
+
+
+PROPERTIES_LOOKUP = {
+    "nodes": {
+        "id": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "name": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "category": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "all_categories": {"type": list, "in_kg2pre": False, "in_kg2c_lite": True, "use_as_labels": True},
+        "publications": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
+        "equivalent_curies": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
+        "all_names": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
+        "expanded_categories": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False}
+    },
+    "edges": {
+        "id": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "subject": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "object": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "provided_by": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
+        "publications": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
+        "kg2_ids": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
+        "publications_info": {"type": dict, "in_kg2pre": True, "in_kg2c_lite": False}
+    }
+}
 
 
 def _run_kg2_cypher_query(cypher_query: str) -> List[Dict[str, any]]:
@@ -83,6 +105,38 @@ def _clean_up_description(description: str) -> str:
     return re.sub("UMLS Semantic Type: UMLS_STY:[a-zA-Z][0-9]{3}[;]?", "", description).strip().strip(";")
 
 
+def _get_array_properties(kind_of_item: Optional[str] = None) -> Set[str]:
+    node_array_properties = {property_name for property_name, property_info in PROPERTIES_LOOKUP["nodes"].items()
+                             if property_info["type"] is list}
+    edge_array_properties = {property_name for property_name, property_info in PROPERTIES_LOOKUP["edges"].items()
+                             if property_info["type"] is list}
+    if kind_of_item and kind_of_item.startswith("node"):
+        return node_array_properties
+    elif kind_of_item and kind_of_item.startswith("edge"):
+        return edge_array_properties
+    else:
+        return node_array_properties.union(edge_array_properties)
+
+
+def _get_lite_properties(kind_of_item: Optional[str] = None) -> Set[str]:
+    node_lite_properties = {property_name for property_name, property_info in PROPERTIES_LOOKUP["nodes"].items()
+                            if property_info["in_kg2c_lite"]}
+    edge_lite_properties = {property_name for property_name, property_info in PROPERTIES_LOOKUP["edges"].items()
+                            if property_info["in_kg2c_lite"]}
+    if kind_of_item and kind_of_item.startswith("node"):
+        return node_lite_properties
+    elif kind_of_item and kind_of_item.startswith("edge"):
+        return edge_lite_properties
+    else:
+        return node_lite_properties.union(edge_lite_properties)
+
+
+def _get_node_labels_property() -> str:
+    labels_properties = [property_name for property_name, property_info in PROPERTIES_LOOKUP["nodes"].items()
+                         if property_info.get("use_as_labels")]
+    return labels_properties[0]  # Should only ever be one, so return the first item
+
+
 def _get_best_description_nlp(descriptions_list: List[str]) -> Optional[str]:
     candidate_descriptions = [description for description in descriptions_list if description and len(description) < 10000]
     if len(candidate_descriptions) == 1:
@@ -120,7 +174,7 @@ def _load_publications_info(publications_info_str: str, kg2_edge_id: str) -> Dic
 
 def _modify_column_headers_for_neo4j(plain_column_headers: List[str], file_name_root: str) -> List[str]:
     modified_headers = []
-    all_array_column_names = ARRAY_NODE_PROPERTIES + ARRAY_EDGE_PROPERTIES
+    all_array_column_names = _get_array_properties()
     for header in plain_column_headers:
         if header in all_array_column_names:
             header = f"{header}:string[]"
@@ -141,14 +195,6 @@ def _modify_column_headers_for_neo4j(plain_column_headers: List[str], file_name_
 def _create_node(preferred_curie: str, name: Optional[str], category: str, all_categories: List[str],
                  expanded_categories: List[str], equivalent_curies: List[str], publications: List[str],
                  all_names: List[str], iri: Optional[str], description: Optional[str], descriptions_list: List[str]) -> Dict[str, any]:
-    assert isinstance(preferred_curie, str)
-    assert isinstance(name, str) or name is None
-    assert isinstance(category, str)
-    assert isinstance(all_names, list)
-    assert isinstance(all_categories, list)
-    assert isinstance(expanded_categories, list)
-    assert isinstance(equivalent_curies, list)
-    assert isinstance(publications, list)
     return {
         "id": preferred_curie,
         "name": name,
@@ -166,13 +212,6 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
 
 def _create_edge(subject: str, object: str, predicate: str, provided_by: List[str], publications: List[str],
                  publications_info: Dict[str, any], kg2_ids: List[str]) -> Dict[str, any]:
-    assert isinstance(subject, str)
-    assert isinstance(object, str)
-    assert isinstance(predicate, str)
-    assert isinstance(provided_by, list)
-    assert isinstance(publications, list)
-    assert isinstance(publications_info, dict)
-    assert isinstance(kg2_ids, list)
     return {
         "subject": subject,
         "object": object,
@@ -214,8 +253,8 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
                                meta_info_dict: Dict[str, str], is_test: bool):
     logging.info(f" Creating KG2c lite JSON file..")
     # Filter out all except these properties so we create a lightweight KG
-    node_lite_properties = ["id", "name", "category", "all_categories"]
-    edge_lite_properties = ["id", "predicate", "subject", "object"]
+    node_lite_properties = _get_lite_properties("node")
+    edge_lite_properties = _get_lite_properties("edge")
     lite_kg = {"nodes": [], "edges": []}
     for node in canonicalized_nodes_dict.values():
         lite_node = dict()
@@ -277,15 +316,18 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                           biolink_version: str, is_test: bool):
     bh = BiolinkHelper(biolink_version)
     # Convert array fields into the format neo4j wants and do some final processing
+    array_node_columns = _get_array_properties("node").union({"node_labels"})
+    array_edge_columns = _get_array_properties("edge")
+    node_labels_property = _get_node_labels_property()
     for canonicalized_node in canonicalized_nodes_dict.values():
-        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node['all_categories'], include_mixins=False)
-        for list_node_property in ARRAY_NODE_PROPERTIES + ['node_labels']:
+        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node[node_labels_property], include_mixins=False)
+        for list_node_property in array_node_columns:
             canonicalized_node[list_node_property] = _convert_list_to_string_encoded_format(canonicalized_node[list_node_property])
     for canonicalized_edge in canonicalized_edges_dict.values():
         if not is_test:  # Make sure we don't have any orphan edges
             assert canonicalized_edge['subject'] in canonicalized_nodes_dict
             assert canonicalized_edge['object'] in canonicalized_nodes_dict
-        for list_edge_property in ARRAY_EDGE_PROPERTIES:
+        for list_edge_property in array_edge_columns:
             canonicalized_edge[list_edge_property] = _convert_list_to_string_encoded_format(canonicalized_edge[list_edge_property])
         canonicalized_edge['predicate_for_conversion'] = canonicalized_edge['predicate']
         canonicalized_edge['subject_for_conversion'] = canonicalized_edge['subject']
