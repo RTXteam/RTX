@@ -168,19 +168,24 @@ def _get_best_description_length(descriptions_list: List[str]) -> Optional[str]:
         return max(candidate_descriptions, key=len)
 
 
-def _load_publications_info(publications_info_str: str, kg2_edge_id: str) -> Dict[str, any]:
-    # 'publications_info' currently has a non-standard structure in KG2; keep only the PMID-organized info
-    if publications_info_str.startswith("{'PMID:"):
+def _load_publications_info(raw_publications_info: Union[str, dict], kg2_edge_id: str) -> Dict[str, any]:
+    if isinstance(raw_publications_info, str):
         try:
-            return ast.literal_eval(publications_info_str)
+            publications_info = ast.literal_eval(raw_publications_info)
         except Exception:
             logging.warning(f"Failed to load publications_info string for edge {kg2_edge_id}.")
             with open("problem_publications_info.tsv", "a+") as problem_file:
                 writer = csv.writer(problem_file, delimiter="\t")
-                writer.writerow([kg2_edge_id, publications_info_str])
-            return dict()
+                writer.writerow([kg2_edge_id, raw_publications_info])
+            publications_info = dict()
     else:
-        return dict()
+        publications_info = raw_publications_info
+    assert isinstance(publications_info, dict)
+    # This field currently has a non-standard structure in KG2pre; keep only the PMID-organized info
+    pubs_info_keys_to_remove = [key for key in publications_info if not key.upper().startswith("PMID")]
+    for key in pubs_info_keys_to_remove:
+        del publications_info[key]
+    return publications_info
 
 
 def _load_kg2pre_tsvs(local_tsv_dir_path: str) -> Tuple[List[dict], List[dict]]:
