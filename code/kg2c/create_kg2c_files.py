@@ -11,28 +11,27 @@ import gc
 import json
 import logging
 import os
+import pathlib
 import pickle
 import re
 import sqlite3
+import subprocess
 import sys
 import time
-import traceback
 
 from datetime import datetime
 from multiprocessing import Pool
 from typing import List, Dict, Tuple, Union, Optional, Set
-from neo4j import GraphDatabase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils import select_best_description
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # code directory
-from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
 from biolink_helper import BiolinkHelper
 
-DELIMITER_CHAR = "ǂ"  # Need to use a delimiter that does not appear in any list items (strings)
+KG2C_ARRAY_DELIMITER = "ǂ"  # Need to use a delimiter that does not appear in any list items (strings)
+KG2PRE_ARRAY_DELIMITER = ";"
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
 
 
@@ -41,6 +40,8 @@ PROPERTIES_LOOKUP = {
         "id": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "name": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "category": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "iri": {"type": str, "in_kg2pre": True, "in_kg2c_lite": False},
+        "description": {"type": str, "in_kg2pre": True, "in_kg2c_lite": False},
         "all_categories": {"type": list, "in_kg2pre": False, "in_kg2c_lite": True, "use_as_labels": True},
         "publications": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
         "equivalent_curies": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
@@ -60,33 +61,13 @@ PROPERTIES_LOOKUP = {
 }
 
 
-def _run_kg2_cypher_query(cypher_query: str) -> List[Dict[str, any]]:
-    # This function sends a cypher query to the KG2 neo4j specified in config.json and returns the results
-    rtxc = RTXConfiguration()
-    rtxc.live = "KG2"
-    try:
-        driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
-        with driver.session() as session:
-            logging.info(f"  Sending cypher query to KG2 neo4j ({rtxc.neo4j_bolt})..")
-            query_results = session.run(cypher_query).data()
-            logging.info(f"  Got {len(query_results)} results back from neo4j")
-        driver.close()
-    except Exception:
-        tb = traceback.format_exc()
-        error_type, error, _ = sys.exc_info()
-        logging.error(f"Encountered a problem interacting with {rtxc.neo4j_bolt}. {tb}")
-        return []
-    else:
-        return query_results
-
-
 def _convert_list_to_string_encoded_format(input_list_or_str: Union[List[str], str]) -> Union[str, List[str]]:
     if isinstance(input_list_or_str, list):
         filtered_list = [item for item in input_list_or_str if item]  # Get rid of any None items
         str_items = [item for item in filtered_list if isinstance(item, str)]
         if len(str_items) < len(filtered_list):
             logging.warning(f"  List contains non-str items (this is unexpected; I'll exclude them)")
-        return DELIMITER_CHAR.join(str_items)
+        return KG2C_ARRAY_DELIMITER.join(str_items)
     else:
         return input_list_or_str
 
@@ -100,9 +81,32 @@ def _get_edge_key(subject: str, object: str, predicate: str) -> str:
     return f"{subject}--{predicate}--{object}"
 
 
+def _get_headers(header_file_path: str) -> List[str]:
+    with open(header_file_path) as header_file:
+        reader = csv.reader(header_file, delimiter="\t")
+        headers = [row for row in reader][0]
+    processed_headers = [header.split(":")[0] for header in headers]
+    logging.info(f"Headers for {header_file_path} are: {processed_headers}")
+    return processed_headers
+
+
 def _clean_up_description(description: str) -> str:
     # Removes all of the "UMLS Semantic Type: UMLS_STY:XXXX;" bits from descriptions
     return re.sub("UMLS Semantic Type: UMLS_STY:[a-zA-Z][0-9]{3}[;]?", "", description).strip().strip(";")
+
+
+def _load_property(raw_property_value_from_tsv: str, property_type: any) -> Union[list, str, dict]:
+    if property_type is str:
+        return raw_property_value_from_tsv
+    elif property_type is list:
+        split_string = raw_property_value_from_tsv.split(KG2PRE_ARRAY_DELIMITER)
+        processed_list = [item.strip() for item in split_string if item]
+        return processed_list
+    elif property_type is dict:
+        # For now, publications_info is the only dict property
+        return _load_publications_info(raw_property_value_from_tsv, "none")
+    else:
+        return raw_property_value_from_tsv
 
 
 def _get_array_properties(kind_of_item: Optional[str] = None) -> Set[str]:
@@ -129,6 +133,19 @@ def _get_lite_properties(kind_of_item: Optional[str] = None) -> Set[str]:
         return edge_lite_properties
     else:
         return node_lite_properties.union(edge_lite_properties)
+
+
+def _get_kg2pre_properties(kind_of_item: Optional[str] = None) -> Set[str]:
+    node_kg2pre_properties = {property_name for property_name, property_info in PROPERTIES_LOOKUP["nodes"].items()
+                              if property_info["in_kg2pre"]}
+    edge_kg2pre_properties = {property_name for property_name, property_info in PROPERTIES_LOOKUP["edges"].items()
+                              if property_info["in_kg2pre"]}
+    if kind_of_item and kind_of_item.startswith("node"):
+        return node_kg2pre_properties
+    elif kind_of_item and kind_of_item.startswith("edge"):
+        return edge_kg2pre_properties
+    else:
+        return node_kg2pre_properties.union(edge_kg2pre_properties)
 
 
 def _get_node_labels_property() -> str:
@@ -435,30 +452,54 @@ def create_kg2c_files(is_test=False):
     canonicalizes the nodes, merges edges (based on subject, object, predicate), and saves the resulting canonicalized
     graph in multiple file formats: JSON, sqlite, and TSV (ready for import into Neo4j).
     """
-    logging.info(f" Extracting nodes from KG2..")
-    nodes_query = f"match (n) return n.id as id, n.name as name, n.category as category, " \
-                  f"n.publications as publications, n.iri as iri, n.description as description{' limit 5000' if is_test else ''}"
-    neo4j_nodes = _run_kg2_cypher_query(nodes_query)
-    if neo4j_nodes:
-        logging.info(f" Canonicalizing nodes..")
-        canonicalized_nodes_dict, curie_map = _canonicalize_nodes(neo4j_nodes)
-        logging.info(f"  Number of KG2 nodes was reduced to {len(canonicalized_nodes_dict)} ({round((len(canonicalized_nodes_dict) / len(neo4j_nodes)) * 100)}%)")
-    else:
-        logging.error(f"Couldn't get node data from KG2 neo4j.")
-        return
-    logging.info(f" Extracting edges from KG2..")
-    edges_query = f"match (n)-[e]->(m) return n.id as subject, m.id as object, e.predicate as " \
-                  f"predicate, e.provided_by as provided_by, e.publications as publications, " \
-                  f"e.publications_info as publications_info, e.id as id" \
-                  f"{' limit 20000' if is_test else ''}"
-    neo4j_edges = _run_kg2_cypher_query(edges_query)
-    if neo4j_edges:
-        logging.info(f" Canonicalizing edges..")
-        canonicalized_edges_dict = _canonicalize_edges(neo4j_edges, curie_map, is_test)
-        logging.info(f"  Number of KG2 edges was reduced to {len(canonicalized_edges_dict)} ({round((len(canonicalized_edges_dict) / len(neo4j_edges)) * 100)}%)")
-    else:
-        logging.error(f"Couldn't get edge data from KG2 neo4j.")
-        return
+    # First download the proper KG2 TSV files
+    local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
+    if not pathlib.Path(local_tsv_dir_path).exists():
+        subprocess.check_call(["mkdir", local_tsv_dir_path])
+    if not is_test:
+        kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
+        logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
+        subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
+        logging.info(f"Unpacking {kg2pre_tarball_name}..")
+        subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
+
+    # Load the KG2pre nodes and edges into dict objects
+    kg2pre_nodes = []
+    kg2pre_edges = []
+    nodes_tsv_path = f"{local_tsv_dir_path}/nodes.tsv"
+    edges_tsv_path = f"{local_tsv_dir_path}/edges.tsv"
+    logging.info(f"Loading nodes from KG2pre TSV ({nodes_tsv_path})..")
+    node_headers = _get_headers(f"{local_tsv_dir_path}/nodes_header.tsv")
+    edge_headers = _get_headers(f"{local_tsv_dir_path}/edges_header.tsv")
+    kg2pre_node_property_names = _get_kg2pre_properties("node")
+    kg2pre_edge_property_names = _get_kg2pre_properties("edge")
+    with open(nodes_tsv_path) as nodes_file:
+        reader = csv.reader(nodes_file, delimiter="\t")
+        for row in reader:
+            new_node = dict()
+            for node_property_name in kg2pre_node_property_names:
+                node_property_info = PROPERTIES_LOOKUP["nodes"][node_property_name]
+                raw_property_value = row[node_headers.index(node_property_name)]
+                new_node[node_property_name] = _load_property(raw_property_value, node_property_info["type"])
+            kg2pre_nodes.append(new_node)
+    logging.info(f"Loading edges from KG2pre TSV ({edges_tsv_path})..")
+    with open(edges_tsv_path) as edges_file:
+        reader = csv.reader(edges_file, delimiter="\t")
+        for row in reader:
+            new_edge = dict()
+            for edge_property_name in kg2pre_edge_property_names:
+                edge_property_info = PROPERTIES_LOOKUP["edges"][edge_property_name]
+                raw_property_value = row[edge_headers.index(edge_property_name)]
+                new_edge[edge_property_name] = _load_property(raw_property_value, edge_property_info["type"])
+            kg2pre_edges.append(new_edge)
+
+    # Do the actual canonicalization
+    logging.info(f"Canonicalizing nodes..")
+    canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
+    logging.info(f"Number of KG2pre nodes was reduced to {len(canonicalized_nodes_dict)} ({round((len(canonicalized_nodes_dict) / len(kg2pre_nodes)) * 100)}%)")
+    logging.info(f"Canonicalizing edges..")
+    canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
+    logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges_dict)} ({round((len(canonicalized_edges_dict) / len(kg2pre_edges)) * 100)}%)")
 
     # Create a node containing information about this KG2C build
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
@@ -492,13 +533,13 @@ def create_kg2c_files(is_test=False):
     pool = Pool(num_cpus)
     start = time.time()
     if use_nlp_to_choose_descriptions:
-        logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
+        logging.info(f"Starting to use Chunyu's NLP-based method to choose best descriptions..")
         best_descriptions = pool.map(_get_best_description_nlp, description_lists)
     else:
-        logging.info(f"  Choosing best descriptions (longest under 10,000 characters)..")
+        logging.info(f"Choosing best descriptions (longest under 10,000 characters)..")
         best_descriptions = pool.map(_get_best_description_length, description_lists)
 
-    logging.info(f" Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
+    logging.info(f"Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
     # Actually decorate nodes with their 'best' description
     for num in range(len(node_ids)):
         node_id = node_ids[num]
@@ -510,7 +551,7 @@ def create_kg2c_files(is_test=False):
     gc.collect()
 
     # Do some final clean-up/formatting of nodes, now that all merging is done
-    logging.info(f" Doing final clean-up/formatting of nodes")
+    logging.info(f"Doing final clean-up/formatting of nodes")
     for node_id, node in canonicalized_nodes_dict.items():
         node["publications"] = node["publications"][:10]  # We don't need a ton of publications, so truncate them
     logging.info(f" Doing final clean-up/formatting of edges")
