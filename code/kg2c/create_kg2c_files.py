@@ -86,7 +86,6 @@ def _get_headers(header_file_path: str) -> List[str]:
         reader = csv.reader(header_file, delimiter="\t")
         headers = [row for row in reader][0]
     processed_headers = [header.split(":")[0] for header in headers]
-    logging.info(f"Headers for {header_file_path} are: {processed_headers}")
     return processed_headers
 
 
@@ -212,6 +211,18 @@ def _modify_column_headers_for_neo4j(plain_column_headers: List[str], file_name_
 def _create_node(preferred_curie: str, name: Optional[str], category: str, all_categories: List[str],
                  expanded_categories: List[str], equivalent_curies: List[str], publications: List[str],
                  all_names: List[str], iri: Optional[str], description: Optional[str], descriptions_list: List[str]) -> Dict[str, any]:
+    node_properties_lookup = PROPERTIES_LOOKUP["nodes"]
+    assert isinstance(preferred_curie, node_properties_lookup["id"]["type"])
+    assert isinstance(name, node_properties_lookup["name"]["type"]) or not name
+    assert isinstance(category, node_properties_lookup["category"]["type"])
+    assert isinstance(all_categories, node_properties_lookup["all_categories"]["type"])
+    assert isinstance(expanded_categories, node_properties_lookup["expanded_categories"]["type"])
+    assert isinstance(equivalent_curies, node_properties_lookup["equivalent_curies"]["type"])
+    assert isinstance(publications, node_properties_lookup["publications"]["type"])
+    assert isinstance(all_names, node_properties_lookup["all_names"]["type"])
+    assert isinstance(iri, node_properties_lookup["iri"]["type"]) or not iri
+    assert isinstance(description, node_properties_lookup["description"]["type"]) or not description
+    assert isinstance(descriptions_list, list)
     return {
         "id": preferred_curie,
         "name": name,
@@ -229,6 +240,14 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
 
 def _create_edge(subject: str, object: str, predicate: str, provided_by: List[str], publications: List[str],
                  publications_info: Dict[str, any], kg2_ids: List[str]) -> Dict[str, any]:
+    edge_properties_lookup = PROPERTIES_LOOKUP["edges"]
+    assert isinstance(subject, edge_properties_lookup["subject"]["type"])
+    assert isinstance(object, edge_properties_lookup["object"]["type"])
+    assert isinstance(predicate, edge_properties_lookup["predicate"]["type"])
+    assert isinstance(provided_by, edge_properties_lookup["provided_by"]["type"])
+    assert isinstance(publications, edge_properties_lookup["publications"]["type"])
+    assert isinstance(publications_info, edge_properties_lookup["publications_info"]["type"])
+    assert isinstance(kg2_ids, edge_properties_lookup["kg2_ids"]["type"])
     return {
         "subject": subject,
         "object": object,

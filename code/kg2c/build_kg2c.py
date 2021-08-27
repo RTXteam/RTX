@@ -111,9 +111,9 @@ def main():
 
     # Actually build KG2c
     if build_kg2c:
-        logging.info("Creating KG2c files..")
+        logging.info("Calling create_kg2c_files.py..")
         create_kg2c_files(args.test)
-        logging.info("Recording meta KG info..")
+        logging.info("Calling record_kg2c_meta_info.py..")
         record_meta_kg_info(args.test)
         if not args.test:
             if upload_to_s3:
