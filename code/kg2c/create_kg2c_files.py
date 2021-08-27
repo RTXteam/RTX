@@ -305,7 +305,7 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
     lite_kg.update(meta_info_dict)
 
     # Save this lite KG to a JSON file
-    logging.info(f"    Saving lite json...")
+    logging.info(f"  Saving lite json...")
     with open(f"{KG2C_DIR}/kg2c_lite{'_test' if is_test else ''}.json", "w+") as output_file:
         json.dump(lite_kg, output_file)
 
@@ -548,17 +548,17 @@ def create_kg2c_files(is_test=False):
     node_ids = list(canonicalized_nodes_dict)
     description_lists = [canonicalized_nodes_dict[node_id]["descriptions_list"] for node_id in node_ids]
     num_cpus = os.cpu_count()
-    logging.info(f" Detected {num_cpus} cpus; will use all of them to choose best descriptions")
+    logging.info(f"Detected {num_cpus} cpus; will use all of them to choose best descriptions")
     pool = Pool(num_cpus)
     start = time.time()
     if use_nlp_to_choose_descriptions:
-        logging.info(f"Starting to use Chunyu's NLP-based method to choose best descriptions..")
+        logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
         best_descriptions = pool.map(_get_best_description_nlp, description_lists)
     else:
-        logging.info(f"Choosing best descriptions (longest under 10,000 characters)..")
+        logging.info(f" Choosing best descriptions (longest under 10,000 characters)..")
         best_descriptions = pool.map(_get_best_description_length, description_lists)
 
-    logging.info(f"Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
+    logging.info(f" Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
     # Actually decorate nodes with their 'best' description
     for num in range(len(node_ids)):
         node_id = node_ids[num]
@@ -573,7 +573,7 @@ def create_kg2c_files(is_test=False):
     logging.info(f"Doing final clean-up/formatting of nodes")
     for node_id, node in canonicalized_nodes_dict.items():
         node["publications"] = node["publications"][:10]  # We don't need a ton of publications, so truncate them
-    logging.info(f" Doing final clean-up/formatting of edges")
+    logging.info(f"Doing final clean-up/formatting of edges")
     # Convert our edge IDs to integers (to save space downstream) and add them as actual properties on the edges
     edge_num = 1
     for edge_id, edge in canonicalized_edges_dict.items():
@@ -587,6 +587,7 @@ def create_kg2c_files(is_test=False):
 
     # Actually create all of our output files (different formats for storing KG2c)
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
+    logging.info(f"Saving KG2c in various file formats..")
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
     create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
