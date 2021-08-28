@@ -525,6 +525,8 @@ def _post_process_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]], kg2
     else:
         logging.info(f" Choosing best descriptions (longest under 10,000 characters)..")
         best_descriptions = pool.map(_get_best_description_length, description_lists)
+    pool.close()
+    pool.join()
 
     logging.info(f" Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
     # Actually decorate nodes with their 'best' description
