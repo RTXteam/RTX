@@ -56,7 +56,7 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
             qedge_keys = kg_edge.qedge_keys
             for qedge_key in qedge_keys:
                 qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
-                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] = kg_edge_conf
+                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] += kg_edge_conf
     return res_graph
 
 
