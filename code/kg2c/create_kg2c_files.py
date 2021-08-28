@@ -31,7 +31,7 @@ from biolink_helper import BiolinkHelper
 
 KG2C_ARRAY_DELIMITER = "ǂ"  # Need to use a delimiter that does not appear in any list items (strings)
 KG2PRE_ARRAY_DELIMITER = ";"
-KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
+KG2C_DIR = os.path.dirname(os.path.abspath(__file__))
 csv.field_size_limit(sys.maxsize)  # Required because some KG2pre fields are massive
 
 
@@ -375,7 +375,7 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     array_edge_columns = _get_array_properties("edge")
     node_labels_property = _get_node_labels_property()
     for canonicalized_node in canonicalized_nodes_dict.values():
-        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node[node_labels_property], include_mixins=False)
+        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node[node_labels_property], include_mixins=True)
         for list_node_property in array_node_columns:
             canonicalized_node[list_node_property] = _convert_list_to_string_encoded_format(canonicalized_node[list_node_property])
     for canonicalized_edge in canonicalized_edges_dict.values():
@@ -574,7 +574,11 @@ def create_kg2c_files(is_test=False):
     # First download the proper KG2 TSV files
     local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
     if not pathlib.Path(local_tsv_dir_path).exists():
-        subprocess.check_call(["mkdir", local_tsv_dir_path])
+        if is_test:
+            raise ValueError(f"You must put your own test KG2pre TSVs into place (in {local_tsv_dir_path}). They must "
+                             f"be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
+        else:
+            subprocess.check_call(["mkdir", local_tsv_dir_path])
     if not is_test:
         kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
         logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
