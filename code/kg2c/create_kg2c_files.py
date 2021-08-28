@@ -517,18 +517,16 @@ def _post_process_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]], kg2
     description_lists = [canonicalized_nodes_dict[node_id]["descriptions_list"] for node_id in node_ids]
     num_cpus = os.cpu_count()
     logging.info(f"Detected {num_cpus} cpus; will use all of them to choose best descriptions")
-    pool = Pool(num_cpus)
     start = time.time()
-    if use_nlp_to_choose_descriptions:
-        logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
-        best_descriptions = pool.map(_get_best_description_nlp, description_lists)
-    else:
-        logging.info(f" Choosing best descriptions (longest under 10,000 characters)..")
-        best_descriptions = pool.map(_get_best_description_length, description_lists)
-    pool.close()
-    pool.join()
-
+    with Pool(num_cpus) as pool:
+        if use_nlp_to_choose_descriptions:
+            logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
+            best_descriptions = pool.map(_get_best_description_nlp, description_lists)
+        else:
+            logging.info(f" Choosing best descriptions (longest under 10,000 characters)..")
+            best_descriptions = pool.map(_get_best_description_length, description_lists)
     logging.info(f" Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
+
     # Actually decorate nodes with their 'best' description
     for num in range(len(node_ids)):
         node_id = node_ids[num]
