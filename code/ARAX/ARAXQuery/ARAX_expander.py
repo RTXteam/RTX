@@ -192,7 +192,7 @@ class ARAXExpander:
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
 
                 # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
-                if parameters.get("user_specified_prune_threshold"):
+                if parameters.get("prune_threshold"):
                     pre_prune_threshold = parameters["prune_threshold"]
                     post_prune_threshold = parameters["prune_threshold"]
                 else:
@@ -908,8 +908,6 @@ class ARAXExpander:
                     parameters[param_name] = int(value)
                 else:
                     parameters[param_name] = value
-                if param_name == "prune_threshold":
-                    parameters["user_specified_prune_threshold"] = True
 
         return parameters
 
@@ -923,7 +921,6 @@ class ARAXExpander:
             return False
         else:
             return True
-
 
     @staticmethod
     def _load_fda_approved_drug_ids() -> Set[str]:
