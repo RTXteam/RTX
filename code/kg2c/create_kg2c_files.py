@@ -53,7 +53,7 @@ PROPERTIES_LOOKUP = {
         "subject": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "object": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "provided_by": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
+        "provided_by": {"type": list, "in_kg2pre": True, "in_kg2c_lite": True},
         "publications": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
         "kg2_ids": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
         "publications_info": {"type": dict, "in_kg2pre": True, "in_kg2c_lite": False}
