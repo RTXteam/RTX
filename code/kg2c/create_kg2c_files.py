@@ -562,9 +562,9 @@ def _post_process_edges(canonicalized_edges_dict: Dict[str, Dict[str, any]]) -> 
 
 def create_kg2c_files(is_test=False):
     """
-    This function extracts all nodes/edges from the regular KG2 Neo4j endpoint (specified in your config.json),
-    canonicalizes the nodes, merges edges (based on subject, object, predicate), and saves the resulting canonicalized
-    graph in multiple file formats: JSON, sqlite, and TSV (ready for import into Neo4j).
+    This function extracts all nodes/edges from the KG2pre TSVs, canonicalizes the nodes, merges edges
+    (based on subject, object, predicate), and saves the resulting canonicalized graph in multiple file formats: JSON,
+    sqlite, and TSV (ready for import into Neo4j).
     """
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
