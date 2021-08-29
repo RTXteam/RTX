@@ -594,10 +594,13 @@ def create_kg2c_files(is_test=False):
     canonicalized_nodes_dict[build_node['id']] = build_node
     canonicalized_nodes_dict = _post_process_nodes(canonicalized_nodes_dict, kg2c_config_info)
     del kg2pre_nodes  # Try to free up as much memory as possible for edge processing
+    gc.collect()
 
     # Canonicalize edges
     kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges")
     canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
+    del kg2pre_edges
+    gc.collect()
     canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
     # Actually create all of our output files (different formats for storing KG2c)
