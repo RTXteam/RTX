@@ -32,7 +32,8 @@ def serialize_with_sets(obj: any) -> any:
 
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
                   meta_kg_file_name: str, is_test: bool):
-    logging.info("Gathering all meta triples..")
+    logging.info(f"Building meta KG..")
+    logging.info(" Gathering all meta triples..")
     with open("kg2c_config.json") as config_file:
         config_info = json.load(config_file)
     biolink_helper = BiolinkHelper(config_info["biolink_version"])
@@ -50,9 +51,9 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
                 for object_category in object_categories:
                     meta_triples.add((subject_category, predicate, object_category))
     meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2]} for triple in meta_triples]
-    logging.info(f"Created {len(meta_edges)} meta edges")
+    logging.info(f" Created {len(meta_edges)} meta edges")
 
-    logging.info("Gathering all meta nodes..")
+    logging.info(" Gathering all meta nodes..")
     with open(f"{KG2C_DIR}/equivalent_curies.pickle", "rb") as equiv_curies_file:
         equivalent_curies_dict = pickle.load(equiv_curies_file)
     meta_nodes = defaultdict(lambda: defaultdict(lambda: set()))
@@ -62,9 +63,9 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
         categories = biolink_helper.add_conflations(node["category"])
         for category in categories:
             meta_nodes[category]["id_prefixes"].update(prefixes)
-    logging.info(f"Created {len(meta_nodes)} meta nodes")
+    logging.info(f" Created {len(meta_nodes)} meta nodes")
 
-    logging.info("Saving meta KG to JSON file..")
+    logging.info(" Saving meta KG to JSON file..")
     meta_kg = {"nodes": meta_nodes, "edges": meta_edges}
     with open(f"{KG2C_DIR}/{meta_kg_file_name}", "w+") as meta_kg_file:
         json.dump(meta_kg, meta_kg_file, default=serialize_with_sets, indent=2)
@@ -93,7 +94,7 @@ def add_neighbor_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], edges_
             neighbor_counts[node_id][label] = len(neighbor_ids)
 
     # Then write these counts to the sqlite file
-    logging.info(f"Saving neighbor counts (for {len(neighbor_counts)} nodes) to sqlite..")
+    logging.info(f" Saving neighbor counts (for {len(neighbor_counts)} nodes) to sqlite..")
     connection = sqlite3.connect(sqlite_file_name)
     connection.execute("DROP TABLE IF EXISTS neighbors")
     connection.execute("CREATE TABLE neighbors (id TEXT, neighbor_counts TEXT)")
@@ -102,7 +103,7 @@ def add_neighbor_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], edges_
     connection.execute("CREATE UNIQUE INDEX node_neighbor_index ON neighbors (id)")
     connection.commit()
     cursor = connection.execute(f"SELECT COUNT(*) FROM neighbors")
-    logging.info(f"Done adding neighbor counts to sqlite; neighbors table contains {cursor.fetchone()[0]} rows")
+    logging.info(f" Done adding neighbor counts to sqlite; neighbors table contains {cursor.fetchone()[0]} rows")
     cursor.close()
     connection.close()
 
@@ -117,7 +118,7 @@ def add_category_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], sqlite
             nodes_by_label[category].add(node_id)
 
     # Then write these counts to the sqlite file
-    logging.info(f"Saving category counts (for {len(nodes_by_label)} categories) to sqlite..")
+    logging.info(f" Saving category counts (for {len(nodes_by_label)} categories) to sqlite..")
     connection = sqlite3.connect(sqlite_file_name)
     connection.execute("DROP TABLE IF EXISTS category_counts")
     connection.execute("CREATE TABLE category_counts (category TEXT, count INTEGER)")
@@ -126,8 +127,8 @@ def add_category_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], sqlite
     connection.execute("CREATE UNIQUE INDEX category_index ON category_counts (category)")
     connection.commit()
     cursor = connection.execute(f"SELECT COUNT(*) FROM category_counts")
-    logging.info(f"Done adding category counts to sqlite; category_counts table contains "
-                       f"{cursor.fetchone()[0]} rows")
+    logging.info(f" Done adding category counts to sqlite; category_counts table contains "
+                 f"{cursor.fetchone()[0]} rows")
     cursor.close()
     connection.close()
 
