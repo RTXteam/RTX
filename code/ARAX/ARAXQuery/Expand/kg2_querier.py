@@ -149,7 +149,6 @@ class KG2Querier:
     def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list, log: ARAXResponse) -> Edge:
         edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
         provided_bys = edge_tuple[3]
-        publications = edge_tuple[4]
         # Add any provided_bys missing from the spreadsheet to our map
         missing_provided_bys = set(provided_bys).difference(set(self.infores_curie_map))
         for source in missing_provided_bys:
@@ -169,13 +168,6 @@ class KG2Querier:
                                             attribute_source=eu.get_translator_infores_curie("RTX-KG2"))
                                   for source in provided_bys]
         edge.attributes += provided_by_attributes
-        # Create an attribute containing any publications
-        if publications:
-            infores_curies = {attribute.value for attribute in provided_by_attributes}
-            edge.attributes.append(Attribute(attribute_type_id="biolink:has_supporting_publications",
-                                             value_type_id="biolink:Publication",
-                                             value=publications,
-                                             attribute_source=list(infores_curies)[0] if len(infores_curies) == 1 else None))
 
         # Switch to canonical predicate as needed (temporary patch until KG2 uses only canonical predicates)
         canonical_predicate = self.biolink_helper.get_canonical_predicates(edge.predicate)[0]
