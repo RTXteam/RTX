@@ -77,18 +77,26 @@ class NGDDatabaseBuilder:
         start = time.time()
         logging.info(f" Deleting any pre-existing Pubmed files..")
         subprocess.call(["rm", "-rf", self.pubmed_directory_path])
-        logging.info(f" Downloading latest Pubmed XML baseline files..")
-        subprocess.check_call(["wget", "-r", "ftp://ftp.ncbi.nlm.nih.gov/pubmed/baseline", "-P", self.pubmed_directory_path])
-        logging.info(f" Collecting downloaded Pubmed XML files..")
-        xml_file_sub_dir = f"{self.pubmed_directory_path}/ftp.ncbi.nlm.nih.gov/pubmed/baseline"
-        all_file_names = [os.fsdecode(file) for file in os.listdir(xml_file_sub_dir)]
-        pubmed_file_names = [file_name for file_name in all_file_names if file_name.startswith('pubmed') and
-                             file_name.endswith('.xml.gz')]
-        if not pubmed_file_names:
-            logging.error("Couldn't find any PubMed XML files to scrape. Something must've gone wrong downloading "
-                          "the Pubmed XML files.")
-            self.status = 'ERROR'
-        else:
+        logging.info(f" Downloading latest Pubmed XML files (baseline and update files)..")
+        subprocess.check_call(["wget", "-r", "ftp://ftp.ncbi.nlm.nih.gov/pubmed", "-P", self.pubmed_directory_path])
+        for sub_dir_name in ["baseline", "updatefiles"]:
+            xml_file_sub_dir = f"{self.pubmed_directory_path}/ftp.ncbi.nlm.nih.gov/pubmed/{sub_dir_name}"
+            all_file_names = [os.fsdecode(file) for file in os.listdir(xml_file_sub_dir)]
+            pubmed_file_names = [file_name for file_name in all_file_names if file_name.lower().startswith('pubmed')
+                                 and file_name.lower().endswith('.xml.gz')]
+
+            # Make sure the files seem to have been downloaded ok
+            if not pubmed_file_names:
+                if sub_dir_name == "baseline":
+                    logging.error("Couldn't find any PubMed baseline XML files to scrape. Something must've gone wrong "
+                                  "downloading them.")
+                    self.status = 'ERROR'
+                    return
+                else:
+                    logging.warning(f"No Pubmed 'update' files detected. This might be ok (it's possible none exist), "
+                                    f"but it's a little weird.")
+
+            logging.info(f" Starting to process {sub_dir_name} PubMed files..")
             conceptname_to_pmids_map = dict()
             # Go through each downloaded pubmed file and build our dictionary of mappings
             pubmed_file_names_to_process = pubmed_file_names if not self.is_test else pubmed_file_names[:1]
