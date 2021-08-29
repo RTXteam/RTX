@@ -644,7 +644,7 @@ def get_standard_parameters() -> dict:
         "prune_threshold": {
             "is_required": False,
             "type": "integer",
-            "default": 1000,
+            "default": None,
             "examples": [500, 2000],
             "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of "
                            "this threshold will be pruned, using Fisher Exact Test to rank answers."

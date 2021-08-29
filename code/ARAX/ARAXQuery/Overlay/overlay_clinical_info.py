@@ -19,8 +19,11 @@ from openapi_server.models.q_edge import QEdge
 # FIXME:^ this should be pulled from a YAML file pointing to the parser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../KnowledgeSources/COHD_local/scripts/")
 from COHDIndex import COHDIndex
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
+
 
 # TODO: boy howdy this can be modularized quite a bit. Since COHD and other clinical KP's will be adding edge attributes and/or edges, should pull out functions to easy their addition.
 
@@ -35,6 +38,7 @@ class OverlayClinicalInfo:
         self.who_knows_about_what = {'COHD': ['small_molecule', 'phenotypic_feature', 'disease', 'drug',
                                                 'biolink:SmallMolecule', 'biolink:PhenotypicFeature', 'biolink:Disease', 'biolink:Drug']}  # FIXME: replace this with information about the KP's, KS's, and their API's
         self.node_curie_to_type = dict()
+        self.biolink_helper = BiolinkHelper()
         self.global_iter = 0
         try:
             self.cohdIndex = COHDIndex()
@@ -122,7 +126,7 @@ class OverlayClinicalInfo:
             KP_to_use = None
             for KP in self.who_knows_about_what:
                 # see which KP's can label both subjects of information
-                if self.in_common(subject_type, self.who_knows_about_what[KP]) and self.in_common(object_type, self.who_knows_about_what[KP]):
+                if self.in_common(self.biolink_helper.get_descendants(subject_type, include_mixins=False), self.who_knows_about_what[KP]) and self.in_common(self.biolink_helper.get_descendants(object_type, include_mixins=False), self.who_knows_about_what[KP]):
                     KP_to_use = KP
 
             if KP_to_use == 'COHD':
@@ -286,7 +290,7 @@ class OverlayClinicalInfo:
 
                 # edge properties
                 now = datetime.now()
-                edge_type = f"biolink:has_{name}_with"
+                edge_type = f"biolink:has_real_world_evidence_of_association_with"
                 qedge_keys = [parameters['virtual_relation_label']]
                 relation = parameters['virtual_relation_label']
                 is_defined_by = "ARAX"
@@ -326,7 +330,7 @@ class OverlayClinicalInfo:
 
         # Now add a q_edge the query_graph since I've added an extra edge to the KG
         if added_flag:
-            edge_type = f"biolink:has_{name}_with"
+            edge_type = f"biolink:has_real_world_evidence_of_association_with"
             relation = parameters['virtual_relation_label']
             qedge_keys = [parameters['virtual_relation_label']]
             subject_qnode_key = parameters['subject_qnode_key']
