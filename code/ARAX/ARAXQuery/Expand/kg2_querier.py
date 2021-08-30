@@ -2,14 +2,9 @@
 import sys
 import os
 import time
-import traceback
-import pathlib
 from typing import Dict, Tuple, Union
-from datetime import datetime, timedelta
 
 import requests
-import requests_cache
-import yaml
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
@@ -32,10 +27,8 @@ class KG2Querier:
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
         self.enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
-        self.infores_curie_yaml_name = "kg2-provided-by-curie-to-infores-curie.yaml"
-        self.infores_curie_yaml_path = f"{os.path.dirname(os.path.abspath(__file__))}/{self.infores_curie_yaml_name}"
-        self.infores_curie_map = self._initiate_infores_curie_map(self.response)
         self.biolink_helper = BiolinkHelper()
+        self.kg2_infores_curie = eu.get_translator_infores_curie("RTX-KG2")
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -135,7 +128,7 @@ class KG2Querier:
             log.debug(f"Loading {num_edges} edges into TRAPI object model")
             start = time.time()
             for edge_key, edge_tuple in edges.items():
-                edge = self._convert_kg2c_plover_edge_to_trapi_edge(edge_tuple, log)
+                edge = self._convert_kg2c_plover_edge_to_trapi_edge(edge_tuple)
                 answer_kg.add_edge(edge_key, edge, qedge_key)
             log.debug(f"Loading {num_edges} {qedge_key} edges into TRAPI object model took "
                       f"{round(time.time() - start, 2)} seconds")
@@ -146,81 +139,21 @@ class KG2Querier:
         node = Node(name=node_tuple[0], categories=eu.convert_to_list(node_tuple[1]))
         return node
 
-    def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list, log: ARAXResponse) -> Edge:
+    def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list) -> Edge:
         edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
-        provided_bys = edge_tuple[3]
-        # Add any provided_bys missing from the spreadsheet to our map
-        missing_provided_bys = set(provided_bys).difference(set(self.infores_curie_map))
-        for source in missing_provided_bys:
-            self.infores_curie_map[source] = {"infores_curie": self._get_infores_curie_from_provided_by(source, log),
-                                              "knowledge_type": "biolink:knowledge_source"}
-
+        knowledge_sources = edge_tuple[3]
         # Indicate that this edge came from the KG2 KP
-        kg2_infores_curie = eu.get_translator_infores_curie("RTX-KG2")
-        edge.attributes.append(Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
-                                         value=kg2_infores_curie,
-                                         value_type_id="biolink:InformationResource",
-                                         attribute_source=kg2_infores_curie))
-        # Create knowledge source attributes for each of the provided_bys
-        provided_by_attributes = [Attribute(attribute_type_id=self.infores_curie_map[source]["knowledge_type"],
-                                            value=self.infores_curie_map[source]["infores_curie"],
-                                            value_type_id="biolink:InformationResource",
-                                            attribute_source=eu.get_translator_infores_curie("RTX-KG2"))
-                                  for source in provided_bys]
-        edge.attributes += provided_by_attributes
 
-        # Switch to canonical predicate as needed (temporary patch until KG2 uses only canonical predicates)
-        canonical_predicate = self.biolink_helper.get_canonical_predicates(edge.predicate)[0]
-        if edge.predicate != canonical_predicate:
-            edge = eu.flip_edge(edge, canonical_predicate)
+        edge.attributes.append(Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
+                                         value=self.kg2_infores_curie,
+                                         value_type_id="biolink:InformationResource",
+                                         attribute_source=self.kg2_infores_curie))
+        # Create knowledge source attributes for each of the knowledge sources
+        knowledge_source_attributes = [Attribute(attribute_type_id="knowledge_source",
+                                                 value=infores_curie,
+                                                 value_type_id="biolink:InformationResource",
+                                                 attribute_source=self.kg2_infores_curie)
+                                       for infores_curie in knowledge_sources]
+        edge.attributes += knowledge_source_attributes
 
         return edge
-
-    def _get_infores_curie_from_provided_by(self, provided_by: str, log: ARAXResponse) -> str:
-        # This is a backup method in case a provided_by is missing from the infores mappings
-        log.warning(f"KG2 edge uses a provided_by not listed in {self.infores_curie_yaml_name}: {provided_by}")
-        stripped = provided_by.strip(":")  # Handle SEMMEDDB: situation
-        local_id = stripped.split(":")[-1]
-        before_dot = local_id.split(".")[0]
-        before_slash = before_dot.split("/")[0]
-        infores_curie = f"infores:{before_slash.lower()}"
-        return infores_curie
-
-    def _initiate_infores_curie_map(self, log: ARAXResponse) -> Dict[str, Dict[str, str]]:
-        # Grab (or refresh) the spreadsheet of mappings from the KG2 repo
-        infores_map_file = pathlib.Path(self.infores_curie_yaml_path)
-        twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
-        if not infores_map_file.exists() or datetime.fromtimestamp(infores_map_file.stat().st_mtime) < twenty_four_hours_ago:
-            log.debug(f"Grabbing {self.infores_curie_yaml_name} from RTX-KG2 repo")
-            with requests_cache.disabled():
-                response = requests.get(f"https://raw.githubusercontent.com/RTXteam/RTX-KG2/master/{self.infores_curie_yaml_name}", timeout=10)
-                if response.status_code == 200:
-                    # Save this file locally
-                    with open(self.infores_curie_yaml_path, "w+") as local_file:
-                        local_file.write(response.text)
-                else:
-                    log.warning(f"Unable to grab {self.infores_curie_yaml_name} from RTX-KG2 repo; will proceed but "
-                                f"infores curies may not be accurate")
-        # Now that we have the file locally, load it into a dictionary
-        log.debug(f"Loading {self.infores_curie_yaml_name} into a map")
-        infores_curie_map = dict()
-        try:
-            with open(self.infores_curie_yaml_path) as yaml_file:
-                infores_curie_map = yaml.safe_load(yaml_file)
-        except Exception:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            log.warning(f"Ran into a problem parsing {self.infores_curie_yaml_name}; will proceed but infores curies"
-                        f"may not be accurate. {tb}")
-
-        # Make sure "infores:" and "biolink:" prefixes are included
-        for key in infores_curie_map:
-            infores_info = infores_curie_map[key]
-            if not infores_info["infores_curie"].startswith("infores:"):
-                local_infores_id = infores_info["infores_curie"]
-                infores_info["infores_curie"] = f"infores:{local_infores_id}"
-            if not infores_info["knowledge_type"].startswith("biolink:"):
-                local_knowledge_type_id = infores_info["knowledge_type"]
-                infores_info["knowledge_type"] = f"biolink:{local_knowledge_type_id}"
-
-        return infores_curie_map
