@@ -124,14 +124,14 @@ class NGDDatabaseBuilder:
                 self._destroy_etree(file_contents_tree)  # Hack around lxml memory leak
                 logging.info(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
 
-            # Save the data to the PickleDB after we're done
-            logging.info("  Loading data into PickleDB..")
-            conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_path, False)
-            for concept_name, pmid_list in conceptname_to_pmids_map.items():
-                conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_curie_from_local_id(pmid) for pmid in pmid_list}))
-            logging.info("  Saving PickleDB file..")
-            conceptname_to_pmids_db.dump()
-            logging.info(f"Done! Building {self.conceptname_to_pmids_db_name} took {round(((time.time() - start) / 60) / 60, 3)} hours")
+        # Save the data to the PickleDB after we're done
+        logging.info("  Loading data into PickleDB..")
+        conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_path, False)
+        for concept_name, pmid_list in conceptname_to_pmids_map.items():
+            conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_curie_from_local_id(pmid) for pmid in pmid_list}))
+        logging.info("  Saving PickleDB file..")
+        conceptname_to_pmids_db.dump()
+        logging.info(f"Done! Building {self.conceptname_to_pmids_db_name} took {round(((time.time() - start) / 60) / 60, 3)} hours")
 
     def build_curie_to_pmids_db(self):
         # This function creates a final sqlite database of curie->PMIDs mappings using data scraped from Pubmed AND KG2
