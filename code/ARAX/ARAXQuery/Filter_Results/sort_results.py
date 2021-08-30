@@ -63,15 +63,19 @@ class SortResults:
             edge_values = {}
             # iterate over the edges find the attribute values
             for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
-                edge_values[key] = {'value': None, 'relation': edge.relation}
+                edge_relation = None
+                edge_values[key] = {'value': None, 'relation': None}
                 if hasattr(edge, 'attributes'):  # check if they have attributes
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute
                             if attribute.original_attribute_name == params['edge_attribute'] or attribute.attribute_type_id == params['edge_attribute']:  # check if it's the desired one
                                 try:
-                                    edge_values[key] = {'value': float(attribute.value), 'relation': edge.relation}
+                                    edge_values[key] = {'value': float(attribute.value), 'relation': None}
                                 except ValueError:
-                                    edge_values[key] = {'value': attribute.value, 'relation': edge.relation}
+                                    edge_values[key] = {'value': attribute.value, 'relation': None}
+                            if attribute.original_attribute_name == "virtual_relation_label":
+                                edge_relation = attribute.value
+                        edge_values[key]['relation'] = edge_relation
             if params['descending']:
                 value_list=[-math.inf]*len(self.message.results)
             else:
