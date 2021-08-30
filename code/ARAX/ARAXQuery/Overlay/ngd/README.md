@@ -9,10 +9,17 @@ You need to make your environment point to the KG2 and synonymizer you want to u
 
 ### Then do the build:
 
-If `conceptname_to_pmids.db` doesn't already exist on the machine you'll be running this build on (or it's due for a refresh - it should be refreshed maybe twice a year or so):
-1. Download the PubMed XML files (into whatever directory you want)
-1. Do a full build by running: `python build_ngd_database.py [path_to_your_pubmed_xml_directory] --full`
+If you want to use the latest PubMed files for this NGD build or the machine you're using has never previously 
+run an NGD build, do a **full build**:
+```
+python3 build_ngd_database.py --full
+```
+This will automatically download and use the latest PubMed XML files, including both the annual 'baseline' files and 
+the 'update' files.
 
-Otherwise if you already have a `conceptname_to_pmids.db` you want to use:
-
-1. Do a partial build by running `python build_ngd_database.py [path_to_your_pubmed_xml_directory]`
+Otherwise you can just do a **partial build**:
+```
+python3 build_ngd_database.py
+```
+This will use the existing `conceptname_to_pmids.db` artifact on your machine 
+(in `RTX/code/ARAX/ARAXQuery/Overlay/ngd/`), which will shave a few hours off the build time.

@@ -1405,10 +1405,10 @@ class COHDQuerier:
         url = "http://cohd.smart-api.info/"
 
         if info_dict is not None:
-            swagger_edge.predicate = f"biolink:has_cohd_info_with"
-            swagger_edge_key = f"COHD:{subject}-has_cohd_info_with-{object}"
+            swagger_edge.predicate = f"biolink:has_real_world_evidence_of_association_with"
+            swagger_edge_key = f"COHD:{subject}_has_all_cohd_info_with_{object}"
             swagger_edge.relation = None
-            description = "The Clinical Data Provider (COHD), accessed via a local ARAX copy."
+            description = "This edge is generated based on the Clinical Data Provider (COHD), accessed via a local ARAX copy. It contains all necessary information from COHD database."
             swagger_edge.attributes = []
             for key in info_dict:
                 name = key
@@ -1418,13 +1418,14 @@ class COHDQuerier:
                                         eu.get_arax_source_attribute(),
                                         eu.get_computed_value_attribute()]
         else:
-            swagger_edge.predicate = f"biolink:has_{name}_with"
-            swagger_edge_key = f"COHD:{subject}-has_{name}_with-{object}"
+            swagger_edge.predicate = f"biolink:has_real_world_evidence_of_association_with"
+            swagger_edge_key = f"COHD:{subject}_has_{name}_with_{object}"
             swagger_edge.relation = None
-            description = "The Clinical Data Provider (COHD), accessed via a local ARAX copy."
+            description = f"This edge is generated based on the Clinical Data Provider (COHD), accessed via a local ARAX copy. It contains {name} information from COHD database."
             swagger_edge.attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
                                     eu.get_kp_source_attribute("COHD", arax_kp=True, description=description),
-                                    eu.get_arax_source_attribute()]
+                                    eu.get_arax_source_attribute(),
+                                    eu.get_computed_value_attribute()]
 
         return swagger_edge_key, swagger_edge
 
