@@ -123,6 +123,7 @@ class ComputeNGD:
                     edge_attribute_list = [
                         edge_attribute,
                         pmid_attribute,
+                        EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="biolink:Unknown"),
                         EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                         EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
@@ -141,7 +142,7 @@ class ComputeNGD:
                     #            attributes=edge_attribute_list)
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list)
-                    edge.relation = relation
+                    #edge.relation = relation
                     #### /end FIXME
 
                     edge.qedge_keys = qedge_keys
