@@ -119,6 +119,7 @@ class ARAXDecorator:
         rows = cursor.fetchall()
         cursor.close()
         connection.close()
+        response.debug(f"Got {len(rows)} rows back from KG2c sqlite")
 
         # Decorate edges in the KG with info extracted from sqlite
         response.debug(f"Adding attributes to edges in the KG")
