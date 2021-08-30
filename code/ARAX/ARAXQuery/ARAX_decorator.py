@@ -64,47 +64,37 @@ class ARAXDecorator:
 
         return response
 
-    def decorate_edges(self, response: ARAXResponse, target_kp: Optional[str] = None,
-                       target_predicate: Optional[str] = None, epc_attribute: Optional[str] = None) -> ARAXResponse:
+    def decorate_edges(self, response: ARAXResponse, kind: Optional[str] = "RTX-KG2") -> ARAXResponse:
         """
         Decorates edges with publication sentences and any other available EPC info.
-        target_kp: If specified, only edges from this KP will be decorated
-        target_predicate: If specified, only edges with this predicate will be decorated (use this for NGD)
-        epc_attribute: If specified, only this attribute will be added (e.g., "publications_info")
+        kind: The kind of edges to decorate, either: "NGD" or "RTX-KG2". For NGD edges, publications info attributes
+        are added. For RTX-KG2 edges, attributes for all EPC properties are added.
         """
         kg = response.envelope.message.knowledge_graph
         response.debug(f"Decorating edges with EPC info from KG2c")
+        supported_kinds = {"RTX-KG2", "NGD"}
+        if kind not in supported_kinds:
+            response.error(f"Supported values for ARAXDecorator.decorate_edges()'s 'kind' parameter are: "
+                           f"{supported_kinds}")
+            return response
 
         # Figure out which edges we need to decorate
-        kp_edge_keys = set()
-        predicate_edge_keys = set()
-        if target_kp:
-            kp_infores_curie = eu.get_translator_infores_curie(target_kp)
-            kp_types = {"biolink:aggregator_knowledge_source", "biolink:knowledge_source"}  # TODO: add others
-            kp_edge_keys = {edge_id for edge_id, edge in kg.edges.items()
-                            if edge.attributes and any(attribute.value == kp_infores_curie and
-                                                       attribute.attribute_type_id in kp_types
-                                                       for attribute in edge.attributes)}
-        if target_predicate:
-            predicate_edge_keys = {edge_id for edge_id, edge in kg.edges.items()
-                                   if edge.predicate == target_predicate}
-        if target_kp and target_predicate:
-            edge_keys_to_decorate = kp_edge_keys.intersection(predicate_edge_keys)
-        elif target_kp:
-            edge_keys_to_decorate = kp_edge_keys
-        elif target_predicate:
-            edge_keys_to_decorate = predicate_edge_keys
+        if kind == "RTX-KG2":
+            edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
+                                     if edge.attributes and any(attribute.value == self.kg2_infores_curie and
+                                                                attribute.attribute_type_id == "biolink:aggregator_knowledge_source"
+                                                                for attribute in edge.attributes)}
         else:
-            # Default to decorating all edges if no restrictions were passed in
-            edge_keys_to_decorate = set(kg.edges)
+            edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
+                                     if edge.predicate == "biolink:has_normalized_google_distance_with"}
         if not edge_keys_to_decorate:
-            response.debug(f"Could not identify any edges to decorate that matched the specified criteria")
+            response.debug(f"Could not identify any {kind} edges to decorate")
         else:
             response.debug(f"Identified {len(edge_keys_to_decorate)} edges to decorate")
 
         # Determine the search keys for these edges that we need to look up in sqlite
         search_key_to_edge_keys_map = defaultdict(set)
-        if target_predicate:  # For now only NGD/overlay will use this mode
+        if kind == "NGD":  # For now only NGD/overlay will use this mode
             for edge_key in edge_keys_to_decorate:
                 edge = kg.edges[edge_key]
                 search_key = f"{edge.subject}--{edge.object}"
@@ -149,15 +139,8 @@ class ARAXDecorator:
             corresponding_bare_edge_keys = search_key_to_edge_keys_map[search_key]
             for edge_key in corresponding_bare_edge_keys:
                 bare_edge = kg.edges[edge_key]
-                if joined_publications and (epc_attribute in {None, "publications"}):
-                    publications_attribute = Attribute(attribute_type_id="biolink:has_supporting_publications",
-                                                       value_type_id="biolink:Publication",
-                                                       value=list(joined_publications),
-                                                       attribute_source=list(joined_knowledge_sources)[0] if len(joined_knowledge_sources) == 1 else None)
-                    if not bare_edge.attributes:
-                        bare_edge.attributes = []
-                    bare_edge.attributes.append(publications_attribute)
-                if joined_publications_info and (epc_attribute in {None, "publications_info"}):
+                # Add publications info (done for both "NGD" and "RTX-KG2" modes)
+                if joined_publications_info:
                     publications_attribute = Attribute(attribute_type_id="biolink:supporting_publication_info",
                                                        value_type_id="biolink:Publication",
                                                        value=joined_publications_info,
@@ -165,7 +148,15 @@ class ARAXDecorator:
                     if not bare_edge.attributes:
                         bare_edge.attributes = []
                     bare_edge.attributes.append(publications_attribute)
-                if target_kp == "RTX-KG2" and (epc_attribute in {None, "kg2_ids"}):
+                if kind == "RTX-KG2":
+                    if not bare_edge.attributes:
+                        bare_edge.attributes = []
+                    if joined_publications:
+                        publications_attribute = Attribute(attribute_type_id="biolink:has_supporting_publications",
+                                                           value_type_id="biolink:Publication",
+                                                           value=list(joined_publications),
+                                                           attribute_source=list(joined_knowledge_sources)[0] if len(joined_knowledge_sources) == 1 else None)
+                        bare_edge.attributes.append(publications_attribute)
                     kg2_ids_attribute = Attribute(attribute_type_id="biolink:original_edge_information",
                                                   value_type_id="biolink:Unknown",
                                                   value=list(joined_kg2_ids),
@@ -173,8 +164,6 @@ class ARAXDecorator:
                                                               "any synonymization or remapping. Listed in "
                                                               "(subject)--(relation)--(object)--(source) format.",
                                                   attribute_source=self.kg2_infores_curie)
-                    if not bare_edge.attributes:
-                        bare_edge.attributes = []
                     bare_edge.attributes.append(kg2_ids_attribute)
 
         return response
