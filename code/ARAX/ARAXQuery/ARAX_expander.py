@@ -316,7 +316,8 @@ class ARAXExpander:
         # Decorate all nodes with additional attributes info from KG2c (iri, description, etc.)
         if mode == "ARAX":  # Skip doing this for KG2 (until can pass minimal_metadata param)
             decorator = ARAXDecorator()
-            decorator.apply(response)
+            decorator.decorate_nodes(response)
+            decorator.decorate_edges(response, target_kp="RTX-KG2")
 
         # Return the response and done
         kg = message.knowledge_graph
