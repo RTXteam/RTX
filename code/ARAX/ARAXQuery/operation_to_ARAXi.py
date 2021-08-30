@@ -7,6 +7,7 @@ class WorkflowToARAXi:
         self.implemented = {'overlay_compute_ngd',
                             'overlay_compute_jaccard',
                             'overlay_fisher_exact_test',
+                            #'overlay_connect_knodes',
                             'filter_results_top_n',
                             'bind',
                             'fill',
@@ -29,6 +30,16 @@ class WorkflowToARAXi:
         for source, target in itertools.combinations(parameters["qnode_keys"], 2):
             # TODO: make is so ARAX properly handles -1 as the default value (in ranker)
             ARAXi.append(f"overlay(action=compute_ngd,default_value=inf,virtual_relation_label={parameters['virtual_relation_label']},subject_qnode_key={source},object_qnode_key={target})")
+        return ARAXi
+
+    @staticmethod
+    def __translate_overlay_connect_knodes(parameters):
+        ARAXi = []
+        ARAXi.append(f"overlay(action=compute_ngd,default_value=inf)")
+        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency)")
+        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio)")
+        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=chi_square)")
+        ARAXi.append(f"overlay(action=predict_drug_treats_disease)")
         return ARAXi
 
     @staticmethod

@@ -47,16 +47,12 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     for key, edge_binding_list in result.edge_bindings.items():
         for edge_binding in edge_binding_list:
             kg_edge = kg_edge_id_to_edge[edge_binding.id]
-            if kg_edge.attributes is not None:
-                kg_edge_attributes = {x.original_attribute_name:x.value for x in kg_edge.attributes}
-            else:
-                kg_edge_attributes = {}
             kg_edge_conf = kg_edge.confidence
             #kg_edge_conf = kg_edge_attributes["confidence"]
             qedge_keys = kg_edge.qedge_keys
             for qedge_key in qedge_keys:
                 qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
-                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] = kg_edge_conf
+                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] += kg_edge_conf
     return res_graph
 
 
@@ -272,21 +268,21 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
                     edge_confidence *= normalized_score
-        if edge_attribute_dict.get("provided_by", None) is not None:
-            if "SEMMEDDB:" in edge_attribute_dict["provided_by"]:
-                if edge_attribute_dict.get("publications", None) is not None:
-                    n_publications = len(edge_attribute_dict["publications"])
-                else:
-                    n_publications = 0
-                if n_publications == 0:
-                    pub_value = 0.01
-                else:
-                    pub_value = np.log(n_publications)
-                    max_value = 1.0
-                    curve_steepness = 3.16993
-                    logistic_midpoint = 1.38629
-                    pub_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
-                edge_confidence *= pub_value
+        if edge.attributes and any(attribute.attribute_type_id == "biolink:aggregator_knowledge_source" and
+                                   attribute.value == "infores:semmeddb" for attribute in edge.attributes):
+            if edge_attribute_dict.get("biolink:has_supporting_publications", None) is not None:
+                n_publications = len(edge_attribute_dict["biolink:has_supporting_publications"])
+            else:
+                n_publications = 0
+            if n_publications == 0:
+                pub_value = 0.01
+            else:
+                pub_value = np.log(n_publications)
+                max_value = 1.0
+                curve_steepness = 3.16993
+                logistic_midpoint = 1.38629
+                pub_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
+            edge_confidence *= pub_value
         return edge_confidence
 
     def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value) -> float:
@@ -301,6 +297,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 # check to see if it's convertible to a float (will catch None's as well)
                 edge_attribute_value = float(edge_attribute_value)
             except TypeError:
+                return 0.
+            except ValueError:
                 return 0.
             # check to see if it's NaN, if so, return 0
             if np.isnan(edge_attribute_value):
@@ -546,10 +544,13 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 for edge_attribute in edge.attributes:
                     for attribute_name in self.known_attributes:
                         if edge_attribute.original_attribute_name == attribute_name or edge_attribute.attribute_type_id == attribute_name:
+                            try:
+                                value = float(edge_attribute.value)
+                            except ValueError:
+                                continue
+                            # initialize if not None already
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf|NaN
-                            value = float(edge_attribute.value)
-                            # initialize if not None already
                             if not np.isinf(value) and not np.isinf(-value) and not np.isnan(value):  # Ignore inf, -inf, and nan
                                 no_non_inf_float_flag = False
                                 if not score_stats[attribute_name]['minimum']:

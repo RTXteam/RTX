@@ -361,7 +361,7 @@ def test_paired_concept_frequency_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.slow
@@ -397,7 +397,7 @@ def test_observed_expected_ratio_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.slow
@@ -433,7 +433,7 @@ def test_chi_square_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_chi_square_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
 
 
 @pytest.mark.slow
@@ -545,7 +545,7 @@ def test_issue_840():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'V1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'V1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
 
     # And for the non-virtual test
     query = {"operations": {"actions": [
@@ -671,11 +671,11 @@ def test_overlay_clinical_info_no_ids():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
-    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
-    _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
     _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
 
 @pytest.mark.slow

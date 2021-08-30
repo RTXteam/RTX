@@ -490,7 +490,7 @@ ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
 
 - 16 vCPUs
 - 64 GiB of RAM
-- 1,023 TiB of elastic block storage
+- 1,023 GiB of elastic block storage
 - host OS Ubuntu v18.04. 
 
 The host OS has nginx v1.14.0 installed and configured

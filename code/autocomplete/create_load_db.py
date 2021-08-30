@@ -3,8 +3,14 @@
 import os
 import re
 import sqlite3
+import argparse
 
-database_name = 'autocomplete.sqlite'
+parser = argparse.ArgumentParser()
+parser.add_argument("-o", "--output", type=str, help="Output database path", default="autocomplete.sqlite", required=False)
+parser.add_argument("-i", "--input", type=str, help="Input file path", default="../../data/KGmetadata/NodeNamesDescriptions_KG2.tsv", required=False)
+arguments = parser.parse_args()
+
+database_name = arguments.output
 try:
     os.remove(database_name)
 except:
@@ -25,10 +31,10 @@ rank = 1
 row_count = 0
 uc_terms = {}
 
-with open("../../data/KGmetadata/NodeNamesDescriptions_KG2.tsv", 'r', encoding="latin-1", errors="replace") as nodeData:
+with open(arguments.input, 'r', encoding="latin-1", errors="replace") as nodeData:
     print("Loading node names")
     for line in nodeData:
-        curie, name, type = line[:-1].split("\t")
+        curie, name, full_name, type = line[:-1].split("\t")
         #c.execute("INSERT INTO term(curie,name,type,rank) VALUES(?,?,?,?)" % (tablename), (curie,name,type,rank,))
 
         for term in [ name, curie ]:

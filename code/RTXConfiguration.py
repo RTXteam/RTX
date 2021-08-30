@@ -123,6 +123,11 @@ class RTXConfiguration:
         self.fda_approved_drugs_path = self.config["Contextual"][self.live]["fda_approved_drugs"]["path"]
         self.fda_approved_drugs_version = self.config["Contextual"][self.live]["fda_approved_drugs"]["path"].split('/')[-1].split('_v')[-1].replace('.pickle','')
 
+        self.autocomplete_host = self.config["Global"]["autocomplete"]["host"]
+        self.autocomplete_username = self.config["Global"]["autocomplete"]["username"]
+        self.autocomplete_path = self.config["Contextual"][self.live]["autocomplete"]["path"]
+        self.autocomplete_version = self.config["Contextual"][self.live]["autocomplete"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
+
         self.mysql_feedback_host = self.config["Global"]["mysql_feedback"]["host"]
         self.mysql_feedback_port = self.config["Global"]["mysql_feedback"]["port"]
         self.mysql_feedback_username = self.config["Global"]["mysql_feedback"]["username"]

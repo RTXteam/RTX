@@ -564,9 +564,8 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
                 overlayer.apply(prune_response, params)
             except Exception as error:
                 exception_type, exception_value, exception_traceback = sys.exc_info()
-                log.error(f"An uncaught error occurred when overlaying with FET during expand's pruning: "
-                          f"{error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}",
-                          error_code="UncaughtARAXiError")
+                log.warning(f"An uncaught error occurred when overlaying with FET during Expand's pruning: {error}: "
+                            f"{repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}")
             if prune_response.status != "OK":
                 log.warning(f"FET produced an error when Expand tried to use it to prune the KG. "
                             f"Log was: {prune_response.show()}")
@@ -576,8 +575,10 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
                 qg.edges.pop(fet_qedge_key, None)
                 prune_response.status = "OK"  # Clear this so we can continue without overlaying
             else:
-                # Make this virtual edge optional (don't want to lose results that had no FET value)
-                qg.edges[fet_qedge_key].option_group_id = f"FET_VIRTUAL_GROUP_{pair_string_id}"
+                if fet_qedge_key in qg.edges:
+                    qg.edges[fet_qedge_key].option_group_id = f"FET_VIRTUAL_GROUP_{pair_string_id}"
+                else:
+                    log.warning(f"Attempted to overlay FET from Expand, but it didn't work. Pruning without it.")
 
     # Create results and rank them as appropriate
     log.debug(f"Calling Resultify from Expand for pruning")
@@ -643,7 +644,7 @@ def get_standard_parameters() -> dict:
         "prune_threshold": {
             "is_required": False,
             "type": "integer",
-            "default": 1000,
+            "default": None,
             "examples": [500, 2000],
             "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of "
                            "this threshold will be pruned, using Fisher Exact Test to rank answers."

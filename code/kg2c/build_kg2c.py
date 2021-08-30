@@ -103,7 +103,7 @@ def main():
     # Build a new node synonymizer, if we're supposed to
     if build_synonymizer and not args.test:
         logging.info("Building node synonymizer off of specified KG2..")
-        subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/build-synonymizer.sh", synonymizer_name])
+        subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/build-synonymizer.sh"])
         if upload_to_arax_ncats_io:
             logging.info(f"Uploading synonymizer artifacts to arax.ncats.io:{upload_directory}")
             subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", upload_directory, synonymizer_name])
