@@ -60,7 +60,7 @@ class ARAXFilterResults:
             "is_required": False,
             "examples": ['N1', 'C1'],
             "type": "string",
-            "description": "The name of unique identifier to only filter on edges with matching relation field. (stored in the relation neo4j edge property) "+\
+            "description": "The name of unique identifier to only filter on edges with matching virtual relation label attribute."+\
             "If not provided the edge relation will not be considered when filtering."
         }
         self.node_attribute_info = {
@@ -317,18 +317,21 @@ sort_by_node_count sorts the results by the number of nodes in the results.
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
             known_attributes = set()
+            virtual_relation_labels = set()
             for edge in message.knowledge_graph.edges.values():
                 if hasattr(edge, 'attributes'):
                     if edge.attributes:
                         for attribute in edge.attributes:
                             if hasattr(attribute,"original_attribute_name"):
                                 known_attributes.add(attribute.original_attribute_name)
+                                if attribute.original_attribute_name == "virtual_relation_label":
+                                    virtual_relation_labels.add(attribute.value)
                             if hasattr(attribute,"attribute_type_id"):
                                 known_attributes.add(attribute.attribute_type_id)
             # print(known_attributes)
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
                                     'edge_attribute': known_attributes,
-                                    'edge_relation': set([x.relation for x in self.message.knowledge_graph.edges.values()]),
+                                    'edge_relation': virtual_relation_labels,
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()},
                                     'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
