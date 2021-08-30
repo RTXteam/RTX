@@ -20,7 +20,7 @@ def test_create_message_basic():
     assert response.status == 'OK'
     message = response.envelope.message
     assert response.envelope.type == 'translator_reasoner_response'
-    assert response.envelope.schema_version == '1.2.0'
+    assert response.envelope.schema_version == '1.1.0'
 
 
 def test_create_message_node_edge_types():
