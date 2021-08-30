@@ -10,7 +10,7 @@ import ast
 
 import requests
 
-arax_url = "https://arax.ncats.io/api/arax/v1.2/query"
+arax_url = "https://arax.ncats.io/api/arax/v1.1/query"
 
 def test_api_status():
     query = {
