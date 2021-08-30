@@ -77,7 +77,16 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     """
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert edge_predicate in edge_predicates_in_kg
-    edges_of_interest = [x for x in message.knowledge_graph.edges.values() if x.relation == relation]
+    edges_of_interest = []
+    for edge in message.knowledge_graph.edges.values():
+        add_edge = False
+        for attribute in edge.attributes:
+            if attribute.original_attribute_name == "virtual_relation_label":
+                if attribute.value == relation:
+                    add_edge = True
+        if add_edge:
+            edges_of_interest.append(edge)
+    #edges_of_interest = [x for x in message.knowledge_graph.edges.values() if x.relation == relation]
     assert len(edges_of_interest) >= num_edges_of_interest
     if edges_of_interest:
         values = set()
@@ -109,7 +118,15 @@ def test_jaccard():
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
-    jaccard_edges = [x for x in message.knowledge_graph.edges.values() if x.relation == "J1"]
+    jaccard_edges = []
+    for edge in message.knowledge_graph.edges.values():
+        add_edge = False
+        for attribute in edge.attributes:
+            if attribute.original_attribute_name == "virtual_relation_label":
+                if attribute.value == "J1":
+                    add_edge = True
+        if add_edge:
+            jaccard_edges.append(edge)
     assert len(jaccard_edges) > 0
     for edge in jaccard_edges:
         assert hasattr(edge, 'attributes')
@@ -166,7 +183,15 @@ def test_compute_ngd_virtual():
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'biolink:has_normalized_google_distance_with' in edge_predicates_in_kg
-    ngd_edges = [x for x in message.knowledge_graph.edges.values() if x.relation == "N1"]
+    ngd_edges = []
+    for edge in message.knowledge_graph.edges.values():
+        add_edge = False
+        for attribute in edge.attributes:
+            if attribute.original_attribute_name == "virtual_relation_label":
+                if attribute.value == "N1":
+                    add_edge = True
+        if add_edge:
+            ngd_edges.append(edge)
     assert len(ngd_edges) > 0
     for edge in ngd_edges:
         assert hasattr(edge, 'attributes')
@@ -228,11 +253,23 @@ def test_FET_ex1():
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
-    FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation is not None and x.relation.find("FET") != -1]
+    FET_edges = []
+    FET_edge_labels = set()
+    for edge in message.knowledge_graph.edges.values():
+        relation_name = None
+        add_edge = False
+        for attribute in edge.attributes:
+            if attribute.original_attribute_name == "virtual_relation_label":
+                if attribute.value is not None and attribute.value.find("FET") != -1:
+                    add_edge = True
+                    FET_edge_labels.add(attribute.value)
+                    relation_name = attribute.value
+        if add_edge:
+            FET_edges.append((edge, relation_name))
     assert len(FET_edges) > 0
-    FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 2
-    for edge in FET_edges:
+    for edge_tuple in FET_edges:
+        edge, relation_name = edge_tuple
         assert hasattr(edge, 'attributes')
         assert edge.attributes
         edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
@@ -240,7 +277,7 @@ def test_FET_ex1():
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
         assert edge_attributes_dict['is_defined_by'] == 'ARAX'
         assert edge_attributes_dict['provided_by'] == 'infores:arax'
-        if edge.relation == 'FET1':
+        if relation_name == 'FET1':
             assert 0 <= float(edge.attributes[0].value) < 0.001
         else:
             assert 0 <= float(edge.attributes[0].value) < 0.05
@@ -273,11 +310,23 @@ def test_FET_ex2():
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
-    FET_edges = [x for x in message.knowledge_graph.edges.values() if x.relation and x.relation.find("FET") != -1]
+    FET_edges = []
+    FET_edge_labels = set()
+    for edge in message.knowledge_graph.edges.values():
+        relation_name = None
+        add_edge = False
+        for attribute in edge.attributes:
+            if attribute.original_attribute_name == "virtual_relation_label":
+                if attribute.value is not None and attribute.value.find("FET") != -1:
+                    add_edge = True
+                    FET_edge_labels.add(attribute.value)
+                    relation_name = attribute.value
+        if add_edge:
+            FET_edges.append((edge, relation_name))
     assert len(FET_edges) >= 2
-    FET_edge_labels = set([edge.relation for edge in FET_edges])
     assert len(FET_edge_labels) == 1
-    for edge in FET_edges:
+    for edge_tuple in FET_edges:
+        edge, relation_name = edge_tuple
         assert hasattr(edge, 'attributes')
         assert edge.attributes
         edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
@@ -690,7 +739,15 @@ def test_jaccard_not_above_1():
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
-    jaccard_edges = [x for x in message.knowledge_graph.edges.values() if x.relation == "VJ"]
+    jaccard_edges = []
+    for edge in message.knowledge_graph.edges.values():
+        add_edge = False
+        for attribute in edge.attributes:
+            if attribute.original_attribute_name == "virtual_relation_label":
+                if attribute.value == "VJ":
+                    add_edge = True
+        if add_edge:
+            jaccard_edges.append(edge)
     assert len(jaccard_edges) > 0
     for edge in jaccard_edges:
         assert hasattr(edge, 'attributes')
