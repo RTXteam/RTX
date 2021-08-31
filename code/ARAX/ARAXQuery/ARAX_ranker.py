@@ -270,8 +270,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     edge_confidence *= normalized_score
         if edge.attributes and any(attribute.attribute_type_id == "biolink:aggregator_knowledge_source" and
                                    attribute.value == "infores:semmeddb" for attribute in edge.attributes):
-            if edge_attribute_dict.get("biolink:has_supporting_publications", None) is not None:
-                n_publications = len(edge_attribute_dict["biolink:has_supporting_publications"])
+            if edge_attribute_dict.get("biolink:publications", None) is not None:
+                n_publications = len(edge_attribute_dict["biolink:publications"])
             else:
                 n_publications = 0
             if n_publications == 0:
