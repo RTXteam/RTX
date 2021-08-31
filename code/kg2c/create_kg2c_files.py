@@ -374,7 +374,6 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
 
 def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                           canonicalized_edges_dict: Dict[str, Dict[str, any]], is_test: bool):
-    # NOTE: List properties were already converted to string-encoded format when TSVs were created..
     logging.info(" Creating KG2c sqlite database..")
     db_name = f"kg2c{'_test' if is_test else ''}.sqlite"
     # Remove any preexisting version of this database
@@ -597,14 +596,14 @@ def remove_fluff_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                                            if "biolink:InformationContentEntity" in node["all_categories"]}
     logging.info(f"  Removing all {len(information_content_entity_node_ids)} InformationContentEntity nodes..")
     for node_id in information_content_entity_node_ids:
-        del canonicalized_nodes_dict[node_id]
+        canonicalized_nodes_dict.pop(node_id, None)
 
     # Remove all OrganismTaxon nodes
     organism_taxon_node_ids = {node_key for node_key, node in canonicalized_nodes_dict.items()
                                if "biolink:OrganismTaxon" in node["all_categories"]}
     logging.info(f"  Removing all {len(organism_taxon_node_ids)} OrganismTaxon nodes..")
     for node_id in organism_taxon_node_ids:
-        del canonicalized_nodes_dict[node_id]
+        canonicalized_nodes_dict.pop(node_id, None)
 
     # Remove the top 50 super-hubs
     neighbor_map = defaultdict(set)
@@ -617,7 +616,7 @@ def remove_fluff_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     super_hub_node_ids = {node_id for node_id, neighbor_ids in top_50_most_connected_nodes if len(neighbor_ids) > 50000}
     logging.info(f"  Removing the top {len(super_hub_node_ids)} super-hub nodes..")
     for node_id in super_hub_node_ids:
-        del canonicalized_nodes_dict[node_id]
+        canonicalized_nodes_dict.pop(node_id, None)
 
     # Delete any now orphaned edges
     orphaned_edge_ids = {edge_id for edge_id, edge in canonicalized_edges_dict.items()
@@ -625,7 +624,7 @@ def remove_fluff_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                          edge["object"] not in canonicalized_nodes_dict}
     logging.info(f"  Deleting {len(orphaned_edge_ids)} edges that were orphaned by the above steps..")
     for edge_id in orphaned_edge_ids:
-        del canonicalized_edges_dict[edge_id]
+        canonicalized_edges_dict.pop(edge_id, None)
 
     # Delete any nodes orphaned by the removal of the orphaned edges
     node_ids_used_by_edges = {node_id for edge in canonicalized_edges_dict.values()
@@ -633,7 +632,7 @@ def remove_fluff_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     orphaned_node_ids = set(canonicalized_nodes_dict).difference(node_ids_used_by_edges)
     logging.info(f"  Deleting {len(orphaned_node_ids)} nodes orphaned by the above step..")
     for node_id in orphaned_node_ids:
-        del canonicalized_nodes_dict[node_id]
+        canonicalized_nodes_dict.pop(node_id, None)
 
     logging.info(f"Done removing fluff: resulting KG2c now has {len(canonicalized_nodes_dict)} nodes "
                  f"and {len(canonicalized_edges_dict)} edges")
