@@ -11,6 +11,7 @@
   "kg2c": {
     "build": true,
     "use_nlp_to_choose_descriptions": true,
-    "upload_to_s3": true
+    "upload_to_s3": true,
+    "start_from_kg2c_json": false
   }
 }

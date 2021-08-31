@@ -597,43 +597,54 @@ def create_kg2c_files(is_test=False):
         kg2c_config_info = json.load(config_file)
     kg2_version = kg2c_config_info.get("kg2pre_version")
     biolink_version = kg2c_config_info.get("biolink_version")
+    start_from_kg2c_json = kg2c_config_info["kg2c"].get("start_from_kg2c_json")
 
-    # First download the proper KG2 TSV files
-    local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
-    if not pathlib.Path(local_tsv_dir_path).exists():
-        if is_test:
-            raise ValueError(f"You must put your own test KG2pre TSVs into place (in {local_tsv_dir_path}). They must "
-                             f"be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
-        else:
-            subprocess.check_call(["mkdir", local_tsv_dir_path])
-    if not is_test:
-        kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
-        logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
-        subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
-        logging.info(f"Unpacking {kg2pre_tarball_name}..")
-        subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
+    # Start with the pre-existing kg2c.json, if directed to in the config file (allows partial builds)
+    if start_from_kg2c_json:
+        logging.info(f"Loading KG2c from pre-existing kg2c.json..")
+        with open(f"{KG2C_DIR}/kg2c{'_test' if is_test else ''}.json") as kg2c_json_file:
+            kg2c = json.load(kg2c_json_file)
+        canonicalized_nodes_dict = {node["id"]: node for node in kg2c["nodes"]}
+        canonicalized_edges_dict = {edge["id"]: edge for edge in kg2c["edges"]}
+    # Otherwise do a full build, starting with the KG2pre TSVs
+    else:
+        # First download the proper KG2 TSV files
+        local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
+        if not pathlib.Path(local_tsv_dir_path).exists():
+            if is_test:
+                raise ValueError(f"You must put your own test KG2pre TSVs into place (in {local_tsv_dir_path}). They must "
+                                 f"be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
+            else:
+                subprocess.check_call(["mkdir", local_tsv_dir_path])
+        if not is_test:
+            kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
+            logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
+            subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
+            logging.info(f"Unpacking {kg2pre_tarball_name}..")
+            subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
 
-    # Canonicalize nodes
-    kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes")
-    canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
-    # Add a node containing information about this KG2C build
-    build_node = _create_build_node(kg2_version, biolink_version)
-    canonicalized_nodes_dict[build_node['id']] = build_node
-    canonicalized_nodes_dict = _post_process_nodes(canonicalized_nodes_dict, kg2c_config_info)
-    del kg2pre_nodes  # Try to free up as much memory as possible for edge processing
-    gc.collect()
+        # Canonicalize nodes
+        kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes")
+        canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
+        # Add a node containing information about this KG2C build
+        build_node = _create_build_node(kg2_version, biolink_version)
+        canonicalized_nodes_dict[build_node['id']] = build_node
+        canonicalized_nodes_dict = _post_process_nodes(canonicalized_nodes_dict, kg2c_config_info)
+        del kg2pre_nodes  # Try to free up as much memory as possible for edge processing
+        gc.collect()
 
-    # Canonicalize edges
-    kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges")
-    canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
-    del kg2pre_edges
-    gc.collect()
-    canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
+        # Canonicalize edges
+        kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges")
+        canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
+        del kg2pre_edges
+        gc.collect()
+        canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
     # Actually create all of our output files (different formats for storing KG2c)
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
     logging.info(f"Saving KG2c in various file formats..")
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
+    create_kg2c_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
     create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
 
