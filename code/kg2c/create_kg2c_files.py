@@ -72,6 +72,20 @@ def _convert_list_to_string_encoded_format(input_list_or_str: Union[List[str], s
         return input_list_or_str
 
 
+def _prep_for_sqlite(item: Union[str, List[str], Dict[str, any]]) -> str:
+    if isinstance(item, str):
+        return item
+    elif not item:
+        return ""
+    elif isinstance(item, list):
+        return _convert_list_to_string_encoded_format(item)
+    elif isinstance(item, dict):
+        return json.dumps(item)
+    else:
+        raise ValueError(f"Unknown data type - don't know how to prep for sqlite. Type is: {type(item)},"
+                         f"value is: {item}")
+
+
 def _merge_two_lists(list_a: List[any], list_b: List[any]) -> List[any]:
     unique_items = list(set(list_a + list_b))
     return [item for item in unique_items if item]
@@ -329,43 +343,6 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
         json.dump(lite_kg, output_file)
 
 
-def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
-                          canonicalized_edges_dict: Dict[str, Dict[str, any]], is_test: bool):
-    logging.info(" Creating KG2c sqlite database..")
-    db_name = f"kg2c{'_test' if is_test else ''}.sqlite"
-    # Remove any preexisting version of this database
-    if os.path.exists(db_name):
-        os.remove(db_name)
-    connection = sqlite3.connect(db_name)
-
-    # Add all nodes (node object is dumped into a JSON string)
-    logging.info(f"  Creating nodes table..")
-    connection.execute("CREATE TABLE nodes (id TEXT, node TEXT)")
-    node_rows = [(node["id"], json.dumps(node)) for node in canonicalized_nodes_dict.values()]
-    connection.executemany(f"INSERT INTO nodes (id, node) VALUES (?, ?)", node_rows)
-    connection.execute("CREATE UNIQUE INDEX node_id_index ON nodes (id)")
-    connection.commit()
-    cursor = connection.execute(f"SELECT COUNT(*) FROM nodes")
-    logging.info(f"  Done creating nodes table; contains {cursor.fetchone()[0]} rows.")
-    cursor.close()
-
-    # Add all edges (edge object is dumped into a JSON string)
-    logging.info(f"  Creating edges table..")
-    connection.execute("CREATE TABLE edges (triple TEXT, node_pair TEXT, edge TEXT)")
-    edge_rows = [(f"{edge['subject']}--{edge['predicate']}--{edge['object']}",
-                  f"{edge['subject']}--{edge['object']}",
-                  json.dumps(edge)) for edge in canonicalized_edges_dict.values()]
-    connection.executemany(f"INSERT INTO edges (triple, node_pair, edge) VALUES (?, ?, ?)", edge_rows)
-    connection.execute("CREATE UNIQUE INDEX triple_index ON edges (triple)")
-    connection.execute("CREATE INDEX node_pair_index ON edges (node_pair)")
-    connection.commit()
-    cursor = connection.execute(f"SELECT COUNT(*) FROM edges")
-    logging.info(f"  Done creating edges table; contains {cursor.fetchone()[0]} rows.")
-    cursor.close()
-
-    connection.close()
-
-
 def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                           canonicalized_edges_dict: Dict[str, Dict[str, any]],
                           biolink_version: str, is_test: bool):
@@ -392,6 +369,56 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     logging.info(f" Creating TSVs for Neo4j..")
     _write_list_to_neo4j_ready_tsv(list(canonicalized_nodes_dict.values()), "nodes_c", is_test)
     _write_list_to_neo4j_ready_tsv(list(canonicalized_edges_dict.values()), "edges_c", is_test)
+
+
+def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
+                          canonicalized_edges_dict: Dict[str, Dict[str, any]], is_test: bool):
+    # NOTE: List properties were already converted to string-encoded format when TSVs were created..
+    logging.info(" Creating KG2c sqlite database..")
+    db_name = f"kg2c{'_test' if is_test else ''}.sqlite"
+    # Remove any preexisting version of this database
+    if os.path.exists(db_name):
+        os.remove(db_name)
+    connection = sqlite3.connect(db_name)
+
+    # Add all nodes (node object is dumped into a JSON string)
+    logging.info(f"  Creating nodes table..")
+    sqlite_node_properties = list(set(PROPERTIES_LOOKUP["nodes"]).difference(_get_lite_properties("nodes")).union({"id", _get_node_labels_property()}))
+    logging.info(f"   Node properties to store in sqlite db are: {sqlite_node_properties}")
+    cols_with_types_string = ", ".join([f"{property_name} TEXT" for property_name in sqlite_node_properties])
+    question_marks_string = ", ".join(["?" for _ in range(len(sqlite_node_properties))])
+    cols_string = ", ".join(sqlite_node_properties)
+    connection.execute(f"CREATE TABLE nodes ({cols_with_types_string})")
+    node_rows = [[_prep_for_sqlite(node[property_name]) for property_name in sqlite_node_properties]
+                 for node in canonicalized_nodes_dict.values()]
+    connection.executemany(f"INSERT INTO nodes ({cols_string}) VALUES ({question_marks_string})", node_rows)
+    connection.execute("CREATE UNIQUE INDEX node_id_index ON nodes (id)")
+    connection.commit()
+    cursor = connection.execute(f"SELECT COUNT(*) FROM nodes")
+    logging.info(f"  Done creating nodes table; contains {cursor.fetchone()[0]} rows.")
+    cursor.close()
+
+    # Add all edges (edge object is dumped into a JSON string)
+    logging.info(f"  Creating edges table..")
+    sqlite_edge_properties = list(set(PROPERTIES_LOOKUP["edges"]).difference(_get_lite_properties("edges")))
+    logging.info(f"   Edge properties to store in sqlite db are: {sqlite_edge_properties}")
+    cols_with_types_string = ", ".join([f"{property_name} TEXT" for property_name in sqlite_edge_properties])
+    question_marks_string = ", ".join(["?" for _ in range(len(sqlite_edge_properties))])
+    cols_string = ", ".join(sqlite_edge_properties)
+    connection.execute(f"CREATE TABLE edges (triple TEXT, node_pair TEXT, {cols_with_types_string})")
+    edge_rows = [[f"{edge['subject']}--{edge['predicate']}--{edge['object']}",
+                  f"{edge['subject']}--{edge['object']}"] + [_prep_for_sqlite(edge[property_name])
+                                                             for property_name in sqlite_edge_properties]
+                 for edge in canonicalized_edges_dict.values()]
+    connection.executemany(f"INSERT INTO edges (triple, node_pair, {cols_string}) VALUES (?, ?, {question_marks_string})", edge_rows)
+    connection.execute("CREATE UNIQUE INDEX triple_index ON edges (triple)")
+    connection.execute("CREATE INDEX node_pair_index ON edges (node_pair)")
+    connection.commit()
+    cursor = connection.execute(f"SELECT COUNT(*) FROM edges")
+    logging.info(f"  Done creating edges table; contains {cursor.fetchone()[0]} rows.")
+    cursor.close()
+
+    connection.close()
 
 
 def _create_build_node(kg2_version: str, biolink_version: str) -> Dict[str, any]:
@@ -570,45 +597,56 @@ def create_kg2c_files(is_test=False):
         kg2c_config_info = json.load(config_file)
     kg2_version = kg2c_config_info.get("kg2pre_version")
     biolink_version = kg2c_config_info.get("biolink_version")
+    start_from_kg2c_json = kg2c_config_info["kg2c"].get("start_from_kg2c_json")
 
-    # First download the proper KG2 TSV files
-    local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
-    if not pathlib.Path(local_tsv_dir_path).exists():
-        if is_test:
-            raise ValueError(f"You must put your own test KG2pre TSVs into place (in {local_tsv_dir_path}). They must "
-                             f"be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
-        else:
-            subprocess.check_call(["mkdir", local_tsv_dir_path])
-    if not is_test:
-        kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
-        logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
-        subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
-        logging.info(f"Unpacking {kg2pre_tarball_name}..")
-        subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
+    # Start with the pre-existing kg2c.json, if directed to in the config file (allows partial builds)
+    if start_from_kg2c_json:
+        logging.info(f"Loading KG2c from pre-existing kg2c.json..")
+        with open(f"{KG2C_DIR}/kg2c{'_test' if is_test else ''}.json") as kg2c_json_file:
+            kg2c = json.load(kg2c_json_file)
+        canonicalized_nodes_dict = {node["id"]: node for node in kg2c["nodes"]}
+        canonicalized_edges_dict = {edge["id"]: edge for edge in kg2c["edges"]}
+    # Otherwise do a full build, starting with the KG2pre TSVs
+    else:
+        # First download the proper KG2 TSV files
+        local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
+        if not pathlib.Path(local_tsv_dir_path).exists():
+            if is_test:
+                raise ValueError(f"You must put your own test KG2pre TSVs into place (in {local_tsv_dir_path}). They must "
+                                 f"be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
+            else:
+                subprocess.check_call(["mkdir", local_tsv_dir_path])
+        if not is_test:
+            kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
+            logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
+            subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
+            logging.info(f"Unpacking {kg2pre_tarball_name}..")
+            subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
 
-    # Canonicalize nodes
-    kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes")
-    canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
-    # Add a node containing information about this KG2C build
-    build_node = _create_build_node(kg2_version, biolink_version)
-    canonicalized_nodes_dict[build_node['id']] = build_node
-    canonicalized_nodes_dict = _post_process_nodes(canonicalized_nodes_dict, kg2c_config_info)
-    del kg2pre_nodes  # Try to free up as much memory as possible for edge processing
-    gc.collect()
+        # Canonicalize nodes
+        kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes")
+        canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
+        # Add a node containing information about this KG2C build
+        build_node = _create_build_node(kg2_version, biolink_version)
+        canonicalized_nodes_dict[build_node['id']] = build_node
+        canonicalized_nodes_dict = _post_process_nodes(canonicalized_nodes_dict, kg2c_config_info)
+        del kg2pre_nodes  # Try to free up as much memory as possible for edge processing
+        gc.collect()
 
-    # Canonicalize edges
-    kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges")
-    canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
-    del kg2pre_edges
-    gc.collect()
-    canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
+        # Canonicalize edges
+        kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges")
+        canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
+        del kg2pre_edges
+        gc.collect()
+        canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
     # Actually create all of our output files (different formats for storing KG2c)
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
     logging.info(f"Saving KG2c in various file formats..")
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
-    create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
+    create_kg2c_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
+    create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
 
 
 def main():
