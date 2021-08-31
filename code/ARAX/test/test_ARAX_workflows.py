@@ -200,7 +200,7 @@ def test_FET_example_1():
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert 0 <= float(edge.attributes[0].value) < 0.005
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
-        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
         assert edge_attributes_dict['provided_by'] == 'ARAX'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 3
@@ -258,7 +258,7 @@ def test_FET_example_2():
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert 0 <= float(edge.attributes[0].value) < 0.01
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
-        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
         assert edge_attributes_dict['provided_by'] == 'ARAX'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 4
@@ -325,7 +325,7 @@ def test_FET_example_3():
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert 0 <= float(edge.attributes[0].value) < 0.001
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
-        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
         assert edge_attributes_dict['provided_by'] == 'ARAX'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 4
@@ -375,7 +375,7 @@ def test_FET_example_4():
         else:
             assert float(edge.attributes[0].value) >= 0
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
-        assert edge_attributes_dict['is_defined_by'] == 'ARAX'
+        #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
         assert edge_attributes_dict['provided_by'] == 'ARAX'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 2
