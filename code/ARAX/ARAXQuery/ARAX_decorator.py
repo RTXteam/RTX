@@ -45,7 +45,7 @@ class ARAXDecorator:
                                            value_type_id=None),
             "kg2_ids": Attribute(attribute_type_id="biolink:original_edge_information",
                                  value_type_id="metatype:String",
-                                 description="The original edges corresponding to this edge prior to any "
+                                 description="The original RTX-KG2pre edges corresponding to this edge prior to any "
                                              "synonymization or remapping. Listed in "
                                              "(subject)--(relation)--(object)--(source) format.")
         }
