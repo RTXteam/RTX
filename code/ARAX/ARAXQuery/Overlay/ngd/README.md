@@ -14,7 +14,8 @@ run an NGD build, do a **full build**:
 ```
 python3 build_ngd_database.py --full
 ```
-This will automatically download and use the latest PubMed XML baseline files.
+This will automatically download and use the latest PubMed XML files, including both the annual 'baseline' files and 
+the 'update' files.
 
 Otherwise you can just do a **partial build**:
 ```

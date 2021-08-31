@@ -57,5 +57,3 @@ RUN update-rc.d RTX_Complete enable
 
 # set production flag to false
 RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py
-
-
