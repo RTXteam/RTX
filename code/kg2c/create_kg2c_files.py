@@ -17,6 +17,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+from collections import defaultdict
 
 from datetime import datetime
 from multiprocessing import Pool
@@ -587,6 +588,58 @@ def _post_process_edges(canonicalized_edges_dict: Dict[str, Dict[str, any]]) -> 
     return canonicalized_edges_dict
 
 
+def remove_fluff_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
+                       canonicalized_edges_dict: Dict[str, Dict[str, any]]) -> Tuple[Dict[str, Dict[str, any]], Dict[str, Dict[str, any]]]:
+    logging.info(f" Removing nodes non-essential for ARAX queries..")
+
+    # Remove all InformationContentEntity nodes
+    information_content_entity_node_ids = {node_key for node_key, node in canonicalized_nodes_dict.items()
+                                           if "biolink:InformationContentEntity" in node["all_categories"]}
+    logging.info(f"  Removing all {len(information_content_entity_node_ids)} InformationContentEntity nodes..")
+    for node_id in information_content_entity_node_ids:
+        del canonicalized_nodes_dict[node_id]
+
+    # Remove all OrganismTaxon nodes
+    organism_taxon_node_ids = {node_key for node_key, node in canonicalized_nodes_dict.items()
+                               if "biolink:OrganismTaxon" in node["all_categories"]}
+    logging.info(f"  Removing all {len(organism_taxon_node_ids)} OrganismTaxon nodes..")
+    for node_id in organism_taxon_node_ids:
+        del canonicalized_nodes_dict[node_id]
+
+    # Remove the top 50 super-hubs
+    neighbor_map = defaultdict(set)
+    for edge in canonicalized_edges_dict.values():
+        subject_id = edge["subject"]
+        object_id = edge["object"]
+        neighbor_map[subject_id].add(object_id)
+        neighbor_map[object_id].add(subject_id)
+    top_50_most_connected_nodes = sorted(neighbor_map.items(), key=lambda item: len(item[1]), reverse=True)[:50]
+    super_hub_node_ids = {node_id for node_id, neighbor_ids in top_50_most_connected_nodes if len(neighbor_ids) > 50000}
+    logging.info(f"  Removing the top {len(super_hub_node_ids)} super-hub nodes..")
+    for node_id in super_hub_node_ids:
+        del canonicalized_nodes_dict[node_id]
+
+    # Delete any now orphaned edges
+    orphaned_edge_ids = {edge_id for edge_id, edge in canonicalized_edges_dict.items()
+                         if edge["subject"] not in canonicalized_nodes_dict or
+                         edge["object"] not in canonicalized_nodes_dict}
+    logging.info(f"  Deleting {len(orphaned_edge_ids)} edges that were orphaned by the above steps..")
+    for edge_id in orphaned_edge_ids:
+        del canonicalized_edges_dict[edge_id]
+
+    # Delete any nodes orphaned by the removal of the orphaned edges
+    node_ids_used_by_edges = {node_id for edge in canonicalized_edges_dict.values()
+                              for node_id in {edge["subject"], edge["object"]}}
+    orphaned_node_ids = set(canonicalized_nodes_dict).difference(node_ids_used_by_edges)
+    logging.info(f"  Deleting {len(orphaned_node_ids)} nodes orphaned by the above step..")
+    for node_id in orphaned_node_ids:
+        del canonicalized_nodes_dict[node_id]
+
+    logging.info(f"Done removing fluff: resulting KG2c now has {len(canonicalized_nodes_dict)} nodes "
+                 f"and {len(canonicalized_edges_dict)} edges")
+    return canonicalized_nodes_dict, canonicalized_edges_dict
+
+
 def create_kg2c_files(is_test=False):
     """
     This function extracts all nodes/edges from the KG2pre TSVs, canonicalizes the nodes, merges edges
@@ -606,6 +659,7 @@ def create_kg2c_files(is_test=False):
             kg2c = json.load(kg2c_json_file)
         canonicalized_nodes_dict = {node["id"]: node for node in kg2c["nodes"]}
         canonicalized_edges_dict = {edge["id"]: edge for edge in kg2c["edges"]}
+        logging.info(f"Loaded KG2c has {len(canonicalized_nodes_dict)} nodes and {len(canonicalized_edges_dict)} edges")
     # Otherwise do a full build, starting with the KG2pre TSVs
     else:
         # First download the proper KG2 TSV files
@@ -646,6 +700,7 @@ def create_kg2c_files(is_test=False):
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
+    canonicalized_nodes_dict, canonicalized_edges_dict = remove_fluff_nodes(canonicalized_nodes_dict, canonicalized_edges_dict)
     create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
 
 
