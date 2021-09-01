@@ -115,7 +115,7 @@ class ARAXDecorator:
                 if type(property_value) is str:
                     if property_value.lower() == "true" or property_value.lower() == "false":
                         property_value = ast.literal_eval(property_value)
-                trapi_attribute = self.create_attribute(property_name, property_value, 'foo', response)
+                trapi_attribute = self.create_attribute(property_name, property_value, log=response)
                 # Also store this value in Attribute.value_url if it's a URL
 
                 new_attributes.append(trapi_attribute)
