@@ -11,6 +11,7 @@ from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
+from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../Overlay/")
 from Overlay.compute_ngd import ComputeNGD
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -19,7 +20,6 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_node import QNode
-from openapi_server.models.q_edge import QEdge
 from openapi_server.models.message import Message
 
 
@@ -31,6 +31,7 @@ class NGDQuerier:
         self.accepted_qedge_predicates = {"biolink:has_normalized_google_distance_with", "biolink:related_to"}
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
+        self.decorator = ARAXDecorator()
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -129,8 +130,7 @@ class NGDQuerier:
                                          attribute_type_id=self.ngd_edge_attribute_type,
                                          value=ngd_value)]
         kp_description = "ARAX's in-house normalized google distance database."
-        ngd_edge.attributes += [Attribute(original_attribute_name="publications", value=pmid_list,
-                                          attribute_type_id=eu.get_attribute_type("publications")),
+        ngd_edge.attributes += [self.decorator.create_attribute("publications", pmid_list),
                                 eu.get_kp_source_attribute("NGD", arax_kp=True, description=kp_description),
                                 eu.get_arax_source_attribute(),
                                 eu.get_computed_value_attribute()]

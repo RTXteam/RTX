@@ -143,17 +143,15 @@ class KG2Querier:
         edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
         knowledge_sources = edge_tuple[3]
         # Indicate that this edge came from the KG2 KP
-
         edge.attributes.append(Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
                                          value=self.kg2_infores_curie,
                                          value_type_id="biolink:InformationResource",
                                          attribute_source=self.kg2_infores_curie))
-        # Create knowledge source attributes for each of the knowledge sources
+        # Create knowledge source attributes for each of this edge's knowledge sources
         knowledge_source_attributes = [Attribute(attribute_type_id="knowledge_source",
                                                  value=infores_curie,
                                                  value_type_id="biolink:InformationResource",
                                                  attribute_source=self.kg2_infores_curie)
                                        for infores_curie in knowledge_sources]
         edge.attributes += knowledge_source_attributes
-
         return edge

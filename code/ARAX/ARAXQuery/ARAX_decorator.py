@@ -1,5 +1,5 @@
 #!/bin/env python3
-import ast
+import copy
 import os
 import sqlite3
 import sys
@@ -24,8 +24,34 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXDecorator:
 
     def __init__(self):
-        self.core_node_properties = {"id", "name", "category"}  # These don't belong in TRAPI Attributes
-        self.arax_infores_curie = eu.get_translator_infores_curie("ARAX")
+        self.node_attributes = ["iri", "description", "all_categories", "all_names", "equivalent_curies",
+                                "publications"]
+        self.edge_attributes = ["knowledge_source", "publications", "publications_info", "kg2_ids"]
+        self.attribute_shells = {
+            "iri": Attribute(attribute_type_id="biolink:IriType",
+                             value_type_id="metatype:Uri"),
+            "description": Attribute(attribute_type_id="biolink:description",
+                                     value_type_id="metatype:String"),
+            "all_categories": Attribute(attribute_type_id="biolink:category",
+                                        value_type_id="metatype:Uriorcurie",
+                                        description="Categories of all nodes in this synonym set in RTX-KG2."),
+            "all_names": Attribute(attribute_type_id="biolink:synonym",
+                                   value_type_id="metatype:String",
+                                   description="Names of all nodes in this synonym set in RTX-KG2."),
+            "equivalent_curies": Attribute(attribute_type_id="biolink:xref",
+                                           value_type_id="metatype:Nodeidentifier",
+                                           description="Identifiers of all nodes in this synonym set in RTX-KG2."),
+            "publications": Attribute(attribute_type_id="biolink:publications",
+                                      value_type_id="biolink:Uriorcurie"),
+            "publications_info": Attribute(attribute_type_id="bts:sentence",
+                                           value_type_id=None),
+            "kg2_ids": Attribute(attribute_type_id="biolink:original_edge_information",
+                                 value_type_id="metatype:String",
+                                 description="The original RTX-KG2pre edges corresponding to this edge prior to any "
+                                             "synonymization or remapping. Listed in "
+                                             "(subject)--(relation)--(object)--(source) format.")
+        }
+        self.array_delimiter_char = "ǂ"
         self.kg2_infores_curie = eu.get_translator_infores_curie("RTX-KG2")
 
     def decorate_nodes(self, response: ARAXResponse) -> ARAXResponse:
@@ -37,9 +63,10 @@ class ARAXDecorator:
 
         # Extract the KG2c nodes from sqlite
         response.debug(f"Looking up corresponding KG2c nodes in sqlite")
+        node_cols_str = ", ".join([f"N.{property_name}" for property_name in self.node_attributes])
         node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
         node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
-        sql_query = f"SELECT N.node " \
+        sql_query = f"SELECT N.id, {node_cols_str} " \
                     f"FROM nodes AS N " \
                     f"WHERE N.id IN ('{node_keys_str}')"
         cursor.execute(sql_query)
@@ -50,11 +77,19 @@ class ARAXDecorator:
         # Decorate nodes in the KG with info in these KG2c nodes
         response.debug(f"Adding attributes to nodes in the KG")
         for row in rows:
-            kg2c_node_as_dict = ujson.loads(row[0])
-            node_id = kg2c_node_as_dict["id"]
-            kg2c_node_attributes = self._create_trapi_node_attributes(kg2c_node_as_dict)
+            # First create the attributes for this KG2c node
+            node_id = row[0]
             trapi_node = message.knowledge_graph.nodes[node_id]
-            existing_attribute_triples = {eu.get_attribute_triple(attribute) for attribute in trapi_node.attributes} if trapi_node.attributes else set()
+            kg2c_node_attributes = []
+            for property_name in self.node_attributes:
+                col_index = self.node_attributes.index(property_name)
+                raw_value = row[col_index]
+                value = self._load_into_list(raw_value) if self.array_delimiter_char in raw_value else raw_value
+                kg2c_node_attributes.append(self.create_attribute(property_name, value))
+
+            # Then decorate the TRAPI node with those attributes it doesn't already have
+            existing_attribute_triples = {eu.get_attribute_triple(attribute)
+                                          for attribute in trapi_node.attributes} if trapi_node.attributes else set()
             novel_attributes = [attribute for attribute in kg2c_node_attributes
                                 if eu.get_attribute_triple(attribute) not in existing_attribute_triples]
             if trapi_node.attributes:
@@ -112,7 +147,7 @@ class ARAXDecorator:
         response.debug(f"Looking up EPC edge info in KG2c sqlite")
         search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
         search_keys_str = "','".join(search_keys_set)  # SQL wants ('node1', 'node2') format for string lists
-        sql_query = f"SELECT E.{search_key_column}, E.edge " \
+        sql_query = f"SELECT E.{search_key_column}, E.publications, E.publications_info, E.kg2_ids, E.knowledge_source " \
                     f"FROM edges AS E " \
                     f"WHERE E.{search_key_column} IN ('{search_keys_str}')"
         cursor.execute(sql_query)
@@ -121,73 +156,60 @@ class ARAXDecorator:
         connection.close()
         response.debug(f"Got {len(rows)} rows back from KG2c sqlite")
 
-        # Decorate edges in the KG with info extracted from sqlite
         response.debug(f"Adding attributes to edges in the KG")
-        search_key_to_kg2c_edges_map = defaultdict(list)
+        # Create a helper lookup map for easy access to returned rows
+        search_key_to_kg2c_edge_tuples_map = defaultdict(list)
         for row in rows:
-            search_key_to_kg2c_edges_map[row[0]].append(ujson.loads(row[1]))
-        for search_key, kg2c_edges in search_key_to_kg2c_edges_map.items():
+            search_key = row[0]
+            search_key_to_kg2c_edge_tuples_map[search_key].append(row)
+
+        # Join the property values found for all edges matching the given search key
+        for search_key, kg2c_edge_tuples in search_key_to_kg2c_edge_tuples_map.items():
             joined_publications = set()
-            joined_publications_info = dict()
+            joined_publications_info = set()
             joined_kg2_ids = set()
             joined_knowledge_sources = set()
-            for kg2c_edge in kg2c_edges:
-                joined_publications.update(set(kg2c_edge.get("publications", [])))
-                joined_publications_info.update(kg2c_edge.get("publications_info", dict()))
-                joined_kg2_ids.update(set(kg2c_edge.get("kg2_ids", [])))
-                joined_knowledge_sources.update(set(kg2c_edge.get("knowledge_source", [])))
+            for kg2c_edge_tuple in kg2c_edge_tuples:
+                joined_publications.update(set(self._load_into_list(kg2c_edge_tuple[1])))
+                joined_publications_info.update(self._load_into_dict(kg2c_edge_tuple[2]))
+                joined_kg2_ids.update(set(self._load_into_list(kg2c_edge_tuple[3])))
+                joined_knowledge_sources.update(set(self._load_into_list(kg2c_edge_tuple[4])))
+            knowledge_source = list(joined_knowledge_sources)[0] if len(joined_knowledge_sources) == 1 else None
+
             # Add the joined attributes to each of the edges with the given search key
             corresponding_bare_edge_keys = search_key_to_edge_keys_map[search_key]
             for edge_key in corresponding_bare_edge_keys:
                 bare_edge = kg.edges[edge_key]
-                # Add publications info (done for both "NGD" and "RTX-KG2" modes)
-                if joined_publications_info:
-                    publications_attribute = Attribute(attribute_type_id="biolink:supporting_publication_info",
-                                                       value_type_id="biolink:Publication",
-                                                       value=joined_publications_info,
-                                                       attribute_source=list(joined_knowledge_sources)[0] if len(joined_knowledge_sources) == 1 else None)
-                    if not bare_edge.attributes:
-                        bare_edge.attributes = []
-                    bare_edge.attributes.append(publications_attribute)
+                # Add KG2 edge-specific attributes
                 if kind == "RTX-KG2":
                     if not bare_edge.attributes:
                         bare_edge.attributes = []
+                    bare_edge.attributes.append(self.create_attribute("kg2_ids", list(joined_kg2_ids)))
                     if joined_publications:
-                        publications_attribute = Attribute(attribute_type_id="biolink:has_supporting_publications",
-                                                           value_type_id="biolink:Publication",
-                                                           value=list(joined_publications),
-                                                           attribute_source=list(joined_knowledge_sources)[0] if len(joined_knowledge_sources) == 1 else None)
-                        bare_edge.attributes.append(publications_attribute)
-                    kg2_ids_attribute = Attribute(attribute_type_id="biolink:original_edge_information",
-                                                  value_type_id="biolink:Unknown",
-                                                  value=list(joined_kg2_ids),
-                                                  description="The original edges corresponding to this edge prior to "
-                                                              "any synonymization or remapping. Listed in "
-                                                              "(subject)--(relation)--(object)--(source) format.",
-                                                  attribute_source=self.kg2_infores_curie)
-                    bare_edge.attributes.append(kg2_ids_attribute)
+                        bare_edge.attributes.append(self.create_attribute("publications", list(joined_publications),
+                                                                          attribute_source=knowledge_source))
+                # Add attributes that belong on both KG2 and NGD edges
+                if joined_publications_info:
+                    if not bare_edge.attributes:
+                        bare_edge.attributes = []
+                    bare_edge.attributes.append(self.create_attribute("publications_info", joined_publications_info,
+                                                                      attribute_source=knowledge_source))
 
         return response
 
-    def _create_trapi_node_attributes(self, kg2c_dict_node: Dict[str, any]) -> List[Attribute]:
-        new_attributes = []
-        for property_name in set(kg2c_dict_node).difference(self.core_node_properties):
-            property_value = kg2c_dict_node.get(property_name)
-            if property_value:
-                # Extract any booleans that are stored within strings
-                if type(property_value) is str:
-                    if property_value.lower() == "true" or property_value.lower() == "false":
-                        property_value = ast.literal_eval(property_value)
-                # Create the actual Attribute object
-                trapi_attribute = Attribute(original_attribute_name=property_name,
-                                            attribute_type_id=eu.get_attribute_type(property_name),
-                                            value=property_value)
-                # Also store this value in Attribute.url if it's a URL
-                if type(property_value) is str and (property_value.startswith("http:") or property_value.startswith("https:")):
-                    trapi_attribute.value_url = property_value
-
-                new_attributes.append(trapi_attribute)
-        return new_attributes
+    def create_attribute(self, attribute_short_name: str, value: any, attribute_source: Optional[str] = None,
+                         log: Optional[ARAXResponse] = ARAXResponse()) -> Attribute:
+        if attribute_short_name not in self.attribute_shells:
+            log.error(f"{attribute_short_name} is not a recognized short name for an attribute. Options are: "
+                      f"{set(self.attribute_shells)}", error_code="UnrecognizedInput")
+        attribute = copy.deepcopy(self.attribute_shells[attribute_short_name])
+        attribute.value = value
+        if isinstance(value, str):
+            if value.startswith("http"):
+                attribute.value_url = value
+        if attribute_source:
+            attribute.attribute_source = attribute_source
+        return attribute
 
     @staticmethod
     def _connect_to_kg2c_sqlite() -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
@@ -201,5 +223,9 @@ class ARAXDecorator:
         cursor = connection.cursor()
         return connection, cursor
 
+    def _load_into_list(self, string_encoded_list: str) -> List[str]:
+        return string_encoded_list.split(f"{self.array_delimiter_char}")
 
-
+    @staticmethod
+    def _load_into_dict(json_string: str) -> Dict[str, any]:
+        return ujson.loads(json_string)
