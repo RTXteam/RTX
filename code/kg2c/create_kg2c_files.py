@@ -397,7 +397,7 @@ def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
 
     # Add all edges (edge object is dumped into a JSON string)
     logging.info(f"  Creating edges table..")
-    sqlite_edge_properties = list(set(PROPERTIES_LOOKUP["edges"]).difference(_get_lite_properties("edges")))
+    sqlite_edge_properties = list(set(PROPERTIES_LOOKUP["edges"]).difference(_get_lite_properties("edges")).union({"knowledge_source"}))
     logging.info(f"   Edge properties to store in sqlite db are: {sqlite_edge_properties}")
     cols_with_types_string = ", ".join([f"{property_name} TEXT" for property_name in sqlite_edge_properties])
     question_marks_string = ", ".join(["?" for _ in range(len(sqlite_edge_properties))])
