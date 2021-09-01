@@ -19,6 +19,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.attribute import Attribute
 
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
@@ -108,16 +109,34 @@ def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             assert node_key and isinstance(node_key, str)
-            assert isinstance(node.name, str) or node.name is None
             assert node.qnode_keys and isinstance(node.qnode_keys, list)
-            assert node.categories and isinstance(node.categories, list) or node.categories is None
+            assert isinstance(node.name, str) or node.name is None
+            assert isinstance(node.categories, list) or node.categories is None
+            if node.attributes:
+                for attribute in node.attributes:
+                    _check_attribute(attribute)
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             assert edge_key and isinstance(edge_key, str)
             assert edge.qedge_keys and isinstance(edge.qedge_keys, list)
             assert edge.subject and isinstance(edge.subject, str)
             assert edge.object and isinstance(edge.object, str)
-            assert edge.predicate and isinstance(edge.predicate, str) or edge.predicate is None
+            assert isinstance(edge.predicate, str) or edge.predicate is None
+            if edge.attributes:
+                for attribute in edge.attributes:
+                    _check_attribute(attribute)
+
+
+def _check_attribute(attribute: Attribute):
+    assert attribute.attribute_type_id and isinstance(attribute.attribute_type_id, str)
+    assert attribute.value is not None and (isinstance(attribute.value, str) or isinstance(attribute.value, list) or
+                                            isinstance(attribute.value, int) or isinstance(attribute.value, float) or
+                                            isinstance(attribute.value, dict))
+    assert isinstance(attribute.value_type_id, str) or attribute.value_type_id is None
+    assert isinstance(attribute.value_url, str) or attribute.value_url is None
+    assert isinstance(attribute.attribute_source, str) or attribute.attribute_source is None
+    assert isinstance(attribute.original_attribute_name, str) or attribute.original_attribute_name is None
+    assert isinstance(attribute.description, str) or attribute.description is None
 
 
 def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
@@ -1002,47 +1021,7 @@ def test_auto_pruning_two_hop():
     assert len(nodes_by_qg_id["n1"]) <= 200
 
 
-def test_fda_approved_query_workflow_a9_egfr_advanced():
-    query = {
-      "nodes": {
-        "n0": {
-          "categories": [
-            "biolink:SmallMolecule"
-          ],
-          "constraints": [
-            {
-              "id": "biolink:highest_FDA_approval_status",
-              "name": "highest FDA approval status",
-              "operator": "==",
-              "value": "regular approval"
-            }
-          ]
-        },
-        "n1": {
-          "ids": [
-            "NCBIGene:1956"
-          ]
-        }
-      },
-      "edges": {
-        "e0": {
-          "subject": "n0",
-          "object": "n1",
-          "predicates": [
-            "biolink:decreases_abundance_of",
-            "biolink:decreases_activity_of",
-            "biolink:decreases_expression_of",
-            "biolink:decreases_synthesis_of",
-            "biolink:increases_degradation_of",
-            "biolink:disrupts",
-            "biolink:entity_negatively_regulates_entity"
-          ]
-        }
-      }
-    }
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
-
-
+@pytest.mark.slow
 def test_fda_approved_query_simple():
     query = {
         "nodes": {
