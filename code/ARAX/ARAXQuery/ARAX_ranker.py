@@ -268,7 +268,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
                     edge_confidence *= normalized_score
-        if edge.attributes and any(attribute.attribute_type_id == "biolink:aggregator_knowledge_source" and
+        if edge.attributes and any(attribute.attribute_type_id == "biolink:knowledge_source" and
                                    attribute.value == "infores:semmeddb" for attribute in edge.attributes):
             if edge_attribute_dict.get("biolink:publications", None) is not None:
                 n_publications = len(edge_attribute_dict["biolink:publications"])
