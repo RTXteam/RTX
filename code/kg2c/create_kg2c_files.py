@@ -46,8 +46,7 @@ PROPERTIES_LOOKUP = {
         "all_categories": {"type": list, "in_kg2pre": False, "in_kg2c_lite": True, "use_as_labels": True},
         "publications": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
         "equivalent_curies": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
-        "all_names": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
-        "expanded_categories": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False}
+        "all_names": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False}
     },
     "edges": {
         "id": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
@@ -243,14 +242,13 @@ def _modify_column_headers_for_neo4j(plain_column_headers: List[str], file_name_
 
 
 def _create_node(preferred_curie: str, name: Optional[str], category: str, all_categories: List[str],
-                 expanded_categories: List[str], equivalent_curies: List[str], publications: List[str],
-                 all_names: List[str], iri: Optional[str], description: Optional[str], descriptions_list: List[str]) -> Dict[str, any]:
+                 equivalent_curies: List[str], publications: List[str], all_names: List[str], iri: Optional[str],
+                 description: Optional[str], descriptions_list: List[str]) -> Dict[str, any]:
     node_properties_lookup = PROPERTIES_LOOKUP["nodes"]
     assert isinstance(preferred_curie, node_properties_lookup["id"]["type"])
     assert isinstance(name, node_properties_lookup["name"]["type"]) or not name
     assert isinstance(category, node_properties_lookup["category"]["type"])
     assert isinstance(all_categories, node_properties_lookup["all_categories"]["type"])
-    assert isinstance(expanded_categories, node_properties_lookup["expanded_categories"]["type"])
     assert isinstance(equivalent_curies, node_properties_lookup["equivalent_curies"]["type"])
     assert isinstance(publications, node_properties_lookup["publications"]["type"])
     assert isinstance(all_names, node_properties_lookup["all_names"]["type"])
@@ -263,7 +261,6 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
         "category": category,
         "all_names": all_names,
         "all_categories": all_categories,
-        "expanded_categories": expanded_categories,
         "iri": iri,
         "description": description,
         "descriptions_list": descriptions_list,
@@ -430,7 +427,6 @@ def _create_build_node(kg2_version: str, biolink_version: str) -> Dict[str, any]
     kg2c_build_node = _create_node(preferred_curie="RTX:KG2c",
                                    name=name,
                                    all_categories=["biolink:InformationContentEntity"],
-                                   expanded_categories=["biolink:InformationContentEntity"],
                                    category="biolink:InformationContentEntity",
                                    equivalent_curies=[],
                                    publications=[],
@@ -479,14 +475,12 @@ def _canonicalize_nodes(kg2pre_nodes: List[Dict[str, any]]) -> Tuple[Dict[str, D
             name = canonical_info['preferred_name'] if canonical_info else kg2pre_node['name']
             category = canonical_info['preferred_category'] if canonical_info else kg2pre_node['category']
             all_categories = list(canonical_info['all_categories']) if canonical_info else [kg2pre_node['category']]
-            expanded_categories = list(canonical_info['expanded_categories']) if canonical_info else [kg2pre_node['category']]
             iri = kg2pre_node['iri'] if kg2pre_node['id'] == canonicalized_curie else None
             all_names = [kg2pre_node['name']]
             canonicalized_node = _create_node(preferred_curie=canonicalized_curie,
                                               name=name,
                                               category=category,
                                               all_categories=all_categories,
-                                              expanded_categories=expanded_categories,
                                               publications=publications,
                                               equivalent_curies=equivalent_curies_dict.get(canonicalized_curie, [canonicalized_curie]),
                                               iri=iri,
