@@ -687,13 +687,14 @@ def create_kg2c_files(is_test=False):
         gc.collect()
         canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
+        # TODO: Remove 'general' nodes and their edges (e.g., 'Protein', 'SNP', etc.)
+
     # Actually create all of our output files (different formats for storing KG2c)
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
     logging.info(f"Saving KG2c in various file formats..")
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
-    canonicalized_nodes_dict, canonicalized_edges_dict = remove_fluff_nodes(canonicalized_nodes_dict, canonicalized_edges_dict)
     create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
 
 
