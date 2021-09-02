@@ -4,7 +4,7 @@ import os
 import sqlite3
 import sys
 from collections import defaultdict
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Union
 
 import ujson
 
@@ -24,9 +24,10 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class ARAXDecorator:
 
     def __init__(self):
-        self.node_attributes = ["iri", "description", "all_categories", "all_names", "equivalent_curies",
-                                "publications"]
-        self.edge_attributes = ["knowledge_source", "publications", "publications_info", "kg2_ids"]
+        self.node_attributes = {"iri": str, "description": str, "all_categories": list, "all_names": list,
+                                "equivalent_curies": list, "publications": list}
+        self.edge_attributes = {"publications": list, "publications_info": dict, "kg2_ids": list,
+                                "knowledge_source": list}
         self.attribute_shells = {
             "iri": Attribute(attribute_type_id="biolink:IriType",
                              value_type_id="metatype:Uri"),
@@ -63,7 +64,8 @@ class ARAXDecorator:
 
         # Extract the KG2c nodes from sqlite
         response.debug(f"Looking up corresponding KG2c nodes in sqlite")
-        node_cols_str = ", ".join([f"N.{property_name}" for property_name in self.node_attributes])
+        node_attributes_ordered = list(self.node_attributes)
+        node_cols_str = ", ".join([f"N.{property_name}" for property_name in node_attributes_ordered])
         node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
         node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
         sql_query = f"SELECT N.id, {node_cols_str} " \
@@ -81,11 +83,10 @@ class ARAXDecorator:
             node_id = row[0]
             trapi_node = message.knowledge_graph.nodes[node_id]
             kg2c_node_attributes = []
-            for property_name in self.node_attributes:
-                col_index = self.node_attributes.index(property_name)
-                raw_value = row[col_index]
-                value = self._load_into_list(raw_value) if self.array_delimiter_char in raw_value else raw_value
-                kg2c_node_attributes.append(self.create_attribute(property_name, value))
+            for index, property_name in enumerate(node_attributes_ordered):
+                value = self._load_property(property_name, row[index + 1])  # Add one to account for 'id' column
+                if value:
+                    kg2c_node_attributes.append(self.create_attribute(property_name, value))
 
             # Then decorate the TRAPI node with those attributes it doesn't already have
             existing_attribute_triples = {eu.get_attribute_triple(attribute)
@@ -145,9 +146,11 @@ class ARAXDecorator:
         # Extract the proper entries from sqlite
         connection, cursor = self._connect_to_kg2c_sqlite()
         response.debug(f"Looking up EPC edge info in KG2c sqlite")
+        edge_attributes_ordered = list(self.edge_attributes)
+        edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
         search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
         search_keys_str = "','".join(search_keys_set)  # SQL wants ('node1', 'node2') format for string lists
-        sql_query = f"SELECT E.{search_key_column}, E.publications, E.publications_info, E.kg2_ids, E.knowledge_source " \
+        sql_query = f"SELECT E.{search_key_column}, {edge_cols_str} " \
                     f"FROM edges AS E " \
                     f"WHERE E.{search_key_column} IN ('{search_keys_str}')"
         cursor.execute(sql_query)
@@ -165,16 +168,19 @@ class ARAXDecorator:
 
         # Join the property values found for all edges matching the given search key
         for search_key, kg2c_edge_tuples in search_key_to_kg2c_edge_tuples_map.items():
-            joined_publications = set()
-            joined_publications_info = set()
-            joined_kg2_ids = set()
-            joined_knowledge_sources = set()
+            merged_tuple = [set() for _ in range(len(edge_attributes_ordered) + 1)]  # Add one to account for key col
             for kg2c_edge_tuple in kg2c_edge_tuples:
-                joined_publications.update(set(self._load_into_list(kg2c_edge_tuple[1])))
-                joined_publications_info.update(self._load_into_dict(kg2c_edge_tuple[2]))
-                joined_kg2_ids.update(set(self._load_into_list(kg2c_edge_tuple[3])))
-                joined_knowledge_sources.update(set(self._load_into_list(kg2c_edge_tuple[4])))
+                for index, property_name in enumerate(edge_attributes_ordered):
+                    value = self._load_property(property_name, kg2c_edge_tuple[index + 1])
+                    if isinstance(value, list):
+                        merged_tuple[index + 1].update(set(value))
+                    else:
+                        merged_tuple[index + 1].update(value)
+            joined_knowledge_sources = merged_tuple[edge_attributes_ordered.index("knowledge_source") + 1]
             knowledge_source = list(joined_knowledge_sources)[0] if len(joined_knowledge_sources) == 1 else None
+            joined_kg2_ids = list(merged_tuple[edge_attributes_ordered.index("kg2_ids") + 1])
+            joined_publications = list(merged_tuple[edge_attributes_ordered.index("publications") + 1])
+            joined_publications_info = list(merged_tuple[edge_attributes_ordered.index("publications_info") + 1])
 
             # Add the joined attributes to each of the edges with the given search key
             corresponding_bare_edge_keys = search_key_to_edge_keys_map[search_key]
@@ -223,9 +229,12 @@ class ARAXDecorator:
         cursor = connection.cursor()
         return connection, cursor
 
-    def _load_into_list(self, string_encoded_list: str) -> List[str]:
-        return string_encoded_list.split(f"{self.array_delimiter_char}")
-
-    @staticmethod
-    def _load_into_dict(json_string: str) -> Dict[str, any]:
-        return ujson.loads(json_string)
+    def _load_property(self, property_name: str, raw_value: str) -> Union[str, List[str], Dict[str, any], None]:
+        attributes_info_lookup = self.node_attributes if property_name in self.node_attributes else self.edge_attributes
+        ultimate_value_type = attributes_info_lookup[property_name]
+        if ultimate_value_type is list:
+            return [item for item in raw_value.split(self.array_delimiter_char) if item]
+        elif ultimate_value_type is dict:
+            return ujson.loads(raw_value)
+        else:
+            return raw_value
