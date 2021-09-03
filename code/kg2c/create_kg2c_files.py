@@ -581,54 +581,31 @@ def _post_process_edges(canonicalized_edges_dict: Dict[str, Dict[str, any]]) -> 
     return canonicalized_edges_dict
 
 
-def remove_fluff_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
-                       canonicalized_edges_dict: Dict[str, Dict[str, any]]) -> Tuple[Dict[str, Dict[str, any]], Dict[str, Dict[str, any]]]:
-    logging.info(f" Removing nodes non-essential for ARAX queries..")
-
-    # Remove all InformationContentEntity nodes
-    information_content_entity_node_ids = {node_key for node_key, node in canonicalized_nodes_dict.items()
-                                           if "biolink:InformationContentEntity" in node["all_categories"]}
-    logging.info(f"  Removing all {len(information_content_entity_node_ids)} InformationContentEntity nodes..")
-    for node_id in information_content_entity_node_ids:
-        canonicalized_nodes_dict.pop(node_id, None)
-
-    # Remove all OrganismTaxon nodes
-    organism_taxon_node_ids = {node_key for node_key, node in canonicalized_nodes_dict.items()
-                               if "biolink:OrganismTaxon" in node["all_categories"]}
-    logging.info(f"  Removing all {len(organism_taxon_node_ids)} OrganismTaxon nodes..")
-    for node_id in organism_taxon_node_ids:
-        canonicalized_nodes_dict.pop(node_id, None)
-
-    # Remove the top 50 super-hubs
-    neighbor_map = defaultdict(set)
-    for edge in canonicalized_edges_dict.values():
-        subject_id = edge["subject"]
-        object_id = edge["object"]
-        neighbor_map[subject_id].add(object_id)
-        neighbor_map[object_id].add(subject_id)
-    top_50_most_connected_nodes = sorted(neighbor_map.items(), key=lambda item: len(item[1]), reverse=True)[:50]
-    super_hub_node_ids = {node_id for node_id, neighbor_ids in top_50_most_connected_nodes if len(neighbor_ids) > 50000}
-    logging.info(f"  Removing the top {len(super_hub_node_ids)} super-hub nodes..")
-    for node_id in super_hub_node_ids:
+def remove_overly_general_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
+                                canonicalized_edges_dict: Dict[str, Dict[str, any]],
+                                is_test: bool) -> Tuple[Dict[str, Dict[str, any]], Dict[str, Dict[str, any]]]:
+    logging.info(f"Removing overly general nodes from the graph..")
+    overly_general_curies = {"MESH:D010361", "SO:0001217", "MONDO:0000001", "FMA:67257", "MESH:D002477",
+                             "MESH:D005796", "UMLS:C1257890", "UMLS:C0237401", "PR:000029067", "UMLS:C1457887",
+                             "biolink:Cohort", "UMLS:C1550655", "CHEBI:25212", "GO:0008150", "UMLS:C0029235",
+                             "LOINC:LP7790-1"}
+    # TODO: Later use some heuristics to identify such nodes, rather than a hard-coded list
+    node_ids_to_remove = {node_id for node_id, node in canonicalized_nodes_dict.items()
+                          if set(node["equivalent_curies"]).intersection(overly_general_curies)}
+    logging.info(f" Identified {len(node_ids_to_remove)} nodes to remove: {node_ids_to_remove}")
+    for node_id in node_ids_to_remove:
         canonicalized_nodes_dict.pop(node_id, None)
 
     # Delete any now orphaned edges
-    orphaned_edge_ids = {edge_id for edge_id, edge in canonicalized_edges_dict.items()
-                         if edge["subject"] not in canonicalized_nodes_dict or
-                         edge["object"] not in canonicalized_nodes_dict}
-    logging.info(f"  Deleting {len(orphaned_edge_ids)} edges that were orphaned by the above steps..")
-    for edge_id in orphaned_edge_ids:
-        canonicalized_edges_dict.pop(edge_id, None)
+    if not is_test:
+        orphaned_edge_ids = {edge_id for edge_id, edge in canonicalized_edges_dict.items()
+                             if edge["subject"] not in canonicalized_nodes_dict or
+                             edge["object"] not in canonicalized_nodes_dict}
+        logging.info(f"  Deleting {len(orphaned_edge_ids)} edges that were orphaned by the above steps..")
+        for edge_id in orphaned_edge_ids:
+            canonicalized_edges_dict.pop(edge_id, None)
 
-    # Delete any nodes orphaned by the removal of the orphaned edges
-    node_ids_used_by_edges = {node_id for edge in canonicalized_edges_dict.values()
-                              for node_id in {edge["subject"], edge["object"]}}
-    orphaned_node_ids = set(canonicalized_nodes_dict).difference(node_ids_used_by_edges)
-    logging.info(f"  Deleting {len(orphaned_node_ids)} nodes orphaned by the above step..")
-    for node_id in orphaned_node_ids:
-        canonicalized_nodes_dict.pop(node_id, None)
-
-    logging.info(f"Done removing fluff: resulting KG2c now has {len(canonicalized_nodes_dict)} nodes "
+    logging.info(f"Done removing overly general nodes: resulting KG2c now has {len(canonicalized_nodes_dict)} nodes "
                  f"and {len(canonicalized_edges_dict)} edges")
     return canonicalized_nodes_dict, canonicalized_edges_dict
 
@@ -687,7 +664,8 @@ def create_kg2c_files(is_test=False):
         gc.collect()
         canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
-        # TODO: Remove 'general' nodes and their edges (e.g., 'Protein', 'SNP', etc.)
+        # Remove overly general nodes (e.g., 'Genes', 'Disease or disorder'..)
+        canonicalized_nodes_dict, canonicalized_edges_dict = remove_overly_general_nodes(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
 
     # Actually create all of our output files (different formats for storing KG2c)
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
