@@ -620,14 +620,6 @@ def get_standard_parameters() -> dict:
             "type": "string",
             "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
         },
-        "enforce_directionality": {
-            "is_required": False,
-            "examples": ["true", "false"],
-            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-            "default": "false",
-            "type": "boolean",
-            "description": "Whether to obey (vs. ignore) edge directions in the query graph."
-        },
         "prune_threshold": {
             "is_required": False,
             "type": "integer",

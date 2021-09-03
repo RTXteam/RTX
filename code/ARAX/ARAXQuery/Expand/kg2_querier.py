@@ -26,7 +26,6 @@ class KG2Querier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
-        self.enforce_directionality = self.response.data['parameters'].get('enforce_directionality')
         self.biolink_helper = BiolinkHelper()
         self.kg2_infores_curie = eu.get_translator_infores_curie("RTX-KG2")
 
