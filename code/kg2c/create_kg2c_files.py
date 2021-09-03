@@ -583,13 +583,18 @@ def _post_process_edges(canonicalized_edges_dict: Dict[str, Dict[str, any]]) -> 
 
 def remove_overly_general_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                                 canonicalized_edges_dict: Dict[str, Dict[str, any]],
+                                biolink_version: str,
                                 is_test: bool) -> Tuple[Dict[str, Dict[str, any]], Dict[str, Dict[str, any]]]:
     logging.info(f"Removing overly general nodes from the graph..")
+    bh = BiolinkHelper(biolink_version)
+    # Remove all nodes that have a biolink category as an equivalent identifier, as well as a few others
+    all_biolink_categories = set(bh.get_descendants("biolink:NamedThing"))
     overly_general_curies = {"MESH:D010361", "SO:0001217", "MONDO:0000001", "FMA:67257", "MESH:D002477",
                              "MESH:D005796", "UMLS:C1257890", "UMLS:C0237401", "PR:000029067", "UMLS:C1457887",
                              "biolink:Cohort", "UMLS:C1550655", "CHEBI:25212", "GO:0008150", "UMLS:C0029235",
-                             "LOINC:LP7790-1"}
-    # TODO: Later use some heuristics to identify such nodes, rather than a hard-coded list
+                             "LOINC:LP7790-1"}.union(all_biolink_categories)
+    # TODO: Later use some better heuristics to identify such nodes?
+
     node_ids_to_remove = {node_id for node_id, node in canonicalized_nodes_dict.items()
                           if set(node["equivalent_curies"]).intersection(overly_general_curies)}
     logging.info(f" Identified {len(node_ids_to_remove)} nodes to remove: {node_ids_to_remove}")
@@ -665,7 +670,9 @@ def create_kg2c_files(is_test=False):
         canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
         # Remove overly general nodes (e.g., 'Genes', 'Disease or disorder'..)
-        canonicalized_nodes_dict, canonicalized_edges_dict = remove_overly_general_nodes(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
+        canonicalized_nodes_dict, canonicalized_edges_dict = remove_overly_general_nodes(canonicalized_nodes_dict,
+                                                                                         canonicalized_edges_dict,
+                                                                                         biolink_version, is_test)
 
     # Actually create all of our output files (different formats for storing KG2c)
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
