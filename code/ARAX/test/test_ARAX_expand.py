@@ -1103,5 +1103,16 @@ def test_fda_approved_query_workflow_a9_egfr_advanced():
     assert len(nodes_by_qg_id_constrained["n0"]) < len(nodes_by_qg_id_unconstrained["n0"])
 
 
+def test_inverted_treats_handling():
+    actions = [
+        "add_qnode(key=n0, ids=MONDO:0005077)",
+        "add_qnode(key=n1, categories=biolink:ChemicalEntity)",
+        "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:treats)",
+        "expand(kp=RTX-KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

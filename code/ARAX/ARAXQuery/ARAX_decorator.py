@@ -14,8 +14,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code di
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
-import expand_utilities as eu
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -53,7 +51,7 @@ class ARAXDecorator:
                                              "(subject)--(relation)--(object)--(source) format.")
         }
         self.array_delimiter_char = "ǂ"
-        self.kg2_infores_curie = eu.get_translator_infores_curie("RTX-KG2")
+        self.kg2_infores_curie = "infores:rtx-kg2"  # Can't use expand_utilities.py here due to circular imports
 
     def decorate_nodes(self, response: ARAXResponse) -> ARAXResponse:
         message = response.envelope.message
@@ -89,10 +87,10 @@ class ARAXDecorator:
                     kg2c_node_attributes.append(self.create_attribute(property_name, value))
 
             # Then decorate the TRAPI node with those attributes it doesn't already have
-            existing_attribute_triples = {eu.get_attribute_triple(attribute)
+            existing_attribute_triples = {self._get_attribute_triple(attribute)
                                           for attribute in trapi_node.attributes} if trapi_node.attributes else set()
             novel_attributes = [attribute for attribute in kg2c_node_attributes
-                                if eu.get_attribute_triple(attribute) not in existing_attribute_triples]
+                                if self._get_attribute_triple(attribute) not in existing_attribute_triples]
             if trapi_node.attributes:
                 trapi_node.attributes += novel_attributes
             else:
@@ -238,3 +236,7 @@ class ARAXDecorator:
             return ujson.loads(raw_value)
         else:
             return raw_value
+
+    @staticmethod
+    def _get_attribute_triple(attribute: Attribute) -> str:
+        return f"{attribute.attribute_type_id}--{attribute.value}--{attribute.attribute_source}"

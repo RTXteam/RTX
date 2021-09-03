@@ -171,10 +171,45 @@ class ARAXExpander:
         # Make sure QG only uses canonical predicates
         if mode == "ARAX":
             log.debug(f"Making sure QG only uses canonical predicates")
-            for qedge in query_graph.edges.values():
+            qedge_keys = set(query_graph.edges)
+            for qedge_key in qedge_keys:
+                qedge = query_graph.edges[qedge_key]
                 if qedge.predicates:
-                    # TODO: worry about flipping query subject/object?! relevant once do predicate symmetry..
-                    qedge.predicates = self.biolink_helper.get_canonical_predicates(qedge.predicates)
+                    # Convert predicates to their canonical form as needed/possible
+                    qedge_predicates = set(qedge.predicates)
+                    symmetric_predicates = {predicate for predicate in qedge_predicates
+                                            if self.biolink_helper.is_symmetric(predicate)}
+                    asymmetric_predicates = qedge_predicates.difference(symmetric_predicates)
+                    canonical_predicates = set(self.biolink_helper.get_canonical_predicates(qedge.predicates))
+                    if canonical_predicates != qedge_predicates:
+                        asymmetric_non_canonical = asymmetric_predicates.difference(canonical_predicates)
+                        asymmetric_canonical = asymmetric_predicates.intersection(canonical_predicates)
+                        symmetric_non_canonical = symmetric_predicates.difference(canonical_predicates)
+                        if symmetric_non_canonical:
+                            # Switch to canonical predicates, but no need to flip the qedge since they're symmetric
+                            log.debug(f"Converting symmetric predicates {symmetric_non_canonical} on {qedge_key} to "
+                                      f"their canonical forms.")
+                            converted_symmetric = self.biolink_helper.get_canonical_predicates(symmetric_non_canonical)
+                            qedge.predicates = list(qedge_predicates.difference(symmetric_non_canonical).union(converted_symmetric))
+                        if asymmetric_non_canonical and asymmetric_canonical:
+                            log.error(f"Qedge {qedge_key} has asymmetric predicates in both canonical and non-canonical"
+                                      f" forms, which isn't allowed. Non-canonical asymmetric predicates are: "
+                                      f"{asymmetric_non_canonical}", error_code="InvalidPredicates")
+                        elif asymmetric_non_canonical:
+                            # Flip the qedge in this case (OK to do since only other predicates are symmetric)
+                            log.debug(f"Converting {qedge_key}'s asymmetric non-canonical predicates to canonical "
+                                      f"form; requires flipping the qedge, but this is OK since there are no "
+                                      f"asymmetric canonical predicates on this qedge.")
+                            converted_asymmetric = self.biolink_helper.get_canonical_predicates(asymmetric_non_canonical)
+                            final_predicates = set(qedge.predicates).difference(asymmetric_non_canonical).union(converted_asymmetric)
+                            eu.flip_qedge(qedge, list(final_predicates))
+                    # Handle special situation where user entered treats edge in wrong direction
+                    if qedge.predicates == ["biolink:treats"]:
+                        subject_qnode = query_graph.nodes[qedge.subject]
+                        if "biolink:Disease" in self.biolink_helper.get_descendants(subject_qnode.categories):
+                            log.warning(f"{qedge_key} seems to be pointing in the wrong direction (you have "
+                                        f"(disease-like node)-[treats]-(something)). Will flip this qedge.")
+                            eu.flip_qedge(qedge, qedge.predicates)
 
         # Expand any specified edges
         if input_qedge_keys:

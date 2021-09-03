@@ -411,6 +411,13 @@ def flip_edge(edge: Edge, new_predicate: str) -> Edge:
     return edge
 
 
+def flip_qedge(qedge: QEdge, new_predicates: List[str]):
+    qedge.predicates = new_predicates
+    original_subject = qedge.subject
+    qedge.subject = qedge.object
+    qedge.object = original_subject
+
+
 def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
     non_canonical_predicates_used = set()
     biolink_helper = BiolinkHelper()
