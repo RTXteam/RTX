@@ -80,16 +80,20 @@ def main():
     logging.info(f"KG2 version to use is {kg2_version}")
     logging.info(f"Biolink model version to use is {biolink_version}")
     logging.info(f"Synonymizer to use is {synonymizer_name}")
+    synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
+    synonymizer_file = pathlib.Path(f"{synonymizer_dir}/{synonymizer_name}")
     # Make sure synonymizer settings are valid
     if build_synonymizer and not args.test:
         if not synonymizer_name:
             raise ValueError(f"You must specify the name to give the new synonymizer in kg2c_config.json.")
+        elif synonymizer_file.exists():
+            raise ValueError(f"kg2c_config.json specifies that a new synonymizer should be built, but the "
+                             f"synonymizer name provided already exists in {synonymizer_dir}. You must enter a new "
+                             f"synonymizer name.")
         if upload_to_arax_ncats_io and not upload_directory:
             raise ValueError(f"You must specify the path of the directory on arax.ncats.io to upload synonymizer "
                              f"artifacts to in kg2c_config.json.")
     else:
-        synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
-        synonymizer_file = pathlib.Path(f"{synonymizer_dir}/{synonymizer_name}")
         if not synonymizer_name:
             raise ValueError(f"You must specify the name of the synonymizer to use in kg2c_config.json since you are "
                              f"not building a new synonymizer.")
