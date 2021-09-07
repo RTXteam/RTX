@@ -24,7 +24,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_overlay_compute_ngd(parameters, query_graph, response):
         if ("virtual_relation_label" not in parameters) or ("qnode_keys" not in parameters):
-            raise KeyError
+            response.error("The operation overlay_compute_ngd must have the parameters virtual_relation_label and qnode_keys", error_code="KeyError")
         ARAXi = []
         # loop over all pairs of qnode keys and write the ARAXi
         for source, target in itertools.combinations(parameters["qnode_keys"], 2):
@@ -57,7 +57,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_overlay_compute_jaccard(parameters, query_graph, response):
         if ("virtual_relation_label" not in parameters) or ("end_node_keys" not in parameters) or ("intermediate_node_key" not in parameters):
-            raise KeyError
+            response.error("The operation overlay_compute_jaccard must have the parameters virtual_relation_label, end_node_keys, and intermediate_node_key", error_code="KeyError")
         ARAXi = []
         source = parameters['end_node_keys'][0]
         target = parameters['end_node_keys'][1]
@@ -67,7 +67,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_overlay_fisher_exact_test(parameters, query_graph, response):
         if ("virtual_relation_label" not in parameters) or ("subject_qnode_key" not in parameters) or ("object_qnode_key" not in parameters):
-            raise KeyError
+            response.error("The operation overlay_fisher_exact_test must have the parameters virtual_relation_label, subject_qnode_key, and object_qnode_key", error_code="KeyError")
         ARAXi = []
         if 'rel_edge_key' not in parameters:
             ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label={parameters['virtual_relation_label']},subject_qnode_key={parameters['subject_qnode_key']},object_qnode_key={parameters['object_qnode_key']})")
@@ -78,7 +78,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_filter_results_top_n(parameters, query_graph, response):
         if 'max_results' not in parameters:
-            raise KeyError
+            response.error("The operation filter_results_top_n must have the parameter max_results", error_code="KeyError")
         assert type(parameters['max_results']) == int
         ARAXi = []
         ARAXi.append(f"filter_results(action=limit_number_of_results,max_results={parameters['max_results']},prune_kg=true)")  # prune the kg
@@ -93,7 +93,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_fill(parameters, query_graph, response):
         if 'denylist' in parameters:
-            raise NotImplementedError
+            response.error("ARAX has not implementer the parameter denylist", error_code="NotImplementedError")
         ARAXi = []
         if 'allowlist' in parameters:
             for KP_name in parameters['allowlist']:
@@ -112,7 +112,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_filter_kgraph_top_n(parameters, query_graph, response):
         if ("edge_attribute" not in parameters):
-            raise KeyError
+            response.error("The operation filter_kgraph_top_n must have the parameter edge_attribute", error_code="KeyError")
         ARAXi = []
         threshold = parameters.get('max_edges',50)
         top = parameters.get('keep_top_or_bottom','top')
@@ -133,7 +133,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_filter_kgraph_std_dev(parameters, query_graph, response):
         if ("edge_attribute" not in parameters):
-            raise KeyError
+            response.error("The operation filter_kgraph_std_dev must have the parameter edge_attribute", error_code="KeyError")
         ARAXi = []
         threshold = parameters.get('threshold',1)
         direction = parameters.get('remove_above_or_below','below')
@@ -151,7 +151,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_filter_kgraph_percentile(parameters, query_graph, response):
         if ("edge_attribute" not in parameters):
-            raise KeyError
+            response.error("The operation filter_kgraph_percentile must have the parameter edge_attribute", error_code="KeyError")
         ARAXi = []
         threshold = parameters.get('threshold',95)
         direction = parameters.get('remove_above_or_below','below')
@@ -168,7 +168,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_filter_kgraph_continuous_attribute(parameters, query_graph, response):
         if ("edge_attribute" not in parameters) or ("threshold" not in parameters) or ("remove_above_or_below" not in parameters):
-            raise KeyError
+            response.error("The operation kgraph_continuous_attribute must have the parameters edge_attribute, threshold, and remove_above_or_below", error_code="KeyError")
         ARAXi = []
         threshold = parameters.get('threshold',None)
         direction = parameters.get('remove_above_or_below',None)
@@ -185,7 +185,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_filter_kgraph_discrete_kedge_attribute(parameters, query_graph, response):
         if ("edge_attribute" not in parameters) or ("remove_value" not in parameters):
-            raise KeyError
+            response.error("The operation kgraph_continuous_attribute must have the parameters edge_attribute and remove_value", error_code="KeyError")
         ARAXi = []
         value = parameters.get('remove_value',None)
         # FW: need to update this to handle qedge_keys and qnode_keys
@@ -202,7 +202,7 @@ class WorkflowToARAXi:
         ARAXi = []
         for operation in workflow:
             if operation['id'] not in self.implemented:
-                raise NotImplementedError
+                response.error("This operation has not yet been implemented to the workflow to ARAXi translator", error_code="NotImplementedError")
             if 'parameters' in operation:
                 ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters'], query_graph, response))
             else:
