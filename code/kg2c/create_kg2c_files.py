@@ -626,6 +626,7 @@ def create_kg2c_files(is_test=False):
     kg2_version = kg2c_config_info.get("kg2pre_version")
     biolink_version = kg2c_config_info.get("biolink_version")
     start_from_kg2c_json = kg2c_config_info["kg2c"].get("start_from_kg2c_json")
+    use_local_kg2pre_tsvs = kg2c_config_info["kg2c"].get("use_local_kg2pre_tsvs")
 
     # Start with the pre-existing kg2c.json, if directed to in the config file (allows partial builds)
     if start_from_kg2c_json:
@@ -637,15 +638,19 @@ def create_kg2c_files(is_test=False):
         logging.info(f"Loaded KG2c has {len(canonicalized_nodes_dict)} nodes and {len(canonicalized_edges_dict)} edges")
     # Otherwise do a full build, starting with the KG2pre TSVs
     else:
-        # First download the proper KG2 TSV files
+        # First make sure the KG2pre TSV directory exists as it should
         local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
         if not pathlib.Path(local_tsv_dir_path).exists():
             if is_test:
-                raise ValueError(f"You must put your own test KG2pre TSVs into place (in {local_tsv_dir_path}). They must "
-                                 f"be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
+                raise ValueError(f"You must put your own test KG2pre TSVs into place (in {local_tsv_dir_path}). They "
+                                 f"must be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
+            elif use_local_kg2pre_tsvs:
+                raise ValueError(f"No local KG2pre TSVs exist. You must put all four of them into {local_tsv_dir_path}."
+                                 f" They must be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
             else:
                 subprocess.check_call(["mkdir", local_tsv_dir_path])
-        if not is_test:
+        # Download the KG2pre TSVs from the AWS S3 bucket
+        if not is_test and not use_local_kg2pre_tsvs:
             kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
             logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
             subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
