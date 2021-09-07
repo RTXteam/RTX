@@ -51,7 +51,13 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
             for subject_category in subject_categories:
                 for object_category in object_categories:
                     meta_triples.add((subject_category, predicate, object_category))
-    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2]} for triple in meta_triples]
+    kg2_infores_curie = "infores:rtx-kg2"
+    standard_attributes = [{"attribute_type_id": "biolink:knowledge_source",
+                            "attribute_source": kg2_infores_curie},
+                           {"attribute_type_id": "biolink:aggregator_knowledge_source",
+                            "attribute_source": kg2_infores_curie}]
+    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes}
+                  for triple in meta_triples]
     logging.info(f" Created {len(meta_edges)} meta edges")
 
     logging.info(" Gathering all meta nodes..")
