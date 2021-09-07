@@ -22,7 +22,7 @@ class WorkflowToARAXi:
 
     # NGD
     @staticmethod
-    def __translate_overlay_compute_ngd(parameters):
+    def __translate_overlay_compute_ngd(parameters, knowledge_graph):
         if ("virtual_relation_label" not in parameters) or ("qnode_keys" not in parameters):
             raise KeyError
         ARAXi = []
@@ -33,17 +33,17 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
-    def __translate_overlay_connect_knodes(parameters):
+    def __translate_overlay_connect_knodes(parameters, knowledge_graph):
         ARAXi = []
-        ARAXi.append(f"overlay(action=compute_ngd,default_value=inf)")
-        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency)")
-        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio)")
-        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=chi_square)")
-        ARAXi.append(f"overlay(action=predict_drug_treats_disease)")
+        ARAXi.append(f"overlay(action=compute_ngd,default_value=inf,virtual_relation_label=connect_knodes_ngd)")
+        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=connect_knodes_pair_frq)")
+        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=connect_knodes_obs_exp)")
+        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=connect_knodes_chi_sqr)")
+        ARAXi.append(f"overlay(action=predict_drug_treats_disease,virtual_relation_label=connect_knodes_dtd)")
         return ARAXi
 
     @staticmethod
-    def __translate_overlay_compute_jaccard(parameters):
+    def __translate_overlay_compute_jaccard(parameters, knowledge_graph):
         if ("virtual_relation_label" not in parameters) or ("end_node_keys" not in parameters) or ("intermediate_node_key" not in parameters):
             raise KeyError
         ARAXi = []
@@ -53,7 +53,7 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
-    def __translate_overlay_fisher_exact_test(parameters):
+    def __translate_overlay_fisher_exact_test(parameters, knowledge_graph):
         if ("virtual_relation_label" not in parameters) or ("subject_qnode_key" not in parameters) or ("object_qnode_key" not in parameters):
             raise KeyError
         ARAXi = []
@@ -64,7 +64,7 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
-    def __translate_filter_results_top_n(parameters):
+    def __translate_filter_results_top_n(parameters, knowledge_graph):
         if 'max_results' not in parameters:
             raise KeyError
         assert type(parameters['max_results']) == int
@@ -73,13 +73,13 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
-    def __translate_bind(parameters):
+    def __translate_bind(parameters, knowledge_graph):
         ARAXi = []
         ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
     @staticmethod
-    def __translate_fill(parameters):
+    def __translate_fill(parameters, knowledge_graph):
         if 'denylist' in parameters:
             raise NotImplementedError
         ARAXi = []
@@ -92,13 +92,13 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
-    def __translate_filter_kgraph_orphans(parameters):
+    def __translate_filter_kgraph_orphans(parameters, knowledge_graph):
         ARAXi = []
         ARAXi.append(f"filter_kg(action=remove_orphaned_nodes)")
         return ARAXi
 
     @staticmethod
-    def __translate_filter_kgraph_top_n(parameters):
+    def __translate_filter_kgraph_top_n(parameters, knowledge_graph):
         if ("edge_attribute" not in parameters):
             raise KeyError
         ARAXi = []
@@ -119,7 +119,7 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
-    def __translate_filter_kgraph_std_dev(parameters):
+    def __translate_filter_kgraph_std_dev(parameters, knowledge_graph):
         if ("edge_attribute" not in parameters):
             raise KeyError
         ARAXi = []
@@ -137,7 +137,7 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
-    def __translate_filter_kgraph_percentile(parameters):
+    def __translate_filter_kgraph_percentile(parameters, knowledge_graph):
         if ("edge_attribute" not in parameters):
             raise KeyError
         ARAXi = []
@@ -154,7 +154,7 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
-    def __translate_filter_kgraph_continuous_attribute(parameters):
+    def __translate_filter_kgraph_continuous_attribute(parameters, knowledge_graph):
         if ("edge_attribute" not in parameters) or ("threshold" not in parameters) or ("remove_above_or_below" not in parameters):
             raise KeyError
         ARAXi = []
@@ -171,7 +171,7 @@ class WorkflowToARAXi:
         return ARAXi
 
     @staticmethod
-    def __translate_filter_kgraph_discrete_kedge_attribute(parameters):
+    def __translate_filter_kgraph_discrete_kedge_attribute(parameters, knowledge_graph):
         if ("edge_attribute" not in parameters) or ("remove_value" not in parameters):
             raise KeyError
         ARAXi = []
@@ -186,25 +186,25 @@ class WorkflowToARAXi:
         ARAXi.append(araxi_string)
         return ARAXi
 
-    def translate(self, workflow):
+    def translate(self, workflow, knowledge_graph):
         ARAXi = []
         for operation in workflow:
             if operation['id'] not in self.implemented:
                 raise NotImplementedError
             if 'parameters' in operation:
-                ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters']))
+                ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters'], knowledge_graph))
             else:
-                ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])({}))
+                ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])({}, knowledge_graph))
         return ARAXi
 
     @staticmethod
-    def __translate_score(parameters):
+    def __translate_score(parameters, knowledge_graph):
         ARAXi = []
         ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
     @staticmethod
-    def __translate_complete_results(parameters):
+    def __translate_complete_results(parameters, knowledge_graph):
         ARAXi = []
         ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi

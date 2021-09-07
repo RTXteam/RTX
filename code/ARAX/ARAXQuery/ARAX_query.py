@@ -277,7 +277,7 @@ class ARAXQuery:
 
         # Convert the TRAPI workflow into ARAXi
         converter = WorkflowToARAXi()
-        araxi = converter.translate(query['workflow'])
+        araxi = converter.translate(query['workflow'], query['knowledge_graph'])
 
         # If there are not already operations, create empty stubs
         if 'operations' not in query:
