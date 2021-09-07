@@ -761,10 +761,9 @@ class ARAXExpander:
             log.info(f"Kept top {len(kept_nodes)} answers for {qnode_key_to_prune}. "
                      f"Best score was {round(max(scores), 5)}, worst kept was {round(min(scores), 5)}.")
             # Actually eliminate them from the KG
+
             nodes_to_delete = set(kg.nodes_by_qg_id[qnode_key_to_prune]).difference(kept_nodes)
-            for node_key in nodes_to_delete:
-                del kg.nodes_by_qg_id[qnode_key_to_prune][node_key]
-            eu.remove_orphan_edges(kg, qg_expanded_thus_far)
+            kg.remove_nodes(nodes_to_delete, qnode_key_to_prune, qg_expanded_thus_far)
         else:
             log.error(f"Ran into an issue using Resultify when trying to prune {qnode_key_to_prune} answers: "
                       f"{intermediate_results_response.show()}", error_code="PruneError")

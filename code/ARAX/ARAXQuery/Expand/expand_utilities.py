@@ -1,17 +1,10 @@
 #!/bin/env python3
 # This file contains utilities/helper functions for general use within the Expand module
 import copy
-import json
-import pathlib
 import sys
 import os
 import traceback
 from typing import List, Dict, Union, Set, Tuple, Optional
-from datetime import datetime, timedelta
-
-import requests
-import requests_cache
-import yaml
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -65,8 +58,10 @@ class QGOrganizedKnowledgeGraph:
         self.edges_by_qg_id[qedge_key][edge_key] = edge
 
     def remove_nodes(self, node_keys_to_delete: Set[str], qnode_key: str, qg: QueryGraph):
+        # Remove the specified nodes
         for node_key in node_keys_to_delete:
             del self.nodes_by_qg_id[qnode_key][node_key]
+        # Remove any edges orphaned by removal of the nodes
         connected_qedges = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == qnode_key or qedge.object == qnode_key}
         for connected_qedge_key in connected_qedges.intersection(set(self.edges_by_qg_id)):
             edges_to_delete = {edge_key for edge_key, edge in self.edges_by_qg_id[connected_qedge_key].items()
