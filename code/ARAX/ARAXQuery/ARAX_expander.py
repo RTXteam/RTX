@@ -42,16 +42,8 @@ class ARAXExpander:
         if self.logger.hasHandlers():
             self.logger.handlers.clear()
         self.logger.addHandler(handler)
-        self.category_equivalencies = {"biolink:Protein": {"biolink:Gene"},
-                                       "biolink:Gene": {"biolink:Protein"},
-                                       "biolink:Disease": {"biolink:PhenotypicFeature",
-                                                           "biolink:DiseaseOrPhenotypicFeature"},
-                                       "biolink:PhenotypicFeature": {"biolink:Disease",
-                                                                     "biolink:DiseaseOrPhenotypicFeature"},
-                                       "biolink:DiseaseOrPhenotypicFeature": {"biolink:Disease",
-                                                                              "biolink:PhenotypicFeature"}}
         self.kp_command_definitions = eu.get_kp_command_definitions()
-        self.biolink_helper = BiolinkHelper()
+        self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
         self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
         self.supported_qedge_constraints = dict()
@@ -163,11 +155,7 @@ class ARAXExpander:
                 log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
             elif not qnode.categories:
                 qnode.categories = ["biolink:NamedThing"]
-            if qnode.categories and set(qnode.categories).intersection(self.category_equivalencies):
-                equivalent_categories = {equivalent_category for category in qnode.categories
-                                         for equivalent_category in self.category_equivalencies.get(category, [])}
-                qnode.categories = list(set(qnode.categories).union(equivalent_categories))
-                log.debug(f"Expand will consider qnode {qnode_key}'s category to be {qnode.categories}")
+            qnode.categories = self.bh.add_conflations(qnode.categories)
         # Make sure QG only uses canonical predicates
         if mode == "ARAX":
             log.debug(f"Making sure QG only uses canonical predicates")
@@ -178,9 +166,9 @@ class ARAXExpander:
                     # Convert predicates to their canonical form as needed/possible
                     qedge_predicates = set(qedge.predicates)
                     symmetric_predicates = {predicate for predicate in qedge_predicates
-                                            if self.biolink_helper.is_symmetric(predicate)}
+                                            if self.bh.is_symmetric(predicate)}
                     asymmetric_predicates = qedge_predicates.difference(symmetric_predicates)
-                    canonical_predicates = set(self.biolink_helper.get_canonical_predicates(qedge.predicates))
+                    canonical_predicates = set(self.bh.get_canonical_predicates(qedge.predicates))
                     if canonical_predicates != qedge_predicates:
                         asymmetric_non_canonical = asymmetric_predicates.difference(canonical_predicates)
                         asymmetric_canonical = asymmetric_predicates.intersection(canonical_predicates)
@@ -189,7 +177,7 @@ class ARAXExpander:
                             # Switch to canonical predicates, but no need to flip the qedge since they're symmetric
                             log.debug(f"Converting symmetric predicates {symmetric_non_canonical} on {qedge_key} to "
                                       f"their canonical forms.")
-                            converted_symmetric = self.biolink_helper.get_canonical_predicates(symmetric_non_canonical)
+                            converted_symmetric = self.bh.get_canonical_predicates(symmetric_non_canonical)
                             qedge.predicates = list(qedge_predicates.difference(symmetric_non_canonical).union(converted_symmetric))
                         if asymmetric_non_canonical and asymmetric_canonical:
                             log.error(f"Qedge {qedge_key} has asymmetric predicates in both canonical and non-canonical"
@@ -200,13 +188,13 @@ class ARAXExpander:
                             log.debug(f"Converting {qedge_key}'s asymmetric non-canonical predicates to canonical "
                                       f"form; requires flipping the qedge, but this is OK since there are no "
                                       f"asymmetric canonical predicates on this qedge.")
-                            converted_asymmetric = self.biolink_helper.get_canonical_predicates(asymmetric_non_canonical)
+                            converted_asymmetric = self.bh.get_canonical_predicates(asymmetric_non_canonical)
                             final_predicates = set(qedge.predicates).difference(asymmetric_non_canonical).union(converted_asymmetric)
                             eu.flip_qedge(qedge, list(final_predicates))
                     # Handle special situation where user entered treats edge in wrong direction
                     if qedge.predicates == ["biolink:treats"]:
                         subject_qnode = query_graph.nodes[qedge.subject]
-                        if "biolink:Disease" in self.biolink_helper.get_descendants(subject_qnode.categories):
+                        if "biolink:Disease" in self.bh.get_descendants(subject_qnode.categories):
                             log.warning(f"{qedge_key} seems to be pointing in the wrong direction (you have "
                                         f"(disease-like node)-[treats]-(something)). Will flip this qedge.")
                             eu.flip_qedge(qedge, qedge.predicates)
