@@ -426,26 +426,6 @@ def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, 
     return kg
 
 
-def get_attribute_type(attribute_name: str) -> str:
-    # These are placeholder types for attributes (plan is to discuss such types in API working group #1192)
-    attribute_type_map = {
-        "all_names": "biolink:synonym",
-        "deprecated": "biolink:Unknown",
-        "equivalent_curies": "biolink:synonym",
-        "full_name": "biolink:full_name",
-        "negated": "biolink:negated",
-        "probability": "biolink:p_value",
-        "publications": "biolink:publications",
-        "relation": "biolink:relation",
-        "symbol": "biolink:symbol",
-        "synonym": "biolink:synonym",
-        "update_date": "metatype:Datetime",
-        "uri": "metatype:Uri",
-        "iri": "biolink:IriType"
-    }
-    return attribute_type_map.get(attribute_name, "biolink:Unknown")
-
-
 def get_arax_source_attribute() -> Attribute:
     arax_infores_curie = get_translator_infores_curie("ARAX")
     return Attribute(attribute_type_id="biolink:aggregator_knowledge_source",

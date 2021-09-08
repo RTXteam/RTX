@@ -16,6 +16,7 @@ import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
+from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # ARAX directory
 from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
@@ -36,6 +37,7 @@ class KG2Querier:
         self.infores_curie_yaml_path = f"{os.path.dirname(os.path.abspath(__file__))}/{self.infores_curie_yaml_name}"
         self.infores_curie_map = self._initiate_infores_curie_map(self.response)
         self.biolink_helper = BiolinkHelper()
+        self.decorator = ARAXDecorator()
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -172,10 +174,10 @@ class KG2Querier:
         # Create an attribute containing any publications
         if publications:
             infores_curies = {attribute.value for attribute in provided_by_attributes}
-            edge.attributes.append(Attribute(attribute_type_id="biolink:has_supporting_publications",
-                                             value_type_id="biolink:Publication",
-                                             value=publications,
-                                             attribute_source=list(infores_curies)[0] if len(infores_curies) == 1 else None))
+            edge.attributes.append(self.decorator.create_attribute(attribute_short_name="publications",
+                                                                   value=publications,
+                                                                   attribute_source=list(infores_curies)[0] if len(infores_curies) == 1 else None,
+                                                                   log=log))
 
         # Switch to canonical predicate as needed (temporary patch until KG2 uses only canonical predicates)
         canonical_predicate = self.biolink_helper.get_canonical_predicates(edge.predicate)[0]

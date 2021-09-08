@@ -275,7 +275,7 @@ class ARAXQuery:
 
         # Convert the TRAPI workflow into ARAXi
         converter = WorkflowToARAXi()
-        araxi = converter.translate(query['workflow'])
+        araxi = converter.translate(query['workflow'], query['query_graph'], response)
 
         # If there are not already operations, create empty stubs
         if 'operations' not in query:
@@ -506,6 +506,9 @@ class ARAXQuery:
                 #### The child loses the MySQL connection of the parent, so need to reconnect
                 response_cache.connect()
                 
+            #### If there is already a KG with edges, recompute the qg_keys
+            if message.knowledge_graph is not None and len(message.knowledge_graph.edges) > 0:
+                resultifier.recompute_qg_keys(response)
 
             #### Process each action in order
             action_stats = { }

@@ -388,7 +388,7 @@ class ComputeFTEST:
                 edge_attribute_list =  [
                     EdgeAttribute(attribute_type_id="EDAM:data_1669", original_attribute_name="fisher_exact_test_p-value", value=str(value[1]), value_url=None),
                     EdgeAttribute(original_attribute_name="virtual_relation_label", value=value[0], attribute_type_id="biolink:Unknown"),
-                    EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
+                    #EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                     EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
