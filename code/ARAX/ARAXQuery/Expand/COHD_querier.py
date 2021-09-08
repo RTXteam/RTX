@@ -1366,7 +1366,7 @@ class COHDQuerier:
         response = requests.post('https://cohd.io/api/translator/biolink_to_omop', data=json.dumps(query), headers=head)
         if response.status_code == 200:
             response = response.json()
-            res = {key:[response[key]['omop_concept_id']] for key in response}
+            res = {key:[response[key]['omop_concept_id']] if response[key] is not None else [] for key in response}
             return res
         else:
             return {}
