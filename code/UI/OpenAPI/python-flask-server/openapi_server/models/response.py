@@ -118,6 +118,7 @@ class Response(Model):
         self._context = context
         self._type = type
         self._id = id
+        self._validation_result = validation_result
 
     @classmethod
     def from_dict(cls, dikt) -> 'Response':
