@@ -68,6 +68,11 @@ function main() {
     document.getElementById("ARS_url").value = providers["ARS"].url;
     document.getElementById("ars_api_url").value = providers["ars_api"].url;
 
+    document.getElementById("base_api_url_button").disabled = true;
+    document.getElementById("ARAX_url_button").disabled = true;
+    document.getElementById("ARS_url_button").disabled = true;
+    document.getElementById("ars_api_url_button").disabled = true;
+
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
     var response_id = getQueryVariable("r") || null;
@@ -279,7 +284,12 @@ function postQuery(qtype,agent) {
 	    statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
 	    return;
 	}
-	queryObj.message = { "query_graph" :jsonInput };
+
+	if (jsonInput.message)
+	    queryObj = jsonInput;
+	else
+	    queryObj.message = { "query_graph": jsonInput };
+
 	//queryObj.max_results = 100;
 
 	qg_new(false,false);
@@ -290,7 +300,7 @@ function postQuery(qtype,agent) {
         statusdiv.appendChild(document.createElement("br"));
 
 	qg_clean_up(true);
-	queryObj.message = { "query_graph" :input_qg };
+	queryObj.message = { "query_graph": input_qg };
 	//queryObj.bypass_cache = bypass_cache;
 	//queryObj.max_results = 100;
 
@@ -4195,12 +4205,20 @@ function delete_cache(item) {
 function enter_url(ele, urlkey) {
     if (event.key === 'Enter')
 	update_url(urlkey);
+    else
+	update_submit_button(urlkey);
 }
 function update_url(urlkey) {
     providers[urlkey].url = document.getElementById(urlkey+"_url").value;
     addCheckBox(document.getElementById(urlkey+"_url_button"),true);
+    var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
-
+function update_submit_button(urlkey) {
+    if (providers[urlkey].url == document.getElementById(urlkey+"_url").value)
+	document.getElementById(urlkey+"_url_button").disabled = true;
+    else
+	document.getElementById(urlkey+"_url_button").disabled = false;
+}
 
 function copyJSON(ele) {
     var containerid = "responseJSON";

@@ -263,7 +263,7 @@
   
   <div class="inputsection" id="qjson_input">
     <h3 style="display:inline;">JSON Input:</h3>
-    <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>query_graph</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
+    <span class="tiny" style="position:relative; left:150px;">Enter a <b>full Query object</b> <u>&nbsp;&nbsp;or&nbsp;&nbsp;</u> the value of the <b>query_graph</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
 	    <br/>
@@ -395,19 +395,19 @@
   <div class="statushead">API Settings</div>
   <div class="status">
     <h3 style="margin-bottom:0px;">BASE API URL:</h3>
-    <input type="text" class="questionBox" id="base_api_url" onkeydown="enter_url(this,'base_api');" size="100" maxlength="1000"/>
+    <input type="text" class="questionBox" id="base_api_url" onkeyup="enter_url(this,'base_api');" size="100" maxlength="1000"/>
     <input type="button" class="questionBox button" id="base_api_url_button" value="Update" onClick="update_url('base_api');"/>
     <br><br>
     <h3 style="margin-bottom:0px;">ARAX URL:</h3>
-    <input type="text" class="questionBox" id="ARAX_url" onkeydown="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
+    <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
     <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX');"/>
     <br><br>
     <h3 style="margin-bottom:0px;">ARS URL:</h3>
-    <input type="text" class="questionBox" id="ARS_url" onkeydown="enter_url(this,'ARS');" size="100" maxlength="1000"/>
+    <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
     <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS');"/>
     <br><br>
     <h3 style="margin-bottom:0px;">ARS API (post query):</h3>
-    <input type="text" class="questionBox" id="ars_api_url" onkeydown="enter_url(this,'ars_api');" size="100" maxlength="1000"/>
+    <input type="text" class="questionBox" id="ars_api_url" onkeyup="enter_url(this,'ars_api');" size="100" maxlength="1000"/>
     <input type="button" class="questionBox button" id="ars_api_url_button" value="Update" onClick="update_url('ars_api');"/>
     <br><br>
   </div>
