@@ -15,6 +15,7 @@ import numpy as np
 import threading
 import json
 import uuid
+import requests
 
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -51,6 +52,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
 
 from ARAX_database_manager import ARAXDatabaseManager
+from reasoner_validator import validate
+from jsonschema.exceptions import ValidationError
 
 
 class ARAXQuery:
@@ -190,7 +193,7 @@ class ARAXQuery:
             response.envelope.message.query_graph = query['message'].query_graph
 
             #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
-            if mode == 'ARAX':
+            if mode == 'ARAX' or mode == 'asynchronous':
                 response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
                 interpreter = ARAXQueryGraphInterpreter()
                 interpreter.translate_to_araxi(response)
@@ -258,11 +261,6 @@ class ARAXQuery:
         # RTXKG2 does not support operations
         if mode == 'RTXKG2' and "have_operations" in response.data:
             response.error("RTXKG2 does not support operations in Query", error_code="OperationsNotSupported")
-            return response
-
-        # RTXKG2 does not support workflow
-        if mode == 'RTXKG2' and "have_workflow" in response.data:
-            response.error("RTXKG2 does not support workflow in Query", error_code="WorkflowNotSupported")
             return response
 
         #### If we got this far, then everything seems to be good enough to proceed
@@ -494,6 +492,20 @@ class ARAXQuery:
             if message.results is None:
                 message.results = []
 
+
+            #### If the mode is asynchronous, then fork here. The parent returns the response thus far that everything checks out and is proceeding
+            #### and the child continues to work on the query, eventually to finish and exit()
+            if mode == 'asynchronous':
+                callback = input_operations_dict['callback']
+                response.info(f"Everything seems in order to begin processing the query asynchronously. Processing will continue and Response will be posted to {callback}")
+                newpid = os.fork()
+                #### The parent returns to tell the caller that work will proceed
+                if newpid > 0:
+                    return response
+                #### The child continues
+                #### The child loses the MySQL connection of the parent, so need to reconnect
+                response_cache.connect()
+                
             #### If there is already a KG with edges, recompute the qg_keys
             if message.knowledge_graph is not None and len(message.knowledge_graph.edges) > 0:
                 resultifier.recompute_qg_keys(response)
@@ -558,26 +570,33 @@ class ARAXQuery:
                         response.info(f"Running experimental reranker on results")
                         try:
                             ranker = ARAXRanker()
-                            #ranker.aggregate_scores(message, response=response)
                             ranker.aggregate_scores_dmk(response)
                         except Exception as error:
                             exception_type, exception_value, exception_traceback = sys.exc_info()
                             response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                            if mode == 'asynchronous':
+                                self.send_to_callback(callback, response)
                             return response
 
                     else:
                         response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
+                        if mode == 'asynchronous':
+                            self.send_to_callback(callback, response)
                         return response
 
                 except Exception as error:
                     exception_type, exception_value, exception_traceback = sys.exc_info()
                     response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                    if mode == 'asynchronous':
+                        self.send_to_callback(callback, response)
                     return response
 
                 #### If we're in an error state return now
                 if response.status != 'OK':
                     response.envelope.status = response.error_code
                     response.envelope.description = response.message
+                    if mode == 'asynchronous':
+                        self.send_to_callback(callback, response)
                     return response
 
                 #### Immediately after resultify, run the experimental ranker
@@ -585,11 +604,12 @@ class ARAXQuery:
                     response.info(f"Running experimental reranker on results")
                     try:
                         ranker = ARAXRanker()
-                        #ranker.aggregate_scores(message, response=response)
                         ranker.aggregate_scores_dmk(response)
                     except Exception as error:
                         exception_type, exception_value, exception_traceback = sys.exc_info()
                         response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                        if mode == 'asynchronous':
+                            self.send_to_callback(callback, response)
                         return response
 
             #### At the end, process the explicit return() action, or implicitly perform one
@@ -620,12 +640,13 @@ class ARAXQuery:
                 if result.reasoner_id is None:
                     result.reasoner_id = 'ARAX'
 
-            # Store the provenance information
-            # This doesn't work because it needs to be added to the schema!
-            #response.envelope.validation_results = { 'status': '?', 'version': '?', 'size': '?', 'message': '' }
+            # Store the validation and provenance metadata
+            #trapi_version = '1.2.0'
+            #validate(response.envelope,'Response',trapi_version)
+            #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
             #from ARAX_attribute_parser import ARAXAttributeParser
-            #attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
-            #envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
+            #attribute_parser = ARAXAttributeParser(response.envelope,response.envelope['message'])
+            #response.envelope.validation_result['provenance_summary'] = attribute_parser.summarize_provenance_info()
 
 
             # If store=true, then put the message in the database
@@ -633,11 +654,16 @@ class ARAXQuery:
             if return_action['parameters']['store'] == 'true':
                 response.debug(f"Storing resulting Message")
                 response_id = response_cache.add_new_response(response)
+                response.info(f"Result was stored with id {response_id}. It can be viewed at https://arax.ncats.io/?r={response_id}")
                 
             #### If asking for the full message back
             if return_action['parameters']['response'] == 'true':
-                response.info(f"Processing is complete. Transmitting resulting Message back to client.")
-                return response
+                if mode == 'asynchronous':
+                    response.info(f"Processing is complete. Attempting to the result to the callback URL.")
+                    self.send_to_callback(callback, response)
+                else:
+                    response.info(f"Processing is complete. Transmitting resulting Message back to client.")
+                    return response
 
             #### Else just the id is returned
             else:
@@ -655,6 +681,19 @@ class ARAXQuery:
 
                 return( { "status": 200, "response_id": str(response_id), "n_results": n_results, "url": url }, 200)
 
+
+
+    ############################################################################################
+    def send_to_callback(self, callback, response):
+        response.info(f"Attempting to send to callback URL: {callback}")
+        envelope_dict = response.envelope.to_dict()
+        try:
+            post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'})
+            status_code = post_response_content.status_code
+            response.info(f"Response from POST to callback URL was {status_code}")
+        except:
+            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost")
+        exit(0)
 
 
 ##################################################################################################

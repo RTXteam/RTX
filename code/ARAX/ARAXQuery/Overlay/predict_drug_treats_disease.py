@@ -292,6 +292,7 @@ class PredictDrugTreatsDisease:
                     self.global_iter += 1
                     edge_attribute_list = [
                         edge_attribute,
+                        EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="biolink:Unknown"),
                         #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                         EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
@@ -299,7 +300,7 @@ class PredictDrugTreatsDisease:
                         #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
                         #EdgeAttribute(name="weight", value=weight, type="metatype:Float")
                     ]
-                    edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
+                    edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list)
                     edge.qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
@@ -311,7 +312,8 @@ class PredictDrugTreatsDisease:
                 subject_qnode_key = parameters['subject_qnode_key']
                 object_qnode_key = parameters['object_qnode_key']
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, self.message.query_graph, self.response)
-                q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
+                q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
+                q_edge.relation = relation
                 self.message.query_graph.edges[relation] = q_edge
             return self.response
 

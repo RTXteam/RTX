@@ -19,7 +19,7 @@ class Response(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, message=None, status=None, description=None, logs=None, workflow=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_options=None, context=None, type=None, id=None):  # noqa: E501
+    def __init__(self, message=None, status=None, description=None, logs=None, workflow=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_options=None, context=None, type=None, id=None, validation_result=None):  # noqa: E501
         """Response - a model defined in OpenAPI
 
         :param message: The message of this Response.  # noqa: E501
@@ -56,6 +56,8 @@ class Response(Model):
         :type type: str
         :param id: The id of this Response.  # noqa: E501
         :type id: str
+        :param validation_result: The validation_result of this Response.  # noqa: E501
+        :type validation_result: object
         """
         self.openapi_types = {
             'message': Message,
@@ -74,7 +76,8 @@ class Response(Model):
             'query_options': object,
             'context': str,
             'type': str,
-            'id': str
+            'id': str,
+            'validation_result': object
         }
 
         self.attribute_map = {
@@ -94,7 +97,8 @@ class Response(Model):
             'query_options': 'query_options',
             'context': 'context',
             'type': 'type',
-            'id': 'id'
+            'id': 'id',
+            'validation_result': 'validation_result'
         }
 
         self._message = message
@@ -516,3 +520,27 @@ class Response(Model):
         """
 
         self._id = id
+
+    @property
+    def validation_result(self):
+        """Gets the validation_result of this Response.
+
+        Validation results and other summary stats computed for this Response.  # noqa: E501
+
+        :return: The validation_result of this Response.
+        :rtype: object
+        """
+        return self._validation_result
+
+    @validation_result.setter
+    def validation_result(self, validation_result):
+        """Sets the validation_result of this Response.
+
+        Validation results and other summary stats computed for this Response.  # noqa: E501
+
+        :param validation_result: The validation_result of this Response.
+        :type validation_result: object
+        """
+
+        self._validation_result = validation_result
+

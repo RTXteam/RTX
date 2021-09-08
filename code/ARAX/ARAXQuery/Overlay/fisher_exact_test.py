@@ -129,9 +129,12 @@ class ComputeFTEST:
         try:
             if len(self.message.query_graph.edges) != 0:
                 for edge_key in self.message.query_graph.edges:
-                    if self.message.query_graph.edges[edge_key].subject == subject_qnode_key and self.message.query_graph.edges[edge_key].object == object_qnode_key and self.message.query_graph.edges[edge_key].relation == None:
+                    qedge_relation = None
+                    if hasattr(self.message.query_graph.edges[edge_key], "relation"):
+                        qedge_relation = self.message.query_graph.edges[edge_key].relation
+                    if self.message.query_graph.edges[edge_key].subject == subject_qnode_key and self.message.query_graph.edges[edge_key].object == object_qnode_key and qedge_relation == None:
                         query_edge_key.update([edge_key])  # only actual query edge is added
-                    elif self.message.query_graph.edges[edge_key].subject == object_qnode_key and self.message.query_graph.edges[edge_key].object == subject_qnode_key and self.message.query_graph.edges[edge_key].relation == None:
+                    elif self.message.query_graph.edges[edge_key].subject == object_qnode_key and self.message.query_graph.edges[edge_key].object == subject_qnode_key and qedge_relation == None:
                         query_edge_key.update([edge_key])  # only actual query edge is added
                     else:
                         continue
@@ -384,6 +387,7 @@ class ComputeFTEST:
 
                 edge_attribute_list =  [
                     EdgeAttribute(attribute_type_id="EDAM:data_1669", original_attribute_name="fisher_exact_test_p-value", value=str(value[1]), value_url=None),
+                    EdgeAttribute(original_attribute_name="virtual_relation_label", value=value[0], attribute_type_id="biolink:Unknown"),
                     #EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                     EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
@@ -392,7 +396,7 @@ class ComputeFTEST:
                     #EdgeAttribute(original_attribute_name="weight", value=None, type="metatype:Float")
                 ]
                 edge_id = f"{value[0]}_{index}"
-                edge = Edge(predicate='biolink:has_fisher_exact_test_p_value_with', subject=value[2], object=value[3], relation=value[0],
+                edge = Edge(predicate='biolink:has_fisher_exact_test_p_value_with', subject=value[2], object=value[3],
                             attributes=edge_attribute_list)
                 edge.qedge_keys = [value[0]]
 
@@ -409,9 +413,10 @@ class ComputeFTEST:
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                           self.message.query_graph, self.response)
                 qedge_id = virtual_relation_label
-                q_edge = QEdge(predicates=edge_type, relation=virtual_relation_label,
+                q_edge = QEdge(predicates=edge_type,
                                subject=subject_qnode_key, object=object_qnode_key,
                                option_group_id=option_group_id)
+                q_edge.relation = virtual_relation_label
                 self.message.query_graph.edges[qedge_id] = q_edge
                 self.response.debug(f"One virtual edge was added to message QG")
 
