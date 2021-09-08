@@ -65,7 +65,10 @@ hr {
     font-weight: bold;
     color: #000;
     border-right: 2px solid black;
-    background-color: #ddd;
+    background-color: #ccc;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;  /* Firefox */
 }
 .menuleftitem  {
     color: #666;
@@ -88,10 +91,14 @@ hr {
     background-color: #eee;
     border-bottom: 2px solid black;
     border-top: 2px solid black;
-    border-left: 15px solid #444;
-    margin-right: -2px;
 }
-
+/* scrollbar for Chrome, Safari and Opera */
+.menuleft::-webkit-scrollbar {
+    width: 6px;
+}
+.menuleft::-webkit-scrollbar-thumb {
+    background: #aaa;
+}
 
 .page {
     margin-left: 170px;
@@ -156,6 +163,15 @@ hr {
     font-weight: bold;
     color: #eee;
     background-color: #c40;
+}
+
+.clwin {
+    float: right;
+    position: relative;
+    top: -45px;
+    right: -51px;
+    height: 30px;
+    width: 30px;
 }
 
 #dslText, #jsonText, #responseText {

@@ -284,7 +284,7 @@ components:
         tool_version: ARAX 0.8.0
         context: https://rtx.ncats.io/ns/translator.jsonld
         reasoner_id: ARAX
-        id: https://arax.ncats.io/api/rtx/v1.0/response/123
+        id: https://arax.ncats.io/api/rtx/v1.1/response/123
         logs:
         - code: code
           level: ""
@@ -381,7 +381,7 @@ components:
           type: string
         id:
           description: URI for this response
-          example: https://arax.ncats.io/api/rtx/v1.0/response/123
+          example: https://arax.ncats.io/api/rtx/v1.1/response/123
           type: string
       required:
       - message
@@ -405,7 +405,7 @@ components:
           nodes:
             n00:
               id: CHEMBL.COMPOUND:CHEMBL112
-              category: biolink:ChemicalSubstance
+              category: biolink:ChemicalEntity
             n01:
               category: biolink:Protein
       properties:
@@ -1110,7 +1110,7 @@ components:
         message_uris:
           description: List of URIs for Message or Response objects to fetch and process
           example:
-          - https://arax.ncats.io/api/arax/v1.0/response/38
+          - https://arax.ncats.io/api/arax/v1.1/response/38
           items:
             type: string
           type: array

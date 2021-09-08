@@ -25,8 +25,10 @@ if (typeof config !== 'undefined') {
 }
 
 var providers = {
-    "ARAX" : { "url" : baseAPI + "/response/" },
-    "ARS"  : { "url" : baseAPI + "/response/" }
+    "base_api": { "url" : baseAPI },
+    "ARAX"    : { "url" : baseAPI + "/response/" },
+    "ARS"     : { "url" : baseAPI + "/response/" },
+    "ars_api" : { "url" : "https://ars.ci.transltr.io/ars/api/submit" }
 };
 
 // these attributes are floats; truncate them
@@ -52,7 +54,7 @@ const attributes_to_truncate = [
 
 function main() {
     UIstate["version"] = checkUIversion(false);
-    document.getElementById("menuapiurl").href = baseAPI + "/ui/";
+    document.getElementById("menuapiurl").href = providers["base_api"].url + "/ui/";
 
     get_example_questions();
     load_meta_knowledge_graph();
@@ -61,6 +63,10 @@ function main() {
     display_list('B');
     add_status_divs();
     cytodata[99999] = 'dummy';
+    document.getElementById("base_api_url").value = providers["base_api"].url;
+    document.getElementById("ARAX_url").value = providers["ARAX"].url;
+    document.getElementById("ARS_url").value = providers["ARS"].url;
+    document.getElementById("ars_api_url").value = providers["ars_api"].url;
 
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
@@ -299,12 +305,10 @@ function postQuery(qtype,agent) {
 }
 
 function postQuery_ARS(queryObj) {
-    var ars_api = 'https://ars.ci.transltr.io/ars/api/submit';
-
     document.getElementById("statusdiv").innerHTML += " - contacting ARS...";
     document.getElementById("statusdiv").appendChild(document.createElement("br"));
 
-    fetch(ars_api, {
+    fetch(providers["ars_api"].url, {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -365,7 +369,7 @@ function postQuery_ARAX(qtype,queryObj) {
     sesame('openmax',statusdiv);
 
     add_to_dev_info("Posted to QUERY",queryObj);
-    fetch(baseAPI + "/query", {
+    fetch(providers["base_api"].url + "/query", {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -834,7 +838,7 @@ function sendQuestion(e) {
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
-    xhr.open("post", baseAPI + "/translate", true);
+    xhr.open("post", providers["base_api"].url + "/translate", true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
     // send the collected data as JSON
@@ -850,7 +854,7 @@ function sendQuestion(e) {
 
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post",  baseAPI + "/query", true);
+		xhr2.open("post",  providers["base_api"].url + "/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
                 //var queryObj = { "message" : jsonObj };
@@ -1201,6 +1205,7 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 
     if (!response_cache[provider+":"+resp_id])
 	response_cache[provider+":"+resp_id] = jsonObj2;
+    display_cache();
 }
 
 
@@ -1959,6 +1964,7 @@ function process_results(reslist,kg,mainreasoner) {
 	    (rsrc=="BTE")      ? "sbte" :
 	    (rsrc=="Cam")      ? "scam" :
 	    (rsrc=="COHD")     ? "scod" :
+	    (rsrc=="infores:cohd") ? "scod" :
 	    (rsrc=="Indigo")   ? "sind" :
 	    (rsrc=="Robokop")  ? "srob" :
 	    (rsrc=="Aragorn")  ? "sara" :
@@ -2192,7 +2198,7 @@ function add_cyto(i) {
 	var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
 
-        var fields = [ "name","id", "category" ];
+        var fields = [ "name","id", "categories" ];
 	for (var field of fields) {
 	    if (this.data(field) == null) continue;
 
@@ -2264,7 +2270,7 @@ function show_attributes_1point1(html_div, atts) {
     var attshtml = "<table>";
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
 	var snippet = "<tr><td colspan='2'><hr></td></tr>";
-	var value = '';
+	var value = null;
 
 	for (var nom in att) {
 	    if (nom == "value") {
@@ -2285,7 +2291,7 @@ function show_attributes_1point1(html_div, atts) {
 	    }
 	}
 	snippet += "<tr><td><b>value</b>: </td><td>";
-	if (value) {
+	if (value != null || value != '') {
             var fixit = true;
 	    if (Array.isArray(att.value))
 		for (var val of att.value) {
@@ -3170,7 +3176,8 @@ function qg_display_edge_predicates(all) {
     var obj = document.getElementById('edgeeditor_obj').value;
 
     if (!all) {
-	if (!input_qg.nodes[subj]['categories'] ||
+	if (!subj || !obj ||
+	    !input_qg.nodes[subj]['categories'] ||
 	    input_qg.nodes[subj]['categories'] == null ||
 	    input_qg.nodes[subj]['categories'].length != 1 ||
 	    !input_qg.nodes[obj]['categories'] ||
@@ -3546,7 +3553,7 @@ function abort_dsl() {
 
 
 function get_example_questions() {
-    fetch(baseAPI + "/exampleQuestions")
+    fetch(providers["base_api"].url + "/exampleQuestions")
         .then(response => response.json())
         .then(data => {
 	    //add_to_dev_info("EXAMPLE Qs",data);
@@ -3576,7 +3583,7 @@ function load_meta_knowledge_graph() {
     var allnodes_node = document.getElementById("allnodetypes");
     allnodes_node.innerHTML = '';
 
-    fetch(baseAPI + "/meta_knowledge_graph")
+    fetch(providers["base_api"].url + "/meta_knowledge_graph")
 	.then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong with /meta_knowledge_graph');
@@ -3969,7 +3976,7 @@ function check_entities_batch(batchsize) {
     if (thisbatch) batches.push(thisbatch);
 
     for (let batch of batches) {
-        fetch(baseAPI + "/entity?output_mode=minimal" + batch)
+        fetch(providers["base_api"].url + "/entity?output_mode=minimal" + batch)
 	    .then(response => response.json())
 	    .then(data => {
 		add_to_dev_info("ENTITIES:"+batch,data);
@@ -4014,7 +4021,7 @@ function check_entities() {
     for (let entity in entities) {
 	if (entities[entity].checkHTML != '--') continue;
 
-	fetch(baseAPI + "/entity?q=" + entity)
+	fetch(providers["base_api"].url + "/entity?q=" + entity)
 	    .then(response => response.json())
 	    .then(data => {
                 add_to_dev_info("ENTITIES:"+entity,data);
@@ -4079,7 +4086,7 @@ async function check_entity(term,wantall) {
 	data = entities[term];
     }
     else {
-	var response = await fetch(baseAPI + "/entity?q=" + term);
+	var response = await fetch(providers["base_api"].url + "/entity?q=" + term);
 	var fulldata = await response.json();
 
 	add_to_dev_info("ENTITY:"+term,fulldata);
@@ -4150,6 +4157,48 @@ function display_session() {
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
     document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
+}
+
+
+function display_cache() {
+    var listId = 'CACHE';
+    var listhtml = '';
+    var numitems = 0;
+
+    for (var pid in response_cache) {
+        numitems++;
+        listhtml += "<tr><td>"+numitems+".</td><td>"+pid+"</td><td><a href='javascript:remove_from_cache(\"" + pid +"\");'/>Remove</a></td></tr>";
+    }
+
+    if (numitems == 0) {
+        listhtml = "<br>A list of cached responses will be displayed here. It can be edited or re-set.<br><br>";
+    }
+    else {
+        listhtml = "<table class='sumtab'><tr><th></th><th>Response Id</th><th>Action</th></tr>" + listhtml;
+        listhtml += "<tr style='background-color:unset;'><td style='border-bottom:0;'></td><td style='border-bottom:0;'></td><td style='border-bottom:0;'><a href='javascript:delete_cache();'/> Delete All Cached Responses </a></td></tr>";
+        listhtml += "</table><br><br>";
+    }
+
+    document.getElementById("numlistitems"+listId).innerHTML = numitems;
+    document.getElementById("listdiv"+listId).innerHTML = listhtml;
+}
+
+function remove_from_cache(item) {
+    delete response_cache[item];
+    display_cache();
+}
+function delete_cache(item) {
+    response_cache = {};
+    display_cache();
+}
+
+function enter_url(ele, urlkey) {
+    if (event.key === 'Enter')
+	update_url(urlkey);
+}
+function update_url(urlkey) {
+    providers[urlkey].url = document.getElementById(urlkey+"_url").value;
+    addCheckBox(document.getElementById(urlkey+"_url_button"),true);
 }
 
 
