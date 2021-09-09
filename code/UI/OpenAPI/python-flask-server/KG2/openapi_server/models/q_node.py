@@ -17,7 +17,7 @@ class QNode(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, ids=None, categories=None, is_set=False, constraints=None, option_group_id=None):  # noqa: E501
+    def __init__(self, ids=None, categories=None, is_set=False, constraints=[], option_group_id=None):  # noqa: E501
         """QNode - a model defined in OpenAPI
 
         :param ids: The ids of this QNode.  # noqa: E501

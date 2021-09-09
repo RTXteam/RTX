@@ -17,7 +17,7 @@ class QEdge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, predicates=None, subject=None, object=None, constraints=None, exclude=None, option_group_id=None):  # noqa: E501
+    def __init__(self, predicates=None, subject=None, object=None, constraints=[], exclude=None, option_group_id=None):  # noqa: E501
         """QEdge - a model defined in OpenAPI
 
         :param predicates: The predicates of this QEdge.  # noqa: E501
