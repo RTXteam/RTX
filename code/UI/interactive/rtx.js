@@ -14,7 +14,7 @@ var UIstate = {};
 
 // defaults
 var base = "";
-var baseAPI = base + "api/arax/v1.1";
+var baseAPI = base + "api/arax/v1.2";
 
 // possibly imported by calling page (e.g. index.html)
 if (typeof config !== 'undefined') {
@@ -67,6 +67,11 @@ function main() {
     document.getElementById("ARAX_url").value = providers["ARAX"].url;
     document.getElementById("ARS_url").value = providers["ARS"].url;
     document.getElementById("ars_api_url").value = providers["ars_api"].url;
+
+    document.getElementById("base_api_url_button").disabled = true;
+    document.getElementById("ARAX_url_button").disabled = true;
+    document.getElementById("ARS_url_button").disabled = true;
+    document.getElementById("ars_api_url_button").disabled = true;
 
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
@@ -279,7 +284,12 @@ function postQuery(qtype,agent) {
 	    statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
 	    return;
 	}
-	queryObj.message = { "query_graph" :jsonInput };
+
+	if (jsonInput.message)
+	    queryObj = jsonInput;
+	else
+	    queryObj.message = { "query_graph": jsonInput };
+
 	//queryObj.max_results = 100;
 
 	qg_new(false,false);
@@ -290,7 +300,7 @@ function postQuery(qtype,agent) {
         statusdiv.appendChild(document.createElement("br"));
 
 	qg_clean_up(true);
-	queryObj.message = { "query_graph" :input_qg };
+	queryObj.message = { "query_graph": input_qg };
 	//queryObj.bypass_cache = bypass_cache;
 	//queryObj.max_results = 100;
 
@@ -946,7 +956,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges","Sources"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.2?","N_Results","Nodes / Edges","Sources"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -1080,7 +1090,7 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.1 validation';
+	    nr.title = 'Failed TRAPI 1.2 validation';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all")
@@ -1092,7 +1102,7 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.1 validation';
+	    nr.title = 'Passed TRAPI 1.2 validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -1316,7 +1326,7 @@ function render_response_stats(respObj) {
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     if (!respObj["schema_version"])
-	respObj["schema_version"] = "1.1 (presumed)";
+	respObj["schema_version"] = "1.2 (presumed)";
     statusdiv.appendChild(document.createTextNode("Rendering TRAPI "+respObj["schema_version"]+" message..."));
 
     sesame('openmax',statusdiv);
@@ -4195,12 +4205,20 @@ function delete_cache(item) {
 function enter_url(ele, urlkey) {
     if (event.key === 'Enter')
 	update_url(urlkey);
+    else
+	update_submit_button(urlkey);
 }
 function update_url(urlkey) {
     providers[urlkey].url = document.getElementById(urlkey+"_url").value;
     addCheckBox(document.getElementById(urlkey+"_url_button"),true);
+    var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
-
+function update_submit_button(urlkey) {
+    if (providers[urlkey].url == document.getElementById(urlkey+"_url").value)
+	document.getElementById(urlkey+"_url_button").disabled = true;
+    else
+	document.getElementById(urlkey+"_url_button").disabled = false;
+}
 
 function copyJSON(ele) {
     var containerid = "responseJSON";

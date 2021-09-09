@@ -553,6 +553,11 @@ td {
     background-color: #9bc;
     color: #333;
 }
+.button:disabled {
+    cursor: unset;
+    background-color: unset;
+    color: unset;
+}
 
 .qgmenu {
     position: relative;

@@ -2,7 +2,7 @@ openapi: 3.0.1
 info:
   contact:
     email: edeutsch@systemsbiology.org
-  description: TRAPI 1.1 endpoint for the NCATS Biomedical Translator KP called RTX
+  description: TRAPI 1.2 endpoint for the NCATS Biomedical Translator KP called RTX
     KG2
   license:
     name: Apache 2.0
@@ -20,7 +20,10 @@ info:
         external JSON schema. See schema and examples at url
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.1.0
+    version: 1.2.0
+    asyncquery: false
+    operations:
+    - lookup
     externalDocs:
       description: The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
@@ -30,23 +33,23 @@ externalDocs:
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
 - description: ARAX Translator Reasoner API
-  url: https://arax.ncats.io/api/rtxkg2/v1.1
+  url: https://arax.ncats.io/api/rtxkg2/v1.2
 tags:
-- description: Get supported relationships by source and target
-  externalDocs:
-    description: Documentation for the reasoner predicates function
-    url: http://arax.ncats.io/overview.html#predicates
-  name: predicates
 - description: Get supported relationships
   externalDocs:
     description: Documentation for the reasoner predicates function
     url: http://arax.ncats.io/overview.html#predicates
   name: meta_knowledge_graph
-- description: Query reasoner using a predefined question type
+- description: Initiate a query and wait to receive the response
   externalDocs:
     description: Documentation for the reasoner query function
     url: http://arax.ncats.io/overview.html#query
   name: query
+- description: Initiate a query with a callback to receive the response
+  externalDocs:
+    description: Documentation for the reasoner asynchquery function
+    url: http://arax.ncats.io/overview.html#asyncquery
+  name: asyncquery
 - description: Required for SmartAPI validation of x-translator
   name: translator
 - description: Required for SmartAPI validation of x-trapi
@@ -57,6 +60,48 @@ tags:
     url: https://arax.ncats.io/overview.html#entity
   name: entity
 paths:
+  /asyncquery:
+    post:
+      operationId: asyncquery_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AsyncQuery'
+        description: Query information to be submitted
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The query is accepted for processing and the Response will
+            be sent to the callback url when complete.
+        "400":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Bad request. The request is invalid according to this OpenAPI
+            schema OR a specific identifier is believed to be invalid somehow (not
+            just unrecognized).
+        "500":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Internal server error.
+        "501":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Not implemented.
+      summary: Initiate a query with a callback to receive the response
+      tags:
+      - asyncquery
+      x-openapi-router-controller: openapi_server.controllers.asyncquery_controller
   /entity:
     get:
       operationId: get_entity
@@ -88,6 +133,28 @@ paths:
       tags:
       - entity
       x-openapi-router-controller: openapi_server.controllers.entity_controller
+    post:
+      operationId: post_entity
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        description: List of terms to get information about
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityQuery'
+          description: successful operation
+        "404":
+          description: Entity not found
+      summary: Obtain CURIE and synonym information about search terms
+      tags:
+      - entity
+      x-openapi-router-controller: openapi_server.controllers.entity_controller
   /meta_knowledge_graph:
     get:
       operationId: meta_knowledge_graph
@@ -103,35 +170,6 @@ paths:
       tags:
       - meta_knowledge_graph
       x-openapi-router-controller: openapi_server.controllers.meta_knowledge_graph_controller
-  /predicates:
-    get:
-      deprecated: true
-      operationId: predicates
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                additionalProperties:
-                  additionalProperties:
-                    description: Array of predicates
-                    items:
-                      type: string
-                    type: array
-                  description: Target map
-                  type: object
-                description: Source map
-                example:
-                  biolink:ChemicalSubstance:
-                    biolink:Gene:
-                    - biolink:directly_interacts_with
-                    - biolink:decreases_activity_of
-                type: object
-          description: Predicates by source and target
-      summary: Get supported relationships by source and target
-      tags:
-      - predicates
-      x-openapi-router-controller: openapi_server.controllers.predicates_controller
   /query:
     post:
       operationId: query
@@ -170,7 +208,7 @@ paths:
               schema:
                 type: string
           description: Not implemented.
-      summary: Query reasoner via one of several inputs
+      summary: Initiate a query and wait to receive a Response
       tags:
       - query
       x-openapi-router-controller: openapi_server.controllers.query_controller
@@ -193,9 +231,10 @@ components:
           description: The least critical level of logs to return
           nullable: true
         workflow:
-          description: A list of operations to be applied
+          description: List of workflow steps to be executed.
           items:
-            type: object
+            oneOf:
+            - $ref: '#/components/schemas/OperationLookup'
           type: array
         bypass_cache:
           default: false
@@ -240,7 +279,42 @@ components:
           description: Container for one or more Message objects or identifiers for
             one or more Messages along with a processing plan and options for how
             those messages should be processed and returned
+          nullable: true
       required:
+      - message
+      type: object
+      x-body-name: request_body
+    AsyncQuery:
+      additionalProperties: true
+      description: The AsyncQuery class is effectively the same as the Query class
+        but it requires a callback property.
+      properties:
+        callback:
+          description: 'Upon completion, this server will send a POST request to the
+            callback URL with `Content-Type: application/json` header and request
+            body containing a JSON-encoded `Response` object. The server MAY POST
+            `Response` objects before work is fully complete to provide interim results
+            with a Response.status value of ''Running''. If a POST operation to the
+            callback URL does not succeed, the server SHOULD retry the POST at least
+            once.'
+          format: uri
+          pattern: ^https?://
+          type: string
+        message:
+          $ref: '#/components/schemas/Message'
+        log_level:
+          allOf:
+          - $ref: '#/components/schemas/LogLevel'
+          description: The least critical level of logs to return
+          nullable: true
+        workflow:
+          description: List of workflow steps to be executed.
+          items:
+            oneOf:
+            - $ref: '#/components/schemas/OperationLookup'
+          type: array
+      required:
+      - callback
       - message
       type: object
       x-body-name: request_body
@@ -253,9 +327,10 @@ components:
         and logs properties provide additional details about the response.
       example:
         original_question: what proteins are affected by sickle cell anemia
+        validation_result: '{}'
         workflow:
-        - '{}'
-        - '{}'
+        - ""
+        - ""
         query_options:
           coalesce: true
           threshold: 0.9
@@ -267,13 +342,17 @@ components:
               e00:
                 subject: n00
                 object: n01
-                predicate: biolink:physically_interacts_with
+                predicates:
+                - biolink:physically_interacts_with
             nodes:
               n00:
-                id: CHEMBL.COMPOUND:CHEMBL112
-                category: biolink:ChemicalSubstance
+                ids:
+                - CHEMBL.COMPOUND:CHEMBL112
+                categories:
+                - biolink:ChemicalSubstance
               n01:
-                category: biolink:Protein
+                categories:
+                - biolink:Protein
         type: TranslatorAPIResponse
         schema_version: 1.0.0
         datetime: 2021-01-09 12:34:45
@@ -317,9 +396,10 @@ components:
           nullable: true
           type: array
         workflow:
-          description: A list of operations that were applied
+          description: A list of operations that were executed.
           items:
-            type: object
+            oneOf:
+            - $ref: '#/components/schemas/OperationLookup'
           type: array
         operations:
           allOf:
@@ -383,8 +463,13 @@ components:
           description: URI for this response
           example: https://arax.ncats.io/api/rtx/v1.1/response/123
           type: string
+        validation_result:
+          description: Validation results and other summary stats computed for this
+            Response.
+          type: object
       required:
       - message
+      title: Response
       type: object
     Message:
       additionalProperties: false
@@ -401,13 +486,17 @@ components:
             e00:
               subject: n00
               object: n01
-              predicate: biolink:physically_interacts_with
+              predicates:
+              - biolink:physically_interacts_with
           nodes:
             n00:
-              id: CHEMBL.COMPOUND:CHEMBL112
-              category: biolink:ChemicalEntity
+              ids:
+              - CHEMBL.COMPOUND:CHEMBL112
+              categories:
+              - biolink:ChemicalEntity
             n01:
-              category: biolink:Protein
+              categories:
+              - biolink:Protein
       properties:
         results:
           description: List of all returned Result objects for the query posed
@@ -427,6 +516,7 @@ components:
           description: KnowledgeGraph object that contains lists of nodes and edges
             in the thought graph corresponding to the message
           nullable: true
+      title: Message
       type: object
     LogEntry:
       additionalProperties: true
@@ -462,6 +552,7 @@ components:
           description: A human-readable log message
           nullable: true
           type: string
+      title: LogEntry
       type: object
     LogLevel:
       description: Logging level
@@ -470,6 +561,7 @@ components:
       - WARNING
       - INFO
       - DEBUG
+      example: DEBUG
       type: string
       x-nullable: true
     Result:
@@ -588,6 +680,7 @@ components:
       required:
       - edge_bindings
       - node_bindings
+      title: Result
       type: object
     NodeBinding:
       additionalProperties: true
@@ -599,9 +692,11 @@ components:
             to form a full URI.
           externalDocs:
             url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          title: CURIE
           type: string
       required:
       - id
+      title: NodeBinding
       type: object
     EdgeBinding:
       additionalProperties: true
@@ -613,8 +708,17 @@ components:
         id:
           description: The key identifier of a specific KnowledgeGraph Edge.
           type: string
+        attributes:
+          description: A list of attributes providing further information about the
+            edge binding. This is not intended for capturing edge attributes and should
+            only be used for properties that vary from result to result.
+          items:
+            $ref: '#/components/schemas/Attribute'
+          nullable: true
+          type: array
       required:
       - id
+      title: EdgeBinding
       type: object
     KnowledgeGraph:
       additionalProperties: true
@@ -710,6 +814,7 @@ components:
             edges indicating that they belong to a group that are to be evaluated
             as a group. '
           type: string
+      title: QNode
       type: object
     QEdge:
       additionalProperties: true
@@ -727,14 +832,6 @@ components:
           minItems: 1
           nullable: true
           type: array
-        relation:
-          description: Query constraint against the relationship type term of this
-            edge, as originally specified by, or curated by inference from, the original
-            external source of knowledge. Note that this should often be specified
-            as predicate ontology term CURIE, although this may not be strictly enforced.
-          example: RO:0002447
-          nullable: true
-          type: string
         subject:
           description: Corresponds to the map key identifier of the subject concept
             node anchoring the query filter pattern for the query relationship edge.
@@ -764,6 +861,7 @@ components:
       required:
       - object
       - subject
+      title: QEdge
       type: object
     Node:
       additionalProperties: false
@@ -774,26 +872,32 @@ components:
           description: Formal name of the entity
           example: Haptoglobin
           nullable: true
+          title: name
           type: string
         categories:
           items:
             $ref: '#/components/schemas/BiolinkEntity'
           nullable: true
+          title: categories
           type: array
         attributes:
           description: A list of attributes describing the node
           items:
             $ref: '#/components/schemas/Attribute'
           nullable: true
+          title: attributes
           type: array
+      title: Node
       type: object
     Attribute:
       additionalProperties: false
       description: Generic attribute for a node or an edge that expands the key-value
         pair concept by including fields for additional metadata. These fields can
-        be used to describe the source of the statement made in key-value pair of
+        be used to describe the source of the statement made in a key-value pair of
         the attribute object, or describe the attribute's value itself including its
-        semantic type, or a url providing additional information about it.
+        semantic type, or a url providing additional information about it. An attribute
+        may be further qualified with a SubAttribute (for example to provide confidence
+        intervals on a value).
       properties:
         attribute_type_id:
           description: A Compact URI, consisting of a prefix and a reference separated
@@ -802,6 +906,7 @@ components:
             to form a full URI.
           externalDocs:
             url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          title: CURIE
           type: string
         original_attribute_name:
           description: The term used by the original source of an attribute to describe
@@ -813,10 +918,12 @@ components:
             of a third party ontology term.
           example: p-value
           nullable: true
+          title: original_attribute_name
           type: string
         value:
           description: Value of the attribute. May be any data type, including a list.
           example: 0.000153
+          title: value
         value_type_id:
           description: A Compact URI, consisting of a prefix and a reference separated
             by a colon, such as UniProtKB:P00738. Via an external context definition,
@@ -824,6 +931,7 @@ components:
             to form a full URI.
           externalDocs:
             url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          title: CURIE
           type: string
         attribute_source:
           description: The source of the core assertion made by the key-value pair
@@ -831,6 +939,7 @@ components:
             where possible.
           example: UniProtKB
           nullable: true
+          title: attribute_source
           type: string
         value_url:
           description: Human-consumable URL linking to a web document that provides
@@ -838,15 +947,91 @@ components:
             edge fom which it hangs).
           example: https://pubmed.ncbi.nlm.nih.gov/32529952
           nullable: true
+          title: value_url
           type: string
         description:
           description: Human-readable description for the attribute and its value.
           example: Assertion Authored By Dr. Trans L. Ator
           nullable: true
+          title: description
+          type: string
+        attributes:
+          description: Node attributes provided by this TRAPI web service.
+          items:
+            $ref: '#/components/schemas/SubAttribute'
+          title: attributes
+          type: array
+      required:
+      - attribute_type_id
+      - value
+      title: Attribute
+      type: object
+    SubAttribute:
+      additionalProperties: false
+      description: Second-level attribute that can be used to qualify information
+        contained in a primary Attribute attached to a Node or Edge.
+      properties:
+        attribute_type_id:
+          description: A Compact URI, consisting of a prefix and a reference separated
+            by a colon, such as UniProtKB:P00738. Via an external context definition,
+            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
+            to form a full URI.
+          externalDocs:
+            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          title: CURIE
+          type: string
+        original_attribute_name:
+          description: The term used by the original source of an attribute to describe
+            the meaning or significance of the value it captures. This may be a column
+            name in a source tsv file, or a key in a source json document for the
+            field in the data that held the attribute's value. Capturing this information  where
+            possible lets us preserve what the original source said. Note that the
+            data type is string' but the contents of the field could also be a CURIE
+            of a third party ontology term.
+          example: p-value
+          nullable: true
+          title: original_attribute_name
+          type: string
+        value:
+          description: Value of the attribute. May be any data type, including a list.
+          example: 0.000153
+          title: value
+        value_type_id:
+          allOf:
+          - $ref: '#/components/schemas/CURIE'
+          description: CURIE describing the semantic type of an  attribute's value.
+            Use a Biolink class if possible, otherwise a term from an external ontology.
+            If a suitable CURIE/identifier does not exist, enter a descriptive phrase
+            here and submit the new type for consideration by the appropriate authority.
+          example: EDAM:data_1187
+          nullable: true
+          title: value_type_id
+        attribute_source:
+          description: The source of the core assertion made by the key-value pair
+            of an attribute object. Use a CURIE or namespace designator for this resource
+            where possible.
+          example: UniProtKB
+          nullable: true
+          title: attribute_source
+          type: string
+        value_url:
+          description: Human-consumable URL linking to a web document that provides
+            additional information about an  attribute's value (not the node or the
+            edge fom which it hangs).
+          example: https://pubmed.ncbi.nlm.nih.gov/32529952
+          nullable: true
+          title: value_url
+          type: string
+        description:
+          description: Human-readable description for the attribute and its value.
+          example: Assertion Authored By Dr. Trans L. Ator
+          nullable: true
+          title: description
           type: string
       required:
       - attribute_type_id
       - value
+      title: SubAttribute
       type: object
     Edge:
       additionalProperties: false
@@ -858,13 +1043,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/BiolinkPredicate'
           nullable: true
-        relation:
-          description: The relationship type term of this edge, originally specified
-            by, or curated by inference from, the original source of knowledge. This
-            should generally be specified as predicate ontology CURIE.
-          example: RO:0002447
-          nullable: true
-          type: string
+          title: predicate
         subject:
           description: A Compact URI, consisting of a prefix and a reference separated
             by a colon, such as UniProtKB:P00738. Via an external context definition,
@@ -872,6 +1051,7 @@ components:
             to form a full URI.
           externalDocs:
             url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          title: CURIE
           type: string
         object:
           description: A Compact URI, consisting of a prefix and a reference separated
@@ -880,16 +1060,19 @@ components:
             to form a full URI.
           externalDocs:
             url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          title: CURIE
           type: string
         attributes:
           description: A list of additional attributes for this edge
           items:
             $ref: '#/components/schemas/Attribute'
           nullable: true
+          title: attributes
           type: array
       required:
       - object
       - subject
+      title: Edge
       type: object
     BiolinkEntity:
       description: Compact URI (CURIE) for a Biolink class, biolink:NamedThing or
@@ -900,6 +1083,7 @@ components:
         description: Biolink model entities
         url: https://biolink.github.io/biolink-model/docs/NamedThing.html
       pattern: ^biolink:[A-Z][a-zA-Z]*$
+      title: BiolinkEntity
       type: string
     BiolinkPredicate:
       description: CURIE for a Biolink 'predicate' slot, taken from the Biolink slot
@@ -911,6 +1095,7 @@ components:
         description: Biolink model predicates
         url: https://biolink.github.io/biolink-model/docs/related_to.html
       pattern: ^biolink:[a-z][a-z_]*$
+      title: BiolinkPredicate
       type: string
     CURIE:
       description: A Compact URI, consisting of a prefix and a reference separated
@@ -919,41 +1104,90 @@ components:
         to form a full URI.
       externalDocs:
         url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+      title: CURIE
       type: string
     MetaKnowledgeGraph:
-      description: Knowledge-map representation of this TRAPI web service.
+      description: Knowledge-map representation of this TRAPI web service. The meta
+        knowledge graph is composed of the union of most specific categories and predicates
+        for each node and edge.
       example:
         nodes:
           key:
             id_prefixes:
             - CHEMBL.COMPOUND
             - INCHIKEY
+            attributes:
+            - attribute_source: infores:chembl
+              original_attribute_names:
+              - original_attribute_names
+              - original_attribute_names
+              constraint_name: p-value
+              attribute_type_id: attribute_type_id
+              constraint_use: false
+            - attribute_source: infores:chembl
+              original_attribute_names:
+              - original_attribute_names
+              - original_attribute_names
+              constraint_name: p-value
+              attribute_type_id: attribute_type_id
+              constraint_use: false
         edges:
         - predicate: biolink:interacts_with
           subject: biolink:PhenotypicFeature
-          relations:
-          - inhibits
-          - activates
+          attributes:
+          - attribute_source: infores:chembl
+            original_attribute_names:
+            - original_attribute_names
+            - original_attribute_names
+            constraint_name: p-value
+            attribute_type_id: attribute_type_id
+            constraint_use: false
+          - attribute_source: infores:chembl
+            original_attribute_names:
+            - original_attribute_names
+            - original_attribute_names
+            constraint_name: p-value
+            attribute_type_id: attribute_type_id
+            constraint_use: false
           object: biolink:PhenotypicFeature
         - predicate: biolink:interacts_with
           subject: biolink:PhenotypicFeature
-          relations:
-          - inhibits
-          - activates
+          attributes:
+          - attribute_source: infores:chembl
+            original_attribute_names:
+            - original_attribute_names
+            - original_attribute_names
+            constraint_name: p-value
+            attribute_type_id: attribute_type_id
+            constraint_use: false
+          - attribute_source: infores:chembl
+            original_attribute_names:
+            - original_attribute_names
+            - original_attribute_names
+            constraint_name: p-value
+            attribute_type_id: attribute_type_id
+            constraint_use: false
           object: biolink:PhenotypicFeature
       properties:
         nodes:
           additionalProperties:
             $ref: '#/components/schemas/MetaNode'
-          description: Collection of node categories provided by this TRAPI web service,
-            indexed by Biolink class CURIEs.
+          description: Collection of the most specific node categories provided by
+            this TRAPI web service, indexed by Biolink class CURIEs. A node category
+            is only exposed here if there is node for which that is the most specific
+            category available.
+          title: nodes
           type: object
         edges:
-          description: List of edges/predicates provided by this TRAPI web service.
+          description: List of the most specific edges/predicates provided by this
+            TRAPI web service. A predicate is only exposed here if there is an edge
+            for which the predicate is the most specific available.
           items:
             $ref: '#/components/schemas/MetaEdge'
           minItems: 1
+          title: edges
           type: array
+      title: MetaKnowledgeGraph
       type: object
     MetaNode:
       additionalProperties: false
@@ -962,6 +1196,21 @@ components:
         id_prefixes:
         - CHEMBL.COMPOUND
         - INCHIKEY
+        attributes:
+        - attribute_source: infores:chembl
+          original_attribute_names:
+          - original_attribute_names
+          - original_attribute_names
+          constraint_name: p-value
+          attribute_type_id: attribute_type_id
+          constraint_use: false
+        - attribute_source: infores:chembl
+          original_attribute_names:
+          - original_attribute_names
+          - original_attribute_names
+          constraint_name: p-value
+          attribute_type_id: attribute_type_id
+          constraint_use: false
       properties:
         id_prefixes:
           description: List of CURIE prefixes for the node category that this TRAPI
@@ -972,9 +1221,17 @@ components:
           items:
             type: string
           minItems: 1
+          title: id_prefixes
+          type: array
+        attributes:
+          description: Node attributes provided by this TRAPI web service.
+          items:
+            $ref: '#/components/schemas/MetaAttribute'
+          title: attributes
           type: array
       required:
       - id_prefixes
+      title: MetaNode
       type: object
     MetaEdge:
       additionalProperties: false
@@ -983,9 +1240,21 @@ components:
       example:
         predicate: biolink:interacts_with
         subject: biolink:PhenotypicFeature
-        relations:
-        - inhibits
-        - activates
+        attributes:
+        - attribute_source: infores:chembl
+          original_attribute_names:
+          - original_attribute_names
+          - original_attribute_names
+          constraint_name: p-value
+          attribute_type_id: attribute_type_id
+          constraint_use: false
+        - attribute_source: infores:chembl
+          original_attribute_names:
+          - original_attribute_names
+          - original_attribute_names
+          constraint_name: p-value
+          attribute_type_id: attribute_type_id
+          constraint_use: false
         object: biolink:PhenotypicFeature
       properties:
         subject:
@@ -997,6 +1266,7 @@ components:
             description: Biolink model entities
             url: https://biolink.github.io/biolink-model/docs/NamedThing.html
           pattern: ^biolink:[A-Z][a-zA-Z]*$
+          title: BiolinkEntity
           type: string
         predicate:
           description: CURIE for a Biolink 'predicate' slot, taken from the Biolink
@@ -1008,6 +1278,7 @@ components:
             description: Biolink model predicates
             url: https://biolink.github.io/biolink-model/docs/related_to.html
           pattern: ^biolink:[a-z][a-z_]*$
+          title: BiolinkPredicate
           type: string
         object:
           description: Compact URI (CURIE) for a Biolink class, biolink:NamedThing
@@ -1018,19 +1289,64 @@ components:
             description: Biolink model entities
             url: https://biolink.github.io/biolink-model/docs/NamedThing.html
           pattern: ^biolink:[A-Z][a-zA-Z]*$
+          title: BiolinkEntity
           type: string
-        relations:
-          description: Low-level relations from the underlying source.
-          example:
-          - inhibits
-          - activates
+        attributes:
+          description: Edge attributes provided by this TRAPI web service.
           items:
-            type: string
+            $ref: '#/components/schemas/MetaAttribute'
+          title: attributes
           type: array
       required:
       - object
       - predicate
       - subject
+      title: MetaEdge
+      type: object
+    MetaAttribute:
+      example:
+        attribute_source: infores:chembl
+        original_attribute_names:
+        - original_attribute_names
+        - original_attribute_names
+        constraint_name: p-value
+        attribute_type_id: attribute_type_id
+        constraint_use: false
+      properties:
+        attribute_type_id:
+          description: A Compact URI, consisting of a prefix and a reference separated
+            by a colon, such as UniProtKB:P00738. Via an external context definition,
+            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
+            to form a full URI.
+          externalDocs:
+            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          title: CURIE
+          type: string
+        attribute_source:
+          description: Source of an attribute provided by this TRAPI web service.
+          example: infores:chembl
+          title: attribute_source
+          type: string
+        original_attribute_names:
+          description: Names of an the attribute as provided by the source.
+          items:
+            type: string
+          title: original_attribute_names
+          type: array
+        constraint_use:
+          default: false
+          description: Indicates whether this attribute can be used as a query constraint.
+          title: constraint_use
+          type: boolean
+        constraint_name:
+          description: Human-readable name or label for the constraint concept. Required
+            whenever constraint_use is true.
+          example: p-value
+          title: constraint_name
+          type: string
+      required:
+      - attribute_type_id
+      title: MetaAttribute
       type: object
     QueryConstraint:
       additionalProperties: false
@@ -1046,15 +1362,18 @@ components:
             authority.
           example: EDAM:data_0844
           nullable: false
+          title: id
         name:
           description: Human-readable name or label for the constraint concept. If
             appropriate, it SHOULD be the term name of the CURIE used as the 'id'.
             This is redundant but required for human readability.
           example: molecular mass
           nullable: false
+          title: name
           type: string
         not:
           default: false
+          title: not
           type: boolean
         operator:
           description: Relationship between the database value and the constraint
@@ -1073,6 +1392,7 @@ components:
           - '>'
           - <
           - matches
+          title: operator
           type: string
         value:
           description: Value of the attribute. May be any data type, including a list.
@@ -1082,12 +1402,14 @@ components:
             with the '>' or '<' operators will encode extraneous comparisons, but
             this is permitted as it is in SQL and other languages.
           example: 57.0
+          title: value
         unit_id:
           description: CURIE of the units of the value or list of values in the 'value'
             property. The Units of Measurement Ontology (UO) should be used if possible.
             The unit_id MUST be provided for (lists of) numerical values that correspond
             to a quantity that has units.
           example: UO:0000222
+          title: unit_id
         unit_name:
           description: Term name that is associated with the CURIE of the units of
             the value or list of values in the 'value' property. The Units of Measurement
@@ -1095,17 +1417,20 @@ components:
             if a unit_id is provided. This is redundant but recommended for human
             readability.
           example: kilodalton
+          title: unit_name
       required:
       - id
       - name
       - operator
       - value
+      title: QueryConstraint
       type: object
     Operations:
       additionalProperties: true
       description: Container for one or more Message objects or identifiers for one
         or more Messages along with a processing plan and options for how those messages
         should be processed and returned
+      nullable: true
       properties:
         message_uris:
           description: List of URIs for Message or Response objects to fetch and process
@@ -1137,4 +1462,45 @@ components:
           example:
             halt_on_warning: false
           type: object
+      type: object
+    EntityQuery:
+      example:
+        terms:
+        - terms
+        - terms
+        format: format
+      properties:
+        terms:
+          description: List of term strings to search for
+          items:
+            type: string
+          title: terms
+          type: array
+        format:
+          description: Format of the response (full or compact)
+          title: format
+          type: string
+      title: EntityQuery
+      type: object
+    OperationLookup:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - lookup
+          type: string
+        parameters: {}
+      required:
+      - id
+      type: object
+    OperationOverlay:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - overlay
+          type: string
+        parameters: {}
+      required:
+      - id
       type: object

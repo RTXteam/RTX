@@ -97,7 +97,7 @@ class ARAXMessenger:
         envelope.type = "translator_reasoner_response"
         envelope.reasoner_id = "ARAX"
         envelope.tool_version = RTXConfiguration().version
-        envelope.schema_version = "1.1.0"
+        envelope.schema_version = "1.2.0"
         envelope.status = "OK"
         envelope.description = "Created empty template response"
         envelope.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"

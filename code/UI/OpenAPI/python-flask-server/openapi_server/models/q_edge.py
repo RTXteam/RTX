@@ -17,13 +17,11 @@ class QEdge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, predicates=None, relation=None, subject=None, object=None, constraints=None, exclude=None, option_group_id=None):  # noqa: E501
+    def __init__(self, predicates=None, subject=None, object=None, constraints=[], exclude=None, option_group_id=None):  # noqa: E501
         """QEdge - a model defined in OpenAPI
 
         :param predicates: The predicates of this QEdge.  # noqa: E501
         :type predicates: List[str]
-        :param relation: The relation of this QEdge.  # noqa: E501
-        :type relation: str
         :param subject: The subject of this QEdge.  # noqa: E501
         :type subject: str
         :param object: The object of this QEdge.  # noqa: E501
@@ -37,7 +35,6 @@ class QEdge(Model):
         """
         self.openapi_types = {
             'predicates': List[str],
-            'relation': str,
             'subject': str,
             'object': str,
             'constraints': List[QueryConstraint],
@@ -47,7 +44,6 @@ class QEdge(Model):
 
         self.attribute_map = {
             'predicates': 'predicates',
-            'relation': 'relation',
             'subject': 'subject',
             'object': 'object',
             'constraints': 'constraints',
@@ -56,7 +52,6 @@ class QEdge(Model):
         }
 
         self._predicates = predicates
-        self._relation = relation
         self._subject = subject
         self._object = object
         self._constraints = constraints
@@ -96,29 +91,6 @@ class QEdge(Model):
             raise ValueError("Invalid value for `predicates`, number of items must be greater than or equal to `1`")  # noqa: E501
 
         self._predicates = predicates
-
-    @property
-    def relation(self):
-        """Gets the relation of this QEdge.
-
-        Query constraint against the relationship type term of this edge, as originally specified by, or curated by inference from, the original external source of knowledge. Note that this should often be specified as predicate ontology term CURIE, although this may not be strictly enforced.  # noqa: E501
-
-        :return: The relation of this QEdge.
-        :rtype: str
-        """
-        return self._relation
-
-    @relation.setter
-    def relation(self, relation):
-        """Sets the relation of this QEdge.
-
-        Query constraint against the relationship type term of this edge, as originally specified by, or curated by inference from, the original external source of knowledge. Note that this should often be specified as predicate ontology term CURIE, although this may not be strictly enforced.  # noqa: E501
-
-        :param relation: The relation of this QEdge.
-        :type relation: str
-        """
-
-        self._relation = relation
 
     @property
     def subject(self):

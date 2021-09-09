@@ -33,28 +33,81 @@ class ARAXQuery(Base):
 
 class ARAXQueryTracker:
 
+   #### Constructor
     def __init__(self):
-        self.session = ""
-        self.databaseName = "RTXFeedback"
-        self.connect() 
+        self.rtxConfig = RTXConfiguration()
+        self.databaseName = "QueryTracker"
+        self.engine_type = 'sqlite'
+        if self.rtxConfig.is_production_server:
+            self.databaseName = "ResponseCache"
+            self.engine_type = 'mysql'
+        self.connect()
 
     def __del__(self):
         self.disconnect()
 
+    #### Define attribute session
+    @property
+    def session(self) -> str:
+        return self._session
+
+    @session.setter
+    def session(self, session: str):
+        self._session = session
+
+
+    #### Define attribute engine
+    @property
+    def engine(self) -> str:
+        return self._engine
+
+    @engine.setter
+    def engine(self, engine: str):
+        self._engine = engine
+
+
+    #### Define attribute databaseName
+    @property
+    def databaseName(self) -> str:
+        return self._databaseName
+
+    @databaseName.setter
+    def databaseName(self, databaseName: str):
+        self._databaseName = databaseName
+
+
+    ##################################################################################################
     def create_tables(self):
         Base.metadata.drop_all(self.engine)
         Base.metadata.create_all(self.engine)
 
+
+    ##################################################################################################
+    #### Create and store a database connection
     def connect(self):
-        rtxConfig = RTXConfiguration()
-        engine = create_engine("mysql+pymysql://" + rtxConfig.mysql_feedback_username + ":" + rtxConfig.mysql_feedback_password + "@" + rtxConfig.mysql_feedback_host + "/" + self.databaseName)
+
+        # If the engine_type is mysql then connect to the MySQL database
+        if self.engine_type == 'mysql':
+            engine = create_engine("mysql+pymysql://" + self.rtxConfig.mysql_feedback_username + ":" +
+                self.rtxConfig.mysql_feedback_password + "@" + self.rtxConfig.mysql_feedback_host + "/" + self.databaseName)
+
+        # Else just use SQLite
+        else:
+            database_path = os.path.dirname(os.path.abspath(__file__)) + '/' + self.databaseName + '.sqlite'
+            engine = create_engine("sqlite:///"+database_path)
+
         DBSession = sessionmaker(bind=engine)
         session = DBSession()
         self.session = session
         self.engine = engine
-        if not engine.dialect.has_table(engine, 'arax_query'):
-            self.create_tables()
 
+        #### If the tables don't exist, then create the database
+        if not engine.dialect.has_table(engine, ARAXQuery.__tablename__):
+            print(f"WARNING: {self.engine_type} tables do not exist; creating them")
+            Base.metadata.create_all(engine)
+
+
+    ##################################################################################################
     def disconnect(self):
         session = self.session
         engine = self.engine
@@ -63,6 +116,66 @@ class ARAXQueryTracker:
             engine.dispose()
         except:
             pass
+
+
+    ##################################################################################################
+    #### Delete and create the ResponseStore database. Careful!
+    def create_database(self):
+        print("Creating database")
+
+        # If the engine_type is mysql then set up the MySQL database
+        if self.engine_type == 'mysql':
+            engine = create_engine("mysql+pymysql://" + self.rtxConfig.mysql_feedback_username + ":" +
+                self.rtxConfig.mysql_feedback_password + "@" + self.rtxConfig.mysql_feedback_host + "/" + self.databaseName)
+
+        # Else just use SQLite
+        else:
+            database_path = os.path.dirname(os.path.abspath(__file__)) + '/' + self.databaseName + '.sqlite'
+            if os.path.exists(database_path):
+                os.remove(database_path)
+            engine = create_engine("sqlite:///"+database_path)
+
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
+        self.connect()
+
+
+    ##################################################################################################
+    #### Create and store a database connection
+    def connect(self):
+
+        # If the engine_type is mysql then connect to the MySQL database
+        if self.engine_type == 'mysql':
+            engine = create_engine("mysql+pymysql://" + self.rtxConfig.mysql_feedback_username + ":" +
+                self.rtxConfig.mysql_feedback_password + "@" + self.rtxConfig.mysql_feedback_host + "/" + self.databaseName)
+
+        # Else just use SQLite
+        else:
+            database_path = os.path.dirname(os.path.abspath(__file__)) + '/' + self.databaseName + '.sqlite'
+            engine = create_engine("sqlite:///"+database_path)
+
+        DBSession = sessionmaker(bind=engine)
+        session = DBSession()
+        self.session = session
+        self.engine = engine
+
+        #### If the tables don't exist, then create the database
+        if not engine.dialect.has_table(engine, ARAXQuery.__tablename__):
+            print(f"WARNING: {self.engine_type} tables do not exist; creating them")
+            Base.metadata.create_all(engine)
+
+
+    ##################################################################################################
+    #### Create and store a database connection
+    def disconnect(self):
+        session = self.session
+        engine = self.engine
+        session.close()
+        try:
+            engine.dispose()
+        except:
+            pass
+
 
     def update_tracker_entry(self, tracker_id, attributes):
         session = self.session
@@ -100,18 +213,24 @@ class ARAXQueryTracker:
                         AND TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_N_hours).all()
         else:
             return self.session.query(ARAXQuery).filter(
-                text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_N_hours).all()
+                #text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_N_hours).all()
+                text("""JULIANDAY(start_datetime) - JULIANDAY(datetime('now','localtime')) < :n""")).params(n=last_N_hours/24).all()
+
 
 def main():
     query_tracker = ARAXQueryTracker()
     attributes = { 'origin': 'local_dev', 'input_query': { 'query_graph': { 'nodes': [], 'edges': [] } }, 'remote_address': 'test_address' }
     tracker_id = query_tracker.create_tracker_entry(attributes)
-    time.sleep(2)
+
+    time.sleep(1)
     attributes = { 'status': 'Completed OK', 'message_id': 3187, 'message_code': 'OK', 'code_description': '32 results' }
     query_tracker.update_tracker_entry(tracker_id, attributes)
-    entries = query_tracker.get_entries()
+
+    entries = query_tracker.get_entries(last_N_hours=24)
     for entry in entries:
-        print(entry.__dict__)
+        #print(entry.__dict__)
+        print(f"{entry.query_id}\t{entry.pid}\t{entry.start_datetime}\t{entry.instance_name}\t{entry.status}\t{entry.elapsed}\t{entry.origin}\t{entry.message_id}\t{entry.message_code}\t{entry.code_description}")
+
 
 if __name__ == "__main__":
     main()

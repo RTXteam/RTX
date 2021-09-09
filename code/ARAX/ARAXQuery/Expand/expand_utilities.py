@@ -459,18 +459,18 @@ def get_computed_value_attribute() -> Attribute:
 
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
-        "BTE": "https://api.bte.ncats.io/v1",
-        "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.1",
-        "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.1",
-        "RTX-KG2": "https://arax.ncats.io/api/rtxkg2/v1.1",
+        "BTE": "https://api.bte.ncats.io/v1",  # TODO: Enter 1.2 endpoint once available..
+        "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.2",
+        "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.2",
+        "RTX-KG2": "https://arax.ncats.io/api/rtxkg2/v1.2",
         "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
         "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
         "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
         "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
-        "CHP": "http://chp.thayer.dartmouth.edu",
-        "COHD": "http://tr-kp-clinical.ncats.io/api",
-        "ICEES-DILI": "https://icees.renci.org:16341",
-        "ICEES-Asthma": "https://icees.renci.org:16339"
+        "CHP": "http://chp.thayer.dartmouth.edu/v1.2",
+        "COHD": "https://trapi-dev.cohd.io/api",  # TODO: This is what they registered for TRAPI 1.2... will this URL change eventually?
+        "ICEES-DILI": "https://icees.renci.org:16341",  # TODO: Enter 1.2 endpoint once available..
+        "ICEES-Asthma": "https://icees.renci.org:16339"  # TODO: Enter 1.2 endpoint once available..
     }
     return endpoint_map.get(kp_name)
 
