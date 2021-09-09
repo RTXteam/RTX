@@ -501,6 +501,8 @@ class ARAXQuery:
                 newpid = os.fork()
                 #### The parent returns to tell the caller that work will proceed
                 if newpid > 0:
+                    response.envelope.status = 'Running'
+                    response.envelope.description = 'Asynchronous answering of query underway'
                     return response
                 #### The child continues
                 #### The child loses the MySQL connection of the parent, so need to reconnect
