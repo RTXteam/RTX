@@ -23,6 +23,8 @@ info:
     version: 1.2.0
     asyncquery: true
     operations:
+      - lookup
+      - overlay_connect_knodes
       - filter_results_top_n
       - overlay_compute_ngd
       - overlay_compute_jaccard
@@ -36,7 +38,7 @@ info:
       - filter_kgraph_std_dev
       - filter_kgraph_percentile
       - filter_kgraph_discrete_kedge_attribute
-      - filter_kgraph_continuous_attribute
+      - filter_kgraph_continuous_kedge_attribute
     externalDocs:
       description: >-
         The values for version are restricted according to the regex in
@@ -404,12 +406,15 @@ components:
             oneOf:
               - $ref: '#/components/schemas/OperationAnnotate'
               - $ref: '#/components/schemas/OperationAnnotateEdges'
+              - $ref: '#/components/schemas/OperationAnnotateNodes'
               - $ref: '#/components/schemas/OperationBind'
               - $ref: '#/components/schemas/OperationCompleteResults'
+              - $ref: '#/components/schemas/OperationEnrichResults'
               - $ref: '#/components/schemas/OperationFill'
               - $ref: '#/components/schemas/OperationFilterKgraph'
-              - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute'
               - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute'
               - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
               - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
               - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
@@ -524,12 +529,15 @@ components:
             oneOf:
               - $ref: '#/components/schemas/OperationAnnotate'
               - $ref: '#/components/schemas/OperationAnnotateEdges'
+              - $ref: '#/components/schemas/OperationAnnotateNodes'
               - $ref: '#/components/schemas/OperationBind'
               - $ref: '#/components/schemas/OperationCompleteResults'
+              - $ref: '#/components/schemas/OperationEnrichResults'
               - $ref: '#/components/schemas/OperationFill'
               - $ref: '#/components/schemas/OperationFilterKgraph'
-              - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute'
               - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute'
               - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
               - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
               - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
@@ -594,12 +602,15 @@ components:
             oneOf:
               - $ref: '#/components/schemas/OperationAnnotate'
               - $ref: '#/components/schemas/OperationAnnotateEdges'
+              - $ref: '#/components/schemas/OperationAnnotateNodes'
               - $ref: '#/components/schemas/OperationBind'
               - $ref: '#/components/schemas/OperationCompleteResults'
+              - $ref: '#/components/schemas/OperationEnrichResults'
               - $ref: '#/components/schemas/OperationFill'
               - $ref: '#/components/schemas/OperationFilterKgraph'
-              - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute'
               - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+              - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute'
               - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
               - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
               - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
@@ -1665,6 +1676,27 @@ components:
       required:
       - id
       type: object
+    OperationAnnotateNodes:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - annotate_nodes
+          type: string
+        parameters:
+          properties:
+            attributes:
+              description: A list of attributes to annotate the nodes with. If not
+                included then all available data will be annotated.
+              example:
+              - pmids
+              items:
+                type: string
+              type: array
+          type: object
+      required:
+      - id
+      type: object
     OperationBind:
       additionalProperties: false
       properties:
@@ -1684,6 +1716,34 @@ components:
           - complete_results
           type: string
         parameters: {}
+      required:
+      - id
+      type: object
+    OperationEnrichResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - enrich_results
+          type: string
+        parameters:
+          properties:
+            pvalue_threshold:
+              default: 1e-6
+              description: The cutoff p-value for enrichment.
+              example: 1e-7
+              maximum: 1
+              minimum: 0
+              type: number
+            qnode_keys:
+              description: If specified, then only knodes bound to these qnodes will
+                be examined for enrichment and combination.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+          type: object
       required:
       - id
       type: object
@@ -1733,12 +1793,12 @@ components:
       required:
       - id
       type: object
-    OperationFilterKgraphContinuousAttribute:
+    OperationFilterKgraphContinuousKedgeAttribute:
       additionalProperties: false
       properties:
         id:
           enum:
-          - filter_kgraph_continuous_attribute
+          - filter_kgraph_continuous_kedge_attribute
           type: string
         parameters:
           properties:
@@ -1822,6 +1882,40 @@ components:
               example: infores:semmeddb
           required:
           - edge_attribute
+          - remove_value
+          type: object
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphDiscreteKnodeAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_discrete_knode_attribute
+          type: string
+        parameters:
+          properties:
+            node_attribute:
+              description: The name of the node attribute to filter on.
+              example: molecule_type
+              type: string
+            qnode_keys:
+              description: This indicates if you only want to remove nodes corresponding
+                to a specific list of qnode_keys to be removed. If not provided or
+                empty, all nodes will be considered when filtering.
+              example:
+              - n01
+              items:
+                type: string
+              type: array
+            remove_value:
+              description: The value for which all edges containing this value in
+                the specified edge_attribute should be removed.
+              example: small_molecule
+          required:
+          - node_attribute
           - remove_value
           type: object
       required:
