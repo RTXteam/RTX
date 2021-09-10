@@ -65,8 +65,10 @@ class QGOrganizedKnowledgeGraph:
         self.edges_by_qg_id[qedge_key][edge_key] = edge
 
     def remove_nodes(self, node_keys_to_delete: Set[str], qnode_key: str, qg: QueryGraph):
+        # First delete the specified nodes
         for node_key in node_keys_to_delete:
             del self.nodes_by_qg_id[qnode_key][node_key]
+        # Then delete any edges orphaned by removal of those nodes
         connected_qedges = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == qnode_key or qedge.object == qnode_key}
         for connected_qedge_key in connected_qedges.intersection(set(self.edges_by_qg_id)):
             edges_to_delete = {edge_key for edge_key, edge in self.edges_by_qg_id[connected_qedge_key].items()
@@ -376,7 +378,13 @@ def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str
         input_curies_without_matching_node = set()
         for input_curie in recognized_input_curies:
             equivalent_nodes = synonymizer_info[input_curie]["nodes"]
+            # Find the 'node' in the synonymizer corresponding to this curie
             input_curie_nodes = [node for node in equivalent_nodes if node["identifier"] == input_curie]
+            if not input_curie_nodes:
+                # Try looking for slight variation (KG2 vs. SRI discrepancy): "KEGG:C02700" vs. "KEGG.COMPOUND:C02700"
+                input_curie_stripped = input_curie.replace(".COMPOUND", "")
+                input_curie_nodes = [node for node in equivalent_nodes if node["identifier"] == input_curie_stripped]
+            # Record the name for this input curie
             if input_curie_nodes:
                 curie_to_name_map[input_curie] = input_curie_nodes[0].get("label")
             else:

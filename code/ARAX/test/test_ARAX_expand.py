@@ -864,15 +864,15 @@ def test_1516_single_quotes_in_ids():
 
 def test_input_curie_remapping():
     actions = [
-        "add_qnode(key=n0, ids=MESH:D010300)",  # Parkinson's
+        "add_qnode(key=n0, ids=KEGG.COMPOUND:C02700)",
         "add_qnode(key=n1, categories=biolink:Protein)",
         "add_qedge(key=e01, subject=n0, object=n1)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
-    assert "MESH:D010300" in nodes_by_qg_id["n0"]
-    assert nodes_by_qg_id["n0"]["MESH:D010300"].name == "Parkinson Disease"
+    assert "KEGG.COMPOUND:C02700" in nodes_by_qg_id["n0"]
+    assert "formylkynurenine" in nodes_by_qg_id["n0"]["KEGG.COMPOUND:C02700"].name.lower()
 
 
 def test_constraint_validation():
