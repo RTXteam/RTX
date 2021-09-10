@@ -279,14 +279,18 @@ class ARAXExpander:
                                           f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
                                 overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
 
-                # Do some pruning and apply kryptonite edges
                 if mode == "ARAX":
+                    # Apply any kryptonite ("not") qedges
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
-                # Prune back any nodes with more than the specified max of answers
-                for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
-                    if len(nodes) > post_prune_threshold:
-                        overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
+                    # Prune back nodes with more than the specified max of answers IF we're not expanding any more edges
+                    is_last_qedge = ordered_qedge_keys_to_expand.index(qedge_key) == len(ordered_qedge_keys_to_expand) - 1
+                    if is_last_qedge:
+                        for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
+                            if len(nodes) > post_prune_threshold:
+                                overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
+
+                # Remove any paths that are now dead-ends
                 overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
                 if response.status != 'OK':
                     return response
@@ -1002,18 +1006,18 @@ class ARAXExpander:
         # Handle (curie(s))--(curie(s)) queries
         if qnode_a.ids and qnode_b.ids:
             # Be lenient for input qnode since it will be constrained by output qnode's curies
-            return 5000, 1000
+            return 5000, 20000
         # Handle (curie(s))--(>=0 categories) queries
         else:
             open_ended_qnode = qnode_a if not qnode_a.ids else qnode_b
             if (not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories) and \
                     (not qedge.predicates or "biolink:related_to" in qedge.predicates):
                 # Be more strict when such broad categories/predicates are used
-                return 100, 1000
+                return 100, 20000
             elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
-                return 200, 1000
+                return 200, 20000
             else:
-                return 300, 1000
+                return 500, 20000
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):
