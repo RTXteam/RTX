@@ -1388,14 +1388,3 @@ components:
       required:
       - id
       type: object
-    OperationOverlay:
-      additionalProperties: false
-      properties:
-        id:
-          enum:
-          - overlay
-          type: string
-        parameters: {}
-      required:
-      - id
-      type: object
