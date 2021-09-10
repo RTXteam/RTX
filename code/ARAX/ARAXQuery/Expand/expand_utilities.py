@@ -241,18 +241,23 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
 def make_qg_use_supported_prefixes(kp_selector, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
     for qnode_key, qnode in qg.nodes.items():
         if qnode.ids:
-            converted_curies = kp_selector.convert_curies_to_supported_prefixes(qnode.ids,
-                                                                                qnode.categories,
-                                                                                kp_name)
-            if not converted_curies:
-                log.info(f"{kp_name} cannot answer the query because I couldn't find any "
-                            f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
-                            f"curies were: {qnode.ids}")
-                return None
+            if kp_name == "RTX-KG2":
+                # Just convert them into canonical curies
+                qnode.ids = get_canonical_curies_list(qnode.ids, log)
             else:
-                log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
-                          f"{len(converted_curies)} curies with prefixes {kp_name} supports")
-                qnode.ids = converted_curies
+                # Otherwise figure out which kind of curies KPs want
+                converted_curies = kp_selector.convert_curies_to_supported_prefixes(qnode.ids,
+                                                                                    qnode.categories,
+                                                                                    kp_name)
+                if not converted_curies:
+                    log.info(f"{kp_name} cannot answer the query because I couldn't find any "
+                                f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
+                                f"curies were: {qnode.ids}")
+                    return None
+                else:
+                    log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
+                              f"{len(converted_curies)} curies with prefixes {kp_name} supports")
+                    qnode.ids = converted_curies
     return qg
 
 
@@ -355,6 +360,33 @@ def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) ->
     else:
         log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
         return []
+
+
+def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, str]:
+    curies = convert_to_list(curie)
+    synonymizer = NodeSynonymizer()
+    log.debug(f"Looking up names for {len(curies)} input curies using NodeSynonymizer")
+    synonymizer_info = synonymizer.get_normalizer_results(curies)
+    curie_to_name_map = dict()
+    if synonymizer_info:
+        recognized_input_curies = {input_curie for input_curie in synonymizer_info if synonymizer_info.get(input_curie)}
+        unrecognized_curies = set(curies).difference(recognized_input_curies)
+        if unrecognized_curies:
+            log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
+        input_curies_without_matching_node = set()
+        for input_curie in recognized_input_curies:
+            equivalent_nodes = synonymizer_info[input_curie]["nodes"]
+            input_curie_nodes = [node for node in equivalent_nodes if node["identifier"] == input_curie]
+            if input_curie_nodes:
+                curie_to_name_map[input_curie] = input_curie_nodes[0].get("label")
+            else:
+                input_curies_without_matching_node.add(input_curie)
+        if input_curies_without_matching_node:
+            log.warning(f"No matching nodes found in NodeSynonymizer for these input curies: "
+                        f"{input_curies_without_matching_node}. Cannot determine their specific names.")
+    else:
+        log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+    return curie_to_name_map
 
 
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False) -> bool:
