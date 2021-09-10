@@ -382,7 +382,7 @@ paths:
       operationId: get_status
       parameters:
       - in: query
-        name: last_N_hours
+        name: last_n_hours
         description: >-
           Limit results to the past N hours
         required: false
