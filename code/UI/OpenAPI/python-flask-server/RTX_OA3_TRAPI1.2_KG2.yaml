@@ -131,6 +131,7 @@ paths:
         - asyncquery
       summary: Initiate a query with a callback to receive the response
       description: ''
+      operationId: asyncquery
       requestBody:
         description: Query information to be submitted
         required: true
