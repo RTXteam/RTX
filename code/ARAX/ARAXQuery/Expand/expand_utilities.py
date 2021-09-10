@@ -64,20 +64,36 @@ class QGOrganizedKnowledgeGraph:
             self.edges_by_qg_id[qedge_key] = dict()
         self.edges_by_qg_id[qedge_key][edge_key] = edge
 
-    def remove_nodes(self, node_keys_to_delete: Set[str], qnode_key: str, qg: QueryGraph):
+    def remove_nodes(self, node_keys_to_delete: Set[str], target_qnode_key: str, qg: QueryGraph):
         # First delete the specified nodes
         for node_key in node_keys_to_delete:
-            del self.nodes_by_qg_id[qnode_key][node_key]
+            del self.nodes_by_qg_id[target_qnode_key][node_key]
         # Then delete any edges orphaned by removal of those nodes
-        connected_qedges = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == qnode_key or qedge.object == qnode_key}
-        for connected_qedge_key in connected_qedges.intersection(set(self.edges_by_qg_id)):
+        connected_qedge_keys = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == target_qnode_key or qedge.object == target_qnode_key}
+        fulfilled_connected_qedge_keys = connected_qedge_keys.intersection(set(self.edges_by_qg_id))
+        for connected_qedge_key in fulfilled_connected_qedge_keys:
             edges_to_delete = {edge_key for edge_key, edge in self.edges_by_qg_id[connected_qedge_key].items()
                                if {edge.subject, edge.object}.intersection(node_keys_to_delete)}
             for edge_key in edges_to_delete:
                 del self.edges_by_qg_id[connected_qedge_key][edge_key]
+        # Then delete any nodes orphaned by removal of the orphaned edges (if they shouldn't be orphans)
+        non_orphan_qnode_keys_to_check = {qnode_key for qedge_key in fulfilled_connected_qedge_keys
+                                          for qnode_key in {qg.edges[qedge_key].subject, qg.edges[qedge_key].object}}.difference({target_qnode_key})
+        for non_orphan_qnode_key in non_orphan_qnode_keys_to_check:
+            node_keys_fulfilling_qnode = set(self.nodes_by_qg_id[non_orphan_qnode_key])
+            connected_qedge_keys = get_connected_qedge_keys(non_orphan_qnode_key, qg)
+            node_keys_used_by_edges = {node_key for qedge_key in connected_qedge_keys
+                                       for node_key in self.get_node_keys_used_by_edges_fulfilling_qedge(qedge_key)}
+            orphan_node_keys = node_keys_fulfilling_qnode.difference(node_keys_used_by_edges)
+            for orphan_node_key in orphan_node_keys:
+                del self.nodes_by_qg_id[non_orphan_qnode_key][orphan_node_key]
 
     def get_all_node_keys_used_by_edges(self) -> Set[str]:
         return {node_key for edges in self.edges_by_qg_id.values() for edge in edges.values()
+                for node_key in [edge.subject, edge.object]}
+
+    def get_node_keys_used_by_edges_fulfilling_qedge(self, qedge_key: str) -> Set[str]:
+        return {node_key for edge in self.edges_by_qg_id[qedge_key].values()
                 for node_key in [edge.subject, edge.object]}
 
     def get_all_node_keys(self) -> Set[str]:

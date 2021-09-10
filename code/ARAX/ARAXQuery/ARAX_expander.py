@@ -289,11 +289,10 @@ class ARAXExpander:
                         for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
                             if len(nodes) > post_prune_threshold:
                                 overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
-
-                # Remove any paths that are now dead-ends
-                overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
-                if response.status != 'OK':
-                    return response
+                    # Remove any paths that are now dead-ends (not relevant to KG2 API since it only does one-hops)
+                    overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
+                    if response.status != 'OK':
+                        return response
 
                 # Make sure we found at least SOME answers for this edge
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
