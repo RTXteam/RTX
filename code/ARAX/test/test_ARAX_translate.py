@@ -117,6 +117,8 @@ def test_lookup():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert len(message.results) > 0
+    for result in message.results:
+        assert result.score is None
 
 
 
