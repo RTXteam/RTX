@@ -391,13 +391,13 @@ paths:
           type: integer
           example: 6
       - in: query
-        name: incomplete_only
+        name: id
         description: >-
-          Set to True if only incomplete queries should be returned
+          Identifier of the log entry
         required: false
         schema:
-          type: string
-          example: False
+          type: integer
+          example: 10
       responses:
         '200':
           description: successful operation
