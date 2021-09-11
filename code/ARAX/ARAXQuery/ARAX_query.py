@@ -547,6 +547,9 @@ class ARAXQuery:
                     elif action['command'] == 'resultify':
                         resultifier.apply(response, action['parameters'])
 
+                    elif action['command'] == 'scoreless_resultify':
+                        resultifier.apply(response, action['parameters'])
+
                     elif action['command'] == 'overlay':  # recognize the overlay command
                         overlay.apply(response, action['parameters'])
 
