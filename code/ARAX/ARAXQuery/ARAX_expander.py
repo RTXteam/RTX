@@ -1016,7 +1016,7 @@ class ARAXExpander:
             elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
                 return 200, 20000
             else:
-                return 800, 20000
+                return 500, 20000
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):
