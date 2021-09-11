@@ -226,7 +226,7 @@ class WorkflowToARAXi:
     def __translate_lookup(parameters, query_graph, response):
         ARAXi = []
         ARAXi.append("expand()")
-        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
+        ARAXi.append(f"scoreless_resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
 
