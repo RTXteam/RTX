@@ -316,13 +316,13 @@ class ARAXExpander:
         # Override node types so that they match what was asked for in the query graph (where applicable) #987
         self._override_node_categories(message.knowledge_graph, message.query_graph)
 
-        # Map canonical curies back to the input curies in the QG (where applicable) #1622
-        self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
-
         # Decorate all nodes with additional attributes info from KG2c (iri, description, etc.)
         if mode == "ARAX":  # Skip doing this for KG2 (until can pass minimal_metadata param)
             decorator = ARAXDecorator()
             decorator.apply(response)
+
+        # Map canonical curies back to the input curies in the QG (where applicable) #1622
+        self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
 
         # Return the response and done
         kg = message.knowledge_graph
