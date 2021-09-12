@@ -130,6 +130,8 @@ class MetaAttribute(Model):
         :param original_attribute_names: The original_attribute_names of this MetaAttribute.
         :type original_attribute_names: List[str]
         """
+        if original_attribute_names is not None and len(original_attribute_names) < 1:
+            raise ValueError("Invalid value for `original_attribute_names`, number of items must be greater than or equal to `1`")  # noqa: E501
 
         self._original_attribute_names = original_attribute_names
 

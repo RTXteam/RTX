@@ -23,7 +23,7 @@ class AsyncQuery(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, callback=None, message=None, log_level=None, workflow=None):  # noqa: E501
+    def __init__(self, callback=None, message=None, log_level=None, workflow=None, submitter=None):  # noqa: E501
         """AsyncQuery - a model defined in OpenAPI
 
         :param callback: The callback of this AsyncQuery.  # noqa: E501
@@ -34,25 +34,30 @@ class AsyncQuery(Model):
         :type log_level: LogLevel
         :param workflow: The workflow of this AsyncQuery.  # noqa: E501
         :type workflow: List[AnyType]
+        :param submitter: The submitter of this AsyncQuery.  # noqa: E501
+        :type submitter: str
         """
         self.openapi_types = {
             'callback': str,
             'message': Message,
             'log_level': LogLevel,
-            'workflow': List[AnyType]
+            'workflow': List[AnyType],
+            'submitter': str
         }
 
         self.attribute_map = {
             'callback': 'callback',
             'message': 'message',
             'log_level': 'log_level',
-            'workflow': 'workflow'
+            'workflow': 'workflow',
+            'submitter': 'submitter'
         }
 
         self._callback = callback
         self._message = message
         self._log_level = log_level
         self._workflow = workflow
+        self._submitter = submitter
 
     @classmethod
     def from_dict(cls, dikt) -> 'AsyncQuery':
@@ -160,3 +165,26 @@ class AsyncQuery(Model):
         """
 
         self._workflow = workflow
+
+    @property
+    def submitter(self):
+        """Gets the submitter of this AsyncQuery.
+
+        Any string for self-identifying the submitter of a query. The purpose of this optional field is to aid in the tracking of the source of queries for development and issue resolution.  # noqa: E501
+
+        :return: The submitter of this AsyncQuery.
+        :rtype: str
+        """
+        return self._submitter
+
+    @submitter.setter
+    def submitter(self, submitter):
+        """Sets the submitter of this AsyncQuery.
+
+        Any string for self-identifying the submitter of a query. The purpose of this optional field is to aid in the tracking of the source of queries for development and issue resolution.  # noqa: E501
+
+        :param submitter: The submitter of this AsyncQuery.
+        :type submitter: str
+        """
+
+        self._submitter = submitter
