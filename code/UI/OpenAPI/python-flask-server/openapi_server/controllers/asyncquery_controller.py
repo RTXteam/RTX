@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX
 from ARAX_query import ARAXQuery
 
 
-def asyncquery_post(request_body):  # noqa: E501
+def asyncquery(request_body):  # noqa: E501
     """Query reasoner via one of several inputs
 
      # noqa: E501
