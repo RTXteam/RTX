@@ -267,15 +267,15 @@ def make_qg_use_supported_prefixes(kp_selector, qg: QueryGraph, kp_name: str, lo
                 converted_curies = kp_selector.convert_curies_to_supported_prefixes(qnode.ids,
                                                                                     qnode.categories,
                                                                                     kp_name)
-                if not converted_curies:
-                    log.info(f"{kp_name} cannot answer the query because I couldn't find any "
-                                f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
-                                f"curies were: {qnode.ids}")
-                    return None
-                else:
+                if converted_curies:
                     log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
-                              f"{len(converted_curies)} curies with prefixes {kp_name} supports")
+                              f"{len(converted_curies)} curies tailored for {kp_name}")
                     qnode.ids = converted_curies
+                else:
+                    log.info(f"{kp_name} cannot answer the query because I couldn't find any "
+                             f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
+                             f"curies were: {qnode.ids}")
+                    return None
     return qg
 
 
@@ -303,6 +303,33 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse]
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return []
+
+
+def get_curie_synonyms_dict(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> Dict[str, List[str]]:
+    curies = convert_to_list(curie)
+    try:
+        synonymizer = NodeSynonymizer()
+        log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
+        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
+        log.debug(f"Got response back from NodeSynonymizer")
+    except Exception:
+        tb = traceback.format_exc()
+        error_type, error, _ = sys.exc_info()
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        return dict()
+    else:
+        if equivalent_curies_dict is not None:
+            curies_missing_info = {curie for curie in equivalent_curies_dict if not equivalent_curies_dict.get(curie)}
+            if curies_missing_info:
+                log.warning(f"NodeSynonymizer did not find any equivalent curies for: {curies_missing_info}")
+            final_curie_dict = dict()
+            for input_curie in curies:
+                curie_dict = equivalent_curies_dict.get(input_curie)
+                final_curie_dict[input_curie] = list(curie_dict) if curie_dict else [input_curie]
+            return final_curie_dict
+        else:
+            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            return dict()
 
 
 def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, Dict[str, str]]:
@@ -373,8 +400,8 @@ def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) ->
         if preferred_categories:
             return list(preferred_categories)
         else:
-            log.warning(f"Unable to find any preferred categories")
-            return None
+            log.warning(f"Unable to find any preferred categories; will default to biolink:NamedThing")
+            return ["biolink:NamedThing"]
     else:
         log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
         return []
