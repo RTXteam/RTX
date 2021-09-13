@@ -652,7 +652,7 @@ def test_option_group_query_one_hop():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
+        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:affects, option_group_id=1)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
