@@ -27,6 +27,7 @@ from ARAX_query_graph_interpreter import ARAXQueryGraphInterpreter
 from ARAX_messenger import ARAXMessenger
 from ARAX_ranker import ARAXRanker
 from operation_to_ARAXi import WorkflowToARAXi
+from ARAX_query_tracker import ARAXQueryTracker
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
@@ -106,6 +107,7 @@ class ARAXQuery:
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
+        self.track_query_finish()
         return { 'DONE': True }
 
 
@@ -116,7 +118,7 @@ class ARAXQuery:
             self.response = ARAXResponse()
 
         #### Execute the query
-        self.query(query, mode=mode)
+        self.query(query, mode=mode, origin='API')
 
         #### Do we still need all this cruft?
         #result = self.query(query)
@@ -136,7 +138,7 @@ class ARAXQuery:
     ########################################################################################
     def query_return_message(self, query, mode='ARAX'):
 
-        self.query(query, mode=mode)
+        self.query(query, mode=modei, origin='API')
         response = self.response
 
         #### If the query ended in an error, copy the error to the envelope
@@ -150,7 +152,28 @@ class ARAXQuery:
 
 
     ########################################################################################
-    def query(self,query, mode='ARAX'):
+    def track_query_finish(self):
+
+        query_tracker = ARAXQueryTracker()
+        try:
+            response_id = self.response.response_id
+        except:
+            response_id = None
+
+        attributes = {
+            'status': 'Completed',
+            'message_id': response_id,
+            'message_code': self.response.error_code,
+            'code_description': self.response.message
+        }
+
+        query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+
+
+
+
+    ########################################################################################
+    def query(self,query, mode='ARAX', origin='local'):
 
         #### Create the skeleton of the response
         response = ARAXResponse()
@@ -164,6 +187,20 @@ class ARAXQuery:
         #### Create an empty envelope
         messenger = ARAXMessenger()
         messenger.create_envelope(response)
+
+        #### If a submitter came in, reflect that back into the response
+        if "submitter" in query:
+            response.envelope.submitter = query['submitter']
+        else:
+            response.envelope.submitter = '?'
+
+        #### Create an entry to track this query
+        tracker_id = None
+        if origin == 'API':
+            query_tracker = ARAXQueryTracker()
+            attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': 'test_address' }
+            tracker_id = query_tracker.create_tracker_entry(attributes)
+        response.tracker_id = tracker_id
 
         #### Determine a plan for what to do based on the input
         #eprint(json.dumps(query, indent=2, sort_keys=True))
@@ -660,7 +697,8 @@ class ARAXQuery:
                 response.debug(f"Storing resulting Message")
                 response_id = response_cache.add_new_response(response)
                 response.info(f"Result was stored with id {response_id}. It can be viewed at https://arax.ncats.io/?r={response_id}")
-                
+            response.response_id = response_id
+ 
             #### If asking for the full message back
             if return_action['parameters']['response'] == 'true':
                 if mode == 'asynchronous':
