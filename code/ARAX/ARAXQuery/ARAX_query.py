@@ -148,6 +148,7 @@ class ARAXQuery:
             if hasattr(response,'http_status'):
                 response.envelope.http_status = response.http_status
 
+        self.track_query_finish()
         return response.envelope
 
 
