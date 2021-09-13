@@ -105,7 +105,7 @@ class KPSelector:
             for input_curie, equivalent_curies in eu.get_curie_synonyms_dict(curies).items():
                 supported_curies = {curie for curie in equivalent_curies if curie.split(":")[0].upper() in supported_prefixes}
                 if supported_curies:
-                    # TODO: Later send only one supported curie per concept? Changes KP answers currenly though..
+                    # TODO: Later send only one supported curie per concept? Changes KP answers currently though..
                     converted_curies = converted_curies.union(supported_curies)
                 else:
                     unsupported_curies.add(input_curie)

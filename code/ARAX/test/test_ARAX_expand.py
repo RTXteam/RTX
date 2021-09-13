@@ -809,7 +809,7 @@ def test_multiomics_wellness_kp():
 def test_multiomics_drug_response_kp():
     actions_list = [
         "add_qnode(ids=NCBIGene:7157, categories=biolink:Gene, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+        "add_qnode(categories=biolink:SmallMolecule, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=DrugResponseKP)",
         "return(message=true, store=false)"
@@ -925,33 +925,14 @@ def test_canonical_predicates():
 @pytest.mark.slow
 @pytest.mark.external
 def test_curie_prefix_conversion_1537():
-    # Without prefix conversion to ENSEMBL, CHP doesn't find any answers
-    query = {
-        "message": {
-            "query_graph": {
-                "edges": {
-                    "e2": {
-                        "object": "n3",
-                        "predicates": ["biolink:related_to"],
-                        "subject": "n2"
-                    }
-                },
-                "nodes": {
-                    "n2": {
-                        "categories": ["biolink:Gene"],
-                        "ids": ["NCBIGene:60412"],
-                        "is_set": False
-                    },
-                    "n3": {
-                        "categories": ["biolink:ChemicalEntity"],
-                        "is_set": False
-                    }
-                }
-            }
-        }
-    }
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
-    assert len(nodes_by_qg_id["n3"]) > 5
+    actions = [
+        "add_qnode(key=n0, ids=NCBIGene:60412, categories=biolink:Gene)",
+        "add_qnode(key=n1, categories=biolink:ChemicalEntity)",
+        "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:related_to)",
+        "expand(kp=CHP)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
 
 
 @pytest.mark.slow
