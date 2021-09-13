@@ -169,11 +169,13 @@ class ARAXDecorator:
             merged_tuple = [set() for _ in range(len(edge_attributes_ordered) + 1)]  # Add one to account for key col
             for kg2c_edge_tuple in kg2c_edge_tuples:
                 for index, property_name in enumerate(edge_attributes_ordered):
-                    value = self._load_property(property_name, kg2c_edge_tuple[index + 1])
-                    if isinstance(value, list):
-                        merged_tuple[index + 1].update(set(value))
-                    else:
-                        merged_tuple[index + 1].update(value)
+                    raw_value = kg2c_edge_tuple[index + 1]
+                    if raw_value:  # Skip empty attributes
+                        value = self._load_property(property_name, raw_value)
+                        if isinstance(value, list):
+                            merged_tuple[index + 1].update(set(value))
+                        else:
+                            merged_tuple[index + 1].update(value)
             joined_knowledge_sources = merged_tuple[edge_attributes_ordered.index("knowledge_source") + 1]
             knowledge_source = list(joined_knowledge_sources)[0] if len(joined_knowledge_sources) == 1 else None
             joined_kg2_ids = list(merged_tuple[edge_attributes_ordered.index("kg2_ids") + 1])
