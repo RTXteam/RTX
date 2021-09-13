@@ -138,7 +138,7 @@ class ARAXQuery:
     ########################################################################################
     def query_return_message(self, query, mode='ARAX'):
 
-        self.query(query, mode=modei, origin='API')
+        self.query(query, mode=mode, origin='API')
         response = self.response
 
         #### If the query ended in an error, copy the error to the envelope
