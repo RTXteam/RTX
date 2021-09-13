@@ -39,6 +39,9 @@ class ARAXQueryTracker:
         self.rtxConfig = RTXConfiguration()
         self.databaseName = "QueryTracker"
         self.engine_type = 'sqlite'
+        self.session = None
+        self.engine = None
+
         if self.rtxConfig.is_production_server:
             self.databaseName = "ResponseCache"
             self.engine_type = 'mysql'
