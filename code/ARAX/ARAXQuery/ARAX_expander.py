@@ -302,14 +302,17 @@ class ARAXExpander:
                                           f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
                                 overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
 
-                # Do some pruning and apply kryptonite edges
                 if mode == "ARAX":
+                    # Apply any kryptonite ("not") qedges
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
-                # Prune back any nodes with more than the specified max of answers
-                for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
-                    if len(nodes) > post_prune_threshold:
-                        overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
+                # Prune back nodes with more than the specified max of answers IF we're not expanding any more edges
+                is_last_qedge = ordered_qedge_keys_to_expand.index(qedge_key) == len(ordered_qedge_keys_to_expand) - 1
+                if is_last_qedge:
+                    for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
+                        if len(nodes) > post_prune_threshold:
+                            overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
+                # Remove any paths that are now dead-ends
                 overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
                 if response.status != 'OK':
                     return response
@@ -341,6 +344,9 @@ class ARAXExpander:
             decorator = ARAXDecorator()
             decorator.decorate_nodes(response)
             decorator.decorate_edges(response, kind="RTX-KG2")
+
+        # Map canonical curies back to the input curies in the QG (where applicable) #1622
+        self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
 
         # Return the response and done
         kg = message.knowledge_graph
@@ -741,8 +747,10 @@ class ARAXExpander:
 
         # Handle more typical case where the larger QG is partially expanded, and this is a second+ hop
         qg_expanded_thus_far.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
+        num_edges_in_kg = sum([len(edges) for edges in kg.edges_by_qg_id.values()])
+        overlay_fet = True if num_edges_in_kg < 100000 else False
         intermediate_results_response = eu.create_results(qg_expanded_thus_far, kg_copy, log,
-                                                          rank_results=True, overlay_fet=True,
+                                                          rank_results=True, overlay_fet=overlay_fet,
                                                           qnode_key_to_prune=qnode_key_to_prune)
         log.debug(f"A total of {len(intermediate_results_response.envelope.message.results)} "
                   f"intermediate results were created/ranked")
@@ -969,6 +977,48 @@ class ARAXExpander:
                 node.categories = list(corresponding_qnode_categories)
 
     @staticmethod
+    def _map_back_to_input_curies(kg: KnowledgeGraph, qg: QueryGraph, log: ARAXResponse):
+        """
+        This method remaps nodes/edges in the knowledge graph to refer to any 'input' curies (i.e., the specific curies
+        listed in the query graph) instead of the canonical curies for those concepts. See issue #1622.
+        NOTE: If two input curies map to the same canonical curie, we record only ONE of those mappings. We decided at
+              a Sep. 2021 mini-hackathon that that was the least bad option vs. copying nodes/edges in such a situation.
+        """
+        # First create a lookup map of the curies we'll need to remap
+        canonical_to_input_curie_map = dict()
+        for qnode_key, qnode in qg.nodes.items():
+            if qnode.ids:
+                canonical_nodes_info = eu.get_canonical_curies_dict(qnode.ids, log)
+                for input_curie, canonical_node_info in canonical_nodes_info.items():
+                    if canonical_node_info:
+                        canonical_curie = canonical_node_info["preferred_curie"]
+                        if input_curie != canonical_curie:
+                            canonical_to_input_curie_map[canonical_curie] = input_curie
+
+        # Then remap nodes to use the input curies (and their corresponding names) instead of canonical curies
+        if canonical_to_input_curie_map:
+            log.debug(f"Mapping {len(canonical_to_input_curie_map)} canonical curies back to their corresponding "
+                      f"'input' curies (listed in the QG)")
+            input_curie_names_map = eu.get_curie_names(list(canonical_to_input_curie_map.values()), log)
+            for canonical_curie, input_curie in canonical_to_input_curie_map.items():
+                if canonical_curie in kg.nodes:  # Curies may have already been remapped on a prior expand() call
+                    node = kg.nodes[canonical_curie]
+                    node.name = input_curie_names_map.get(input_curie, node.name)
+                    kg.nodes[input_curie] = node
+                    del kg.nodes[canonical_curie]
+                    # Remap any edges that refer to the nodes we just remapped
+                    connected_edge_keys = {edge_key for edge_key, edge in kg.edges.items()
+                                           if edge.subject == canonical_curie or edge.object == canonical_curie}
+                    for edge_key in connected_edge_keys:
+                        edge = kg.edges[edge_key]
+                        if edge.subject == canonical_curie:
+                            edge.subject = input_curie
+                        if edge.object == canonical_curie:
+                            edge.object = input_curie
+        else:
+            log.debug(f"No KG nodes found that use a different curie than was asked for in the QG")
+
+    @staticmethod
     def _get_prune_thresholds(one_hop_qg: QueryGraph) -> Tuple[int, int]:
         """
         Returns the prune threshold for the 'input' qnode (pinned qnode) and 'output' qnode (unpinned qnode),
@@ -977,21 +1027,22 @@ class ARAXExpander:
         qedge = next(qedge for qedge in one_hop_qg.edges.values())
         qnode_a = one_hop_qg.nodes[qedge.subject]
         qnode_b = one_hop_qg.nodes[qedge.object]
+        large_categories = {"biolink:NamedThing", "biolink:ChemicalEntity"}
         # Handle (curie(s))--(curie(s)) queries
         if qnode_a.ids and qnode_b.ids:
             # Be lenient for input qnode since it will be constrained by output qnode's curies
-            return 5000, 1000
+            return 5000, 10000
         # Handle (curie(s))--(>=0 categories) queries
         else:
-            open_ended_qnode = qnode_a if not qnode_a.ids else qnode_b
-            if (not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories) and \
+            open_ended_qnode_categories = set(qnode_a.categories) if not qnode_a.ids else set(qnode_b.categories)
+            if (not open_ended_qnode_categories or open_ended_qnode_categories.intersection(large_categories)) and \
                     (not qedge.predicates or "biolink:related_to" in qedge.predicates):
                 # Be more strict when such broad categories/predicates are used
-                return 100, 1000
-            elif not open_ended_qnode.categories or "biolink:NamedThing" in open_ended_qnode.categories:
-                return 200, 1000
+                return 100, 10000
+            elif not open_ended_qnode_categories or open_ended_qnode_categories.intersection(large_categories):
+                return 200, 10000
             else:
-                return 300, 1000
+                return 500, 10000
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):

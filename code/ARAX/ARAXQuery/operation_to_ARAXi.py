@@ -4,10 +4,11 @@ import itertools
 
 class WorkflowToARAXi:
     def __init__(self):
-        self.implemented = {'overlay_compute_ngd',
+        self.implemented = {'lookup',
+                            'overlay_compute_ngd',
                             'overlay_compute_jaccard',
                             'overlay_fisher_exact_test',
-                            #'overlay_connect_knodes',
+                            'overlay_connect_knodes',
                             'filter_results_top_n',
                             'bind',
                             'fill',
@@ -219,6 +220,13 @@ class WorkflowToARAXi:
     def __translate_complete_results(parameters, query_graph, response):
         ARAXi = []
         ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
+        return ARAXi
+
+    @staticmethod
+    def __translate_lookup(parameters, query_graph, response):
+        ARAXi = []
+        ARAXi.append("expand()")
+        ARAXi.append(f"scoreless_resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
 

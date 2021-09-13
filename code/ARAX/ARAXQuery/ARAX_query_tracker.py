@@ -3,6 +3,7 @@
 import sys
 import os
 import time
+import re
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -18,17 +19,17 @@ Base = declarative_base()
 class ARAXQuery(Base):
     __tablename__ = 'arax_query'
     query_id = Column(Integer, primary_key=True)
-    status = Column(String(50), nullable=False)
-    start_datetime = Column(String(19), nullable=False) ## ISO formatted YYYY-MM-DD HH:mm:ss
-    end_datetime = Column(String(19), nullable=True) ## ISO formatted YYYY-MM-DD HH:mm:ss
+    status = Column(String(255), nullable=False)
+    start_datetime = Column(String(25), nullable=False) ## ISO formatted YYYY-MM-DD HH:mm:ss
+    end_datetime = Column(String(25), nullable=True) ## ISO formatted YYYY-MM-DD HH:mm:ss
     elapsed = Column(Float, nullable=True) ## seconds
     pid = Column(Integer, nullable=False)
-    instance_name = Column(String(50), nullable=False)
-    origin = Column(String(50), nullable=False)
+    instance_name = Column(String(255), nullable=False)
+    origin = Column(String(255), nullable=False)
     input_query = Column(PickleType, nullable=False) ## blob object
     message_id = Column(Integer, nullable=True)
-    message_code = Column(String(50), nullable=True)
-    code_description = Column(String(50), nullable=True)
+    message_code = Column(String(255), nullable=True)
+    code_description = Column(String(255), nullable=True)
     remote_address = Column(String(50), nullable=False)
 
 class ARAXQueryTracker:
@@ -151,6 +152,7 @@ class ARAXQueryTracker:
 
         # Else just use SQLite
         else:
+            return
             database_path = os.path.dirname(os.path.abspath(__file__)) + '/' + self.databaseName + '.sqlite'
             engine = create_engine("sqlite:///"+database_path)
 
@@ -170,15 +172,23 @@ class ARAXQueryTracker:
     def disconnect(self):
         session = self.session
         engine = self.engine
-        session.close()
+        if session is None:
+            return
         try:
+            session.close()
             engine.dispose()
         except:
             pass
 
 
     def update_tracker_entry(self, tracker_id, attributes):
+        if tracker_id is None:
+            return
+
         session = self.session
+        if session is None:
+            return
+
         tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
         if len(tracker_entries) > 0:
             tracker_entry = tracker_entries[0]
@@ -186,45 +196,68 @@ class ARAXQueryTracker:
             elapsed = end_datetime - datetime.fromisoformat(tracker_entry.start_datetime)
             tracker_entry.end_datetime = end_datetime.isoformat(' ', 'seconds')
             tracker_entry.elapsed = elapsed.seconds
-            tracker_entry.status = attributes['status']
+            tracker_entry.status = attributes['status'][:254]
             tracker_entry.message_id = attributes['message_id']
-            tracker_entry.message_code = attributes['message_code']
-            tracker_entry.code_description = attributes['code_description']
+            tracker_entry.message_code = attributes['message_code'][:254]
+            tracker_entry.code_description = attributes['code_description'][:254]
         session.commit()
 
     def create_tracker_entry(self, attributes):
         session = self.session
-        tracker_entry = ARAXQuery(status="started",
+        if session is None:
+            return
+
+        location = os.path.abspath(__file__)
+        instance_name = '??'
+        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
+        if match:
+            instance_name = match.group(1)
+
+        try:
+            tracker_entry = ARAXQuery(status="started",
                 start_datetime=datetime.now().isoformat(' ', 'seconds'),
                 pid=os.getpid(),
-                instance_name="test",
-                origin=attributes['origin'],
+                instance_name = instance_name,
+                origin=attributes['submitter'],
                 input_query=attributes['input_query'],
                 remote_address=attributes['remote_address'])
-        session.add(tracker_entry)
-        session.commit()
-        tracker_id = tracker_entry.query_id
+            session.add(tracker_entry)
+            session.commit()
+            tracker_id = tracker_entry.query_id
+        except:
+            tracker_id = 1
         return tracker_id
 
     def get_entries(self, last_N_hours=24, incomplete_only=False):
+        if self.session is None:
+            return
+
         if incomplete_only:
             return self.session.query(ARAXQuery).filter(
                 text("""status NOT LIKE '%Completed%' 
                         AND TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_N_hours).all()
         else:
-            return self.session.query(ARAXQuery).filter(
-                #text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_N_hours).all()
+            if self.engine_type == "mysql":
+                return self.session.query(ARAXQuery).filter(
+                    text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_N_hours).all()
+            else:
+                return self.session.query(ARAXQuery).filter(
                 text("""JULIANDAY(start_datetime) - JULIANDAY(datetime('now','localtime')) < :n""")).params(n=last_N_hours/24).all()
 
 
 def main():
-    query_tracker = ARAXQueryTracker()
-    attributes = { 'origin': 'local_dev', 'input_query': { 'query_graph': { 'nodes': [], 'edges': [] } }, 'remote_address': 'test_address' }
-    tracker_id = query_tracker.create_tracker_entry(attributes)
 
-    time.sleep(1)
-    attributes = { 'status': 'Completed OK', 'message_id': 3187, 'message_code': 'OK', 'code_description': '32 results' }
-    query_tracker.update_tracker_entry(tracker_id, attributes)
+    query_tracker = ARAXQueryTracker()
+
+    #query_tracker.create_database()
+
+    if False:
+        attributes = { 'origin': 'local_dev', 'input_query': { 'query_graph': { 'nodes': [], 'edges': [] } }, 'remote_address': 'test_address' }
+        tracker_id = query_tracker.create_tracker_entry(attributes)
+
+        time.sleep(1)
+        attributes = { 'status': 'Completed OK', 'message_id': 3187, 'message_code': 'OK', 'code_description': '32 results' }
+        query_tracker.update_tracker_entry(tracker_id, attributes)
 
     entries = query_tracker.get_entries(last_N_hours=24)
     for entry in entries:

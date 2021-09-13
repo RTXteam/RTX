@@ -181,7 +181,10 @@ class ComputeFTEST:
                 if len(edge_attribute_list) == 0:
 
                     ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
-                    temp_kp = [re.sub("infores:", "", x.value) for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'biolink:aggregator_knowledge_source' or x.attribute_type_id == 'biolink:knowledge_source']
+                    temp_kp = []
+                    for x in self.message.knowledge_graph.edges[edge_key].attributes:
+                        if x.attribute_type_id == 'biolink:aggregator_knowledge_source' or x.attribute_type_id == 'biolink:knowledge_source':
+                            temp_kp += self._change_kp_name(x.value)
                     if 'arax' in temp_kp:
                         temp_kp.remove('arax')
 
@@ -642,3 +645,11 @@ class ComputeFTEST:
                 return 'biolink:'+ modified_string
             else:
                 return input_string
+
+    @staticmethod
+    def _change_kp_name(name) -> list:
+
+        if type(name) is str:
+            return [re.sub("infores:", "", name)]
+        else:
+            return [re.sub("infores:", "", x) for x in name]

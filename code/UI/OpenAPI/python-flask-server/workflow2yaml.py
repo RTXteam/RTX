@@ -39,6 +39,8 @@ def main():
     response_dict['components']['schemas'] = response_dict['$defs']
     del response_dict['$defs']
     
+    # replace $def with components/schemas for all of this list items in anyOf
+    response_dict['anyOf'] = [{'$ref': x['$ref'].replace('$defs','components/schemas')} for x in response_dict['anyOf']]
     print(yaml.dump(response_dict))
 
     return

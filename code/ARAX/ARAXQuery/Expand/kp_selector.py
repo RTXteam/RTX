@@ -79,26 +79,40 @@ class KPSelector:
 
         return kp_accepts
 
-    def convert_curies_to_supported_prefixes(self, curies: List[str], categories: List[str], kp: str) -> List[str]:
+    def convert_curies_to_supported_prefixes(self, curies: List[str], categories: Optional[List[str]], kp: str) -> List[str]:
         """
         This function looks up what curie prefixes the KP says it knows about, and makes the query graph
         only use (synonymous) curies with those prefixes.
         """
-        self.log.debug(f"Converting curies in the QG to kinds that {kp} can answer")
+        self.log.debug(f"{kp}: Converting curies in the QG to kinds that {kp} can answer")
         if not self.meta_map.get(kp):
-            self.log.warning(f"Somehow missing meta info for {kp}. Cannot do curie prefix conversion; will send "
+            self.log.warning(f"{kp}: Somehow missing meta info for {kp}. Cannot do curie prefix conversion; will send "
                              f"curies as they are.")
             return curies
         elif not self.meta_map[kp].get("prefixes"):
-            self.log.warning(f"No supported prefix info is available for {kp}. Will send curies as they are.")
+            self.log.warning(f"{kp}: No supported prefix info is available for {kp}. Will send curies as they are.")
             return curies
         else:
-            supported_prefixes = {prefix.upper() for category in categories
+            bh = BiolinkHelper()
+            categories_with_descendants = bh.get_descendants(eu.convert_to_list(categories), include_mixins=False)
+            supported_prefixes = {prefix.upper() for category in categories_with_descendants
                                   for prefix in self.meta_map[kp]["prefixes"].get(category, set())}
-            self.log.debug(f"Prefixes {kp} supports for {categories} are: {supported_prefixes}")
-            synonymous_curies = eu.get_curie_synonyms(curies)
-            final_curies = [curie for curie in synonymous_curies if curie.split(":")[0].upper() in supported_prefixes]
-            return final_curies
+            self.log.debug(f"{kp}: Prefixes {kp} supports for categories {categories} (and descendants) "
+                           f"are: {supported_prefixes}")
+            converted_curies = set()
+            unsupported_curies = set()
+            # Grab one curie with a preferred prefix for each input concept
+            for input_curie, equivalent_curies in eu.get_curie_synonyms_dict(curies).items():
+                supported_curies = {curie for curie in equivalent_curies if curie.split(":")[0].upper() in supported_prefixes}
+                if supported_curies:
+                    # TODO: Later send only one supported curie per concept? Changes KP answers currently though..
+                    converted_curies = converted_curies.union(supported_curies)
+                else:
+                    unsupported_curies.add(input_curie)
+            if unsupported_curies:
+                self.log.warning(f"{kp}: Could not find curies with prefixes {kp} prefers for these curies: "
+                                 f"{unsupported_curies}; will not send to KP")
+            return list(converted_curies)
 
     # returns True if at least one possible triple exists in the KP's meta map
     def _triple_is_in_meta_map(self, kp: str, subject_categories: Set[str], predicates: Set[str], object_categories: Set[str]) -> bool:

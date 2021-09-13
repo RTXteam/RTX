@@ -57,20 +57,36 @@ class QGOrganizedKnowledgeGraph:
             self.edges_by_qg_id[qedge_key] = dict()
         self.edges_by_qg_id[qedge_key][edge_key] = edge
 
-    def remove_nodes(self, node_keys_to_delete: Set[str], qnode_key: str, qg: QueryGraph):
-        # Remove the specified nodes
+    def remove_nodes(self, node_keys_to_delete: Set[str], target_qnode_key: str, qg: QueryGraph):
+        # First delete the specified nodes
         for node_key in node_keys_to_delete:
-            del self.nodes_by_qg_id[qnode_key][node_key]
-        # Remove any edges orphaned by removal of the nodes
-        connected_qedges = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == qnode_key or qedge.object == qnode_key}
-        for connected_qedge_key in connected_qedges.intersection(set(self.edges_by_qg_id)):
+            del self.nodes_by_qg_id[target_qnode_key][node_key]
+        # Then delete any edges orphaned by removal of those nodes
+        connected_qedge_keys = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == target_qnode_key or qedge.object == target_qnode_key}
+        fulfilled_connected_qedge_keys = connected_qedge_keys.intersection(set(self.edges_by_qg_id))
+        for connected_qedge_key in fulfilled_connected_qedge_keys:
             edges_to_delete = {edge_key for edge_key, edge in self.edges_by_qg_id[connected_qedge_key].items()
                                if {edge.subject, edge.object}.intersection(node_keys_to_delete)}
             for edge_key in edges_to_delete:
                 del self.edges_by_qg_id[connected_qedge_key][edge_key]
+        # Then delete any nodes orphaned by removal of the orphaned edges (if they shouldn't be orphans)
+        non_orphan_qnode_keys_to_check = {qnode_key for qedge_key in fulfilled_connected_qedge_keys
+                                          for qnode_key in {qg.edges[qedge_key].subject, qg.edges[qedge_key].object}}.difference({target_qnode_key})
+        for non_orphan_qnode_key in non_orphan_qnode_keys_to_check:
+            node_keys_fulfilling_qnode = set(self.nodes_by_qg_id[non_orphan_qnode_key])
+            connected_qedge_keys = get_connected_qedge_keys(non_orphan_qnode_key, qg)
+            node_keys_used_by_edges = {node_key for qedge_key in connected_qedge_keys
+                                       for node_key in self.get_node_keys_used_by_edges_fulfilling_qedge(qedge_key)}
+            orphan_node_keys = node_keys_fulfilling_qnode.difference(node_keys_used_by_edges)
+            for orphan_node_key in orphan_node_keys:
+                del self.nodes_by_qg_id[non_orphan_qnode_key][orphan_node_key]
 
     def get_all_node_keys_used_by_edges(self) -> Set[str]:
         return {node_key for edges in self.edges_by_qg_id.values() for edge in edges.values()
+                for node_key in [edge.subject, edge.object]}
+
+    def get_node_keys_used_by_edges_fulfilling_qedge(self, qedge_key: str) -> Set[str]:
+        return {node_key for edge in self.edges_by_qg_id[qedge_key].values()
                 for node_key in [edge.subject, edge.object]}
 
     def get_all_node_keys(self) -> Set[str]:
@@ -236,18 +252,23 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
 def make_qg_use_supported_prefixes(kp_selector, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
     for qnode_key, qnode in qg.nodes.items():
         if qnode.ids:
-            converted_curies = kp_selector.convert_curies_to_supported_prefixes(qnode.ids,
-                                                                                qnode.categories,
-                                                                                kp_name)
-            if not converted_curies:
-                log.info(f"{kp_name} cannot answer the query because I couldn't find any "
-                            f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
-                            f"curies were: {qnode.ids}")
-                return None
+            if kp_name == "RTX-KG2":
+                # Just convert them into canonical curies
+                qnode.ids = get_canonical_curies_list(qnode.ids, log)
             else:
-                log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
-                          f"{len(converted_curies)} curies with prefixes {kp_name} supports")
-                qnode.ids = converted_curies
+                # Otherwise figure out which kind of curies KPs want
+                converted_curies = kp_selector.convert_curies_to_supported_prefixes(qnode.ids,
+                                                                                    qnode.categories,
+                                                                                    kp_name)
+                if converted_curies:
+                    log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
+                              f"{len(converted_curies)} curies tailored for {kp_name}")
+                    qnode.ids = converted_curies
+                else:
+                    log.info(f"{kp_name} cannot answer the query because I couldn't find any "
+                             f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
+                             f"curies were: {qnode.ids}")
+                    return None
     return qg
 
 
@@ -275,6 +296,33 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse]
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return []
+
+
+def get_curie_synonyms_dict(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> Dict[str, List[str]]:
+    curies = convert_to_list(curie)
+    try:
+        synonymizer = NodeSynonymizer()
+        log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
+        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
+        log.debug(f"Got response back from NodeSynonymizer")
+    except Exception:
+        tb = traceback.format_exc()
+        error_type, error, _ = sys.exc_info()
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        return dict()
+    else:
+        if equivalent_curies_dict is not None:
+            curies_missing_info = {curie for curie in equivalent_curies_dict if not equivalent_curies_dict.get(curie)}
+            if curies_missing_info:
+                log.warning(f"NodeSynonymizer did not find any equivalent curies for: {curies_missing_info}")
+            final_curie_dict = dict()
+            for input_curie in curies:
+                curie_dict = equivalent_curies_dict.get(input_curie)
+                final_curie_dict[input_curie] = list(curie_dict) if curie_dict else [input_curie]
+            return final_curie_dict
+        else:
+            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            return dict()
 
 
 def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, Dict[str, str]]:
@@ -345,11 +393,44 @@ def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) ->
         if preferred_categories:
             return list(preferred_categories)
         else:
-            log.warning(f"Unable to find any preferred categories")
-            return None
+            log.warning(f"Unable to find any preferred categories; will default to biolink:NamedThing")
+            return ["biolink:NamedThing"]
     else:
         log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
         return []
+
+
+def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, str]:
+    curies = convert_to_list(curie)
+    synonymizer = NodeSynonymizer()
+    log.debug(f"Looking up names for {len(curies)} input curies using NodeSynonymizer")
+    synonymizer_info = synonymizer.get_normalizer_results(curies)
+    curie_to_name_map = dict()
+    if synonymizer_info:
+        recognized_input_curies = {input_curie for input_curie in synonymizer_info if synonymizer_info.get(input_curie)}
+        unrecognized_curies = set(curies).difference(recognized_input_curies)
+        if unrecognized_curies:
+            log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
+        input_curies_without_matching_node = set()
+        for input_curie in recognized_input_curies:
+            equivalent_nodes = synonymizer_info[input_curie]["nodes"]
+            # Find the 'node' in the synonymizer corresponding to this curie
+            input_curie_nodes = [node for node in equivalent_nodes if node["identifier"] == input_curie]
+            if not input_curie_nodes:
+                # Try looking for slight variation (KG2 vs. SRI discrepancy): "KEGG:C02700" vs. "KEGG.COMPOUND:C02700"
+                input_curie_stripped = input_curie.replace(".COMPOUND", "")
+                input_curie_nodes = [node for node in equivalent_nodes if node["identifier"] == input_curie_stripped]
+            # Record the name for this input curie
+            if input_curie_nodes:
+                curie_to_name_map[input_curie] = input_curie_nodes[0].get("label")
+            else:
+                input_curies_without_matching_node.add(input_curie)
+        if input_curies_without_matching_node:
+            log.warning(f"No matching nodes found in NodeSynonymizer for these input curies: "
+                        f"{input_curies_without_matching_node}. Cannot determine their specific names.")
+    else:
+        log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+    return curie_to_name_map
 
 
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False) -> bool:

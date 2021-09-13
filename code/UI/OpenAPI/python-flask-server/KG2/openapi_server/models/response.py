@@ -23,7 +23,7 @@ class Response(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, message=None, status=None, description=None, logs=None, workflow=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_options=None, context=None, type=None, id=None, validation_result=None):  # noqa: E501
+    def __init__(self, message=None, status=None, description=None, logs=None, workflow=None, submitter=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_options=None, context=None, type=None, id=None, validation_result=None):  # noqa: E501
         """Response - a model defined in OpenAPI
 
         :param message: The message of this Response.  # noqa: E501
@@ -36,6 +36,8 @@ class Response(Model):
         :type logs: List[LogEntry]
         :param workflow: The workflow of this Response.  # noqa: E501
         :type workflow: List[AnyType]
+        :param submitter: The submitter of this Response.  # noqa: E501
+        :type submitter: str
         :param operations: The operations of this Response.  # noqa: E501
         :type operations: Operations
         :param reasoner_id: The reasoner_id of this Response.  # noqa: E501
@@ -69,6 +71,7 @@ class Response(Model):
             'description': str,
             'logs': List[LogEntry],
             'workflow': List[AnyType],
+            'submitter': str,
             'operations': Operations,
             'reasoner_id': str,
             'tool_version': str,
@@ -90,6 +93,7 @@ class Response(Model):
             'description': 'description',
             'logs': 'logs',
             'workflow': 'workflow',
+            'submitter': 'submitter',
             'operations': 'operations',
             'reasoner_id': 'reasoner_id',
             'tool_version': 'tool_version',
@@ -110,6 +114,7 @@ class Response(Model):
         self._description = description
         self._logs = logs
         self._workflow = workflow
+        self._submitter = submitter
         self._operations = operations
         self._reasoner_id = reasoner_id
         self._tool_version = tool_version
@@ -249,6 +254,29 @@ class Response(Model):
         """
 
         self._workflow = workflow
+
+    @property
+    def submitter(self):
+        """Gets the submitter of this Response.
+
+        Any string for self-identifying the submitter of a query. The purpose of this optional field is to aid in the tracking of the source of queries for development and issue resolution.  # noqa: E501
+
+        :return: The submitter of this Response.
+        :rtype: str
+        """
+        return self._submitter
+
+    @submitter.setter
+    def submitter(self, submitter):
+        """Sets the submitter of this Response.
+
+        Any string for self-identifying the submitter of a query. The purpose of this optional field is to aid in the tracking of the source of queries for development and issue resolution.  # noqa: E501
+
+        :param submitter: The submitter of this Response.
+        :type submitter: str
+        """
+
+        self._submitter = submitter
 
     @property
     def operations(self):
