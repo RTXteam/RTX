@@ -251,6 +251,7 @@ function viewResponse() {
 
 function postQuery(qtype,agent) {
     var queryObj= {};
+    queryObj.submitter = 'ARAX GUI';
 
     reset_vars();
     var statusdiv = document.getElementById("statusdiv");
@@ -869,6 +870,7 @@ function sendQuestion(e) {
 
                 //var queryObj = { "message" : jsonObj };
                 var queryObj = jsonObj;
+		queryObj.submitter = 'ARAX GUI';
                 queryObj["message"] = { };
                 queryObj.bypass_cache = bypass_cache;
                 //queryObj.max_results = 100;
@@ -1418,6 +1420,14 @@ function render_response(respObj,dispjson) {
 	if (!respObj.message["knowledge_graph"] ) {
             document.getElementById("result_container").innerHTML  += "<h2 class='error'>Knowledge Graph missing in response; cannot process results.</h2>";
 	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
+	    document.getElementById("provenance_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
+            if (document.getElementById("numresults_"+respObj.araxui_response)) {
+		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
+		var nr = document.createElement("span");
+		nr.className = 'explevel p0';
+		nr.innerHTML = '&nbsp;n/a&nbsp;';
+		document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
+	    }
 	}
 	else {
 	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
@@ -1637,6 +1647,10 @@ function render_response(respObj,dispjson) {
     add_cyto(99999);
     statusdiv.appendChild(document.createTextNode("done."));
     statusdiv.appendChild(document.createElement("br"));
+    if (respObj["submitter"]) {
+	statusdiv.appendChild(document.createTextNode("Submitted by: "+respObj.submitter));
+	statusdiv.appendChild(document.createElement("br"));
+    }
     var nr = document.createElement("span");
     nr.className = 'essence';
     nr.appendChild(document.createTextNode("Click on Results, Summary, Provenance, or Knowledge Graph links on the left to explore results."));
