@@ -19,17 +19,17 @@ Base = declarative_base()
 class ARAXQuery(Base):
     __tablename__ = 'arax_query'
     query_id = Column(Integer, primary_key=True)
-    status = Column(String(50), nullable=False)
-    start_datetime = Column(String(19), nullable=False) ## ISO formatted YYYY-MM-DD HH:mm:ss
-    end_datetime = Column(String(19), nullable=True) ## ISO formatted YYYY-MM-DD HH:mm:ss
+    status = Column(String(255), nullable=False)
+    start_datetime = Column(String(25), nullable=False) ## ISO formatted YYYY-MM-DD HH:mm:ss
+    end_datetime = Column(String(25), nullable=True) ## ISO formatted YYYY-MM-DD HH:mm:ss
     elapsed = Column(Float, nullable=True) ## seconds
     pid = Column(Integer, nullable=False)
-    instance_name = Column(String(50), nullable=False)
-    origin = Column(String(50), nullable=False)
+    instance_name = Column(String(255), nullable=False)
+    origin = Column(String(255), nullable=False)
     input_query = Column(PickleType, nullable=False) ## blob object
     message_id = Column(Integer, nullable=True)
-    message_code = Column(String(50), nullable=True)
-    code_description = Column(String(50), nullable=True)
+    message_code = Column(String(255), nullable=True)
+    code_description = Column(String(255), nullable=True)
     remote_address = Column(String(50), nullable=False)
 
 class ARAXQueryTracker:
@@ -196,10 +196,10 @@ class ARAXQueryTracker:
             elapsed = end_datetime - datetime.fromisoformat(tracker_entry.start_datetime)
             tracker_entry.end_datetime = end_datetime.isoformat(' ', 'seconds')
             tracker_entry.elapsed = elapsed.seconds
-            tracker_entry.status = attributes['status']
+            tracker_entry.status = attributes['status'][:254]
             tracker_entry.message_id = attributes['message_id']
-            tracker_entry.message_code = attributes['message_code']
-            tracker_entry.code_description = attributes['code_description']
+            tracker_entry.message_code = attributes['message_code'][:254]
+            tracker_entry.code_description = attributes['code_description'][:254]
         session.commit()
 
     def create_tracker_entry(self, attributes):
