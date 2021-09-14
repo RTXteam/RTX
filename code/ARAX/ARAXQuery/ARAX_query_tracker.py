@@ -231,21 +231,47 @@ class ARAXQueryTracker:
             tracker_id = 1
         return tracker_id
 
-    def get_entries(self, last_N_hours=24, incomplete_only=False):
+    def get_entries(self, last_n_hours=24, incomplete_only=False):
         if self.session is None:
             return
 
         if incomplete_only:
             return self.session.query(ARAXQuery).filter(
                 text("""status NOT LIKE '%Completed%' 
-                        AND TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_N_hours).all()
+                        AND TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
         else:
             if self.engine_type == "mysql":
                 return self.session.query(ARAXQuery).filter(
-                    text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_N_hours).all()
+                    text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
             else:
                 return self.session.query(ARAXQuery).filter(
-                text("""JULIANDAY(start_datetime) - JULIANDAY(datetime('now','localtime')) < :n""")).params(n=last_N_hours/24).all()
+                text("""JULIANDAY(start_datetime) - JULIANDAY(datetime('now','localtime')) < :n""")).params(n=last_n_hours/24).all()
+
+
+    def get_status(self, last_n_hours=24, incomplete_only=False):
+        if self.session is None:
+            return
+
+        entries = self.get_entries(last_n_hours=last_n_hours, incomplete_only=incomplete_only)
+        result = { 'recent_queries': [] }
+        if entries is None:
+            return result
+
+        for entry in entries:
+            result['recent_queries'].append( {
+                'query_id': entry.query_id,
+                'pid': entry.pid,
+                'start_datetime': entry.start_datetime,
+                'instance_name': entry.instance_name,
+                'status': entry.status,
+                'elapsed': entry.elapsed,
+                'submitter': entry.origin,
+                'response_id': entry.message_id,
+                'status': entry.message_code,
+                'description': entry.code_description
+            } )
+
+        return result
 
 
 def main():
@@ -262,7 +288,7 @@ def main():
         attributes = { 'status': 'Completed OK', 'message_id': 3187, 'message_code': 'OK', 'code_description': '32 results' }
         query_tracker.update_tracker_entry(tracker_id, attributes)
 
-    entries = query_tracker.get_entries(last_N_hours=24)
+    entries = query_tracker.get_entries(last_n_hours=24)
     for entry in entries:
         #print(entry.__dict__)
         print(f"{entry.query_id}\t{entry.pid}\t{entry.start_datetime}\t{entry.instance_name}\t{entry.status}\t{entry.elapsed}\t{entry.origin}\t{entry.message_id}\t{entry.message_code}\t{entry.code_description}")
