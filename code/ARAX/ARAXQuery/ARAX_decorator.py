@@ -166,21 +166,23 @@ class ARAXDecorator:
 
         # Join the property values found for all edges matching the given search key
         for search_key, kg2c_edge_tuples in search_key_to_kg2c_edge_tuples_map.items():
-            merged_tuple = [set() for _ in range(len(edge_attributes_ordered) + 1)]  # Add one to account for key col
+            merged_kg2c_properties = {property_name: None for property_name in edge_attributes_ordered}
             for kg2c_edge_tuple in kg2c_edge_tuples:
                 for index, property_name in enumerate(edge_attributes_ordered):
                     raw_value = kg2c_edge_tuple[index + 1]
                     if raw_value:  # Skip empty attributes
                         value = self._load_property(property_name, raw_value)
+                        if not merged_kg2c_properties.get(property_name):
+                            merged_kg2c_properties[property_name] = set() if isinstance(value, list) else dict()
                         if isinstance(value, list):
-                            merged_tuple[index + 1].update(set(value))
+                            merged_kg2c_properties[property_name].update(set(value))
                         else:
-                            merged_tuple[index + 1].update(value)
-            joined_knowledge_sources = merged_tuple[edge_attributes_ordered.index("knowledge_source") + 1]
-            knowledge_source = list(joined_knowledge_sources)[0] if len(joined_knowledge_sources) == 1 else None
-            joined_kg2_ids = list(merged_tuple[edge_attributes_ordered.index("kg2_ids") + 1])
-            joined_publications = list(merged_tuple[edge_attributes_ordered.index("publications") + 1])
-            joined_publications_info = list(merged_tuple[edge_attributes_ordered.index("publications_info") + 1])
+                            merged_kg2c_properties[property_name].update(value)
+            joined_knowledge_sources = list(merged_kg2c_properties["knowledge_source"]) if merged_kg2c_properties.get("knowledge_source") else set()
+            knowledge_source = joined_knowledge_sources[0] if len(joined_knowledge_sources) == 1 else None
+            joined_kg2_ids = list(merged_kg2c_properties["kg2_ids"]) if merged_kg2c_properties.get("kg2_ids") else set()
+            joined_publications = list(merged_kg2c_properties["publications"]) if merged_kg2c_properties.get("publications") else set()
+            joined_publications_info = merged_kg2c_properties["publications_info"] if merged_kg2c_properties.get("publications_info") else dict()
 
             # Add the joined attributes to each of the edges with the given search key
             corresponding_bare_edge_keys = search_key_to_edge_keys_map[search_key]
