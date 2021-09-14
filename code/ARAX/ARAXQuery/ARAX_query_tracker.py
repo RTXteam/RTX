@@ -2,6 +2,7 @@
 
 import sys
 import os
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import time
 import re
 from datetime import datetime
@@ -248,7 +249,7 @@ class ARAXQueryTracker:
                 text("""JULIANDAY(start_datetime) - JULIANDAY(datetime('now','localtime')) < :n""")).params(n=last_n_hours/24).all()
 
 
-    def get_status(self, last_n_hours=24, incomplete_only=False):
+    def get_status(self, last_n_hours=24, incomplete_only=False, id=None):
         if self.session is None:
             return
 
