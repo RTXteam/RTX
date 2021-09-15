@@ -302,6 +302,9 @@ class ResponseCache:
                 if envelope is None:
                     envelope = {}
                     return envelope
+                actual_response = str(envelope)
+                if not isinstance(envelope,dict):
+                    envelope = { 'detail': envelope }
 
                 #### Actor lookup
                 actor_lookup = { 
@@ -326,7 +329,6 @@ class ResponseCache:
                 #            if 'code' in log and log['code'] is None:
                 #                log['code'] = '-'
                 is_trapi = True
-                actual_response = ''
                 if 'message' in envelope:
                     #eprint("INFO: envelope has a message")
                     #eprint(json.dumps(envelope,indent=2,sort_keys=True))
