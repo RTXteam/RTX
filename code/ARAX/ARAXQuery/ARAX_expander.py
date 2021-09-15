@@ -154,7 +154,8 @@ class ARAXExpander:
                 qnode.categories = eu.get_preferred_categories(qnode.ids, log)
                 log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
             elif not qnode.categories:
-                qnode.categories = ["biolink:NamedThing"]
+                # Default to NamedThing if no category was specified
+                qnode.categories = [self.bh.get_root_category()]
             qnode.categories = self.bh.add_conflations(qnode.categories)
         # Make sure QG only uses canonical predicates
         if mode == "ARAX":
@@ -198,6 +199,9 @@ class ARAXExpander:
                             log.warning(f"{qedge_key} seems to be pointing in the wrong direction (you have "
                                         f"(disease-like node)-[treats]-(something)). Will flip this qedge.")
                             eu.flip_qedge(qedge, qedge.predicates)
+                else:
+                    # Default to related_to if no predicate was specified
+                    qedge.predicates = [self.bh.get_root_predicate()]
 
         # Expand any specified edges
         if input_qedge_keys:
