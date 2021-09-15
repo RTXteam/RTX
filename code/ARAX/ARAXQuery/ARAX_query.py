@@ -217,6 +217,10 @@ class ARAXQuery:
 
         # If there is a workflow, translate it to ARAXi and append it to the operations actions list
         if "have_workflow" in query_attributes:
+            if query['message'].query_graph is None:
+                response.error(f"Cannot have a workflow with an null query_graph", error_code="MissingQueryGraph")
+                return response
+
             try:
                 self.convert_workflow_to_ARAXi(query)
             except Exception as error:
