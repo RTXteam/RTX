@@ -167,12 +167,8 @@ class KPSelector:
             chosen_kps.add("NGD")
 
         # If a qnode has a lot of curies, only use KG2 for now (until figure out which KPs are reasonably fast for this)
-        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 20):
+        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 100):
             chosen_kps = {"RTX-KG2"}
-
-        # Don't use BTE if this is a curie-to-curie query (they have a bug with such queries currently)
-        if all(qnode.ids for qnode in qg.nodes.values()):
-            chosen_kps = chosen_kps.difference({"BTE"})
 
         # TODO: keep a record of which KPs have been timing out recently, and skip them?
 

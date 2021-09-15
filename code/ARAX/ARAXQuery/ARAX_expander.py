@@ -706,10 +706,9 @@ class ARAXExpander:
     @staticmethod
     def _prune_kg(qnode_key_to_prune: str, prune_threshold: int, kg: QGOrganizedKnowledgeGraph,
                   qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        log.info(f"Pruning back {qnode_key_to_prune} nodes because there are more than "
-                 f"{prune_threshold} in the KG (there are {len(kg.nodes_by_qg_id[qnode_key_to_prune])})")
+        log.info(f"Pruning back {qnode_key_to_prune} nodes/curies because there are more than {prune_threshold}")
         kg_copy = copy.deepcopy(kg)
-        qg_expanded_thus_far = eu.get_qg_expanded_thus_far(qg,  kg)
+        qg_expanded_thus_far = eu.get_qg_expanded_thus_far(qg, kg)
 
         # Handle (probably unusual) case where QG has too big of a list of curies
         max_qg_input_curies = 2000 if prune_threshold <= 2000 else prune_threshold
@@ -720,7 +719,7 @@ class ARAXExpander:
                           f"which will break our system. You need to shorten your list to {max_qg_input_curies} "
                           f"curies.", error_code="QueryTooLarge")
                 qnode_exceeding_threshold.ids = qnode_exceeding_threshold.ids[:max_qg_input_curies]
-                return kg_copy
+            return kg_copy
 
         # Handle more typical case where the larger QG is partially expanded, and this is a second+ hop
         qg_expanded_thus_far.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality

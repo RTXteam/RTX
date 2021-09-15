@@ -217,6 +217,10 @@ class ARAXQuery:
 
         # If there is a workflow, translate it to ARAXi and append it to the operations actions list
         if "have_workflow" in query_attributes:
+            if query['message'].query_graph is None:
+                response.error(f"Cannot have a workflow with an null query_graph", error_code="MissingQueryGraph")
+                return response
+
             try:
                 self.convert_workflow_to_ARAXi(query)
             except Exception as error:
@@ -700,6 +704,12 @@ class ARAXQuery:
                 response.info(f"Result was stored with id {response_id}. It can be viewed at https://arax.ncats.io/?r={response_id}")
             response.response_id = response_id
  
+            #### Record how many results came back
+            n_results = len(message.results)
+            response.info(f"Processing is complete and resulted in {n_results} results.")
+            if response.message == 'Normal completion':
+                response.message = f"Normal completion with {n_results} results."
+
             #### If asking for the full message back
             if return_action['parameters']['response'] == 'true':
                 if mode == 'asynchronous':
@@ -711,8 +721,6 @@ class ARAXQuery:
 
             #### Else just the id is returned
             else:
-                n_results = len(message.results)
-                response.info(f"Processing is complete and resulted in {n_results} results.")
                 if response_id is None:
                     response_id = 0
                 else:
