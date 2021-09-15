@@ -478,7 +478,7 @@ def test_chp_expand_1():
         "add_qnode(ids=ENSEMBL:ENSG00000162419, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=CHP, CHP_survival_threshold=500)",
+        "expand(edge_key=e00, kp=CHP)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -494,7 +494,7 @@ def test_chp_expand_2():
         "add_qnode(ids=[ENSEMBL:ENSG00000124532,ENSEMBL:ENSG00000075975,ENSEMBL:ENSG00000104774], key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=CHP, CHP_survival_threshold=500)",
+        "expand(edge_key=e00, kp=CHP)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
