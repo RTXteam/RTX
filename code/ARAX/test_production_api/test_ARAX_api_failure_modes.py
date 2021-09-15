@@ -58,6 +58,7 @@ def test_missing_message():
 
 def test_missing_nodes():
     query = {
+      "submitter": 'ARAX_test',
       "message": {
         "query_graph": {
           "edges": {
@@ -76,6 +77,7 @@ def test_missing_nodes():
 
 def test_empty_nodes():
     query = {
+      "submitter": 'ARAX_test',
       "message": {
         "query_graph": {
           "edges": {
@@ -95,6 +97,7 @@ def test_empty_nodes():
 
 def test_edge_invalid_subject():
     query = {
+      "submitter": 'ARAX_test',
       "message": {
         "query_graph": {
           "edges": {
@@ -116,6 +119,7 @@ def test_edge_invalid_subject():
 
 def test_edge_invalid_object():
     query = {
+      "submitter": 'ARAX_test',
       "message": {
         "query_graph": {
           "edges": {
@@ -137,6 +141,7 @@ def test_edge_invalid_object():
 
 def test_no_curie():
     query = {
+      "submitter": 'ARAX_test',
       "message": {
         "query_graph": {
           "edges": {
@@ -158,6 +163,7 @@ def test_no_curie():
 
 def test_edge_extraneous_property():
     query = {
+      "submitter": 'ARAX_test',
       "message": {
         "query_graph": {
           "edges": {
@@ -179,6 +185,7 @@ def test_edge_extraneous_property():
 
 def test_node_extraneous_property():
     query = {
+      "submitter": 'ARAX_test',
       "message": {
         "query_graph": {
           "edges": {
@@ -200,6 +207,7 @@ def test_node_extraneous_property():
 
 def test_workflow_bad_id():
     query = {
+      "submitter": 'ARAX_test',
       "message": {
         "query_graph": {
           "edges": {
@@ -225,6 +233,7 @@ def test_workflow_bad_id():
 
 def test_workflow_bad_parameter():
     query = {
+      "submitter": 'ARAX_test',
       "message": {
         "query_graph": {
           "edges": {
@@ -250,6 +259,7 @@ def test_workflow_bad_parameter():
 
 def test_workflow_no_message():
     query = {
+      "submitter": 'ARAX_test',
       "message": { },
       "workflow": [
         { "id": "filter_results_top_n", "parameters": { "max_results": 10 } }
@@ -258,11 +268,11 @@ def test_workflow_no_message():
 
     response_content = requests.post(arax_url, json=query, headers={'accept': 'application/json'})
     status_code = response_content.status_code
-    assert status_code == 200
+    assert status_code == 400
     response_json = response_content.json()
     print(json.dumps(response_json,sort_keys=True,indent=2))
     assert 'status' in response_json
-    assert response_json['status'] == 'OK'
+    assert response_json['status'] == 'MissingQueryGraph'
 
 
 if __name__ == "__main__": pytest.main(['-v'])
