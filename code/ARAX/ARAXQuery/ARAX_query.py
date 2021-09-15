@@ -700,6 +700,12 @@ class ARAXQuery:
                 response.info(f"Result was stored with id {response_id}. It can be viewed at https://arax.ncats.io/?r={response_id}")
             response.response_id = response_id
  
+            #### Record how many results came back
+            n_results = len(message.results)
+            response.info(f"Processing is complete and resulted in {n_results} results.")
+            if response.message == 'Normal completion':
+                response.message = f"Normal completion with {n_results} results."
+
             #### If asking for the full message back
             if return_action['parameters']['response'] == 'true':
                 if mode == 'asynchronous':
@@ -711,8 +717,6 @@ class ARAXQuery:
 
             #### Else just the id is returned
             else:
-                n_results = len(message.results)
-                response.info(f"Processing is complete and resulted in {n_results} results.")
                 if response_id is None:
                     response_id = 0
                 else:
