@@ -5,7 +5,7 @@ from openapi_server import util
 from ARAX_query_tracker import ARAXQueryTracker
 
 
-def get_status(last_n_hours=None, id=None):  # noqa: E501
+def get_status(last_n_hours=None, id_=None):  # noqa: E501
     """Obtain status information about the endpoint
 
      # noqa: E501
@@ -19,5 +19,5 @@ def get_status(last_n_hours=None, id=None):  # noqa: E501
     """
 
     query_tracker = ARAXQueryTracker()
-    status = query_tracker.get_status(last_n_hours=last_n_hours, id=id)
+    status = query_tracker.get_status(last_n_hours=last_n_hours, id_=id_)
     return status
