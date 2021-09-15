@@ -366,13 +366,14 @@ class ARAXExpander:
             elif kp_to_use == 'DTD':
                 from Expand.DTD_querier import DTDQuerier
                 kp_querier = DTDQuerier(log)
-            elif kp_to_use == 'CHP':
-                from Expand.CHP_querier import CHPQuerier
-                kp_querier = CHPQuerier(log)
-                # This is done in TRAPIQuerier for other KPs
-                edge_qg = eu.make_qg_use_supported_prefixes(kp_selector, edge_qg, kp_to_use, log)
-                if not edge_qg:  # Means no curies had prefixes CHP supports
-                    return QGOrganizedKnowledgeGraph(), log
+            ## comment the following commands for CHP temperarily before we confirm TRAPIQuerier can process CHP kp. Once it works, we can delete the following few lines.
+            # elif kp_to_use == 'CHP':
+            #     from Expand.CHP_querier import CHPQuerier
+            #     kp_querier = CHPQuerier(log)
+            #     # This is done in TRAPIQuerier for other KPs
+            #     edge_qg = eu.make_qg_use_supported_prefixes(kp_selector, edge_qg, kp_to_use, log)
+            #     if not edge_qg:  # Means no curies had prefixes CHP supports
+            #         return QGOrganizedKnowledgeGraph(), log
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)

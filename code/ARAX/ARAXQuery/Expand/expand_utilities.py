@@ -839,17 +839,18 @@ def get_kp_command_definitions() -> dict:
                            "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
                            "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
                            "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
-            "parameters": merge_two_dicts(standard_parameters, {
-                "CHP_survival_threshold": {
-                    "is_required": False,
-                    "examples": [200, 100],
-                    "min": 0,
-                    "max": 1000000000000,
-                    "default": 500,
-                    "type": "int",
-                    "description": "What cut-off/threshold for surivial time (day) to estimate probability."
-                }
-            })
+            # "parameters": merge_two_dicts(standard_parameters, {
+            #     "CHP_survival_threshold": {
+            #         "is_required": False,
+            #         "examples": [200, 100],
+            #         "min": 0,
+            #         "max": 1000000000000,
+            #         "default": 500,
+            #         "type": "int",
+            #         "description": "What cut-off/threshold for surivial time (day) to estimate probability."
+            #     }
+            # })
+            "parameters": standard_parameters
         },
         "DTD": {
             "dsl_command": "expand(kp=DTD)",

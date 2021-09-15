@@ -5,6 +5,7 @@ import traceback
 import ast
 import copy
 import itertools
+import urllib
 import numpy as np
 from typing import List, Dict, Tuple
 from neo4j import GraphDatabase
@@ -48,9 +49,10 @@ class CHPQuerier:
         # Set up the required parameters
         log = self.response
         self.CHP_survival_threshold = float(self.response.data['parameters']['CHP_survival_threshold'])
-        allowable_curies = CHPQuerier._query_CHP_curies()
-        self.allowable_gene_curies = list(allowable_curies['biolink:Gene'].keys())
-        self.allowable_drug_curies = list(allowable_curies['biolink:Drug'].keys())
+        meta_kg = CHPQuerier._get_CHP_meta_kg()
+        self.allowable_gene_curie_prefixes = meta_kg['nodes']['biolink:Gene']['id_prefixes']
+        self.allowable_drug_curie_prefixes = list(set(meta_kg['nodes']['biolink:Drug']['id_prefixes'] + meta_kg['nodes']['biolink:ChemicalSubstance']['id_prefixes'] + meta_kg['nodes']['biolink:SmallMolecule']['id_prefixes']))
+        self.allowable_disease_curie_prefixes = meta_kg['nodes']['biolink:Disease']['id_prefixes']
         final_kg = QGOrganizedKnowledgeGraph()
 
         final_kg = self._answer_query_using_CHP_client(query_graph, log)
@@ -405,13 +407,14 @@ class CHPQuerier:
         return swagger_node_key, swagger_node
 
     @staticmethod
-    def _query_CHP_curies():
+    def _get_CHP_meta_kg():
 
+        meta_kg_url = 'http://chp.thayer.dartmouth.edu/v1.2/meta_knowledge_graph/'
         with requests_cache.disabled():
-            r = requests.get('http://chp.thayer.dartmouth.edu/curies/')
-            allowable_curies = eval(r.content)
+            r = urllib.request.urlopen(meta_kg_url).read()
+            meta_kg = json.loads(r)
 
-        return allowable_curies
+        return meta_kg
 
     @staticmethod
     def _query_CHP_api(query):
@@ -422,96 +425,195 @@ class CHPQuerier:
         return json.loads(r.content)
 
     @staticmethod
-    def _build_standard_query(
+    def _make_node(categories, ids=None):
+        node = {
+            'categories':categories,
+            'ids':ids,
+            'constraints':[]
+        }
+        return node
+
+    @staticmethod
+    def _add_node(query, node_id, node):
+        query['message']['query_graph']['nodes']['n{}'.format(node_id)] = node
+        node_id += 1
+        return query, node_id
+
+    @staticmethod
+    def _make_edge(subject, object, predicate):
+        edge = {
+            'subject':subject,
+            'object':object,
+            'relation':None,
+            'predicates':predicate
+        }
+        return edge
+
+    @staticmethod
+    def _add_edge(query, edge_id, edge):
+        query['message']['query_graph']['edges']['e{}'.format(edge_id)] = edge
+        edge_id += 1
+        return query, edge_id
+
+    @staticmethod
+    def _build_CHP_queries(
         gene=None,
         drug=None,
-        outcome=None,
-        outcome_name=None,
-        outcome_op=None,
-        outcome_value=None,
         disease=None,
-        trapi_version='1.1',
+        wildcard_node=None,
+        predicate=None,
+        trapi_version='1.2',
         ):
+    
+        """ _build_CHP_queries builds out CHP valid queries from some specified evidence. This includes wildcard queries and standard probabilistic.
+            These queries can be sent to http://chp.thayer.dartmouth.edu/query/ using the _query_CHP_api function. We encourage anyone deeply interested 
+            in our underlying computations to refer to: https://di2ag.github.io/chp/chp_documentation#.
+
+            :param gene: a gene curie.
+            :type gene: Str (default None).
+            :param drug: a drug curie.
+            :type drug: Str (default None).
+            :param disease: a disease curie.
+            :type disease: Str (default None).
+            :param wildcard_node: takes on the biolink type for the node that does not have a curie.
+            :type disease: Str (default None).
+            :param predicate: a predicate curies.
+            :type predicate: Str (default None).
+            :param outcome: A curie for Survival Time. This adds a constraint when inference over CHP's patient data. This affects the weights
+                            return along our edges (e.g., if we constrain survival time to a value of > 1500 days, this will change the end
+                            survival time distribution and "contribution weights".). This is only applied if outcome_value is not None.
+            :type outcome: Str (default 'EFO:0000714').
+            :param outcome_op: the type of operater to apply to the survival time semantics.
+            :type outcome_op: Str (default '>'). This is only applied if outcome_value is not None.
+            :param outcome_value: A number indicating the number of days for survival to run our probabilistic query or survival time differential
+                                analysis. We internally default a survival time value so it is not required to specify here, unless you would like
+                                to compare outcomes when using different survival time semantics.
+            :type outcome_value: Int (default None).
+            :param trapi_version: Ensures CHP is handling the right version of trapi. Internally we default to 1.2.
+            :type trapi_version: Str (default '1.2').
+        """
+
+        node_id = 0
+        edge_id = 0
 
         query = {
-                'message': { 
-                    'query_graph': {
-                        'nodes': {
-                            'n0': {
-                                'ids': [drug], 
-                                'categories': ['biolink:SmallMolecule'],
-                                'constraints': []
-                                }, 
-                            'n1': {
-                                'ids': [disease],
-                                'categories': ['biolink:Disease'],
-                                'constraints': []
-                                },
-                            },
-                        'edges': {
-                            'e0': {
-                                'predicates': ['biolink:treats'],
-                                'relation': None,
-                                'subject': 'n0',
-                                'object': 'n1',
-                                "constraints": [
-                                    {
-                                        "id": "CHP:PredicateProxy",
-                                        "not": False,
-                                        "name": "predicate_proxy",
-                                        "value": [
-                                            outcome
-                                        ],
-                                        "unit_id": None,
-                                        "operator": "==",
-                                        "unit_name": None
-                                        },
-                                    {
-                                        "id": outcome,
-                                        "not": False,
-                                        "name": outcome_name,
-                                        "value": outcome_value,
-                                        "unit_id": None,
-                                        "operator": outcome_op,
-                                        "unit_name": None
-                                        },
-                                    {
-                                        "id": "CHP:PredicateContext",
-                                        "not": False,
-                                        "name": "predicate_context",
-                                        "value": [
-                                            "gene"
-                                        ],
-                                        "unit_id": None,
-                                        "operator": "==",
-                                        "unit_name": None
-                                        },
-                                    {
-                                        "id": "gene",
-                                        "not": False,
-                                        "name": "gene",
-                                        "value": [
-                                            gene
-                                        ],
-                                        "unit_id": None,
-                                        "operator": "matches",
-                                        "unit_name": None
-                                        }
-                                    ]     
-                                }
-                            },
-                        },
-                    'knowledge_graph': {
-                        'nodes': {},
-                        'edges': {}
-                        }, 
-                    'results': []
-                    }, 
-                    'max_results': 10, 
-                    'trapi_version': trapi_version, 
-                    'biolink_version': None
-                    }
+            'message': { 
+                'query_graph': {
+                'nodes': {},
+                'edges': {},
+                },
+                'knowledge_graph': {
+                'nodes': {},
+                'edges': {}
+                }, 
+            'results': [],
+            'trapi_version': trapi_version, 
+            'biolink_version': None
+            }
+        }
 
+        assert predicate is not None, 'Predicate must be populated with a CHP compliant predicate (or ancestory) in the form of biolink:<predicate>. Please see http://chp.thayer.dartmouth.edu/meta_knowledge_graph/ for a list of our predicates.'
+        assert not all(evidence is None for evidence in [gene,drug,disease]), 'Must specify at least one piece of evidence.'
+        assert any(evidence is not None for evidence in [gene,drug,disease]), 'Can specify at most two pieces of evidence in a 1-hop'
+
+        if predicate == 'biolink:genetically_interacts_with':
+            assert gene is not None, 'biolink:genetically_interacts_with requires you to specify a gene as evidence.'
+            assert drug is None and disease is None, 'Ambiguous evidence types. biolink:genetically_interacts_with only takes a single gene node as evidence.'
+            assert wildcard_node == 'biolink:Gene', 'Wildcard node for biolink:genetically_interacts_with must take on a gene.'
+            gene_node = CHPQuerier._make_node(['biolink:Gene'], ids = [gene])
+            gene_node2 = CHPQuerier._make_node(['biolink:Gene'])
+            gene_node_id = 'n{}'.format(node_id)
+            query, node_id = CHPQuerier._add_node(query, node_id, gene_node)
+            gene_node_2_id = 'n{}'.format(node_id)
+            query, node_id = CHPQuerier._add_node(query, node_id, gene_node2)
+            edge = CHPQuerier._make_edge(gene_node_id, gene_node_2_id, [predicate])
+            predicate_id = 'e{}'.format(edge_id)
+            query, edge_id = CHPQuerier._add_edge(query, edge_id, edge)
+        elif predicate == 'biolink:gene_associated_with_condition' or predicate == 'biolink:condition_associated_with_gene':
+            assert disease is not None, 'Our gene -> disease edge currently does not support disease as a wildcard. Therefore disease must be specified as evidence. We are working on constructing disease wildcards.'
+            assert drug is None, 'Ambiguous evidence types. biolink:gene_associated_with_condition does not use drug curies.'
+            if gene is not None:
+                gene_node = CHPQuerier._make_node(['biolink:Gene'], ids = [gene])
+            else:
+                assert wildcard_node == 'biolink:Gene', 'For biolink:gene_associated_with_condition, if you only specify a disease as evidence, you must make wildcard_node=\'biolink:Gene\'.'
+                gene_node = CHPQuerier._make_node(['biolink:Gene'])
+            disease_node = CHPQuerier._make_node(['biolink:Disease'], ids = [disease])
+            
+            if predicate == 'biolink:gene_associated_with_condition':
+                gene_node_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, gene_node)
+                disease_node_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, disease_node)
+                edge = CHPQuerier._make_edge(gene_node_id, disease_node_id, [predicate])
+            else:
+                disease_node_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, disease_node)
+                gene_node_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, gene_node)
+                edge = CHPQuerier._make_edge(disease_node_id, gene_node_id, [predicate])
+            predicate_id = 'e{}'.format(edge_id)
+            query, edge_id = CHPQuerier._add_edge(query, edge_id, edge)
+        elif predicate == 'biolink:treats' or predicate == 'biolink:treated_by':
+            assert disease is not None, 'Our drug -> disease edge currently does not support disease as a wildcard. Therefore disease must be specified as evidence. We are working on constructing disease wildcards.'
+            assert gene is None, 'Ambiguous evidence types. biolink:treats does not use gene curies.'
+            if drug is not None:
+                drug_node = CHPQuerier._make_node(['biolink:Drug'], ids = [drug])
+            else:
+                assert wildcard_node == 'biolink:Drug', 'For biolink:treats, if you only specify a disease as evidence, you must make wildcard_node=\'biolink:Drug\'.'
+                drug_node = CHPQuerier._make_node(['biolink:Drug'])
+            disease_node = CHPQuerier._make_node(['biolink:Disease'], ids = [disease])
+            
+            if predicate == 'biolink:treats':
+                drug_node_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, drug_node)
+                disease_node_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, disease_node)
+                edge = CHPQuerier._make_edge(drug_node_id, disease_node_id, [predicate])
+            else:
+                disease_node_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, disease_node)
+                drug_node_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, drug_node)
+                edge = CHPQuerier._make_edge(disease_node_id, drug_node_id, [predicate])
+            predicate_id = 'e{}'.format(edge_id)
+            query, edge_id = CHPQuerier._add_edge(query, edge_id, edge)
+        elif predicate == 'biolink:has_real_world_evidence_of_association_with' or predicate == 'biolink:associated_with_real_world_evidence':
+            evidence = []
+            if gene is not None:
+                gene_node = CHPQuerier._make_node(['biolink:Gene'], ids = [gene])
+                evidence.append(gene_node)
+            if drug is not None:
+                drug_node = CHPQuerier._make_node(['biolink:Drug'], ids = [drug])
+                evidence.append(drug_node)
+            if disease is not None:
+                disease_node = CHPQuerier._make_node(['biolink:Disease'], ids = [disease])
+                evidence.append(disease_node)
+            assert len(evidence) <= 2, 'Too many evidence are specified for a 1 hop.'
+            assert len(evidence) != 0, 'No evidence specified for a 1 hop.'
+            if len(evidence) == 2:
+                evidence_node_one_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, evidence[0])
+                evidence_node_two_id = 'n{}'.format(node_id)
+                query, node_id = CHPQuerier._add_node(query, node_id, evidence[1])
+                edge = CHPQuerier._make_edge(evidence_node_one_id, evidence_node_two_id, [predicate])
+                predicate_id = 'e{}'.format(edge_id)
+            else:
+                if predicate == 'biolink:has_real_world_evidence_of_association_with':
+                    wildcard = CHPQuerier._make_node([wildcard_node])
+                    wildcard_node_id = 'n{}'.format(node_id)
+                    query, node_id = CHPQuerier._add_node(query, node_id, wildcard)
+                    evidence_node_id = 'n{}'.format(node_id)
+                    query, node_id = CHPQuerier._add_node(query, node_id, evidence[0])
+                    edge = CHPQuerier._make_edge(wildcard_node_id, evidence_node_id, [predicate])
+                else:
+                    evidence_node_id = 'n{}'.format(node_id)
+                    query, node_id = CHPQuerier._add_node(query, node_id, evidence[0])
+                    wildcard = CHPQuerier._make_node([wildcard_node])
+                    wildcard_node_id = 'n{}'.format(node_id)
+                    query, node_id = CHPQuerier._add_node(query, node_id, wildcard)
+                    edge = CHPQuerier._make_edge(evidence_node_id, wildcard_node_id, [predicate])
+                predicate_id = 'e{}'.format(edge_id)
+            query, edge_id = CHPQuerier._add_edge(query, edge_id, edge)
         return query
 
     @staticmethod
