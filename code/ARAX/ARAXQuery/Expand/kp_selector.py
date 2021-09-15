@@ -170,10 +170,6 @@ class KPSelector:
         if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 20):
             chosen_kps = {"RTX-KG2"}
 
-        # Don't use BTE if this is a curie-to-curie query (they have a bug with such queries currently)
-        if all(qnode.ids for qnode in qg.nodes.values()):
-            chosen_kps = chosen_kps.difference({"BTE"})
-
         # TODO: keep a record of which KPs have been timing out recently, and skip them?
 
         return chosen_kps
