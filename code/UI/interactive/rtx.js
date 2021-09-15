@@ -1252,33 +1252,13 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 
 	}
 	else if ( xhr.status == 404 ) {
-	    if (document.getElementById("numresults_"+resp_id)) {
-		document.getElementById("numresults_"+resp_id).innerHTML = '';
-                document.getElementById("respsize_"+resp_id).innerHTML = '---';
-		document.getElementById("nodedges_"+resp_id).innerHTML = '';
-		document.getElementById("nsources_"+id).innerHTML = '';
-		document.getElementById("istrapi_"+resp_id).innerHTML = '';
-		var nr = document.createElement("span");
-		nr.className = 'explevel p0';
-		nr.innerHTML = '&nbsp;N/A&nbsp;';
-		document.getElementById("numresults_"+resp_id).appendChild(nr);
-	    }
+	    update_response_stats_on_error(resp_id,'N/A',true);
 	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
 	}
 	else {
-            if (document.getElementById("numresults_"+resp_id)) {
-		document.getElementById("numresults_"+resp_id).innerHTML = '';
-		document.getElementById("respsize_"+resp_id).innerHTML = '---';
-		document.getElementById("nodedges_"+resp_id).innerHTML = '';
-		document.getElementById("nsources_"+id).innerHTML = '';
-		document.getElementById("istrapi_"+resp_id).innerHTML = '';
-		var nr = document.createElement("span");
-		nr.className = 'explevel p0';
-		nr.innerHTML = '&nbsp;Error&nbsp;';
-		document.getElementById("numresults_"+resp_id).appendChild(nr);
-	    }
+            update_response_stats_on_error(resp_id,'Error',true);
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
@@ -1289,14 +1269,12 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 }
 
 
-
 // DELETE_LATER::
 function render_message(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("DEPRECATED FUNCTION!  UPDATE ME..."));
     sesame('openmax',statusdiv);
 }
-
 
 function render_response_stats(respObj) {
     if (!document.getElementById("numresults_"+respObj.araxui_response)) return;
@@ -1323,6 +1301,23 @@ function render_response_stats(respObj) {
     }
 
     document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
+}
+
+function update_response_stats_on_error(rid,msg,clearall) {
+    if (!document.getElementById("numresults_"+rid)) return;
+
+    document.getElementById("numresults_"+rid).innerHTML = '';
+    var nr = document.createElement("span");
+    nr.className = 'explevel p0';
+    nr.innerHTML = '&nbsp;'+msg+'&nbsp;';
+    document.getElementById("numresults_"+rid).appendChild(nr);
+
+    if (clearall) {
+	document.getElementById("respsize_"+rid).innerHTML = '---';
+	document.getElementById("nodedges_"+rid).innerHTML = '';
+	document.getElementById("nsources_"+rid).innerHTML = '';
+	document.getElementById("istrapi_"+rid).innerHTML = '';
+    }
 }
 
 function render_response(respObj,dispjson) {
@@ -1366,13 +1361,7 @@ function render_response(respObj,dispjson) {
 	nr.appendChild(document.createTextNode("Response contains no message, and hence no results."));
 	statusdiv.appendChild(nr);
 	sesame('openmax',statusdiv);
-        if (document.getElementById("numresults_"+respObj.araxui_response)) {
-	    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
-	    var nr = document.createElement("span");
-	    nr.className = 'explevel p0';
-	    nr.innerHTML = '&nbsp;N/A&nbsp;';
-	    document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
-	}
+        update_response_stats_on_error(respObj.araxui_response,'N/A',false);
 	return;
     }
 
@@ -1421,13 +1410,7 @@ function render_response(respObj,dispjson) {
             document.getElementById("result_container").innerHTML  += "<h2 class='error'>Knowledge Graph missing in response; cannot process results.</h2>";
 	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
 	    document.getElementById("provenance_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
-            if (document.getElementById("numresults_"+respObj.araxui_response)) {
-		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
-		var nr = document.createElement("span");
-		nr.className = 'explevel p0';
-		nr.innerHTML = '&nbsp;n/a&nbsp;';
-		document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
-	    }
+            update_response_stats_on_error(respObj.araxui_response,'n/a',false);
 	}
 	else {
 	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
@@ -1443,7 +1426,7 @@ function render_response(respObj,dispjson) {
 	    var respreas = 'n/a';
 	    if (respObj.reasoner_id)
 		respreas = respObj.reasoner_id;
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"], respreas);
+	    process_results(respObj.message["results"],respObj.message["knowledge_graph"],respObj["schema_version"],respreas);
 
 	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
 		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
@@ -1463,13 +1446,7 @@ function render_response(respObj,dispjson) {
         document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
         document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
 	document.getElementById("provenance_container").innerHTML += "<h2>No results...</h2>";
-        if (document.getElementById("numresults_"+respObj.araxui_response)) {
-	    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
-	    var nr = document.createElement("span");
-	    nr.className = 'explevel p0';
-	    nr.innerHTML = '&nbsp;n/a&nbsp;';
-	    document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
-	}
+        update_response_stats_on_error(respObj.araxui_response,'n/a',false);
     }
 
     // table was (potentially) populated in process_results
@@ -1840,7 +1817,7 @@ function add_to_summary(rowdata, num) {
 function process_graph(gne,gid,trapi) {
     cytodata[gid] = [];
     for (var id in gne.nodes) {
-	var gnode = gne.nodes[id];
+	var gnode = Object.create(gne['nodes'][id]); // make a copy!
 
 	gnode.parentdivnum = gid;   // helps link node to div when displaying node info on click
 	gnode.trapiversion = trapi; // support multiple versions...?
@@ -1880,7 +1857,7 @@ function process_graph(gne,gid,trapi) {
     }
 
     for (var id in gne.edges) {
-        var gedge = gne.edges[id];
+        var gedge = Object.create(gne['edges'][id]); // make a copy!
 
         if (!gedge.id)
 	    gedge.id = id;
@@ -1938,7 +1915,7 @@ function eau_du_essence(result) {
     return guessence;
 }
 
-function process_results(reslist,kg,mainreasoner) {
+function process_results(reslist,kg,trapi,mainreasoner) {
     // do this only once
     if (Object.keys(all_nodes).length === 0 && all_nodes.constructor === Object) {
 	for (var result of reslist)
@@ -2034,14 +2011,6 @@ function process_results(reslist,kg,mainreasoner) {
 
         var tr = document.createElement("tr");
 	var td = document.createElement("td");
-        td.className = 'textanswer';
-	if (result.description)
-	    td.appendChild(document.createTextNode(result.description));
-	else
-	    td.appendChild(document.createTextNode('No description'));
-        tr.appendChild(td);
-
-        td = document.createElement("td");
         td.className = 'cytograph_controls';
 
 	var link = document.createElement("a");
@@ -2094,8 +2063,6 @@ function process_results(reslist,kg,mainreasoner) {
 
         tr = document.createElement("tr");
 	td = document.createElement("td");
-        tr.appendChild(td);
-	td = document.createElement("td");
 	tr.appendChild(td);
 
 	td = document.createElement("td");
@@ -2121,6 +2088,8 @@ function process_results(reslist,kg,mainreasoner) {
             for (var node of result.node_bindings[nbid]) {
 		var kmne = Object.create(kg.nodes[node.id]);
 		kmne.parentdivnum = num;
+		kmne.trapiversion = trapi;
+		kmne.id = node.id;
 		//console.log("=================== kmne:"+kmne.id);
 		var tmpdata = { "data" : kmne };
 		cytodata[num].push(tmpdata);
@@ -2131,6 +2100,10 @@ function process_results(reslist,kg,mainreasoner) {
 	    for (var edge of result.edge_bindings[ebid]) {
 		var kmne = Object.create(kg.edges[edge.id]);
 		kmne.parentdivnum = num;
+		kmne.trapiversion = trapi;
+		kmne.id = edge.id;
+		kmne.source = kmne.subject;
+		kmne.target = kmne.object;
 		if (kmne.predicate)
 		    kmne.type = kmne.predicate;
 		//console.log("=================== kmne:"+kmne.id);
