@@ -95,17 +95,20 @@ class KG2Querier:
                 batch_kg = self._load_plover_answer_into_object_model(plover_answer, log)
                 final_kg = eu.merge_two_kgs(batch_kg, final_kg)
                 # Prune down highly-connected input curies if we're over the max number of allowed edges
-                if len(final_kg.edges_by_qg_id[qedge_key]) > self.max_allowed_edges:
-                    log.debug(f"Have exceeded max num allowed edges ({self.max_allowed_edges}); will attempt to reduce "
-                              f"the number of edges by pruning down highly connected nodes")
-                    final_kg = self._prune_highly_connected_nodes(final_kg, qedge_key, input_curie_set, input_qnode_key,
-                                                                  self.max_edges_per_input_curie, log)
-                # Error out if this pruning wasn't sufficient to bring down the edge count
-                if len(final_kg.edges_by_qg_id[qedge_key]) > self.max_allowed_edges:
-                    log.error(f"Query for qedge {qedge_key} produced more than {self.max_allowed_edges} edges, which is"
-                              f" too much for the system to handle. You must somehow make your query smaller (specify "
-                              f"fewer input curies or use more specific predicates/categories).", error_code="QueryTooLarge")
-                    return final_kg
+                if final_kg.edges_by_qg_id.get(qedge_key):
+                    if len(final_kg.edges_by_qg_id[qedge_key]) > self.max_allowed_edges:
+                        log.debug(f"Have exceeded max num allowed edges ({self.max_allowed_edges}); will attempt to "
+                                  f"reduce the number of edges by pruning down highly connected nodes")
+                        final_kg = self._prune_highly_connected_nodes(final_kg, qedge_key, input_curie_set,
+                                                                      input_qnode_key, self.max_edges_per_input_curie,
+                                                                      log)
+                    # Error out if this pruning wasn't sufficient to bring down the edge count
+                    if len(final_kg.edges_by_qg_id[qedge_key]) > self.max_allowed_edges:
+                        log.error(f"Query for qedge {qedge_key} produced more than {self.max_allowed_edges} edges, "
+                                  f"which is too much for the system to handle. You must somehow make your query "
+                                  f"smaller (specify fewer input curies or use more specific predicates/categories).",
+                                  error_code="QueryTooLarge")
+                        return final_kg
             else:
                 log.error(f"Plover returned response of {response_status}. Answer was: {plover_answer}", error_code="RequestFailed")
                 return final_kg
