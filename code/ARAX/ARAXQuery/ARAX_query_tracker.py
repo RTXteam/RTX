@@ -5,6 +5,7 @@ import os
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import time
 import re
+
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -256,7 +257,7 @@ class ARAXQueryTracker:
             last_n_hours = 24
 
         entries = self.get_entries(last_n_hours=last_n_hours, incomplete_only=incomplete_only)
-        result = { 'recent_queries': [] }
+        result = { 'recent_queries': [], 'current_datetime': datetime.now().strftime("%Y-%m-%d %T") }
         if entries is None:
             return result
 
@@ -277,6 +278,7 @@ class ARAXQueryTracker:
                 return entry.input_query
 
         result['recent_queries'].reverse()
+        result['current_datetime'] = datetime.now().strftime("%Y-%m-%d %T")
         return result
 
 
