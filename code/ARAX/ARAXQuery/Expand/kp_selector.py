@@ -54,6 +54,8 @@ class KPSelector:
         for kp in self.meta_map:
             if self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories):
                 accepting_kps.add(kp)
+            else:
+                self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
 
         kps_to_return = self._select_best_kps(accepting_kps, qg)
 
@@ -154,10 +156,10 @@ class KPSelector:
                             return True
             return False
 
-    @staticmethod
-    def _select_best_kps(possible_kps: Set[str], qg: QueryGraph) -> Set[str]:
+    def _select_best_kps(self, kps_supporting_qedge: Set[str], qg: QueryGraph) -> Set[str]:
+        qedge_key = next(qedge_key for qedge_key in qg.edges)
         # Apply some special rules to filter down the KPs we'll use for this QG
-        chosen_kps = possible_kps
+        chosen_kps = kps_supporting_qedge
 
         # Always hit up KG2 for now (it fails fast anyway)
         chosen_kps.add("RTX-KG2")
@@ -169,6 +171,8 @@ class KPSelector:
         # If a qnode has a lot of curies, only use KG2 for now (until figure out which KPs are reasonably fast for this)
         if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 100):
             chosen_kps = {"RTX-KG2"}
+            for kp in kps_supporting_qedge.difference(chosen_kps):
+                self.log.update_query_plan(qedge_key, kp, "Skipped", "Skipping because there are >100 curies in the QG")
 
         # TODO: keep a record of which KPs have been timing out recently, and skip them?
 

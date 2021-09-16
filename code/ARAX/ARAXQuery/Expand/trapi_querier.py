@@ -3,6 +3,8 @@ import copy
 import json
 import sys
 import os
+import time
+
 import requests
 from typing import List, Dict, Set, Union
 
@@ -159,14 +161,18 @@ class TRAPIQuerier:
             self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
             try:
                 with requests_cache.disabled():
+                    start = time.time()
                     kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'},
                                                 timeout=query_timeout)
+                    self.log.wait_time = round(time.time() - start)
             except Exception:
                 self.log.warning(f"{self.kp_name}: Query timed out (waited {query_timeout} seconds)")
+                self.log.timed_out = query_timeout
                 return answer_kg
             if kp_response.status_code != 200:
                 self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. "
                                  f"Response from KP was: {kp_response.text}")
+                self.log.http_error = f"HTTP {kp_response.status_code}"
                 return answer_kg
             else:
                 json_response = kp_response.json()

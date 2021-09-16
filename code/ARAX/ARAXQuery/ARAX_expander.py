@@ -216,8 +216,17 @@ class ARAXExpander:
                     kp_selector = KPSelector(log)
                     kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
+                    num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in one_hop_qg.nodes.values()])
+                    for kp in kps_to_query:
+                        waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
+                        response.update_query_plan(qedge_key, kp, "Waiting", waiting_message)
                 else:
                     kps_to_query = {parameters["kp"]}
+                    all_kps = set(self.kp_command_definitions)
+                    for kp in all_kps.difference(kps_to_query):
+                        skipped_message = f"Expand was told to use {', '.join(kps_to_query)}"
+                        response.update_query_plan(qedge_key, kp, "Skipped", skipped_message)
+                kps_to_query = list(kps_to_query)  # We want them ordered for later processing
 
                 # Send this query to each KP selected to answer it (in parallel)
                 if len(kps_to_query) > 1:
@@ -244,13 +253,33 @@ class ARAXExpander:
 
                 # Post-process all the KPs' answers and merge into our overarching KG
                 log.debug(f"Got answers from all KPs; merging them into one KG")
-                for answer_kg, kp_log in kp_answers:
+                for index, response_tuple in enumerate(kp_answers):
+                    kp = kps_to_query[index]
+                    answer_kg = response_tuple[0]
+                    kp_log = response_tuple[1]
+                    wait_time = kp_log.wait_time if hasattr(kp_log, "wait_time") else "unknown"
+                    # Update the query plan with KPs' results
+                    if kp_log.status == 'OK':
+                        if hasattr(kp_log, "timed_out"):
+                            timeout_message = f"Query timed out after {kp_log.timed_out} seconds"
+                            response.update_query_plan(qedge_key, kp, "Timed out", timeout_message)
+                        elif hasattr(kp_log, "http_error"):
+                            error_message = f"Returned error {kp_log.http_error} after {wait_time} seconds"
+                            response.update_query_plan(qedge_key, kp, "Error", error_message)
+                        else:
+                            done_message = f"Query returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} " \
+                                           f"edges in {wait_time} seconds"
+                            response.update_query_plan(qedge_key, kp, "Done", done_message)
+                    else:
+                        response.update_query_plan(qedge_key, kp, "Error", f"Process returned error {kp_log.status}")
+                    # Merge KP logs as needed, since processes can't share the main log
                     if len(kps_to_query) > 1:
                         if kp_log.status != 'OK':
                             kp_log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
-                        log.merge(kp_log)  # Processes can't share the main log, so we merge their individual logs here
+                        log.merge(kp_log)
                     if response.status != 'OK':
                         return response
+                    # Merge the KPs' answer KGs into one overarching KG
                     if mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
