@@ -145,6 +145,9 @@ class TRAPIQuerier:
         # Send the query to the KP
         query_graph = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
         body = {'message': {'query_graph': query_graph}}
+        if self.kp_name == "RTX-KG2":
+            body['submitter'] = eu.get_translator_infores_curie('ARAX')
+            # TODO: Later add submitter for all KP queries (isn't yet supported by all KPs - part of TRAPI 1.2.1) #1654
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
         if self.force_local and self.kp_name == 'RTX-KG2':
             self.log.debug(f"{self.kp_name}: Pretending to send query to KG2 API (really it will be run locally)")
