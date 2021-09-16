@@ -84,8 +84,8 @@ class KG2Querier:
         input_curie_set = set(input_curies)
         curie_batches = [input_curies[i:i+self.curie_batch_size] for i in range(0, len(input_curies), self.curie_batch_size)]
         log.debug(f"Split {len(input_curies)} input curies into {len(curie_batches)} batches to send to Plover")
-        max_edges_allowed_per_input_curie = self.max_allowed_edges // len(input_curies)
-        log.debug(f"Max edges allowed per input curie for this query is: {max_edges_allowed_per_input_curie}")
+        max_edges_allowed_per_input_curie = max(self.max_allowed_edges // len(input_curies), 1000)
+        log.info(f"Max edges allowed per input curie for this query is: {max_edges_allowed_per_input_curie}")
         batch_num = 1
         for curie_batch in curie_batches:
             log.debug(f"Sending batch {batch_num} to Plover (has {len(curie_batch)} input curies)")
@@ -98,7 +98,7 @@ class KG2Querier:
                 if len(final_kg.edges_by_qg_id[qedge_key]) > self.max_allowed_edges:
                     log.debug(f"Have exceeded max num allowed edges ({self.max_allowed_edges}); will attempt to reduce "
                               f"the number of edges by pruning down highly connected nodes")
-                    final_kg = self._prune_highly_connected_nodes(final_kg, qedge_key, input_curie_set,
+                    final_kg = self._prune_highly_connected_nodes(final_kg, qedge_key, input_curie_set, input_qnode_key,
                                                                   max_edges_allowed_per_input_curie, log)
                 # Error out if this pruning wasn't sufficient to bring down the edge count
                 if len(final_kg.edges_by_qg_id[qedge_key]) > self.max_allowed_edges:
@@ -135,7 +135,7 @@ class KG2Querier:
 
     @staticmethod
     def _prune_highly_connected_nodes(kg: QGOrganizedKnowledgeGraph, qedge_key: str, input_curies: Set[str],
-                                      max_edges_allowed_per_input_curie: int, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                                      input_qnode_key: str, max_edges_allowed_per_input_curie: int, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # First create a lookup of which edges belong to which input curies
         input_nodes_to_edges_dict = defaultdict(set)
         for edge_key, edge in kg.edges_by_qg_id[qedge_key].items():
@@ -152,6 +152,20 @@ class KG2Querier:
                 log.debug(f"Randomly removing {len(edge_keys_to_remove)} edges from answer for input curie {node_key}")
                 for edge_key in edge_keys_to_remove:
                     kg.edges_by_qg_id[qedge_key].pop(edge_key, None)
+                # Document that not all answers for this input curie are included
+                node = kg.nodes_by_qg_id[input_qnode_key][node_key]
+                if not node.attributes:
+                    node.attributes = []
+                if not any(attribute.attribute_type_id == "biolink:incomplete_result_set" for attribute in node.attributes):
+                    node.attributes.append(Attribute(attribute_type_id="biolink:incomplete_result_set",  # TODO: request this as actual biolink item?
+                                                     value_type_id="metatype:Boolean",
+                                                     value=True,
+                                                     attribute_source=eu.get_translator_infores_curie("RTX-KG2"),
+                                                     description=f"This attribute indicates that not all nodes "
+                                                                 "returned as answers for this input curie were "
+                                                                 "included in the final answer due to size limitations."
+                                                                 " (Max num edges allowed per input curie was: "
+                                                                 f"{max_edges_allowed_per_input_curie})"))
         # Then delete any nodes orphaned by removal of edges
         node_keys_used_by_edges = kg.get_all_node_keys_used_by_edges()
         for qnode_key, nodes in kg.nodes_by_qg_id.items():

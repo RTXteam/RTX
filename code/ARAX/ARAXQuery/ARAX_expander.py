@@ -197,10 +197,10 @@ class ARAXExpander:
                     post_prune_threshold = parameters["prune_threshold"]
                 else:
                     pre_prune_threshold, post_prune_threshold = self._get_prune_thresholds(one_hop_qg)
-                log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}, post-prune threshold "
-                          f"is {post_prune_threshold}")
                 # Prune back any nodes with more than the specified max of answers
                 if mode == "ARAX":
+                    log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}, post-prune threshold "
+                              f"is {post_prune_threshold}")
                     fulfilled_qnode_keys = set(one_hop_qg.nodes).intersection(set(overarching_kg.nodes_by_qg_id))
                     for qnode_key in fulfilled_qnode_keys:
                         num_kg_nodes = len(overarching_kg.nodes_by_qg_id[qnode_key])
