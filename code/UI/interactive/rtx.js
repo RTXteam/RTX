@@ -75,6 +75,7 @@ function main() {
 
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
+    var rec = getQueryVariable("recent") || null;
     var response_id = getQueryVariable("r") || null;
     var provider_id = getQueryVariable("source") || "ARAX";
     var rurl = null;
@@ -105,6 +106,10 @@ function main() {
     if (syn) {
 	tab = "synonym";
 	lookup_synonym(syn,false);
+    }
+    else if (rec) {
+        tab = "recentqs";
+	retrieveRecentQs();
     }
     openSection(tab);
     dragElement(document.getElementById('nodeeditor'));
@@ -3642,6 +3647,228 @@ function load_meta_knowledge_graph() {
 	    opt.innerHTML = "-- Error Loading Node Types --";
 	    allnodes_node.appendChild(opt);
         });
+}
+
+function retrieveRecentQs() {
+    var recents_node = document.getElementById("recent_queries_container");
+    recents_node.innerHTML = '';
+
+    fetch(providers["base_api"].url + "/status?last_n_hours=24")
+	.then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Something went wrong with /status?last_n_hours=24');
+	})
+        .then(data => {
+	    var stats = {};
+	    stats.elapsed   = 0;
+	    stats.state     = {};
+	    stats.status    = {};
+	    stats.submitter = {};
+	    stats.instance_name = {};
+
+            var table = document.createElement("table");
+	    table.className = 'sumtab';
+	    table.id = "recentqs_summary";
+            recents_node.appendChild(table);
+            recents_node.appendChild(document.createElement("br"));
+
+	    table = document.createElement("table");
+	    table.id = "recentqs_table";
+	    table.className = 'sumtab';
+
+	    var tr = document.createElement("tr");
+            tr.dataset.qstatus = "COLUMNHEADER";
+	    var td;
+	    for (var head of ["Qid","Start","Elapsed","Submitter","Instance","pid","Response","State","Status","Description"] ) {
+		td = document.createElement("th")
+                if (head == "Description")
+		    td.style.textAlign = "left";
+		td.appendChild(document.createTextNode(head));
+		tr.appendChild(td);
+	    }
+	    table.appendChild(tr);
+
+	    for (var query of data.recent_queries) {
+		tr = document.createElement("tr");
+		tr.className = 'hoverable';
+		tr.dataset.qstatus = query.state + " " + query.status;
+
+		for (var field of ["query_id","start_datetime","elapsed","submitter","instance_name","pid","response_id","state","status","description"] ) {
+                    td = document.createElement("td");
+                    if (field == "start_datetime")
+			td.style.whiteSpace = "nowrap";
+                    else if (field == "elapsed") {
+			td.style.textAlign = "right";
+			if (query[field] > 60) {
+			    td.className = "error";
+			    td.title = "Long query response/processing time";
+			}
+			stats.elapsed += query[field];
+		    }
+                    else if (field == "state") {
+			var span = document.createElement("span");
+			if (query[field] == "Completed") {
+			    span.innerHTML = '&check;';
+			    span.className = 'explevel p9';
+			}
+			else {
+			    span.innerHTML = '&#10140;';
+			    span.className = 'explevel p3';
+			}
+			td.appendChild(span);
+			td.innerHTML += '&nbsp;';
+			if (stats.state[query[field]])
+			    stats.state[query[field]]++;
+			else
+			    stats.state[query[field]] = 1;
+		    }
+                    else if (field == "instance_name" || field == "submitter") {
+                        if (stats[field][query[field]])
+			    stats[field][query[field]]++;
+			else
+			    stats[field][query[field]] = 1;
+		    }
+
+                    if (query[field] == null)
+			td.appendChild(document.createTextNode(' -- '));
+		    else if (field == "query_id") {
+                        var link = document.createElement("a");
+			link.target = '_blank';
+			link.title='view the posted query (JSON)';
+			link.style.cursor = "pointer";
+			link.href = providers["base_api"].url + '/status?id=' + query[field];
+			link.appendChild(document.createTextNode(query[field]));
+			td.appendChild(link);
+		    }
+		    else if (field == "response_id") {
+			var link = document.createElement("a");
+			link.title='view this response';
+			link.style.cursor = "pointer";
+			link.setAttribute('onclick', 'pasteId("'+query[field]+'");sendId();');
+			link.appendChild(document.createTextNode(query[field]));
+			td.appendChild(link);
+		    }
+		    else if (field == "status") {
+			td.style.textAlign = "center";
+			var span = document.createElement("span");
+                        span.style.padding = "2px 6px";
+			if (query[field] == "OK")
+			    span.className = "explevel p9";
+			else
+			    span.className = "explevel p1";
+                        span.appendChild(document.createTextNode(query[field]));
+			td.appendChild(span);
+
+		        if (stats.status[query[field]])
+			    stats.status[query[field]]++;
+		        else
+			    stats.status[query[field]] = 1;
+		    }
+		    else
+			td.appendChild(document.createTextNode(query[field]));
+		    tr.appendChild(td);
+		}
+		table.appendChild(tr);
+	    }
+	    recents_node.appendChild(table);
+            recents_node.appendChild(document.createElement("br"));
+	    recents_node.appendChild(document.createElement("br"));
+
+	    var qfspan = document.getElementById("qfilter");
+	    qfspan.innerHTML = '';
+	    qfspan.appendChild(document.createTextNode("Show:"));
+
+	    for (var status of ["Completed","OK","Summary"]) {
+		span = document.createElement("span");
+		span.style.marginLeft = "20px";
+		span.style.cursor = "pointer";
+		span.className = 'qprob p9';
+		var tab = "recentqs_table";
+		if (status == "Summary") {
+		    span.className = 'qprob p9 hide';
+		    tab = "recentqs_summary";
+		}
+		span.setAttribute('onclick', 'filter_queries(\"'+tab+'\", this,\"'+status+'\");');
+		span.appendChild(document.createTextNode(status));
+		qfspan.appendChild(span);
+	    }
+
+            table = document.getElementById("recentqs_summary");
+            tr = document.createElement("tr");
+            tr.style.display = "none";
+            tr.dataset.qstatus = "Summary";
+	    td = document.createElement("th");
+	    td.colSpan = "3";
+            td.appendChild(document.createTextNode("Query Stats"));
+	    tr.appendChild(td);
+            table.appendChild(tr);
+
+            tr = document.createElement("tr");
+            tr.style.display = "none";
+            tr.dataset.qstatus = "Summary";
+	    td = document.createElement("td");
+	    td.appendChild(document.createTextNode("Last updated"));
+            tr.appendChild(td);
+	    td = document.createElement("td");
+	    tr.appendChild(td);
+            td = document.createElement("td");
+	    td.appendChild(document.createTextNode(data.current_datetime));
+            tr.appendChild(td);
+            table.appendChild(tr);
+
+	    for (var stat in stats) {
+		tr = document.createElement("tr");
+		tr.style.display = "none";
+		tr.dataset.qstatus = "Summary";
+		td = document.createElement("td");
+                td.appendChild(document.createTextNode(stat));
+		tr.appendChild(td);
+                if (stat == "elapsed") {
+		    td = document.createElement("td");
+                    td.appendChild(document.createTextNode(stats[stat] + " sec"));
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+                    td.appendChild(document.createTextNode((Number(stats[stat])/3600).toPrecision(3) + " hours"));
+		    tr.appendChild(td);
+		}
+		else {
+		    td = document.createElement("td");
+		    for (var val in stats[stat]) {
+			td.appendChild(document.createTextNode(val));
+			td.appendChild(document.createElement("br"));
+		    }
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    for (var val in stats[stat]) {
+			td.appendChild(document.createTextNode(stats[stat][val]));
+			td.appendChild(document.createElement("br"));
+		    }
+		    tr.appendChild(td);
+		}
+                table.appendChild(tr);
+	    }
+	})
+        .catch(error => {
+            recents_node.className = "error";
+	    recents_node.innerHTML = "<br>" + error + "<br><br>";
+        });
+}
+
+function filter_queries(tab, span, type) {
+    var disp = 'none';
+    if (span.classList.contains('hide')) {
+	disp = 'table-row';
+	span.classList.remove('hide');
+    }
+    else {
+	span.classList.add('hide');
+    }
+
+    for (var tr of document.getElementById(tab).children) {
+	if (tr.dataset["qstatus"].includes(type)) {
+	    tr.style.display = disp;
+	}
+    }
 }
 
 
