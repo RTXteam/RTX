@@ -197,16 +197,17 @@ class ARAXExpander:
                     post_prune_threshold = parameters["prune_threshold"]
                 else:
                     pre_prune_threshold, post_prune_threshold = self._get_prune_thresholds(one_hop_qg)
-                log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}, post-prune threshold "
-                          f"is {post_prune_threshold}")
                 # Prune back any nodes with more than the specified max of answers
-                for qnode_key in one_hop_qg.nodes:
-                    local_qnode = one_hop_qg.nodes[qnode_key]  # Has been decorated with 'input' curies
-                    if local_qnode.ids and len(local_qnode.ids) > pre_prune_threshold:
-                        overarching_kg = self._prune_kg(qnode_key, pre_prune_threshold, overarching_kg, query_graph, log)
-                        # Re-formulate the QG for this edge now that the KG has been slimmed down
-                        one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
-
+                if mode == "ARAX":
+                    log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}, post-prune threshold "
+                              f"is {post_prune_threshold}")
+                    fulfilled_qnode_keys = set(one_hop_qg.nodes).intersection(set(overarching_kg.nodes_by_qg_id))
+                    for qnode_key in fulfilled_qnode_keys:
+                        num_kg_nodes = len(overarching_kg.nodes_by_qg_id[qnode_key])
+                        if num_kg_nodes > pre_prune_threshold:
+                            overarching_kg = self._prune_kg(qnode_key, pre_prune_threshold, overarching_kg, query_graph, log)
+                            # Re-formulate the QG for this edge now that the KG has been slimmed down
+                            one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
                 if log.status != 'OK':
                     return response
 
@@ -283,16 +284,16 @@ class ARAXExpander:
                     # Apply any kryptonite ("not") qedges
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
-                # Prune back nodes with more than the specified max of answers IF we're not expanding any more edges
-                is_last_qedge = ordered_qedge_keys_to_expand.index(qedge_key) == len(ordered_qedge_keys_to_expand) - 1
-                if is_last_qedge:
-                    for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
-                        if len(nodes) > post_prune_threshold:
-                            overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
-                # Remove any paths that are now dead-ends
-                overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
-                if response.status != 'OK':
-                    return response
+                    # Prune back nodes with more than the specified max of answers IF we're not expanding any more edges
+                    is_last_qedge = ordered_qedge_keys_to_expand.index(qedge_key) == len(ordered_qedge_keys_to_expand) - 1
+                    if is_last_qedge:
+                        for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
+                            if len(nodes) > post_prune_threshold:
+                                overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
+                    # Remove any paths that are now dead-ends
+                    overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
+                    if response.status != 'OK':
+                        return response
 
                 # Make sure we found at least SOME answers for this edge
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
@@ -706,25 +707,13 @@ class ARAXExpander:
     @staticmethod
     def _prune_kg(qnode_key_to_prune: str, prune_threshold: int, kg: QGOrganizedKnowledgeGraph,
                   qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        log.info(f"Pruning back {qnode_key_to_prune} nodes/curies because there are more than {prune_threshold}")
+        log.info(f"Pruning back {qnode_key_to_prune} nodes because there are more than {prune_threshold}")
         kg_copy = copy.deepcopy(kg)
         qg_expanded_thus_far = eu.get_qg_expanded_thus_far(qg, kg)
-
-        # Handle (probably unusual) case where QG has too big of a list of curies
-        max_qg_input_curies = 2000 if prune_threshold <= 2000 else prune_threshold
-        if not qg_expanded_thus_far.edges or not qg_expanded_thus_far.nodes:
-            qnode_exceeding_threshold = qg.nodes[qnode_key_to_prune]
-            if qnode_exceeding_threshold.ids and len(qnode_exceeding_threshold.ids) > max_qg_input_curies:
-                log.error(f"Qnode {qnode_key_to_prune} has {len(qnode_exceeding_threshold.ids)} IDs specified, "
-                          f"which will break our system. You need to shorten your list to {max_qg_input_curies} "
-                          f"curies.", error_code="QueryTooLarge")
-                qnode_exceeding_threshold.ids = qnode_exceeding_threshold.ids[:max_qg_input_curies]
-            return kg_copy
-
-        # Handle more typical case where the larger QG is partially expanded, and this is a second+ hop
         qg_expanded_thus_far.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
         num_edges_in_kg = sum([len(edges) for edges in kg.edges_by_qg_id.values()])
         overlay_fet = True if num_edges_in_kg < 100000 else False
+        # Use fisher exact test and the ranker to prune down answers for this qnode
         intermediate_results_response = eu.create_results(qg_expanded_thus_far, kg_copy, log,
                                                           rank_results=True, overlay_fet=overlay_fet,
                                                           qnode_key_to_prune=qnode_key_to_prune)
