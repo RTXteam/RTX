@@ -212,6 +212,12 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
 
+                #### EWD mock up of what we want here. I don't know how to get it there. FIXME
+                response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Expanding')
+                response.update_query_plan(qedge_key, 'edge_properties', 'subject', 'NCBIGene:2343')
+                response.update_query_plan(qedge_key, 'edge_properties', 'object', 'biolink:Protein')
+                response.update_query_plan(qedge_key, 'edge_properties', 'predicate', 'biolink:entity_related_to_entity')
+
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
                     kp_selector = KPSelector(log)
@@ -343,6 +349,9 @@ class ARAXExpander:
                     overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
                     if response.status != 'OK':
                         return response
+
+                #### EWD hack. not sure this is the best place to declare we are done expanding this edge??
+                response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Done')
 
                 # Make sure we found at least SOME answers for this edge
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
