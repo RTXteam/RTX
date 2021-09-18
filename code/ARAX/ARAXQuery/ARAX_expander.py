@@ -410,21 +410,23 @@ class ARAXExpander:
             if kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode"):
                 from Expand.COHD_querier import COHDQuerier
                 kp_querier = COHDQuerier(log)
+                answer_kg = kp_querier.answer_one_hop_query(edge_qg)
             elif kp_to_use == 'DTD':
                 from Expand.DTD_querier import DTDQuerier
                 kp_querier = DTDQuerier(log)
+                answer_kg = kp_querier.answer_one_hop_query(edge_qg)
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
+                answer_kg = kp_querier.answer_one_hop_query(edge_qg)
             elif kp_to_use == 'RTX-KG2' and mode == 'RTXKG2':
                 kp_querier = KG2Querier(log)
+                answer_kg = kp_querier.answer_one_hop_query(edge_qg)
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
                 from Expand.trapi_querier import TRAPIQuerier
                 kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, kp_selector, force_local)
-
-            # Actually answer the query using the Querier we identified above
-            answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
+                answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
