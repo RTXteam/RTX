@@ -33,7 +33,7 @@ transformers==4.5.1
 reasoner-validator>=2.0.0
 #git+git://github.com/NCATSTranslator/reasoner-validator@2.0
 asyncio==3.4.3
-aiohttp==3.6.2
+aiohttp==3.7.4
 
 # Other things that you may need to do in python to get required data
 # nltk.download('wordnet')
