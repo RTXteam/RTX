@@ -583,6 +583,19 @@ def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
     return endpoint_map.get(kp_name, kp_name)
 
 
+def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXResponse) -> List[str]:
+    # Order KPs such that those with longer requests will tend to be kicked off earlier
+    kp_names = set(kp_names)
+    asyncio_start_order = ["CHP", "BTE", "DrugResponseKP", "ClinicalRiskKP", "WellnessKP", "TumorGeneMutationKP",
+                           "ICEES-DILI", "ICEES-Asthma", "MolePro", "RTX-KG2", "GeneticsKP", "COHD", "NGD", "DTD"]
+    unordered_kps = set(asyncio_start_order).difference(kp_names)
+    if unordered_kps:
+        log.warning(f"Selected KP(s) don't have asyncio start ordering specified: {unordered_kps}")
+        asyncio_start_order = list(unordered_kps) + asyncio_start_order
+    ordered_kps = [kp for kp in asyncio_start_order if kp in kp_names]
+    return ordered_kps
+
+
 def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
     # This is a temporary patch needed for KPs not yet TRAPI 1.0 compliant
     qg_copy = copy.deepcopy(qg)
