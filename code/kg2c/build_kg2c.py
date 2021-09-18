@@ -25,19 +25,26 @@ CODE_DIR = f"{KG2C_DIR}/.."
 
 
 def _setup_rtx_config_local(kg2_endpoint: str, synonymizer_name: str):
-    # Create a config_local.json file based off of configv2.json, but modified for our needs
+    """
+    This function creates a config_local.json file based off of configv2.json, but modified for our needs.
+    """
     logging.info("Creating a config_local.json file pointed to the right KG2 Neo4j and synonymizer..")
-    RTXConfiguration()  # Ensures we have a reasonably up-to-date configv2.json
+
+    # First remove any existing configv2.json or config_local.json
+    subprocess.call(["rm", "-f", f"{CODE_DIR}/configv2.json"])
+    # Save a copy of any pre-existing config_local.json so we don't overwrite it
+    original_config_local_file = pathlib.Path(f"{CODE_DIR}/config_local.json")
+    if original_config_local_file.exists():
+        subprocess.check_call(["mv", f"{CODE_DIR}/config_local.json", f"{CODE_DIR}/config_local.json_KG2CBUILDTEMP"])
+
+    RTXConfiguration()  # Regenerates configv2.json with the latest version
     with open(f"{CODE_DIR}/configv2.json") as configv2_file:
         rtx_config_dict = json.load(configv2_file)
     # Point to the 'right' KG2 (the one specified in the KG2c config) and synonymizer (we always use simple name)
     rtx_config_dict["Contextual"]["KG2"]["neo4j"]["bolt"] = f"bolt://{kg2_endpoint}:7687"
     for mode, path_info in rtx_config_dict["Contextual"].items():
         path_info["node_synonymizer"]["path"] = f"/something/{synonymizer_name}"  # Only need name, not full path
-    # Save a copy of any pre-existing config_local.json so we don't overwrite it
-    original_config_local_file = pathlib.Path(f"{CODE_DIR}/config_local.json")
-    if original_config_local_file.exists():
-        subprocess.check_call(["cp", f"{CODE_DIR}/config_local.json", f"{CODE_DIR}/config_local.json_KG2CBUILDTEMP"])
+
     # Save our new config_local.json file
     with open(f"{CODE_DIR}/config_local.json", "w+") as config_local_file:
         json.dump(rtx_config_dict, config_local_file)
@@ -129,7 +136,7 @@ def main():
         logging.info(f"DONE WITH KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours")
 
     # Remove the config_local file we created and put original config_local back in place (if there was one)
-    subprocess.call(["rm", f"{CODE_DIR}/config_local.json"])
+    subprocess.call(["rm", "-f", f"{CODE_DIR}/config_local.json"])
     original_config_local_file = pathlib.Path(f"{CODE_DIR}/config_local.json_KG2CBUILDTEMP")
     if original_config_local_file.exists():
         subprocess.check_call(["mv", f"{CODE_DIR}/config_local.json_KG2CBUILDTEMP", f"{CODE_DIR}/config_local.json"])
