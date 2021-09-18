@@ -26,6 +26,12 @@ from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
 from biolink_helper import BiolinkHelper
 
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+RTXConfig = RTXConfiguration()
+RTXConfig.live = "Production"
 
 class QGOrganizedKnowledgeGraph:
     def __init__(self, nodes: Dict[str, Dict[str, Node]] = None, edges: Dict[str, Dict[str, Edge]] = None):
@@ -543,12 +549,12 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "BTE": "https://api.bte.ncats.io/v1",  # TODO: Enter 1.2 endpoint once available..
         "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.2",
         "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.2",
-        "RTX-KG2": "https://arax.ncats.io/api/rtxkg2/v1.2",
+        "RTX-KG2": RTXConfig.rtx_kg2_url,
         "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
         "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
         "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
         "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
-        "CHP": "http://chp.thayer.dartmouth.edu/v1.2",
+        "CHP": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)
         "COHD": "https://trapi-dev.cohd.io/api",  # TODO: This is what they registered for TRAPI 1.2... will this URL change eventually?
         "ICEES-DILI": "https://icees.renci.org:16341",  # TODO: Enter 1.2 endpoint once available..
         "ICEES-Asthma": "https://icees.renci.org:16339"  # TODO: Enter 1.2 endpoint once available..
@@ -831,17 +837,18 @@ def get_kp_command_definitions() -> dict:
                            "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
                            "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
                            "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
-            "parameters": merge_two_dicts(standard_parameters, {
-                "CHP_survival_threshold": {
-                    "is_required": False,
-                    "examples": [200, 100],
-                    "min": 0,
-                    "max": 1000000000000,
-                    "default": 500,
-                    "type": "int",
-                    "description": "What cut-off/threshold for surivial time (day) to estimate probability."
-                }
-            })
+            # "parameters": merge_two_dicts(standard_parameters, {
+            #     "CHP_survival_threshold": {
+            #         "is_required": False,
+            #         "examples": [200, 100],
+            #         "min": 0,
+            #         "max": 1000000000000,
+            #         "default": 500,
+            #         "type": "int",
+            #         "description": "What cut-off/threshold for surivial time (day) to estimate probability."
+            #     }
+            # })
+            "parameters": standard_parameters
         },
         "DTD": {
             "dsl_command": "expand(kp=DTD)",

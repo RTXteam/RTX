@@ -3,6 +3,8 @@ import copy
 import json
 import sys
 import os
+import time
+
 import requests
 from typing import List, Dict, Set, Union
 
@@ -145,6 +147,9 @@ class TRAPIQuerier:
         # Send the query to the KP
         query_graph = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
         body = {'message': {'query_graph': query_graph}}
+        if self.kp_name == "RTX-KG2":
+            body['submitter'] = eu.get_translator_infores_curie('ARAX')
+            # TODO: Later add submitter for all KP queries (isn't yet supported by all KPs - part of TRAPI 1.2.1) #1654
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
         if self.force_local and self.kp_name == 'RTX-KG2':
             self.log.debug(f"{self.kp_name}: Pretending to send query to KG2 API (really it will be run locally)")
@@ -156,14 +161,18 @@ class TRAPIQuerier:
             self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
             try:
                 with requests_cache.disabled():
+                    start = time.time()
                     kp_response = requests.post(f"{self.kp_endpoint}/query", json=body, headers={'accept': 'application/json'},
                                                 timeout=query_timeout)
+                    self.log.wait_time = round(time.time() - start)
             except Exception:
                 self.log.warning(f"{self.kp_name}: Query timed out (waited {query_timeout} seconds)")
+                self.log.timed_out = query_timeout
                 return answer_kg
             if kp_response.status_code != 200:
                 self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. "
                                  f"Response from KP was: {kp_response.text}")
+                self.log.http_error = f"HTTP {kp_response.status_code}"
                 return answer_kg
             else:
                 json_response = kp_response.json()
@@ -237,19 +246,19 @@ class TRAPIQuerier:
         elif self.user_specified_kp:
             return 300
         elif num_qnodes_with_curies == 1:
-            if num_total_curies_in_qg < 30:
-                return 15
-            elif num_total_curies_in_qg < 100:
+            if num_total_curies_in_qg < 250:
                 return 30
-            elif num_total_curies_in_qg < 200:
+            elif num_total_curies_in_qg < 500:
+                return 60
+            elif num_total_curies_in_qg < 1000:
+                return 120
+            else:
+                return 180
+        else:  # Both nodes in the one-hop query must have curies specified
+            if num_total_curies_in_qg < 500:
+                return 30
+            elif num_total_curies_in_qg < 1000:
                 return 60
             else:
                 return 120
-        else:  # Both nodes in the one-hop query must have curies specified
-            if num_total_curies_in_qg < 30:
-                return 15
-            elif num_total_curies_in_qg < 200:
-                return 30
-            else:
-                return 60
 

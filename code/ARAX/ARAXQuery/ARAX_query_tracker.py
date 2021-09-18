@@ -5,6 +5,7 @@ import os
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import time
 import re
+
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -249,12 +250,14 @@ class ARAXQueryTracker:
                 text("""JULIANDAY(start_datetime) - JULIANDAY(datetime('now','localtime')) < :n""")).params(n=last_n_hours/24).all()
 
 
-    def get_status(self, last_n_hours=24, incomplete_only=False, id=None):
+    def get_status(self, last_n_hours=24, incomplete_only=False, id_=None):
         if self.session is None:
             return
+        if last_n_hours is None or last_n_hours == 0:
+            last_n_hours = 24
 
         entries = self.get_entries(last_n_hours=last_n_hours, incomplete_only=incomplete_only)
-        result = { 'recent_queries': [] }
+        result = { 'recent_queries': [], 'current_datetime': datetime.now().strftime("%Y-%m-%d %T") }
         if entries is None:
             return result
 
@@ -264,14 +267,18 @@ class ARAXQueryTracker:
                 'pid': entry.pid,
                 'start_datetime': entry.start_datetime,
                 'instance_name': entry.instance_name,
-                'status': entry.status,
+                'state': entry.status,
                 'elapsed': entry.elapsed,
                 'submitter': entry.origin,
                 'response_id': entry.message_id,
                 'status': entry.message_code,
                 'description': entry.code_description
             } )
+            if id_ is not None and entry.query_id == id_:
+                return entry.input_query
 
+        result['recent_queries'].reverse()
+        result['current_datetime'] = datetime.now().strftime("%Y-%m-%d %T")
         return result
 
 

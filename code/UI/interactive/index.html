@@ -44,6 +44,7 @@
 <div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
 <div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
 <br><br>
+<div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">Recent Queries</div>
 <div id="settingsMenu" onclick="openSection('settings');" class="menuleftitem">Settings</div>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
 <hr>
@@ -388,6 +389,15 @@
 <div class="pagesection" id="devDiv">
   <input type="button" class="questionBox button" name="action" value="Copy Response JSON to clipboard" onClick="copyJSON(this);"/>
   <div id="dev_result_json_container"></div>
+</div>
+
+
+<div class="pagesection" id="recentqsDiv">
+  <div class="statushead">Recent ARAX Queries (24 hours)</div>
+  <div class="status">
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentQs();"/><span style="margin-left:50px;" id="qfilter"></span>
+    <div id="recent_queries_container"><br>Click on the button above to view ARAX services activity in the last 24 hours<br><br></div>
+  </div>
 </div>
 
 <div class="pagesection" id="settingsDiv">

@@ -14,6 +14,7 @@ arax_url = "https://arax.ncats.io/api/arax/v1.2/query"
 
 def test_api_status():
     query = {
+      "submitter": 'ARAX_test',
       "bypass_cache": False,
       "enforce_edge_directionality": False,
       "max_results": 100,
@@ -53,6 +54,7 @@ def test_api_status():
 @pytest.mark.slow
 def test_kitchen_sink_api():
     query = {
+  "submitter": 'ARAX_test',
   "bypass_cache": False,
   "enforce_edge_directionality": False,
   "max_results": 100,
