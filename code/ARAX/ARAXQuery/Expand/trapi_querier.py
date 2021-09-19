@@ -170,7 +170,9 @@ class TRAPIQuerier:
 
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
         if self.force_local and self.kp_name == 'RTX-KG2':
+            start = time.time()
             json_response = self._answer_query_force_local(request_body)
+            wait_time = round(time.time() - start)
         # Otherwise send the query graph to the KP's TRAPI API
         else:
             self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
@@ -248,8 +250,8 @@ class TRAPIQuerier:
                 json_response = kp_response.json()
 
         answer_kg = self._load_kp_json_response(json_response)
-        done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {self.log.wait_time} seconds"
         if qedge_key:
+            done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {self.log.wait_time} seconds"
             self.log.update_query_plan(qedge_key, self.kp_name, "Done", done_message)
         return answer_kg
 

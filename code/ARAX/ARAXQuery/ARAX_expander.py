@@ -245,8 +245,11 @@ class ARAXExpander:
 
                 use_asyncio = True  # Flip this to False if you want to use multiprocessing instead
 
-                # Concurrently send this query to each KP selected to answer it
-                if len(kps_to_query) > 1:
+                # Use a non-concurrent method to expand with KG2 when bypassing the KG2 API
+                if kps_to_query == ["RTX-KG2"] and mode == "RTXKG2":
+                    kp_answers = [self._expand_edge_kg2_local(one_hop_qg, log)]
+                # Otherwise concurrently send this query to each KP selected to answer it
+                elif kps_to_query:
                     kp_selector = KPSelector(log)
                     if use_asyncio:
                         kps_to_query = eu.sort_kps_for_asyncio(kps_to_query, log)
@@ -303,12 +306,6 @@ class ARAXExpander:
                                 log.merge(kp_log)
                             if response.status != 'OK':
                                 return response
-                elif len(kps_to_query) == 1:
-                    # Don't bother with concurrency if we only selected one KP
-                    kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
-                    kp_selector = KPSelector(log)
-                    kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, mode,
-                                                    user_specified_kp, force_local, kp_selector, log)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
@@ -490,6 +487,30 @@ class ARAXExpander:
             answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
+
+        return answer_kg, log
+
+    def _expand_edge_kg2_local(self, one_hop_qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+        qedge_key = next(qedge_key for qedge_key in one_hop_qg.edges)
+        qedge = one_hop_qg.edges[qedge_key]
+        log.debug(f"Expanding {qedge_key} by querying Plover directly")
+        answer_kg = QGOrganizedKnowledgeGraph()
+
+        from Expand.kg2_querier import KG2Querier
+        kg2_querier = KG2Querier(log)
+        try:
+            answer_kg = kg2_querier.answer_one_hop_query(one_hop_qg)
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            log.error(f"An uncaught error was thrown while trying to Expand using RTX-KG2 (local). Error was: {tb}",
+                      error_code=f"UncaughtError")
+
+        if log.status != 'OK':
+            return answer_kg, log
+
+        if eu.qg_is_fulfilled(one_hop_qg, answer_kg):
+            answer_kg = self._remove_self_edges(answer_kg, "RTX-KG2", qedge_key, qedge, log)
 
         return answer_kg, log
 

@@ -194,15 +194,6 @@ def get_printable_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> str:
     return counts_string if counts_string else "no answers"
 
 
-def get_qnode_description_string(qnode: QNode) -> str:
-    if qnode.ids:
-        return ", ".join(qnode.ids)
-    elif qnode.categories:
-        return ", ".join(qnode.categories)
-    else:
-        return "Any node"
-
-
 def get_qg_without_kryptonite_portion(qg: QueryGraph) -> QueryGraph:
     kryptonite_qedge_keys = [qedge_key for qedge_key, qedge in qg.edges.items() if qedge.exclude]
     normal_qedge_keys = set(qg.edges).difference(kryptonite_qedge_keys)
