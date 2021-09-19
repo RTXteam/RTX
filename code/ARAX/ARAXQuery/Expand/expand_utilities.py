@@ -194,6 +194,15 @@ def get_printable_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> str:
     return counts_string if counts_string else "no answers"
 
 
+def get_qnode_description_string(qnode: QNode) -> str:
+    if qnode.ids:
+        return ", ".join(qnode.ids)
+    elif qnode.categories:
+        return ", ".join(qnode.categories)
+    else:
+        return "Any node"
+
+
 def get_qg_without_kryptonite_portion(qg: QueryGraph) -> QueryGraph:
     kryptonite_qedge_keys = [qedge_key for qedge_key, qedge in qg.edges.items() if qedge.exclude]
     normal_qedge_keys = set(qg.edges).difference(kryptonite_qedge_keys)
@@ -588,7 +597,7 @@ def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXRespons
     kp_names = set(kp_names)
     asyncio_start_order = ["CHP", "BTE", "DrugResponseKP", "ClinicalRiskKP", "WellnessKP", "TumorGeneMutationKP",
                            "ICEES-DILI", "ICEES-Asthma", "MolePro", "RTX-KG2", "GeneticsKP", "COHD", "NGD", "DTD"]
-    unordered_kps = set(asyncio_start_order).difference(kp_names)
+    unordered_kps = kp_names.difference(set(asyncio_start_order))
     if unordered_kps:
         log.warning(f"Selected KP(s) don't have asyncio start ordering specified: {unordered_kps}")
         asyncio_start_order = list(unordered_kps) + asyncio_start_order

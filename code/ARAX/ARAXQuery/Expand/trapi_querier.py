@@ -69,11 +69,6 @@ class TRAPIQuerier:
         # Answer the query using the KP and load its answers into our object model
         final_kg = await self._answer_query_using_kp_async(qg_copy)
 
-        if self.log.status != 'OK':
-            qedge_key = next(qedge_key for qedge_key in qg_copy.edges)
-            self.log.update_query_plan(qedge_key, self.kp_name, "Error", f"Process error-ed out with {self.log.status}")
-            self.log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
-
         return final_kg
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -203,8 +198,7 @@ class TRAPIQuerier:
                 return QGOrganizedKnowledgeGraph()
 
         answer_kg = self._load_kp_json_response(json_response)
-        done_message = f"{self.kp_name}: API returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} " \
-                       f"edges in {wait_time} seconds"
+        done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {wait_time} seconds"
         self.log.update_query_plan(qedge_key, self.kp_name, "Done", done_message)
         return answer_kg
 
