@@ -33,6 +33,17 @@ from openapi_server.models.query_constraint import QueryConstraint
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
+def trim_to_size(input_list, length):
+    if input_list is None:
+        return None
+    if len(input_list) > length+1:
+        n_more = len(input_list) - length
+        output_list = input_list[:length]
+        output_list.append(f"+{n_more}")
+        return output_list
+    else:
+        return input_list
+
 
 class ARAXExpander:
 
@@ -191,14 +202,17 @@ class ARAXExpander:
             all_kps = set(self.kp_command_definitions)
             for qedge_key in ordered_qedge_keys_to_expand:
                 qedge = query_sub_graph.edges[qedge_key]
-                response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Waiting for previous expansion step')
+                response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Waiting')
                 subject_qnode = query_sub_graph.nodes[qedge.subject]
                 object_qnode = query_sub_graph.nodes[qedge.object]
                 subject_details = subject_qnode.ids if subject_qnode.ids else subject_qnode.categories
                 object_details = object_qnode.ids if object_qnode.ids else object_qnode.categories
+                subject_details = trim_to_size(subject_details,5)
+                object_details = trim_to_size(object_details,5)
+                predicate_details = trim_to_size(qedge.predicates,5)
                 response.update_query_plan(qedge_key, 'edge_properties', 'subject', subject_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
-                response.update_query_plan(qedge_key, 'edge_properties', 'predicate', qedge.predicates)
+                response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
                 for kp in all_kps:
                     response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for previous expansion step')
 
