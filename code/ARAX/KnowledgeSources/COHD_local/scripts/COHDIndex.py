@@ -11,6 +11,8 @@ import argparse
 import sqlite3
 import pickle
 import itertools
+import requests
+import json
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")
 from RTXConfiguration import RTXConfiguration
@@ -292,6 +294,52 @@ class COHDIndex:
         return synonym
 
     @staticmethod
+    def _call_cohd_biolink_to_omop_api(query):
+        """
+        Args:
+            query (required, dict): a dict format of query that required by COHD API, e.g., {"curies": ["HP:0002907", "MONDO:0001187"]}
+
+        Returns:
+            dict: a dictionary of results
+        """
+        url = 'https://cohd.io/api/translator/biolink_to_omop'
+        head = {'accept': 'application/json', 'Content-Type':'application/json'}
+        response = requests.post('https://cohd.io/api/translator/biolink_to_omop', data=json.dumps(query), headers=head)
+        if response.status_code == 200:
+            response = response.json()
+            res = {key:[response[key]['omop_concept_id']] if response[key] is not None else [] for key in response}
+            return res
+        else:
+            return {}
+
+    @staticmethod
+    def _call_cohd_omop_to_biolink_api(query):
+        """
+        Args:
+            query (required, dict): a dict format of query that required by COHD API, e.g., {"omop_ids": [78472, 197508]}
+
+        Returns:
+            dict: a dictionary of results
+        """
+        url = 'https://cohd.io/api/translator/omop_to_biolink'
+        head = {'accept': 'application/json', 'Content-Type':'application/json'}
+        response = requests.post('https://cohd.io/api/translator/omop_to_biolink', data=json.dumps(query), headers=head)
+        if response.status_code == 200:
+            response = response.json()
+            res = {key:[response[key]['id']['identifier']] if response[key] is not None else [] for key in response}
+            return res
+        else:
+            return {}
+
+    def _get_preferred_curie(self, curie):
+
+        res = self.synonymizer.get_canonical_curies(curie)[curie]
+        if res is not None:
+            return res['preferred_curie']
+        else:
+            return curie
+
+    @staticmethod
     def _change_format(synonym):
 
         synonym = synonym.upper()
@@ -320,6 +368,43 @@ class COHDIndex:
 
         return synonym
 
+    # def get_concept_ids(self, curie):
+    #     """Search for OMOP concept ids by curie id.
+
+    #     Args:
+    #         curie (required, str): Compacy URI (CURIE) of the concept to map, e.g., "DOID:8398"
+
+    #     Returns:
+    #         list: a list which contains OMOP concepts for the given curie id, or empty list if no
+    #         example:
+    #             [75617, 80180, 1570333, 4025957, 4035441, 4079750, 4083695, 4083696, 4110738, 36516824, 36569386, 45618044]
+    #     """
+    #     cursor = self.connection.cursor()
+    #     results_list = []
+    #     if isinstance(curie, str):
+    #         preferred_curie = self.synonymizer.get_canonical_curies(curie)[curie]
+    #         if preferred_curie is None:
+    #             print(f"Can't convert {curie} to preferred curie in get_concept_ids and thus use its original curie", flush=True)
+    #             cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where curie='{self._change_format(curie)}';")
+    #             res = cursor.fetchall()
+    #             if len(res) == 0:
+    #                 return results_list
+    #             else:
+    #                 results_list = [row[1] for row in res]
+    #                 return results_list
+    #         else:
+    #             preferred_curie = preferred_curie['preferred_curie']
+    #             cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where preferred_curie='{preferred_curie}';")
+    #             res = cursor.fetchall()
+    #             if len(res) == 0:
+    #                 return results_list
+    #             else:
+    #                 results_list = [row[1] for row in res]
+    #                 return results_list
+    #     else:
+    #         print("The 'curie' in get_concept_ids should be a str", flush=True)
+    #         return results_list
+
     def get_concept_ids(self, curie):
         """Search for OMOP concept ids by curie id.
 
@@ -331,31 +416,59 @@ class COHDIndex:
             example:
                 [75617, 80180, 1570333, 4025957, 4035441, 4079750, 4083695, 4083696, 4110738, 36516824, 36569386, 45618044]
         """
-        cursor = self.connection.cursor()
         results_list = []
         if isinstance(curie, str):
-            preferred_curie = self.synonymizer.get_canonical_curies(curie)[curie]
-            if preferred_curie is None:
-                print(f"Can't convert {curie} to preferred curie in get_concept_ids and thus use its original curie", flush=True)
-                cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where curie='{self._change_format(curie)}';")
-                res = cursor.fetchall()
-                if len(res) == 0:
-                    return results_list
+            query = {"curies": [curie]}
+            resp_dict = self._call_cohd_biolink_to_omop_api(query)
+            results_list = []
+            for key, value in resp_dict.items():
+                preferred_curie = self._get_preferred_curie(key)
+                query = {"curies": [preferred_curie]}
+                temp = self._call_cohd_biolink_to_omop_api(query)
+                if len(value) != 0:
+                    results_list = list(set(value + temp[preferred_curie]))
                 else:
-                    results_list = [row[1] for row in res]
-                    return results_list
-            else:
-                preferred_curie = preferred_curie['preferred_curie']
-                cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where preferred_curie='{preferred_curie}';")
-                res = cursor.fetchall()
-                if len(res) == 0:
-                    return results_list
-                else:
-                    results_list = [row[1] for row in res]
-                    return results_list
+                    results_list = list(set(temp[preferred_curie]))
+            return results_list
         else:
             print("The 'curie' in get_concept_ids should be a str", flush=True)
             return results_list
+
+    # def get_curies_from_concept_id(self, concept_id):
+    #     """Search for curie ids by OMOP concept ids.
+
+    #     Args:
+    #         concept_id (required, int): an OMOP concept id, e.g., 192855
+
+    #     Returns:
+    #         list: a list which contains curies for each given OMOP concept id, or None if no
+    #         example:
+    #             ['CUI:C0154091', 'CUI:C0855181', 'NCIT:C3644', 'MONDO:0004703', 'DOID:9053']
+    #     """
+    #     if isinstance(concept_id, int):
+    #         pass
+    #     else:
+    #         print("The 'concept_id' in get_curies_from_concept_id should be an int", flush=True)
+    #         return []
+
+    #     results_list = []
+    #     cursor = self.connection.cursor()
+    #     cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where concept_id={concept_id};")
+    #     res = cursor.fetchall()
+    #     if len(res) != 0:
+    #         results_list = list(set([record[0] for record in res]))
+    #         # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
+    #         # res = cursor.fetchall()
+    #         # if len(res) != 0:
+    #         #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
+    #     else:
+    #         pass
+    #         # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
+    #         # res = cursor.fetchall()
+    #         # if len(res) != 0:
+    #         #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
+
+    #     return results_list
 
     def get_curies_from_concept_id(self, concept_id):
         """Search for curie ids by OMOP concept ids.
@@ -375,23 +488,13 @@ class COHDIndex:
             return []
 
         results_list = []
-        cursor = self.connection.cursor()
-        cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where concept_id={concept_id};")
-        res = cursor.fetchall()
-        if len(res) != 0:
-            results_list = list(set([record[0] for record in res]))
-            # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
-            # res = cursor.fetchall()
-            # if len(res) != 0:
-            #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
-        else:
-            pass
-            # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
-            # res = cursor.fetchall()
-            # if len(res) != 0:
-            #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
-
+        query = {"omop_ids": [concept_id]}
+        resp_dict = self._call_cohd_omop_to_biolink_api(query)
+        for key, value in resp_dict.items():
+            if len(value) != 0:
+                results_list = value
         return results_list
+
 
     def get_all_concept_pair_info(self, concept_id_1=[], concept_id_2=[], concept_id_pair=None, dataset_id=1):
         """Retrieve chi-square p-value(chi_square_p), observed-expected frequency ratio(ln_ratio), relative frequency of concept id 1, relative frequency of concept id 2,

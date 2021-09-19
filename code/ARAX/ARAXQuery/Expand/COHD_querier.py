@@ -5,8 +5,6 @@ import traceback
 import ast
 import itertools
 import numpy as np
-import requests
-import json
 from typing import List, Dict, Tuple
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -1352,25 +1350,6 @@ class COHDQuerier:
 
             return final_kg
 
-    @staticmethod
-    def _call_cohd_biolink_to_omop_api(query):
-        """
-        Args:
-            query (required, dict): a dict format of query that required by COHD API, e.g., {"curies": ["HP:0002907", "MONDO:0001187"]}
-
-        Returns:
-            dict: a dictionary of results
-        """
-        url = 'https://cohd.io/api/translator/biolink_to_omop'
-        head = {'accept': 'application/json', 'Content-Type':'application/json'}
-        response = requests.post('https://cohd.io/api/translator/biolink_to_omop', data=json.dumps(query), headers=head)
-        if response.status_code == 200:
-            response = response.json()
-            res = {key:[response[key]['omop_concept_id']] if response[key] is not None else [] for key in response}
-            return res
-        else:
-            return {}
-
     def _get_omop_id_from_curies(self, qnode_key: str, qg: QueryGraph, log: ARAXResponse) -> Dict[str, list]:
         log.info(f"Getting the OMOP id for {qnode_key}")
         qnode = qg.nodes[qnode_key]
@@ -1380,44 +1359,27 @@ class COHDQuerier:
             log.error(f"{qnode_key} has no curie id", error_code="NoCurie")
             return {}
 
-        # res_dict = {}
+        res_dict = {}
         if isinstance(qnode.ids, str):
-            # res = self.synonymizer.get_canonical_curies(curies=qnode.id)
-            # if res[qnode.id] is None:
-            #     log.error("Can't find the preferred curie for {qnode.id}", error_code="NoPreferredCurie")
-            #     return {}
-            # else:
-            #     preferred_curie = res[qnode.id]['preferred_curie']
-            try:
-                # omop_ids = self.cohdindex.get_concept_ids(qnode.ids)
-                query = {"curies": [qnode.ids]}
-                resp_dict = self._call_cohd_biolink_to_omop_api(query)
-                return resp_dict
-            except:
-                log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
-                return {}
-            # res_dict[qnode.ids] = omop_ids
-
+            curie = qnode.ids
+            preferred_curie = self._get_preferred_curie(curie)
+            omop_ids = self.cohdindex.get_concept_ids(curie)
+            res_dict[preferred_curie] = omop_ids
         else:
-            # classify the curies based on the preferred curie
-            # res = self.synonymizer.get_canonical_curies(curies=qnode.id)
-            # for curie in res:
-            #     if res[curie] is None:
-            #         log.error("Can't find the preferred curie for {curie}", error_code="NoPreferredCurie")
-            #         return {}
-            #     else:
-            #         if res[curie]['preferred_curie'] not in res_dict:
-            #             res_dict[res[curie]['preferred_curie']] = []
+            curie_list = qnode.ids
+            for curie in curie_list:
+                preferred_curie = self._get_preferred_curie(curie)
+                omop_ids = self.cohdindex.get_concept_ids(curie)
+                res_dict[preferred_curie] = omop_ids
+        return res_dict
 
-            try:
-                # omop_ids = self.cohdindex.get_concept_ids(curie)
-                query = {"curies": [curie for curie in qnode.ids]}
-                resp_dict = self._call_cohd_biolink_to_omop_api(query)
-                return resp_dict
-            except:
-                log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
-                return {}
-                # res_dict[curie] = omop_ids
+    def _get_preferred_curie(self, curie: str) -> str:
+
+        res = self.synonymizer.get_canonical_curies(curie)[curie]
+        if res is not None:
+            return res['preferred_curie']
+        else:
+            return curie
 
     def _convert_to_swagger_edge(self, subject: str, object: str, name=None, value=None, info_dict=None) -> Tuple[str, Edge]:
         swagger_edge = Edge()
