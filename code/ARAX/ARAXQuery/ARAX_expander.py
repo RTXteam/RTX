@@ -235,6 +235,7 @@ class ARAXExpander:
                     for kp in all_kps.difference(kps_to_query):
                         skipped_message = f"Expand was told to use {', '.join(kps_to_query)}"
                         response.update_query_plan(qedge_key, kp, "Skipped", skipped_message)
+                kps_to_query = list(kps_to_query)
 
                 use_asyncio = True  # Flip this to False if you want to use multiprocessing instead
 
