@@ -213,13 +213,11 @@ class ARAXExpander:
                 # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
                 if parameters.get("prune_threshold"):
                     pre_prune_threshold = parameters["prune_threshold"]
-                    post_prune_threshold = parameters["prune_threshold"]
                 else:
-                    pre_prune_threshold, post_prune_threshold = self._get_prune_thresholds(one_hop_qg)
+                    pre_prune_threshold = self._get_prune_threshold(one_hop_qg)
                 # Prune back any nodes with more than the specified max of answers
                 if mode == "ARAX":
-                    log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}, post-prune threshold "
-                              f"is {post_prune_threshold}")
+                    log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}")
                     fulfilled_qnode_keys = set(one_hop_qg.nodes).intersection(set(overarching_kg.nodes_by_qg_id))
                     for qnode_key in fulfilled_qnode_keys:
                         num_kg_nodes = len(overarching_kg.nodes_by_qg_id[qnode_key])
@@ -349,12 +347,6 @@ class ARAXExpander:
                     # Apply any kryptonite ("not") qedges
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
-                    # Prune back nodes with more than the specified max of answers IF we're not expanding any more edges
-                    is_last_qedge = ordered_qedge_keys_to_expand.index(qedge_key) == len(ordered_qedge_keys_to_expand) - 1
-                    if is_last_qedge:
-                        for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
-                            if len(nodes) > post_prune_threshold:
-                                overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
                     # Remove any paths that are now dead-ends
                     overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
                     if response.status != 'OK':
@@ -1147,10 +1139,10 @@ class ARAXExpander:
             log.debug(f"No KG nodes found that use a different curie than was asked for in the QG")
 
     @staticmethod
-    def _get_prune_thresholds(one_hop_qg: QueryGraph) -> Tuple[int, int]:
+    def _get_prune_threshold(one_hop_qg: QueryGraph) -> int:
         """
-        Returns the prune threshold for the 'input' qnode (pinned qnode) and 'output' qnode (unpinned qnode),
-        for pruning before and after expansion of the given edge, respectively.
+        Returns the prune threshold for the given qedge (i.e., the max number of nodes allowed to be fed in as 'input'
+        curies for this qedge expansion.
         """
         qedge = next(qedge for qedge in one_hop_qg.edges.values())
         qnode_a = one_hop_qg.nodes[qedge.subject]
@@ -1159,18 +1151,18 @@ class ARAXExpander:
         # Handle (curie(s))--(curie(s)) queries
         if qnode_a.ids and qnode_b.ids:
             # Be lenient for input qnode since it will be constrained by output qnode's curies
-            return 5000, 10000
+            return 5000
         # Handle (curie(s))--(>=0 categories) queries
         else:
             open_ended_qnode_categories = set(qnode_a.categories) if not qnode_a.ids else set(qnode_b.categories)
             if (not open_ended_qnode_categories or open_ended_qnode_categories.intersection(large_categories)) and \
                     (not qedge.predicates or "biolink:related_to" in qedge.predicates):
                 # Be more strict when such broad categories/predicates are used
-                return 100, 10000
+                return 100
             elif not open_ended_qnode_categories or open_ended_qnode_categories.intersection(large_categories):
-                return 200, 10000
+                return 200
             else:
-                return 500, 10000
+                return 500
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):
