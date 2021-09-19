@@ -85,12 +85,17 @@ class ARAXQuery:
 
             i_message = 0
             n_messages = len(self.response.messages)
+            query_plan_counter = 0
 
             while "DONE" not in self.response.status:
                 n_messages = len(self.response.messages)
                 while i_message < n_messages:
                     yield(json.dumps(self.response.messages[i_message])+"\n")
                     i_message += 1
+                #### Also emit any updates to the query_plan
+                if query_plan_counter < self.response.query_plan['counter']:
+                    query_plan_counter = self.response.query_plan['counter']
+                    yield(json.dumps(self.response.query_plan)+"\n")
                 time.sleep(0.2)
 
             # #### If there are any more logging messages in the queue, send them first
@@ -694,7 +699,10 @@ class ARAXQuery:
             #from ARAX_attribute_parser import ARAXAttributeParser
             #attribute_parser = ARAXAttributeParser(response.envelope,response.envelope['message'])
             #response.envelope.validation_result['provenance_summary'] = attribute_parser.summarize_provenance_info()
-
+            #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
+            if response.envelope.query_options is None:
+                response.envelope.query_options = {}
+            response.envelope.query_options['query_plan'] = response.query_plan
 
             # If store=true, then put the message in the database
             response_id = None

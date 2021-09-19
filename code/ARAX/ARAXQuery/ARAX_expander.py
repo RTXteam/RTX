@@ -1,10 +1,12 @@
 #!/bin/env python3
+import asyncio
 import copy
 import logging
 import multiprocessing
 import pickle
 import sys
 import os
+import time
 import traceback
 from collections import defaultdict
 from typing import List, Dict, Tuple, Union, Set, Optional
@@ -210,10 +212,27 @@ class ARAXExpander:
                 return response
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
-            # Expand the query graph edge-by-edge
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
+
+            # Pre-populate the query plan with an entry for each qedge that will be expanded in this Expand() call
+            all_kps = set(self.kp_command_definitions)
+            for qedge_key in ordered_qedge_keys_to_expand:
+                qedge = query_sub_graph.edges[qedge_key]
+                response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Waiting for previous expansion step')
+                subject_qnode = query_sub_graph.nodes[qedge.subject]
+                object_qnode = query_sub_graph.nodes[qedge.object]
+                subject_details = subject_qnode.ids if subject_qnode.ids else subject_qnode.categories
+                object_details = object_qnode.ids if object_qnode.ids else object_qnode.categories
+                response.update_query_plan(qedge_key, 'edge_properties', 'subject', subject_details)
+                response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
+                response.update_query_plan(qedge_key, 'edge_properties', 'predicate', qedge.predicates)
+                for kp in all_kps:
+                    response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for previous expansion step')
+
+            # Expand the query graph edge-by-edge
             for qedge_key in ordered_qedge_keys_to_expand:
                 log.debug(f"Expanding qedge {qedge_key}")
+                response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Expanding')
                 qedge = query_graph.edges[qedge_key]
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
@@ -221,13 +240,11 @@ class ARAXExpander:
                 # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
                 if parameters.get("prune_threshold"):
                     pre_prune_threshold = parameters["prune_threshold"]
-                    post_prune_threshold = parameters["prune_threshold"]
                 else:
-                    pre_prune_threshold, post_prune_threshold = self._get_prune_thresholds(one_hop_qg)
+                    pre_prune_threshold = self._get_prune_threshold(one_hop_qg)
                 # Prune back any nodes with more than the specified max of answers
                 if mode == "ARAX":
-                    log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}, post-prune threshold "
-                              f"is {post_prune_threshold}")
+                    log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}")
                     fulfilled_qnode_keys = set(one_hop_qg.nodes).intersection(set(overarching_kg.nodes_by_qg_id))
                     for qnode_key in fulfilled_qnode_keys:
                         num_kg_nodes = len(overarching_kg.nodes_by_qg_id[qnode_key])
@@ -243,74 +260,90 @@ class ARAXExpander:
                     kp_selector = KPSelector(log)
                     kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
-                    num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in one_hop_qg.nodes.values()])
-                    for kp in kps_to_query:
-                        waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
-                        response.update_query_plan(qedge_key, kp, "Waiting", waiting_message)
                 else:
                     kps_to_query = {parameters["kp"]}
                     all_kps = set(self.kp_command_definitions)
                     for kp in all_kps.difference(kps_to_query):
                         skipped_message = f"Expand was told to use {', '.join(kps_to_query)}"
                         response.update_query_plan(qedge_key, kp, "Skipped", skipped_message)
-                kps_to_query = list(kps_to_query)  # We want them ordered for later processing
+                kps_to_query = list(kps_to_query)
 
-                # Send this query to each KP selected to answer it (in parallel)
-                if len(kps_to_query) > 1:
-                    log.debug(f"Waiting for KP processes to finish")
-                    empty_log = ARAXResponse()  # We'll have to merge processes' logs together afterwards
-                    kp_selector = KPSelector(empty_log)
-                    self.logger.info(f"PID {os.getpid()}: BEFORE pool: About to create {len(kps_to_query)} child processes from {multiprocessing.current_process()}")
-                    with multiprocessing.Pool(len(kps_to_query)) as pool:
-                        kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                       mode, user_specified_kp, force_local,
-                                                                       kp_selector, empty_log, True]
-                                                                      for kp_to_use in kps_to_query])
-                        pool.close()
-                        pool.join()  # These two lines should not be necessary, but adding to be extra cautious
-                    self.logger.info(f"PID {os.getpid()}: AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
-                elif len(kps_to_query) == 1:
-                    # Don't bother creating separate processes if we only selected one KP
-                    kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
+                use_asyncio = True  # Flip this to False if you want to use multiprocessing instead
+
+                # Use a non-concurrent method to expand with KG2 when bypassing the KG2 API
+                if kps_to_query == ["RTX-KG2"] and mode == "RTXKG2":
+                    kp_answers = [self._expand_edge_kg2_local(one_hop_qg, log)]
+                # Otherwise concurrently send this query to each KP selected to answer it
+                elif kps_to_query:
                     kp_selector = KPSelector(log)
-                    kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, mode,
-                                                    user_specified_kp, force_local, kp_selector, log)]
+                    if use_asyncio:
+                        kps_to_query = eu.sort_kps_for_asyncio(kps_to_query, log)
+                        log.debug(f"Will use asyncio to run KP queries concurrently")
+                        loop = asyncio.new_event_loop()  # Need to create NEW event loop for threaded environments
+                        asyncio.set_event_loop(loop)
+                        tasks = [self._expand_edge_async(one_hop_qg, kp_to_use, input_parameters, user_specified_kp,
+                                                         force_local, kp_selector, log, multiple_kps=True)
+                                 for kp_to_use in kps_to_query]
+                        task_group = asyncio.gather(*tasks)
+                        kp_answers = loop.run_until_complete(task_group)
+                        loop.close()
+                    else:
+                        # Use multiprocessing (which forks behind the scenes) TODO: Delete once fully commit to asyncio
+                        log.debug(f"Will use multiprocessing to run KP queries in parallel")
+                        for kp in kps_to_query:
+                            num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in one_hop_qg.nodes.values()])
+                            waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
+                            response.update_query_plan(qedge_key, kp, "Waiting", waiting_message)
+                        log.debug(f"Waiting for all KP processes to finish..")
+                        empty_log = ARAXResponse()  # We'll have to merge processes' logs together afterwards
+                        self.logger.info(f"PID {os.getpid()}: BEFORE pool: About to create {len(kps_to_query)} child processes from {multiprocessing.current_process()}")
+                        with multiprocessing.Pool(len(kps_to_query)) as pool:
+                            kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
+                                                                           user_specified_kp, force_local,
+                                                                           kp_selector, empty_log, True]
+                                                                          for kp_to_use in kps_to_query])
+                        self.logger.info(f"PID {os.getpid()}: AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
+                        # Merge the processes' individual logs and update the query plan
+                        for index, response_tuple in enumerate(kp_answers):
+                            kp = kps_to_query[index]
+                            answer_kg = response_tuple[0]
+                            kp_log = response_tuple[1]
+                            wait_time = kp_log.wait_time if hasattr(kp_log, "wait_time") else "unknown"
+                            # Update the query plan with KPs' results
+                            if kp_log.status == 'OK':
+                                if hasattr(kp_log, "timed_out"):
+                                    timeout_message = f"Query timed out after {kp_log.timed_out} seconds"
+                                    response.update_query_plan(qedge_key, kp, "Timed out", timeout_message)
+                                elif hasattr(kp_log, "http_error"):
+                                    error_message = f"Returned error {kp_log.http_error} after {wait_time} seconds"
+                                    response.update_query_plan(qedge_key, kp, "Error", error_message)
+                                else:
+                                    done_message = f"Query returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} " \
+                                                   f"edges in {wait_time} seconds"
+                                    response.update_query_plan(qedge_key, kp, "Done", done_message)
+                            else:
+                                response.update_query_plan(qedge_key, kp, "Error",
+                                                           f"Process returned error {kp_log.status}")
+                            # Merge KP logs as needed, since processes can't share the main log
+                            if len(kps_to_query) > 1:
+                                if kp_log.status != 'OK':
+                                    kp_log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
+                                log.merge(kp_log)
+                            if response.status != 'OK':
+                                return response
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
 
-                # Post-process all the KPs' answers and merge into our overarching KG
+                # Merge KPs' answers into our overarching KG
                 log.debug(f"Got answers from all KPs; merging them into one KG")
                 for index, response_tuple in enumerate(kp_answers):
-                    kp = kps_to_query[index]
                     answer_kg = response_tuple[0]
-                    kp_log = response_tuple[1]
-                    wait_time = kp_log.wait_time if hasattr(kp_log, "wait_time") else "unknown"
-                    # Update the query plan with KPs' results
-                    if kp_log.status == 'OK':
-                        if hasattr(kp_log, "timed_out"):
-                            timeout_message = f"Query timed out after {kp_log.timed_out} seconds"
-                            response.update_query_plan(qedge_key, kp, "Timed out", timeout_message)
-                        elif hasattr(kp_log, "http_error"):
-                            error_message = f"Returned error {kp_log.http_error} after {wait_time} seconds"
-                            response.update_query_plan(qedge_key, kp, "Error", error_message)
-                        else:
-                            done_message = f"Query returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} " \
-                                           f"edges in {wait_time} seconds"
-                            response.update_query_plan(qedge_key, kp, "Done", done_message)
-                    else:
-                        response.update_query_plan(qedge_key, kp, "Error", f"Process returned error {kp_log.status}")
-                    # Merge KP logs as needed, since processes can't share the main log
-                    if len(kps_to_query) > 1:
-                        if kp_log.status != 'OK':
-                            kp_log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
-                        log.merge(kp_log)
-                    if response.status != 'OK':
-                        return response
-                    # Merge the KPs' answer KGs into one overarching KG
+                    # Store any kryptonite edge answers as needed
                     if mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
+                    # Otherwise just merge the answer into the overarching KG
                     else:
                         self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, mode, response)
                     if response.status != 'OK':
@@ -341,16 +374,13 @@ class ARAXExpander:
                     # Apply any kryptonite ("not") qedges
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
-                    # Prune back nodes with more than the specified max of answers IF we're not expanding any more edges
-                    is_last_qedge = ordered_qedge_keys_to_expand.index(qedge_key) == len(ordered_qedge_keys_to_expand) - 1
-                    if is_last_qedge:
-                        for qnode_key, nodes in overarching_kg.nodes_by_qg_id.items():
-                            if len(nodes) > post_prune_threshold:
-                                overarching_kg = self._prune_kg(qnode_key, post_prune_threshold, overarching_kg, query_graph, log)
                     # Remove any paths that are now dead-ends
                     overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
                     if response.status != 'OK':
                         return response
+
+                # Declare that we are done expanding this qedge
+                response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Done')
 
                 # Make sure we found at least SOME answers for this edge
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
@@ -390,10 +420,118 @@ class ARAXExpander:
 
         return response
 
-    def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], mode: str,
+    async def _expand_edge_async(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
+                                 user_specified_kp: bool, force_local: bool, kp_selector: KPSelector, log: ARAXResponse,
+                                 multiple_kps: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+        # This function answers a single-edge (one-hop) query using the specified knowledge provider
+        qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
+        qedge = edge_qg.edges[qedge_key]
+        log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
+        answer_kg = QGOrganizedKnowledgeGraph()
+
+        # Make sure we have all default parameters set specific to the KP we'll be using
+        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
+
+        # Make sure at least one of the qnodes has a curie specified
+        if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
+            log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
+                      f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
+            return answer_kg, log
+        # Make sure the specified KP is a valid option
+        allowable_kps = set(self.kp_command_definitions.keys())
+        if kp_to_use not in allowable_kps:
+            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
+                      error_code="InvalidKP")
+            return answer_kg, log
+
+        # Route this query to the proper place depending on the KP
+        try:
+            use_custom_querier = kp_to_use in {'DTD', 'NGD'} or \
+                                 (kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode"))
+            if use_custom_querier:
+                num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in edge_qg.nodes.values()])
+                waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
+                log.update_query_plan(qedge_key, kp_to_use, "Waiting", waiting_message)
+                start = time.time()
+                if kp_to_use == 'COHD':
+                    from Expand.COHD_querier import COHDQuerier
+                    kp_querier = COHDQuerier(log)
+                elif kp_to_use == 'DTD':
+                    from Expand.DTD_querier import DTDQuerier
+                    kp_querier = DTDQuerier(log)
+                else:
+                    from Expand.ngd_querier import NGDQuerier
+                    kp_querier = NGDQuerier(log)
+                answer_kg = kp_querier.answer_one_hop_query(edge_qg)
+                wait_time = round(time.time() - start)
+                if log.status == 'OK':
+                    done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {wait_time} seconds"
+                    log.update_query_plan(qedge_key, kp_to_use, "Done", done_message)
+                else:
+                    log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status} after {wait_time} seconds")
+                    return answer_kg, log
+            else:
+                # This is a general purpose querier for use with any KPs that we query via their TRAPI API
+                from Expand.trapi_querier import TRAPIQuerier
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, kp_selector, force_local)
+                answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            if user_specified_kp:
+                log.error(f"An uncaught error was thrown while trying to Expand using {kp_to_use}. Error was: {tb}",
+                          error_code=f"UncaughtError")
+            else:
+                log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
+                            f"get answers from that KP. Error was: {tb}")
+            log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status}")
+            return QGOrganizedKnowledgeGraph(), log
+
+        if log.status != 'OK':
+            if multiple_kps:
+                log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
+            return answer_kg, log
+
+        log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+
+        # Do some post-processing (deduplicate nodes, remove self-edges..)
+        if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated and uses canonical predicates
+            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
+            answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
+        if eu.qg_is_fulfilled(edge_qg, answer_kg):
+            answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
+
+        return answer_kg, log
+
+    def _expand_edge_kg2_local(self, one_hop_qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+        qedge_key = next(qedge_key for qedge_key in one_hop_qg.edges)
+        qedge = one_hop_qg.edges[qedge_key]
+        log.debug(f"Expanding {qedge_key} by querying Plover directly")
+        answer_kg = QGOrganizedKnowledgeGraph()
+
+        from Expand.kg2_querier import KG2Querier
+        kg2_querier = KG2Querier(log)
+        try:
+            answer_kg = kg2_querier.answer_one_hop_query(one_hop_qg)
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            log.error(f"An uncaught error was thrown while trying to Expand using RTX-KG2 (local). Error was: {tb}",
+                      error_code=f"UncaughtError")
+
+        if log.status != 'OK':
+            return answer_kg, log
+
+        if eu.qg_is_fulfilled(one_hop_qg, answer_kg):
+            answer_kg = self._remove_self_edges(answer_kg, "RTX-KG2", qedge_key, qedge, log)
+
+        return answer_kg, log
+
+    def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
                      user_specified_kp: bool, force_local: bool, kp_selector: KPSelector,
-                     log: ARAXResponse, multi_threaded: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
-        if multi_threaded:
+                     log: ARAXResponse, multiprocessed: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+        # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
+        if multiprocessed:
             self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Entered child process {multiprocessing.current_process()}")
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
@@ -417,7 +555,6 @@ class ARAXExpander:
             return answer_kg, log
 
         # Route this query to the proper place depending on the KP
-        from Expand.kg2_querier import KG2Querier
         try:
             if kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode"):
                 from Expand.COHD_querier import COHDQuerier
@@ -425,19 +562,9 @@ class ARAXExpander:
             elif kp_to_use == 'DTD':
                 from Expand.DTD_querier import DTDQuerier
                 kp_querier = DTDQuerier(log)
-            ## comment the following commands for CHP temperarily before we confirm TRAPIQuerier can process CHP kp. Once it works, we can delete the following few lines.
-            # elif kp_to_use == 'CHP':
-            #     from Expand.CHP_querier import CHPQuerier
-            #     kp_querier = CHPQuerier(log)
-            #     # This is done in TRAPIQuerier for other KPs
-            #     edge_qg = eu.make_qg_use_supported_prefixes(kp_selector, edge_qg, kp_to_use, log)
-            #     if not edge_qg:  # Means no curies had prefixes CHP supports
-            #         return QGOrganizedKnowledgeGraph(), log
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
-            elif kp_to_use == 'RTX-KG2' and mode == 'RTXKG2':
-                kp_querier = KG2Querier(log)
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
                 from Expand.trapi_querier import TRAPIQuerier
@@ -454,33 +581,30 @@ class ARAXExpander:
             else:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
-            if multi_threaded:
+            if multiprocessed:
                 self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return QGOrganizedKnowledgeGraph(), log
 
         if log.status != 'OK':
-            if multi_threaded:
+            if multiprocessed:
                 self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return answer_kg, log
-
-        # Make sure the KP's answer only uses canonical predicates (KG2 already does this, so no need to check it)
-        if not isinstance(kp_querier, KG2Querier):
-            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
 
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
-        if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated
+        if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated and uses canonical predicates
+            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
             answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
 
-        if multi_threaded:
+        if multiprocessed:
             self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Exiting child process {multiprocessing.current_process()}")
         return answer_kg, log
 
-    def _expand_node(self, qnode_key: str, kp_to_use: str, query_graph: QueryGraph, mode: str, user_specified_kp: bool,
-                     force_local: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+    def _expand_node(self, qnode_key: str, kp_to_use: str, query_graph: QueryGraph, mode: str,
+                     user_specified_kp: bool, force_local: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -1042,10 +1166,10 @@ class ARAXExpander:
             log.debug(f"No KG nodes found that use a different curie than was asked for in the QG")
 
     @staticmethod
-    def _get_prune_thresholds(one_hop_qg: QueryGraph) -> Tuple[int, int]:
+    def _get_prune_threshold(one_hop_qg: QueryGraph) -> int:
         """
-        Returns the prune threshold for the 'input' qnode (pinned qnode) and 'output' qnode (unpinned qnode),
-        for pruning before and after expansion of the given edge, respectively.
+        Returns the prune threshold for the given qedge (i.e., the max number of nodes allowed to be fed in as 'input'
+        curies for this qedge expansion.
         """
         qedge = next(qedge for qedge in one_hop_qg.edges.values())
         qnode_a = one_hop_qg.nodes[qedge.subject]
@@ -1054,18 +1178,18 @@ class ARAXExpander:
         # Handle (curie(s))--(curie(s)) queries
         if qnode_a.ids and qnode_b.ids:
             # Be lenient for input qnode since it will be constrained by output qnode's curies
-            return 5000, 10000
+            return 5000
         # Handle (curie(s))--(>=0 categories) queries
         else:
             open_ended_qnode_categories = set(qnode_a.categories) if not qnode_a.ids else set(qnode_b.categories)
             if (not open_ended_qnode_categories or open_ended_qnode_categories.intersection(large_categories)) and \
                     (not qedge.predicates or "biolink:related_to" in qedge.predicates):
                 # Be more strict when such broad categories/predicates are used
-                return 100, 10000
+                return 100
             elif not open_ended_qnode_categories or open_ended_qnode_categories.intersection(large_categories):
-                return 200, 10000
+                return 200
             else:
-                return 500, 10000
+                return 500
 
     @staticmethod
     def _get_orphan_qnode_keys(query_graph: QueryGraph):

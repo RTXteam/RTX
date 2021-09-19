@@ -214,6 +214,7 @@ function reset_vars() {
     if (cyobj[0]) {cyobj[0].elements().remove();}
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
+    document.getElementById("queryplan_container").innerHTML = "";
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
@@ -457,8 +458,29 @@ function postQuery_ARAX(qtype,queryObj) {
 			    cmddiv.appendChild(document.createElement("br"));
 			    cmddiv.scrollTop = cmddiv.scrollHeight;
 			}
+                        else if (jsonMsg.qedge_keys) {
+			    var div;
+			    if (document.getElementById("queryplan_stream"))
+				div = document.getElementById("queryplan_stream");
+			    else {
+				div = document.createElement("div");
+				div.className = 'statushead';
+				div.appendChild(document.createTextNode("Expansion Progress"));
+				document.getElementById("status_container").before(div);
+
+				div = document.createElement("div");
+				div.id = "queryplan_stream";
+				div.className = 'status';
+				document.getElementById("status_container").before(div);
+			    }
+
+			    div.innerHTML = '';
+			    div.appendChild(document.createElement("br"));
+			    render_queryplan_table(jsonMsg, div);
+			    div.appendChild(document.createElement("br"));
+			}
 			else {
-			    console.log("bad msg:"+jsonMsg);
+			    console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
 			}
 		    }
 		}
@@ -1490,6 +1512,21 @@ function render_response(respObj,dispjson) {
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
 
+    if (respObj.query_options && respObj.query_options.query_plan) {
+        var div = document.createElement("div");
+	div.className = 'statushead';
+	div.appendChild(document.createTextNode("Expansion Results"));
+	document.getElementById("queryplan_container").appendChild(div);
+
+	div = document.createElement("div");
+	div.className = 'status';
+	div.appendChild(document.createElement("br"));
+        document.getElementById("queryplan_container").appendChild(div);
+
+	render_queryplan_table(respObj.query_options.query_plan, div);
+	div.appendChild(document.createElement("br"));
+    }
+
     if (respObj.validation_result && respObj.validation_result.provenance_summary) {
 	var div = document.createElement("div");
 	div.className = 'statushead';
@@ -1641,6 +1678,98 @@ function render_response(respObj,dispjson) {
     sesame('openmax',statusdiv);
 }
 
+function render_queryplan_table(qp,node) {
+    var status_map = {};
+    status_map["Done"] = 'p9';
+    status_map["Expanding"] = 'p5';
+    status_map["Waiting"] = 'p5';
+    status_map["Timed out"] = 'p3';
+    status_map["Error"] = 'p1';
+    status_map["Skipped"] = 'p0';
+
+    var table = document.createElement("table");
+    table.className = 'sumtab';
+    var tr = document.createElement("tr");
+    var td;
+
+    for (var head of ["Query Edge","KP","Status","Description"] ) {
+	td = document.createElement("th")
+	td.appendChild(document.createTextNode(head));
+	tr.appendChild(td);
+    }
+    table.appendChild(tr);
+
+    for (var edge in qp.qedge_keys) {
+	var ep = null;
+	if (qp.qedge_keys[edge].edge_properties) {
+	    ep = qp.qedge_keys[edge].edge_properties;
+	    delete qp.qedge_keys[edge].edge_properties;
+	}
+
+	tr = document.createElement("tr");
+	td = document.createElement("td");
+	td.rowSpan = Object.keys(qp.qedge_keys[edge]).length;
+	td.style.backgroundColor = "white";
+	td.style.borderRight = "1px solid #aaa";
+	//td.style.textAlign = "center";
+	td.style.padding = "0px 20px";
+	if (ep) { // && ep.status) {
+            var span = document.createElement("span");
+	    span.style.position = "relative";
+	    span.style.left = "-10px";
+	    span.className = "explevel " + status_map[ep["status"]];
+	    span.appendChild(document.createTextNode('\u00A0'));
+	    span.appendChild(document.createTextNode('\u00A0'));
+            td.appendChild(span);
+	    td.title = ep.status;
+	}
+	var text = document.createElement("h2");
+	text.style.marginTop = "0px";
+	text.style.display = "inline-block";
+	text.appendChild(document.createTextNode(edge));
+	td.appendChild(text);
+	if (ep) {
+            td.appendChild(document.createElement("br"));
+	    td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode(ep.subject));
+            td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode(ep.predicate));
+            td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode(ep.object));
+	}
+
+	tr.appendChild(td);
+
+	var is_first = true;
+	for (var kp in qp.qedge_keys[edge]) {
+            if (!is_first)
+		tr = document.createElement("tr");
+            td = document.createElement("td");
+            td.appendChild(document.createTextNode(kp));
+            tr.appendChild(td);
+
+	    td = document.createElement("td");
+            var span = document.createElement("span");
+	    span.className = "explevel " + status_map[qp.qedge_keys[edge][kp]["status"]];
+	    span.appendChild(document.createTextNode('\u00A0'));
+	    span.appendChild(document.createTextNode('\u00A0'));
+	    td.appendChild(span);
+            td.appendChild(document.createTextNode('\u00A0'));
+	    td.appendChild(document.createTextNode(qp.qedge_keys[edge][kp]["status"]));
+	    tr.appendChild(td);
+
+	    td = document.createElement("td");
+	    if (qp.qedge_keys[edge][kp]["status"] == "Skipped")
+		td.className = "DEBUG";
+            td.appendChild(document.createTextNode(qp.qedge_keys[edge][kp]["description"]));
+	    tr.appendChild(td);
+            table.appendChild(tr);
+	    is_first = false;
+	}
+    }
+    node.appendChild(table);
+}
+
 
 function process_q_options(q_opts) {
     if (q_opts.actions) {
@@ -1690,12 +1819,12 @@ function process_log(logarr) {
 	span.appendChild(document.createTextNode(msg.timestamp+" "+msg.level+": "));
 	if (msg.code)
 	    span.appendChild(document.createTextNode("["+msg.code+"] "));
-//	span.appendChild(document.createElement("br"));
 
 	span.appendChild(document.createTextNode('\u00A0'));
 	span.appendChild(document.createTextNode('\u00A0'));
 	span.appendChild(document.createTextNode('\u00A0'));
 	span.appendChild(document.createTextNode(msg.message));
+	span.appendChild(document.createElement("br"));
 
 	document.getElementById("logdiv").appendChild(span);
     }

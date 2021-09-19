@@ -239,7 +239,12 @@ class ARAXResponse:
 
         if qedge_key not in self.query_plan['qedge_keys']:
             self.query_plan['qedge_keys'][qedge_key] = {}
-        self.query_plan['qedge_keys'][qedge_key][provider] = { 'status': status, 'description': description }
+        if provider == 'edge_properties':
+            if provider not in self.query_plan['qedge_keys'][qedge_key]:
+                self.query_plan['qedge_keys'][qedge_key][provider] = {}
+            self.query_plan['qedge_keys'][qedge_key][provider][status] = description
+        else:
+            self.query_plan['qedge_keys'][qedge_key][provider] = { 'status': status, 'description': description }
         self.query_plan['counter'] += 1
 
 
