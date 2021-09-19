@@ -209,6 +209,7 @@ class TRAPIQuerier:
         # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
         request_body = self._get_prepped_request_body(query_graph)
         query_timeout = self._get_query_timeout_length(query_graph)
+        qedge_key = next(qedge_key for qedge_key in query_graph.edges) if query_graph.edges else None
 
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
         if self.force_local and self.kp_name == 'RTX-KG2':
@@ -216,6 +217,10 @@ class TRAPIQuerier:
         # Otherwise send the query graph to the KP's TRAPI API
         else:
             self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
+            num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in query_graph.nodes.values()])
+            waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
+            if qedge_key:
+                self.log.update_query_plan(qedge_key, self.kp_name, "Waiting", waiting_message)
             try:
                 with requests_cache.disabled():
                     start = time.time()
@@ -225,18 +230,27 @@ class TRAPIQuerier:
                                                 timeout=query_timeout)
                     self.log.wait_time = round(time.time() - start)
             except Exception:
-                self.log.warning(f"{self.kp_name}: Query timed out (waited {query_timeout} seconds)")
+                timeout_message = f"Query timed out after {query_timeout} seconds"
+                self.log.warning(f"{self.kp_name}: {timeout_message}")
+                if qedge_key:
+                    self.log.update_query_plan(qedge_key, self.kp_name, "Timed out", timeout_message)
                 self.log.timed_out = query_timeout
                 return QGOrganizedKnowledgeGraph()
             if kp_response.status_code != 200:
+                http_error_message = f"Returned HTTP error {kp_response.status_code} after {self.log.wait_time} seconds"
                 self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. "
                                  f"Response from KP was: {kp_response.text}")
+                if qedge_key:
+                    self.log.update_query_plan(qedge_key, self.kp_name, "Error", http_error_message)
                 self.log.http_error = f"HTTP {kp_response.status_code}"
                 return QGOrganizedKnowledgeGraph()
             else:
                 json_response = kp_response.json()
 
         answer_kg = self._load_kp_json_response(json_response)
+        done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {self.log.wait_time} seconds"
+        if qedge_key:
+            self.log.update_query_plan(qedge_key, self.kp_name, "Done", done_message)
         return answer_kg
 
     def _get_prepped_request_body(self, qg: QueryGraph) -> dict:
