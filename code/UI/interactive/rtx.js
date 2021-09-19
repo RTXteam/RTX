@@ -1681,7 +1681,7 @@ function render_response(respObj,dispjson) {
 function render_queryplan_table(qp,node) {
     var status_map = {};
     status_map["Done"] = 'p9';
-    status_map["Expanding"] = 'p5';
+    status_map["Expanding"] = 'p5 working';
     status_map["Waiting"] = 'p5';
     status_map["Timed out"] = 'p3';
     status_map["Error"] = 'p1';
@@ -1711,9 +1711,9 @@ function render_queryplan_table(qp,node) {
 	td.rowSpan = Object.keys(qp.qedge_keys[edge]).length;
 	td.style.backgroundColor = "white";
 	td.style.borderRight = "1px solid #aaa";
-	//td.style.textAlign = "center";
+	td.style.textAlign = "center";
 	td.style.padding = "0px 20px";
-	if (ep) { // && ep.status) {
+	if (ep && ep.status) {
             var span = document.createElement("span");
 	    span.style.position = "relative";
 	    span.style.left = "-10px";
@@ -1724,18 +1724,58 @@ function render_queryplan_table(qp,node) {
 	    td.title = ep.status;
 	}
 	var text = document.createElement("h2");
-	text.style.marginTop = "0px";
 	text.style.display = "inline-block";
 	text.appendChild(document.createTextNode(edge));
 	td.appendChild(text);
 	if (ep) {
-            td.appendChild(document.createElement("br"));
 	    td.appendChild(document.createElement("br"));
-            td.appendChild(document.createTextNode(ep.subject));
+	    td.appendChild(document.createElement("br"));
+	    var span = document.createElement("span");
+	    span.className = 'qprob p7';
+            span.style.display = "inline-block";
+            if (ep.subject == null)
+		span.appendChild(document.createTextNode('--any--'));
+	    else {
+		for (var s of ep.subject) {
+		    span.appendChild(document.createTextNode(s));
+		    span.appendChild(document.createElement("br"));
+		}
+	    }
+            td.appendChild(span);
+	    td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode("|"));
             td.appendChild(document.createElement("br"));
-            td.appendChild(document.createTextNode(ep.predicate));
+            td.appendChild(document.createTextNode("|"));
             td.appendChild(document.createElement("br"));
-            td.appendChild(document.createTextNode(ep.object));
+	    span = document.createElement("span");
+            span.className = 'qprob scam';
+            span.style.display = "inline-block";
+	    if (ep.predicate == null)
+                span.appendChild(document.createTextNode('--any--'));
+            else {
+		for (var p of ep.predicate) {
+		    span.appendChild(document.createTextNode(p));
+                    span.appendChild(document.createElement("br"));
+		}
+	    }
+	    td.appendChild(span);
+	    td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode("|"));
+            td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode("|"));
+	    td.appendChild(document.createElement("br"));
+            span = document.createElement("span");
+            span.className = 'qprob p7';
+            span.style.display = "inline-block";
+            if (ep.object == null)
+		span.appendChild(document.createTextNode('--any--'));
+	    else {
+		for (var o of ep.object) {
+		    span.appendChild(document.createTextNode(o));
+                    span.appendChild(document.createElement("br"));
+		}
+	    }
+	    td.appendChild(span);
 	}
 
 	tr.appendChild(td);

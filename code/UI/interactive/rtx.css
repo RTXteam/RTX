@@ -385,6 +385,14 @@ hr {
     100% { transform:translateX(300%); }
 }
 
+.working {
+    animation: 1s working ease-in-out infinite alternate;
+}
+@keyframes working {
+    0%   { background-color: #cc5; }
+    100% { background-color: #f80; }
+}
+
 .p9, .msgINFO    { background-color: #291; }
 .p7              { background-color: #7b4; }
 .p5              { background-color: #cc5; }
