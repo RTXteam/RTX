@@ -95,7 +95,7 @@ class ARAXQuery:
                 #### Also emit any updates to the query_plan
                 if query_plan_counter < self.response.query_plan['counter']:
                     query_plan_counter = self.response.query_plan['counter']
-                    yield(json.dumps(self.response.query_plan)+"\n")
+                    yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
                 time.sleep(0.2)
 
             # #### If there are any more logging messages in the queue, send them first
