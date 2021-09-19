@@ -172,7 +172,7 @@ class KPSelector:
         if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 100):
             chosen_kps = {"RTX-KG2"}
             for kp in kps_supporting_qedge.difference(chosen_kps):
-                self.log.update_query_plan(qedge_key, kp, "Skipped", "Skipping because there are >100 curies in the QG")
+                self.log.update_query_plan(qedge_key, kp, "Skipped", "Skipping because there are >100 curies in the expansion")
 
         # TODO: keep a record of which KPs have been timing out recently, and skip them?
 
