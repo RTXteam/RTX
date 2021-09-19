@@ -186,6 +186,7 @@ class ARAXExpander:
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
             # Pre-populate the query plan with an entry for each qedge that will be expanded in this Expand() call
+            all_kps = set(self.kp_command_definitions)
             for qedge_key, qedge in query_sub_graph.edges.items():
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Waiting for previous expansion step')
                 subject_qnode = query_sub_graph.nodes[qedge.subject]
@@ -194,6 +195,8 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'subject', eu.get_qnode_description_string(subject_qnode))
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', eu.get_qnode_description_string(object_qnode))
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicates_str)
+                for kp in all_kps:
+                    response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for previous expansion step')
 
             # Expand the query graph edge-by-edge
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
