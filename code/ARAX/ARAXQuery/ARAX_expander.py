@@ -256,8 +256,8 @@ class ARAXExpander:
                         log.debug(f"Will use asyncio to run KP queries concurrently")
                         loop = asyncio.new_event_loop()  # Need to create NEW event loop for threaded environments
                         asyncio.set_event_loop(loop)
-                        tasks = [self._expand_edge_async(one_hop_qg, kp_to_use, input_parameters, mode,
-                                                         user_specified_kp, force_local, kp_selector, log, multiple_kps=True)
+                        tasks = [self._expand_edge_async(one_hop_qg, kp_to_use, input_parameters, user_specified_kp,
+                                                         force_local, kp_selector, log, multiple_kps=True)
                                  for kp_to_use in kps_to_query]
                         task_group = asyncio.gather(*tasks)
                         kp_answers = loop.run_until_complete(task_group)
@@ -274,7 +274,7 @@ class ARAXExpander:
                         self.logger.info(f"PID {os.getpid()}: BEFORE pool: About to create {len(kps_to_query)} child processes from {multiprocessing.current_process()}")
                         with multiprocessing.Pool(len(kps_to_query)) as pool:
                             kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                           mode, user_specified_kp, force_local,
+                                                                           user_specified_kp, force_local,
                                                                            kp_selector, empty_log, True]
                                                                           for kp_to_use in kps_to_query])
                         self.logger.info(f"PID {os.getpid()}: AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
@@ -400,7 +400,7 @@ class ARAXExpander:
 
         return response
 
-    async def _expand_edge_async(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], mode: str,
+    async def _expand_edge_async(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
                                  user_specified_kp: bool, force_local: bool, kp_selector: KPSelector, log: ARAXResponse,
                                  multiple_kps: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
@@ -425,11 +425,9 @@ class ARAXExpander:
             return answer_kg, log
 
         # Route this query to the proper place depending on the KP
-        from Expand.kg2_querier import KG2Querier
         try:
             use_custom_querier = kp_to_use in {'DTD', 'NGD'} or \
-                                 (kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode")) or \
-                                 (kp_to_use == 'RTX-KG2' and mode == 'RTXKG2')
+                                 (kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode"))
             if use_custom_querier:
                 num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in edge_qg.nodes.values()])
                 waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
@@ -441,11 +439,9 @@ class ARAXExpander:
                 elif kp_to_use == 'DTD':
                     from Expand.DTD_querier import DTDQuerier
                     kp_querier = DTDQuerier(log)
-                elif kp_to_use == 'NGD':
+                else:
                     from Expand.ngd_querier import NGDQuerier
                     kp_querier = NGDQuerier(log)
-                else:
-                    kp_querier = KG2Querier(log)
                 answer_kg = kp_querier.answer_one_hop_query(edge_qg)
                 wait_time = round(time.time() - start)
                 if log.status == 'OK':
@@ -476,14 +472,11 @@ class ARAXExpander:
                 log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
             return answer_kg, log
 
-        # Make sure the KP's answer only uses canonical predicates (KG2 already does this, so no need to check it)
-        if not isinstance(kp_querier, KG2Querier):
-            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
-
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
-        if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated
+        if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated and uses canonical predicates
+            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
             answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
@@ -514,11 +507,11 @@ class ARAXExpander:
 
         return answer_kg, log
 
-    def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any], mode: str,
+    def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
                      user_specified_kp: bool, force_local: bool, kp_selector: KPSelector,
-                     log: ARAXResponse, multi_threaded: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                     log: ARAXResponse, multiprocessed: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
-        if multi_threaded:
+        if multiprocessed:
             self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Entered child process {multiprocessing.current_process()}")
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
@@ -542,7 +535,6 @@ class ARAXExpander:
             return answer_kg, log
 
         # Route this query to the proper place depending on the KP
-        from Expand.kg2_querier import KG2Querier
         try:
             if kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode"):
                 from Expand.COHD_querier import COHDQuerier
@@ -553,8 +545,6 @@ class ARAXExpander:
             elif kp_to_use == 'NGD':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
-            elif kp_to_use == 'RTX-KG2' and mode == 'RTXKG2':
-                kp_querier = KG2Querier(log)
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
                 from Expand.trapi_querier import TRAPIQuerier
@@ -571,28 +561,25 @@ class ARAXExpander:
             else:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
-            if multi_threaded:
+            if multiprocessed:
                 self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return QGOrganizedKnowledgeGraph(), log
 
         if log.status != 'OK':
-            if multi_threaded:
+            if multiprocessed:
                 self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Exiting child process {multiprocessing.current_process()} (it errored out)")
             return answer_kg, log
-
-        # Make sure the KP's answer only uses canonical predicates (KG2 already does this, so no need to check it)
-        if not isinstance(kp_querier, KG2Querier):
-            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
 
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
-        if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated
+        if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated and uses canonical predicates
+            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
             answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
 
-        if multi_threaded:
+        if multiprocessed:
             self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Exiting child process {multiprocessing.current_process()}")
         return answer_kg, log
 
