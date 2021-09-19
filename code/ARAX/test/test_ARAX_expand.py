@@ -1001,19 +1001,6 @@ def test_almost_cycle_1565():
 
 
 @pytest.mark.slow
-def test_auto_pruning():
-    actions_list = [
-        "add_qnode(ids=DOID:14330, key=n0)",
-        "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:related_to)",
-        "expand(kp=RTX-KG2, prune_threshold=50)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id["n1"]) <= 50
-
-
-@pytest.mark.slow
 def test_fda_approved_query_simple():
     query = {
         "nodes": {
