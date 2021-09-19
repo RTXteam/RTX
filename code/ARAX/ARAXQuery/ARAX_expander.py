@@ -240,7 +240,7 @@ class ARAXExpander:
                 use_asyncio = True  # Flip this to False if you want to use multiprocessing instead
 
                 # Concurrently send this query to each KP selected to answer it
-                if kps_to_query:
+                if len(kps_to_query) > 1:
                     kp_selector = KPSelector(log)
                     if use_asyncio:
                         kps_to_query = eu.sort_kps_for_asyncio(kps_to_query, log)
@@ -297,6 +297,12 @@ class ARAXExpander:
                                 log.merge(kp_log)
                             if response.status != 'OK':
                                 return response
+                elif len(kps_to_query) == 1:
+                    # Don't bother with concurrency if we only selected one KP
+                    kp_to_use = next(kp_to_use for kp_to_use in kps_to_query)
+                    kp_selector = KPSelector(log)
+                    kp_answers = [self._expand_edge(one_hop_qg, kp_to_use, input_parameters, mode,
+                                                    user_specified_kp, force_local, kp_selector, log)]
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
                     return response
