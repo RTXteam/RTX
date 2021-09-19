@@ -185,21 +185,24 @@ class ARAXExpander:
                 return response
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
+            ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
+
             # Pre-populate the query plan with an entry for each qedge that will be expanded in this Expand() call
             all_kps = set(self.kp_command_definitions)
-            for qedge_key, qedge in query_sub_graph.edges.items():
+            for qedge_key in ordered_qedge_keys_to_expand:
+                qedge = query_sub_graph.edges[qedge_key]
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Waiting for previous expansion step')
                 subject_qnode = query_sub_graph.nodes[qedge.subject]
                 object_qnode = query_sub_graph.nodes[qedge.object]
-                predicates_str = ", ".join(qedge.predicates) if qedge.predicates else "Any predicate"
-                response.update_query_plan(qedge_key, 'edge_properties', 'subject', eu.get_qnode_description_string(subject_qnode))
-                response.update_query_plan(qedge_key, 'edge_properties', 'object', eu.get_qnode_description_string(object_qnode))
-                response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicates_str)
+                subject_details = subject_qnode.ids if subject_qnode.ids else subject_qnode.categories
+                object_details = object_qnode.ids if object_qnode.ids else object_qnode.categories
+                response.update_query_plan(qedge_key, 'edge_properties', 'subject', subject_details)
+                response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
+                response.update_query_plan(qedge_key, 'edge_properties', 'predicate', qedge.predicates)
                 for kp in all_kps:
                     response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for previous expansion step')
 
             # Expand the query graph edge-by-edge
-            ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
             for qedge_key in ordered_qedge_keys_to_expand:
                 log.debug(f"Expanding qedge {qedge_key}")
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Expanding')
