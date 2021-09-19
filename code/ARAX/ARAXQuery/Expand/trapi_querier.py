@@ -174,6 +174,9 @@ class TRAPIQuerier:
         # Otherwise send the query graph to the KP's TRAPI API
         else:
             self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
+            num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in query_graph.nodes.values()])
+            waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
+            self.log.update_query_plan(qedge_key, self.kp_name, "Waiting", waiting_message)
             try:
                 async with aiohttp.ClientSession() as session:
                     start = time.time()

@@ -423,14 +423,14 @@ class ARAXExpander:
 
         # Route this query to the proper place depending on the KP
         from Expand.kg2_querier import KG2Querier
-        num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in edge_qg.nodes.values()])
-        waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
-        log.update_query_plan(qedge_key, kp_to_use, "Waiting", waiting_message)
         try:
             use_custom_querier = kp_to_use in {'DTD', 'NGD'} or \
                                  (kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode")) or \
                                  (kp_to_use == 'RTX-KG2' and mode == 'RTXKG2')
             if use_custom_querier:
+                num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in edge_qg.nodes.values()])
+                waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
+                log.update_query_plan(qedge_key, kp_to_use, "Waiting", waiting_message)
                 start = time.time()
                 if kp_to_use == 'COHD':
                     from Expand.COHD_querier import COHDQuerier
