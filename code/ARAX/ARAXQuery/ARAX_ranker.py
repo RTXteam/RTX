@@ -176,7 +176,7 @@ class ARAXRanker:
                                  'feature_coefficient'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
-                                          'normalized_google_distance': 0.5,
+                                          'normalized_google_distance': 0.8,
                                           'jaccard_index': 0.5,
                                           'probability_treats': 1,
                                           'paired_concept_frequency': 0.5,
