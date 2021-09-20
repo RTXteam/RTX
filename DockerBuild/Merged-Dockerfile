@@ -57,3 +57,21 @@ RUN update-rc.d RTX_Complete enable
 
 # set production flag to false
 RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py
+
+# Setup KG2
+
+# clone RTX repo into KG2
+RUN mkdir -p /mnt/data/orangeboard/kg2
+RUN chown -R rt.rt /mnt/data/orangeboard/kg2
+RUN su rt && cd /mnt/data/orangeboard/kg2 && git clone https://github.com/RTXteam/RTX.git
+RUN chown -R rt.rt /mnt/data/orangeboard/kg2/RTX
+
+# setup KG2 services
+RUN export DEVAREA=kg2
+RUN cat /mnt/data/orangeboard/kg2/RTX/code/UI/OpenAPI/python-flask-server/KG2/RTX_OpenAPI_kg2 > /etc/init.d/RTX_OpenAPI_kg2
+RUN chmod 700 /etc/init.d/RTX_OpenAPI_kg2
+RUN update-rc.d RTX_OpenAPI_kg2 defaults
+RUN update-rc.d RTX_OpenAPI_kg2 enable
+
+# set production flag to false
+RUN su rt && cd /mnt/data/orangeboard/kg2/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py

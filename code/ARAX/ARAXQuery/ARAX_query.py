@@ -95,7 +95,7 @@ class ARAXQuery:
                 #### Also emit any updates to the query_plan
                 if query_plan_counter < self.response.query_plan['counter']:
                     query_plan_counter = self.response.query_plan['counter']
-                    yield(json.dumps(self.response.query_plan)+"\n")
+                    #yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
                 time.sleep(0.2)
 
             # #### If there are any more logging messages in the queue, send them first
@@ -195,10 +195,17 @@ class ARAXQuery:
         messenger.create_envelope(response)
 
         #### If a submitter came in, reflect that back into the response
-        if "submitter" in query:
+        if 'submitter' in query:
             response.envelope.submitter = query['submitter']
         else:
-            response.envelope.submitter = '?'
+            if "callback" in query and query['callback'] is not None:
+                match = re.match(r'http[s]://(.+?)/',query['callback'])
+                if match:
+                    response.envelope.submitter = match.group(1)
+                else:
+                    response.envelope.submitter = '?'
+            else:
+                response.envelope.submitter = '?'
 
         #### Create an entry to track this query
         tracker_id = None
@@ -702,7 +709,7 @@ class ARAXQuery:
             #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
             if response.envelope.query_options is None:
                 response.envelope.query_options = {}
-            response.envelope.query_options['query_plan'] = response.query_plan
+            #response.envelope.query_options['query_plan'] = response.query_plan
 
             # If store=true, then put the message in the database
             response_id = None
