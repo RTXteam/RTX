@@ -15,11 +15,12 @@ run an NGD build, do a **full build**:
 python3 build_ngd_database.py --full
 ```
 This will automatically download and use the latest PubMed XML files, including both the annual 'baseline' files and 
-the 'update' files.
+the 'update' files. Note that a full build requires more than 64G of RAM.
 
 Otherwise you can just do a **partial build**:
 ```
 python3 build_ngd_database.py
 ```
 This will use the existing `conceptname_to_pmids.db` artifact on your machine 
-(in `RTX/code/ARAX/ARAXQuery/Overlay/ngd/`), which will shave a few hours off the build time.
+(in `RTX/code/ARAX/ARAXQuery/Overlay/ngd/`), which will shave a few hours off the build time. A partial build requires
+around 60G of RAM.
