@@ -92,7 +92,8 @@ class QGOrganizedKnowledgeGraph:
                 for node_key in [edge.subject, edge.object]}
 
     def get_node_keys_used_by_edges_fulfilling_qedge(self, qedge_key: str) -> Set[str]:
-        return {node_key for edge in self.edges_by_qg_id[qedge_key].values()
+        relevant_edges = self.edges_by_qg_id.get(qedge_key, dict())
+        return {node_key for edge in relevant_edges.values()
                 for node_key in [edge.subject, edge.object]}
 
     def get_all_node_keys(self) -> Set[str]:
