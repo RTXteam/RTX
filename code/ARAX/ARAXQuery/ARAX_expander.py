@@ -210,7 +210,7 @@ class ARAXExpander:
                         subject_qnode = query_graph.nodes[qedge.subject]
                         if "biolink:Disease" in self.bh.get_descendants(subject_qnode.categories):
                             log.warning(f"{qedge_key} seems to be pointing in the wrong direction (you have "
-                                        f"(disease-like node)-[treats]-(something)). Will flip this qedge.")
+                                        f"(disease-like node)-[treats]->(something)). Will flip this qedge.")
                             eu.flip_qedge(qedge, qedge.predicates)
                 else:
                     # Default to related_to if no predicate was specified

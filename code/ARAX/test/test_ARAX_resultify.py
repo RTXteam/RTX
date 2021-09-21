@@ -1052,7 +1052,7 @@ def test_issue720_3():
         "add_qnode(key=n01, categories=biolink:Protein)",
         "add_qnode(key=n02, categories=biolink:ChemicalEntity, ids=CHEMBL.COMPOUND:CHEMBL1489)",
         "add_qnode(key=n03, categories=biolink:Protein)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
+        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:interacts_with)",
         "add_qedge(key=e02, subject=n02, object=n03, predicates=biolink:interacts_with)",
         "expand(kp=RTX-KG2)",
@@ -1237,8 +1237,8 @@ def test_issue1119_c():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
-        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:predisposes, option_group_id=1)",
+        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
+        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:predisposes, option_group_id=1)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
@@ -1255,7 +1255,7 @@ def test_issue1119_c():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
+        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
@@ -1268,7 +1268,7 @@ def test_issue1119_c():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         f"add_qnode(key=n01, ids=[{', '.join([node_key for node_key, node in message.knowledge_graph.nodes.items() if 'n01' in node.qnode_keys])}])",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:predisposes)",
+        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:predisposes)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
         # Note: skipping resultify here due to issue #1152
@@ -1285,10 +1285,10 @@ def test_issue1119_d():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:treats)",
-        "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:affects, option_group_id=1)",
-        "add_qedge(key=e02, subject=n00, object=n01, predicates=biolink:disrupts, option_group_id=2)",
-        "add_qedge(key=e03, subject=n00, object=n01, exclude=True, predicates=biolink:predisposes)",
+        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:treats)",
+        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:affects, option_group_id=1)",
+        "add_qedge(key=e02, subject=n01, object=n00, predicates=biolink:disrupts, option_group_id=2)",
+        "add_qedge(key=e03, subject=n01, object=n00, exclude=True, predicates=biolink:predisposes)",
         "expand(kp=RTX-KG2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
