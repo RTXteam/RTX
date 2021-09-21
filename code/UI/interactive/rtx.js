@@ -129,12 +129,10 @@ function sesame(head,content) {
 	head.classList.toggle("openaccordion");
     }
 
-    if (content.style.maxHeight) {
+    if (content.style.maxHeight)
 	content.style.maxHeight = null;
-    }
-    else {
+    else
 	content.style.maxHeight = content.scrollHeight + "px";
-    }
 }
 
 
@@ -257,7 +255,6 @@ function viewResponse() {
 
 function postQuery(qtype,agent) {
     var queryObj= {};
-    queryObj.submitter = 'ARAX GUI';
 
     reset_vars();
     var statusdiv = document.getElementById("statusdiv");
@@ -313,6 +310,8 @@ function postQuery(qtype,agent) {
 
 	qg_new(false,false);
     }
+
+    queryObj.submitter = 'ARAX GUI';
 
     if (agent == 'ARS')
 	postQuery_ARS(queryObj);
@@ -1745,8 +1744,6 @@ function render_queryplan_table(qp,node) {
 	    td.appendChild(document.createElement("br"));
             td.appendChild(document.createTextNode("|"));
             td.appendChild(document.createElement("br"));
-            td.appendChild(document.createTextNode("|"));
-            td.appendChild(document.createElement("br"));
 	    span = document.createElement("span");
             span.className = 'qprob scam';
             span.style.display = "inline-block";
@@ -1760,8 +1757,6 @@ function render_queryplan_table(qp,node) {
 	    }
 	    td.appendChild(span);
 	    td.appendChild(document.createElement("br"));
-            td.appendChild(document.createTextNode("|"));
-            td.appendChild(document.createElement("br"));
             td.appendChild(document.createTextNode("|"));
 	    td.appendChild(document.createElement("br"));
             span = document.createElement("span");
@@ -3822,10 +3817,20 @@ function retrieveRecentQs() {
     var recents_node = document.getElementById("recent_queries_container");
     recents_node.innerHTML = '';
 
-    fetch(providers["base_api"].url + "/status?last_n_hours=24")
+    var qfspan = document.getElementById("qfilter");
+    qfspan.innerHTML = 'Loading...';
+
+    document.getElementById("recent_queries_timeline_container").innerHTML = '';
+
+    var hours = parseInt(document.getElementById("qftime").value.match(/[\d]+/));
+    if (isNaN(hours) || hours < 1 || hours > 200)
+	hours = 24;
+    document.getElementById("qftime").value = hours;
+
+    fetch(providers["base_api"].url + "/status?last_n_hours="+hours)
 	.then(response => {
 	    if (response.ok) return response.json();
-	    else throw new Error('Something went wrong with /status?last_n_hours=24');
+	    else throw new Error('Something went wrong with /status?last_n_hours='+hours);
 	})
         .then(data => {
 	    var stats = {};
@@ -3834,6 +3839,7 @@ function retrieveRecentQs() {
 	    stats.status    = {};
 	    stats.submitter = {};
 	    stats.instance_name = {};
+	    var timeline = {};
 
             var table = document.createElement("table");
 	    table.className = 'sumtab';
@@ -3862,10 +3868,14 @@ function retrieveRecentQs() {
 		tr.className = 'hoverable';
 		tr.dataset.qstatus = query.state + " " + query.status;
 
+		var qstart = null;
+		var qend = null;
 		for (var field of ["query_id","start_datetime","elapsed","submitter","instance_name","pid","response_id","state","status","description"] ) {
                     td = document.createElement("td");
-                    if (field == "start_datetime")
+                    if (field == "start_datetime") {
 			td.style.whiteSpace = "nowrap";
+			qstart = query[field];
+		    }
                     else if (field == "elapsed") {
 			td.style.textAlign = "right";
 			if (query[field] > 60) {
@@ -3873,6 +3883,7 @@ function retrieveRecentQs() {
 			    td.title = "Long query response/processing time";
 			}
 			stats.elapsed += query[field];
+			qend = query[field] * 1000; //ms
 		    }
                     else if (field == "state") {
 			var span = document.createElement("span");
@@ -3937,17 +3948,48 @@ function retrieveRecentQs() {
 			td.appendChild(document.createTextNode(query[field]));
 		    tr.appendChild(td);
 		}
+		if (qstart && qend) {
+		    qstart.replace(" ","T");
+		    qstart += "Z";
+		    qstart = new Date(qstart);
+		    qend = new Date(qstart.getTime() + qend);
+
+		    if (!timeline[query["submitter"]]) {
+			timeline[query["submitter"]] = {};
+			timeline[query["submitter"]]["data"] = [];
+		    }
+
+		    // below assumes data is reverse-sorted by start datetime
+		    var index = 0;
+		    for (index in [...Array(200).keys()]) {
+			if (!timeline[query["submitter"]]["data"][index])
+			    timeline[query["submitter"]]["data"][index] = { "label": index , "data": [] , "_qstart": new Date()};
+
+			if (qend.getTime() < timeline[query["submitter"]]["data"][index]["_qstart"].getTime())
+			    break;
+		    }
+
+		    timeline[query["submitter"]]["data"][index]["data"].push(
+			{
+			    "timeRange": [qstart, qend],
+			    "val": query["instance_name"]
+			}
+		    );
+		    timeline[query["submitter"]]["data"][index]["_qstart"] = qstart;
+
+		}
 		table.appendChild(tr);
 	    }
+
+	    displayQTimeline(timeline);
 	    recents_node.appendChild(table);
             recents_node.appendChild(document.createElement("br"));
 	    recents_node.appendChild(document.createElement("br"));
 
-	    var qfspan = document.getElementById("qfilter");
 	    qfspan.innerHTML = '';
 	    qfspan.appendChild(document.createTextNode("Show:"));
 
-	    for (var status of ["Completed","OK","Summary"]) {
+	    for (var status of ["Completed","OK","Summary","Timeline"]) {
 		span = document.createElement("span");
 		span.style.marginLeft = "20px";
 		span.style.cursor = "pointer";
@@ -3957,7 +3999,10 @@ function retrieveRecentQs() {
 		    span.className = 'qprob p9 hide';
 		    tab = "recentqs_summary";
 		}
-		span.setAttribute('onclick', 'filter_queries(\"'+tab+'\", this,\"'+status+'\");');
+		if (status == "Timeline")
+		    span.setAttribute('onclick', 'show_hide(\"recent_queries_timeline_container\", this);');
+		else
+		    span.setAttribute('onclick', 'filter_queries(\"'+tab+'\", this,\"'+status+'\");');
 		span.appendChild(document.createTextNode(status));
 		qfspan.appendChild(span);
 	    }
@@ -4018,9 +4063,28 @@ function retrieveRecentQs() {
 	    }
 	})
         .catch(error => {
+	    qfspan.innerHTML = '';
             recents_node.className = "error";
 	    recents_node.innerHTML = "<br>" + error + "<br><br>";
         });
+}
+
+function displayQTimeline(tdata) {
+    var timeline_node = document.getElementById("recent_queries_timeline_container");
+    timeline_node.innerHTML = '';
+
+    var data = [];
+    for (var group in tdata)
+	data.push( { "group": group, "data": tdata[group].data } );
+
+    const Timeline = TimelinesChart();
+    Timeline
+        .data(data)
+	.width(1200)
+	.maxHeight(1500)
+	.leftMargin(120)
+	.zQualitative(true)
+    (timeline_node);
 }
 
 function filter_queries(tab, span, type) {
@@ -4038,6 +4102,20 @@ function filter_queries(tab, span, type) {
 	    tr.style.display = disp;
 	}
     }
+}
+
+
+function show_hide(ele, span) {
+    var disp = 'none';
+    if (span.classList.contains('hide')) {
+	disp = '';
+	span.classList.remove('hide');
+    }
+    else {
+	span.classList.add('hide');
+    }
+
+    document.getElementById(ele).style.display = disp;
 }
 
 
