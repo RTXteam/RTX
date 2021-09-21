@@ -22,5 +22,5 @@ Otherwise you can just do a **partial build**:
 python3 build_ngd_database.py
 ```
 This will use the existing `conceptname_to_pmids.db` artifact on your machine 
-(in `RTX/code/ARAX/ARAXQuery/Overlay/ngd/`), which will shave a few hours off the build time. Partial builds take 
+(in `RTX/code/ARAX/ARAXQuery/Overlay/ngd/`), which will shave several hours off the build time. Partial builds take 
 about 45 minutes and require around 60G of RAM.
