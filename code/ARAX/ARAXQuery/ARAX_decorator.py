@@ -164,8 +164,10 @@ class ARAXDecorator:
             search_key = row[0]
             search_key_to_kg2c_edge_tuples_map[search_key].append(row)
 
-        # Join the property values found for all edges matching the given search key
+        attribute_type_id_map = {property_name: self.create_attribute(property_name, "something").attribute_type_id
+                                 for property_name in set(self.edge_attributes).difference({"knowledge_source"})}
         for search_key, kg2c_edge_tuples in search_key_to_kg2c_edge_tuples_map.items():
+            # Join the property values found for all edges matching the given search key
             merged_kg2c_properties = {property_name: None for property_name in edge_attributes_ordered}
             for kg2c_edge_tuple in kg2c_edge_tuples:
                 for index, property_name in enumerate(edge_attributes_ordered):
@@ -184,24 +186,29 @@ class ARAXDecorator:
             joined_publications = list(merged_kg2c_properties["publications"]) if merged_kg2c_properties.get("publications") else set()
             joined_publications_info = merged_kg2c_properties["publications_info"] if merged_kg2c_properties.get("publications_info") else dict()
 
-            # Add the joined attributes to each of the edges with the given search key
+            # Add the joined attributes to each of the edges with the given search key (as needed)
             corresponding_bare_edge_keys = search_key_to_edge_keys_map[search_key]
             for edge_key in corresponding_bare_edge_keys:
                 bare_edge = kg.edges[edge_key]
-                # Add KG2 edge-specific attributes
+                existing_attribute_type_ids = {attribute.attribute_type_id for attribute in bare_edge.attributes} if bare_edge.attributes else set()
+                new_attributes = []
+                # Create KG2 edge-specific attributes
                 if kind == "RTX-KG2":
+                    if attribute_type_id_map["kg2_ids"] not in existing_attribute_type_ids:
+                        new_attributes.append(self.create_attribute("kg2_ids", list(joined_kg2_ids)))
+                    if joined_publications and attribute_type_id_map["publications"] not in existing_attribute_type_ids:
+                        new_attributes.append(self.create_attribute("publications", list(joined_publications),
+                                                                    attribute_source=knowledge_source))
+                # Create attributes that belong on both KG2 and NGD edges
+                if joined_publications_info and attribute_type_id_map["publications_info"] not in existing_attribute_type_ids:
+                    new_attributes.append(self.create_attribute("publications_info", joined_publications_info,
+                                                                attribute_source=knowledge_source))
+                # Actually tack the new attributes onto the edge
+                if new_attributes:
                     if not bare_edge.attributes:
-                        bare_edge.attributes = []
-                    bare_edge.attributes.append(self.create_attribute("kg2_ids", list(joined_kg2_ids)))
-                    if joined_publications:
-                        bare_edge.attributes.append(self.create_attribute("publications", list(joined_publications),
-                                                                          attribute_source=knowledge_source))
-                # Add attributes that belong on both KG2 and NGD edges
-                if joined_publications_info:
-                    if not bare_edge.attributes:
-                        bare_edge.attributes = []
-                    bare_edge.attributes.append(self.create_attribute("publications_info", joined_publications_info,
-                                                                      attribute_source=knowledge_source))
+                        bare_edge.attributes = new_attributes
+                    else:
+                        bare_edge.attributes += new_attributes
 
         return response
 
