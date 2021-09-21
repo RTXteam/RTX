@@ -9,15 +9,21 @@ You need to make your environment point to the KG2 and synonymizer you want to u
 
 ### Then do the build:
 
+You have two options: a full build or a partial build.
+
+#### Full build
+
 If you want to use the latest PubMed files for this NGD build or the machine you're using has never previously 
-run an NGD build, do a **full build**:
+run an NGD build, do a full build:
 ```
 python3 build_ngd_database.py --full
 ```
 This will automatically download and use the latest PubMed XML files, including both the annual 'baseline' files and 
 the 'update' files. Note that full builds take 8+ hours and require more than 64G of RAM.
 
-Otherwise you can just do a **partial build**:
+#### Partial build
+
+Otherwise you can just do a partial build:
 ```
 python3 build_ngd_database.py
 ```
