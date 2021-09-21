@@ -39,7 +39,7 @@ Associated code changes should go in the `kg2integration` branch.
 
 - [ ] merge `master` into `kg2integration`
 - [ ] merge `kg2integration` into `master`
-- [ ] make `config_local.json` the new master config file on araxconfig.rtx.ai
+- [ ] make `config_local.json` the new master config file on araxconfig.rtx.ai (rename it to `configv2.json`)
 - [ ] roll `master` out to the various arax.ncats.io endpoints and delete their `configv2.json`s
 - [ ] run the pytest suite on the various endpoints
 
