@@ -10,6 +10,7 @@
 <script src="config.js"></script>
 <script src="rtx.js"></script>
 <script src="araxi.js"></script>
+<script src="//unpkg.com/timelines-chart"></script>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="/rtxcomplete/data/quick_def.json"></script>
@@ -44,7 +45,7 @@
 <div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
 <div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
 <br><br>
-<div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">Recent Queries</div>
+<div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
 <div id="settingsMenu" onclick="openSection('settings');" class="menuleftitem">Settings</div>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
 <hr>
@@ -394,10 +395,13 @@
 
 
 <div class="pagesection" id="recentqsDiv">
-  <div class="statushead">Recent ARAX Queries (24 hours)</div>
+  <div class="statushead">Recent ARAX System Activity</div>
   <div class="status">
-    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentQs();"/><span style="margin-left:50px;" id="qfilter"></span>
-    <div id="recent_queries_container"><br>Click on the button above to view ARAX services activity in the last 24 hours<br><br></div>
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentQs();"/>
+    <input type="text" class="questionBox" id="qftime" value="24" size="3" maxlength="3"/>hours (max.200)
+    <span style="margin-left:50px;" id="qfilter"></span>
+    <div id="recent_queries_timeline_container"></div>
+    <div id="recent_queries_container"><br>Click on the button above to view most recent ARAX services activity<br><br></div>
   </div>
 </div>
 
