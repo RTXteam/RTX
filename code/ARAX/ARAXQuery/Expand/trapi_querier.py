@@ -1,4 +1,5 @@
 #!/bin/env python3
+import concurrent
 import copy
 import json
 import sys
@@ -169,39 +170,42 @@ class TRAPIQuerier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
 
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
+        start = time.time()
         if self.force_local and self.kp_name == 'RTX-KG2':
-            start = time.time()
             json_response = self._answer_query_force_local(request_body)
-            wait_time = round(time.time() - start)
         # Otherwise send the query graph to the KP's TRAPI API
         else:
             self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
             num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in query_graph.nodes.values()])
             waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
             self.log.update_query_plan(qedge_key, self.kp_name, "Waiting", waiting_message)
-            try:
-                async with aiohttp.ClientSession() as session:
-                    start = time.time()
+            async with aiohttp.ClientSession() as session:
+                try:
                     async with session.post(f"{self.kp_endpoint}/query",
                                             json=request_body,
                                             headers={'accept': 'application/json'},
                                             timeout=query_timeout) as response:
-                        kp_response = await response.json()
-                        wait_time = round(time.time() - start)
-                        if response.status != 200:
+                        if response.status == 200:
+                            json_response = await response.json()
+                        else:
+                            wait_time = round(time.time() - start)
                             http_error_message = f"Returned HTTP error {response.status} after {wait_time} seconds"
-                            self.log.warning(f"{self.kp_name}: {http_error_message}. "
-                                             f"Response from KP was: {response.text()}")
+                            self.log.warning(f"{self.kp_name}: {http_error_message}. Query sent to KP was: {request_body}")
                             self.log.update_query_plan(qedge_key, self.kp_name, "Error", http_error_message)
                             return QGOrganizedKnowledgeGraph()
-                        else:
-                            json_response = kp_response
-            except Exception:
-                timeout_message = f"Query timed out after {query_timeout} seconds"
-                self.log.warning(f"{self.kp_name}: {timeout_message}")
-                self.log.update_query_plan(qedge_key, self.kp_name, "Timed out", timeout_message)
-                return QGOrganizedKnowledgeGraph()
+                except concurrent.futures._base.TimeoutError:
+                    timeout_message = f"Query timed out after {query_timeout} seconds"
+                    self.log.warning(f"{self.kp_name}: {timeout_message}")
+                    self.log.update_query_plan(qedge_key, self.kp_name, "Timed out", timeout_message)
+                    return QGOrganizedKnowledgeGraph()
+                except Exception as ex:
+                    wait_time = round(time.time() - start)
+                    exception_message = f"Request threw exception after {wait_time} seconds: {type(ex)}"
+                    self.log.warning(f"{self.kp_name}: {exception_message}")
+                    self.log.update_query_plan(qedge_key, self.kp_name, "Error", exception_message)
+                    return QGOrganizedKnowledgeGraph()
 
+        wait_time = round(time.time() - start)
         answer_kg = self._load_kp_json_response(json_response)
         done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {wait_time} seconds"
         self.log.update_query_plan(qedge_key, self.kp_name, "Done", done_message)
@@ -301,6 +305,7 @@ class TRAPIQuerier:
         kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
 
         # Populate our final KG with the returned nodes and edges
+        returned_edge_keys_missing_qg_bindings = set()
         for returned_edge_key, returned_edge in kp_message.knowledge_graph.edges.items():
             arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
             if not returned_edge.attributes:
@@ -317,12 +322,19 @@ class TRAPIQuerier:
             # Add an attribute to indicate that this edge passed through ARAX
             returned_edge.attributes.append(eu.get_arax_source_attribute())
 
-            for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
-                answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
+            if returned_edge_key in kg_to_qg_mappings['edges']:
+                for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
+                    answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
+            else:
+                returned_edge_keys_missing_qg_bindings.add(returned_edge_key)
+        if returned_edge_keys_missing_qg_bindings:
+            self.log.warning(f"{self.kp_name}: {len(returned_edge_keys_missing_qg_bindings)} edges in the KP's answer "
+                             f"KG have no bindings to the QG: {returned_edge_keys_missing_qg_bindings}")
+
+        returned_node_keys_missing_qg_bindings = set()
         for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
             if returned_node_key not in kg_to_qg_mappings['nodes']:
-                self.log.warning(f"{self.kp_name}: Node {returned_node_key} was found in {self.kp_name}'s "
-                                 f"answer KnowledgeGraph but not in its Results. Skipping since there is no binding.")
+                returned_node_keys_missing_qg_bindings.add(returned_node_key)
             else:
                 for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
                     answer_kg.add_node(returned_node_key, returned_node, qnode_key)
@@ -330,6 +342,10 @@ class TRAPIQuerier:
                 for attribute in returned_node.attributes:
                     if not attribute.attribute_type_id:
                         attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
+        if returned_node_keys_missing_qg_bindings:
+            self.log.warning(f"{self.kp_name}: {len(returned_node_keys_missing_qg_bindings)} nodes in the KP's answer "
+                             f"KG have no bindings to the QG: {returned_node_keys_missing_qg_bindings}")
+
         return answer_kg
 
     @staticmethod

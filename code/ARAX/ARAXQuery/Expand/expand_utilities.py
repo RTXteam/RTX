@@ -555,7 +555,7 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
         "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
         "CHP": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)
-        "COHD": "https://trapi-dev.cohd.io/api",  # TODO: This is what they registered for TRAPI 1.2... will this URL change eventually?
+        "COHD": "https://cohd.io/api",
         "ICEES-DILI": "https://icees.renci.org:16341",  # TODO: Enter 1.2 endpoint once available..
         "ICEES-Asthma": "https://icees.renci.org:16339"  # TODO: Enter 1.2 endpoint once available..
     }
@@ -587,7 +587,7 @@ def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXRespons
     # Order KPs such that those with longer requests will tend to be kicked off earlier
     kp_names = set(kp_names)
     asyncio_start_order = ["CHP", "BTE", "DrugResponseKP", "ClinicalRiskKP", "WellnessKP", "TumorGeneMutationKP",
-                           "ICEES-DILI", "ICEES-Asthma", "MolePro", "RTX-KG2", "GeneticsKP", "COHD", "NGD", "DTD"]
+                           "ICEES-DILI", "ICEES-Asthma", "COHD", "MolePro", "RTX-KG2", "GeneticsKP", "NGD", "DTD"]
     unordered_kps = kp_names.difference(set(asyncio_start_order))
     if unordered_kps:
         log.warning(f"Selected KP(s) don't have asyncio start ordering specified: {unordered_kps}")
@@ -758,41 +758,7 @@ def get_kp_command_definitions() -> dict:
             "dsl_command": "expand(kp=COHD)",
             "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
                            " satisfy the query graph.",
-            "parameters": merge_two_dicts(standard_parameters, {
-                "COHD_method": {
-                    "is_required": False,
-                    "examples": ["paired_concept_freq", "chi_square"],
-                    "enum": ["all", "paired_concept_freq", "observed_expected_ratio", "chi_square"],
-                    "default": "all",
-                    "type": "string",
-                    "description": "Which measure from COHD should be considered."
-                },
-                "COHD_method_top_N": {
-                    "is_required": False,
-                    "examples": [500, 1000],
-                    "min": 0,
-                    "max": 1000000000000000000,
-                    "default": 1000,
-                    "type": "integer",
-                    "description": "What top N to use as a cut-off/threshold for the specified COHD method."
-                },
-                "sorted_by": {
-                    "is_required": False,
-                    "examples": ["paired_concept_freq", "chi_square"],
-                    "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
-                    "default": "paired_concept_freq",
-                    "type": "string",
-                    "description": "If COHD_method=='all', then what statistics the 'COHD_method_top_N' is based on."
-                },
-                "COHD_slow_mode": {
-                    "is_required": False,
-                    "examples": ["true", "false"],
-                    "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-                    "default": "false",
-                    "type": "boolean",
-                    "description": "Whether to call COHD API when the local COHD database doesn't return the expected results."
-                }
-            })
+            "parameters": standard_parameters
         },
         "GeneticsKP": {
             "dsl_command": "expand(kp=GeneticsKP)",
@@ -858,17 +824,6 @@ def get_kp_command_definitions() -> dict:
                            "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
                            "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
                            "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
-            # "parameters": merge_two_dicts(standard_parameters, {
-            #     "CHP_survival_threshold": {
-            #         "is_required": False,
-            #         "examples": [200, 100],
-            #         "min": 0,
-            #         "max": 1000000000000,
-            #         "default": 500,
-            #         "type": "int",
-            #         "description": "What cut-off/threshold for surivial time (day) to estimate probability."
-            #     }
-            # })
             "parameters": standard_parameters
         },
         "DTD": {

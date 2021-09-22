@@ -432,17 +432,13 @@ class ARAXExpander:
 
         # Route this query to the proper place depending on the KP
         try:
-            use_custom_querier = kp_to_use in {'DTD', 'NGD'} or \
-                                 (kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode"))
+            use_custom_querier = kp_to_use in {'DTD', 'NGD'}
             if use_custom_querier:
                 num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in edge_qg.nodes.values()])
                 waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
                 log.update_query_plan(qedge_key, kp_to_use, "Waiting", waiting_message)
                 start = time.time()
-                if kp_to_use == 'COHD':
-                    from Expand.COHD_querier import COHDQuerier
-                    kp_querier = COHDQuerier(log)
-                elif kp_to_use == 'DTD':
+                if kp_to_use == 'DTD':
                     from Expand.DTD_querier import DTDQuerier
                     kp_querier = DTDQuerier(log)
                 else:
@@ -542,10 +538,7 @@ class ARAXExpander:
 
         # Route this query to the proper place depending on the KP
         try:
-            if kp_to_use == 'COHD' and not log.data["parameters"].get("COHD_slow_mode"):
-                from Expand.COHD_querier import COHDQuerier
-                kp_querier = COHDQuerier(log)
-            elif kp_to_use == 'DTD':
+            if kp_to_use == 'DTD':
                 from Expand.DTD_querier import DTDQuerier
                 kp_querier = DTDQuerier(log)
             elif kp_to_use == 'NGD':

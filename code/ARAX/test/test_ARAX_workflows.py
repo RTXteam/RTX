@@ -693,7 +693,7 @@ def test_ranker_float_error_ex1():
 def test_ranker_float_error_ex2():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=DOID:1588, key=n0)",
+        "add_qnode(ids=MONDO:0005301, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(kp=COHD)",
