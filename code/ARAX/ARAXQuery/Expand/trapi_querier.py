@@ -301,6 +301,7 @@ class TRAPIQuerier:
         kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
 
         # Populate our final KG with the returned nodes and edges
+        returned_edge_keys_missing_qg_bindings = set()
         for returned_edge_key, returned_edge in kp_message.knowledge_graph.edges.items():
             arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
             if not returned_edge.attributes:
@@ -317,12 +318,19 @@ class TRAPIQuerier:
             # Add an attribute to indicate that this edge passed through ARAX
             returned_edge.attributes.append(eu.get_arax_source_attribute())
 
-            for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
-                answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
+            if returned_edge_key in kg_to_qg_mappings['edges']:
+                for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
+                    answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
+            else:
+                returned_edge_keys_missing_qg_bindings.add(returned_edge_key)
+        if returned_edge_keys_missing_qg_bindings:
+            self.log.warning(f"{self.kp_name}: {len(returned_edge_keys_missing_qg_bindings)} edges in the KP's answer "
+                             f"KG have no bindings to the QG: {returned_edge_keys_missing_qg_bindings}")
+
+        returned_node_keys_missing_qg_bindings = set()
         for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
             if returned_node_key not in kg_to_qg_mappings['nodes']:
-                self.log.warning(f"{self.kp_name}: Node {returned_node_key} was found in {self.kp_name}'s "
-                                 f"answer KnowledgeGraph but not in its Results. Skipping since there is no binding.")
+                returned_node_keys_missing_qg_bindings.add(returned_node_key)
             else:
                 for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
                     answer_kg.add_node(returned_node_key, returned_node, qnode_key)
@@ -330,6 +338,10 @@ class TRAPIQuerier:
                 for attribute in returned_node.attributes:
                     if not attribute.attribute_type_id:
                         attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
+        if returned_node_keys_missing_qg_bindings:
+            self.log.warning(f"{self.kp_name}: {len(returned_node_keys_missing_qg_bindings)} nodes in the KP's answer "
+                             f"KG have no bindings to the QG: {returned_node_keys_missing_qg_bindings}")
+
         return answer_kg
 
     @staticmethod
