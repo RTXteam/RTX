@@ -1,17 +1,10 @@
 #!/bin/env python3
 # This file contains utilities/helper functions for general use within the Expand module
 import copy
-import json
-import pathlib
 import sys
 import os
 import traceback
 from typing import List, Dict, Union, Set, Tuple, Optional
-from datetime import datetime, timedelta
-
-import requests
-import requests_cache
-import yaml
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -99,7 +92,8 @@ class QGOrganizedKnowledgeGraph:
                 for node_key in [edge.subject, edge.object]}
 
     def get_node_keys_used_by_edges_fulfilling_qedge(self, qedge_key: str) -> Set[str]:
-        return {node_key for edge in self.edges_by_qg_id[qedge_key].values()
+        relevant_edges = self.edges_by_qg_id.get(qedge_key, dict())
+        return {node_key for edge in relevant_edges.values()
                 for node_key in [edge.subject, edge.object]}
 
     def get_all_node_keys(self) -> Set[str]:
@@ -500,6 +494,13 @@ def flip_edge(edge: Edge, new_predicate: str) -> Edge:
     return edge
 
 
+def flip_qedge(qedge: QEdge, new_predicates: List[str]):
+    qedge.predicates = new_predicates
+    original_subject = qedge.subject
+    qedge.subject = qedge.object
+    qedge.object = original_subject
+
+
 def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
     non_canonical_predicates_used = set()
     biolink_helper = BiolinkHelper()
@@ -714,14 +715,6 @@ def get_standard_parameters() -> dict:
             "examples": ["n00", "[n00, n01]"],
             "type": "string",
             "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
-        },
-        "enforce_directionality": {
-            "is_required": False,
-            "examples": ["true", "false"],
-            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-            "default": "false",
-            "type": "boolean",
-            "description": "Whether to obey (vs. ignore) edge directions in the query graph."
         },
         "prune_threshold": {
             "is_required": False,

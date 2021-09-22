@@ -15,6 +15,8 @@ from collections import Counter
 import traceback
 import itertools
 
+from ARAX_decorator import ARAXDecorator
+
 
 class ARAXOverlay:
 
@@ -33,6 +35,7 @@ class ARAXOverlay:
             'overlay_exposures_data'
         }
         self.report_stats = True
+        self.decorator = ARAXDecorator()
 
         # parameter descriptions
         self.default_value_info = {
@@ -600,6 +603,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
         from Overlay.compute_ngd import ComputeNGD
         NGD = ComputeNGD(self.response, self.message, parameters)
         response = NGD.compute_ngd()
+        self.decorator.decorate_edges(response, kind="NGD")
         return response
 
     def __overlay_clinical_info(self, describe=False):  # TODO: put the default paramas and all that other goodness in

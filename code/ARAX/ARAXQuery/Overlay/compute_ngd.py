@@ -203,7 +203,7 @@ class ComputeNGD:
             else:
                 self.response.info(f"NGD values successfully added to edges")
             self._close_database()
-            return self.response
+        return self.response
 
     def load_curie_to_pmids_data(self, canonicalized_curies):
         self.response.debug(f"Extracting PMID lists from sqlite database for relevant nodes")

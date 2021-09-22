@@ -483,8 +483,8 @@ def test_exclude_edge_parallel():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:causes, key=e01)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:causes, key=e01)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
@@ -496,8 +496,8 @@ def test_exclude_edge_parallel():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:causes, exclude=true, key=e01)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:causes, exclude=true, key=e01)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
@@ -516,7 +516,7 @@ def test_exclude_edge_perpendicular():
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
         f"add_qnode(categories=biolink:ChemicalEntity, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:causes)",
+        "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
         # 'Exclude' portion (just optional for now to get a baseline)
         f"add_qnode(categories=biolink:ChemicalEntity, key=nx0, option_group_id=1, ids=[{exclude_curies}])",
@@ -534,7 +534,7 @@ def test_exclude_edge_perpendicular():
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
         f"add_qnode(categories=biolink:ChemicalEntity, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
         # 'Exclude' portion
         f"add_qnode(categories=biolink:ChemicalEntity, key=nx0, ids=[{exclude_curies}])",
@@ -601,7 +601,7 @@ def test_option_group_query_one_hop():
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:causes)",
+        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:affects, option_group_id=1)",
         "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
@@ -1029,6 +1029,17 @@ def test_fda_approved_query_workflow_a9_egfr_advanced():
     nodes_by_qg_id_constrained, edges_by_qg_id_constrained = _run_query_and_do_standard_testing(json_query=query_constrained)
 
     assert len(nodes_by_qg_id_constrained["n0"]) < len(nodes_by_qg_id_unconstrained["n0"])
+
+
+def test_inverted_treats_handling():
+    actions = [
+        "add_qnode(key=n0, ids=MONDO:0005077)",
+        "add_qnode(key=n1, categories=biolink:ChemicalEntity)",
+        "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:treats)",
+        "expand(kp=RTX-KG2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
 
 
 if __name__ == "__main__":

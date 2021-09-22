@@ -55,16 +55,8 @@ class ARAXExpander:
         if self.logger.hasHandlers():
             self.logger.handlers.clear()
         self.logger.addHandler(handler)
-        self.category_equivalencies = {"biolink:Protein": {"biolink:Gene"},
-                                       "biolink:Gene": {"biolink:Protein"},
-                                       "biolink:Disease": {"biolink:PhenotypicFeature",
-                                                           "biolink:DiseaseOrPhenotypicFeature"},
-                                       "biolink:PhenotypicFeature": {"biolink:Disease",
-                                                                     "biolink:DiseaseOrPhenotypicFeature"},
-                                       "biolink:DiseaseOrPhenotypicFeature": {"biolink:Disease",
-                                                                              "biolink:PhenotypicFeature"}}
         self.kp_command_definitions = eu.get_kp_command_definitions()
-        self.biolink_helper = BiolinkHelper()
+        self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
         self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
         self.supported_qedge_constraints = dict()
@@ -175,19 +167,54 @@ class ARAXExpander:
                 qnode.categories = eu.get_preferred_categories(qnode.ids, log)
                 log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
             elif not qnode.categories:
-                qnode.categories = ["biolink:NamedThing"]
-            if qnode.categories and set(qnode.categories).intersection(self.category_equivalencies):
-                equivalent_categories = {equivalent_category for category in qnode.categories
-                                         for equivalent_category in self.category_equivalencies.get(category, [])}
-                qnode.categories = list(set(qnode.categories).union(equivalent_categories))
-                log.debug(f"Expand will consider qnode {qnode_key}'s category to be {qnode.categories}")
+                # Default to NamedThing if no category was specified
+                qnode.categories = [self.bh.get_root_category()]
+            qnode.categories = self.bh.add_conflations(qnode.categories)
         # Make sure QG only uses canonical predicates
         if mode == "ARAX":
             log.debug(f"Making sure QG only uses canonical predicates")
-            for qedge in query_graph.edges.values():
+            qedge_keys = set(query_graph.edges)
+            for qedge_key in qedge_keys:
+                qedge = query_graph.edges[qedge_key]
                 if qedge.predicates:
-                    # TODO: worry about flipping query subject/object?! relevant once do predicate symmetry..
-                    qedge.predicates = self.biolink_helper.get_canonical_predicates(qedge.predicates)
+                    # Convert predicates to their canonical form as needed/possible
+                    qedge_predicates = set(qedge.predicates)
+                    symmetric_predicates = {predicate for predicate in qedge_predicates
+                                            if self.bh.is_symmetric(predicate)}
+                    asymmetric_predicates = qedge_predicates.difference(symmetric_predicates)
+                    canonical_predicates = set(self.bh.get_canonical_predicates(qedge.predicates))
+                    if canonical_predicates != qedge_predicates:
+                        asymmetric_non_canonical = asymmetric_predicates.difference(canonical_predicates)
+                        asymmetric_canonical = asymmetric_predicates.intersection(canonical_predicates)
+                        symmetric_non_canonical = symmetric_predicates.difference(canonical_predicates)
+                        if symmetric_non_canonical:
+                            # Switch to canonical predicates, but no need to flip the qedge since they're symmetric
+                            log.debug(f"Converting symmetric predicates {symmetric_non_canonical} on {qedge_key} to "
+                                      f"their canonical forms.")
+                            converted_symmetric = self.bh.get_canonical_predicates(symmetric_non_canonical)
+                            qedge.predicates = list(qedge_predicates.difference(symmetric_non_canonical).union(converted_symmetric))
+                        if asymmetric_non_canonical and asymmetric_canonical:
+                            log.error(f"Qedge {qedge_key} has asymmetric predicates in both canonical and non-canonical"
+                                      f" forms, which isn't allowed. Non-canonical asymmetric predicates are: "
+                                      f"{asymmetric_non_canonical}", error_code="InvalidPredicates")
+                        elif asymmetric_non_canonical:
+                            # Flip the qedge in this case (OK to do since only other predicates are symmetric)
+                            log.debug(f"Converting {qedge_key}'s asymmetric non-canonical predicates to canonical "
+                                      f"form; requires flipping the qedge, but this is OK since there are no "
+                                      f"asymmetric canonical predicates on this qedge.")
+                            converted_asymmetric = self.bh.get_canonical_predicates(asymmetric_non_canonical)
+                            final_predicates = set(qedge.predicates).difference(asymmetric_non_canonical).union(converted_asymmetric)
+                            eu.flip_qedge(qedge, list(final_predicates))
+                    # Handle special situation where user entered treats edge in wrong direction
+                    if qedge.predicates == ["biolink:treats"]:
+                        subject_qnode = query_graph.nodes[qedge.subject]
+                        if "biolink:Disease" in self.bh.get_descendants(subject_qnode.categories):
+                            log.warning(f"{qedge_key} seems to be pointing in the wrong direction (you have "
+                                        f"(disease-like node)-[treats]->(something)). Will flip this qedge.")
+                            eu.flip_qedge(qedge, qedge.predicates)
+                else:
+                    # Default to related_to if no predicate was specified
+                    qedge.predicates = [self.bh.get_root_predicate()]
 
         # Expand any specified edges
         if input_qedge_keys:
@@ -394,7 +421,8 @@ class ARAXExpander:
         # Decorate all nodes with additional attributes info from KG2c (iri, description, etc.)
         if mode == "ARAX":  # Skip doing this for KG2 (until can pass minimal_metadata param)
             decorator = ARAXDecorator()
-            decorator.apply(response)
+            decorator.decorate_nodes(response)
+            decorator.decorate_edges(response, kind="RTX-KG2")
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
@@ -895,10 +923,9 @@ class ARAXExpander:
             log.info(f"Kept top {len(kept_nodes)} answers for {qnode_key_to_prune}. "
                      f"Best score was {round(max(scores), 5)}, worst kept was {round(min(scores), 5)}.")
             # Actually eliminate them from the KG
+
             nodes_to_delete = set(kg.nodes_by_qg_id[qnode_key_to_prune]).difference(kept_nodes)
-            for node_key in nodes_to_delete:
-                del kg.nodes_by_qg_id[qnode_key_to_prune][node_key]
-            eu.remove_orphan_edges(kg, qg_expanded_thus_far)
+            kg.remove_nodes(nodes_to_delete, qnode_key_to_prune, qg_expanded_thus_far)
         else:
             log.error(f"Ran into an issue using Resultify when trying to prune {qnode_key_to_prune} answers: "
                       f"{intermediate_results_response.show()}", error_code="PruneError")

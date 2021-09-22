@@ -470,7 +470,7 @@ class ComputeFTEST:
             # Load the counts into a dictionary
             neighbor_counts_dict = {row[0]:eval(row[1]) for row in rows}
 
-            res_dict = {node:neighbor_counts_dict[mapping[node]].get(adjacent_type) for node in mapping if neighbor_counts_dict[mapping[node]].get(adjacent_type) is not None}
+            res_dict = {node:neighbor_counts_dict[mapping[node]].get(adjacent_type) for node in mapping if mapping[node] in neighbor_counts_dict and neighbor_counts_dict[mapping[node]].get(adjacent_type) is not None}
             failure_nodes += list(mapping.keys() - res_dict.keys())
 
             if len(failure_nodes) != 0:
