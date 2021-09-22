@@ -36,7 +36,7 @@ class COHDIndex:
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         self.databaseLocation = filepath
         # lastest_version = "v1.0"
-        # kg = 'KG2.7.1'
+        # kg = 'KG2.7.3'
         # self.databaseName = f"COHDdatabase_{lastest_version}_{kg}.db"
         self.databaseName = RTXConfig.cohd_database_path.split('/')[-1]
         self.success_con = self.connect()
@@ -56,7 +56,8 @@ class COHDIndex:
             print("INFO: Connecting to database", flush=True)
             return True
         else:
-            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_7_1_with_concepts.pkl', 'concepts_table_Athena.txt']
+            # # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_7_1_with_concepts.pkl', 'concepts_table_Athena.txt']
+            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt']
             # has_files = [f for f in os.listdir(self.databaseLocation) if os.path.isfile(os.path.join(self.databaseLocation, f))]
             # for file in required_files:
             #     if file in has_files:
@@ -95,10 +96,10 @@ class COHDIndex:
         return
         # if self.success_con is True:
         #     print("INFO: Creating database " + self.databaseName, flush=True)
-        #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
-        #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
-        #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING_ATHENA")
-        #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING_ATHENA( curie VARCHAR(255), concept_id INT )")
+        #     # self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
+        #     # self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
+        #     # self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING_ATHENA")
+        #     # self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING_ATHENA( curie VARCHAR(255), concept_id INT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS SINGLE_CONCEPT_COUNTS")
         #     self.connection.execute(f"CREATE TABLE SINGLE_CONCEPT_COUNTS( dataset_id TINYINT, concept_id INT, concept_count INT, concept_prevalence FLOAT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS CONCEPTS")
@@ -181,23 +182,23 @@ class COHDIndex:
 
         #     self.connection.commit()
 
-        #     concepts_table_Athena_file = 'concepts_table_Athena.txt'
-        #     current_table_name = paired_file.replace('.txt', '').upper()
-        #     print(f"INFO: Populating table {current_table_name}", flush=True)
-        #     with open(f"{self.databaseLocation}/{concepts_table_Athena_file}", 'r') as file:
-        #         content_list = file.readlines()
-        #         col_name = content_list.pop(0)
-        #         insert_command1 = f"INSERT INTO CURIE_TO_OMOP_MAPPING_ATHENA(curie, concept_id)"
-        #         insert_command2 = f" values (?,?)"
+        #     # concepts_table_Athena_file = 'concepts_table_Athena.txt'
+        #     # current_table_name = paired_file.replace('.txt', '').upper()
+        #     # print(f"INFO: Populating table {current_table_name}", flush=True)
+        #     # with open(f"{self.databaseLocation}/{concepts_table_Athena_file}", 'r') as file:
+        #     #     content_list = file.readlines()
+        #     #     col_name = content_list.pop(0)
+        #     #     insert_command1 = f"INSERT INTO CURIE_TO_OMOP_MAPPING_ATHENA(curie, concept_id)"
+        #     #     insert_command2 = f" values (?,?)"
 
-        #         insert_command = insert_command1 + insert_command2
+        #     #     insert_command = insert_command1 + insert_command2
 
-        #         for line in content_list:
-        #             content_col = line.strip().split("\t")
-        #             record = tuple([content_col[1],content_col[0]])
-        #             self.connection.execute(insert_command, record)
+        #     #     for line in content_list:
+        #     #         content_col = line.strip().split("\t")
+        #     #         record = tuple([content_col[1],content_col[0]])
+        #     #         self.connection.execute(insert_command, record)
 
-        #     self.connection.commit()
+        #     # self.connection.commit()
 
         #     # read KG1 and KG2 mapping
         #     # with open(f"{self.databaseLocation}/synonyms_kg2_with_concepts.pkl", "rb") as file:
@@ -208,33 +209,35 @@ class COHDIndex:
         #     # for key in kg1_mapping:
         #     #     if key not in kg_mapping:
         #     #         kg_mapping[key] = kg1_mapping[key]
-        #     with open(f"{self.databaseLocation}/preferred_synonyms_kg2_7_1_with_concepts.pkl", "rb") as file:
-        #         kg = pickle.load(file)
 
-        #     insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,concept_id) values (?,?)'
-        #     count = 0
-        #     total_key = [key for key in kg if len(kg[key]['concept_ids']) != 0]
 
-        #     print(f"INFO: Populating table CURIE_TO_OMOP_MAPPING", flush=True)
-        #     if DEBUG:
-        #         key = total_key[0]
-        #         records = list(itertools.product([key], list(kg[key]['concept_ids'])))
-        #         print(records, flush=True)
+        #     # with open(f"{self.databaseLocation}/preferred_synonyms_kg2_7_1_with_concepts.pkl", "rb") as file:
+        #     #     kg = pickle.load(file)
 
-        #     for key in total_key:
-        #         if len(kg[key]['concept_ids']) > 0:
-        #             count = count + 1
-        #             records = list(itertools.product([key], list(kg[key]['concept_ids'])))
-        #             self.connection.executemany(insert_command, records)
+        #     # insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,concept_id) values (?,?)'
+        #     # count = 0
+        #     # total_key = [key for key in kg if len(kg[key]['concept_ids']) != 0]
 
-        #             if count % 10000 == 0:
-        #                 self.connection.commit()
-        #                 percentage = round((count * 100.0 / len(total_key)), 2)
-        #                 print(str(percentage) + "%..", end='', flush=True)
+        #     # print(f"INFO: Populating table CURIE_TO_OMOP_MAPPING", flush=True)
+        #     # if DEBUG:
+        #     #     key = total_key[0]
+        #     #     records = list(itertools.product([key], list(kg[key]['concept_ids'])))
+        #     #     print(records, flush=True)
 
-        #     self.connection.commit()
-        #     percentage = round((count * 100.0 / len(total_key)), 2)
-        #     print(str(percentage) + "%..", end='', flush=True)
+        #     # for key in total_key:
+        #     #     if len(kg[key]['concept_ids']) > 0:
+        #     #         count = count + 1
+        #     #         records = list(itertools.product([key], list(kg[key]['concept_ids'])))
+        #     #         self.connection.executemany(insert_command, records)
+
+        #     #         if count % 10000 == 0:
+        #     #             self.connection.commit()
+        #     #             percentage = round((count * 100.0 / len(total_key)), 2)
+        #     #             print(str(percentage) + "%..", end='', flush=True)
+
+        #     # self.connection.commit()
+        #     # percentage = round((count * 100.0 / len(total_key)), 2)
+        #     # print(str(percentage) + "%..", end='', flush=True)
 
         #     print(f"INFO: Populating tables is completed", flush=True)
 
@@ -243,13 +246,13 @@ class COHDIndex:
 
         return
         # if self.success_con is True:
-        #     print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING", flush=True)
-        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_preferred_curie ON CURIE_TO_OMOP_MAPPING(preferred_curie)")
-        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_concept_id ON CURIE_TO_OMOP_MAPPING(concept_id)")
+        #     # print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING", flush=True)
+        #     # self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_preferred_curie ON CURIE_TO_OMOP_MAPPING(preferred_curie)")
+        #     # self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_concept_id ON CURIE_TO_OMOP_MAPPING(concept_id)")
 
-        #     print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING_ATHENA", flush=True)
-        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_curie ON CURIE_TO_OMOP_MAPPING_ATHENA(curie)")
-        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_concept_id ON CURIE_TO_OMOP_MAPPING_ATHENA(concept_id)")
+        #     # print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING_ATHENA", flush=True)
+        #     # self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_curie ON CURIE_TO_OMOP_MAPPING_ATHENA(curie)")
+        #     # self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_concept_id ON CURIE_TO_OMOP_MAPPING_ATHENA(concept_id)")
 
         #     print(f"INFO: Creating INDEXes on SINGLE_CONCEPT_COUNTS", flush=True)
         #     self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_dataset_id ON SINGLE_CONCEPT_COUNTS(dataset_id)")
