@@ -366,68 +366,17 @@ def test_987_override_node_categories():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all('biolink:PhenotypicFeature' in node.categories for node in nodes_by_qg_id['n01'].values())
 
-@pytest.mark.slow
-def test_cohd_expand_all():
+
+@pytest.mark.external
+def test_cohd_expand():
     actions_list = [
-        "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=all, COHD_method_top_N=500)",
+        "add_qnode(ids=MONDO:0005301, key=n00)",
+        "add_qnode(categories=biolink:SmallMolecule, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:correlated_with)",
+        "expand(edge_key=e00, kp=COHD)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:has_real_world_evidence_of_association_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "concept_pair_count" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-
-
-@pytest.mark.slow
-def test_cohd_expand_paired_concept_freq():
-    actions_list = [
-        "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_top_N=500)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:has_real_world_evidence_of_association_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "paired_concept_frequency" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-
-
-@pytest.mark.slow
-def test_cohd_expand_observed_expected_ratio():
-    actions_list = [
-        "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_top_N=500)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:has_real_world_evidence_of_association_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "ln_observed_expected_ratio" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-
-
-@pytest.mark.slow
-def test_cohd_expand_chi_square():
-    actions_list = [
-        "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_top_N=500)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:has_real_world_evidence_of_association_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "chi_square_pvalue" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "http://cohd.smart-api.info/" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
 def test_dtd_expand_1():
