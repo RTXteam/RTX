@@ -104,7 +104,7 @@ class BiolinkHelper:
         if predicate in self.biolink_lookup_map["predicates"]:
             return self.biolink_lookup_map["predicates"][predicate]["is_symmetric"]
         else:
-            raise ValueError(f"Input predicate '{predicate}' does not exist in Biolink {self.biolink_version}!")
+            return True  # Consider unrecognized predicates symmetric (rather than throw error)
 
     def replace_mixins_with_direct_mappings(self, biolink_items: Union[str, List[str], Set[str]]) -> List[str]:
         input_item_set = self._convert_to_set(biolink_items)
@@ -169,7 +169,7 @@ class BiolinkHelper:
                 biolink_lookup_map = pickle.load(biolink_map_file)
             return biolink_lookup_map
 
-    def _create_biolink_lookup_map(self) -> Dict[str, Dict[str, Dict[str, Union[str, List[str]]]]]:
+    def _create_biolink_lookup_map(self) -> Dict[str, Dict[str, Dict[str, Union[str, List[str], bool]]]]:
         print(f"INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map because one "
               f"doesn't yet exist")
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
