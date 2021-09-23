@@ -45,7 +45,7 @@ Associated code changes should go in the `kg2integration` branch.
 
 ##### 5. Final items/clean up:
 
-- [ ] update SmartAPI registration for ARAX @edeutsch
+- [ ] update SmartAPI registration for KG2 @edeutsch
 - [ ] update the test triples that go in some NCATS repo @finnagin
 - [ ] rename the `config_local.json` on arax.ncats.io to `config_local.json_FROZEN_DO-NOT-EDIT-FURTHER` (any additional edits to the config file should be made directly to the master `configv2.json` on araxconfig.rtx.ai going forward)
 - [ ] turn off the old KG2 version's neo4j instance
