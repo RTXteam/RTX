@@ -181,11 +181,11 @@ class KPSelector:
     def _load_meta_map(self):
         # This function loads the meta map and updates it as needed
         meta_map_file = pathlib.Path(self.meta_map_path)
-        two_days_ago = datetime.now() - timedelta(hours=48)
+        one_day_ago = datetime.now() - timedelta(hours=24)
         if not meta_map_file.exists():
             self.log.debug(f"Creating local copy of meta map for all KPs")
             meta_map = self._refresh_meta_map()
-        elif datetime.fromtimestamp(meta_map_file.stat().st_mtime) < two_days_ago:
+        elif datetime.fromtimestamp(meta_map_file.stat().st_mtime) < one_day_ago:
             self.log.debug(f"Doing a refresh of local meta map for all KPs")
             meta_map = self._refresh_meta_map()
         else:
