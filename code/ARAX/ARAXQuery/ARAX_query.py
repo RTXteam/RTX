@@ -195,7 +195,9 @@ class ARAXQuery:
         messenger.create_envelope(response)
 
         #### If a submitter came in, reflect that back into the response
-        if 'submitter' in query:
+        if "callback" in query and query['callback'] is not None and query['callback'].startswith('http://localhost:8000/ars/'):
+            response.envelope.submitter = 'ARS'
+        elif 'submitter' in query:
             response.envelope.submitter = query['submitter']
         else:
             if "callback" in query and query['callback'] is not None:
