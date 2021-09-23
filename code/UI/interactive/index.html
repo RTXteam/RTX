@@ -56,7 +56,7 @@
 <div class="banner" banner-bg-text="ARAX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a id="menuapiurl" href="api/arax/v1.2/ui/">TRAPI 1.2.0</a>
+<a id="menuapiurl" href="api/arax/v1.2/ui/">TRAPI 1.2.1</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
@@ -258,8 +258,11 @@
     </div>
 
     <br>
-    <input type="button" class="questionBox button" name="action" value="QUERY (ARAX)" onClick="postQuery('qGraph','ARAX');"/>
-    <input type="button" class="questionBox button" name="action" value="QUERY (ARS)" onClick="postQuery('qGraph','ARS');"/>
+    <input type="button" class="questionBox button" name="action" value="Query ARAX" onClick="postQuery('qGraph','ARAX');"/>
+    <input type="button" class="questionBox button" name="action" value="Query ARS" onClick="postQuery('qGraph','ARS');"/>
+    &nbsp;&nbsp;&nbsp;<span class="explevel p3" title="new!">New</span>&nbsp;&nbsp;&nbsp;
+    <input type="button" class="questionBox button" name="action" value="Query OTHER TRAPI" onClick="postQuery('qGraph','EXT');"/>
+    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
   </div>
   
   <div class="inputsection" id="qjson_input">
@@ -268,8 +271,11 @@
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
 	    <br/>
-	    <input type="button" class="questionBox button" name="action" value="POST (ARAX)" onClick="postQuery('JSON','ARAX');">
-	    <input type="button" class="questionBox button" name="action" value="POST (ARS)" onClick="postQuery('JSON','ARS');">
+	    <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('JSON','ARAX');">
+	    <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('JSON','ARS');">
+	    &nbsp;&nbsp;&nbsp;<span class="explevel p3" title="new!">New</span>&nbsp;&nbsp;&nbsp;
+	    <input type="button" class="questionBox button" name="action" value="Post to OTHER TRAPI" onClick="postQuery('JSON','EXT');">
+	    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
     </form>
   </div>
 
@@ -288,7 +294,7 @@
       <div id="dsl_command_form"></div>
       <br/>
       <br/>
-      <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL','ARAX');">
+      <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('DSL','ARAX');">
     </form>
   </div>
 
@@ -408,21 +414,38 @@
 <div class="pagesection" id="settingsDiv">
   <div class="statushead">API Settings</div>
   <div class="status">
-    <h3 style="margin-bottom:0px;">BASE API URL:</h3>
-    <input type="text" class="questionBox" id="base_api_url" onkeyup="enter_url(this,'base_api');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="base_api_url_button" value="Update" onClick="update_url('base_api');"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">ARAX URL:</h3>
+    <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
     <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX');"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">ARS URL:</h3>
-    <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS');"/>
+    <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX',null);"/>
     <br><br>
     <h3 style="margin-bottom:0px;">ARS API (post query):</h3>
-    <input type="text" class="questionBox" id="ars_api_url" onkeyup="enter_url(this,'ars_api');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ars_api_url_button" value="Update" onClick="update_url('ars_api');"/>
+    <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS',null);"/>
+    <br><br>
+    <h3 style="margin-bottom:0px;">EXTERNAL API (post query):</h3>
+    <input type="text" class="questionBox" id="EXT_url" onkeyup="enter_url(this,'EXT');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="EXT_url_button" value="Update" onClick="update_url('EXT',null);"/>
+    <br>
+    <input type="button" class="qprob sbte" value="BTE" onClick="update_url('EXT','https://api.bte.ncats.io/v1');"/>
+    <input type="button" class="qprob p0" value="CHP" onClick="update_url('EXT','http://chp.thayer.dartmouth.edu');"/>
+    <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
+    <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
+    <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
+    <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.2');"/>
+    <input type="button" class="qprob p1" value="ICEES-Asthma" onClick="update_url('EXT','https://icees.renci.org:16339');"/>
+    <input type="button" class="qprob p1" value="ICEES-DILI" onClick="update_url('EXT','https://icees.renci.org:16341');"/>
+    <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.2');"/>
+    <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.2');"/>
+    <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
+    <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
+    <br><br>
+  </div>
+
+  <div class="statushead">Session Settings</div>
+  <div class="status">
+    <h3 style="margin-bottom:0px;">SUBMITTER (enter a generic name to help track queries):</h3>
+    <input type="text" class="questionBox" id="submitter_url" onkeyup="enter_url(this,'submitter');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
     <br><br>
   </div>
 

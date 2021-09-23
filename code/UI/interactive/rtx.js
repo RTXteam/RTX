@@ -25,10 +25,9 @@ if (typeof config !== 'undefined') {
 }
 
 var providers = {
-    "base_api": { "url" : baseAPI },
-    "ARAX"    : { "url" : baseAPI + "/response/" },
-    "ARS"     : { "url" : baseAPI + "/response/" },
-    "ars_api" : { "url" : "https://ars.ci.transltr.io/ars/api/submit" }
+    "ARAX": { "url" : baseAPI },
+    "ARS" : { "url" : "https://ars.transltr.io/ars/api/submit" },
+    "EXT" : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.2" }
 };
 
 // these attributes are floats; truncate them
@@ -53,8 +52,9 @@ const attributes_to_truncate = [
 
 
 function main() {
+    UIstate["submitter"] = 'ARAX GUI';
     UIstate["version"] = checkUIversion(false);
-    document.getElementById("menuapiurl").href = providers["base_api"].url + "/ui/";
+    document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
     get_example_questions();
     load_meta_knowledge_graph();
@@ -63,15 +63,13 @@ function main() {
     display_list('B');
     add_status_divs();
     cytodata[99999] = 'dummy';
-    document.getElementById("base_api_url").value = providers["base_api"].url;
-    document.getElementById("ARAX_url").value = providers["ARAX"].url;
-    document.getElementById("ARS_url").value = providers["ARS"].url;
-    document.getElementById("ars_api_url").value = providers["ars_api"].url;
 
-    document.getElementById("base_api_url_button").disabled = true;
-    document.getElementById("ARAX_url_button").disabled = true;
-    document.getElementById("ARS_url_button").disabled = true;
-    document.getElementById("ars_api_url_button").disabled = true;
+    for (var prov in providers) {
+	document.getElementById(prov+"_url").value = providers[prov].url;
+	document.getElementById(prov+"_url_button").disabled = true;
+    }
+    document.getElementById("submitter_url").value = UIstate["submitter"];
+    document.getElementById("submitter_url_button").disabled = true;
 
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
@@ -95,7 +93,7 @@ function main() {
 	statusdiv.appendChild(document.createElement("br"));
 
 	document.getElementById("devdiv").innerHTML =  "Requested "+provider_id+" response id = " + response_id + "<br>";
-	retrieve_response(provider_id,rurl+response_id,response_id,"all");
+	retrieve_response(provider_id,rurl+'/response/'+response_id,response_id,"all");
         pasteId(response_id);
     }
     else {
@@ -311,10 +309,12 @@ function postQuery(qtype,agent) {
 	qg_new(false,false);
     }
 
-    queryObj.submitter = 'ARAX GUI';
+    queryObj.submitter = UIstate["submitter"];
 
     if (agent == 'ARS')
 	postQuery_ARS(queryObj);
+    else if (agent == 'EXT')
+	postQuery_EXT(queryObj);
     else
 	postQuery_ARAX(qtype,queryObj);
 
@@ -324,7 +324,7 @@ function postQuery_ARS(queryObj) {
     document.getElementById("statusdiv").innerHTML += " - contacting ARS...";
     document.getElementById("statusdiv").appendChild(document.createElement("br"));
 
-    fetch(providers["ars_api"].url, {
+    fetch(providers["ARS"].url, {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -337,11 +337,64 @@ function postQuery_ARS(queryObj) {
 	    document.getElementById("statusdiv").innerHTML += " - got message_id = "+message_id;
 	    document.getElementById("statusdiv").appendChild(document.createElement("br"));
 	    pasteId(message_id);
-	    retrieve_response('ARS',providers['ARS'].url+message_id,message_id,"all");
+	    retrieve_response('ARS',providers['ARAX'].url+"/response/"+message_id,message_id,"all");
 	})
         .catch(error => {
             document.getElementById("statusdiv").innerHTML += " - ERROR:: "+error;
         });
+
+    return;
+}
+
+
+function postQuery_EXT(queryObj) {
+    document.getElementById("statusdiv").innerHTML += " - contacting 3rd party API...";
+    document.getElementById("statusdiv").appendChild(document.createElement("br"));
+
+    fetch(providers["EXT"].url + "/query", {
+	method: 'post',
+	body: JSON.stringify(queryObj),
+	headers: { 'Content-type': 'application/json' }
+
+    }).then(response => {
+	if (response.ok) return response.json();
+	else throw new Error('Something went wrong');
+
+    }).then(data => {
+	var dev = document.getElementById("devdiv");
+        dev.appendChild(document.createElement("br"));
+	dev.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE MESSAGE::"));
+	var pre = document.createElement("pre");
+	pre.id = "responseJSON";
+	pre.appendChild(document.createTextNode(JSON.stringify(data,null,2)));
+	dev.appendChild(pre);
+
+	if (data["description"])
+	    statusdiv.appendChild(document.createTextNode(data["description"]));  // italics?
+	else
+	    statusdiv.appendChild(document.createTextNode(" - JSON response received"));  // italics?
+	statusdiv.appendChild(document.createElement("br"));
+	sesame('openmax',statusdiv);
+
+	if (!data["status"] || data["status"] == "OK") {
+	    input_qg = { "edges": {}, "nodes": {} };
+	    render_response(data, true);
+	}
+	else if (data["status"] == "QueryGraphZeroNodes") {
+	    qg_new(false,false);
+	}
+	else if (data["logs"]) {
+	    process_log(data["logs"]);
+	}
+	else {
+	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while parsing the response from the remote server (no log; code:"+data.status+")</span>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with capturing QUERY:<br>"+data;
+	    sesame('openmax',statusdiv);
+	}
+
+    }).catch(error => {
+	document.getElementById("statusdiv").innerHTML += " - ERROR:: "+error;
+    });
 
     return;
 }
@@ -385,7 +438,7 @@ function postQuery_ARAX(qtype,queryObj) {
     sesame('openmax',statusdiv);
 
     add_to_dev_info("Posted to QUERY",queryObj);
-    fetch(providers["base_api"].url + "/query", {
+    fetch(providers["ARAX"].url + "/query", {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -798,7 +851,7 @@ function getIdStats(id) {
 	wait.appendChild(waitbar);
 	document.getElementById("numresults_"+id).appendChild(wait);
     }
-    retrieve_response("ARS",providers["ARS"].url+id,id,"stats");
+    retrieve_response("ARS",providers["ARAX"].url+"/response/"+id,id,"stats");
 }
 
 function checkRefreshARS() {
@@ -847,7 +900,7 @@ function sendId() {
 	document.getElementById("numresults_"+id).appendChild(wait);
     }
 
-    retrieve_response("ARS",providers["ARS"].url+id,id,"all");
+    retrieve_response("ARS",providers["ARAX"].url+"/response/"+id,id,"all");
     openSection('query');
 }
 
@@ -875,7 +928,7 @@ function sendQuestion(e) {
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
-    xhr.open("post", providers["base_api"].url + "/translate", true);
+    xhr.open("post", providers["ARAX"].url + "/translate", true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
     // send the collected data as JSON
@@ -891,12 +944,12 @@ function sendQuestion(e) {
 
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post",  providers["base_api"].url + "/query", true);
+		xhr2.open("post",  providers["ARAX"].url + "/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
                 //var queryObj = { "message" : jsonObj };
                 var queryObj = jsonObj;
-		queryObj.submitter = 'ARAX GUI';
+		queryObj.submitter = UIstate["submitter"];
                 queryObj["message"] = { };
                 queryObj.bypass_cache = bypass_cache;
                 //queryObj.max_results = 100;
@@ -1996,6 +2049,7 @@ function process_graph(gne,gid,trapi) {
 		gnode.fulltextname = gnode.name;
 	    else
 		gnode.fulltextname = id;
+	    gne['nodes'][id].fulltextname = gnode.fulltextname;
 	}
 
 	//if (!gnode.id)
@@ -2304,7 +2358,7 @@ function add_cyto(i) {
 		'border-width' : '2',
 		'width': '20',
 		'height': '20',
-		'content': 'data(name)'
+		'content': function(ele) { return ele.data().name ? ele.data().name : ele.data().id; }
 	    })
 	    .selector('edge')
 	    .css({
@@ -2430,6 +2484,8 @@ function add_cyto(i) {
 function show_attributes_1point1(html_div, atts) {
     if (atts == null)  { return; }
 
+    var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
+
     // always display iri first
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
 
@@ -2472,6 +2528,10 @@ function show_attributes_1point1(html_div, atts) {
 		    else if (val.toString().startsWith("PMID:")) {
 			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
 			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
+			if (semmeddb_sentences && semmeddb_sentences[0] && semmeddb_sentences[0]["value"][val]) {
+			    snippet += ' : <i>"'+semmeddb_sentences[0]["value"][val]["sentence"]+'"</i>';
+			    snippet += ' ('+semmeddb_sentences[0]["value"][val]["publication date"]+')';
+			}
 		    }
 		    else if (val.toString().startsWith("DOI:")) {
 			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
@@ -2499,6 +2559,9 @@ function show_attributes_1point1(html_div, atts) {
 	    }
 	    else
 		snippet += att.value;
+
+	    if (att.attribute_type_id == "biolink:original_edge_information")
+                fixit = false;
 
             if (fixit) {
 		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
@@ -3719,7 +3782,7 @@ function abort_dsl() {
 
 
 function get_example_questions() {
-    fetch(providers["base_api"].url + "/exampleQuestions")
+    fetch(providers["ARAX"].url + "/exampleQuestions")
         .then(response => response.json())
         .then(data => {
 	    //add_to_dev_info("EXAMPLE Qs",data);
@@ -3749,7 +3812,7 @@ function load_meta_knowledge_graph() {
     var allnodes_node = document.getElementById("allnodetypes");
     allnodes_node.innerHTML = '';
 
-    fetch(providers["base_api"].url + "/meta_knowledge_graph")
+    fetch(providers["ARAX"].url + "/meta_knowledge_graph")
 	.then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong with /meta_knowledge_graph');
@@ -3827,7 +3890,7 @@ function retrieveRecentQs() {
 	hours = 24;
     document.getElementById("qftime").value = hours;
 
-    fetch(providers["base_api"].url + "/status?last_n_hours="+hours)
+    fetch(providers["ARAX"].url + "/status?last_n_hours="+hours)
 	.then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong with /status?last_n_hours='+hours);
@@ -3840,6 +3903,7 @@ function retrieveRecentQs() {
 	    stats.submitter = {};
 	    stats.instance_name = {};
 	    var timeline = {};
+            timeline["ISB_watchdog"] = { "data": [ { "label": 0 , "data": [] , "_qstart": new Date() } ] };
 
             var table = document.createElement("table");
 	    table.className = 'sumtab';
@@ -3870,6 +3934,8 @@ function retrieveRecentQs() {
 
 		var qstart = null;
 		var qend = null;
+		var qdur = null;
+		var qid = null;
 		for (var field of ["query_id","start_datetime","elapsed","submitter","instance_name","pid","response_id","state","status","description"] ) {
                     td = document.createElement("td");
                     if (field == "start_datetime") {
@@ -3884,6 +3950,9 @@ function retrieveRecentQs() {
 			}
 			stats.elapsed += query[field];
 			qend = query[field] * 1000; //ms
+
+			qdur = new Date(qend);
+			qdur = qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
 		    }
                     else if (field == "state") {
 			var span = document.createElement("span");
@@ -3916,9 +3985,10 @@ function retrieveRecentQs() {
 			link.target = '_blank';
 			link.title='view the posted query (JSON)';
 			link.style.cursor = "pointer";
-			link.href = providers["base_api"].url + '/status?id=' + query[field];
+			link.href = providers["ARAX"].url + '/status?id=' + query[field];
 			link.appendChild(document.createTextNode(query[field]));
 			td.appendChild(link);
+                        qid = query[field];
 		    }
 		    else if (field == "response_id") {
 			var link = document.createElement("a");
@@ -3972,7 +4042,9 @@ function retrieveRecentQs() {
 		    timeline[query["submitter"]]["data"][index]["data"].push(
 			{
 			    "timeRange": [qstart, qend],
-			    "val": query["instance_name"]
+			    "val": query["instance_name"],
+			    "_qid": qid,
+			    "_qdur": qdur
 			}
 		    );
 		    timeline[query["submitter"]]["data"][index]["_qstart"] = qstart;
@@ -3980,6 +4052,15 @@ function retrieveRecentQs() {
 		}
 		table.appendChild(tr);
 	    }
+	    // add dummy data point to scale timeline to current time
+	    timeline["ISB_watchdog"]["data"][0]["data"].push(
+		{
+		    "timeRange": [Date.now(), Date.now()],
+		    "val": "production",
+		    "_qid": null,
+		    "_qdur": null
+		}
+	    );
 
 	    displayQTimeline(timeline);
 	    recents_node.appendChild(table);
@@ -4084,6 +4165,7 @@ function displayQTimeline(tdata) {
 	.maxHeight(1500)
 	.leftMargin(120)
 	.zQualitative(true)
+	.segmentTooltipContent(function(d) { return "Query ID: <strong>"+d.data["_qid"].toString()+"</strong><br>"+d.data["_qdur"]; } )
     (timeline_node);
 }
 
@@ -4447,7 +4529,7 @@ function check_entities_batch(batchsize) {
     if (thisbatch) batches.push(thisbatch);
 
     for (let batch of batches) {
-        fetch(providers["base_api"].url + "/entity?output_mode=minimal" + batch)
+        fetch(providers["ARAX"].url + "/entity?output_mode=minimal" + batch)
 	    .then(response => response.json())
 	    .then(data => {
 		add_to_dev_info("ENTITIES:"+batch,data);
@@ -4492,7 +4574,7 @@ function check_entities() {
     for (let entity in entities) {
 	if (entities[entity].checkHTML != '--') continue;
 
-	fetch(providers["base_api"].url + "/entity?q=" + entity)
+	fetch(providers["ARAX"].url + "/entity?q=" + entity)
 	    .then(response => response.json())
 	    .then(data => {
                 add_to_dev_info("ENTITIES:"+entity,data);
@@ -4557,7 +4639,7 @@ async function check_entity(term,wantall) {
 	data = entities[term];
     }
     else {
-	var response = await fetch(providers["base_api"].url + "/entity?q=" + term);
+	var response = await fetch(providers["ARAX"].url + "/entity?q=" + term);
 	var fulldata = await response.json();
 
 	add_to_dev_info("ENTITY:"+term,fulldata);
@@ -4665,17 +4747,26 @@ function delete_cache(item) {
 
 function enter_url(ele, urlkey) {
     if (event.key === 'Enter')
-	update_url(urlkey);
+	update_url(urlkey,null);
     else
-	update_submit_button(urlkey);
+	update_submit_button(urlkey,null);
 }
-function update_url(urlkey) {
-    providers[urlkey].url = document.getElementById(urlkey+"_url").value;
+function update_url(urlkey,value) {
+    if (value)
+	document.getElementById(urlkey+"_url").value = value;
+
+    if (urlkey == 'submitter')
+	UIstate[urlkey] = document.getElementById(urlkey+"_url").value;
+    else
+	providers[urlkey].url = document.getElementById(urlkey+"_url").value;
+
     addCheckBox(document.getElementById(urlkey+"_url_button"),true);
     var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
 function update_submit_button(urlkey) {
-    if (providers[urlkey].url == document.getElementById(urlkey+"_url").value)
+    var userval = urlkey == 'submitter' ? UIstate[urlkey] : providers[urlkey].url;
+
+    if (userval == document.getElementById(urlkey+"_url").value)
 	document.getElementById(urlkey+"_url_button").disabled = true;
     else
 	document.getElementById(urlkey+"_url_button").disabled = false;
