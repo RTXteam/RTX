@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=3">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=4">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="config.js"></script>
@@ -414,6 +414,11 @@
 <div class="pagesection" id="settingsDiv">
   <div class="statushead">API Settings</div>
   <div class="status">
+    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">REMOTE API TIMEOUT DURING ARAX EXPANSION (leave blank for default):</h3>
+    <input type="text" class="questionBox" id="timeout_url" onkeyup="enter_url(this,'timeout');" size="3" maxlength="3"/>
+    seconds
+    <input type="button" style="margin-left:15px;" class="questionBox button" id="timeout_url_button" value="Update" onClick="update_url('timeout',null);"/>
+    <br><br>
     <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
     <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
     <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX',null);"/>

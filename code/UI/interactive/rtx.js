@@ -53,6 +53,7 @@ const attributes_to_truncate = [
 
 function main() {
     UIstate["submitter"] = 'ARAX GUI';
+    UIstate["timeout"] = '';
     UIstate["version"] = checkUIversion(false);
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
@@ -68,9 +69,10 @@ function main() {
 	document.getElementById(prov+"_url").value = providers[prov].url;
 	document.getElementById(prov+"_url_button").disabled = true;
     }
-    document.getElementById("submitter_url").value = UIstate["submitter"];
-    document.getElementById("submitter_url_button").disabled = true;
-
+    for (var setting of ["submitter","timeout"]) {
+	document.getElementById(setting+"_url").value = UIstate[setting];
+	document.getElementById(setting+"_url_button").disabled = true;
+    }
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
     var rec = getQueryVariable("recent") || null;
@@ -403,7 +405,11 @@ function postQuery_EXT(queryObj) {
 // use fetch and stream
 function postQuery_ARAX(qtype,queryObj) {
     queryObj.stream_progress = true;
-
+    if (UIstate["timeout"]) {
+	if (!queryObj.query_options)
+	    queryObj.query_options = {};
+	queryObj.query_options['kp_timeout'] = UIstate["timeout"];
+    }
     var cmddiv = document.createElement("div");
     cmddiv.id = "cmdoutput";
     statusdiv.appendChild(cmddiv);
@@ -3881,7 +3887,16 @@ function retrieveRecentQs() {
     recents_node.innerHTML = '';
 
     var qfspan = document.getElementById("qfilter");
-    qfspan.innerHTML = 'Loading...';
+    qfspan.innerHTML = '';
+    var wait = document.createElement("span");
+    wait.className = 'loading_cell';
+    wait.style.width = "100px";
+    wait.style.marginRight = "10px";
+    var waitbar = document.createElement("span");
+    waitbar.className = 'loading_bar';
+    wait.appendChild(waitbar);
+    qfspan.appendChild(wait);
+    qfspan.appendChild(document.createTextNode('Loading...'));
 
     document.getElementById("recent_queries_timeline_container").innerHTML = '';
 
@@ -4749,24 +4764,34 @@ function enter_url(ele, urlkey) {
     if (event.key === 'Enter')
 	update_url(urlkey,null);
     else
-	update_submit_button(urlkey,null);
+	update_submit_button(urlkey);
 }
 function update_url(urlkey,value) {
     if (value)
 	document.getElementById(urlkey+"_url").value = value;
 
-    if (urlkey == 'submitter')
-	UIstate[urlkey] = document.getElementById(urlkey+"_url").value;
-    else
-	providers[urlkey].url = document.getElementById(urlkey+"_url").value;
-
+    if (urlkey == 'timeout') {
+	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(to))
+	    to = '';
+	UIstate[urlkey] = to;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
+    else if (urlkey == 'submitter') {
+	UIstate[urlkey] = document.getElementById(urlkey+"_url").value.trim();
+        document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
+    else {
+	providers[urlkey].url = document.getElementById(urlkey+"_url").value.trim();
+	document.getElementById(urlkey+"_url").value = providers[urlkey].url;
+    }
     addCheckBox(document.getElementById(urlkey+"_url_button"),true);
     var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
 function update_submit_button(urlkey) {
-    var userval = urlkey == 'submitter' ? UIstate[urlkey] : providers[urlkey].url;
+    var currval = (urlkey == 'submitter' || urlkey == 'timeout') ? UIstate[urlkey] : providers[urlkey].url;
 
-    if (userval == document.getElementById(urlkey+"_url").value)
+    if (currval == document.getElementById(urlkey+"_url").value)
 	document.getElementById(urlkey+"_url_button").disabled = true;
     else
 	document.getElementById(urlkey+"_url_button").disabled = false;
