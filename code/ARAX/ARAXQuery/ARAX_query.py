@@ -602,7 +602,7 @@ class ARAXQuery:
 
                     elif action['command'] == 'expand':
                         user_timeout = None
-                        if 'kp_timeout' in response.envelope.query_options:
+                        if response.envelope.query_options is not None and 'kp_timeout' in response.envelope.query_options:
                             user_timeout = response.envelope.query_options['kp_timeout']
                             try:
                                 user_timeout = int(user_timeout)
