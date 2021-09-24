@@ -31,7 +31,7 @@ from openapi_server.models.result import Result
 class TRAPIQuerier:
 
     def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, user_timeout: Optional[int],
-                 kp_selector: KPSelector, force_local: bool = False):
+                 kp_selector: KPSelector = KPSelector(), force_local: bool = False):
         self.log = response_object
         self.kp_name = kp_name
         self.user_specified_kp = user_specified_kp

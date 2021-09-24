@@ -23,7 +23,7 @@ from openapi_server.models.query_graph import QueryGraph
 
 class KPSelector:
 
-    def __init__(self, log: ARAXResponse):
+    def __init__(self, log: ARAXResponse = ARAXResponse()):
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
