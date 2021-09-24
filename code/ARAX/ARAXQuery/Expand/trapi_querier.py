@@ -63,7 +63,7 @@ class TRAPIQuerier:
                     return final_kg
 
         # Convert the QG so that it uses curies with prefixes the KP likes
-        qg_copy = eu.make_qg_use_supported_prefixes(self.kp_selector, qg_copy, self.kp_name, log)
+        qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_name, log)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
             return final_kg
 
@@ -97,7 +97,7 @@ class TRAPIQuerier:
                     return final_kg
 
         # Convert the QG so that it uses curies with prefixes the KP likes
-        qg_copy = eu.make_qg_use_supported_prefixes(self.kp_selector, qg_copy, self.kp_name, log)
+        qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_name, log)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
             return final_kg
 
