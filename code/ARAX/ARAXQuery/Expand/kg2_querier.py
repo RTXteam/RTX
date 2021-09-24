@@ -65,12 +65,7 @@ class KG2Querier:
 
         # Send the query to plover in batches of input curies
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
-        qedge = query_graph.edges[qedge_key]
-        qnode_a_key = qedge.subject
-        qnode_b_key = qedge.object
-        qnode_a = query_graph.nodes[qnode_a_key]
-        qnode_b = query_graph.nodes[qnode_b_key]
-        input_qnode_key = qnode_a_key if len(eu.convert_to_list(qnode_a.ids)) > len(eu.convert_to_list(qnode_b.ids)) else qnode_b_key
+        input_qnode_key = self._get_input_qnode_key(query_graph)
         input_curies = query_graph.nodes[input_qnode_key].ids
         input_curie_set = set(input_curies)
         curie_batches = [input_curies[i:i+self.curie_batch_size] for i in range(0, len(input_curies), self.curie_batch_size)]
@@ -238,3 +233,18 @@ class KG2Querier:
                                        for infores_curie in knowledge_sources]
         edge.attributes += knowledge_source_attributes
         return edge
+
+    @staticmethod
+    def _get_input_qnode_key(one_hop_qg: QueryGraph) -> str:
+        qedge = next(qedge for qedge in one_hop_qg.edges.values())
+        qnode_a_key = qedge.subject
+        qnode_b_key = qedge.object
+        qnode_a = one_hop_qg.nodes[qnode_a_key]
+        qnode_b = one_hop_qg.nodes[qnode_b_key]
+        if qnode_a.ids and qnode_b.ids:
+            # Considering the qnode with fewer curies the 'input' is more efficient for querying Plover
+            return qnode_a_key if len(qnode_a.ids) < len(qnode_b.ids) else qnode_b_key
+        elif qnode_a.ids:
+            return qnode_a_key
+        else:
+            return qnode_b_key
