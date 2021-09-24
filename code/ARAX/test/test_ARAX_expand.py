@@ -431,10 +431,6 @@ def test_chp_expand_1():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:paired_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "paired_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://github.com/di2ag/chp_client" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
 @pytest.mark.external
@@ -447,10 +443,6 @@ def test_chp_expand_2():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:paired_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "paired_with" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://github.com/di2ag/chp_client" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
 @pytest.mark.external
