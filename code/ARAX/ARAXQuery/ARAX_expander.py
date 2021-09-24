@@ -79,7 +79,7 @@ class ARAXExpander:
             }
         return [kp_less] + list(self.kp_command_definitions.values())
 
-    def apply(self, response, input_parameters, mode="ARAX"):
+    def apply(self, response, input_parameters, mode: str = "ARAX", user_timeout: Optional[int] = None):
         force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
@@ -296,7 +296,7 @@ class ARAXExpander:
                         loop = asyncio.new_event_loop()  # Need to create NEW event loop for threaded environments
                         asyncio.set_event_loop(loop)
                         tasks = [self._expand_edge_async(one_hop_qg, kp_to_use, input_parameters, user_specified_kp,
-                                                         force_local, kp_selector, log, multiple_kps=True)
+                                                         user_timeout, force_local, kp_selector, log, multiple_kps=True)
                                  for kp_to_use in kps_to_query]
                         task_group = asyncio.gather(*tasks)
                         kp_answers = loop.run_until_complete(task_group)
@@ -313,7 +313,7 @@ class ARAXExpander:
                         self.logger.info(f"PID {os.getpid()}: BEFORE pool: About to create {len(kps_to_query)} child processes from {multiprocessing.current_process()}")
                         with multiprocessing.Pool(len(kps_to_query)) as pool:
                             kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                           user_specified_kp, force_local,
+                                                                           user_specified_kp, user_timeout, force_local,
                                                                            kp_selector, empty_log, True]
                                                                           for kp_to_use in kps_to_query])
                         self.logger.info(f"PID {os.getpid()}: AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
@@ -435,8 +435,8 @@ class ARAXExpander:
         return response
 
     async def _expand_edge_async(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
-                                 user_specified_kp: bool, force_local: bool, kp_selector: KPSelector, log: ARAXResponse,
-                                 multiple_kps: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                                 user_specified_kp: bool, user_timeout: Optional[int], force_local: bool,
+                                 kp_selector: KPSelector, log: ARAXResponse, multiple_kps: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         qedge = edge_qg.edges[qedge_key]
@@ -483,7 +483,7 @@ class ARAXExpander:
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI API
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, kp_selector, force_local)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, user_timeout, kp_selector, force_local)
                 answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
         except Exception:
             tb = traceback.format_exc()
@@ -538,7 +538,7 @@ class ARAXExpander:
         return answer_kg, log
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
-                     user_specified_kp: bool, force_local: bool, kp_selector: KPSelector,
+                     user_specified_kp: bool, user_timeout: Optional[int], force_local: bool, kp_selector: KPSelector,
                      log: ARAXResponse, multiprocessed: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
         if multiprocessed:
@@ -575,7 +575,7 @@ class ARAXExpander:
             else:
                 # This is a general purpose querier for use with any KPs that we query via their TRAPI 1.0+ API
                 from Expand.trapi_querier import TRAPIQuerier
-                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, kp_selector, force_local)
+                kp_querier = TRAPIQuerier(log, kp_to_use, user_specified_kp, user_timeout, kp_selector, force_local)
 
             # Actually answer the query using the Querier we identified above
             answer_kg = kp_querier.answer_one_hop_query(edge_qg)
