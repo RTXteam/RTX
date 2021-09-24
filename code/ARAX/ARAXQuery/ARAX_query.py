@@ -194,6 +194,12 @@ class ARAXQuery:
         messenger = ARAXMessenger()
         messenger.create_envelope(response)
 
+        #### Preserve the query_options
+        if 'query_options' in query and query['query_options'] is not None:
+            response.envelope.query_options = query['query_options']
+        else:
+            response.envelope.query_options = {}
+
         #### If a submitter came in, reflect that back into the response
         if "callback" in query and query['callback'] is not None and query['callback'].startswith('http://localhost:8000/ars/'):
             response.envelope.submitter = 'ARS'
@@ -595,7 +601,15 @@ class ARAXQuery:
                         messenger.add_qedge(response,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        expander.apply(response, action['parameters'], mode=mode)
+                        user_timeout = None
+                        if 'kp_timeout' in response.envelope.query_options:
+                            user_timeout = response.envelope.query_options['kp_timeout']
+                            try:
+                                user_timeout = int(user_timeout)
+                            except:
+                                response.error(f"Unable to convert user_timeout '{user_timeout} into an integer", error_code="UserTimeoutNotInt")
+                                return response
+                        expander.apply(response, action['parameters'], mode=mode, user_timeout=user_timeout)
 
                     elif action['command'] == 'filter':
                         filter.apply(response,action['parameters'])
