@@ -27,7 +27,6 @@ def run_neo4j_query(cypher, kg_name, data_type):
     rtx_config = RTXConfiguration()
     if kg_name != "KG1":
         rtx_config.live = kg_name
-    print(rtx_config.neo4j_bolt)
     driver = GraphDatabase.driver(rtx_config.neo4j_bolt, auth=(rtx_config.neo4j_username, rtx_config.neo4j_password))
     with driver.session() as session:
         start = time.time()
