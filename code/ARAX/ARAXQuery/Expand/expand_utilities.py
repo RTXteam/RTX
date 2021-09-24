@@ -256,29 +256,6 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
     return standard_kg
 
 
-def make_qg_use_supported_prefixes(kp_selector, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
-    for qnode_key, qnode in qg.nodes.items():
-        if qnode.ids:
-            if kp_name == "RTX-KG2":
-                # Just convert them into canonical curies
-                qnode.ids = get_canonical_curies_list(qnode.ids, log)
-            else:
-                # Otherwise figure out which kind of curies KPs want
-                converted_curies = kp_selector.convert_curies_to_supported_prefixes(qnode.ids,
-                                                                                    qnode.categories,
-                                                                                    kp_name)
-                if converted_curies:
-                    log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
-                              f"{len(converted_curies)} curies tailored for {kp_name}")
-                    qnode.ids = converted_curies
-                else:
-                    log.info(f"{kp_name} cannot answer the query because I couldn't find any "
-                             f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
-                             f"curies were: {qnode.ids}")
-                    return None
-    return qg
-
-
 def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> List[str]:
     curies = convert_to_list(curie)
     try:
