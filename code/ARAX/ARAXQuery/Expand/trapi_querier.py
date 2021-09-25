@@ -8,7 +8,7 @@ import time
 
 import aiohttp
 import requests
-from typing import List, Dict, Set, Union
+from typing import List, Dict, Set, Union, Optional
 
 import requests_cache
 
@@ -30,11 +30,12 @@ from openapi_server.models.result import Result
 
 class TRAPIQuerier:
 
-    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, kp_selector: KPSelector,
-                 force_local: bool = False):
+    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, user_timeout: Optional[int],
+                 kp_selector: KPSelector = KPSelector(), force_local: bool = False):
         self.log = response_object
         self.kp_name = kp_name
         self.user_specified_kp = user_specified_kp
+        self.user_timeout = user_timeout
         self.force_local = force_local
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.kp_selector = kp_selector
@@ -363,7 +364,9 @@ class TRAPIQuerier:
         node_curie_counts = [len(qnode.ids) for qnode in qg.nodes.values() if qnode.ids]
         num_total_curies_in_qg = sum(node_curie_counts)
         num_qnodes_with_curies = len(node_curie_counts)
-        if self.kp_name == "RTX-KG2":
+        if self.user_timeout:
+            return self.user_timeout
+        elif self.kp_name == "RTX-KG2":
             return 600
         elif self.user_specified_kp:
             return 300
