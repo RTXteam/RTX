@@ -35,7 +35,7 @@ def make_arg_parser():
     arg_parser = argparse.ArgumentParser(description='filter_kg.py: filters and simplifies the KG2 knowledge grpah for the RTX system')
     arg_parser.add_argument('predicateRemapYaml', type=str, help="The YAML file describing how predicates should be remapped to simpler predicates")
     arg_parser.add_argument('curiesToURIFile', type=str, help="The file mapping CURIE prefixes to URI fragments")
-    arg_parser.add_argument('inputFileJson', type=str, help="The input KG2 grah, in JSON format")
+    arg_parser.add_argument('inputFileJson', type=str, help="The input KG2 graph, in JSON format")
     arg_parser.add_argument('outputFileJson', type=str, help="The output KG2 graph, in JSON format")
     arg_parser.add_argument('versionFile', type=str, help="The text file storing the KG2 version")
     arg_parser.add_argument('--test', dest='test', action='store_true', default=False)
