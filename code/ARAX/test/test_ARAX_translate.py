@@ -260,6 +260,52 @@ def test_bind():
     assert response.status == 'OK'
     assert len(message.results) > 0
 
+def test_complete_results():
+    query = {
+        "workflow": [
+            {
+                "id": "fill",
+                "parameters": {
+                    "allowlist": ["RTX-KG2"]
+                }
+            },
+            {
+                "id": "complete_results"
+            }
+
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalSubstance"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
 
 
 
