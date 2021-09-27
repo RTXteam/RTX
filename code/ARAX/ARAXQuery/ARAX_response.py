@@ -246,7 +246,13 @@ class ARAXResponse:
                 self.query_plan['qedge_keys'][qedge_key][provider] = {}
             self.query_plan['qedge_keys'][qedge_key][provider][status] = description
         else:
-            self.query_plan['qedge_keys'][qedge_key][provider] = { 'status': status, 'description': description, 'query': query }
+            if provider not in self.query_plan['qedge_keys'][qedge_key]:
+                self.query_plan['qedge_keys'][qedge_key][provider] = { 'status': status, 'description': description, 'query': query }
+            else:
+                self.query_plan['qedge_keys'][qedge_key][provider]['status'] = status
+                self.query_plan['qedge_keys'][qedge_key][provider]['description'] = description
+                if query is not None:
+                    self.query_plan['qedge_keys'][qedge_key][provider]['query'] = query
         self.query_plan['counter'] += 1
 
 
