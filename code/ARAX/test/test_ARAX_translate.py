@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Intended to test our more complicated workflows
+# Intended to test our translate to ARAXi functionality 
 
 import sys
 import os
@@ -119,6 +119,51 @@ def test_lookup():
     assert len(message.results) > 0
     for result in message.results:
         assert result.score is None
+
+def test_fill():
+    query = {
+        "workflow": [
+            {
+                "id": "fill",
+                "parameters": {
+                    "allowlist": ["RTX-KG2"]
+                }
+            }
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalSubstance"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.knowledge_graph.nodes) > 0
+    assert len(message.knowledge_graph.edges) > 0
+
 
 
 
