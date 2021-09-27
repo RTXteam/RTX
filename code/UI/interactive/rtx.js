@@ -76,26 +76,17 @@ function main() {
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
     var rec = getQueryVariable("recent") || null;
-    var response_id = getQueryVariable("r") || null;
-    var provider_id = getQueryVariable("source") || "ARAX";
-    var rurl = null;
-    if (response_id) {
-	provider_id = "ARAX";
-        rurl = providers[provider_id].url;
-    }
-    else if (provider_id) {
-	rurl = providers[provider_id].url;
-	response_id = getQueryVariable("id") || null;
-    }
 
-    if (rurl && response_id) {
+    var response_id = getQueryVariable("r") || getQueryVariable("id") || null;
+    if (response_id) {
+	response_id.trim();
 	var statusdiv = document.getElementById("statusdiv");
 	statusdiv.innerHTML = '';
-	statusdiv.appendChild(document.createTextNode("You have requested "+provider_id+" response id = " + response_id));
+	statusdiv.appendChild(document.createTextNode("You have requested response id = " + response_id));
 	statusdiv.appendChild(document.createElement("br"));
 
-	document.getElementById("devdiv").innerHTML =  "Requested "+provider_id+" response id = " + response_id + "<br>";
-	retrieve_response(provider_id,rurl+'/response/'+response_id,response_id,"all");
+	document.getElementById("devdiv").innerHTML =  "Requested response id = " + response_id + "<br>";
+	retrieve_response(providers['ARAX'].url+'/response/'+response_id,response_id,"all");
         pasteId(response_id);
     }
     else {
@@ -339,7 +330,7 @@ function postQuery_ARS(queryObj) {
 	    document.getElementById("statusdiv").innerHTML += " - got message_id = "+message_id;
 	    document.getElementById("statusdiv").appendChild(document.createElement("br"));
 	    pasteId(message_id);
-	    retrieve_response('ARS',providers['ARAX'].url+"/response/"+message_id,message_id,"all");
+	    retrieve_response(providers['ARAX'].url+"/response/"+message_id,message_id,"all");
 	})
         .catch(error => {
             document.getElementById("statusdiv").innerHTML += " - ERROR:: "+error;
@@ -857,7 +848,7 @@ function getIdStats(id) {
 	wait.appendChild(waitbar);
 	document.getElementById("numresults_"+id).appendChild(wait);
     }
-    retrieve_response("ARS",providers["ARAX"].url+"/response/"+id,id,"stats");
+    retrieve_response(providers["ARAX"].url+"/response/"+id,id,"stats");
 }
 
 function checkRefreshARS() {
@@ -888,6 +879,7 @@ function sendId() {
     var id = document.getElementById("idText").value.trim();
     if (!id) return;
 
+    pasteId(id);
     reset_vars();
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
     input_qg = { "edges": {}, "nodes": {} };
@@ -906,7 +898,7 @@ function sendId() {
 	document.getElementById("numresults_"+id).appendChild(wait);
     }
 
-    retrieve_response("ARS",providers["ARAX"].url+"/response/"+id,id,"all");
+    retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
     openSection('query');
 }
 
@@ -1012,8 +1004,8 @@ function process_ars_message(ars_msg, level) {
     var table, tr, td;
     if (level == 0) {
         document.title = "ARAX-UI [ARS Collection: "+ars_msg.message+"]";
-        add_to_session('source=ARS&id='+ars_msg.message,"[ARS Collection] id="+ars_msg.message);
-	history.pushState({ id: 'ARAX_UI' }, 'ARAX | source=ARS&id='+ars_msg.message, "//"+ window.location.hostname + window.location.pathname + '?source=ARS&id='+ars_msg.message);
+        add_to_session(ars_msg.message,"[ARS Collection] id="+ars_msg.message);
+	history.pushState({ id: 'ARAX_UI' }, 'ARAX | id='+ars_msg.message, "//"+ window.location.hostname + window.location.pathname + '?r='+ars_msg.message);
 
 	if (document.getElementById('ars_message_list'))
 	    document.getElementById('ars_message_list').remove();
@@ -1133,7 +1125,7 @@ function process_ars_message(ars_msg, level) {
 }
 
 
-function process_response(provider, resp_url, resp_id, type, jsonObj2) {
+function process_response(resp_url, resp_id, type, jsonObj2) {
     if (type == "all") {
 	var devdiv = document.getElementById("devdiv");
 	devdiv.appendChild(document.createElement("br"));
@@ -1165,7 +1157,6 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 	document.getElementById("questionForm").elements["questionText"].value = "";
     }
 
-    jsonObj2.araxui_provider = provider;
     jsonObj2.araxui_response = resp_id;
 
     if (jsonObj2.validation_result) {
@@ -1300,25 +1291,25 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
     else
 	render_response(jsonObj2,true);
 
-    if (!response_cache[provider+":"+resp_id])
-	response_cache[provider+":"+resp_id] = jsonObj2;
+    if (!response_cache[resp_id])
+	response_cache[resp_id] = jsonObj2;
     display_cache();
 }
 
 
-function retrieve_response(provider, resp_url, resp_id, type) {
+function retrieve_response(resp_url, resp_id, type) {
     if (type == null) type = "all";
     var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("Retrieving "+provider+" response id = " + resp_id));
+    statusdiv.appendChild(document.createTextNode("Retrieving response id = " + resp_id));
 
-    if (response_cache[provider+":"+resp_id]) {
+    if (response_cache[resp_id]) {
         if (document.getElementById("istrapi_"+resp_id))
 	    document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
 	statusdiv.appendChild(document.createTextNode(" ...from cache"));
 	statusdiv.appendChild(document.createElement("hr"));
 	sesame('openmax',statusdiv);
 	// 50ms timeout allows css animation to start before processing locks the thread
-	var timeout = setTimeout(function() { process_response(provider, resp_url, resp_id, type,response_cache[provider+":"+resp_id]); }, 50 );
+	var timeout = setTimeout(function() { process_response(resp_url, resp_id, type,response_cache[resp_id]); }, 50 );
 	return;
     }
 
@@ -1333,7 +1324,7 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 	if ( xhr.status == 200 ) {
             if (document.getElementById("istrapi_"+resp_id))
 		document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
-	    process_response(provider, resp_url, resp_id, type,JSON.parse(xhr.responseText));
+	    process_response(resp_url, resp_id, type,JSON.parse(xhr.responseText));
 
 	}
 	else if ( xhr.status == 404 ) {
@@ -1427,10 +1418,10 @@ function render_response(respObj,dispjson) {
 	}
 	history.pushState({ id: 'ARAX_UI' }, 'ARAX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
     }
-    else if (respObj.araxui_provider) {
-        document.title = "ARAX-UI ["+respObj.araxui_provider+" : "+respObj.araxui_response+"]";
-        add_to_session('source='+respObj.araxui_provider+"&id="+respObj.araxui_response,"["+respObj.araxui_provider+"] id="+respObj.araxui_response);
-	history.pushState({ id: 'ARAX_UI' }, 'ARAX | source='+respObj.araxui_provider+"&id="+respObj.araxui_response, "//"+ window.location.hostname + window.location.pathname + '?source='+respObj.araxui_provider+"&id="+respObj.araxui_response);
+    else if (respObj.araxui_response) {
+        document.title = "ARAX-UI ["+respObj.araxui_response+"]";
+        add_to_session(respObj.araxui_response,"id="+respObj.araxui_response);
+	history.pushState({ id: 'ARAX_UI' }, "ARAX | id="+respObj.araxui_response, "//"+ window.location.hostname + window.location.pathname + "?r="+respObj.araxui_response);
     }
     else if (respObj.restated_question)
         document.title = "ARAX-UI [no response_id]: "+respObj.restated_question+"?";
@@ -4293,7 +4284,6 @@ function display_list(listId) {
 	}
     }
 
-
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
     document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
 
@@ -4701,26 +4691,19 @@ function display_session() {
     for (var li in listItems[listId]) {
         if (listItems[listId].hasOwnProperty(li) && !li.startsWith("qtext_")) {
             numitems++;
-            listhtml += "<tr><td>"+li+".</td><td><a target='_blank' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname;
-	    if (listItems[listId][li].startsWith("source")) // hacky
-		listhtml += "?"+listItems[listId][li];
-	    else
-		listhtml += "?r="+listItems[listId][li];
-
-	    listhtml +="'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/>Remove</a></td></tr>";
+            listhtml += "<tr><td>"+li+".</td><td>";
+            listhtml += "<a target='_blank' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname + "?r="+listItems[listId][li] + "'>" + listItems['SESSION']["qtext_"+li] + "</a>";
+	    listhtml += "</td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/>Remove</a></td></tr>";
         }
     }
     if (numitems > 0) {
         listhtml += "<tr style='background-color:unset;'><td style='border-bottom:0;'></td><td style='border-bottom:0;'></td><td style='border-bottom:0;'><a href='javascript:delete_list(\""+listId+"\");'/> Delete Session History </a></td></tr>";
     }
 
-
-    if (numitems == 0) {
+    if (numitems == 0)
         listhtml = "<br>Your query history will be displayed here. It can be edited or re-set.<br><br>";
-    }
-    else {
+    else
         listhtml = "<table class='sumtab'><tr><th></th><th>Query</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
-    }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
     document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
