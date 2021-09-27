@@ -183,7 +183,7 @@ class ResponseCache:
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
             servername = 'arax.ncats.io'
-        envelope.id = f"https://{servername}/api/arax/v1.1/response/{stored_response.response_id}"
+        envelope.id = f"https://{servername}/api/arax/v1.2/response/{stored_response.response_id}"
 
         #### Instead of storing the large response object in the MySQL database as a blob
         #### now store it as a JSON file on the filesystem
@@ -254,11 +254,12 @@ class ResponseCache:
 
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
-            ars_hosts = [ 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
+            ars_hosts = [ 'ars.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
                     response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
                 status_code = response_content.status_code
+                #eprint(f"--- Fetch of {response_id} from {ars_host} yielded {status_code}")
                 if status_code == 200:
                     break
 
