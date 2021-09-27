@@ -1361,39 +1361,25 @@ class COHDQuerier:
 
         res_dict = {}
         if isinstance(qnode.ids, str):
-            # res = self.synonymizer.get_canonical_curies(curies=qnode.id)
-            # if res[qnode.id] is None:
-            #     log.error("Can't find the preferred curie for {qnode.id}", error_code="NoPreferredCurie")
-            #     return {}
-            # else:
-            #     preferred_curie = res[qnode.id]['preferred_curie']
-            try:
-                omop_ids = self.cohdindex.get_concept_ids(qnode.ids)
-            except:
-                log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
-                return {}
-            res_dict[qnode.ids] = omop_ids
-
+            curie = qnode.ids
+            preferred_curie = self._get_preferred_curie(curie)
+            omop_ids = self.cohdindex.get_concept_ids(curie)
+            res_dict[preferred_curie] = omop_ids
         else:
-            # classify the curies based on the preferred curie
-            # res = self.synonymizer.get_canonical_curies(curies=qnode.id)
-            # for curie in res:
-            #     if res[curie] is None:
-            #         log.error("Can't find the preferred curie for {curie}", error_code="NoPreferredCurie")
-            #         return {}
-            #     else:
-            #         if res[curie]['preferred_curie'] not in res_dict:
-            #             res_dict[res[curie]['preferred_curie']] = []
-
-            for curie in qnode.ids:
-                try:
-                    omop_ids = self.cohdindex.get_concept_ids(curie)
-                except:
-                    log.error(f"Internal error accessing local COHD database.", error_code="DatabaseError")
-                    return {}
-                res_dict[curie] = omop_ids
-
+            curie_list = qnode.ids
+            for curie in curie_list:
+                preferred_curie = self._get_preferred_curie(curie)
+                omop_ids = self.cohdindex.get_concept_ids(curie)
+                res_dict[preferred_curie] = omop_ids
         return res_dict
+
+    def _get_preferred_curie(self, curie: str) -> str:
+
+        res = self.synonymizer.get_canonical_curies(curie)[curie]
+        if res is not None:
+            return res['preferred_curie']
+        else:
+            return curie
 
     def _convert_to_swagger_edge(self, subject: str, object: str, name=None, value=None, info_dict=None) -> Tuple[str, Edge]:
         swagger_edge = Edge()

@@ -36,6 +36,8 @@ class ARAXResponse:
         self.data = {}
         self.envelope = None
 
+        self.query_plan = { 'qedge_keys': {}, 'counter': 0 }
+
 
     #### Add a debugging message
     def debug(self, message, code=None):
@@ -212,6 +214,40 @@ class ARAXResponse:
         return result
 
 
+    #### Add a query_plan element
+    def update_query_plan(self, qedge_key, provider, status, description):
+        """Method to add or update an element of the query_plan.
+
+        :param edge_key: query_graph qedge key (e.g. 'e00').
+        :type edge_key: str
+        :param provider: knowledge provider name (e.g. 'infores:molepro).
+        :type level: int
+        :param status: status the KP (one of: Skipped, Waiting, Timed out, Error, Done).
+        :type code: str
+        :param description: Description of the result (see below for examples).
+        :type code: str
+        """
+
+        """
+            Suggested description lines:
+                Skipped: does not support predicate 'biolink:physically_interacts_with'
+                Query with 12 CURIEs sent: waiting for response
+                Query with 4 CURIEs timed out after 30 seconds
+                Query with 4 CURIEs returned ERROR after 1 seconds (HTTP 500)
+                Query returned 89 results
+        """
+
+        if qedge_key not in self.query_plan['qedge_keys']:
+            self.query_plan['qedge_keys'][qedge_key] = {}
+        if provider == 'edge_properties':
+            if provider not in self.query_plan['qedge_keys'][qedge_key]:
+                self.query_plan['qedge_keys'][qedge_key][provider] = {}
+            self.query_plan['qedge_keys'][qedge_key][provider][status] = description
+        else:
+            self.query_plan['qedge_keys'][qedge_key][provider] = { 'status': status, 'description': description }
+        self.query_plan['counter'] += 1
+
+
 ##########################################################################################
 import unittest
 class ResponseTests(unittest.TestCase):
@@ -269,6 +305,7 @@ def main():
     #### Run a nice little example
     #### Create an Response object
     response = ARAXResponse()
+    import json
 
     #### Set some messages
     response.debug('And we are off')
@@ -276,12 +313,19 @@ def main():
     response.warning('This does not look good')
     response.error('Bad news, Pal', code='BadNewsError')
 
+    #### Example for 
+    if params.example == 2:
+        response.update_query_plan('e00', 'MolePro', 'Skipped', "KP does not support predicate 'biolink:physically_interacts_with'")
+        response.update_query_plan('e00', 'RTX-KG2', 'Done', "Query returned 89 results")
+        response.update_query_plan('e00', 'GeneticsKP', 'Waiting', "Query with 12 CURIEs sent: waiting for response")
+        print(json.dumps(response.query_plan,sort_keys=True,indent=2))
+        return
+
     #### Show the resulting object including logged events at INFO or greater
     print(response.show(level=response.INFO))
 
     #### Request and print the full messages list at DEBUG and greater
     print("Messages list:")
-    import json
     print(json.dumps(response.messages_list(level=response.DEBUG),sort_keys=True,indent=2))
 
 

@@ -1,17 +1,10 @@
 #!/bin/env python3
 # This file contains utilities/helper functions for general use within the Expand module
 import copy
-import json
-import pathlib
 import sys
 import os
 import traceback
 from typing import List, Dict, Union, Set, Tuple, Optional
-from datetime import datetime, timedelta
-
-import requests
-import requests_cache
-import yaml
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -33,6 +26,12 @@ from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
 from biolink_helper import BiolinkHelper
 
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+from RTXConfiguration import RTXConfiguration
+RTXConfig = RTXConfiguration()
+RTXConfig.live = "Production"
 
 class QGOrganizedKnowledgeGraph:
     def __init__(self, nodes: Dict[str, Dict[str, Node]] = None, edges: Dict[str, Dict[str, Edge]] = None):
@@ -64,18 +63,37 @@ class QGOrganizedKnowledgeGraph:
             self.edges_by_qg_id[qedge_key] = dict()
         self.edges_by_qg_id[qedge_key][edge_key] = edge
 
-    def remove_nodes(self, node_keys_to_delete: Set[str], qnode_key: str, qg: QueryGraph):
+    def remove_nodes(self, node_keys_to_delete: Set[str], target_qnode_key: str, qg: QueryGraph):
+        # First delete the specified nodes
         for node_key in node_keys_to_delete:
-            del self.nodes_by_qg_id[qnode_key][node_key]
-        connected_qedges = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == qnode_key or qedge.object == qnode_key}
-        for connected_qedge_key in connected_qedges.intersection(set(self.edges_by_qg_id)):
+            del self.nodes_by_qg_id[target_qnode_key][node_key]
+        # Then delete any edges orphaned by removal of those nodes
+        connected_qedge_keys = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.subject == target_qnode_key or qedge.object == target_qnode_key}
+        fulfilled_connected_qedge_keys = connected_qedge_keys.intersection(set(self.edges_by_qg_id))
+        for connected_qedge_key in fulfilled_connected_qedge_keys:
             edges_to_delete = {edge_key for edge_key, edge in self.edges_by_qg_id[connected_qedge_key].items()
                                if {edge.subject, edge.object}.intersection(node_keys_to_delete)}
             for edge_key in edges_to_delete:
                 del self.edges_by_qg_id[connected_qedge_key][edge_key]
+        # Then delete any nodes orphaned by removal of the orphaned edges (if they shouldn't be orphans)
+        non_orphan_qnode_keys_to_check = {qnode_key for qedge_key in fulfilled_connected_qedge_keys
+                                          for qnode_key in {qg.edges[qedge_key].subject, qg.edges[qedge_key].object}}.difference({target_qnode_key})
+        for non_orphan_qnode_key in non_orphan_qnode_keys_to_check:
+            node_keys_fulfilling_qnode = set(self.nodes_by_qg_id[non_orphan_qnode_key])
+            connected_qedge_keys = get_connected_qedge_keys(non_orphan_qnode_key, qg)
+            node_keys_used_by_edges = {node_key for qedge_key in connected_qedge_keys
+                                       for node_key in self.get_node_keys_used_by_edges_fulfilling_qedge(qedge_key)}
+            orphan_node_keys = node_keys_fulfilling_qnode.difference(node_keys_used_by_edges)
+            for orphan_node_key in orphan_node_keys:
+                del self.nodes_by_qg_id[non_orphan_qnode_key][orphan_node_key]
 
     def get_all_node_keys_used_by_edges(self) -> Set[str]:
         return {node_key for edges in self.edges_by_qg_id.values() for edge in edges.values()
+                for node_key in [edge.subject, edge.object]}
+
+    def get_node_keys_used_by_edges_fulfilling_qedge(self, qedge_key: str) -> Set[str]:
+        relevant_edges = self.edges_by_qg_id.get(qedge_key, dict())
+        return {node_key for edge in relevant_edges.values()
                 for node_key in [edge.subject, edge.object]}
 
     def get_all_node_keys(self) -> Set[str]:
@@ -238,24 +256,6 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
     return standard_kg
 
 
-def make_qg_use_supported_prefixes(kp_selector, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
-    for qnode_key, qnode in qg.nodes.items():
-        if qnode.ids:
-            converted_curies = kp_selector.convert_curies_to_supported_prefixes(qnode.ids,
-                                                                                qnode.categories,
-                                                                                kp_name)
-            if not converted_curies:
-                log.info(f"{kp_name} cannot answer the query because I couldn't find any "
-                            f"equivalent curies with prefixes it supports for qnode {qnode_key}. Original "
-                            f"curies were: {qnode.ids}")
-                return None
-            else:
-                log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
-                          f"{len(converted_curies)} curies with prefixes {kp_name} supports")
-                qnode.ids = converted_curies
-    return qg
-
-
 def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> List[str]:
     curies = convert_to_list(curie)
     try:
@@ -280,6 +280,33 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse]
         else:
             log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return []
+
+
+def get_curie_synonyms_dict(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> Dict[str, List[str]]:
+    curies = convert_to_list(curie)
+    try:
+        synonymizer = NodeSynonymizer()
+        log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
+        equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
+        log.debug(f"Got response back from NodeSynonymizer")
+    except Exception:
+        tb = traceback.format_exc()
+        error_type, error, _ = sys.exc_info()
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        return dict()
+    else:
+        if equivalent_curies_dict is not None:
+            curies_missing_info = {curie for curie in equivalent_curies_dict if not equivalent_curies_dict.get(curie)}
+            if curies_missing_info:
+                log.warning(f"NodeSynonymizer did not find any equivalent curies for: {curies_missing_info}")
+            final_curie_dict = dict()
+            for input_curie in curies:
+                curie_dict = equivalent_curies_dict.get(input_curie)
+                final_curie_dict[input_curie] = list(curie_dict) if curie_dict else [input_curie]
+            return final_curie_dict
+        else:
+            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            return dict()
 
 
 def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, Dict[str, str]]:
@@ -350,11 +377,44 @@ def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) ->
         if preferred_categories:
             return list(preferred_categories)
         else:
-            log.warning(f"Unable to find any preferred categories")
-            return None
+            log.warning(f"Unable to find any preferred categories; will default to biolink:NamedThing")
+            return ["biolink:NamedThing"]
     else:
         log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
         return []
+
+
+def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, str]:
+    curies = convert_to_list(curie)
+    synonymizer = NodeSynonymizer()
+    log.debug(f"Looking up names for {len(curies)} input curies using NodeSynonymizer")
+    synonymizer_info = synonymizer.get_normalizer_results(curies)
+    curie_to_name_map = dict()
+    if synonymizer_info:
+        recognized_input_curies = {input_curie for input_curie in synonymizer_info if synonymizer_info.get(input_curie)}
+        unrecognized_curies = set(curies).difference(recognized_input_curies)
+        if unrecognized_curies:
+            log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
+        input_curies_without_matching_node = set()
+        for input_curie in recognized_input_curies:
+            equivalent_nodes = synonymizer_info[input_curie]["nodes"]
+            # Find the 'node' in the synonymizer corresponding to this curie
+            input_curie_nodes = [node for node in equivalent_nodes if node["identifier"] == input_curie]
+            if not input_curie_nodes:
+                # Try looking for slight variation (KG2 vs. SRI discrepancy): "KEGG:C02700" vs. "KEGG.COMPOUND:C02700"
+                input_curie_stripped = input_curie.replace(".COMPOUND", "")
+                input_curie_nodes = [node for node in equivalent_nodes if node["identifier"] == input_curie_stripped]
+            # Record the name for this input curie
+            if input_curie_nodes:
+                curie_to_name_map[input_curie] = input_curie_nodes[0].get("label")
+            else:
+                input_curies_without_matching_node.add(input_curie)
+        if input_curies_without_matching_node:
+            log.warning(f"No matching nodes found in NodeSynonymizer for these input curies: "
+                        f"{input_curies_without_matching_node}. Cannot determine their specific names.")
+    else:
+        log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+    return curie_to_name_map
 
 
 def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False) -> bool:
@@ -411,6 +471,13 @@ def flip_edge(edge: Edge, new_predicate: str) -> Edge:
     return edge
 
 
+def flip_qedge(qedge: QEdge, new_predicates: List[str]):
+    qedge.predicates = new_predicates
+    original_subject = qedge.subject
+    qedge.subject = qedge.object
+    qedge.object = original_subject
+
+
 def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
     non_canonical_predicates_used = set()
     biolink_helper = BiolinkHelper()
@@ -424,26 +491,6 @@ def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, 
         log.warning(f"{kp_name}: Found edges in {kp_name}'s answer that use non-canonical "
                     f"predicates: {non_canonical_predicates_used}. I corrected these.")
     return kg
-
-
-def get_attribute_type(attribute_name: str) -> str:
-    # These are placeholder types for attributes (plan is to discuss such types in API working group #1192)
-    attribute_type_map = {
-        "all_names": "biolink:synonym",
-        "deprecated": "biolink:Unknown",
-        "equivalent_curies": "biolink:synonym",
-        "full_name": "biolink:full_name",
-        "negated": "biolink:negated",
-        "probability": "biolink:p_value",
-        "publications": "biolink:publications",
-        "relation": "biolink:relation",
-        "symbol": "biolink:symbol",
-        "synonym": "biolink:synonym",
-        "update_date": "metatype:Datetime",
-        "uri": "metatype:Uri",
-        "iri": "biolink:IriType"
-    }
-    return attribute_type_map.get(attribute_name, "biolink:Unknown")
 
 
 def get_arax_source_attribute() -> Attribute:
@@ -477,18 +524,18 @@ def get_computed_value_attribute() -> Attribute:
 
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
-        "BTE": "https://api.bte.ncats.io/v1",
-        "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.1",
-        "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.1",
-        "RTX-KG2": "https://arax.ncats.io/api/rtxkg2/v1.1",
+        "BTE": "https://api.bte.ncats.io/v1",  # TODO: Enter 1.2 endpoint once available..
+        "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.2",
+        "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.2",
+        "RTX-KG2": RTXConfig.rtx_kg2_url,
         "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
         "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
         "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
         "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
-        "CHP": "http://chp.thayer.dartmouth.edu",
-        "COHD": "http://tr-kp-clinical.ncats.io/api",
-        "ICEES-DILI": "https://icees.renci.org:16341",
-        "ICEES-Asthma": "https://icees.renci.org:16339"
+        "CHP": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)
+        "COHD": "https://cohd.io/api",
+        "ICEES-DILI": "https://icees.renci.org:16341",  # TODO: Enter 1.2 endpoint once available..
+        "ICEES-Asthma": "https://icees.renci.org:16339"  # TODO: Enter 1.2 endpoint once available..
     }
     return endpoint_map.get(kp_name)
 
@@ -512,6 +559,19 @@ def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
         "ICEES-Asthma": "infores:icees-asthma"
     }
     return endpoint_map.get(kp_name, kp_name)
+
+
+def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXResponse) -> List[str]:
+    # Order KPs such that those with longer requests will tend to be kicked off earlier
+    kp_names = set(kp_names)
+    asyncio_start_order = ["CHP", "BTE", "DrugResponseKP", "ClinicalRiskKP", "WellnessKP", "TumorGeneMutationKP",
+                           "ICEES-DILI", "ICEES-Asthma", "COHD", "MolePro", "RTX-KG2", "GeneticsKP", "NGD", "DTD"]
+    unordered_kps = kp_names.difference(set(asyncio_start_order))
+    if unordered_kps:
+        log.warning(f"Selected KP(s) don't have asyncio start ordering specified: {unordered_kps}")
+        asyncio_start_order = list(unordered_kps) + asyncio_start_order
+    ordered_kps = [kp for kp in asyncio_start_order if kp in kp_names]
+    return ordered_kps
 
 
 def make_qg_use_old_snake_case_types(qg: QueryGraph) -> QueryGraph:
@@ -633,14 +693,6 @@ def get_standard_parameters() -> dict:
             "type": "string",
             "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
         },
-        "enforce_directionality": {
-            "is_required": False,
-            "examples": ["true", "false"],
-            "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-            "default": "false",
-            "type": "boolean",
-            "description": "Whether to obey (vs. ignore) edge directions in the query graph."
-        },
         "prune_threshold": {
             "is_required": False,
             "type": "integer",
@@ -676,41 +728,7 @@ def get_kp_command_definitions() -> dict:
             "dsl_command": "expand(kp=COHD)",
             "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
                            " satisfy the query graph.",
-            "parameters": merge_two_dicts(standard_parameters, {
-                "COHD_method": {
-                    "is_required": False,
-                    "examples": ["paired_concept_freq", "chi_square"],
-                    "enum": ["all", "paired_concept_freq", "observed_expected_ratio", "chi_square"],
-                    "default": "all",
-                    "type": "string",
-                    "description": "Which measure from COHD should be considered."
-                },
-                "COHD_method_top_N": {
-                    "is_required": False,
-                    "examples": [500, 1000],
-                    "min": 0,
-                    "max": 1000000000000000000,
-                    "default": 1000,
-                    "type": "integer",
-                    "description": "What top N to use as a cut-off/threshold for the specified COHD method."
-                },
-                "sorted_by": {
-                    "is_required": False,
-                    "examples": ["paired_concept_freq", "chi_square"],
-                    "enum": ["paired_concept_freq", "observed_expected_ratio", "chi_square"],
-                    "default": "paired_concept_freq",
-                    "type": "string",
-                    "description": "If COHD_method=='all', then what statistics the 'COHD_method_top_N' is based on."
-                },
-                "COHD_slow_mode": {
-                    "is_required": False,
-                    "examples": ["true", "false"],
-                    "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-                    "default": "false",
-                    "type": "boolean",
-                    "description": "Whether to call COHD API when the local COHD database doesn't return the expected results."
-                }
-            })
+            "parameters": standard_parameters
         },
         "GeneticsKP": {
             "dsl_command": "expand(kp=GeneticsKP)",
@@ -776,17 +794,7 @@ def get_kp_command_definitions() -> dict:
                            "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
                            "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
                            "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
-            "parameters": merge_two_dicts(standard_parameters, {
-                "CHP_survival_threshold": {
-                    "is_required": False,
-                    "examples": [200, 100],
-                    "min": 0,
-                    "max": 1000000000000,
-                    "default": 500,
-                    "type": "int",
-                    "description": "What cut-off/threshold for surivial time (day) to estimate probability."
-                }
-            })
+            "parameters": standard_parameters
         },
         "DTD": {
             "dsl_command": "expand(kp=DTD)",

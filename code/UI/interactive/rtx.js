@@ -14,7 +14,7 @@ var UIstate = {};
 
 // defaults
 var base = "";
-var baseAPI = base + "api/arax/v1.1";
+var baseAPI = base + "api/arax/v1.2";
 
 // possibly imported by calling page (e.g. index.html)
 if (typeof config !== 'undefined') {
@@ -25,8 +25,9 @@ if (typeof config !== 'undefined') {
 }
 
 var providers = {
-    "ARAX" : { "url" : baseAPI + "/response/" },
-    "ARS"  : { "url" : baseAPI + "/response/" }
+    "ARAX": { "url" : baseAPI },
+    "ARS" : { "url" : "https://ars.transltr.io/ars/api/submit" },
+    "EXT" : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.2" }
 };
 
 // these attributes are floats; truncate them
@@ -51,8 +52,10 @@ const attributes_to_truncate = [
 
 
 function main() {
+    UIstate["submitter"] = 'ARAX GUI';
+    UIstate["timeout"] = '';
     UIstate["version"] = checkUIversion(false);
-    document.getElementById("menuapiurl").href = baseAPI + "/ui/";
+    document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
     get_example_questions();
     load_meta_knowledge_graph();
@@ -62,28 +65,28 @@ function main() {
     add_status_divs();
     cytodata[99999] = 'dummy';
 
+    for (var prov in providers) {
+	document.getElementById(prov+"_url").value = providers[prov].url;
+	document.getElementById(prov+"_url_button").disabled = true;
+    }
+    for (var setting of ["submitter","timeout"]) {
+	document.getElementById(setting+"_url").value = UIstate[setting];
+	document.getElementById(setting+"_url_button").disabled = true;
+    }
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
-    var response_id = getQueryVariable("r") || null;
-    var provider_id = getQueryVariable("source") || "ARAX";
-    var rurl = null;
-    if (response_id) {
-	provider_id = "ARAX";
-        rurl = providers[provider_id].url;
-    }
-    else if (provider_id) {
-	rurl = providers[provider_id].url;
-	response_id = getQueryVariable("id") || null;
-    }
+    var rec = getQueryVariable("recent") || null;
 
-    if (rurl && response_id) {
+    var response_id = getQueryVariable("r") || getQueryVariable("id") || null;
+    if (response_id) {
+	response_id.trim();
 	var statusdiv = document.getElementById("statusdiv");
 	statusdiv.innerHTML = '';
-	statusdiv.appendChild(document.createTextNode("You have requested "+provider_id+" response id = " + response_id));
+	statusdiv.appendChild(document.createTextNode("You have requested response id = " + response_id));
 	statusdiv.appendChild(document.createElement("br"));
 
-	document.getElementById("devdiv").innerHTML =  "Requested "+provider_id+" response id = " + response_id + "<br>";
-	retrieve_response(provider_id,rurl+response_id,response_id,"all");
+	document.getElementById("devdiv").innerHTML =  "Requested response id = " + response_id + "<br>";
+	retrieve_response(providers['ARAX'].url+'/response/'+response_id,response_id,"all");
         pasteId(response_id);
     }
     else {
@@ -94,6 +97,10 @@ function main() {
     if (syn) {
 	tab = "synonym";
 	lookup_synonym(syn,false);
+    }
+    else if (rec) {
+        tab = "recentqs";
+	retrieveRecentQs();
     }
     openSection(tab);
     dragElement(document.getElementById('nodeeditor'));
@@ -113,12 +120,10 @@ function sesame(head,content) {
 	head.classList.toggle("openaccordion");
     }
 
-    if (content.style.maxHeight) {
+    if (content.style.maxHeight)
 	content.style.maxHeight = null;
-    }
-    else {
+    else
 	content.style.maxHeight = content.scrollHeight + "px";
-    }
 }
 
 
@@ -198,6 +203,7 @@ function reset_vars() {
     if (cyobj[0]) {cyobj[0].elements().remove();}
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
+    document.getElementById("queryplan_container").innerHTML = "";
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
@@ -273,7 +279,12 @@ function postQuery(qtype,agent) {
 	    statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
 	    return;
 	}
-	queryObj.message = { "query_graph" :jsonInput };
+
+	if (jsonInput.message)
+	    queryObj = jsonInput;
+	else
+	    queryObj.message = { "query_graph": jsonInput };
+
 	//queryObj.max_results = 100;
 
 	qg_new(false,false);
@@ -284,27 +295,29 @@ function postQuery(qtype,agent) {
         statusdiv.appendChild(document.createElement("br"));
 
 	qg_clean_up(true);
-	queryObj.message = { "query_graph" :input_qg };
+	queryObj.message = { "query_graph": input_qg };
 	//queryObj.bypass_cache = bypass_cache;
 	//queryObj.max_results = 100;
 
 	qg_new(false,false);
     }
 
+    queryObj.submitter = UIstate["submitter"];
+
     if (agent == 'ARS')
 	postQuery_ARS(queryObj);
+    else if (agent == 'EXT')
+	postQuery_EXT(queryObj);
     else
 	postQuery_ARAX(qtype,queryObj);
 
 }
 
 function postQuery_ARS(queryObj) {
-    var ars_api = 'https://ars.ci.transltr.io/ars/api/submit';
-
     document.getElementById("statusdiv").innerHTML += " - contacting ARS...";
     document.getElementById("statusdiv").appendChild(document.createElement("br"));
 
-    fetch(ars_api, {
+    fetch(providers["ARS"].url, {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -317,7 +330,7 @@ function postQuery_ARS(queryObj) {
 	    document.getElementById("statusdiv").innerHTML += " - got message_id = "+message_id;
 	    document.getElementById("statusdiv").appendChild(document.createElement("br"));
 	    pasteId(message_id);
-	    retrieve_response('ARS',providers['ARS'].url+message_id,message_id,"all");
+	    retrieve_response(providers['ARAX'].url+"/response/"+message_id,message_id,"all");
 	})
         .catch(error => {
             document.getElementById("statusdiv").innerHTML += " - ERROR:: "+error;
@@ -327,10 +340,67 @@ function postQuery_ARS(queryObj) {
 }
 
 
+function postQuery_EXT(queryObj) {
+    document.getElementById("statusdiv").innerHTML += " - contacting 3rd party API...";
+    document.getElementById("statusdiv").appendChild(document.createElement("br"));
+
+    fetch(providers["EXT"].url + "/query", {
+	method: 'post',
+	body: JSON.stringify(queryObj),
+	headers: { 'Content-type': 'application/json' }
+
+    }).then(response => {
+	if (response.ok) return response.json();
+	else throw new Error('Something went wrong');
+
+    }).then(data => {
+	var dev = document.getElementById("devdiv");
+        dev.appendChild(document.createElement("br"));
+	dev.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE MESSAGE::"));
+	var pre = document.createElement("pre");
+	pre.id = "responseJSON";
+	pre.appendChild(document.createTextNode(JSON.stringify(data,null,2)));
+	dev.appendChild(pre);
+
+	if (data["description"])
+	    statusdiv.appendChild(document.createTextNode(data["description"]));  // italics?
+	else
+	    statusdiv.appendChild(document.createTextNode(" - JSON response received"));  // italics?
+	statusdiv.appendChild(document.createElement("br"));
+	sesame('openmax',statusdiv);
+
+	if (!data["status"] || data["status"] == "OK") {
+	    input_qg = { "edges": {}, "nodes": {} };
+	    render_response(data, true);
+	}
+	else if (data["status"] == "QueryGraphZeroNodes") {
+	    qg_new(false,false);
+	}
+	else if (data["logs"]) {
+	    process_log(data["logs"]);
+	}
+	else {
+	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while parsing the response from the remote server (no log; code:"+data.status+")</span>";
+	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with capturing QUERY:<br>"+data;
+	    sesame('openmax',statusdiv);
+	}
+
+    }).catch(error => {
+	document.getElementById("statusdiv").innerHTML += " - ERROR:: "+error;
+    });
+
+    return;
+}
+
+
 // use fetch and stream
 function postQuery_ARAX(qtype,queryObj) {
     queryObj.stream_progress = true;
-
+    if (UIstate["timeout"]) {
+	if (!queryObj.query_options)
+	    queryObj.query_options = {};
+	queryObj.query_options['kp_timeout'] = UIstate["timeout"];
+    }
     var cmddiv = document.createElement("div");
     cmddiv.id = "cmdoutput";
     statusdiv.appendChild(cmddiv);
@@ -365,7 +435,7 @@ function postQuery_ARAX(qtype,queryObj) {
     sesame('openmax',statusdiv);
 
     add_to_dev_info("Posted to QUERY",queryObj);
-    fetch(baseAPI + "/query", {
+    fetch(providers["ARAX"].url + "/query", {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -437,8 +507,29 @@ function postQuery_ARAX(qtype,queryObj) {
 			    cmddiv.appendChild(document.createElement("br"));
 			    cmddiv.scrollTop = cmddiv.scrollHeight;
 			}
+                        else if (jsonMsg.qedge_keys) {
+			    var div;
+			    if (document.getElementById("queryplan_stream"))
+				div = document.getElementById("queryplan_stream");
+			    else {
+				div = document.createElement("div");
+				div.className = 'statushead';
+				div.appendChild(document.createTextNode("Expansion Progress"));
+				document.getElementById("status_container").before(div);
+
+				div = document.createElement("div");
+				div.id = "queryplan_stream";
+				div.className = 'status';
+				document.getElementById("status_container").before(div);
+			    }
+
+			    div.innerHTML = '';
+			    div.appendChild(document.createElement("br"));
+			    render_queryplan_table(jsonMsg, div);
+			    div.appendChild(document.createElement("br"));
+			}
 			else {
-			    console.log("bad msg:"+jsonMsg);
+			    console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
 			}
 		    }
 		}
@@ -757,7 +848,7 @@ function getIdStats(id) {
 	wait.appendChild(waitbar);
 	document.getElementById("numresults_"+id).appendChild(wait);
     }
-    retrieve_response("ARS",providers["ARS"].url+id,id,"stats");
+    retrieve_response(providers["ARAX"].url+"/response/"+id,id,"stats");
 }
 
 function checkRefreshARS() {
@@ -788,6 +879,7 @@ function sendId() {
     var id = document.getElementById("idText").value.trim();
     if (!id) return;
 
+    pasteId(id);
     reset_vars();
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
     input_qg = { "edges": {}, "nodes": {} };
@@ -806,7 +898,7 @@ function sendId() {
 	document.getElementById("numresults_"+id).appendChild(wait);
     }
 
-    retrieve_response("ARS",providers["ARS"].url+id,id,"all");
+    retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
     openSection('query');
 }
 
@@ -834,7 +926,7 @@ function sendQuestion(e) {
 
     // construct an HTTP request
     var xhr = new XMLHttpRequest();
-    xhr.open("post", baseAPI + "/translate", true);
+    xhr.open("post", providers["ARAX"].url + "/translate", true);
     xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
     // send the collected data as JSON
@@ -850,11 +942,12 @@ function sendQuestion(e) {
 
 		sesame('openmax',statusdiv);
 		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post",  baseAPI + "/query", true);
+		xhr2.open("post",  providers["ARAX"].url + "/query", true);
 		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
 
                 //var queryObj = { "message" : jsonObj };
                 var queryObj = jsonObj;
+		queryObj.submitter = UIstate["submitter"];
                 queryObj["message"] = { };
                 queryObj.bypass_cache = bypass_cache;
                 //queryObj.max_results = 100;
@@ -911,8 +1004,8 @@ function process_ars_message(ars_msg, level) {
     var table, tr, td;
     if (level == 0) {
         document.title = "ARAX-UI [ARS Collection: "+ars_msg.message+"]";
-        add_to_session('source=ARS&id='+ars_msg.message,"[ARS Collection] id="+ars_msg.message);
-	history.pushState({ id: 'ARAX_UI' }, 'ARAX | source=ARS&id='+ars_msg.message, "//"+ window.location.hostname + window.location.pathname + '?source=ARS&id='+ars_msg.message);
+        add_to_session(ars_msg.message,"[ARS Collection] id="+ars_msg.message);
+	history.pushState({ id: 'ARAX_UI' }, 'ARAX | id='+ars_msg.message, "//"+ window.location.hostname + window.location.pathname + '?r='+ars_msg.message);
 
 	if (document.getElementById('ars_message_list'))
 	    document.getElementById('ars_message_list').remove();
@@ -942,7 +1035,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.1?","N_Results","Nodes / Edges","Sources"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.2?","N_Results","Nodes / Edges","Sources"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -1032,7 +1125,7 @@ function process_ars_message(ars_msg, level) {
 }
 
 
-function process_response(provider, resp_url, resp_id, type, jsonObj2) {
+function process_response(resp_url, resp_id, type, jsonObj2) {
     if (type == "all") {
 	var devdiv = document.getElementById("devdiv");
 	devdiv.appendChild(document.createElement("br"));
@@ -1064,7 +1157,6 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 	document.getElementById("questionForm").elements["questionText"].value = "";
     }
 
-    jsonObj2.araxui_provider = provider;
     jsonObj2.araxui_response = resp_id;
 
     if (jsonObj2.validation_result) {
@@ -1076,7 +1168,7 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.1 validation';
+	    nr.title = 'Failed TRAPI 1.2 validation';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all")
@@ -1088,7 +1180,7 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.1 validation';
+	    nr.title = 'Passed TRAPI 1.2 validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -1199,24 +1291,25 @@ function process_response(provider, resp_url, resp_id, type, jsonObj2) {
     else
 	render_response(jsonObj2,true);
 
-    if (!response_cache[provider+":"+resp_id])
-	response_cache[provider+":"+resp_id] = jsonObj2;
+    if (!response_cache[resp_id])
+	response_cache[resp_id] = jsonObj2;
+    display_cache();
 }
 
 
-function retrieve_response(provider, resp_url, resp_id, type) {
+function retrieve_response(resp_url, resp_id, type) {
     if (type == null) type = "all";
     var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("Retrieving "+provider+" response id = " + resp_id));
+    statusdiv.appendChild(document.createTextNode("Retrieving response id = " + resp_id));
 
-    if (response_cache[provider+":"+resp_id]) {
+    if (response_cache[resp_id]) {
         if (document.getElementById("istrapi_"+resp_id))
 	    document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
 	statusdiv.appendChild(document.createTextNode(" ...from cache"));
 	statusdiv.appendChild(document.createElement("hr"));
 	sesame('openmax',statusdiv);
 	// 50ms timeout allows css animation to start before processing locks the thread
-	var timeout = setTimeout(function() { process_response(provider, resp_url, resp_id, type,response_cache[provider+":"+resp_id]); }, 50 );
+	var timeout = setTimeout(function() { process_response(resp_url, resp_id, type,response_cache[resp_id]); }, 50 );
 	return;
     }
 
@@ -1231,37 +1324,17 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 	if ( xhr.status == 200 ) {
             if (document.getElementById("istrapi_"+resp_id))
 		document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
-	    process_response(provider, resp_url, resp_id, type,JSON.parse(xhr.responseText));
+	    process_response(resp_url, resp_id, type,JSON.parse(xhr.responseText));
 
 	}
 	else if ( xhr.status == 404 ) {
-	    if (document.getElementById("numresults_"+resp_id)) {
-		document.getElementById("numresults_"+resp_id).innerHTML = '';
-                document.getElementById("respsize_"+resp_id).innerHTML = '---';
-		document.getElementById("nodedges_"+resp_id).innerHTML = '';
-		document.getElementById("nsources_"+id).innerHTML = '';
-		document.getElementById("istrapi_"+resp_id).innerHTML = '';
-		var nr = document.createElement("span");
-		nr.className = 'explevel p0';
-		nr.innerHTML = '&nbsp;N/A&nbsp;';
-		document.getElementById("numresults_"+resp_id).appendChild(nr);
-	    }
+	    update_response_stats_on_error(resp_id,'N/A',true);
 	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
 	}
 	else {
-            if (document.getElementById("numresults_"+resp_id)) {
-		document.getElementById("numresults_"+resp_id).innerHTML = '';
-		document.getElementById("respsize_"+resp_id).innerHTML = '---';
-		document.getElementById("nodedges_"+resp_id).innerHTML = '';
-		document.getElementById("nsources_"+id).innerHTML = '';
-		document.getElementById("istrapi_"+resp_id).innerHTML = '';
-		var nr = document.createElement("span");
-		nr.className = 'explevel p0';
-		nr.innerHTML = '&nbsp;Error&nbsp;';
-		document.getElementById("numresults_"+resp_id).appendChild(nr);
-	    }
+            update_response_stats_on_error(resp_id,'Error',true);
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
@@ -1272,14 +1345,12 @@ function retrieve_response(provider, resp_url, resp_id, type) {
 }
 
 
-
 // DELETE_LATER::
 function render_message(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("DEPRECATED FUNCTION!  UPDATE ME..."));
     sesame('openmax',statusdiv);
 }
-
 
 function render_response_stats(respObj) {
     if (!document.getElementById("numresults_"+respObj.araxui_response)) return;
@@ -1308,10 +1379,27 @@ function render_response_stats(respObj) {
     document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
 }
 
+function update_response_stats_on_error(rid,msg,clearall) {
+    if (!document.getElementById("numresults_"+rid)) return;
+
+    document.getElementById("numresults_"+rid).innerHTML = '';
+    var nr = document.createElement("span");
+    nr.className = 'explevel p0';
+    nr.innerHTML = '&nbsp;'+msg+'&nbsp;';
+    document.getElementById("numresults_"+rid).appendChild(nr);
+
+    if (clearall) {
+	document.getElementById("respsize_"+rid).innerHTML = '---';
+	document.getElementById("nodedges_"+rid).innerHTML = '';
+	document.getElementById("nsources_"+rid).innerHTML = '';
+	document.getElementById("istrapi_"+rid).innerHTML = '';
+    }
+}
+
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     if (!respObj["schema_version"])
-	respObj["schema_version"] = "1.1 (presumed)";
+	respObj["schema_version"] = "1.2 (presumed)";
     statusdiv.appendChild(document.createTextNode("Rendering TRAPI "+respObj["schema_version"]+" message..."));
 
     sesame('openmax',statusdiv);
@@ -1330,10 +1418,10 @@ function render_response(respObj,dispjson) {
 	}
 	history.pushState({ id: 'ARAX_UI' }, 'ARAX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
     }
-    else if (respObj.araxui_provider) {
-        document.title = "ARAX-UI ["+respObj.araxui_provider+" : "+respObj.araxui_response+"]";
-        add_to_session('source='+respObj.araxui_provider+"&id="+respObj.araxui_response,"["+respObj.araxui_provider+"] id="+respObj.araxui_response);
-	history.pushState({ id: 'ARAX_UI' }, 'ARAX | source='+respObj.araxui_provider+"&id="+respObj.araxui_response, "//"+ window.location.hostname + window.location.pathname + '?source='+respObj.araxui_provider+"&id="+respObj.araxui_response);
+    else if (respObj.araxui_response) {
+        document.title = "ARAX-UI ["+respObj.araxui_response+"]";
+        add_to_session(respObj.araxui_response,"id="+respObj.araxui_response);
+	history.pushState({ id: 'ARAX_UI' }, "ARAX | id="+respObj.araxui_response, "//"+ window.location.hostname + window.location.pathname + "?r="+respObj.araxui_response);
     }
     else if (respObj.restated_question)
         document.title = "ARAX-UI [no response_id]: "+respObj.restated_question+"?";
@@ -1349,13 +1437,7 @@ function render_response(respObj,dispjson) {
 	nr.appendChild(document.createTextNode("Response contains no message, and hence no results."));
 	statusdiv.appendChild(nr);
 	sesame('openmax',statusdiv);
-        if (document.getElementById("numresults_"+respObj.araxui_response)) {
-	    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
-	    var nr = document.createElement("span");
-	    nr.className = 'explevel p0';
-	    nr.innerHTML = '&nbsp;N/A&nbsp;';
-	    document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
-	}
+        update_response_stats_on_error(respObj.araxui_response,'N/A',false);
 	return;
     }
 
@@ -1403,6 +1485,8 @@ function render_response(respObj,dispjson) {
 	if (!respObj.message["knowledge_graph"] ) {
             document.getElementById("result_container").innerHTML  += "<h2 class='error'>Knowledge Graph missing in response; cannot process results.</h2>";
 	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
+	    document.getElementById("provenance_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
+            update_response_stats_on_error(respObj.araxui_response,'n/a',false);
 	}
 	else {
 	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
@@ -1418,7 +1502,7 @@ function render_response(respObj,dispjson) {
 	    var respreas = 'n/a';
 	    if (respObj.reasoner_id)
 		respreas = respObj.reasoner_id;
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"], respreas);
+	    process_results(respObj.message["results"],respObj.message["knowledge_graph"],respObj["schema_version"],respreas);
 
 	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
 		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
@@ -1438,13 +1522,7 @@ function render_response(respObj,dispjson) {
         document.getElementById("result_container").innerHTML  += "<h2>No results...</h2>";
         document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
 	document.getElementById("provenance_container").innerHTML += "<h2>No results...</h2>";
-        if (document.getElementById("numresults_"+respObj.araxui_response)) {
-	    document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
-	    var nr = document.createElement("span");
-	    nr.className = 'explevel p0';
-	    nr.innerHTML = '&nbsp;n/a&nbsp;';
-	    document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
-	}
+        update_response_stats_on_error(respObj.araxui_response,'n/a',false);
     }
 
     // table was (potentially) populated in process_results
@@ -1482,6 +1560,21 @@ function render_response(respObj,dispjson) {
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
+
+    if (respObj.query_options && respObj.query_options.query_plan) {
+        var div = document.createElement("div");
+	div.className = 'statushead';
+	div.appendChild(document.createTextNode("Expansion Results"));
+	document.getElementById("queryplan_container").appendChild(div);
+
+	div = document.createElement("div");
+	div.className = 'status';
+	div.appendChild(document.createElement("br"));
+        document.getElementById("queryplan_container").appendChild(div);
+
+	render_queryplan_table(respObj.query_options.query_plan, div);
+	div.appendChild(document.createElement("br"));
+    }
 
     if (respObj.validation_result && respObj.validation_result.provenance_summary) {
 	var div = document.createElement("div");
@@ -1622,12 +1715,144 @@ function render_response(respObj,dispjson) {
     add_cyto(99999);
     statusdiv.appendChild(document.createTextNode("done."));
     statusdiv.appendChild(document.createElement("br"));
+    if (respObj["submitter"]) {
+	statusdiv.appendChild(document.createTextNode("Submitted by: "+respObj.submitter));
+	statusdiv.appendChild(document.createElement("br"));
+    }
     var nr = document.createElement("span");
     nr.className = 'essence';
     nr.appendChild(document.createTextNode("Click on Results, Summary, Provenance, or Knowledge Graph links on the left to explore results."));
     statusdiv.appendChild(nr);
     statusdiv.appendChild(document.createElement("br"));
     sesame('openmax',statusdiv);
+}
+
+function render_queryplan_table(qp,node) {
+    var status_map = {};
+    status_map["Done"] = 'p9';
+    status_map["Expanding"] = 'p5 working';
+    status_map["Waiting"] = 'p5';
+    status_map["Timed out"] = 'p3';
+    status_map["Error"] = 'p1';
+    status_map["Skipped"] = 'p0';
+
+    var table = document.createElement("table");
+    table.className = 'sumtab';
+    var tr = document.createElement("tr");
+    var td;
+
+    for (var head of ["Query Edge","KP","Status","Description"] ) {
+	td = document.createElement("th")
+	td.appendChild(document.createTextNode(head));
+	tr.appendChild(td);
+    }
+    table.appendChild(tr);
+
+    for (var edge in qp.qedge_keys) {
+	var ep = null;
+	if (qp.qedge_keys[edge].edge_properties) {
+	    ep = qp.qedge_keys[edge].edge_properties;
+	    delete qp.qedge_keys[edge].edge_properties;
+	}
+
+	tr = document.createElement("tr");
+	td = document.createElement("td");
+	td.rowSpan = Object.keys(qp.qedge_keys[edge]).length;
+	td.style.backgroundColor = "white";
+	td.style.borderRight = "1px solid #aaa";
+	td.style.textAlign = "center";
+	td.style.padding = "0px 20px";
+	if (ep && ep.status) {
+            var span = document.createElement("span");
+	    span.style.position = "relative";
+	    span.style.left = "-10px";
+	    span.className = "explevel " + status_map[ep["status"]];
+	    span.appendChild(document.createTextNode('\u00A0'));
+	    span.appendChild(document.createTextNode('\u00A0'));
+            td.appendChild(span);
+	    td.title = ep.status;
+	}
+	var text = document.createElement("h2");
+	text.style.display = "inline-block";
+	text.appendChild(document.createTextNode(edge));
+	td.appendChild(text);
+	if (ep) {
+	    td.appendChild(document.createElement("br"));
+	    td.appendChild(document.createElement("br"));
+	    var span = document.createElement("span");
+	    span.className = 'qprob p7';
+            span.style.display = "inline-block";
+            if (ep.subject == null)
+		span.appendChild(document.createTextNode('--any--'));
+	    else {
+		for (var s of ep.subject) {
+		    span.appendChild(document.createTextNode(s));
+		    span.appendChild(document.createElement("br"));
+		}
+	    }
+            td.appendChild(span);
+	    td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode("|"));
+            td.appendChild(document.createElement("br"));
+	    span = document.createElement("span");
+            span.className = 'qprob scam';
+            span.style.display = "inline-block";
+	    if (ep.predicate == null)
+                span.appendChild(document.createTextNode('--any--'));
+            else {
+		for (var p of ep.predicate) {
+		    span.appendChild(document.createTextNode(p));
+                    span.appendChild(document.createElement("br"));
+		}
+	    }
+	    td.appendChild(span);
+	    td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode("|"));
+	    td.appendChild(document.createElement("br"));
+            span = document.createElement("span");
+            span.className = 'qprob p7';
+            span.style.display = "inline-block";
+            if (ep.object == null)
+		span.appendChild(document.createTextNode('--any--'));
+	    else {
+		for (var o of ep.object) {
+		    span.appendChild(document.createTextNode(o));
+                    span.appendChild(document.createElement("br"));
+		}
+	    }
+	    td.appendChild(span);
+	}
+
+	tr.appendChild(td);
+
+	var is_first = true;
+	for (var kp in qp.qedge_keys[edge]) {
+            if (!is_first)
+		tr = document.createElement("tr");
+            td = document.createElement("td");
+            td.appendChild(document.createTextNode(kp));
+            tr.appendChild(td);
+
+	    td = document.createElement("td");
+            var span = document.createElement("span");
+	    span.className = "explevel " + status_map[qp.qedge_keys[edge][kp]["status"]];
+	    span.appendChild(document.createTextNode('\u00A0'));
+	    span.appendChild(document.createTextNode('\u00A0'));
+	    td.appendChild(span);
+            td.appendChild(document.createTextNode('\u00A0'));
+	    td.appendChild(document.createTextNode(qp.qedge_keys[edge][kp]["status"]));
+	    tr.appendChild(td);
+
+	    td = document.createElement("td");
+	    if (qp.qedge_keys[edge][kp]["status"] == "Skipped")
+		td.className = "DEBUG";
+            td.appendChild(document.createTextNode(qp.qedge_keys[edge][kp]["description"]));
+	    tr.appendChild(td);
+            table.appendChild(tr);
+	    is_first = false;
+	}
+    }
+    node.appendChild(table);
 }
 
 
@@ -1679,12 +1904,12 @@ function process_log(logarr) {
 	span.appendChild(document.createTextNode(msg.timestamp+" "+msg.level+": "));
 	if (msg.code)
 	    span.appendChild(document.createTextNode("["+msg.code+"] "));
-//	span.appendChild(document.createElement("br"));
 
 	span.appendChild(document.createTextNode('\u00A0'));
 	span.appendChild(document.createTextNode('\u00A0'));
 	span.appendChild(document.createTextNode('\u00A0'));
 	span.appendChild(document.createTextNode(msg.message));
+	span.appendChild(document.createElement("br"));
 
 	document.getElementById("logdiv").appendChild(span);
     }
@@ -1811,7 +2036,7 @@ function add_to_summary(rowdata, num) {
 function process_graph(gne,gid,trapi) {
     cytodata[gid] = [];
     for (var id in gne.nodes) {
-	var gnode = gne.nodes[id];
+	var gnode = Object.create(gne['nodes'][id]); // make a copy!
 
 	gnode.parentdivnum = gid;   // helps link node to div when displaying node info on click
 	gnode.trapiversion = trapi; // support multiple versions...?
@@ -1821,6 +2046,7 @@ function process_graph(gne,gid,trapi) {
 		gnode.fulltextname = gnode.name;
 	    else
 		gnode.fulltextname = id;
+	    gne['nodes'][id].fulltextname = gnode.fulltextname;
 	}
 
 	//if (!gnode.id)
@@ -1851,7 +2077,7 @@ function process_graph(gne,gid,trapi) {
     }
 
     for (var id in gne.edges) {
-        var gedge = gne.edges[id];
+        var gedge = Object.create(gne['edges'][id]); // make a copy!
 
         if (!gedge.id)
 	    gedge.id = id;
@@ -1909,7 +2135,7 @@ function eau_du_essence(result) {
     return guessence;
 }
 
-function process_results(reslist,kg,mainreasoner) {
+function process_results(reslist,kg,trapi,mainreasoner) {
     // do this only once
     if (Object.keys(all_nodes).length === 0 && all_nodes.constructor === Object) {
 	for (var result of reslist)
@@ -1959,6 +2185,7 @@ function process_results(reslist,kg,mainreasoner) {
 	    (rsrc=="BTE")      ? "sbte" :
 	    (rsrc=="Cam")      ? "scam" :
 	    (rsrc=="COHD")     ? "scod" :
+	    (rsrc=="infores:cohd") ? "scod" :
 	    (rsrc=="Indigo")   ? "sind" :
 	    (rsrc=="Robokop")  ? "srob" :
 	    (rsrc=="Aragorn")  ? "sara" :
@@ -2004,14 +2231,6 @@ function process_results(reslist,kg,mainreasoner) {
 
         var tr = document.createElement("tr");
 	var td = document.createElement("td");
-        td.className = 'textanswer';
-	if (result.description)
-	    td.appendChild(document.createTextNode(result.description));
-	else
-	    td.appendChild(document.createTextNode('No description'));
-        tr.appendChild(td);
-
-        td = document.createElement("td");
         td.className = 'cytograph_controls';
 
 	var link = document.createElement("a");
@@ -2064,8 +2283,6 @@ function process_results(reslist,kg,mainreasoner) {
 
         tr = document.createElement("tr");
 	td = document.createElement("td");
-        tr.appendChild(td);
-	td = document.createElement("td");
 	tr.appendChild(td);
 
 	td = document.createElement("td");
@@ -2091,6 +2308,8 @@ function process_results(reslist,kg,mainreasoner) {
             for (var node of result.node_bindings[nbid]) {
 		var kmne = Object.create(kg.nodes[node.id]);
 		kmne.parentdivnum = num;
+		kmne.trapiversion = trapi;
+		kmne.id = node.id;
 		//console.log("=================== kmne:"+kmne.id);
 		var tmpdata = { "data" : kmne };
 		cytodata[num].push(tmpdata);
@@ -2101,6 +2320,10 @@ function process_results(reslist,kg,mainreasoner) {
 	    for (var edge of result.edge_bindings[ebid]) {
 		var kmne = Object.create(kg.edges[edge.id]);
 		kmne.parentdivnum = num;
+		kmne.trapiversion = trapi;
+		kmne.id = edge.id;
+		kmne.source = kmne.subject;
+		kmne.target = kmne.object;
 		if (kmne.predicate)
 		    kmne.type = kmne.predicate;
 		//console.log("=================== kmne:"+kmne.id);
@@ -2132,7 +2355,7 @@ function add_cyto(i) {
 		'border-width' : '2',
 		'width': '20',
 		'height': '20',
-		'content': 'data(name)'
+		'content': function(ele) { return ele.data().name ? ele.data().name : ele.data().id; }
 	    })
 	    .selector('edge')
 	    .css({
@@ -2192,7 +2415,7 @@ function add_cyto(i) {
 	var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
 
-        var fields = [ "name","id", "category" ];
+        var fields = [ "name","id", "categories" ];
 	for (var field of fields) {
 	    if (this.data(field) == null) continue;
 
@@ -2258,13 +2481,15 @@ function add_cyto(i) {
 function show_attributes_1point1(html_div, atts) {
     if (atts == null)  { return; }
 
+    var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
+
     // always display iri first
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
 
     var attshtml = "<table>";
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
 	var snippet = "<tr><td colspan='2'><hr></td></tr>";
-	var value = '';
+	var value = null;
 
 	for (var nom in att) {
 	    if (nom == "value") {
@@ -2285,7 +2510,7 @@ function show_attributes_1point1(html_div, atts) {
 	    }
 	}
 	snippet += "<tr><td><b>value</b>: </td><td>";
-	if (value) {
+	if (value != null || value != '') {
             var fixit = true;
 	    if (Array.isArray(att.value))
 		for (var val of att.value) {
@@ -2300,6 +2525,10 @@ function show_attributes_1point1(html_div, atts) {
 		    else if (val.toString().startsWith("PMID:")) {
 			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
 			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
+			if (semmeddb_sentences && semmeddb_sentences[0] && semmeddb_sentences[0]["value"][val]) {
+			    snippet += ' : <i>"'+semmeddb_sentences[0]["value"][val]["sentence"]+'"</i>';
+			    snippet += ' ('+semmeddb_sentences[0]["value"][val]["publication date"]+')';
+			}
 		    }
 		    else if (val.toString().startsWith("DOI:")) {
 			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
@@ -2327,6 +2556,9 @@ function show_attributes_1point1(html_div, atts) {
 	    }
 	    else
 		snippet += att.value;
+
+	    if (att.attribute_type_id == "biolink:original_edge_information")
+                fixit = false;
 
             if (fixit) {
 		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
@@ -3170,7 +3402,8 @@ function qg_display_edge_predicates(all) {
     var obj = document.getElementById('edgeeditor_obj').value;
 
     if (!all) {
-	if (!input_qg.nodes[subj]['categories'] ||
+	if (!subj || !obj ||
+	    !input_qg.nodes[subj]['categories'] ||
 	    input_qg.nodes[subj]['categories'] == null ||
 	    input_qg.nodes[subj]['categories'].length != 1 ||
 	    !input_qg.nodes[obj]['categories'] ||
@@ -3546,7 +3779,7 @@ function abort_dsl() {
 
 
 function get_example_questions() {
-    fetch(baseAPI + "/exampleQuestions")
+    fetch(providers["ARAX"].url + "/exampleQuestions")
         .then(response => response.json())
         .then(data => {
 	    //add_to_dev_info("EXAMPLE Qs",data);
@@ -3576,7 +3809,7 @@ function load_meta_knowledge_graph() {
     var allnodes_node = document.getElementById("allnodetypes");
     allnodes_node.innerHTML = '';
 
-    fetch(baseAPI + "/meta_knowledge_graph")
+    fetch(providers["ARAX"].url + "/meta_knowledge_graph")
 	.then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong with /meta_knowledge_graph');
@@ -3638,6 +3871,339 @@ function load_meta_knowledge_graph() {
 	    opt.innerHTML = "-- Error Loading Node Types --";
 	    allnodes_node.appendChild(opt);
         });
+}
+
+function retrieveRecentQs() {
+    var recents_node = document.getElementById("recent_queries_container");
+    recents_node.innerHTML = '';
+
+    var qfspan = document.getElementById("qfilter");
+    qfspan.innerHTML = '';
+    var wait = document.createElement("span");
+    wait.className = 'loading_cell';
+    wait.style.width = "100px";
+    wait.style.marginRight = "10px";
+    var waitbar = document.createElement("span");
+    waitbar.className = 'loading_bar';
+    wait.appendChild(waitbar);
+    qfspan.appendChild(wait);
+    qfspan.appendChild(document.createTextNode('Loading...'));
+
+    document.getElementById("recent_queries_timeline_container").innerHTML = '';
+
+    var hours = parseInt(document.getElementById("qftime").value.match(/[\d]+/));
+    if (isNaN(hours) || hours < 1 || hours > 200)
+	hours = 24;
+    document.getElementById("qftime").value = hours;
+
+    fetch(providers["ARAX"].url + "/status?last_n_hours="+hours)
+	.then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Something went wrong with /status?last_n_hours='+hours);
+	})
+        .then(data => {
+	    var stats = {};
+	    stats.elapsed   = 0;
+	    stats.state     = {};
+	    stats.status    = {};
+	    stats.submitter = {};
+	    stats.instance_name = {};
+	    var timeline = {};
+            timeline["ISB_watchdog"] = { "data": [ { "label": 0 , "data": [] , "_qstart": new Date() } ] };
+
+            var table = document.createElement("table");
+	    table.className = 'sumtab';
+	    table.id = "recentqs_summary";
+            recents_node.appendChild(table);
+            recents_node.appendChild(document.createElement("br"));
+
+	    table = document.createElement("table");
+	    table.id = "recentqs_table";
+	    table.className = 'sumtab';
+
+	    var tr = document.createElement("tr");
+            tr.dataset.qstatus = "COLUMNHEADER";
+	    var td;
+	    for (var head of ["Qid","Start","Elapsed","Submitter","Instance","pid","Response","State","Status","Description"] ) {
+		td = document.createElement("th")
+                if (head == "Description")
+		    td.style.textAlign = "left";
+		td.appendChild(document.createTextNode(head));
+		tr.appendChild(td);
+	    }
+	    table.appendChild(tr);
+
+	    for (var query of data.recent_queries) {
+		tr = document.createElement("tr");
+		tr.className = 'hoverable';
+		tr.dataset.qstatus = query.state + " " + query.status;
+
+		var qstart = null;
+		var qend = null;
+		var qdur = null;
+		var qid = null;
+		for (var field of ["query_id","start_datetime","elapsed","submitter","instance_name","pid","response_id","state","status","description"] ) {
+                    td = document.createElement("td");
+                    if (field == "start_datetime") {
+			td.style.whiteSpace = "nowrap";
+			qstart = query[field];
+		    }
+                    else if (field == "elapsed") {
+			td.style.textAlign = "right";
+			if (query[field] > 60) {
+			    td.className = "error";
+			    td.title = "Long query response/processing time";
+			}
+			stats.elapsed += query[field];
+			qend = query[field] * 1000; //ms
+
+			qdur = new Date(qend);
+			qdur = qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
+		    }
+                    else if (field == "state") {
+			var span = document.createElement("span");
+			if (query[field] == "Completed") {
+			    span.innerHTML = '&check;';
+			    span.className = 'explevel p9';
+			}
+			else {
+			    span.innerHTML = '&#10140;';
+			    span.className = 'explevel p3';
+			}
+			td.appendChild(span);
+			td.innerHTML += '&nbsp;';
+			if (stats.state[query[field]])
+			    stats.state[query[field]]++;
+			else
+			    stats.state[query[field]] = 1;
+		    }
+                    else if (field == "instance_name" || field == "submitter") {
+                        if (stats[field][query[field]])
+			    stats[field][query[field]]++;
+			else
+			    stats[field][query[field]] = 1;
+		    }
+
+                    if (query[field] == null)
+			td.appendChild(document.createTextNode(' -- '));
+		    else if (field == "query_id") {
+                        var link = document.createElement("a");
+			link.target = '_blank';
+			link.title='view the posted query (JSON)';
+			link.style.cursor = "pointer";
+			link.href = providers["ARAX"].url + '/status?id=' + query[field];
+			link.appendChild(document.createTextNode(query[field]));
+			td.appendChild(link);
+                        qid = query[field];
+		    }
+		    else if (field == "response_id") {
+			var link = document.createElement("a");
+			link.title='view this response';
+			link.style.cursor = "pointer";
+			link.setAttribute('onclick', 'pasteId("'+query[field]+'");sendId();');
+			link.appendChild(document.createTextNode(query[field]));
+			td.appendChild(link);
+		    }
+		    else if (field == "status") {
+			td.style.textAlign = "center";
+			var span = document.createElement("span");
+                        span.style.padding = "2px 6px";
+			if (query[field] == "OK")
+			    span.className = "explevel p9";
+			else
+			    span.className = "explevel p1";
+                        span.appendChild(document.createTextNode(query[field]));
+			td.appendChild(span);
+
+		        if (stats.status[query[field]])
+			    stats.status[query[field]]++;
+		        else
+			    stats.status[query[field]] = 1;
+		    }
+		    else
+			td.appendChild(document.createTextNode(query[field]));
+		    tr.appendChild(td);
+		}
+		if (qstart && qend) {
+		    qstart.replace(" ","T");
+		    qstart += "Z";
+		    qstart = new Date(qstart);
+		    qend = new Date(qstart.getTime() + qend);
+
+		    if (!timeline[query["submitter"]]) {
+			timeline[query["submitter"]] = {};
+			timeline[query["submitter"]]["data"] = [];
+		    }
+
+		    // below assumes data is reverse-sorted by start datetime
+		    var index = 0;
+		    for (index in [...Array(200).keys()]) {
+			if (!timeline[query["submitter"]]["data"][index])
+			    timeline[query["submitter"]]["data"][index] = { "label": index , "data": [] , "_qstart": new Date()};
+
+			if (qend.getTime() < timeline[query["submitter"]]["data"][index]["_qstart"].getTime())
+			    break;
+		    }
+
+		    timeline[query["submitter"]]["data"][index]["data"].push(
+			{
+			    "timeRange": [qstart, qend],
+			    "val": query["instance_name"],
+			    "_qid": qid,
+			    "_qdur": qdur
+			}
+		    );
+		    timeline[query["submitter"]]["data"][index]["_qstart"] = qstart;
+
+		}
+		table.appendChild(tr);
+	    }
+	    // add dummy data point to scale timeline to current time
+	    timeline["ISB_watchdog"]["data"][0]["data"].push(
+		{
+		    "timeRange": [Date.now(), Date.now()],
+		    "val": "production",
+		    "_qid": null,
+		    "_qdur": null
+		}
+	    );
+
+	    displayQTimeline(timeline);
+	    recents_node.appendChild(table);
+            recents_node.appendChild(document.createElement("br"));
+	    recents_node.appendChild(document.createElement("br"));
+
+	    qfspan.innerHTML = '';
+	    qfspan.appendChild(document.createTextNode("Show:"));
+
+	    for (var status of ["Completed","OK","Summary","Timeline"]) {
+		span = document.createElement("span");
+		span.style.marginLeft = "20px";
+		span.style.cursor = "pointer";
+		span.className = 'qprob p9';
+		var tab = "recentqs_table";
+		if (status == "Summary") {
+		    span.className = 'qprob p9 hide';
+		    tab = "recentqs_summary";
+		}
+		if (status == "Timeline")
+		    span.setAttribute('onclick', 'show_hide(\"recent_queries_timeline_container\", this);');
+		else
+		    span.setAttribute('onclick', 'filter_queries(\"'+tab+'\", this,\"'+status+'\");');
+		span.appendChild(document.createTextNode(status));
+		qfspan.appendChild(span);
+	    }
+
+            table = document.getElementById("recentqs_summary");
+            tr = document.createElement("tr");
+            tr.style.display = "none";
+            tr.dataset.qstatus = "Summary";
+	    td = document.createElement("th");
+	    td.colSpan = "3";
+            td.appendChild(document.createTextNode("Query Stats"));
+	    tr.appendChild(td);
+            table.appendChild(tr);
+
+            tr = document.createElement("tr");
+            tr.style.display = "none";
+            tr.dataset.qstatus = "Summary";
+	    td = document.createElement("td");
+	    td.appendChild(document.createTextNode("Last updated"));
+            tr.appendChild(td);
+	    td = document.createElement("td");
+	    tr.appendChild(td);
+            td = document.createElement("td");
+	    td.appendChild(document.createTextNode(data.current_datetime));
+            tr.appendChild(td);
+            table.appendChild(tr);
+
+	    for (var stat in stats) {
+		tr = document.createElement("tr");
+		tr.style.display = "none";
+		tr.dataset.qstatus = "Summary";
+		td = document.createElement("td");
+                td.appendChild(document.createTextNode(stat));
+		tr.appendChild(td);
+                if (stat == "elapsed") {
+		    td = document.createElement("td");
+                    td.appendChild(document.createTextNode(stats[stat] + " sec"));
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+                    td.appendChild(document.createTextNode((Number(stats[stat])/3600).toPrecision(3) + " hours"));
+		    tr.appendChild(td);
+		}
+		else {
+		    td = document.createElement("td");
+		    for (var val in stats[stat]) {
+			td.appendChild(document.createTextNode(val));
+			td.appendChild(document.createElement("br"));
+		    }
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    for (var val in stats[stat]) {
+			td.appendChild(document.createTextNode(stats[stat][val]));
+			td.appendChild(document.createElement("br"));
+		    }
+		    tr.appendChild(td);
+		}
+                table.appendChild(tr);
+	    }
+	})
+        .catch(error => {
+	    qfspan.innerHTML = '';
+            recents_node.className = "error";
+	    recents_node.innerHTML = "<br>" + error + "<br><br>";
+        });
+}
+
+function displayQTimeline(tdata) {
+    var timeline_node = document.getElementById("recent_queries_timeline_container");
+    timeline_node.innerHTML = '';
+
+    var data = [];
+    for (var group in tdata)
+	data.push( { "group": group, "data": tdata[group].data } );
+
+    const Timeline = TimelinesChart();
+    Timeline
+        .data(data)
+	.width(1200)
+	.maxHeight(1500)
+	.leftMargin(120)
+	.zQualitative(true)
+	.segmentTooltipContent(function(d) { return "Query ID: <strong>"+d.data["_qid"].toString()+"</strong><br>"+d.data["_qdur"]; } )
+    (timeline_node);
+}
+
+function filter_queries(tab, span, type) {
+    var disp = 'none';
+    if (span.classList.contains('hide')) {
+	disp = 'table-row';
+	span.classList.remove('hide');
+    }
+    else {
+	span.classList.add('hide');
+    }
+
+    for (var tr of document.getElementById(tab).children) {
+	if (tr.dataset["qstatus"].includes(type)) {
+	    tr.style.display = disp;
+	}
+    }
+}
+
+
+function show_hide(ele, span) {
+    var disp = 'none';
+    if (span.classList.contains('hide')) {
+	disp = '';
+	span.classList.remove('hide');
+    }
+    else {
+	span.classList.add('hide');
+    }
+
+    document.getElementById(ele).style.display = disp;
 }
 
 
@@ -3717,7 +4283,6 @@ function display_list(listId) {
 	    listhtml += "<td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/>Remove</a></td></tr>";
 	}
     }
-
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
     document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
@@ -3969,7 +4534,7 @@ function check_entities_batch(batchsize) {
     if (thisbatch) batches.push(thisbatch);
 
     for (let batch of batches) {
-        fetch(baseAPI + "/entity?output_mode=minimal" + batch)
+        fetch(providers["ARAX"].url + "/entity?output_mode=minimal" + batch)
 	    .then(response => response.json())
 	    .then(data => {
 		add_to_dev_info("ENTITIES:"+batch,data);
@@ -4014,7 +4579,7 @@ function check_entities() {
     for (let entity in entities) {
 	if (entities[entity].checkHTML != '--') continue;
 
-	fetch(baseAPI + "/entity?q=" + entity)
+	fetch(providers["ARAX"].url + "/entity?q=" + entity)
 	    .then(response => response.json())
 	    .then(data => {
                 add_to_dev_info("ENTITIES:"+entity,data);
@@ -4079,7 +4644,7 @@ async function check_entity(term,wantall) {
 	data = entities[term];
     }
     else {
-	var response = await fetch(baseAPI + "/entity?q=" + term);
+	var response = await fetch(providers["ARAX"].url + "/entity?q=" + term);
 	var fulldata = await response.json();
 
 	add_to_dev_info("ENTITY:"+term,fulldata);
@@ -4126,32 +4691,94 @@ function display_session() {
     for (var li in listItems[listId]) {
         if (listItems[listId].hasOwnProperty(li) && !li.startsWith("qtext_")) {
             numitems++;
-            listhtml += "<tr><td>"+li+".</td><td><a target='_blank' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname;
-	    if (listItems[listId][li].startsWith("source")) // hacky
-		listhtml += "?"+listItems[listId][li];
-	    else
-		listhtml += "?r="+listItems[listId][li];
-
-	    listhtml +="'>" + listItems['SESSION']["qtext_"+li] + "</a></td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/>Remove</a></td></tr>";
+            listhtml += "<tr><td>"+li+".</td><td>";
+            listhtml += "<a target='_blank' title='view this response in a new window' href='//"+ window.location.hostname + window.location.pathname + "?r="+listItems[listId][li] + "'>" + listItems['SESSION']["qtext_"+li] + "</a>";
+	    listhtml += "</td><td><a href='javascript:remove_item(\"" + listId + "\",\""+ li +"\");'/>Remove</a></td></tr>";
         }
     }
     if (numitems > 0) {
         listhtml += "<tr style='background-color:unset;'><td style='border-bottom:0;'></td><td style='border-bottom:0;'></td><td style='border-bottom:0;'><a href='javascript:delete_list(\""+listId+"\");'/> Delete Session History </a></td></tr>";
     }
 
-
-    if (numitems == 0) {
+    if (numitems == 0)
         listhtml = "<br>Your query history will be displayed here. It can be edited or re-set.<br><br>";
-    }
-    else {
+    else
         listhtml = "<table class='sumtab'><tr><th></th><th>Query</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
-    }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
     document.getElementById("menunumlistitems"+listId).innerHTML = numitems;
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
 }
 
+
+function display_cache() {
+    var listId = 'CACHE';
+    var listhtml = '';
+    var numitems = 0;
+
+    for (var pid in response_cache) {
+        numitems++;
+        listhtml += "<tr><td>"+numitems+".</td><td>"+pid+"</td><td><a href='javascript:remove_from_cache(\"" + pid +"\");'/>Remove</a></td></tr>";
+    }
+
+    if (numitems == 0) {
+        listhtml = "<br>A list of cached responses will be displayed here. It can be edited or re-set.<br><br>";
+    }
+    else {
+        listhtml = "<table class='sumtab'><tr><th></th><th>Response Id</th><th>Action</th></tr>" + listhtml;
+        listhtml += "<tr style='background-color:unset;'><td style='border-bottom:0;'></td><td style='border-bottom:0;'></td><td style='border-bottom:0;'><a href='javascript:delete_cache();'/> Delete All Cached Responses </a></td></tr>";
+        listhtml += "</table><br><br>";
+    }
+
+    document.getElementById("numlistitems"+listId).innerHTML = numitems;
+    document.getElementById("listdiv"+listId).innerHTML = listhtml;
+}
+
+function remove_from_cache(item) {
+    delete response_cache[item];
+    display_cache();
+}
+function delete_cache(item) {
+    response_cache = {};
+    display_cache();
+}
+
+function enter_url(ele, urlkey) {
+    if (event.key === 'Enter')
+	update_url(urlkey,null);
+    else
+	update_submit_button(urlkey);
+}
+function update_url(urlkey,value) {
+    if (value)
+	document.getElementById(urlkey+"_url").value = value;
+
+    if (urlkey == 'timeout') {
+	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(to))
+	    to = '';
+	UIstate[urlkey] = to;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
+    else if (urlkey == 'submitter') {
+	UIstate[urlkey] = document.getElementById(urlkey+"_url").value.trim();
+        document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
+    else {
+	providers[urlkey].url = document.getElementById(urlkey+"_url").value.trim();
+	document.getElementById(urlkey+"_url").value = providers[urlkey].url;
+    }
+    addCheckBox(document.getElementById(urlkey+"_url_button"),true);
+    var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
+}
+function update_submit_button(urlkey) {
+    var currval = (urlkey == 'submitter' || urlkey == 'timeout') ? UIstate[urlkey] : providers[urlkey].url;
+
+    if (currval == document.getElementById(urlkey+"_url").value)
+	document.getElementById(urlkey+"_url_button").disabled = true;
+    else
+	document.getElementById(urlkey+"_url_button").disabled = false;
+}
 
 function copyJSON(ele) {
     var containerid = "responseJSON";

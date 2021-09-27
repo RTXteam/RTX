@@ -4,12 +4,13 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=2">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=4">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="config.js"></script>
 <script src="rtx.js"></script>
 <script src="araxi.js"></script>
+<script src="//unpkg.com/timelines-chart"></script>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="/rtxcomplete/data/quick_def.json"></script>
@@ -32,28 +33,30 @@
 <br>
 <div id="historyMenu" onclick="openSection('history');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
 <!-- div onclick="openSection('status');" class="menuleftitem">Status</div -->
-<br>
+<hr>
 &nbsp;Output<br>
 <div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
-<div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">
-  <span class="explevel p3" style="font-size:x-small;" title="new!">New</span>&nbsp;Provenance</div>
-<div id="kgMenu" onclick="openSection('kg');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge<br>Graph</div>
+<div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">Provenance</div>
+<div id="kgMenu" onclick="openSection('kg');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
 <div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
 <div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
-<br><br>
+<hr>
 &nbsp;Tools<br>
 <div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
 <div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
-<br><br><br><br>
+<br><br>
+<div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
+<div id="settingsMenu" onclick="openSection('settings');" class="menuleftitem">Settings</div>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
-<br><br><br><br>
+<hr>
 <div title="ARAX UI version" class="tiny" id="uiversionstring">version...</div>
+<br>
 </div>
 
 <div class="banner" banner-bg-text="ARAX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a id="menuapiurl" href="api/arax/v1.1/ui/">TRAPI 1.1.0</a>
+<a id="menuapiurl" href="api/arax/v1.2/ui/">TRAPI 1.2.1</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
@@ -62,9 +65,9 @@
 <div class="page">
 <br><br><br><br>
 
-<!-- div class="statushead">TRAPI 1.1</div>
+<!-- div class="statushead">TRAPI 1.2</div>
 <div id="topnotice" class="status">
-  <h3 style="display:inline-block;">This is the interface based on <b>TRAPI 1.1</b>.</h3> Click <a href="/legacy">here to go to the TRAPI 1.0-based interface</a>
+  <h3 style="display:inline-block;">This is the interface based on <b>TRAPI 1.2</b>.</h3> Click <a href="/legacy">here to go to the TRAPI 1.1-based interface</a>
 </div><br><br -->
 
 <div class="pagesection" id="historyDiv">
@@ -130,7 +133,7 @@
     <a class="qgmenu" href="javascript:qg_clean_up(true);selectInput('qjson');">Edit in JSON pane</a>
 
     <div id="nodeeditor" style="top:400px;left:50px;visibility:hidden;" onfocus="qg_select('node');" tabindex="9999" class="alertbox">
-      <div style="margin-top:0;" class="statushead">Edit Query Node</div>
+      <div style="margin-top:0;" class="statushead">Edit Query Node<span title="Close window" class="clq clwin" onclick="display_qg_popup('node','hide');">&#9587;</span></div>
       <div class="status" style="cursor:auto; color:black; min-height:300px;" onmousedown="event.stopPropagation();"><br>
 	<table class="sumtab" style="width:100%">
 	  <tr style="background:#fff;"><td>Node ID<br><br></td><td><h2 style="display:inline;" id="nodeeditor_id"><h2 class="qnodeid" id="nodeeditor_name"></h2></td></tr>
@@ -192,7 +195,7 @@
     </div>
 
     <div id="edgeeditor" style="top:410px;left:650px;visibility:hidden;" onfocus="qg_select('edge');" tabindex="9997" class="alertbox">
-      <div style="margin-top:0;" class="statushead">Edit Query Edge</div>
+      <div style="margin-top:0;" class="statushead">Edit Query Edge<span title="Close window" class="clq clwin" onclick="display_qg_popup('edge','hide');">&#9587;</span></div>
       <div class="status" style="cursor:auto; color:black; min-height:300px;" onmousedown="event.stopPropagation();"><br>
 	<table class="sumtab" style="width:100%">
 	  <tr><td>Edge ID<br><br></td><td style="text-align:right;"><h2 class="qedgeid" id="edgeeditor_id"></h2></td></tr>
@@ -255,18 +258,24 @@
     </div>
 
     <br>
-    <input type="button" class="questionBox button" name="action" value="QUERY (ARAX)" onClick="postQuery('qGraph','ARAX');"/>
-    <input type="button" class="questionBox button" name="action" value="QUERY (ARS)" onClick="postQuery('qGraph','ARS');"/>
+    <input type="button" class="questionBox button" name="action" value="Query ARAX" onClick="postQuery('qGraph','ARAX');"/>
+    <input type="button" class="questionBox button" name="action" value="Query ARS" onClick="postQuery('qGraph','ARS');"/>
+    &nbsp;&nbsp;&nbsp;<span class="explevel p3" title="new!">New</span>&nbsp;&nbsp;&nbsp;
+    <input type="button" class="questionBox button" name="action" value="Query OTHER" onClick="postQuery('qGraph','EXT');" title="Send Query to a non-ARAX TRAPI-supporting API endpoint"/>
+    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
   </div>
   
   <div class="inputsection" id="qjson_input">
     <h3 style="display:inline;">JSON Input:</h3>
-    <span class="tiny" style="position:relative; left:150px;">Enter the value of the <b>query_graph</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
+    <span class="tiny" style="position:relative; left:150px;">Enter a <b>full Query object</b> <u>&nbsp;&nbsp;or&nbsp;&nbsp;</u> the value of the <b>query_graph</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
 	    <br/>
-	    <input type="button" class="questionBox button" name="action" value="POST (ARAX)" onClick="postQuery('JSON','ARAX');">
-	    <input type="button" class="questionBox button" name="action" value="POST (ARS)" onClick="postQuery('JSON','ARS');">
+	    <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('JSON','ARAX');">
+	    <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('JSON','ARS');">
+	    &nbsp;&nbsp;&nbsp;<span class="explevel p3" title="new!">New</span>&nbsp;&nbsp;&nbsp;
+	    <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('JSON','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
+	    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
     </form>
   </div>
 
@@ -285,7 +294,7 @@
       <div id="dsl_command_form"></div>
       <br/>
       <br/>
-      <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL','ARAX');">
+      <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('DSL','ARAX');">
     </form>
   </div>
 
@@ -294,9 +303,9 @@
     <div class="sampleqs">
       <select id="qid" onchange="pasteId(this.value);">
 	<option style="border-bottom:1px solid black;" value="">Example Ids&nbsp;&nbsp;&nbsp;&#8675;</option>
-	<option value="16892">ARAX example: 16892</option>
-	<option value="5ebf6d71-79f5-4243-ab61-3f0b4556b6ac">ARS example 1: 5ebf6d71-79f5-4243-ab61-3f0b4556b6ac</option>
-	<option value="4d463c9a-756c-44e5-a191-e8fa7b4d8e49">ARS example 2: 4d463c9a-756c-44e5-a191-e8fa7b4d8e49</option>
+	<option value="25047">ARAX example: 25047</option>
+	<option value="c5ca9939-36f2-4713-852d-436b9fbfb531">ARS example 1: c5ca9939-36f2-4713-852d-436b9fbfb531</option>
+	<option value="9f288363-afc3-49f9-9893-611a8c023053">ARS example 2: 9f288363-afc3-49f9-9893-611a8c023053</option>
       </select>
     </div>
 
@@ -367,7 +376,8 @@
 
 
 <div class="pagesection" id="resultsDiv">
-<div id="result_container"></div>
+  <div id="queryplan_container"></div>
+  <div id="result_container"></div>
 </div>
 
 <div class="pagesection" id="messagesDiv">
@@ -389,6 +399,64 @@
   <div id="dev_result_json_container"></div>
 </div>
 
+
+<div class="pagesection" id="recentqsDiv">
+  <div class="statushead">Recent ARAX System Activity</div>
+  <div class="status">
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentQs();"/>
+    <input type="text" class="questionBox" id="qftime" value="24" size="3" maxlength="3"/>hours (max.200)
+    <span style="margin-left:50px;" id="qfilter"></span>
+    <div id="recent_queries_timeline_container"></div>
+    <div id="recent_queries_container"><br>Click on the button above to view most recent ARAX services activity<br><br></div>
+  </div>
+</div>
+
+<div class="pagesection" id="settingsDiv">
+  <div class="statushead">API Settings</div>
+  <div class="status">
+    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">REMOTE API TIMEOUT DURING ARAX EXPANSION (leave blank for default):</h3>
+    <input type="text" class="questionBox" id="timeout_url" onkeyup="enter_url(this,'timeout');" size="3" maxlength="3"/>
+    seconds
+    <input type="button" style="margin-left:15px;" class="questionBox button" id="timeout_url_button" value="Update" onClick="update_url('timeout',null);"/>
+    <br><br>
+    <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
+    <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX',null);"/>
+    <br><br>
+    <h3 style="margin-bottom:0px;">ARS API (post query):</h3>
+    <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS',null);"/>
+    <br><br>
+    <h3 style="margin-bottom:0px;">EXTERNAL API (post query):</h3>
+    <input type="text" class="questionBox" id="EXT_url" onkeyup="enter_url(this,'EXT');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="EXT_url_button" value="Update" onClick="update_url('EXT',null);"/>
+    <br>
+    <input type="button" class="qprob sbte" value="BTE" onClick="update_url('EXT','https://api.bte.ncats.io/v1');"/>
+    <input type="button" class="qprob p0" value="CHP" onClick="update_url('EXT','http://chp.thayer.dartmouth.edu');"/>
+    <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
+    <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
+    <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
+    <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.2');"/>
+    <input type="button" class="qprob p1" value="ICEES-Asthma" onClick="update_url('EXT','https://icees.renci.org:16339');"/>
+    <input type="button" class="qprob p1" value="ICEES-DILI" onClick="update_url('EXT','https://icees.renci.org:16341');"/>
+    <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.2');"/>
+    <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.2');"/>
+    <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
+    <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
+    <br><br>
+  </div>
+
+  <div class="statushead">Session Settings</div>
+  <div class="status">
+    <h3 style="margin-bottom:0px;">SUBMITTER (enter a generic name to help track queries):</h3>
+    <input type="text" class="questionBox" id="submitter_url" onkeyup="enter_url(this,'submitter');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
+    <br><br>
+  </div>
+
+  <div class="statushead">Local Cache (<span id="numlistitemsCACHE">-</span>)</div>
+  <div class="status" id="listdivCACHE"><br>A list of cached responses will be displayed here. It can be edited or re-set.<br><br></div>
+</div>
 
 
 </div>

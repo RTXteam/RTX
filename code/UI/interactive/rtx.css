@@ -65,7 +65,10 @@ hr {
     font-weight: bold;
     color: #000;
     border-right: 2px solid black;
-    background-color: #ddd;
+    background-color: #ccc;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;  /* Firefox */
 }
 .menuleftitem  {
     color: #666;
@@ -88,10 +91,14 @@ hr {
     background-color: #eee;
     border-bottom: 2px solid black;
     border-top: 2px solid black;
-    border-left: 15px solid #444;
-    margin-right: -2px;
 }
-
+/* scrollbar for Chrome, Safari and Opera */
+.menuleft::-webkit-scrollbar {
+    width: 6px;
+}
+.menuleft::-webkit-scrollbar-thumb {
+    background: #aaa;
+}
 
 .page {
     margin-left: 170px;
@@ -156,6 +163,15 @@ hr {
     font-weight: bold;
     color: #eee;
     background-color: #c40;
+}
+
+.clwin {
+    float: right;
+    position: relative;
+    top: -45px;
+    right: -51px;
+    height: 30px;
+    width: 30px;
 }
 
 #dslText, #jsonText, #responseText {
@@ -369,6 +385,14 @@ hr {
     100% { transform:translateX(300%); }
 }
 
+.working {
+    animation: 1s working ease-in-out infinite alternate;
+}
+@keyframes working {
+    0%   { background-color: #cc5; }
+    100% { background-color: #f80; }
+}
+
 .p9, .msgINFO    { background-color: #291; }
 .p7              { background-color: #7b4; }
 .p5              { background-color: #cc5; }
@@ -484,9 +508,15 @@ td {
 .cytograph_controls {
     vertical-align:top;
 }
+.cytograph_controls a {
+    text-decoration: none;
+    border: 1px solid transparent;
+    padding: 3px 12px;
+    display: inline-block;
+}
 .cytograph_controls a:hover {
     text-decoration: none;
-    border: 1px solid #fff;
+    border-color: #fff;
     background-color: #c40;
     color: #fff;
     cursor: pointer;
@@ -494,7 +524,7 @@ td {
 .cytograph {
     border: 1px solid #444;
     height: 300px;
-    width: 90%;
+    width: 99%;
     background-color: #fff;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
 }
@@ -536,6 +566,11 @@ td {
     cursor: pointer;
     background-color: #9bc;
     color: #333;
+}
+.button:disabled {
+    cursor: unset;
+    background-color: unset;
+    color: unset;
 }
 
 .qgmenu {

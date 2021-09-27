@@ -123,7 +123,8 @@ class ComputeNGD:
                     edge_attribute_list = [
                         edge_attribute,
                         pmid_attribute,
-                        EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
+                        EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="biolink:Unknown"),
+                        #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                         EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
@@ -136,8 +137,15 @@ class ComputeNGD:
                     #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                     #             provided_by=provided_by,
                     #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
-                    edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
+
+                    #### FIXME temporary hack by EWD
+                    #edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
+                    #            attributes=edge_attribute_list)
+                    edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list)
+                    #edge.relation = relation
+                    #### /end FIXME
+
                     edge.qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
 
@@ -150,8 +158,15 @@ class ComputeNGD:
                 # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
                 #                subject_key=subject_qnode_key, object_key=object_qnode_key,
                 #                option_group_id=option_group_id)
-                q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key,
+
+                #### FIXME by EWD. For later fixing
+                #q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key,
+                #           object=object_qnode_key, option_group_id=option_group_id)
+                q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
+                q_edge.relation = relation
+                #### end FIXME
+
                 self.message.query_graph.edges[relation]=q_edge
 
             self.response.info(f"NGD values successfully added to edges")
@@ -188,7 +203,7 @@ class ComputeNGD:
             else:
                 self.response.info(f"NGD values successfully added to edges")
             self._close_database()
-            return self.response
+        return self.response
 
     def load_curie_to_pmids_data(self, canonicalized_curies):
         self.response.debug(f"Extracting PMID lists from sqlite database for relevant nodes")

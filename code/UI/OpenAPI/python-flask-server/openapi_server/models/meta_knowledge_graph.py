@@ -55,7 +55,7 @@ class MetaKnowledgeGraph(Model):
     def nodes(self):
         """Gets the nodes of this MetaKnowledgeGraph.
 
-        Collection of node categories provided by this TRAPI web service, indexed by Biolink class CURIEs.  # noqa: E501
+        Collection of the most specific node categories provided by this TRAPI web service, indexed by Biolink class CURIEs. A node category is only exposed here if there is node for which that is the most specific category available.  # noqa: E501
 
         :return: The nodes of this MetaKnowledgeGraph.
         :rtype: Dict[str, MetaNode]
@@ -66,11 +66,13 @@ class MetaKnowledgeGraph(Model):
     def nodes(self, nodes):
         """Sets the nodes of this MetaKnowledgeGraph.
 
-        Collection of node categories provided by this TRAPI web service, indexed by Biolink class CURIEs.  # noqa: E501
+        Collection of the most specific node categories provided by this TRAPI web service, indexed by Biolink class CURIEs. A node category is only exposed here if there is node for which that is the most specific category available.  # noqa: E501
 
         :param nodes: The nodes of this MetaKnowledgeGraph.
         :type nodes: Dict[str, MetaNode]
         """
+        if nodes is None:
+            raise ValueError("Invalid value for `nodes`, must not be `None`")  # noqa: E501
 
         self._nodes = nodes
 
@@ -78,7 +80,7 @@ class MetaKnowledgeGraph(Model):
     def edges(self):
         """Gets the edges of this MetaKnowledgeGraph.
 
-        List of edges/predicates provided by this TRAPI web service.  # noqa: E501
+        List of the most specific edges/predicates provided by this TRAPI web service. A predicate is only exposed here if there is an edge for which the predicate is the most specific available.  # noqa: E501
 
         :return: The edges of this MetaKnowledgeGraph.
         :rtype: List[MetaEdge]
@@ -89,11 +91,13 @@ class MetaKnowledgeGraph(Model):
     def edges(self, edges):
         """Sets the edges of this MetaKnowledgeGraph.
 
-        List of edges/predicates provided by this TRAPI web service.  # noqa: E501
+        List of the most specific edges/predicates provided by this TRAPI web service. A predicate is only exposed here if there is an edge for which the predicate is the most specific available.  # noqa: E501
 
         :param edges: The edges of this MetaKnowledgeGraph.
         :type edges: List[MetaEdge]
         """
+        if edges is None:
+            raise ValueError("Invalid value for `edges`, must not be `None`")  # noqa: E501
         if edges is not None and len(edges) < 1:
             raise ValueError("Invalid value for `edges`, number of items must be greater than or equal to `1`")  # noqa: E501
 

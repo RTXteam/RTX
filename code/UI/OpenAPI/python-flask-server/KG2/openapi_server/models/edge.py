@@ -17,13 +17,11 @@ class Edge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, predicate=None, relation=None, subject=None, object=None, attributes=None):  # noqa: E501
+    def __init__(self, predicate=None, subject=None, object=None, attributes=None):  # noqa: E501
         """Edge - a model defined in OpenAPI
 
         :param predicate: The predicate of this Edge.  # noqa: E501
         :type predicate: str
-        :param relation: The relation of this Edge.  # noqa: E501
-        :type relation: str
         :param subject: The subject of this Edge.  # noqa: E501
         :type subject: str
         :param object: The object of this Edge.  # noqa: E501
@@ -33,7 +31,6 @@ class Edge(Model):
         """
         self.openapi_types = {
             'predicate': str,
-            'relation': str,
             'subject': str,
             'object': str,
             'attributes': List[Attribute]
@@ -41,14 +38,12 @@ class Edge(Model):
 
         self.attribute_map = {
             'predicate': 'predicate',
-            'relation': 'relation',
             'subject': 'subject',
             'object': 'object',
             'attributes': 'attributes'
         }
 
         self._predicate = predicate
-        self._relation = relation
         self._subject = subject
         self._object = object
         self._attributes = attributes
@@ -84,29 +79,6 @@ class Edge(Model):
         """
 
         self._predicate = predicate
-
-    @property
-    def relation(self):
-        """Gets the relation of this Edge.
-
-        The relationship type term of this edge, originally specified by, or curated by inference from, the original source of knowledge. This should generally be specified as predicate ontology CURIE.  # noqa: E501
-
-        :return: The relation of this Edge.
-        :rtype: str
-        """
-        return self._relation
-
-    @relation.setter
-    def relation(self, relation):
-        """Sets the relation of this Edge.
-
-        The relationship type term of this edge, originally specified by, or curated by inference from, the original source of knowledge. This should generally be specified as predicate ontology CURIE.  # noqa: E501
-
-        :param relation: The relation of this Edge.
-        :type relation: str
-        """
-
-        self._relation = relation
 
     @property
     def subject(self):

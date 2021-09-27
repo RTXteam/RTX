@@ -39,13 +39,13 @@ Associated code changes should go in the `kg2integration` branch.
 
 - [ ] merge `master` into `kg2integration`
 - [ ] merge `kg2integration` into `master`
-- [ ] make `config_local.json` the new master config file on araxconfig.rtx.ai
+- [ ] make `config_local.json` the new master config file on araxconfig.rtx.ai (rename it to `configv2.json`)
 - [ ] roll `master` out to the various arax.ncats.io endpoints and delete their `configv2.json`s
 - [ ] run the pytest suite on the various endpoints
 
 ##### 5. Final items/clean up:
 
-- [ ] update SmartAPI registration for ARAX @edeutsch
+- [ ] update SmartAPI registration for KG2 @edeutsch
 - [ ] update the test triples that go in some NCATS repo @finnagin
 - [ ] rename the `config_local.json` on arax.ncats.io to `config_local.json_FROZEN_DO-NOT-EDIT-FURTHER` (any additional edits to the config file should be made directly to the master `configv2.json` on araxconfig.rtx.ai going forward)
 - [ ] turn off the old KG2 version's neo4j instance

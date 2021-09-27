@@ -8,11 +8,13 @@ from typing import List, Dict  # noqa: F401
 from openapi_server.models.base_model_ import Model
 from openapi_server.models.log_entry import LogEntry
 from openapi_server.models.message import Message
+from openapi_server.models.any_type import AnyType
 from openapi_server.models.operations import Operations
 from openapi_server import util
 
 from openapi_server.models.log_entry import LogEntry  # noqa: E501
 from openapi_server.models.message import Message  # noqa: E501
+from openapi_server.models.any_type import AnyType  # noqa: E501
 from openapi_server.models.operations import Operations  # noqa: E501
 
 class Response(Model):
@@ -21,7 +23,7 @@ class Response(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, message=None, status=None, description=None, logs=None, workflow=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_options=None, context=None, type=None, id=None):  # noqa: E501
+    def __init__(self, message=None, status=None, description=None, logs=None, workflow=None, submitter=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_options=None, context=None, type=None, id=None, validation_result=None):  # noqa: E501
         """Response - a model defined in OpenAPI
 
         :param message: The message of this Response.  # noqa: E501
@@ -33,7 +35,9 @@ class Response(Model):
         :param logs: The logs of this Response.  # noqa: E501
         :type logs: List[LogEntry]
         :param workflow: The workflow of this Response.  # noqa: E501
-        :type workflow: List[object]
+        :type workflow: List[AnyType]
+        :param submitter: The submitter of this Response.  # noqa: E501
+        :type submitter: str
         :param operations: The operations of this Response.  # noqa: E501
         :type operations: Operations
         :param reasoner_id: The reasoner_id of this Response.  # noqa: E501
@@ -58,13 +62,16 @@ class Response(Model):
         :type type: str
         :param id: The id of this Response.  # noqa: E501
         :type id: str
+        :param validation_result: The validation_result of this Response.  # noqa: E501
+        :type validation_result: object
         """
         self.openapi_types = {
             'message': Message,
             'status': str,
             'description': str,
             'logs': List[LogEntry],
-            'workflow': List[object],
+            'workflow': List[AnyType],
+            'submitter': str,
             'operations': Operations,
             'reasoner_id': str,
             'tool_version': str,
@@ -76,7 +83,8 @@ class Response(Model):
             'query_options': object,
             'context': str,
             'type': str,
-            'id': str
+            'id': str,
+            'validation_result': object
         }
 
         self.attribute_map = {
@@ -85,6 +93,7 @@ class Response(Model):
             'description': 'description',
             'logs': 'logs',
             'workflow': 'workflow',
+            'submitter': 'submitter',
             'operations': 'operations',
             'reasoner_id': 'reasoner_id',
             'tool_version': 'tool_version',
@@ -96,7 +105,8 @@ class Response(Model):
             'query_options': 'query_options',
             'context': 'context',
             'type': 'type',
-            'id': 'id'
+            'id': 'id',
+            'validation_result': 'validation_result'
         }
 
         self._message = message
@@ -104,6 +114,7 @@ class Response(Model):
         self._description = description
         self._logs = logs
         self._workflow = workflow
+        self._submitter = submitter
         self._operations = operations
         self._reasoner_id = reasoner_id
         self._tool_version = tool_version
@@ -116,6 +127,7 @@ class Response(Model):
         self._context = context
         self._type = type
         self._id = id
+        self._validation_result = validation_result
 
     @classmethod
     def from_dict(cls, dikt) -> 'Response':
@@ -224,10 +236,10 @@ class Response(Model):
     def workflow(self):
         """Gets the workflow of this Response.
 
-        A list of operations that were applied  # noqa: E501
+        A list of operations that were executed.  # noqa: E501
 
         :return: The workflow of this Response.
-        :rtype: List[object]
+        :rtype: List[AnyType]
         """
         return self._workflow
 
@@ -235,13 +247,36 @@ class Response(Model):
     def workflow(self, workflow):
         """Sets the workflow of this Response.
 
-        A list of operations that were applied  # noqa: E501
+        A list of operations that were executed.  # noqa: E501
 
         :param workflow: The workflow of this Response.
-        :type workflow: List[object]
+        :type workflow: List[AnyType]
         """
 
         self._workflow = workflow
+
+    @property
+    def submitter(self):
+        """Gets the submitter of this Response.
+
+        Any string for self-identifying the submitter of a query. The purpose of this optional field is to aid in the tracking of the source of queries for development and issue resolution.  # noqa: E501
+
+        :return: The submitter of this Response.
+        :rtype: str
+        """
+        return self._submitter
+
+    @submitter.setter
+    def submitter(self, submitter):
+        """Sets the submitter of this Response.
+
+        Any string for self-identifying the submitter of a query. The purpose of this optional field is to aid in the tracking of the source of queries for development and issue resolution.  # noqa: E501
+
+        :param submitter: The submitter of this Response.
+        :type submitter: str
+        """
+
+        self._submitter = submitter
 
     @property
     def operations(self):
@@ -518,3 +553,26 @@ class Response(Model):
         """
 
         self._id = id
+
+    @property
+    def validation_result(self):
+        """Gets the validation_result of this Response.
+
+        Validation results and other summary stats computed for this Response.  # noqa: E501
+
+        :return: The validation_result of this Response.
+        :rtype: object
+        """
+        return self._validation_result
+
+    @validation_result.setter
+    def validation_result(self, validation_result):
+        """Sets the validation_result of this Response.
+
+        Validation results and other summary stats computed for this Response.  # noqa: E501
+
+        :param validation_result: The validation_result of this Response.
+        :type validation_result: object
+        """
+
+        self._validation_result = validation_result

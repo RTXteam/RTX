@@ -89,7 +89,7 @@ def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
 # "rank"), where ties have the same (average) rank (the reason for using scipy.stats
 # here is specifically in order to handle ties correctly)
 def _quantile_rank_list(x: List[float]) -> np.array:
-    y = scipy.stats.rankdata(x, method='min')
+    y = scipy.stats.rankdata(x, method='max')
     return y/len(y)
 
 
@@ -268,10 +268,10 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
                     edge_confidence *= normalized_score
-        if edge.attributes and any(attribute.attribute_type_id == "biolink:aggregator_knowledge_source" and
+        if edge.attributes and any(attribute.attribute_type_id == "biolink:knowledge_source" and
                                    attribute.value == "infores:semmeddb" for attribute in edge.attributes):
-            if edge_attribute_dict.get("biolink:has_supporting_publications", None) is not None:
-                n_publications = len(edge_attribute_dict["biolink:has_supporting_publications"])
+            if edge_attribute_dict.get("biolink:publications", None) is not None:
+                n_publications = len(edge_attribute_dict["biolink:publications"])
             else:
                 n_publications = 0
             if n_publications == 0:
@@ -293,6 +293,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         if edge_attribute_name not in self.known_attributes:
             return -1  # TODO: might want to change this
         else:
+            if edge_attribute_value == "no value!":
+                edge_attribute_value = 0
             try:
                 # check to see if it's convertible to a float (will catch None's as well)
                 edge_attribute_value = float(edge_attribute_value)
@@ -544,10 +546,14 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 for edge_attribute in edge.attributes:
                     for attribute_name in self.known_attributes:
                         if edge_attribute.original_attribute_name == attribute_name or edge_attribute.attribute_type_id == attribute_name:
-                            try:
-                                value = float(edge_attribute.value)
-                            except ValueError:
-                                continue
+                            if edge_attribute.value == "no value!":
+                                edge_attribute.value = 0
+                                value = 0
+                            else:
+                                try:
+                                    value = float(edge_attribute.value)
+                                except ValueError:
+                                    continue
                             # initialize if not None already
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf|NaN
@@ -604,6 +610,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                                    _score_networkx_graphs_by_longest_path,
                                    _score_networkx_graphs_by_frobenius_norm])))
         #print(ranks_list)
+        #print(float(len(ranks_list)))
         result_scores = sum(ranks_list)/float(len(ranks_list))
         #print(result_scores)
         for result, score in zip(results, result_scores):

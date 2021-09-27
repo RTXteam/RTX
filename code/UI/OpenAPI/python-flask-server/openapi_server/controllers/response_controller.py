@@ -15,8 +15,8 @@ def get_response(response_id):  # noqa: E501
 
      # noqa: E501
 
-    :param response_id: Integer identifier of the response to return
-    :type response_id: int
+    :param response_id: Identifier of the response to return
+    :type response_id: str
 
     :rtype: Response
     """
@@ -24,4 +24,19 @@ def get_response(response_id):  # noqa: E501
     response_cache = ResponseCache()
     envelope = response_cache.get_response(response_id)
     return envelope
+
+
+def post_response(body):  # noqa: E501
+    """Annotate a response
+
+     # noqa: E501
+
+    :param body: Object that provides annotation information
+    :type body: 
+
+    :rtype: object
+    """
+    import json
+    print(json.dumps(body, indent=2, sort_keys=True), file=sys.stderr)
+    return 'received!'
 

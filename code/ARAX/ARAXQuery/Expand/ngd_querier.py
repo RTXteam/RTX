@@ -1,4 +1,5 @@
 #!/bin/env python3
+import copy
 import sys
 import os
 import traceback
@@ -11,6 +12,7 @@ from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
+from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../Overlay/")
 from Overlay.compute_ngd import ComputeNGD
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -19,7 +21,6 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_node import QNode
-from openapi_server.models.q_edge import QEdge
 from openapi_server.models.message import Message
 
 
@@ -31,6 +32,7 @@ class NGDQuerier:
         self.accepted_qedge_predicates = {"biolink:has_normalized_google_distance_with", "biolink:related_to"}
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
+        self.decorator = ARAXDecorator()
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -52,31 +54,17 @@ class NGDQuerier:
             log.error(f"NGD can only expand qedges with these predicates: {self.accepted_qedge_predicates}. QEdge"
                       f" {qedge_key}'s predicate is: {qedge.predicates}", error_code="UnsupportedQG")
             return final_kg
+        source_qnode_key = qedge.subject
+        target_qnode_key = qedge.object
 
         # Find potential answers using KG2
         log.debug(f"Finding potential answers using KG2")
+        modified_qg = copy.deepcopy(query_graph)
+        for qedge in modified_qg.edges.values():
+            qedge.predicates = None
 
-        source_qnode_key = qedge.subject
-        target_qnode_key = qedge.object
-        source_qnode = query_graph.nodes[source_qnode_key]
-        target_qnode = query_graph.nodes[target_qnode_key]
-        qedge_params_str = ", ".join(list(filter(None, [f"key={qedge_key}",
-                                                        f"subject={source_qnode_key}",
-                                                        f"object={target_qnode_key}"])))
-        source_params_str = ", ".join(list(filter(None, [f"key={source_qnode_key}",
-                                                         self._get_dsl_qnode_curie_str(source_qnode),
-                                                         self._get_dsl_qnode_categories_str(source_qnode)])))
-        target_params_str = ", ".join(list(filter(None, [f"key={target_qnode_key}",
-                                                         self._get_dsl_qnode_curie_str(target_qnode),
-                                                         self._get_dsl_qnode_categories_str(target_qnode)])))
-        actions_list = [
-            f"add_qnode({source_params_str})",
-            f"add_qnode({target_params_str})",
-            f"add_qedge({qedge_params_str})",
-            f"expand(kp=RTX-KG2)",
-            f"return(message=true, store=false)",
-        ]
-        kg2_response, kg2_message = self._run_arax_query(actions_list, log)
+        request_body = {"message": {"query_graph": modified_qg.to_dict()}}
+        kg2_response, kg2_message = self._run_arax_query(request_body, log)
         if log.status != 'OK':
             return final_kg
 
@@ -129,8 +117,7 @@ class NGDQuerier:
                                          attribute_type_id=self.ngd_edge_attribute_type,
                                          value=ngd_value)]
         kp_description = "ARAX's in-house normalized google distance database."
-        ngd_edge.attributes += [Attribute(original_attribute_name="publications", value=pmid_list,
-                                          attribute_type_id=eu.get_attribute_type("publications")),
+        ngd_edge.attributes += [self.decorator.create_attribute("publications", pmid_list),
                                 eu.get_kp_source_attribute("NGD", arax_kp=True, description=kp_description),
                                 eu.get_arax_source_attribute(),
                                 eu.get_computed_value_attribute()]
@@ -142,30 +129,15 @@ class NGDQuerier:
         ngd_node_key = kg2_node_key
         ngd_node.name = kg2_node.name
         ngd_node.categories = kg2_node.categories
-        ngd_node.attributes = [attribute for attribute in kg2_node.attributes if attribute.original_attribute_name in {"iri", "description"}]
         return ngd_node_key, ngd_node
 
     @staticmethod
-    def _run_arax_query(actions_list: List[str], log: ARAXResponse) -> Tuple[ARAXResponse, Message]:
+    def _run_arax_query(request_body: dict, log: ARAXResponse) -> Tuple[ARAXResponse, Message]:
         araxq = ARAXQuery()
-        sub_query_response = araxq.query({"operations": {"actions": actions_list}})
+        sub_query_response = araxq.query(request_body, mode="RTXKG2")
         if sub_query_response.status != 'OK':
             log.error(f"Encountered an error running ARAXQuery within Expand: {sub_query_response.show(level=sub_query_response.DEBUG)}")
         return sub_query_response, araxq.message
-
-    @staticmethod
-    def _get_dsl_qnode_curie_str(qnode: QNode) -> str:
-        curie_str = f"[{', '.join(qnode.ids)}]" if qnode.ids else None
-        return f"ids={curie_str}" if curie_str else ""
-
-    @staticmethod
-    def _get_dsl_qnode_categories_str(qnode: QNode) -> str:
-        if not qnode.categories:
-            return ""
-        elif len(qnode.categories) == 1:
-            return f"categories={qnode.categories[0]}"
-        else:
-            return f"categories=[{', '.join(qnode.categories)}]"
 
     @staticmethod
     def _verify_one_hop_query_graph_is_valid(query_graph: QueryGraph, log: ARAXResponse):

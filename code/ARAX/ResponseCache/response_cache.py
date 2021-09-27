@@ -37,7 +37,7 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.1.1'
+trapi_version = '1.2.0'
 
 
 Base = declarative_base()
@@ -183,7 +183,7 @@ class ResponseCache:
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
             servername = 'arax.ncats.io'
-        envelope.id = f"https://{servername}/api/arax/v1.1/response/{stored_response.response_id}"
+        envelope.id = f"https://{servername}/api/arax/v1.2/response/{stored_response.response_id}"
 
         #### Instead of storing the large response object in the MySQL database as a blob
         #### now store it as a JSON file on the filesystem
@@ -232,23 +232,6 @@ class ResponseCache:
                     eprint(f"ERROR: Unable to read response from file '{response_path}'")
                     return
 
-                #### Temporary hack for schema problem FIXME
-                if 'message' in envelope:
-                    if 'knowledge_graph' in envelope['message']:
-                        if 'nodes' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['nodes'] is not None:
-                            for node_key,node in envelope['message']['knowledge_graph']['nodes'].items():
-                                if 'attributes' in node and node['attributes'] is not None:
-                                    for attribute in node['attributes']:
-                                        if 'value_type_id' in attribute and attribute['value_type_id'] is None:
-                                            attribute['value_type_id'] = 'PLACEHOLDER:placeholder'
-                        if 'edges' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['edges'] is not None:
-                            for edge_key,edge in envelope['message']['knowledge_graph']['edges'].items():
-                                if 'attributes' in edge and edge['attributes'] is not None:
-                                    for attribute in edge['attributes']:
-                                        if 'value_type_id' in attribute and attribute['value_type_id'] is None:
-                                            attribute['value_type_id'] = 'PLACEHOLDER:placeholder'
-
-
                 #### Perform a validation on it
                 try:
                     validate(envelope,'Response',trapi_version)
@@ -271,11 +254,12 @@ class ResponseCache:
 
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
-            ars_hosts = [ 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
+            ars_hosts = [ 'ars.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
                     response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
                 status_code = response_content.status_code
+                #eprint(f"--- Fetch of {response_id} from {ars_host} yielded {status_code}")
                 if status_code == 200:
                     break
 
@@ -319,6 +303,9 @@ class ResponseCache:
                 if envelope is None:
                     envelope = {}
                     return envelope
+                actual_response = str(envelope)
+                if not isinstance(envelope,dict):
+                    envelope = { 'detail': envelope }
 
                 #### Actor lookup
                 actor_lookup = { 
@@ -343,7 +330,6 @@ class ResponseCache:
                 #            if 'code' in log and log['code'] is None:
                 #                log['code'] = '-'
                 is_trapi = True
-                actual_response = ''
                 if 'message' in envelope:
                     #eprint("INFO: envelope has a message")
                     #eprint(json.dumps(envelope,indent=2,sort_keys=True))

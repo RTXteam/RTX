@@ -11,6 +11,8 @@ import argparse
 import sqlite3
 import pickle
 import itertools
+import requests
+import json
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")
 from RTXConfiguration import RTXConfiguration
@@ -34,7 +36,7 @@ class COHDIndex:
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         self.databaseLocation = filepath
         # lastest_version = "v1.0"
-        # kg = 'KG2.7.1'
+        # kg = 'KG2.7.3'
         # self.databaseName = f"COHDdatabase_{lastest_version}_{kg}.db"
         self.databaseName = RTXConfig.cohd_database_path.split('/')[-1]
         self.success_con = self.connect()
@@ -54,7 +56,8 @@ class COHDIndex:
             print("INFO: Connecting to database", flush=True)
             return True
         else:
-            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_7_1_with_concepts.pkl', 'concepts_table_Athena.txt']
+            # # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_7_1_with_concepts.pkl', 'concepts_table_Athena.txt']
+            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt']
             # has_files = [f for f in os.listdir(self.databaseLocation) if os.path.isfile(os.path.join(self.databaseLocation, f))]
             # for file in required_files:
             #     if file in has_files:
@@ -93,10 +96,10 @@ class COHDIndex:
         return
         # if self.success_con is True:
         #     print("INFO: Creating database " + self.databaseName, flush=True)
-        #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
-        #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
-        #     self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING_ATHENA")
-        #     self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING_ATHENA( curie VARCHAR(255), concept_id INT )")
+        #     # self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
+        #     # self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
+        #     # self.connection.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING_ATHENA")
+        #     # self.connection.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING_ATHENA( curie VARCHAR(255), concept_id INT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS SINGLE_CONCEPT_COUNTS")
         #     self.connection.execute(f"CREATE TABLE SINGLE_CONCEPT_COUNTS( dataset_id TINYINT, concept_id INT, concept_count INT, concept_prevalence FLOAT )")
         #     self.connection.execute(f"DROP TABLE IF EXISTS CONCEPTS")
@@ -179,23 +182,23 @@ class COHDIndex:
 
         #     self.connection.commit()
 
-        #     concepts_table_Athena_file = 'concepts_table_Athena.txt'
-        #     current_table_name = paired_file.replace('.txt', '').upper()
-        #     print(f"INFO: Populating table {current_table_name}", flush=True)
-        #     with open(f"{self.databaseLocation}/{concepts_table_Athena_file}", 'r') as file:
-        #         content_list = file.readlines()
-        #         col_name = content_list.pop(0)
-        #         insert_command1 = f"INSERT INTO CURIE_TO_OMOP_MAPPING_ATHENA(curie, concept_id)"
-        #         insert_command2 = f" values (?,?)"
+        #     # concepts_table_Athena_file = 'concepts_table_Athena.txt'
+        #     # current_table_name = paired_file.replace('.txt', '').upper()
+        #     # print(f"INFO: Populating table {current_table_name}", flush=True)
+        #     # with open(f"{self.databaseLocation}/{concepts_table_Athena_file}", 'r') as file:
+        #     #     content_list = file.readlines()
+        #     #     col_name = content_list.pop(0)
+        #     #     insert_command1 = f"INSERT INTO CURIE_TO_OMOP_MAPPING_ATHENA(curie, concept_id)"
+        #     #     insert_command2 = f" values (?,?)"
 
-        #         insert_command = insert_command1 + insert_command2
+        #     #     insert_command = insert_command1 + insert_command2
 
-        #         for line in content_list:
-        #             content_col = line.strip().split("\t")
-        #             record = tuple([content_col[1],content_col[0]])
-        #             self.connection.execute(insert_command, record)
+        #     #     for line in content_list:
+        #     #         content_col = line.strip().split("\t")
+        #     #         record = tuple([content_col[1],content_col[0]])
+        #     #         self.connection.execute(insert_command, record)
 
-        #     self.connection.commit()
+        #     # self.connection.commit()
 
         #     # read KG1 and KG2 mapping
         #     # with open(f"{self.databaseLocation}/synonyms_kg2_with_concepts.pkl", "rb") as file:
@@ -206,33 +209,35 @@ class COHDIndex:
         #     # for key in kg1_mapping:
         #     #     if key not in kg_mapping:
         #     #         kg_mapping[key] = kg1_mapping[key]
-        #     with open(f"{self.databaseLocation}/preferred_synonyms_kg2_7_1_with_concepts.pkl", "rb") as file:
-        #         kg = pickle.load(file)
 
-        #     insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,concept_id) values (?,?)'
-        #     count = 0
-        #     total_key = [key for key in kg if len(kg[key]['concept_ids']) != 0]
 
-        #     print(f"INFO: Populating table CURIE_TO_OMOP_MAPPING", flush=True)
-        #     if DEBUG:
-        #         key = total_key[0]
-        #         records = list(itertools.product([key], list(kg[key]['concept_ids'])))
-        #         print(records, flush=True)
+        #     # with open(f"{self.databaseLocation}/preferred_synonyms_kg2_7_1_with_concepts.pkl", "rb") as file:
+        #     #     kg = pickle.load(file)
 
-        #     for key in total_key:
-        #         if len(kg[key]['concept_ids']) > 0:
-        #             count = count + 1
-        #             records = list(itertools.product([key], list(kg[key]['concept_ids'])))
-        #             self.connection.executemany(insert_command, records)
+        #     # insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,concept_id) values (?,?)'
+        #     # count = 0
+        #     # total_key = [key for key in kg if len(kg[key]['concept_ids']) != 0]
 
-        #             if count % 10000 == 0:
-        #                 self.connection.commit()
-        #                 percentage = round((count * 100.0 / len(total_key)), 2)
-        #                 print(str(percentage) + "%..", end='', flush=True)
+        #     # print(f"INFO: Populating table CURIE_TO_OMOP_MAPPING", flush=True)
+        #     # if DEBUG:
+        #     #     key = total_key[0]
+        #     #     records = list(itertools.product([key], list(kg[key]['concept_ids'])))
+        #     #     print(records, flush=True)
 
-        #     self.connection.commit()
-        #     percentage = round((count * 100.0 / len(total_key)), 2)
-        #     print(str(percentage) + "%..", end='', flush=True)
+        #     # for key in total_key:
+        #     #     if len(kg[key]['concept_ids']) > 0:
+        #     #         count = count + 1
+        #     #         records = list(itertools.product([key], list(kg[key]['concept_ids'])))
+        #     #         self.connection.executemany(insert_command, records)
+
+        #     #         if count % 10000 == 0:
+        #     #             self.connection.commit()
+        #     #             percentage = round((count * 100.0 / len(total_key)), 2)
+        #     #             print(str(percentage) + "%..", end='', flush=True)
+
+        #     # self.connection.commit()
+        #     # percentage = round((count * 100.0 / len(total_key)), 2)
+        #     # print(str(percentage) + "%..", end='', flush=True)
 
         #     print(f"INFO: Populating tables is completed", flush=True)
 
@@ -241,13 +246,13 @@ class COHDIndex:
 
         return
         # if self.success_con is True:
-        #     print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING", flush=True)
-        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_preferred_curie ON CURIE_TO_OMOP_MAPPING(preferred_curie)")
-        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_concept_id ON CURIE_TO_OMOP_MAPPING(concept_id)")
+        #     # print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING", flush=True)
+        #     # self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_preferred_curie ON CURIE_TO_OMOP_MAPPING(preferred_curie)")
+        #     # self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_concept_id ON CURIE_TO_OMOP_MAPPING(concept_id)")
 
-        #     print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING_ATHENA", flush=True)
-        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_curie ON CURIE_TO_OMOP_MAPPING_ATHENA(curie)")
-        #     self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_concept_id ON CURIE_TO_OMOP_MAPPING_ATHENA(concept_id)")
+        #     # print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING_ATHENA", flush=True)
+        #     # self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_curie ON CURIE_TO_OMOP_MAPPING_ATHENA(curie)")
+        #     # self.connection.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_ATHENA_concept_id ON CURIE_TO_OMOP_MAPPING_ATHENA(concept_id)")
 
         #     print(f"INFO: Creating INDEXes on SINGLE_CONCEPT_COUNTS", flush=True)
         #     self.connection.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_dataset_id ON SINGLE_CONCEPT_COUNTS(dataset_id)")
@@ -292,6 +297,52 @@ class COHDIndex:
         return synonym
 
     @staticmethod
+    def _call_cohd_biolink_to_omop_api(query):
+        """
+        Args:
+            query (required, dict): a dict format of query that required by COHD API, e.g., {"curies": ["HP:0002907", "MONDO:0001187"]}
+
+        Returns:
+            dict: a dictionary of results
+        """
+        url = 'https://cohd.io/api/translator/biolink_to_omop'
+        head = {'accept': 'application/json', 'Content-Type':'application/json'}
+        response = requests.post('https://cohd.io/api/translator/biolink_to_omop', data=json.dumps(query), headers=head)
+        if response.status_code == 200:
+            response = response.json()
+            res = {key:[response[key]['omop_concept_id']] if response[key] is not None else [] for key in response}
+            return res
+        else:
+            return {}
+
+    @staticmethod
+    def _call_cohd_omop_to_biolink_api(query):
+        """
+        Args:
+            query (required, dict): a dict format of query that required by COHD API, e.g., {"omop_ids": [78472, 197508]}
+
+        Returns:
+            dict: a dictionary of results
+        """
+        url = 'https://cohd.io/api/translator/omop_to_biolink'
+        head = {'accept': 'application/json', 'Content-Type':'application/json'}
+        response = requests.post('https://cohd.io/api/translator/omop_to_biolink', data=json.dumps(query), headers=head)
+        if response.status_code == 200:
+            response = response.json()
+            res = {key:[response[key]['id']['identifier']] if response[key] is not None else [] for key in response}
+            return res
+        else:
+            return {}
+
+    def _get_preferred_curie(self, curie):
+
+        res = self.synonymizer.get_canonical_curies(curie)[curie]
+        if res is not None:
+            return res['preferred_curie']
+        else:
+            return curie
+
+    @staticmethod
     def _change_format(synonym):
 
         synonym = synonym.upper()
@@ -320,6 +371,43 @@ class COHDIndex:
 
         return synonym
 
+    # def get_concept_ids(self, curie):
+    #     """Search for OMOP concept ids by curie id.
+
+    #     Args:
+    #         curie (required, str): Compacy URI (CURIE) of the concept to map, e.g., "DOID:8398"
+
+    #     Returns:
+    #         list: a list which contains OMOP concepts for the given curie id, or empty list if no
+    #         example:
+    #             [75617, 80180, 1570333, 4025957, 4035441, 4079750, 4083695, 4083696, 4110738, 36516824, 36569386, 45618044]
+    #     """
+    #     cursor = self.connection.cursor()
+    #     results_list = []
+    #     if isinstance(curie, str):
+    #         preferred_curie = self.synonymizer.get_canonical_curies(curie)[curie]
+    #         if preferred_curie is None:
+    #             print(f"Can't convert {curie} to preferred curie in get_concept_ids and thus use its original curie", flush=True)
+    #             cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where curie='{self._change_format(curie)}';")
+    #             res = cursor.fetchall()
+    #             if len(res) == 0:
+    #                 return results_list
+    #             else:
+    #                 results_list = [row[1] for row in res]
+    #                 return results_list
+    #         else:
+    #             preferred_curie = preferred_curie['preferred_curie']
+    #             cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where preferred_curie='{preferred_curie}';")
+    #             res = cursor.fetchall()
+    #             if len(res) == 0:
+    #                 return results_list
+    #             else:
+    #                 results_list = [row[1] for row in res]
+    #                 return results_list
+    #     else:
+    #         print("The 'curie' in get_concept_ids should be a str", flush=True)
+    #         return results_list
+
     def get_concept_ids(self, curie):
         """Search for OMOP concept ids by curie id.
 
@@ -331,31 +419,59 @@ class COHDIndex:
             example:
                 [75617, 80180, 1570333, 4025957, 4035441, 4079750, 4083695, 4083696, 4110738, 36516824, 36569386, 45618044]
         """
-        cursor = self.connection.cursor()
         results_list = []
         if isinstance(curie, str):
-            preferred_curie = self.synonymizer.get_canonical_curies(curie)[curie]
-            if preferred_curie is None:
-                print(f"Can't convert {curie} to preferred curie in get_concept_ids and thus use its original curie", flush=True)
-                cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where curie='{self._change_format(curie)}';")
-                res = cursor.fetchall()
-                if len(res) == 0:
-                    return results_list
+            query = {"curies": [curie]}
+            resp_dict = self._call_cohd_biolink_to_omop_api(query)
+            results_list = []
+            for key, value in resp_dict.items():
+                preferred_curie = self._get_preferred_curie(key)
+                query = {"curies": [preferred_curie]}
+                temp = self._call_cohd_biolink_to_omop_api(query)
+                if len(value) != 0:
+                    results_list = list(set(value + temp[preferred_curie]))
                 else:
-                    results_list = [row[1] for row in res]
-                    return results_list
-            else:
-                preferred_curie = preferred_curie['preferred_curie']
-                cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where preferred_curie='{preferred_curie}';")
-                res = cursor.fetchall()
-                if len(res) == 0:
-                    return results_list
-                else:
-                    results_list = [row[1] for row in res]
-                    return results_list
+                    results_list = list(set(temp[preferred_curie]))
+            return results_list
         else:
             print("The 'curie' in get_concept_ids should be a str", flush=True)
             return results_list
+
+    # def get_curies_from_concept_id(self, concept_id):
+    #     """Search for curie ids by OMOP concept ids.
+
+    #     Args:
+    #         concept_id (required, int): an OMOP concept id, e.g., 192855
+
+    #     Returns:
+    #         list: a list which contains curies for each given OMOP concept id, or None if no
+    #         example:
+    #             ['CUI:C0154091', 'CUI:C0855181', 'NCIT:C3644', 'MONDO:0004703', 'DOID:9053']
+    #     """
+    #     if isinstance(concept_id, int):
+    #         pass
+    #     else:
+    #         print("The 'concept_id' in get_curies_from_concept_id should be an int", flush=True)
+    #         return []
+
+    #     results_list = []
+    #     cursor = self.connection.cursor()
+    #     cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where concept_id={concept_id};")
+    #     res = cursor.fetchall()
+    #     if len(res) != 0:
+    #         results_list = list(set([record[0] for record in res]))
+    #         # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
+    #         # res = cursor.fetchall()
+    #         # if len(res) != 0:
+    #         #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
+    #     else:
+    #         pass
+    #         # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
+    #         # res = cursor.fetchall()
+    #         # if len(res) != 0:
+    #         #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
+
+    #     return results_list
 
     def get_curies_from_concept_id(self, concept_id):
         """Search for curie ids by OMOP concept ids.
@@ -375,23 +491,13 @@ class COHDIndex:
             return []
 
         results_list = []
-        cursor = self.connection.cursor()
-        cursor.execute(f"select distinct preferred_curie, concept_id from CURIE_TO_OMOP_MAPPING where concept_id={concept_id};")
-        res = cursor.fetchall()
-        if len(res) != 0:
-            results_list = list(set([record[0] for record in res]))
-            # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
-            # res = cursor.fetchall()
-            # if len(res) != 0:
-            #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
-        else:
-            pass
-            # cursor.execute(f"select distinct curie, concept_id from CURIE_TO_OMOP_MAPPING_ATHENA where concept_id={concept_id};")
-            # res = cursor.fetchall()
-            # if len(res) != 0:
-            #     results_list += list(set([self._change_format_bk(record[0]) for record in res]))
-
+        query = {"omop_ids": [concept_id]}
+        resp_dict = self._call_cohd_omop_to_biolink_api(query)
+        for key, value in resp_dict.items():
+            if len(value) != 0:
+                results_list = value
         return results_list
+
 
     def get_all_concept_pair_info(self, concept_id_1=[], concept_id_2=[], concept_id_pair=None, dataset_id=1):
         """Retrieve chi-square p-value(chi_square_p), observed-expected frequency ratio(ln_ratio), relative frequency of concept id 1, relative frequency of concept id 2,

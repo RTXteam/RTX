@@ -12,7 +12,7 @@ class RTXConfiguration:
 
     # ### Constructor
     def __init__(self):
-        self.version = "ARAX 0.8.0"
+        self.version = "ARAX 1.2.1"
 
         file_path = os.path.dirname(os.path.abspath(__file__)) + '/configv2.json'
         local_path = os.path.dirname(os.path.abspath(__file__)) + '/config_local.json'
@@ -127,6 +127,8 @@ class RTXConfiguration:
         self.autocomplete_username = self.config["Global"]["autocomplete"]["username"]
         self.autocomplete_path = self.config["Contextual"][self.live]["autocomplete"]["path"]
         self.autocomplete_version = self.config["Contextual"][self.live]["autocomplete"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
+
+        self.rtx_kg2_url = self.config["Contextual"][self.live]["RTX-KG2"]["url"]
 
         self.mysql_feedback_host = self.config["Global"]["mysql_feedback"]["host"]
         self.mysql_feedback_port = self.config["Global"]["mysql_feedback"]["port"]
