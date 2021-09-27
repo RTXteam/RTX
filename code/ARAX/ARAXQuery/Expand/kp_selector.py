@@ -175,9 +175,10 @@ class KPSelector:
         if qedge.predicates and "biolink:has_normalized_google_distance_with" in qedge.predicates:
             chosen_kps.add("NGD")
 
-        # If a qnode has a lot of curies, only use KG2 for now (until figure out which KPs are reasonably fast for this)
+        # If a qnode has a lot of curies, only use select KPs for now
         if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 100):
-            chosen_kps = {"RTX-KG2"}
+            fast_kps = {"RTX-KG2", "GeneticsKP"}
+            chosen_kps = chosen_kps.intersection(fast_kps)
             for kp in kps_supporting_qedge.difference(chosen_kps):
                 self.log.update_query_plan(qedge_key, kp, "Skipped", "Skipping because there are >100 curies in the expansion")
 

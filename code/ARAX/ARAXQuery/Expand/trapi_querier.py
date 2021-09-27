@@ -373,16 +373,16 @@ class TRAPIQuerier:
         elif num_qnodes_with_curies == 1:
             if num_total_curies_in_qg < 250:
                 return 30
-            elif num_total_curies_in_qg < 500:
+            elif num_total_curies_in_qg < 600:
                 return 60
-            elif num_total_curies_in_qg < 1000:
+            elif num_total_curies_in_qg < 1200:
                 return 120
             else:
                 return 180
         else:  # Both nodes in the one-hop query must have curies specified
-            if num_total_curies_in_qg < 500:
+            if num_total_curies_in_qg < 600:
                 return 30
-            elif num_total_curies_in_qg < 1000:
+            elif num_total_curies_in_qg < 1200:
                 return 60
             else:
                 return 120
