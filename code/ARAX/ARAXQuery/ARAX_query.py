@@ -56,6 +56,9 @@ from ARAX_database_manager import ARAXDatabaseManager
 from reasoner_validator import validate
 from jsonschema.exceptions import ValidationError
 
+query_tracker_reset = ARAXQueryTracker()
+query_tracker_reset.clear_unfinished_entries()
+
 
 class ARAXQuery:
 
@@ -70,7 +73,6 @@ class ARAXQuery:
             self.response = ARAXResponse()
             self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
             self.response = self.DBManager.update_databases(True, response=self.response)
-
 
     def query_return_stream(self,query, mode='ARAX'):
 

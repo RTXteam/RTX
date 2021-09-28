@@ -167,19 +167,20 @@ class TRAPIQuerier:
 
     async def _answer_query_using_kp_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         request_body = self._get_prepped_request_body(query_graph)
+        query_sent = copy.deepcopy(request_body)
         query_timeout = self._get_query_timeout_length(query_graph)
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
 
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
+        num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in query_graph.nodes.values()])
+        waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
+        self.log.update_query_plan(qedge_key, self.kp_name, "Waiting", waiting_message, query=query_sent)
         start = time.time()
         if self.force_local and self.kp_name == 'RTX-KG2':
             json_response = self._answer_query_force_local(request_body)
         # Otherwise send the query graph to the KP's TRAPI API
         else:
             self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
-            num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in query_graph.nodes.values()])
-            waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
-            self.log.update_query_plan(qedge_key, self.kp_name, "Waiting", waiting_message)
             async with aiohttp.ClientSession() as session:
                 try:
                     async with session.post(f"{self.kp_endpoint}/query",
