@@ -262,13 +262,20 @@ class ARAXQueryTracker:
             return result
 
         for entry in entries:
+            elapsed = entry.elapsed
+            if elapsed is None:
+                now = datetime.now()
+                then = datetime.strptime(entry.start_datetime, '%Y-%m-%d %H:%M:%S')
+                delta = now - then
+                elapsed = int(delta.total_seconds())
+                eprint(f"--- {then} {elapsed}")
             result['recent_queries'].append( {
                 'query_id': entry.query_id,
                 'pid': entry.pid,
                 'start_datetime': entry.start_datetime,
                 'instance_name': entry.instance_name,
                 'state': entry.status,
-                'elapsed': entry.elapsed,
+                'elapsed': elapsed,
                 'submitter': entry.origin,
                 'response_id': entry.message_id,
                 'status': entry.message_code,
@@ -282,9 +289,36 @@ class ARAXQueryTracker:
         return result
 
 
+    def clear_unfinished_entries(self):
+        if self.session is None:
+            self.connect()
+        if self.session is None:
+            return
+
+        location = os.path.abspath(__file__)
+        instance_name = '??'
+        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
+        if match:
+            instance_name = match.group(1)
+        eprint(f"INFO: Clearing unfinished tracker entries for instance_name = {instance_name}")
+
+        entries = self.session.query(ARAXQuery).filter(ARAXQuery.instance_name == instance_name, ARAXQuery.elapsed == None)
+
+        for entry in entries:
+            print(f" - {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
+            entry.status = 'Reset'
+            entry.message_code = 'Reset'
+            entry.description = 'Query was terminated by procesess restart'
+            entry.elapsed = 99
+        self.session.commit()
+
+
 def main():
 
     query_tracker = ARAXQueryTracker()
+
+    query_tracker.clear_unfinished_entries()
+    return
 
     #query_tracker.create_database()
 
