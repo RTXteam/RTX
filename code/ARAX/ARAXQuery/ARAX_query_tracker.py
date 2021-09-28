@@ -268,6 +268,9 @@ class ARAXQueryTracker:
                 then = datetime.strptime(entry.start_datetime, '%Y-%m-%d %H:%M:%S')
                 delta = now - then
                 elapsed = int(delta.total_seconds())
+                elapsed -= 1
+                if elapsed < 0:
+                    elapsed = 0
                 eprint(f"--- {then} {elapsed}")
             result['recent_queries'].append( {
                 'query_id': entry.query_id,
@@ -306,10 +309,14 @@ class ARAXQueryTracker:
 
         for entry in entries:
             eprint(f" - {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
+            now = datetime.now()
+            then = datetime.strptime(entry.start_datetime, '%Y-%m-%d %H:%M:%S')
+            delta = now - then
+            elapsed = int(delta.total_seconds())
             entry.status = 'Reset'
             entry.message_code = 'Reset'
-            entry.description = 'Query was terminated by procesess restart'
-            entry.elapsed = 99
+            entry.code_description = 'Query was terminated by a process restart'
+            entry.elapsed = elapsed
         self.session.commit()
 
 
