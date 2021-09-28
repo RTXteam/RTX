@@ -305,7 +305,7 @@ class ARAXQueryTracker:
         entries = self.session.query(ARAXQuery).filter(ARAXQuery.instance_name == instance_name, ARAXQuery.elapsed == None)
 
         for entry in entries:
-            print(f" - {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
+            eprint(f" - {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
             entry.status = 'Reset'
             entry.message_code = 'Reset'
             entry.description = 'Query was terminated by procesess restart'
