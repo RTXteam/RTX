@@ -186,6 +186,7 @@ class ARAXQueryTracker:
             pass
 
 
+    ##################################################################################################
     def update_tracker_entry(self, tracker_id, attributes):
         if tracker_id is None:
             return
@@ -207,6 +208,7 @@ class ARAXQueryTracker:
             tracker_entry.code_description = attributes['code_description'][:254]
         session.commit()
 
+    ##################################################################################################
     def create_tracker_entry(self, attributes):
         session = self.session
         if session is None:
@@ -233,6 +235,7 @@ class ARAXQueryTracker:
             tracker_id = 1
         return tracker_id
 
+    ##################################################################################################
     def get_entries(self, last_n_hours=24, incomplete_only=False):
         if self.session is None:
             return
@@ -250,11 +253,15 @@ class ARAXQueryTracker:
                 text("""JULIANDAY(start_datetime) - JULIANDAY(datetime('now','localtime')) < :n""")).params(n=last_n_hours/24).all()
 
 
+    ##################################################################################################
     def get_status(self, last_n_hours=24, incomplete_only=False, id_=None):
         if self.session is None:
             return
         if last_n_hours is None or last_n_hours == 0:
             last_n_hours = 24
+
+        if id_ is not None:
+            return self.get_query_by_id(id_)
 
         entries = self.get_entries(last_n_hours=last_n_hours, incomplete_only=incomplete_only)
         result = { 'recent_queries': [], 'current_datetime': datetime.now().strftime("%Y-%m-%d %T") }
@@ -284,14 +291,31 @@ class ARAXQueryTracker:
                 'status': entry.message_code,
                 'description': entry.code_description
             } )
-            if id_ is not None and entry.query_id == id_:
-                return entry.input_query
 
         result['recent_queries'].reverse()
         result['current_datetime'] = datetime.now().strftime("%Y-%m-%d %T")
         return result
 
 
+    ##################################################################################################
+    def get_query_by_id(self, id_):
+        if self.session is None:
+            return
+
+        if id_ is None:
+            eprint(f"ERROR: query_id = {id}")
+            return
+
+        entries = self.session.query(ARAXQuery).filter(ARAXQuery.query_id == id_)
+        if len(entries) != 1:
+            eprint(f"ERROR: Unable to find query_id {id}")
+            return
+
+        entry = entries[0]
+        return entry.input_query
+
+
+    ##################################################################################################
     def clear_unfinished_entries(self):
         if self.session is None:
             self.connect()
