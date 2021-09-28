@@ -307,12 +307,10 @@ class ARAXQueryTracker:
             return
 
         entries = self.session.query(ARAXQuery).filter(ARAXQuery.query_id == id_)
-        if len(entries) != 1:
-            eprint(f"ERROR: Unable to find query_id {id}")
-            return
+        for entry in entries:
+            return entry.input_query
 
-        entry = entries[0]
-        return entry.input_query
+        eprint(f"ERROR: Unable to find query_id {id}")
 
 
     ##################################################################################################
