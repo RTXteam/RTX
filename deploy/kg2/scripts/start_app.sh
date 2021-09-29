@@ -7,7 +7,7 @@ chmod -R 755 /mnt/data/orangeboard/databases/
 
 # the instructions below are from the deployment wiki at https://github.com/RTXteam/RTX/wiki/RTX-KG2-API-Docker-Deployment
 su rt 
-cd /mnt/data/orangeboard/production/RTX 
+cd /mnt/data/orangeboard/kg2/RTX 
 python3 code/ARAX/ARAXQuery/ARAX_database_manager.py
 
 sudo service apache2 start
