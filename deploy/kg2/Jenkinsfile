@@ -61,7 +61,7 @@ pipeline {
       stage('Deploy to AWS EKS Blue') {
           steps {
               configFileProvider([
-                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/configs/configv2.json')
+                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/kg2/configs/configv2.json')
               ]){
                   withCredentials([
                     sshUserPrivateKey(
@@ -71,8 +71,8 @@ pipeline {
                     withAWS(credentials:'aws-ifx-deploy') 
                     {
                         sh '''
-                        # Need to save the credential to a file with base64 encoded under deploy/secret
-                        cat $SECRET_FILE >> deploy/secrets/team-expander-ops-sshkey-secret
+                        # Need to save the credential to a file with base64 encoded under deploy/kg2/secret
+                        cat $SECRET_FILE >> deploy/kg2/secrets/team-expander-ops-sshkey-secret
                         aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
                         cd deploy && /bin/bash deploy.sh
                         # aws --region ${AWS_REGION} sts get-caller-identity
