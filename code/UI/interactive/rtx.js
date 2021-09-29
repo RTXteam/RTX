@@ -597,11 +597,6 @@ function postQuery_ARAX(qtype,queryObj) {
 	});
 }
 
-function enter_synonym(ele) {
-    if (event.key === 'Enter')
-	sendSyn();
-}
-
 function lookup_synonym(syn,open) {
     document.getElementById("newsynonym").value = syn.trim();
     sendSyn();
@@ -1748,7 +1743,7 @@ function render_queryplan_table(qp,node) {
     }
     table.appendChild(tr);
 
-    for (var edge in qp.qedge_keys) {
+    for (let edge in qp.qedge_keys) {
 	var ep = null;
 	if (qp.qedge_keys[edge].edge_properties) {
 	    ep = qp.qedge_keys[edge].edge_properties;
@@ -1878,23 +1873,25 @@ function showKPQuery(kp,query) {
     }
     popup.innerHTML = '';
 
-    var div = document.createElement("div");
-    div.className = 'statushead';
-    div.style.marginTop = "0px";
-    div.appendChild(document.createTextNode("Query sent to "+kp));
-
     var span = document.createElement("span");
-    span.className = 'clq clwin';
+    span.className = 'clq clwin2';
     span.title = 'Close this window';
     span.setAttribute('onclick', 'document.body.removeChild(document.getElementById("kpq"))');
     span.appendChild(document.createTextNode("\u2573"));
-    div.appendChild(span);
+    popup.appendChild(span);
+
+    var div = document.createElement("div");
+    div.className = 'statushead';
+    div.style.marginTop = "-40px";
+    div.appendChild(document.createTextNode("Query sent to "+kp));
     popup.appendChild(div);
 
     div = document.createElement("div");
     div.className = 'status';
     div.onmousedown = function () { event.stopPropagation(); };
     div.style.cursor = "auto";
+    div.style.overflowY = "auto";
+    div.style.maxHeight = "70vh";
     var pre = document.createElement("pre");
     pre.style.color = "#000";
     pre.appendChild(document.createTextNode(JSON.stringify(query,null,2)));
@@ -2970,11 +2967,6 @@ function qg_remove_qnode() {
     UIstate.editnodeid = null;
 }
 
-function qg_enter_curie(ele) {
-    if (event.key === 'Enter')
-	qg_add_curie_to_qnode();
-}
-
 async function qg_add_curie_to_qnode() {
     var id = UIstate.editnodeid;
     if (!id) return;
@@ -3264,11 +3256,6 @@ function qg_remove_qedge() {
 
     display_qg_popup('edge','hide');
     UIstate.editedgeid = null;
-}
-
-function qg_enter_predicate(ele) {
-    if (event.key === 'Enter')
-	qg_add_predicate_to_qedge(ele.value);
 }
 
 function qg_add_predicate_to_qedge(pred) {
@@ -4009,7 +3996,7 @@ function retrieveRecentQs() {
 			qend = query[field] * 1000; //ms
 
 			qdur = new Date(qend);
-			qdur = qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
+			qdur = qdur.getUTCHours()+"h " + qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
 		    }
                     else if (field == "state") {
 			var span = document.createElement("span");
@@ -4088,6 +4075,8 @@ function retrieveRecentQs() {
 		    qstart += "Z";
 		    qstart = new Date(qstart);
 		    qend = new Date(qstart.getTime() + qend);
+		    if (qend >= new Date())
+			qend = new Date(new Date() - 2000);
 
 		    if (!timeline[query["submitter"]]) {
 			timeline[query["submitter"]] = {};
@@ -4883,6 +4872,20 @@ function addCheckBox(ele,remove) {
 	var timeout = setTimeout(function() { check.remove(); }, 1500 );
 }
 
+function submit_on_enter(ele) {
+    if (event.key === 'Enter') {
+	if (ele.id == 'newsynonym')
+	    sendSyn();
+	else if (ele.id == 'newquerynode')
+            qg_add_curie_to_qnode();
+        else if (ele.id == 'qedgepredicatebox')
+            qg_add_predicate_to_qedge(ele.value);
+        else if (ele.id == 'qftime')
+	    retrieveRecentQs();
+	else
+	    console.log("element id not recognized...");
+    }
+}
 
 function checkUIversion(compare) {
     fetch("rtx.version", {

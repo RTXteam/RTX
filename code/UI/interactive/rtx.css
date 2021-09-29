@@ -173,6 +173,16 @@ hr {
     height: 30px;
     width: 30px;
 }
+.clwin2 {
+    display: inline-block;
+    height: 30px;
+    width: 30px;
+    position: relative;
+    top: -40px;
+    left: 100%;
+    font-weight: bold;
+    font-size: 16px;
+}
 
 #dslText, #jsonText, #responseText {
     width: 80%;
