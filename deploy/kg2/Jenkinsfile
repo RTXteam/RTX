@@ -74,7 +74,7 @@ pipeline {
                         # Need to save the credential to a file with base64 encoded under deploy/kg2/secret
                         cat $SECRET_FILE >> deploy/kg2/secrets/team-expander-ops-sshkey-secret
                         aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-                        cd deploy && /bin/bash deploy.sh
+                        cd deploy/kg2 && /bin/bash deploy.sh
                         # aws --region ${AWS_REGION} sts get-caller-identity
                         '''
                     }
