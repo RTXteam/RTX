@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: 
+  name: {{ include "kg2.fullname" . }}-scripts
+  labels:
+    {{- include "kg2.labels" . | nindent 4 }}
+data:
+  {{- (.Files.Glob "scripts/*.sh").AsConfig | nindent 2 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: 
+  name: {{ include "kg2.fullname" . }}-configs
+  labels:
+    {{- include "kg2.labels" . | nindent 4 }}
+data:
+  {{- (.Files.Glob "configs/*.json").AsConfig | nindent 2 }}
