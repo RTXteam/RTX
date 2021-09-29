@@ -597,11 +597,6 @@ function postQuery_ARAX(qtype,queryObj) {
 	});
 }
 
-function enter_synonym(ele) {
-    if (event.key === 'Enter')
-	sendSyn();
-}
-
 function lookup_synonym(syn,open) {
     document.getElementById("newsynonym").value = syn.trim();
     sendSyn();
@@ -1741,14 +1736,14 @@ function render_queryplan_table(qp,node) {
     var tr = document.createElement("tr");
     var td;
 
-    for (var head of ["Query Edge","KP","Status","Description"] ) {
+    for (var head of ["Query Edge","KP","Status","Description","Query"] ) {
 	td = document.createElement("th")
 	td.appendChild(document.createTextNode(head));
 	tr.appendChild(td);
     }
     table.appendChild(tr);
 
-    for (var edge in qp.qedge_keys) {
+    for (let edge in qp.qedge_keys) {
 	var ep = null;
 	if (qp.qedge_keys[edge].edge_properties) {
 	    ep = qp.qedge_keys[edge].edge_properties;
@@ -1826,7 +1821,7 @@ function render_queryplan_table(qp,node) {
 	tr.appendChild(td);
 
 	var is_first = true;
-	for (var kp in qp.qedge_keys[edge]) {
+	for (let kp in qp.qedge_keys[edge]) {
             if (!is_first)
 		tr = document.createElement("tr");
             td = document.createElement("td");
@@ -1848,11 +1843,64 @@ function render_queryplan_table(qp,node) {
 		td.className = "DEBUG";
             td.appendChild(document.createTextNode(qp.qedge_keys[edge][kp]["description"]));
 	    tr.appendChild(td);
-            table.appendChild(tr);
+
+	    td = document.createElement("td");
+            if (qp.qedge_keys[edge][kp]["query"] && qp.qedge_keys[edge][kp]["query"] != null) {
+                var link = document.createElement("a");
+		link.title='view the posted query (JSON)';
+		link.style.cursor = "pointer";
+		link.onclick = function () { showKPQuery(kp, qp.qedge_keys[edge][kp]["query"]); };
+		link.appendChild(document.createTextNode("query"));
+		td.appendChild(link);
+	    }
+            tr.appendChild(td);
+
+	    table.appendChild(tr);
 	    is_first = false;
 	}
     }
     node.appendChild(table);
+}
+
+function showKPQuery(kp,query) {
+    var popup;
+    if (document.getElementById("kpq"))
+	popup = document.getElementById("kpq");
+    else {
+	popup = document.createElement("div");
+	popup.id = "kpq";
+	popup.className = 'alertbox';
+    }
+    popup.innerHTML = '';
+
+    var span = document.createElement("span");
+    span.className = 'clq clwin2';
+    span.title = 'Close this window';
+    span.setAttribute('onclick', 'document.body.removeChild(document.getElementById("kpq"))');
+    span.appendChild(document.createTextNode("\u2573"));
+    popup.appendChild(span);
+
+    var div = document.createElement("div");
+    div.className = 'statushead';
+    div.style.marginTop = "-40px";
+    div.appendChild(document.createTextNode("Query sent to "+kp));
+    popup.appendChild(div);
+
+    div = document.createElement("div");
+    div.className = 'status';
+    div.onmousedown = function () { event.stopPropagation(); };
+    div.style.cursor = "auto";
+    div.style.overflowY = "auto";
+    div.style.maxHeight = "70vh";
+    var pre = document.createElement("pre");
+    pre.style.color = "#000";
+    pre.appendChild(document.createTextNode(JSON.stringify(query,null,2)));
+    div.appendChild(pre);
+    popup.appendChild(div);
+
+    dragElement(popup);
+    var timeout = setTimeout(function() { popup.classList.add('shake'); }, 50 );
+    document.body.appendChild(popup);
 }
 
 
@@ -2919,11 +2967,6 @@ function qg_remove_qnode() {
     UIstate.editnodeid = null;
 }
 
-function qg_enter_curie(ele) {
-    if (event.key === 'Enter')
-	qg_add_curie_to_qnode();
-}
-
 async function qg_add_curie_to_qnode() {
     var id = UIstate.editnodeid;
     if (!id) return;
@@ -3213,11 +3256,6 @@ function qg_remove_qedge() {
 
     display_qg_popup('edge','hide');
     UIstate.editedgeid = null;
-}
-
-function qg_enter_predicate(ele) {
-    if (event.key === 'Enter')
-	qg_add_predicate_to_qedge(ele.value);
 }
 
 function qg_add_predicate_to_qedge(pred) {
@@ -3958,13 +3996,17 @@ function retrieveRecentQs() {
 			qend = query[field] * 1000; //ms
 
 			qdur = new Date(qend);
-			qdur = qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
+			qdur = qdur.getUTCHours()+"h " + qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
 		    }
                     else if (field == "state") {
 			var span = document.createElement("span");
 			if (query[field] == "Completed") {
 			    span.innerHTML = '&check;';
 			    span.className = 'explevel p9';
+			}
+			else if (query[field] == "Reset") {
+			    span.innerHTML = '&cross;';
+			    span.className = 'explevel p5';
 			}
 			else {
 			    span.innerHTML = '&#10140;';
@@ -3978,6 +4020,7 @@ function retrieveRecentQs() {
 			    stats.state[query[field]] = 1;
 		    }
                     else if (field == "instance_name" || field == "submitter") {
+			td.style.whiteSpace = "nowrap";
                         if (stats[field][query[field]])
 			    stats[field][query[field]]++;
 			else
@@ -3998,9 +4041,10 @@ function retrieveRecentQs() {
 		    }
 		    else if (field == "response_id") {
 			var link = document.createElement("a");
+                        link.target = '_blank';
 			link.title='view this response';
 			link.style.cursor = "pointer";
-			link.setAttribute('onclick', 'pasteId("'+query[field]+'");sendId();');
+                        link.href = '//' + window.location.hostname + window.location.pathname + '?r=' + query[field];
 			link.appendChild(document.createTextNode(query[field]));
 			td.appendChild(link);
 		    }
@@ -4010,6 +4054,8 @@ function retrieveRecentQs() {
                         span.style.padding = "2px 6px";
 			if (query[field] == "OK")
 			    span.className = "explevel p9";
+			else if (query[field] == "Reset")
+			    span.className = "explevel p5";
 			else
 			    span.className = "explevel p1";
                         span.appendChild(document.createTextNode(query[field]));
@@ -4029,6 +4075,8 @@ function retrieveRecentQs() {
 		    qstart += "Z";
 		    qstart = new Date(qstart);
 		    qend = new Date(qstart.getTime() + qend);
+		    if (qend >= new Date())
+			qend = new Date(new Date() - 2000);
 
 		    if (!timeline[query["submitter"]]) {
 			timeline[query["submitter"]] = {};
@@ -4824,6 +4872,20 @@ function addCheckBox(ele,remove) {
 	var timeout = setTimeout(function() { check.remove(); }, 1500 );
 }
 
+function submit_on_enter(ele) {
+    if (event.key === 'Enter') {
+	if (ele.id == 'newsynonym')
+	    sendSyn();
+	else if (ele.id == 'newquerynode')
+            qg_add_curie_to_qnode();
+        else if (ele.id == 'qedgepredicatebox')
+            qg_add_predicate_to_qedge(ele.value);
+        else if (ele.id == 'qftime')
+	    retrieveRecentQs();
+	else
+	    console.log("element id not recognized...");
+    }
+}
 
 function checkUIversion(compare) {
     fetch("rtx.version", {

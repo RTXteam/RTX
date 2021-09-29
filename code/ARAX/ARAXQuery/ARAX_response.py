@@ -215,7 +215,7 @@ class ARAXResponse:
 
 
     #### Add a query_plan element
-    def update_query_plan(self, qedge_key, provider, status, description):
+    def update_query_plan(self, qedge_key, provider, status, description, query=None):
         """Method to add or update an element of the query_plan.
 
         :param edge_key: query_graph qedge key (e.g. 'e00').
@@ -226,6 +226,8 @@ class ARAXResponse:
         :type code: str
         :param description: Description of the result (see below for examples).
         :type code: str
+        :param query: Optional query dict that is sent to the referenced KP.
+        :type code: dict
         """
 
         """
@@ -244,7 +246,13 @@ class ARAXResponse:
                 self.query_plan['qedge_keys'][qedge_key][provider] = {}
             self.query_plan['qedge_keys'][qedge_key][provider][status] = description
         else:
-            self.query_plan['qedge_keys'][qedge_key][provider] = { 'status': status, 'description': description }
+            if provider not in self.query_plan['qedge_keys'][qedge_key]:
+                self.query_plan['qedge_keys'][qedge_key][provider] = { 'status': status, 'description': description, 'query': query }
+            else:
+                self.query_plan['qedge_keys'][qedge_key][provider]['status'] = status
+                self.query_plan['qedge_keys'][qedge_key][provider]['description'] = description
+                if query is not None:
+                    self.query_plan['qedge_keys'][qedge_key][provider]['query'] = query
         self.query_plan['counter'] += 1
 
 

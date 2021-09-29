@@ -554,6 +554,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                                     value = float(edge_attribute.value)
                                 except ValueError:
                                     continue
+                                except TypeError:
+                                    continue
                             # initialize if not None already
                             if attribute_name not in score_stats:
                                 score_stats[attribute_name] = {'minimum': None, 'maximum': None}  # FIXME: doesn't handle the case when all values are inf|NaN
