@@ -181,7 +181,7 @@ class TRAPIQuerier:
         # Otherwise send the query graph to the KP's TRAPI API
         else:
             self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API")
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
                 try:
                     async with session.post(f"{self.kp_endpoint}/query",
                                             json=request_body,
