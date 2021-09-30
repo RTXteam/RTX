@@ -3,7 +3,9 @@
 cp /configs/configv2.json /mnt/data/orangeboard/production/RTX/code/config_local.json
 
 # Update database directory permission which is mounted from a PVC
-chmod -R 755 /mnt/data/orangeboard/databases/
+# chmod -R 755 /mnt/data/orangeboard/databases/
+# change owner and groups for database dir
+chown -R rt:rt /mnt/data/orangeboard/databases/
 
 # the instructions below are from the deployment wiki at https://github.com/RTXteam/RTX/wiki/ARAX-Docker-Deployment
 su rt 
