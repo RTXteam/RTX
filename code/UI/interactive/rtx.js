@@ -2463,7 +2463,7 @@ function add_cyto(i) {
 	var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
 
-        var fields = [ "name","id", "categories" ];
+        var fields = [ "name","id","categories" ];
 	for (var field of fields) {
 	    if (this.data(field) == null) continue;
 
@@ -2471,7 +2471,13 @@ function add_cyto(i) {
 	    span.className = "fieldname";
 	    span.appendChild(document.createTextNode(field+": "));
 	    div.appendChild(span);
-	    div.appendChild(document.createTextNode(this.data(field)));
+
+            var a = document.createElement("a");
+	    a.title = 'view ARAX synonyms';
+	    a.href = "javascript:lookup_synonym('"+this.data(field)+"',true)";
+	    a.innerHTML = this.data(field);
+	    div.appendChild(a);
+
 	    div.appendChild(document.createElement("br"));
 	}
 
@@ -2487,11 +2493,27 @@ function add_cyto(i) {
         var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
 
-        div.appendChild(document.createTextNode(this.data('source')+" "));
-        var span = document.createElement("b");
+	var a = document.createElement("a");
+	a.className = 'attvalue';
+	a.title = 'view ARAX synonyms';
+	a.href = "javascript:lookup_synonym('"+this.data('source')+"',true)";
+	a.innerHTML = this.data('source');
+	div.appendChild(a);
+
+        var span = document.createElement("span");
+	span.className = 'attvalue';
+        span.appendChild(document.createTextNode("----"));
 	span.appendChild(document.createTextNode(this.data('predicate')));
+        span.appendChild(document.createTextNode("----"));
         div.appendChild(span);
-	div.appendChild(document.createTextNode(" "+this.data('target')));
+
+        a = document.createElement("a");
+	a.className = 'attvalue';
+	a.title = 'view ARAX synonyms';
+	a.href = "javascript:lookup_synonym('"+this.data('target')+"',true)";
+	a.innerHTML = this.data('target');
+	div.appendChild(a);
+
         div.appendChild(document.createElement("br"));
 
 	var fields = [ "relation","id" ];
@@ -2557,12 +2579,17 @@ function show_attributes_1point1(html_div, atts) {
 		snippet += "</td></tr>";
 	    }
 	}
-	snippet += "<tr><td><b>value</b>: </td><td>";
+	snippet += "<tr><td><b>value</b>: </td>";
 	if (value != null || value != '') {
             var fixit = true;
-	    if (Array.isArray(att.value))
+	    if (Array.isArray(att.value)) {
+		if (att.attribute_type_id == "biolink:publications")
+                    snippet += "<td>";
+		else
+                    snippet += "<td class='attvalue'>";
+		var br = '';
 		for (var val of att.value) {
-		    snippet += "<br>";
+		    snippet += br;
 		    if (val == null) {
 			snippet += "--NULL--";
 		    }
@@ -2572,7 +2599,7 @@ function show_attributes_1point1(html_div, atts) {
 		    }
 		    else if (val.toString().startsWith("PMID:")) {
 			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
-			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
+			snippet += " class='attvalue' title='View in PubMed' target='_blank'>" + val + "</a>";
 			if (semmeddb_sentences && semmeddb_sentences[0] && semmeddb_sentences[0]["value"][val]) {
 			    snippet += ' : <i>"'+semmeddb_sentences[0]["value"][val]["sentence"]+'"</i>';
 			    snippet += ' ('+semmeddb_sentences[0]["value"][val]["publication date"]+')';
@@ -2580,30 +2607,34 @@ function show_attributes_1point1(html_div, atts) {
 		    }
 		    else if (val.toString().startsWith("DOI:")) {
 			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
-			snippet += " title='View in doi.org' target='_blank'>" + val + "</a>";
+			snippet += " class='attvalue' title='View in doi.org' target='_blank'>" + val + "</a>";
 		    }
 		    else if (val.toString().startsWith("http")) {
 			snippet += "<a href='" + val + "'";
-			snippet += " target='_blank'>" + val + "</a>";
+			snippet += " class='attvalue' target='_blank'>" + val + "</a>";
 		    }
 		    else {
 			snippet += val;
 		    }
+		    br = '<br>';
 		}
+	    }
 	    else if (typeof att.value === 'object') {
-		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
+		snippet += "<td><pre>"+JSON.stringify(att.value,null,2)+"</pre>";
 		fixit = false;
 	    }
             else if (attributes_to_truncate.includes(att.original_attribute_name)) {
+		snippet += "<td class='attvalue'>";
 		snippet += Number(att.value).toPrecision(3);
 		fixit = false;
 	    }
 	    else if (value.toString().startsWith("http")) {
+		snippet += "<td class='attvalue'>";
 		snippet += "<a href='" + value + "'";
 		snippet += " target='_blank'>" + value + "</a>";
 	    }
 	    else
-		snippet += att.value;
+		snippet += "<td class='attvalue'>" + att.value;
 
 	    if (att.attribute_type_id == "biolink:original_edge_information")
                 fixit = false;
@@ -2615,7 +2646,7 @@ function show_attributes_1point1(html_div, atts) {
 	    }
 	}
 	else {
-            snippet += "<i>-- no value! --</i>";
+            snippet += "<td><i>-- empty/no value! --</i>";
 	}
 	snippet += "</td></tr>";
 
@@ -3914,6 +3945,7 @@ function load_meta_knowledge_graph() {
 function retrieveRecentQs() {
     var recents_node = document.getElementById("recent_queries_container");
     recents_node.innerHTML = '';
+    recents_node.className = '';
 
     var qfspan = document.getElementById("qfilter");
     qfspan.innerHTML = '';

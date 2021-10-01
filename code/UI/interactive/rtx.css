@@ -399,7 +399,7 @@ hr {
     animation: 1s working ease-in-out infinite alternate;
 }
 @keyframes working {
-    0%   { background-color: #cc5; }
+    0%   { background-color: #fff; }
     100% { background-color: #f80; }
 }
 
@@ -512,9 +512,6 @@ table.sumtab {
 td {
     vertical-align:top;
 }
-.textanswer {
-    width: 10%;
-}
 .cytograph_controls {
     vertical-align:top;
 }
@@ -556,6 +553,11 @@ td {
 .fieldname {
     font-weight: bold;
     text-transform: capitalize;
+}
+
+.attvalue {
+    font-size: 15px;
+    font-weight: bold;
 }
 
 .questionBox {
