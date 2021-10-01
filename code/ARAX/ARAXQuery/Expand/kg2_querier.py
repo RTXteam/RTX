@@ -141,19 +141,21 @@ class KG2Querier:
                 for edge_key in edge_keys_to_remove:
                     kg.edges_by_qg_id[qedge_key].pop(edge_key, None)
                 # Document that not all answers for this input curie are included
-                node = kg.nodes_by_qg_id[input_qnode_key][node_key]
-                if not node.attributes:
-                    node.attributes = []
-                if not any(attribute.attribute_type_id == "biolink:incomplete_result_set" for attribute in node.attributes):
-                    node.attributes.append(Attribute(attribute_type_id="biolink:incomplete_result_set",  # TODO: request this as actual biolink item?
-                                                     value_type_id="metatype:Boolean",
-                                                     value=True,
-                                                     attribute_source=eu.get_translator_infores_curie("RTX-KG2"),
-                                                     description=f"This attribute indicates that not all nodes/edges "
-                                                                 "returned as answers for this input curie were "
-                                                                 "included in the final answer due to size limitations."
-                                                                 f" {max_edges_per_input_curie} edges for this "
-                                                                 f"input curie were kept."))
+                node = kg.nodes_by_qg_id[input_qnode_key].get(node_key)
+                if node:
+                    if not node.attributes:
+                        node.attributes = []
+                    if not any(attribute.attribute_type_id == "biolink:incomplete_result_set"
+                               for attribute in node.attributes):
+                        node.attributes.append(Attribute(attribute_type_id="biolink:incomplete_result_set",  # TODO: request this as actual biolink item?
+                                                         value_type_id="metatype:Boolean",
+                                                         value=True,
+                                                         attribute_source=eu.get_translator_infores_curie("RTX-KG2"),
+                                                         description=f"This attribute indicates that not all "
+                                                                     f"nodes/edges returned as answers for this input "
+                                                                     f"curie were included in the final answer due to "
+                                                                     f"size limitations. {max_edges_per_input_curie} "
+                                                                     f"edges for this input curie were kept."))
         # Then delete any nodes orphaned by removal of edges
         node_keys_used_by_edges = kg.get_all_node_keys_used_by_edges()
         for qnode_key, nodes in kg.nodes_by_qg_id.items():
