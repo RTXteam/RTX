@@ -58,6 +58,7 @@ from jsonschema.exceptions import ValidationError
 
 query_tracker_reset = ARAXQueryTracker()
 query_tracker_reset.clear_unfinished_entries()
+query_tracker_reset.disconnect()
 
 
 class ARAXQuery:
@@ -67,6 +68,7 @@ class ARAXQuery:
         self.response = None
         self.message = None
         self.rtxConfig = RTXConfiguration()
+        self.query_tracker = None
         
         self.DBManager = ARAXDatabaseManager(live = "Production")
         if self.DBManager.check_versions():
@@ -96,11 +98,31 @@ class ARAXQuery:
                     yield(json.dumps(self.response.messages[i_message])+"\n")
                     i_message += 1
                     idle_ticks = 0.0
+
                 #### Also emit any updates to the query_plan
                 if query_plan_counter < self.response.query_plan['counter']:
                     query_plan_counter = self.response.query_plan['counter']
                     yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
                     idle_ticks = 0.0
+
+                #### Also stream from a file when there is a forked child
+                if self.response.output_file is not None:
+                    if comm_file is None:
+                        comm_file = open(self.response.output_file)
+                        comm_pointer = 0
+                    comm_file.seek(0)
+                    comm_file.seek(comm_pointer)
+                    for line in comm_file:
+                        #eprint(f"--line length={len(line)}, last={line[-3:]}")
+                        if not line.endswith("\n"):
+                            break
+                        comm_pointer += len(line)
+                        if line.startswith('DONE'):
+                            self.response.status = 'DONEOK'
+                            break
+                        else:
+                            yield(line)
+
                 time.sleep(0.2)
                 idle_ticks += 0.2
                 if idle_ticks > 180.0:
@@ -114,11 +136,25 @@ class ARAXQuery:
                 yield(json.dumps(self.response.messages[i_message])+"\n")
                 i_message += 1
 
+            #### If there are any more lines in the logging file, send them too
+            if self.response.output_file is not None:
+                comm_file.seek(0)
+                comm_file.seek(comm_pointer)
+                for line in comm_file:
+                    comm_pointer += len(line)
+                    if line.startswith('DONE'):
+                        self.response.status = 'DONEOK'
+                        break
+                    else:
+                        yield(line)
+            comm_file.close()
+
             # Remove the little DONE flag the other thread used to signal this thread that it is done
             self.response.status = re.sub('DONE,','',self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(self.response.envelope.to_dict()))
+            if self.response.output_file is None:
+                yield(json.dumps(self.response.envelope.to_dict()))
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
@@ -170,7 +206,8 @@ class ARAXQuery:
     ########################################################################################
     def track_query_finish(self):
 
-        query_tracker = ARAXQueryTracker()
+        if self.query_tracker is None:
+            self.query_tracker = ARAXQueryTracker()
         try:
             response_id = self.response.response_id
         except:
@@ -183,8 +220,9 @@ class ARAXQuery:
             'code_description': self.response.message
         }
 
-        query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
-
+        self.query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+        self.query_tracker.disconnect()
+        self.query_tracker = None
 
 
 
@@ -228,9 +266,10 @@ class ARAXQuery:
         #### Create an entry to track this query
         tracker_id = None
         if origin == 'API':
-            query_tracker = ARAXQueryTracker()
+            if self.query_tracker is None:
+                self.query_tracker = ARAXQueryTracker()
             attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': 'test_address' }
-            tracker_id = query_tracker.create_tracker_entry(attributes)
+            tracker_id = self.query_tracker.create_tracker_entry(attributes)
         response.tracker_id = tracker_id
 
         #### Determine a plan for what to do based on the input
@@ -580,6 +619,29 @@ class ARAXQuery:
                 #### The child loses the MySQL connection of the parent, so need to reconnect
                 response_cache.connect()
                 
+            #### Otherwise still try forking
+            else:
+                response.info(f"Forking a child to do the work")
+                response.output_file = os.path.dirname(os.path.abspath(__file__)) + f"/zz_tracker_id_{response.tracker_id}.out"
+                if self.query_tracker is not None:
+                    self.query_tracker.disconnect()
+                    self.query_tracker = None
+                newpid = os.fork()
+                #### The parent returns to tell the caller that work will proceed
+                if newpid > 0:
+                    response.envelope.status = 'Running'
+                    response.envelope.description = 'Forked answering of query underway'
+                    response.info(f"The parent waits for the child to complete")
+                    wait_result = os.waitpid(newpid,0)
+                    response.info(f"Child {newpid} has completed with {wait_result}")
+                    return
+                    #return response
+
+                #### The child continues
+                #### The child loses the MySQL connection of the parent, so need to reconnect
+                response.info(f"The child continues")
+                response_cache.connect()
+                
             #### If there is already a KG with edges, recompute the qg_keys
             if message.knowledge_graph is not None and len(message.knowledge_graph.edges) > 0:
                 resultifier.recompute_qg_keys(response)
@@ -758,7 +820,14 @@ class ARAXQuery:
                     self.send_to_callback(callback, response)
                 else:
                     response.info(f"Processing is complete. Transmitting resulting Message back to client.")
-                    return response
+                    if response.output_file is not None:
+                        with open(response.output_file, 'a+') as outfile:
+                            print(json.dumps(response.envelope.to_dict(),sort_keys=True), file=response.output_handle, flush=True)
+                            print('DONE', file=response.output_handle, flush=True)
+                            response.output_handle.close()
+                    time.sleep(1)
+                    exit()
+                    #return response
 
             #### Else just the id is returned
             else:
