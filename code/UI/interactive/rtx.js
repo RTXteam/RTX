@@ -1,4 +1,5 @@
 var input_qg = { "edges": {}, "nodes": {} };
+var workflow = { 'workflow' : [], 'message' : {} };
 var qgids = [];
 var cyobj = [];
 var cytodata = [];
@@ -57,9 +58,11 @@ function main() {
     UIstate["version"] = checkUIversion(false);
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
-    get_example_questions();
+    //get_example_questions();
     load_meta_knowledge_graph();
     populate_dsl_commands();
+    populate_wf_operations();
+    populate_wfjson();
     display_list('A');
     display_list('B');
     add_status_divs();
@@ -156,7 +159,7 @@ function selectInput (input_id) {
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
 
-    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qid_input','resp_input']) {
+    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qwf_input','qid_input','resp_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -245,7 +248,7 @@ function viewResponse() {
 
 
 function postQuery(qtype,agent) {
-    var queryObj= {};
+    var queryObj = {};
 
     reset_vars();
     var statusdiv = document.getElementById("statusdiv");
@@ -259,6 +262,12 @@ function postQuery(qtype,agent) {
 	var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
 	queryObj["message"] = {};
 	queryObj["operations"] = { "actions": dslArrayOfLines};
+    }
+    else if (qtype == "WorkFlow") {
+        statusdiv.innerHTML = "Posting Workflow JSON.  Awaiting response...";
+	statusdiv.appendChild(document.createElement("br"));
+
+	queryObj = workflow;
     }
     else if (qtype == "JSON") {
 	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via direct JSON input --';
@@ -836,12 +845,7 @@ function getIdStats(id) {
 	document.getElementById("nodedges_"+id).innerHTML = '';
 	document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
-	var wait = document.createElement("span");
-	wait.className = 'loading_cell';
-	var waitbar = document.createElement("span");
-	waitbar.className = 'loading_bar';
-	wait.appendChild(waitbar);
-	document.getElementById("numresults_"+id).appendChild(wait);
+	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
     retrieve_response(providers["ARAX"].url+"/response/"+id,id,"stats");
 }
@@ -885,12 +889,7 @@ function sendId() {
 	document.getElementById("nodedges_"+id).innerHTML = '';
         document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
-	var wait = document.createElement("span");
-	wait.className = 'loading_cell';
-	var waitbar = document.createElement("span");
-	waitbar.className = 'loading_bar';
-	wait.appendChild(waitbar);
-	document.getElementById("numresults_"+id).appendChild(wait);
+	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
 
     retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
@@ -1319,8 +1318,7 @@ function retrieve_response(resp_url, resp_id, type) {
 	if ( xhr.status == 200 ) {
             if (document.getElementById("istrapi_"+resp_id))
 		document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
-	    process_response(resp_url, resp_id, type,JSON.parse(xhr.responseText));
-
+	    process_response(resp_url, resp_id, type, JSON.parse(xhr.responseText));
 	}
 	else if ( xhr.status == 404 ) {
 	    update_response_stats_on_error(resp_id,'N/A',true);
@@ -3293,6 +3291,8 @@ function qg_add_predicate_to_qedge(pred) {
     var id = UIstate.editedgeid;
     if (!id) return;
 
+    document.getElementById("fullpredicatelist").value = '';
+    document.getElementById("fullpredicatelist").blur();
     document.getElementById("qedgepredicatelist").value = '';
     document.getElementById("qedgepredicatelist").blur();
     document.getElementById("qedgepredicatebox").value = '';
@@ -3652,6 +3652,7 @@ function get_qg_id(prefix) {
 }
 
 
+// DSL-RELATED FUNCTIONS
 function populate_dsl_commands() {
     var dsl_node = document.getElementById("dsl_command");
     dsl_node.innerHTML = '';
@@ -3847,6 +3848,381 @@ function abort_dsl() {
 }
 
 
+// WORKFLOW-RELATED FUNCTIONS
+function clearWF() {
+    workflow = { 'workflow' : [], 'message' : {} };
+    populate_wfjson();
+    populate_wflist();
+    abort_wf();
+    document.getElementById("statusdiv").innerHTML = '<br>A blank workflow has been created<br><br>';
+}
+
+function update_wfjson() {
+    var wfj;
+    try {
+	wfj = JSON.parse(document.getElementById("wfJSON").value);
+    }
+    catch(e) {
+	statusdiv.appendChild(document.createElement("br"));
+	if (e.name == "SyntaxError")
+	    statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and resubmit: ";
+	else
+	    statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
+	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+	return;
+    }
+
+    workflow = wfj;
+    populate_wfjson();
+    populate_wflist();
+    abort_wf();
+}
+
+function populate_wfjson() {
+    document.getElementById("wfJSON").value = JSON.stringify(workflow,null,2);
+}
+
+function populate_wflist() {
+    var list_node = document.getElementById("wflist");
+    list_node.innerHTML = '';
+    var count = 0;
+    for (var com of workflow['workflow']) {
+	var item = document.createElement('li');
+	item.className = 'wflistitem';
+	item.draggable = true;
+	item.title = "Click to view/edit operation details";
+	item.dataset.sequence = count;
+	item.innerHTML = com.id;
+	list_node.appendChild(item);
+
+	var items = list_node.getElementsByTagName("li"), current = null;
+
+	item.addEventListener("click", function (ev) {
+	    var operation = workflow['workflow'][this.dataset.sequence]["id"];
+	    show_wf_operation_options(operation, this.dataset.sequence);
+            for (var it of items)
+		it.className = 'wflistitem';
+	    this.className = 'wflistitemselected';
+	});
+
+	item.addEventListener("dragstart", function (ev) {
+	    document.getElementById("wf_operation_form").innerHTML = '';
+	    current = this;
+	    this.className = "wflistitemselected";
+	});
+	item.addEventListener("dragend", function (ev) {
+            populate_wflist();
+	});
+
+	item.addEventListener("dragenter", function (ev) {
+	    if (this != current) { this.style.borderLeft = "15px solid #c40"; }
+	});
+	item.addEventListener("dragleave", function () {
+	    this.style.border = "";
+	    //this.style.border = "1px solid #666";
+	});
+
+	item.addEventListener("dragover", function (evt) {
+	    evt.preventDefault();
+	});
+
+	item.addEventListener("drop", function (evt) {
+	    evt.preventDefault();
+	    current.className = "wflistitem";
+	    if (this != current) {
+		let currentpos = 0, droppedpos = 0;
+		for (let it=0; it<items.length; it++) {
+		    if (current == items[it])
+			currentpos = it;
+		    if (this == items[it])
+			droppedpos = it;
+		}
+		if (currentpos < droppedpos)
+		    this.parentNode.insertBefore(current, this.nextSibling);
+		else
+		    this.parentNode.insertBefore(current, this);
+
+		var tmpwf = [];
+		for (let it=0; it<items.length; it++)
+		    tmpwf.push(workflow['workflow'][items[it].dataset.sequence]);
+		workflow['workflow'] = tmpwf;
+
+		populate_wfjson();
+		populate_wflist();
+	    }
+	});
+
+	count++;
+    }
+
+    if (count == 0) {
+        list_node.appendChild(document.createElement('br'));
+        list_node.appendChild(document.createTextNode("Add workflow operations using the menu on the right, and/or via the JSON import box below."));
+    }
+}
+
+function populate_wf_operations() {
+    var wf_node = document.getElementById("wf_operation");
+    wf_node.innerHTML = '';
+
+    var opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = '';
+    opt.innerHTML = "Workflow Operation&nbsp;&nbsp;&nbsp;&#8675;";
+    wf_node.appendChild(opt);
+
+    for (var com in wf_operations) {
+	opt = document.createElement('option');
+	opt.value = com;
+	opt.innerHTML = com;
+	wf_node.appendChild(opt);
+    }
+}
+
+function show_wf_operation_options(operation, index) {
+    document.getElementById("wf_operation").value = '';
+    document.getElementById("wf_operation").blur();
+    if (index == null)
+	populate_wflist();
+
+    var com_node = document.getElementById("wf_operation_form");
+    com_node.innerHTML = '';
+    com_node.appendChild(document.createElement('hr'));
+
+    var h2 = document.createElement('h2');
+    h2.style.marginBottom = 0;
+    h2.innerHTML = operation;
+    com_node.appendChild(h2);
+
+    if (!wf_operations[operation]) {
+        var span = document.createElement('span');
+	span.className = 'error';
+	span.appendChild(document.createElement('br'));
+        span.appendChild(document.createTextNode("Operation '"+operation+"' not found in workflow operations list!"));
+	com_node.appendChild(span);
+	span.appendChild(document.createElement('br'));
+        com_node.appendChild(get_remove_wf_operation_button(index));
+	return;
+    }
+
+    if (wf_operations[operation].description) {
+	com_node.appendChild(document.createTextNode(wf_operations[operation].description));
+	com_node.appendChild(document.createElement('br'));
+    }
+
+    for (var par in wf_operations[operation].parameters) {
+	com_node.appendChild(document.createElement('br'));
+
+	var span = document.createElement('span');
+	if (wf_operations[operation].parameters[par]['is_required'])
+	    span.className = 'essence';
+	span.appendChild(document.createTextNode(par+":"));
+	com_node.appendChild(span);
+
+	span = document.createElement('span');
+	span.className = 'tiny';
+	span.style.position = "relative";
+	span.style.left = "50px";
+	span.appendChild(document.createTextNode(wf_operations[operation].parameters[par].description));
+	com_node.appendChild(span);
+
+	com_node.appendChild(document.createElement('br'));
+
+	if (wf_operations[operation].parameters[par]['type'] == 'boolean') {
+	    wf_operations[operation].parameters[par]['enum'] = ['true','false'];
+	}
+	else if (wf_operations[operation].parameters[par]['type'] == 'ARAXnode') {
+	    wf_operations[operation].parameters[par]['enum'] = [];
+	    for (const p in predicates) {
+		wf_operations[operation].parameters[par]['enum'].push(p);
+	    }
+	}
+	else if (wf_operations[operation].parameters[par]['type'] == 'ARAXedge') {
+	    wf_operations[operation].parameters[par]['enum'] = [];
+	    for (const p of Object.keys(all_predicates).sort()) {
+		wf_operations[operation].parameters[par]['enum'].push(p);
+	    }
+	}
+
+	var val = '';
+	if (index != null && workflow['workflow'][index]["parameters"]) {
+	    if (workflow['workflow'][index]["parameters"][par])
+		val = workflow['workflow'][index]["parameters"][par];
+	}
+
+	if (wf_operations[operation].parameters[par]['enum']) {
+	    var span = document.createElement('span');
+	    span.className = 'qgselect';
+
+	    var sel = document.createElement('select');
+	    sel.id = "__param__"+par;
+
+	    var opt = document.createElement('option');
+	    opt.style.borderBottom = "1px solid black";
+	    opt.value = '';
+	    opt.innerHTML = "Select&nbsp;&nbsp;&nbsp;&#8675;";
+	    sel.appendChild(opt);
+
+	    for (var vv of wf_operations[operation].parameters[par]['enum']) {
+		opt = document.createElement('option');
+		opt.value = vv;
+		opt.innerHTML = vv;
+		sel.appendChild(opt);
+	    }
+
+	    span.appendChild(sel);
+	    com_node.appendChild(span);
+
+            if (val)
+		sel.value = val;
+	    else if (wf_operations[operation].parameters[par]['default'])
+		sel.value = wf_operations[operation].parameters[par]['default'];
+	}
+	else {
+	    var i = document.createElement('input');
+	    i.id = "__param__"+par;
+	    i.className = 'questionBox';
+	    i.size = 60;
+	    com_node.appendChild(i);
+
+	    if (val)
+		i.value = val;
+	    else if (wf_operations[operation].parameters[par]['default'])
+		i.value = wf_operations[operation].parameters[par]['default'];
+	}
+    }
+
+    com_node.appendChild(document.createElement('br'));
+
+    var button = document.createElement("input");
+    button.className = 'questionBox button';
+    button.type = 'button';
+    button.name = 'action';
+    if (index == null) {
+	button.title = 'Add Operation to Workflow';
+	button.value = 'Add';
+    }
+    else {
+        button.title = 'Save edited Workflow operation';
+	button.value = 'Update';
+    }
+    button.setAttribute('onclick', 'add_wf_operation("'+operation+'",'+index+');');
+    com_node.appendChild(button);
+
+    if (index != null)
+        com_node.appendChild(get_remove_wf_operation_button(index));
+
+    var link = document.createElement("a");
+    link.style.marginLeft = "20px";
+    link.href = 'javascript:abort_wf();';
+    link.appendChild(document.createTextNode(" Cancel "));
+    com_node.appendChild(link);
+}
+
+function get_remove_wf_operation_button(idx) {
+    var button = document.createElement("input");
+    button.className = 'questionBox button';
+    button.type = 'button';
+    button.name = 'action';
+    button.title = 'Remove operation from Workflow';
+    button.value = 'Remove';
+    button.setAttribute('onclick', 'remove_wf_operation('+idx+');');
+    return button;
+}
+
+function remove_wf_operation(idx) {
+    workflow['workflow'].splice(idx, 1);
+    populate_wfjson();
+    populate_wflist();
+    abort_wf();
+}
+
+function add_wf_operation(operation,idx) {
+    var params = document.querySelectorAll('[id^=__param__]');
+
+    var mywf = { "id" : operation };
+
+    var wfparams = {};
+    var has_params = false;
+    for (var p of params) {
+	var val = p.value.trim();
+	if (val.length == 0) continue;
+
+	var pname = p.id.split("__param__")[1];
+	var ptype = wf_operations[operation].parameters[pname]['type'];
+
+	if (ptype == 'array')
+	    val = val.match(/\w+|"[^"]+"/g);
+	else if (ptype == 'number')
+	    val = Number(val);
+	else if (ptype == 'integer')
+	    val = parseInt(val);
+
+	wfparams[pname] = val;
+	has_params = true;
+    }
+
+    if (has_params)
+	mywf['parameters'] = wfparams;
+
+    if (idx == null)
+	workflow['workflow'].push(mywf);
+    else
+	workflow['workflow'][idx] = mywf;
+
+    populate_wfjson();
+    populate_wflist();
+    abort_wf();
+}
+
+function abort_wf() {
+    document.getElementById("wf_operation_form").innerHTML = '';
+    populate_wflist();
+}
+
+async function import_qg2wf(fromqg) {
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.innerHTML = '';
+    statusdiv.appendChild(document.createElement("br"));
+
+    if (fromqg) {
+	var tmpqg = JSON.stringify(input_qg); // preserve helper attributes
+	qg_clean_up(false);
+	workflow['message']['query_graph'] = input_qg;
+        statusdiv.appendChild(document.createTextNode("Imported query_graph into Workflow."));
+	input_qg = JSON.parse(tmpqg);
+	selectInput('qwf');
+    }
+    else {
+	var resp_id = document.getElementById("respId").value.trim();
+	document.getElementById("respId").value = resp_id;
+	if (!resp_id) return;
+
+	statusdiv.appendChild(document.createTextNode("Importing query_graph from response_id = " + resp_id + " ..."));
+	statusdiv.appendChild(document.createElement("br"));
+
+	var button = document.getElementById("ImportQGbutton");
+	var wait = getAnimatedWaitBar(button.offsetWidth+"px");
+	button.parentNode.replaceChild(wait, button);
+
+	var response = await fetch(providers["ARAX"].url + "/response/" + resp_id);
+	var respjson = await response.json();
+
+	if (respjson && respjson.message && respjson.message["query_graph"])
+	    workflow['message']['query_graph'] = respjson.message["query_graph"];
+	else
+	    statusdiv.appendChild(document.createTextNode("No query_graph found in response_id = " + resp_id + "!!"));
+
+        wait.parentNode.replaceChild(button, wait);
+    }
+
+    statusdiv.appendChild(document.createElement("br"));
+    statusdiv.appendChild(document.createElement("br"));
+    populate_wfjson();
+}
+
+
 function get_example_questions() {
     fetch(providers["ARAX"].url + "/exampleQuestions")
         .then(response => response.json())
@@ -3876,7 +4252,6 @@ function get_example_questions() {
 
 function load_meta_knowledge_graph() {
     var allnodes_node = document.getElementById("allnodetypes");
-    allnodes_node.innerHTML = '';
 
     fetch(providers["ARAX"].url + "/meta_knowledge_graph")
 	.then(response => {
@@ -3886,6 +4261,7 @@ function load_meta_knowledge_graph() {
         .then(data => {
 	    //add_to_dev_info("META_KNOWLEDGE_GRAPH",data);
 
+	    allnodes_node.innerHTML = '';
 	    var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.style.borderBottom = "1px solid black";
@@ -3903,6 +4279,15 @@ function load_meta_knowledge_graph() {
 		    predicates[n][o] = [];
 	    }
             for (const e of data.edges) {
+		var bad = false;
+		if (!predicates[e.subject])
+                    bad = e.subject;
+		if (!predicates[e.object])
+		    bad = e.object;
+		if (bad) {
+                    console.warn(bad+" * not in nodes!!");
+		    continue;
+		}
 		predicates[e.subject][e.object].push(e.predicate);
 		all_predicates[e.predicate] = 1;
 	    }
@@ -3932,13 +4317,28 @@ function load_meta_knowledge_graph() {
 	    allnodes_node.appendChild(opt);
 
 	    qg_display_edge_predicates(true);
+
+	    var all_preds_node = document.getElementById("fullpredicatelist");
+	    all_preds_node.innerHTML = '';
+            opt = document.createElement('option');
+	    opt.value = '';
+            opt.innerHTML = "Full List of Predicates&nbsp;("+Object.keys(all_predicates).length+")&nbsp;&nbsp;&nbsp;&#8675;";
+	    all_preds_node.appendChild(opt);
+            for (const p of Object.keys(all_predicates).sort()) {
+		opt = document.createElement('option');
+		opt.value = p;
+		opt.innerHTML = p;
+		all_preds_node.appendChild(opt);
+	    }
 	})
         .catch(error => {
+	    allnodes_node.innerHTML = '';
 	    var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.style.borderBottom = "1px solid black";
 	    opt.innerHTML = "-- Error Loading Node Types --";
 	    allnodes_node.appendChild(opt);
+	    console.error(error);
         });
 }
 
@@ -3949,13 +4349,8 @@ function retrieveRecentQs() {
 
     var qfspan = document.getElementById("qfilter");
     qfspan.innerHTML = '';
-    var wait = document.createElement("span");
-    wait.className = 'loading_cell';
-    wait.style.width = "100px";
+    var wait = getAnimatedWaitBar("100px");
     wait.style.marginRight = "10px";
-    var waitbar = document.createElement("span");
-    waitbar.className = 'loading_bar';
-    wait.appendChild(waitbar);
     qfspan.appendChild(wait);
     qfspan.appendChild(document.createTextNode('Loading...'));
 
@@ -4902,6 +5297,17 @@ function addCheckBox(ele,remove) {
 
     if (remove)
 	var timeout = setTimeout(function() { check.remove(); }, 1500 );
+}
+
+function getAnimatedWaitBar(width) {
+    var wait = document.createElement("span");
+    wait.className = 'loading_cell';
+    if (width)
+	wait.style.width = width;
+    var waitbar = document.createElement("span");
+    waitbar.className = 'loading_bar';
+    wait.appendChild(waitbar);
+    return wait;
 }
 
 function submit_on_enter(ele) {
