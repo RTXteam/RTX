@@ -587,6 +587,7 @@ class ARAXQuery:
             #### Process each action in order
             action_stats = { }
             actions = result.data['actions']
+            action = None
             for action in actions:
                 response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
