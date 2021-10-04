@@ -4,12 +4,13 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=6">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=7">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="config.js"></script>
 <script src="rtx.js"></script>
 <script src="araxi.js"></script>
+<script src="wfoperations.js"></script>
 <script src="//unpkg.com/timelines-chart"></script>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
@@ -81,6 +82,7 @@
   <br>&nbsp;
 <!--  <img src="qtxt.png"  class="slink" id="qtext_link" onclick="selectInput('qtext');"  title="Enter Query using Natural Language"/> -->
   <img src="qg.png"    class="slink" id="qgraph_link" onclick="selectInput('qgraph');" title="Enter Query Graph"/>
+  <img src="qwf.png"   class="slink" id="qwf_link"    onclick="selectInput('qwf');"    title="Enter Query via Workflow"/>
   <img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/>
   <img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
   <img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/>
@@ -128,9 +130,9 @@
     <div class="cytograph_q">
       <div style="height: 100%; width: 100%" id="cy99999"></div>
     </div>
-
     <label><input id="showQGjson" type="checkbox">Show JSON in Status window</label>
-    <a class="qgmenu" href="javascript:qg_clean_up(true);selectInput('qjson');">Edit in JSON pane</a>
+    <a style="margin-left: 150px;" href="javascript:qg_clean_up(true);selectInput('qjson');">Edit in JSON pane</a>
+    <span class="qgmenu qgbutton" style="top:-1px;" title="transfer this query graph to workflow" class="clq" onclick="import_qg2wf(true);">Use in Workflow &#10140;</span>
 
     <div id="nodeeditor" style="top:400px;left:50px;visibility:hidden;" onfocus="qg_select('node');" tabindex="9999" class="alertbox">
       <div style="margin-top:0;" class="statushead">Edit Query Node<span title="Close window" class="clq clwin" onclick="display_qg_popup('node','hide');">&#9587;</span></div>
@@ -204,8 +206,14 @@
 	  <tr ><td style="border:0;">predicates</td><td style="border:0;" id="edgeeditor_pred"></td></tr>
 	  <tr style="background:#eee;"><td style="border:0;"></td>
 	    <td style="border:0;">
-	      <span style="float:right;" class="qgselect">
+	      <span style="margin-right:10px;" class="qgselect">
 		<select id="qedgepredicatelist" onchange="qg_add_predicate_to_qedge(this.value);">
+		  <option style="border-bottom:1px solid black;" value="">Add Predicate&nbsp;&nbsp;&nbsp;&#8675;</option>
+		  <option>...loading</option>
+		</select>
+	      </span>
+	      <span style="float:right;" class="qgselect">
+		<select id="fullpredicatelist" onchange="qg_add_predicate_to_qedge(this.value);">
 		  <option style="border-bottom:1px solid black;" value="">Add Predicate&nbsp;&nbsp;&nbsp;&#8675;</option>
 		  <option>...loading</option>
 		</select>
@@ -257,10 +265,10 @@
       </div>
     </div>
 
-    <br>
+    <br><br>
+    Query submission on this tab submits <b>without</b> a workflow:<br>
     <input type="button" class="questionBox button" name="action" value="Query ARAX" onClick="postQuery('qGraph','ARAX');"/>
     <input type="button" class="questionBox button" name="action" value="Query ARS" onClick="postQuery('qGraph','ARS');"/>
-    &nbsp;&nbsp;&nbsp;<span class="explevel p3" title="new!">New</span>&nbsp;&nbsp;&nbsp;
     <input type="button" class="questionBox button" name="action" value="Query OTHER" onClick="postQuery('qGraph','EXT');" title="Send Query to a non-ARAX TRAPI-supporting API endpoint"/>
     Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
   </div>
@@ -270,10 +278,9 @@
     <span class="tiny" style="position:relative; left:150px;">Enter a <b>full Query object</b> <u>&nbsp;&nbsp;or&nbsp;&nbsp;</u> the value of the <b>query_graph</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
-	    <br/>
+	    <br>
 	    <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('JSON','ARAX');">
 	    <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('JSON','ARS');">
-	    &nbsp;&nbsp;&nbsp;<span class="explevel p3" title="new!">New</span>&nbsp;&nbsp;&nbsp;
 	    <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('JSON','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
 	    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
     </form>
@@ -296,6 +303,44 @@
       <br/>
       <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('DSL','ARAX');">
     </form>
+  </div>
+
+  <div class="inputsection" id="qwf_input">
+    <h3 style="display:inline;">Workflow Input:</h3>
+    <span class="tiny" style="position:relative; left:150px;">Please edit the <b>Query Graph</b> separately;
+          <a href="https://github.com/NCATSTranslator/OperationsAndWorkflows/blob/main/docs/index.md" target="_new">more info here</a></span>
+    <form id="wfForm" name="wfForm" method="post" action="postQuery('WorkFlow','ARAX');">
+      <span class="wfpanel" style="border-right:1px dashed #444;">
+	<ol id="wflist">
+	  <p>Add workflow operations using the menu on the right, and/or via the JSON import box below</p>
+	</ol>
+      </span>
+      <span class="wfpanel">
+	<span class="qgselect">
+	  <select id="wf_operation" onchange="show_wf_operation_options(this.value,null)">
+	    <option style="border-bottom:1px solid black;" value="">Workflow Operation&nbsp;&nbsp;&nbsp;&#8675;</option>
+	  </select>
+	</span>
+	<div id="wf_operation_form"></div>
+      </span>
+    </form>
+    <hr>
+    <h3 style="display:inline;">JSON:</h3>
+    <input type="button" class="questionBox button" style="margin-left:150px;" name="action" value="Import/Update JSON" onClick="update_wfjson();">
+    <span id="importQG" style="margin-left:100px;">
+      Import QueryGraph from response id:
+      <input type="text" autocomplete="off" class="questionBox" id="respId" size="10" maxlength="100"/>
+      <input type="button" class="questionBox button" id="ImportQGbutton" name="action" value="Import QG" onClick="import_qg2wf(false);">
+      <a style="margin-left: 50px;" title="transfer main query graph into workflow" href="javascript:import_qg2wf(true);">Import from QG pane</a>
+    </span>
+    <br clear="all">
+    <textarea class="questionBox" wrap="off" id="wfJSON"></textarea>&nbsp;<span title="clear Workflow" class="clq" onclick="clearWF();">&#9587;</span>
+    <br><br>
+    Submission on this tab submits <b>both a query_graph and a workflow</b>:<br>
+    <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('WorkFlow','ARAX');">
+    <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('WorkFlow','ARS');">
+    <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('WorkFlow','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
+    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
   </div>
 
   <div class="inputsection" id="qid_input">
