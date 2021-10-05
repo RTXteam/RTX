@@ -18,6 +18,7 @@ class WorkflowToARAXi:
                             'filter_kgraph_percentile',
                             'filter_kgraph_discrete_kedge_attribute',
                             'filter_kgraph_continuous_attribute',
+                            'annotate_nodes',
                             'score',
                             'complete_results'}
 
@@ -234,6 +235,15 @@ class WorkflowToARAXi:
         araxi_string = f"filter_results(action=sort_by_score,direction={ascending_or_descending}"
         araxi_string += ")"
         ARAXi.append(araxi_string)
+        return ARAXi
+
+    @staticmethod
+    def __translate_annotate_nodes(parameters, query_graph, response):
+        ARAXi = []
+        attributes = parameters.get('attributes',None)
+        if attributes is None or 'pmids' in attributes:
+            araxi_string = f"overlay(action=add_node_pmids)"
+            ARAXi.append(araxi_string)
         return ARAXi
 
     def translate(self, workflow, query_graph, response):
