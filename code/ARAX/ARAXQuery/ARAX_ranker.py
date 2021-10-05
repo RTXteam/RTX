@@ -188,7 +188,8 @@ class ARAXRanker:
                                           'pValue': 1.0,
                                           'fisher_exact_test_p-value': 0.8,
                                           'Richards-effector-genes': 0.5,
-                                          'feature_coefficient': 1.0
+                                          'feature_coefficient': 1.0,
+                                          'CMAP:similarity score': 1.0
                                           }
         self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
@@ -308,7 +309,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             # else it's all good to proceed
             else:
                 # Fix hyphens or spaces to underscores in names
-                edge_attribute_name = re.sub(r'[- ]','_',edge_attribute_name)
+                edge_attribute_name = re.sub(r'[- \:]','_',edge_attribute_name)
                 # then dispatch to the appropriate function that does the score normalizing to get it to be in [0, 1] with 1 better
                 return getattr(self, '_' + self.__class__.__name__ + '__normalize_' + edge_attribute_name)(value=edge_attribute_value)
 
@@ -493,6 +494,10 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         except RuntimeWarning:  # this is the case when value is 0 (or nearly so), so should award the max value
             normalized_value = 1.
 
+        return normalized_value
+
+    def __normalize_CMAP_similarity_score(self, value):
+        normalized_value = abs(value/100)
         return normalized_value
 
     def __normalize_Richards_effector_genes(self, value):
