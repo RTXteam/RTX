@@ -204,7 +204,6 @@ class WorkflowToARAXi:
         if ("edge_attribute" not in parameters) or ("ascending_or_descending" not in parameters):
             response.error("The operation sort_results_edge_attribute must have the parameters edge_attribute and ascending_or_descending", error_code="KeyError")
         ARAXi = []
-        value = parameters.get('remove_value',None)
         # FW: need to update this to handle qedge_keys and qnode_keys
         araxi_string = f"filter_results(action=sort_by_edge_attribute,edge_attribute={parameters['edge_attribute']},direction={ascending_or_descending}"
         # if "qedge_keys" in parameters:
@@ -216,13 +215,23 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_sort_results_node_attribute(parameters, query_graph, response):
         if ("node_attribute" not in parameters) or ("ascending_or_descending" not in parameters):
-            response.error("The operation sort_by_node_attribute must have the parameters node_attribute and ascending_or_descending", error_code="KeyError")
+            response.error("The operation sort_results_node_attribute must have the parameters node_attribute and ascending_or_descending", error_code="KeyError")
         ARAXi = []
-        value = parameters.get('remove_value',None)
         # FW: need to update this to handle qedge_keys and qnode_keys
         araxi_string = f"filter_results(action=sort_by_node_attribute,node_attribute={parameters['node_attribute']},direction={ascending_or_descending}"
         # if "qnode_keys" in parameters:
         #     araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
+        return ARAXi
+
+    @staticmethod
+    def __translate_sort_results_score(parameters, query_graph, response):
+        if ("ascending_or_descending" not in parameters):
+            response.error("The operation sort_results_score must have the parameter ascending_or_descending", error_code="KeyError")
+        ARAXi = []
+        # FW: need to update this and implement this method
+        araxi_string = f"filter_results(action=sort_by_score,direction={ascending_or_descending}"
         araxi_string += ")"
         ARAXi.append(araxi_string)
         return ARAXi
