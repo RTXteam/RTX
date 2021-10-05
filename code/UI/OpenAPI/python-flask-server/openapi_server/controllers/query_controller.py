@@ -9,9 +9,8 @@ import tempfile
 import time
 from typing import Iterable, Callable
 
-# :DEBUG: vvvvvvvvvvvvvvvvvv
+# this is needed for running the module as a script in "test mode" where the CWD is the "query_controllers" directory:
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/../..")
-# :DEBUG: ^^^^^^^^^^^^^^^^^^
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/../models")
 import response
@@ -77,7 +76,7 @@ def query(request_body):  # noqa: E501
             http_status = resp_obj.http_status
         return (resp_obj, http_status)
 
-# :DEBUG: vvvvvvvvvvvvvvvvvv
+# :TESTING: vvvvvvvvvvvvvvvvvv
 if __name__ == "__main__":
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     query_dict = {
@@ -94,4 +93,4 @@ if __name__ == "__main__":
     }
     for json_str in run_query_dict_in_child_process(query_dict, _run_query_and_return_json_generator_stream):
         print(json_str)
-# :DEBUG: ^^^^^^^^^^^^^^^^^^
+# :TESTING: ^^^^^^^^^^^^^^^^^^
