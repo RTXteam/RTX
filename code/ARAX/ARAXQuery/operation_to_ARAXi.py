@@ -199,6 +199,22 @@ class WorkflowToARAXi:
         ARAXi.append(araxi_string)
         return ARAXi
 
+    @staticmethod
+    def __translate_sort_results_edge_attribute(parameters, query_graph, response):
+        if ("edge_attribute" not in parameters) or ("ascending_or_descending" not in parameters):
+            response.error("The operation sort_results_edge_attribute must have the parameters edge_attribute and ascending_or_descending", error_code="KeyError")
+        ARAXi = []
+        value = parameters.get('remove_value',None)
+        # FW: need to update this to handle qedge_keys and qnode_keys
+        araxi_string = f"filter_results(action=sort_by_edge_attribute,edge_attribute={parameters['edge_attribute']},direction={ascending_or_descending}"
+        # if "qnode_keys" in parameters:
+        #     araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
+        # if "qedge_keys" in parameters:
+        #     araxi_string += f",qedge_keys={parameters['qedge_keys']}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
+        return ARAXi
+
     def translate(self, workflow, query_graph, response):
         ARAXi = []
         for operation in workflow:
