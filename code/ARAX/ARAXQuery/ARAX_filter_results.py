@@ -23,7 +23,8 @@ class ARAXFilterResults:
             'sort_by_node_attribute',
             'limit_number_of_results',
             'sort_by_edge_count',
-            'sort_by_node_count'
+            'sort_by_node_count',
+            'sort_by_score'
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
@@ -151,6 +152,27 @@ limit_number_of_results removes excess results over the specified maximum.
                     """,
                 "parameters": {
                     "max_results": self.max_results_required_info,
+                    "prune_kg": self.prune_kg_info
+                }
+            },
+            "sort_by_score": {
+                "dsl_command": "filter_results(action=sort_by_score)",
+                "description": """
+`sort_by_score` sorts the results by the score property of each result.
+Use cases include:
+
+* return the results with the 10 smallest scores. `filter_results(action=sort_by_score, direction=ascending, max_results=10)`
+* etc. etc.
+                
+You have the option to specify the direction. (e.g. `direction=descending`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
+                    """,
+                'brief_description': """
+sort_by_score sorts the results by the number of edges in the results.
+                    """,
+                "parameters": {
+                    "direction": self.direction_info,
+                    "max_results": self.max_results_info,
                     "prune_kg": self.prune_kg_info
                 }
             },
@@ -594,6 +616,92 @@ sort_by_node_count sorts the results by the number of nodes in the results.
         return response
 
         
+    def __sort_by_score(self, describe=False):
+        """
+        sorts by results scores
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        if message and parameters and hasattr(message, 'results') and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
+            allowable_parameters = {'action': {'sort_by_score'},
+                                    'direction': {'descending', 'd', 'ascending', 'a'},
+                                    'max_results': {float()},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
+                                    }
+        else:
+            allowable_parameters = {'action': {'sort_by_score'},
+                                    'direction': {'descending', 'd', 'ascending', 'a'},
+                                    'max_results': {'the maximum number of results to return'},
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
+                                    }
+
+        # A little function to describe what this thing does
+        if describe:
+            # TODO: add more use cases
+            brief_description = self.command_definitions['sort_by_score']
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        edge_params = self.parameters
+
+        if self.check_results(message):
+            return self.response
+
+        # try to convert the max results to an int
+        if 'max_results' in edge_params:
+            try:
+                edge_params['max_results'] = int(edge_params['max_results'])
+                assert edge_params['max_results'] >= 0
+            except:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                self.response.error(tb, error_code=error_type.__name__)
+                self.response.error(f"parameter 'max_results' must be a non-negative integer")
+            if self.response.status != 'OK':
+                return self.response
+
+        # Make sure only allowable parameters and values have been passed
+        resp = self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK' or resp == -1:
+            return self.response
+
+        if 'direction' not in edge_params:
+            self.response.error(
+                f"Direction must be provided, allowable directions are: {list(allowable_parameters['direction'])}",
+                error_code="UnknownValue")
+        else:
+            value = edge_params['direction']
+            if value in {'descending', 'd'}:
+                edge_params['descending'] = True
+            elif value in {'ascending', 'a'}:
+                edge_params['descending'] = False
+            else:
+                self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter direction, allowable values are: {list(allowable_parameters['direction'])}",
+                    error_code="UnknownValue")
+        if 'prune_kg' not in edge_params:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'true', 'True', 't', 'T'}:
+            edge_params['prune_kg'] = True
+        elif edge_params['prune_kg'] in {'false', 'False', 'f', 'F'}:
+            edge_params['prune_kg'] = False
+        else:
+            value = edge_params['prune_kg']
+            self.response.error(
+                    f"Supplied value {value} is not permitted. In parameter prune_kg, allowable values are: {list(allowable_parameters['prune_kg'])}",
+                    error_code="UnknownValue")
+        if self.response.status != 'OK':
+            return self.response
+
+        # now do the call out to NGD
+        from Filter_Results.sort_results import SortResults
+        SR = SortResults(self.response, self.message, edge_params)
+        response = SR.sort_by_score()
+        return response
+
 
     def __sort_by_edge_count(self, describe=False):
         """
