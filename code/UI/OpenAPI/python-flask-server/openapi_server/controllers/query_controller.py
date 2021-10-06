@@ -34,6 +34,7 @@ def run_query_dict_in_child_process(query_dict: dict,
             json_string_generator = query_runner(query_dict)
             for json_string in json_string_generator:
                 write_fo.write(json_string)
+                write_fo.flush()
         os._exit(0)
     elif pid > 0: # I am the parent process
         os.close(write_fd)
