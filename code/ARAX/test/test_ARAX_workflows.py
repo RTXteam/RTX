@@ -707,6 +707,22 @@ def test_ranker_float_error_ex2():
     result_scores = [x.score for x in message.results]
     assert max(result_scores) == 1
 
+def test_cmap_ranking():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(key=n00,categories=biolink:Gene,ids=HGNC:321)",
+        "add_qnode(categories=biolink:ChemicalEntity)",
+        "add_qedge(subject=n00,object=n01)",
+        "expand(kp=MolePro)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=500)",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    result_scores = {x.score for x in message.results}
+    assert len(result_scores) > 1
+
 @pytest.mark.slow
 def test_ranker_float_error_ex3():
     query={"message": {
