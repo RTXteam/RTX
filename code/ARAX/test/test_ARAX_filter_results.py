@@ -164,7 +164,7 @@ def test_sort_by_node_attribute():
             "expand(edge_key=e00, kp=RTX-KG2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20, qnode_keys=[n01])",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
