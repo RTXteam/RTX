@@ -173,7 +173,7 @@ class ARAXRanker:
                                  'probability_treats', 'paired_concept_frequency',
                                  'observed_expected_ratio', 'chi_square', 'chi_square_pvalue', 'MAGMA-pvalue', 'Genetics-quantile',
                                  'pValue', 'fisher_exact_test_p-value','Richards-effector-genes',
-                                 'feature_coefficient'}
+                                 'feature_coefficient', 'CMAP similarity score'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
@@ -189,7 +189,7 @@ class ARAXRanker:
                                           'fisher_exact_test_p-value': 0.8,
                                           'Richards-effector-genes': 0.5,
                                           'feature_coefficient': 1.0,
-                                          'CMAP:similarity score': 1.0
+                                          'CMAP similarity score': 1.0
                                           }
         self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
