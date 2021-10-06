@@ -57,9 +57,9 @@ class KPSelector:
             else:
                 self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
 
-        kps_to_return = self._select_best_kps(accepting_kps, qg)
+        accepting_kps.add("RTX-KG2")  # Always hit up KG2 for now
 
-        return kps_to_return
+        return accepting_kps
 
     def kp_accepts_single_hop_qg(self, qg: QueryGraph, kp: str) -> Optional[bool]:
         """
@@ -162,29 +162,6 @@ class KPSelector:
                         if any_predicate or predicates.intersection(predicates_map[sub][obj]):
                             return True
             return False
-
-    def _select_best_kps(self, kps_supporting_qedge: Set[str], qg: QueryGraph) -> Set[str]:
-        qedge_key = next(qedge_key for qedge_key in qg.edges)
-        # Apply some special rules to filter down the KPs we'll use for this QG
-        chosen_kps = kps_supporting_qedge
-
-        # Always hit up KG2 for now (it fails fast anyway)
-        chosen_kps.add("RTX-KG2")
-        # Use NGD only if specific predicate is used (regardless of categories)
-        qedge = next(qedge for qedge in qg.edges.values())
-        if qedge.predicates and "biolink:has_normalized_google_distance_with" in qedge.predicates:
-            chosen_kps.add("NGD")
-
-        # If a qnode has a lot of curies, only use select KPs for now
-        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 100):
-            fast_kps = {"RTX-KG2", "GeneticsKP"}
-            chosen_kps = chosen_kps.intersection(fast_kps)
-            for kp in kps_supporting_qedge.difference(chosen_kps):
-                self.log.update_query_plan(qedge_key, kp, "Skipped", "Skipping because there are >100 curies in the expansion")
-
-        # TODO: keep a record of which KPs have been timing out recently, and skip them?
-
-        return chosen_kps
 
     def _load_meta_map(self):
         # This function loads the meta map and updates it as needed
