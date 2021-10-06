@@ -23,13 +23,13 @@
     - [expand(kp=CHP)](#expandkpchp)
     - [expand(kp=DTD)](#expandkpdtd)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
     - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
-    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -44,6 +44,7 @@
     - [filter_results(action=sort_by_edge_attribute)](#filter_resultsactionsort_by_edge_attribute)
     - [filter_results(action=sort_by_node_attribute)](#filter_resultsactionsort_by_node_attribute)
     - [filter_results(action=limit_number_of_results)](#filter_resultsactionlimit_number_of_results)
+    - [filter_results(action=sort_by_score)](#filter_resultsactionsort_by_score)
     - [filter_results(action=sort_by_edge_count)](#filter_resultsactionsort_by_edge_count)
     - [filter_results(action=sort_by_node_count)](#filter_resultsactionsort_by_node_count)
   - [ARAX_resultify](#arax_resultify)
@@ -807,106 +808,28 @@ This command uses ARAX's in-house drug-treats-disease (DTD) database (built from
     - If not specified the default input will be false. 
 
 ## ARAX_overlay
-### overlay(action=fisher_exact_test)
+### overlay(action=add_node_pmids)
 
-`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
-This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
-It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-Use cases include:
-
-* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
-* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
-* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
-
-This p-value is calculated from fisher's exact test based on the contingency table with following format:
-
-|||||
-|-----|-----|-----|-----|
-|                                  | in query node list | not in query node list | row total |
-| connect to certain adjacent node |         a          |           b            |   a+b     |
-| not connect to adjacent node     |         c          |           d            |   c+d     |
-|         column total             |        a+c         |          b+d           |  a+b+c+d  |
-
-The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
-The code is as follows:
-
-```
-_, pvalue = stats.fisher_exact([[a, b], [c, d]])
-```
                     
 
 #### parameters: 
 
-* ##### subject_qnode_key
+* ##### max_num
 
-    - A specific subject query node id (required)
+    - The maximum number of values to return. Enter 'all' to return everything
 
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `N1`, `J2`, and `FET` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (required)
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### rel_edge_key
-
-    - A specific QEdge id of edges connected to both subject nodes and object nodes in message KG (optional, otherwise all edges connected to both subject nodes and object nodes in message KG are considered), eg. 'e01'
-
-    - Acceptable input types: string.
+    - Acceptable input types: int or string.
 
     - This is not a required parameter and may be omitted.
 
-    - `e00` and `e01` are examples of valid inputs.
+    - `all`, `5`, and `50` are examples of valid inputs.
 
-* ##### filter_type
-
-    - If `top_n` is set this indicate the top number (the smallest) of p-values will be returned acording to what is specified in the `value` parameter. If `cutoff` is set then this indicates the p-value cutoff should be used to return results acording to what is specified in the `value` parameter. (optional, otherwise all results returned)
-
-    - Acceptable input types: string or None.
-
-    - *NOTE*:  If this parameter is included then the parameter `value` must also be included for it to function.
-
-    - This is not a required parameter and may be omitted.
-
-    - `top_n`, `cutoff`, and `None` are examples of valid inputs.
-
-    - `top_n`, `cutoff`, and `None` are all possible valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### value
-
-    - If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)
-
-    - Acceptable input types: int or float or None.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
+    - If not specified the default input will be 100. 
 
 ### overlay(action=compute_ngd)
 
@@ -1040,58 +963,6 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - If not specified the default input will be false. 
 
-### overlay(action=compute_jaccard)
-
-`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
-The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
-This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
-This can be used for downstream filtering to concentrate on relevant bioentities.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### start_node_key
-
-    - A curie id specifying the starting node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### intermediate_node_key
-
-    - A curie id specifying the intermediate node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### end_node_key
-
-    - A curie id specifying the ending node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `N1`, `J2`, and `FET` are examples of valid inputs.
-
 ### overlay(action=overlay_exposures_data)
 
 `overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
@@ -1203,28 +1074,158 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `n00` and `n01` are examples of valid inputs.
 
-### overlay(action=add_node_pmids)
+### overlay(action=fisher_exact_test)
 
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
+This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
+It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+Use cases include:
+
+* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
+* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
+* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
+
+This p-value is calculated from fisher's exact test based on the contingency table with following format:
+
+|||||
+|-----|-----|-----|-----|
+|                                  | in query node list | not in query node list | row total |
+| connect to certain adjacent node |         a          |           b            |   a+b     |
+| not connect to adjacent node     |         c          |           d            |   c+d     |
+|         column total             |        a+c         |          b+d           |  a+b+c+d  |
+
+The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
+The code is as follows:
+
+```
+_, pvalue = stats.fisher_exact([[a, b], [c, d]])
+```
+                    
+
+#### parameters: 
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (required)
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (required)
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### rel_edge_key
+
+    - A specific QEdge id of edges connected to both subject nodes and object nodes in message KG (optional, otherwise all edges connected to both subject nodes and object nodes in message KG are considered), eg. 'e01'
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `e01` are examples of valid inputs.
+
+* ##### filter_type
+
+    - If `top_n` is set this indicate the top number (the smallest) of p-values will be returned acording to what is specified in the `value` parameter. If `cutoff` is set then this indicates the p-value cutoff should be used to return results acording to what is specified in the `value` parameter. (optional, otherwise all results returned)
+
+    - Acceptable input types: string or None.
+
+    - *NOTE*:  If this parameter is included then the parameter `value` must also be included for it to function.
+
+    - This is not a required parameter and may be omitted.
+
+    - `top_n`, `cutoff`, and `None` are examples of valid inputs.
+
+    - `top_n`, `cutoff`, and `None` are all possible valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### value
+
+    - If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)
+
+    - Acceptable input types: int or float or None.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
+### overlay(action=compute_jaccard)
+
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
+The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
+This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
+This can be used for downstream filtering to concentrate on relevant bioentities.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
 #### parameters: 
 
-* ##### max_num
+* ##### start_node_key
 
-    - The maximum number of values to return. Enter 'all' to return everything
+    - A curie id specifying the starting node
 
-    - Acceptable input types: int or string.
+    - Acceptable input types: string.
 
-    - This is not a required parameter and may be omitted.
+    - This is a required parameter and must be included.
 
-    - `all`, `5`, and `50` are examples of valid inputs.
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
 
-    - If not specified the default input will be 100. 
+* ##### intermediate_node_key
+
+    - A curie id specifying the intermediate node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### end_node_key
+
+    - A curie id specifying the ending node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
 
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_predicate)
@@ -1987,6 +1988,54 @@ Use cases include:
     - Acceptable input types: int.
 
     - This is a required parameter and must be included.
+
+    - `5`, `10`, and `50` are examples of valid inputs.
+
+    - The values for this parameter can range from a minimum value of 0 to a maximum value of inf.
+
+* ##### prune_kg
+
+    - This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG.
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be true. 
+
+### filter_results(action=sort_by_score)
+
+`sort_by_score` sorts the results by the score property of each result.
+Use cases include:
+
+* return the results with the 10 smallest scores. `filter_results(action=sort_by_score, direction=ascending, max_results=10)`
+* etc. etc.
+                
+You have the option to specify the direction. (e.g. `direction=descending`)
+Also, you have the option of limiting the number of results returned. (e.g. via `max_results=<a non-negative integer>`
+                    
+
+#### parameters: 
+
+* ##### direction
+
+    - The direction in which to order results. (ascending or descending)
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `descending`, `d`, `ascending`, and `a` are all possible valid inputs.
+
+* ##### max_results
+
+    - The maximum number of results to return. If not provided all results will be returned.
+
+    - Acceptable input types: int.
+
+    - This is not a required parameter and may be omitted.
 
     - `5`, `10`, and `50` are examples of valid inputs.
 
