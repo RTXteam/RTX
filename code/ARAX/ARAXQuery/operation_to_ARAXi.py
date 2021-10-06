@@ -18,6 +18,7 @@ class WorkflowToARAXi:
                             'filter_kgraph_percentile',
                             'filter_kgraph_discrete_kedge_attribute',
                             'filter_kgraph_continuous_attribute',
+                            'sort_results_score',
                             'annotate_nodes',
                             'score',
                             'complete_results'}
@@ -231,7 +232,6 @@ class WorkflowToARAXi:
         if ("ascending_or_descending" not in parameters):
             response.error("The operation sort_results_score must have the parameter ascending_or_descending", error_code="KeyError")
         ARAXi = []
-        # FW: need to update this and implement this method
         araxi_string = f"filter_results(action=sort_by_score,direction={ascending_or_descending}"
         araxi_string += ")"
         ARAXi.append(araxi_string)
