@@ -135,7 +135,7 @@ def test_warning():
     assert response.status == 'OK'
     assert len(message.results) == 20
 
-def test_sort():
+def test_sort_by_node_attribute():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:1227, key=n00)",
@@ -152,6 +152,24 @@ def test_sort():
     assert len(message.results) == 20
     # add something to test if the results are assending and the correct numbers
 
+def test_sort_by_score():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=DOID:4337, key=n00)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
+            "overlay(action=add_node_pmids, max_num=15)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_score, direction=a, max_results=20)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 20
+    result_scores = [x.score for x in message.results]
+    assert result_scores == sorted(result_scores)
+    assert max(result_scores) < 1
     
 @pytest.mark.external
 def test_issue1506():
