@@ -19,6 +19,8 @@ class WorkflowToARAXi:
                             'filter_kgraph_discrete_kedge_attribute',
                             'filter_kgraph_continuous_attribute',
                             'sort_results_score',
+                            'sort_results_edge_attribute',
+                            'sort_results_node_attribute',
                             'annotate_nodes',
                             'score',
                             'complete_results'}
@@ -208,8 +210,8 @@ class WorkflowToARAXi:
         ARAXi = []
         # FW: need to update this to handle qedge_keys and qnode_keys
         araxi_string = f"filter_results(action=sort_by_edge_attribute,edge_attribute={parameters['edge_attribute']},direction={ascending_or_descending}"
-        # if "qedge_keys" in parameters:
-        #     araxi_string += f",qedge_keys={parameters['qedge_keys']}"
+        if "qedge_keys" in parameters and parameters['qedge_keys'] is not None:
+            araxi_string += f",qedge_keys={parameters['qedge_keys']}"
         araxi_string += ")"
         ARAXi.append(araxi_string)
         return ARAXi
@@ -221,8 +223,8 @@ class WorkflowToARAXi:
         ARAXi = []
         # FW: need to update this to handle qedge_keys and qnode_keys
         araxi_string = f"filter_results(action=sort_by_node_attribute,node_attribute={parameters['node_attribute']},direction={ascending_or_descending}"
-        # if "qnode_keys" in parameters:
-        #     araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
+        if "qnode_keys" in parameters and parameters['qnode_keys'] is not None:
+            araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
         araxi_string += ")"
         ARAXi.append(araxi_string)
         return ARAXi
