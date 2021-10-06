@@ -57,8 +57,6 @@ class KPSelector:
             else:
                 self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
 
-        accepting_kps.add("RTX-KG2")  # Always hit up KG2 for now
-
         return accepting_kps
 
     def kp_accepts_single_hop_qg(self, qg: QueryGraph, kp: str) -> Optional[bool]:
