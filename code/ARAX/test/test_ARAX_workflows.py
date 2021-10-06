@@ -707,6 +707,7 @@ def test_ranker_float_error_ex2():
     result_scores = [x.score for x in message.results]
     assert max(result_scores) == 1
 
+@pytest.mark.external
 def test_cmap_ranking():
     query = {"operations": {"actions": [
         "create_message",
