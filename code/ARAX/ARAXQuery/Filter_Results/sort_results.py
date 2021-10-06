@@ -198,6 +198,9 @@ class SortResults:
             # iterate over the nodes find the attribute values
             for key, node in self.message.knowledge_graph.nodes.items():  # iterate over the nodes
                 node_values[key] = {'value': None, 'category': node.categories}
+                if 'qnode_keys' in params and params['qnode_keys'] is not None and len(params['qnode_keys']) > 0:
+                    if key not in params['qnode_keys']:
+                        continue
                 if hasattr(node, 'attributes'):  # check if they have attributes
                     if node.attributes:  # if there are any node attributes
                         for attribute in node.attributes:  # for each attribute
