@@ -65,6 +65,9 @@ class SortResults:
             for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
                 edge_relation = None
                 edge_values[key] = {'value': None, 'relation': None}
+                if 'qedge_keys' in params and params['qedge_keys'] is not None and len(params['qedge_keys']) > 0:
+                    if key not in params['qedge_keys']:
+                        continue
                 if hasattr(edge, 'attributes'):  # check if they have attributes
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute

@@ -84,6 +84,20 @@ class ARAXFilterResults:
             "description": "This indicates if the Knowledge Graph (KG) should be pruned so that any nodes or edges not appearing in the results are removed from the KG.",
             "default": "true"
         }
+        self.qnode_key_info = {
+            "is_required": False,
+            "examples": [['n01', 'n02'],[]],
+            "type": "list",
+            "description": "This indicates if you only want to sort by nodes corresponding to one of the listed qnode_keys." +\
+            "If not provided the qnode_key will not be considered when sorting."
+        }
+        self.qedge_key_info = {
+            "is_required": False,
+            "examples": [['e00', 'e01'],[]],
+            "type": "list",
+            "description": "This indicates if you only want to sort by edges corresponding to one of the listed qedge_keys." +\
+            "If not provided the qedge_key will not be considered when sorting."
+        }
 
         #command descriptions
         self.command_definitions = {
@@ -109,7 +123,8 @@ Edge attributes are a list of additional attributes for an edge.
                     "edge_relation": self.edge_relation_info,
                     "direction": self.direction_info,
                     "max_results": self.max_results_info,
-                    "prune_kg": self.prune_kg_info
+                    "prune_kg": self.prune_kg_info,
+                    "qedge_keys": self.qedge_key_info
                 }
             },
             "sort_by_node_attribute": {
@@ -134,7 +149,8 @@ Node attributes are a list of additional attributes for an node.
                     "node_category": self.node_type_info,
                     "direction": self.direction_info,
                     "max_results": self.max_results_info,
-                    "prune_kg": self.prune_kg_info
+                    "prune_kg": self.prune_kg_info,
+                    "qnode_keys": self.qnode_key_info
                 }
             },
             "limit_number_of_results": {
@@ -276,9 +292,16 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                 self.response.error(
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
+                return -1
+            elif type(item) == list or type(item) == set:
+                for item_val in item:
+                    if item_val not in allowable_parameters[key]:
+                        self.response.warning(
+                            f"Supplied value {item_val} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
+                        return -1
             elif item not in allowable_parameters[key]:
                 if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
-                    return
+                    continue
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.warning(
                         f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
@@ -356,7 +379,8 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                                     'edge_relation': virtual_relation_labels,
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()},
-                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
@@ -364,7 +388,8 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                                     'edge_relation': {'an edge relation'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {'the maximum number of results to return'},
-                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qedge_keys': {'A list of the specific qedge_keys you want to consider when filtering'}
                                     }
 
         # A little function to describe what this thing does
@@ -374,6 +399,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
             return allowable_parameters
 
         edge_params = self.parameters
+
 
         if self.check_results(message):
             return self.response
@@ -392,6 +418,8 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                 return self.response
 
         # Make sure only allowable parameters and values have been passed
+        print(self.parameters)
+        print(allowable_parameters)
         resp = self.check_params(allowable_parameters)
         # return if bad parameters have been passed
         if self.response.status != 'OK' or resp == -1:
@@ -459,7 +487,8 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                                     'node_category': set([t for x in self.message.knowledge_graph.nodes.values() for t in x.categories]),
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()},
-                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_node_attribute'},
@@ -467,7 +496,8 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                                     'node_category': {'a node category'},
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {'the maximum number of results to return'},
-                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
+                                    'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_keys': {'A list of the specific qnode_keys you wish to consider when sorting'}
                                     }
 
         # A little function to describe what this thing does
