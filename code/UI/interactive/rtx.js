@@ -58,7 +58,6 @@ function main() {
     UIstate["version"] = checkUIversion(false);
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
-    //get_example_questions();
     load_meta_knowledge_graph();
     populate_dsl_commands();
     populate_wf_operations();
@@ -159,7 +158,7 @@ function selectInput (input_id) {
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
 
-    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qwf_input','qid_input','resp_input']) {
+    for (var s of ['qgraph_input','qjson_input','qdsl_input','qwf_input','qid_input','resp_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -185,11 +184,6 @@ function pasteId(id) {
     document.getElementById("idForm").elements["idText"].value = id;
     document.getElementById("qid").value = '';
     document.getElementById("qid").blur();
-}
-function pasteQuestion(question) {
-    document.getElementById("questionForm").elements["questionText"].value = question;
-    document.getElementById("qqq").value = '';
-    document.getElementById("qqq").blur();
 }
 function pasteExample(type) {
     if (type == "DSL") {
@@ -255,7 +249,6 @@ function postQuery(qtype,agent) {
 
     // assemble QueryObject
     if (qtype == "DSL") {
-	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via DSL input --';
 	statusdiv.innerHTML = "Posting DSL.  Looking for answer...";
 	statusdiv.appendChild(document.createElement("br"));
 
@@ -270,7 +263,6 @@ function postQuery(qtype,agent) {
 	queryObj = workflow;
     }
     else if (qtype == "JSON") {
-	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via direct JSON input --';
 	statusdiv.innerHTML = "Posting JSON.  Looking for answer...";
 	statusdiv.appendChild(document.createElement("br"));
 
@@ -299,7 +291,6 @@ function postQuery(qtype,agent) {
 	qg_new(false,false);
     }
     else {  // qGraph
-	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via graph --';
 	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
         statusdiv.appendChild(document.createElement("br"));
 
@@ -896,101 +887,6 @@ function sendId() {
     openSection('query');
 }
 
-function sendQuestion(e) {
-    reset_vars();
-    if (cyobj[99999]) {cyobj[99999].elements().remove();}
-    input_qg = { "edges": {}, "nodes": {} };
-
-    var bypass_cache = true;
-    if (document.getElementById("useCache").checked) {
-	bypass_cache = false;
-    }
-
-    // collect the form data while iterating over the inputs
-    var q = document.getElementById("questionForm").elements["questionText"].value;
-    var question = q.replace("[A]", get_list_as_string("A"));
-    question = question.replace("[B]", get_list_as_string("B"));
-    question = question.replace("[]", get_list_as_string("A"));
-    question = question.replace(/\$\w+_list/, get_list_as_string("A"));  // e.g. $protein_list
-    var data = { 'text': question, 'language': 'English', 'bypass_cache' : bypass_cache };
-    document.getElementById("statusdiv").innerHTML = "Interpreting your question...";
-    document.getElementById("devdiv").innerHTML = " (bypassing cache : " + bypass_cache + ")";
-
-    sesame('openmax',statusdiv);
-
-    // construct an HTTP request
-    var xhr = new XMLHttpRequest();
-    xhr.open("post", providers["ARAX"].url + "/translate", true);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-
-    // send the collected data as JSON
-    xhr.send(JSON.stringify(data));
-
-    xhr.onloadend = function() {
-	if ( xhr.status == 200 ) {
-	    var jsonObj = JSON.parse(xhr.responseText);
-	    add_to_dev_info("Posted to TRANSLATE",jsonObj);
-
-	    if ( jsonObj.query_type_id && jsonObj.terms ) {
-		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>Looking for answer...";
-
-		sesame('openmax',statusdiv);
-		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post",  providers["ARAX"].url + "/query", true);
-		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-
-                //var queryObj = { "message" : jsonObj };
-                var queryObj = jsonObj;
-		queryObj.submitter = UIstate["submitter"];
-                queryObj["message"] = { };
-                queryObj.bypass_cache = bypass_cache;
-                //queryObj.max_results = 100;
-
-		add_to_dev_info("Posted to QUERY",queryObj);
-		xhr2.send(JSON.stringify(queryObj));
-		xhr2.onloadend = function() {
-		    if ( xhr2.status == 200 ) {
-			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
-
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br><br><i>"+jsonObj2["description"]+"</i><br>";
-			sesame('openmax',statusdiv);
-
-			render_message(jsonObj2,true);
-		    }
-		    else if ( jsonObj.message ) { // STILL APPLIES TO 0.9??  TODO
-			document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+jsonObj.message+"</span>";
-			sesame('openmax',statusdiv);
-		    }
-		    else {
-			document.getElementById("statusdiv").innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr2.status+")</span>";
-			document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<br>"+xhr2.responseText;
-			sesame('openmax',statusdiv);
-		    }
-
-		};
-	    }
-	    else {
-		if ( jsonObj.message ) {
-		    document.getElementById("statusdiv").innerHTML = jsonObj.message;
-		}
-		else if ( jsonObj.error_message ) {
-		    document.getElementById("statusdiv").innerHTML = jsonObj.error_message;
-		}
-		else {
-		    document.getElementById("statusdiv").innerHTML = "ERROR: Unknown error. No message returned.";
-		}
-		sesame('openmax',statusdiv);
-	    }
-
-	}
-	else { // responseText
-	    document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+xhr.statusText+" ("+xhr.status+")</span>";
-	    sesame('openmax',statusdiv);
-	}
-    };
-
-}
 
 function process_ars_message(ars_msg, level) {
     if (level > 5)
@@ -1143,13 +1039,8 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	return;
     }
 
-    if (jsonObj2["restated_question"]) {
+    if (jsonObj2["restated_question"])
 	statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
-	document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
-    }
-    else {
-	document.getElementById("questionForm").elements["questionText"].value = "";
-    }
 
     jsonObj2.araxui_response = resp_id;
 
@@ -1337,13 +1228,6 @@ function retrieve_response(resp_url, resp_id, type) {
 
 }
 
-
-// DELETE_LATER::
-function render_message(respObj,dispjson) {
-    var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("DEPRECATED FUNCTION!  UPDATE ME..."));
-    sesame('openmax',statusdiv);
-}
 
 function render_response_stats(respObj) {
     if (!document.getElementById("numresults_"+respObj.araxui_response)) return;
@@ -2085,7 +1969,7 @@ function process_graph(gne,gid,trapi) {
 	var gnode = Object.create(gne['nodes'][id]); // make a copy!
 
 	gnode.parentdivnum = gid;   // helps link node to div when displaying node info on click
-	gnode.trapiversion = trapi; // support multiple versions...?
+	gnode.trapiversion = trapi; // deprecate??
 
         if (!gnode.fulltextname) {
 	    if (gnode.name)
@@ -2479,10 +2363,7 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	if (this.data('trapiversion').startsWith("1.0"))
-	    show_attributes_1point0(div, this.data('attributes'));
-	else
-	    show_attributes_1point1(div, this.data('attributes'));
+	show_attributes_1point1(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2535,16 +2416,12 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-        if (this.data('trapiversion').startsWith("1.0"))
-	    show_attributes_1point0(div, this.data('attributes'));
-	else
-	    show_attributes_1point1(div, this.data('attributes'));
+	show_attributes_1point1(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
     cytodata[i] = null;
 }
-
 
 function show_attributes_1point1(html_div, atts) {
     if (atts == null)  { return; }
@@ -2650,88 +2527,7 @@ function show_attributes_1point1(html_div, atts) {
 
         attshtml += snippet;
     }
-    html_div.innerHTML+= attshtml;
-}
-
-function show_attributes_1point0(html_div, atts) {
-    if (atts == null)  { return; }
-
-    var linebreak = "<hr>";
-
-    // always display iri first
-    var iri = atts.filter(a => a.name == "iri");
-
-    for (var att of iri.concat(atts.filter(a => a.name != "iri"))) {
-	var snippet = linebreak;
-
-	if (att.name != null) {
-	    snippet += "<b>" + att.name + "</b>";
-	    if (att.type != null)
-		snippet += " (" + att.type + ")";
-	    snippet += ": ";
-	}
-	if (att.url != null)
-	    snippet += "<a target='_blank' href='" + att.url + "'>";
-
-
-	if (att.value != null) {
-	    var fixit = true;
-            // truncate floats
-	    if (attributes_to_truncate.includes(att.name)) {
-		snippet += Number(att.value).toPrecision(3);
-		fixit = false;
-	    }
-            else if (Array.isArray(att.value))
-		for (var val of att.value) {
-                    snippet += "<br>&nbsp;&nbsp;&nbsp;";
-		    if (val == null) {
-			snippet += "--NULL--";
-		    }
-		    else if (val.toString().startsWith("PMID:")) {
-			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
-			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
-		    }
-		    else if (val.toString().startsWith("DOI:")) {
-			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
-			snippet += " title='View in doi.org' target='_blank'>" + val + "</a>";
-		    }
-		    else if (val.toString().startsWith("http")) {
-                        snippet += "<a href='" + val + "'";
-                        snippet += " target='_blank'>" + val + "</a>";
-		    }
-		    else {
-			snippet += val;
-		    }
-		}
-	    else if (typeof att.value === 'object') {
-		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
-		fixit = false;
-	    }
-	    else
-		snippet += att.value;
-
-	    if (fixit) {
-		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
-		snippet = snippet.toString().replace(/---/g,'<br>---');
-		snippet = snippet.toString().replace( /;;/g,'<br>;;');
-	    }
-	}
-	else if (att.url != null)
-	    snippet += att.url;
-	else
-	    snippet += " n/a ";
-
-
-	if (att.url != null)
-	    snippet += "</a>";
-
-        if (att.source != null)
-	    snippet += " [src:" + att.source + "]";
-
-	html_div.innerHTML+= snippet;
-	linebreak = "<br>";
-    }
-
+    html_div.innerHTML += attshtml;
 }
 
 
@@ -2868,6 +2664,9 @@ function qg_node(id,render) {
 	    else if (input_qg.nodes[id]['categories'].length > 2)
 		daname = "[ "+daname+" +"+(input_qg.nodes[id]['categories'].length - 1)+" ]";
 	}
+
+	if (input_qg.nodes[id].is_set)
+	    daname = "{ "+daname+" }";
 
 	if (daname != cyobj[99999].getElementById(id).data('name'))
 	    cyobj[99999].getElementById(id).data('name',daname);
@@ -3047,6 +2846,29 @@ function qg_remove_curie_from_qnode(cur) {
     }
 
     qg_node(id);
+}
+
+function qg_add_curielist_to_qnode(list) {
+    var listId = list.split("LIST_")[1];
+    var id = UIstate.editnodeid;
+    if (!id) return;
+
+    var added = 0;
+    for (var li in listItems[listId]) {
+	if (listItems[listId].hasOwnProperty(li) && listItems[listId][li] == 1) {
+            if (!input_qg.nodes[id]['ids'].includes(entities[li].curie)) {
+		input_qg.nodes[id]['ids'].push(entities[li].curie);
+		input_qg.nodes[id]['_names'].push(entities[li].name);
+		added++;
+	    }
+	    qg_add_category_to_qnode(entities[li].type);
+	}
+    }
+
+    document.getElementById("statusdiv").innerHTML = "<p>Added <b>"+added+"</b> curies to node <b>"+id+"</b> from list <i>"+listId+"</i></p>";
+
+    cyobj[99999].reset();
+    cylayout(99999,"breadthfirst");
 }
 
 function qg_add_category_to_qnode(cat) {
@@ -3331,6 +3153,13 @@ function qg_update_qedge() {
     cylayout(99999,"breadthfirst");
 }
 
+function qg_edge_swap_obj_subj() {
+    var tmp = document.getElementById('edgeeditor_subj').value;
+    document.getElementById('edgeeditor_subj').value = document.getElementById('edgeeditor_obj').value;
+    document.getElementById('edgeeditor_obj').value = tmp;
+    qg_update_qedge();
+}
+
 function qg_edit(msg) {
     cytodata[99999] = [];
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
@@ -3509,17 +3338,6 @@ function qg_display_edge_predicates(all) {
 }
 
 // unused at the moment
-function add_nodeclass_to_query_graph(nodetype) {
-    document.getElementById("allnodetypes").value = '';
-    document.getElementById("allnodetypes").blur();
-
-    if (nodetype.startsWith("LIST_"))
-	add_nodelist_to_query_graph(nodetype);
-    else
-	add_nodetype_to_query_graph(nodetype);
-
-}
-// unused at the moment
 function add_nodetype_to_query_graph(nodetype) {
     document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
     var qgid = get_qg_id('n');
@@ -3543,41 +3361,11 @@ function add_nodetype_to_query_graph(nodetype) {
 
     input_qg.nodes[qgid] = tmpdata;
 }
-// unused at the moment
-function add_nodelist_to_query_graph(nodetype) {
-    var list = nodetype.split("LIST_")[1];
-
-    document.getElementById("statusdiv").innerHTML = "<p>Added a set of nodes from list <i>"+list+"</i></p>";
-    var qgid = get_qg_id('n');
-
-    cyobj[99999].add( {
-        "data" : { "id"   : qgid,
-		   "name" : nodetype,
-		   "type" : "set",
-		   "parentdivnum" : 99999 }
-    } );
-    cyobj[99999].reset();
-    cylayout(99999,"breadthfirst");
-
-    var tmpdata = {};
-    tmpdata["ids"]    = get_list_as_curie_array(list);
-    tmpdata["is_set"] = true;
-    tmpdata["_name"]  = nodetype;
-    tmpdata["_desc"]  = "Set of nodes from list " + list;
-
-    input_qg.nodes[qgid] = tmpdata;
-}
-
 
 function qg_clean_up(xfer) {
     // clean up non-TRAPI attributes and null arrays
     for (var nid in input_qg.nodes) {
 	var gnode = input_qg.nodes[nid];
-
-	if (gnode.is_set) {
-	    var list = gnode["_name"].split("LIST_")[1];
-	    gnode.ids = get_list_as_curie_array(list);
-	}
 
 	for (var att of ["_names","_desc"] ) {
 	    if (gnode.hasOwnProperty(att))
@@ -3891,7 +3679,7 @@ function populate_wflist() {
 	var item = document.createElement('li');
 	item.className = 'wflistitem';
 	item.draggable = true;
-	item.title = "Click to view/edit operation details";
+	item.title = "CLICK to view/edit operation details; DRAG to reorder list";
 	item.dataset.sequence = count;
 	item.innerHTML = com.id;
 	list_node.appendChild(item);
@@ -3966,6 +3754,8 @@ function populate_wf_operations() {
     var wf_node = document.getElementById("wf_operation");
     wf_node.innerHTML = '';
 
+    var arax = document.getElementById("arax_only").checked;
+
     var opt = document.createElement('option');
     opt.style.borderBottom = "1px solid black";
     opt.value = '';
@@ -3976,6 +3766,8 @@ function populate_wf_operations() {
 	opt = document.createElement('option');
 	opt.value = com;
 	opt.innerHTML = com;
+	if (arax && !wf_operations[com]['in_arax'])
+	    opt.disabled = true;
 	wf_node.appendChild(opt);
     }
 }
@@ -3993,6 +3785,8 @@ function show_wf_operation_options(operation, index) {
     var h2 = document.createElement('h2');
     h2.style.marginBottom = 0;
     h2.innerHTML = operation;
+    if (!wf_operations[operation]['in_arax'])
+	h2.innerHTML += " *";
     com_node.appendChild(h2);
 
     if (!wf_operations[operation]) {
@@ -4006,6 +3800,10 @@ function show_wf_operation_options(operation, index) {
 	return;
     }
 
+    if (!wf_operations[operation]['in_arax']) {
+	com_node.appendChild(document.createTextNode('* Please note that this workflow operation is not supported in ARAX, though it may be in other actors'));
+        com_node.appendChild(document.createElement('br'));
+    }
     if (wf_operations[operation].description) {
 	com_node.appendChild(document.createTextNode(wf_operations[operation].description));
 	com_node.appendChild(document.createElement('br'));
@@ -4220,33 +4018,6 @@ async function import_qg2wf(fromqg) {
     statusdiv.appendChild(document.createElement("br"));
     statusdiv.appendChild(document.createElement("br"));
     populate_wfjson();
-}
-
-
-function get_example_questions() {
-    fetch(providers["ARAX"].url + "/exampleQuestions")
-        .then(response => response.json())
-        .then(data => {
-	    //add_to_dev_info("EXAMPLE Qs",data);
-
-	    var qqq = document.getElementById("qqq");
-	    qqq.innerHTML = '';
-
-            var opt = document.createElement('option');
-	    opt.value = '';
-	    opt.style.borderBottom = "1px solid black";
-	    opt.innerHTML = "Example Questions&nbsp;&nbsp;&nbsp;&#8675;";
-	    qqq.appendChild(opt);
-
-	    for (var exq of data) {
-		opt = document.createElement('option');
-		opt.value = exq.question_text;
-		opt.innerHTML = exq.query_type_id+": "+exq.question_text;
-		qqq.appendChild(opt);
-	    }
-	})
-        .catch(error => { //ignore...
-	});
 }
 
 
@@ -4775,7 +4546,7 @@ function display_list(listId) {
 	document.getElementById("menunumlistitems"+listId).classList.add("numold");
     }
 
-    listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a query parameter.<br><br>" + listhtml + "<hr>Enter new list item or items (space and/or comma-separated; use &quot;double quotes&quot; for multi-word items):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
+    listhtml = "Items in this List can be compared to those in the other List, or added to a node in the query_graph via the bulk import functionality.<br><br>" + listhtml + "<hr>Enter new list item or items (space and/or comma-separated; use &quot;double quotes&quot; for multi-word items):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
 //    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
@@ -4926,6 +4697,7 @@ function compare_lists(uniqueonly) {
 }
 
 
+// unused at the moment
 function get_list_as_string(listId) {
     var liststring = '[';
     var comma = '';
@@ -4938,8 +4710,7 @@ function get_list_as_string(listId) {
     liststring += ']';
     return liststring;
 }
-
-
+// unused at the moment
 function get_list_as_curie_array(listId) {
     var carr = [];
     for (var li in listItems[listId])
@@ -4966,7 +4737,7 @@ function enter_item(ele, listId) {
 
 function add_new_to_list(listId) {
     //var itemarr = document.getElementById("newlistitem"+listId).value.split(/[\t ,]/);
-    var itemarr = document.getElementById("newlistitem"+listId).value.match(/\w+|"[^"]+"/g);
+    var itemarr = document.getElementById("newlistitem"+listId).value.match(/\w+:\w+|"[^"]+"/g);
 
     document.getElementById("newlistitem"+listId).value = '';
     for (var item in itemarr) {

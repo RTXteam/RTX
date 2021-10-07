@@ -98,7 +98,7 @@ def test_lookup():
                             "CHEBI:45783"
                         ],
                         "categories": [
-                            "biolink:ChemicalSubstance"
+                            "biolink:SmallMolecule"
                         ]
                     }
                 },
