@@ -1,6 +1,6 @@
 # use ubuntu 18.04
 dist: bionic
-arch: ppc64le
+# arch: ppc64le
 language: python
 # using python version 3.7
 python:
