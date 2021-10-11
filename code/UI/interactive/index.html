@@ -333,9 +333,9 @@
       </select>
     </div>
 
-    <form id="idForm" name="idForm" method="post" action="javascript:sendId();">
+    <form id="idForm" name="idForm" method="post" action="javascript:sendId(false);">
       <input type="text" autocomplete="off" class="questionBox" id="idText" name="idText" size="100" maxlength="100"/>
-      <input type="button" class="questionBox button" name="action" value="LOAD" onClick="sendId();"/>
+      <input type="button" class="questionBox button" name="action" value="LOAD" onClick="sendId(false);"/>
       <span title="clear id" class="clq" onclick="pasteId('');">&#9587;</span>
     </form>
     <br>
