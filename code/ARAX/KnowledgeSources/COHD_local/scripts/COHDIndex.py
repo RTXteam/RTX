@@ -412,30 +412,23 @@ class COHDIndex:
         """Search for OMOP concept ids by curie id.
 
         Args:
-            curie (required, str): Compacy URI (CURIE) of the concept to map, e.g., "DOID:8398"
+            curie (required, str or list or set): Compacy URI (CURIE) of the concept to map, e.g., "DOID:8398" or ["DOID:8398",'MONDO:0001187']
 
         Returns:
             list: a list which contains OMOP concepts for the given curie id, or empty list if no
             example:
                 [75617, 80180, 1570333, 4025957, 4035441, 4079750, 4083695, 4083696, 4110738, 36516824, 36569386, 45618044]
         """
-        results_list = []
-        if isinstance(curie, str):
-            query = {"curies": [curie]}
+        if isinstance(curie, str) or isinstance(curie, list) or isinstance(curie, set):
+            if isinstance(curie, str):
+                query = {"curies": [curie]}
+            else:
+                query = {"curies": [x for x in curie]}
             resp_dict = self._call_cohd_biolink_to_omop_api(query)
-            results_list = []
-            for key, value in resp_dict.items():
-                preferred_curie = self._get_preferred_curie(key)
-                query = {"curies": [preferred_curie]}
-                temp = self._call_cohd_biolink_to_omop_api(query)
-                if len(value) != 0:
-                    results_list = list(set(value + temp[preferred_curie]))
-                else:
-                    results_list = list(set(temp[preferred_curie]))
-            return results_list
+            return resp_dict
         else:
-            print("The 'curie' in get_concept_ids should be a str", flush=True)
-            return results_list
+            print("The 'curie' in get_concept_ids should be a str or a list or a set", flush=True)
+            return {}
 
     # def get_curies_from_concept_id(self, concept_id):
     #     """Search for curie ids by OMOP concept ids.
@@ -477,26 +470,25 @@ class COHDIndex:
         """Search for curie ids by OMOP concept ids.
 
         Args:
-            concept_id (required, int): an OMOP concept id, e.g., 192855
+            concept_id (required, int or list or set): an OMOP concept id, e.g., 192855, [4110738,192855]
 
         Returns:
             list: a list which contains curies for each given OMOP concept id, or None if no
             example:
                 ['CUI:C0154091', 'CUI:C0855181', 'NCIT:C3644', 'MONDO:0004703', 'DOID:9053']
         """
-        if isinstance(concept_id, int):
+        if isinstance(concept_id, int) or isinstance(concept_id, list) or isinstance(concept_id, set):
             pass
         else:
-            print("The 'concept_id' in get_curies_from_concept_id should be an int", flush=True)
+            print("The 'concept_id' in get_curies_from_concept_id should be an int or a list or a set", flush=True)
             return []
 
-        results_list = []
-        query = {"omop_ids": [concept_id]}
+        if isinstance(concept_id, int):
+            query = {"omop_ids": [concept_id]}
+        else:
+            query = {"omop_ids": [x for x in concept_id]}
         resp_dict = self._call_cohd_omop_to_biolink_api(query)
-        for key, value in resp_dict.items():
-            if len(value) != 0:
-                results_list = value
-        return results_list
+        return resp_dict
 
 
     def get_all_concept_pair_info(self, concept_id_1=[], concept_id_2=[], concept_id_pair=None, dataset_id=1):

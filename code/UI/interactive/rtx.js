@@ -90,6 +90,7 @@ function main() {
 	document.getElementById("devdiv").innerHTML =  "Requested response id = " + response_id + "<br>";
 	retrieve_response(providers['ARAX'].url+'/response/'+response_id,response_id,"all");
         pasteId(response_id);
+	selectInput("qid");
     }
     else {
 	add_cyto(99999);
@@ -330,6 +331,7 @@ function postQuery_ARS(queryObj) {
 	    document.getElementById("statusdiv").innerHTML += " - got message_id = "+message_id;
 	    document.getElementById("statusdiv").appendChild(document.createElement("br"));
 	    pasteId(message_id);
+	    selectInput("qid");
 	    retrieve_response(providers['ARAX'].url+"/response/"+message_id,message_id,"all");
 	})
         .catch(error => {
@@ -851,7 +853,7 @@ function checkRefreshARS() {
 	function countdown() {
 	    if (timetogo == 0) {
 		clearInterval(timeout);
-                sendId();
+                sendId(true);
 		document.getElementById("ars_refresh").innerHTML = "";
 	    }
 	    else {
@@ -865,14 +867,19 @@ function checkRefreshARS() {
     }
 }
 
-function sendId() {
-    var id = document.getElementById("idText").value.trim();
-    if (!id) return;
+function sendId(is_ars_refresh) {
+    var id;
+    if (is_ars_refresh)
+	id = document.getElementById("ars_refresh").dataset.msgid;
+    else {
+	id = document.getElementById("idText").value.trim();
+	pasteId(id);
+	if (!id) return;
 
-    pasteId(id);
-    reset_vars();
-    if (cyobj[99999]) {cyobj[99999].elements().remove();}
-    input_qg = { "edges": {}, "nodes": {} };
+	reset_vars();
+	if (cyobj[99999]) {cyobj[99999].elements().remove();}
+	input_qg = { "edges": {}, "nodes": {} };
+    }
 
     if (document.getElementById("numresults_"+id)) {
 	document.getElementById("numresults_"+id).innerHTML = '';
@@ -884,7 +891,8 @@ function sendId() {
     }
 
     retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
-    openSection('query');
+    if (!is_ars_refresh)
+	openSection('query');
 }
 
 
@@ -913,6 +921,7 @@ function process_ars_message(ars_msg, level) {
 	span.style.marginRight = '20px';
 	span.dataset.total = ars_msg.status == 'Done' ? 999999 : ars_msg["children"].length + 1;
 	span.dataset.count = '';
+	span.dataset.msgid = ars_msg.message;
 	span.appendChild(document.createTextNode("Auto-reload: " + (ars_msg.status == 'Done' ? "OFF" : "ON")));
 	div2.appendChild(span);
 
@@ -969,7 +978,7 @@ function process_ars_message(ars_msg, level) {
 	link = document.createElement("a");
 	link.title='view this response';
 	link.style.cursor = "pointer";
-	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId();');
+	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId(false);');
 	link.appendChild(document.createTextNode(ars_msg.message));
 	if (!ars_msg["children"] || ars_msg["children"].length == 0)
 	    go = true;
@@ -1035,7 +1044,6 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 
     if (jsonObj2["children"]) {
 	process_ars_message(jsonObj2,0);
-	selectInput("qid");
 	return;
     }
 
@@ -4724,7 +4732,7 @@ function get_list_as_curie_array(listId) {
 function add_items_to_list(listId,indx) {
     for (var nitem in columnlist[indx])
 	if (columnlist[indx][nitem]) {
-            nitem = nitem.replace(/['"]+/g,''); // remove all manner of quotes
+            nitem = nitem.replace(/['"]+/g,''); // remove quotes
 	    listItems[listId][nitem] = 1;
 	}
     display_list(listId);
@@ -4737,11 +4745,11 @@ function enter_item(ele, listId) {
 
 function add_new_to_list(listId) {
     //var itemarr = document.getElementById("newlistitem"+listId).value.split(/[\t ,]/);
-    var itemarr = document.getElementById("newlistitem"+listId).value.match(/\w+:\w+|"[^"]+"/g);
+    var itemarr = document.getElementById("newlistitem"+listId).value.match(/\w+:?\w+|"[^"]+"/g);
 
     document.getElementById("newlistitem"+listId).value = '';
     for (var item in itemarr) {
-	itemarr[item] = itemarr[item].replace(/['"]+/g,''); // remove all manner of quotes
+	itemarr[item] = itemarr[item].replace(/['"]+/g,''); // remove quotes
         //console.log("=================== item:"+itemarr[item]);
 	if (itemarr[item]) {
 	    listItems[listId][itemarr[item]] = 1;

@@ -454,12 +454,12 @@ def test_chi_square_attribute():
     _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 2)
 
 
-# TODO: Choose a more specific disease (too large due to subclass_of reasoning)
+# CM: I changed 'MONDO:0004992' to 'DOID:0080909' for a more specific disease
 @pytest.mark.slow
 def test_predict_drug_treats_disease_virtual():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=MONDO:0004992, key=n0, categories=biolink:Disease)",
+        "add_qnode(ids=DOID:0080909, key=n0, categories=biolink:Disease)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
@@ -473,16 +473,16 @@ def test_predict_drug_treats_disease_virtual():
     _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
 
 
-# TODO: Choose a more specific disease (too large due to subclass_of reasoning)
+# CM: I changed 'MONDO:0004992' to 'DOID:0080909' for a more specific disease
 @pytest.mark.slow
 def test_predict_drug_treats_disease_attribute():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=MONDO:0004992, key=n0)",
+        "add_qnode(ids=DOID:0080909, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
-        "overlay(action=predict_drug_treats_disease)",
+        "overlay(action=predict_drug_treats_disease, threshold=0.7)",
         "resultify()",
         "return(message=true, store=false)",
     ]}}
@@ -492,12 +492,12 @@ def test_predict_drug_treats_disease_attribute():
     _attribute_tester(message, 'probability_treats', 'EDAM:data_0951', 2)
 
 
-# TODO: Choose a more specific disease (too large due to subclass_of reasoning)
+# CM: I changed 'MONDO:0004992' to 'DOID:0080909' for a more specific disease
 @pytest.mark.slow
 def test_issue_832():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=MONDO:0004992, key=n0)",
+        "add_qnode(ids=DOID:0080909, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "expand(edge_key=e0, kp=RTX-KG2)",
@@ -613,7 +613,7 @@ def test_issue_892():
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(kp=BTE)",
-        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1, threshold=0.5)",
         "resultify(ignore_edge_direction=true)",
         "return(message=true, store=false)"
     ]}}
