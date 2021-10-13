@@ -114,6 +114,11 @@ class ARAXQuery:
                 yield(json.dumps(self.response.messages[i_message])+"\n")
                 i_message += 1
 
+            #### Also emit any updates to the query_plan
+            if query_plan_counter < self.response.query_plan['counter']:
+                query_plan_counter = self.response.query_plan['counter']
+                yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
+
             # Remove the little DONE flag the other thread used to signal this thread that it is done
             self.response.status = re.sub('DONE,','',self.response.status)
 
