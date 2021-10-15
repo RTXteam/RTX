@@ -26,15 +26,7 @@ This is a high-level explanation of how Expand works and the decisions it makes,
       2. If the KP does not support the curie's prefix, then Expand looks for an equivalent curie with a prefix that they do support (using the NodeSynonymizer)
          1. If there are multiple supported prefixes with equivalent curies, Expand (essentially randomly) chooses one prefix to send
          2. All equivalent curies using the chosen supported prefix are sent to the KP (e.g., if Expand chooses to use the NCBIGene prefix and the synonym cluster for the given curie contains two NCBIGene curies, both will be sent to the KP)
-5. **Timeouts**: When Expand sends the local QG for the current QEdge to each KP, it waits a certain amount of time for a response before timing out. Timeouts are set as follows (corresponding code is [here](https://github.com/RTXteam/RTX/blob/a5c4b9e780fe6cda3372f885c02774a74affdbad/code/ARAX/ARAXQuery/Expand/trapi_querier.py#L363-L389)):
-   1. If only one of the QEdge's two QNode's are pinned (more common):
-      1. <250 curies in the QG: ~~30 seconds~~ 60 seconds?
-      2. <600 curies in the QG: ~~60 seconds~~ 120 seconds?
-      3. <1200 curies in the QG: ~~120 seconds~~ 180 seconds?
-      4. \>=1200 curies in the QG: ~~180 seconds~~ 300 seconds?
-   2. Otherwise if both of the QEdge's two QNode's are pinned:
-      1. <600 curies in the QG: ~~30 seconds~~ 60 seconds?
-      2. <1200 curies in the QG: ~~60 seconds~~ 120 seconds?
-      3. \>=1200 curies in the QG: ~~120 seconds~~ 180 seconds?
-   3. Note: Depending on the pre-prune threshold, some of the upper timeout tiers may never be reached in practice. For instance, at the time of writing, the max pre-prune threshold is 500 curies, so only the first two timeout tiers will ever be reached.
+5. **Timeouts**: When Expand sends the local QG for the current QEdge to each KP, it waits a certain amount of time for a response before timing out. The timeout for each QEdge is set as follows (for all KPs):
+   1. If the user specified a timeout (in `Query`->`query_options`-> `kp_timeout`), that timeout will be used (note that the units are seconds)
+   3. Otherwise, the timeout is 2 minutes
 6. After getting answers from KPs for the current QEdge, Expand canonicalizes and merges their answers into the main `KnowledgeGraph` and moves onto the next QEdge (if any remain)

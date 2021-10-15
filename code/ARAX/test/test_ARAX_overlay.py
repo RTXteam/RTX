@@ -244,7 +244,7 @@ def test_FET_ex1():
         "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=e01, kp=RTX-KG2)",
-        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01, filter_type=cutoff, value=0.05)",
+        "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, filter_type=cutoff, value=0.05)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
