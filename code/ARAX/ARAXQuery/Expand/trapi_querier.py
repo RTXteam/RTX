@@ -364,6 +364,8 @@ class TRAPIQuerier:
         # Returns the number of seconds we should wait for a response
         if self.user_timeout:
             return self.user_timeout
+        elif self.kp_name == "RTX-KG2":
+            return 600
         else:
             return 120
 
