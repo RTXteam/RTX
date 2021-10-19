@@ -26,7 +26,9 @@ This is a high-level explanation of how Expand works and the decisions it makes,
       2. If the KP does not support the curie's prefix, then Expand looks for an equivalent curie with a prefix that they do support (using the NodeSynonymizer)
          1. If there are multiple supported prefixes with equivalent curies, Expand (essentially randomly) chooses one prefix to send
          2. All equivalent curies using the chosen supported prefix are sent to the KP (e.g., if Expand chooses to use the NCBIGene prefix and the synonym cluster for the given curie contains two NCBIGene curies, both will be sent to the KP)
-5. **Timeouts**: When Expand sends the local QG for the current QEdge to each KP, it waits a certain amount of time for a response before timing out. The timeout for each QEdge is set as follows (for all KPs):
+5. **Timeouts**: When Expand sends the local QG for the current QEdge to each KP, it waits a certain amount of time for a response before timing out. The timeout for each QEdge is set as follows:
    1. If the user specified a timeout (in `Query`->`query_options`-> `kp_timeout`), that timeout will be used (note that the units are seconds)
+   2. Otherwise if the KP being queried is RTX-KG2, the timeout is 10 minutes
+      1. This is a crude way to avoid issues where KG2 times out on large queries for which it's the only KP that can answer
    3. Otherwise, the timeout is 2 minutes
 6. After getting answers from KPs for the current QEdge, Expand canonicalizes and merges their answers into the main `KnowledgeGraph` and moves onto the next QEdge (if any remain)
