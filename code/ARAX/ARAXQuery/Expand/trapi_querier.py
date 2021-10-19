@@ -65,7 +65,10 @@ class TRAPIQuerier:
 
         # Convert the QG so that it uses curies with prefixes the KP likes
         qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_name, log)
+        qedge_key = next(qedge_key for qedge_key in qg_copy.edges)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
+            skipped_message = f"No equivalent curies with supported prefixes found"
+            log.update_query_plan(qedge_key, self.kp_name, "Skipped", skipped_message)
             return final_kg
 
         # Answer the query using the KP and load its answers into our object model
@@ -99,7 +102,10 @@ class TRAPIQuerier:
 
         # Convert the QG so that it uses curies with prefixes the KP likes
         qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_name, log)
+        qedge_key = next(qedge_key for qedge_key in qg_copy.edges)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
+            skipped_message = f"No equivalent curies with supported prefixes found"
+            log.update_query_plan(qedge_key, self.kp_name, "Skipped", skipped_message)
             return final_kg
 
         # Answer the query using the KP and load its answers into our object model
