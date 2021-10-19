@@ -262,7 +262,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_score(parameters, query_graph, response):
         ARAXi = []
-        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
+        ARAXi.append(f"rank_results()")
         return ARAXi
 
     @staticmethod
