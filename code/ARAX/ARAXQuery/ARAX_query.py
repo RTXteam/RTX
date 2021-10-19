@@ -114,11 +114,16 @@ class ARAXQuery:
                 yield(json.dumps(self.response.messages[i_message])+"\n")
                 i_message += 1
 
+            #### Also emit any updates to the query_plan
+            if query_plan_counter < self.response.query_plan['counter']:
+                query_plan_counter = self.response.query_plan['counter']
+                yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
+
             # Remove the little DONE flag the other thread used to signal this thread that it is done
             self.response.status = re.sub('DONE,','',self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(self.response.envelope.to_dict()))
+            yield(json.dumps(self.response.envelope.to_dict(),sort_keys=True))
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
@@ -587,6 +592,7 @@ class ARAXQuery:
             #### Process each action in order
             action_stats = { }
             actions = result.data['actions']
+            action = None
             for action in actions:
                 response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False

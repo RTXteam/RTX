@@ -168,7 +168,7 @@ class TRAPIQuerier:
     async def _answer_query_using_kp_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         request_body = self._get_prepped_request_body(query_graph)
         query_sent = copy.deepcopy(request_body)
-        query_timeout = self._get_query_timeout_length(query_graph)
+        query_timeout = self._get_query_timeout_length()
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
 
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
@@ -216,7 +216,7 @@ class TRAPIQuerier:
     def _answer_query_using_kp(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
         request_body = self._get_prepped_request_body(query_graph)
-        query_timeout = self._get_query_timeout_length(query_graph)
+        query_timeout = self._get_query_timeout_length()
         qedge_key = next(qedge_key for qedge_key in query_graph.edges) if query_graph.edges else None
 
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
@@ -360,31 +360,10 @@ class TRAPIQuerier:
     def _get_arax_edge_key(self, edge: Edge) -> str:
         return f"{self.kp_name}:{edge.subject}-{edge.predicate}-{edge.object}"
 
-    def _get_query_timeout_length(self, qg: QueryGraph) -> int:
-        # Returns the number of seconds we should wait for a response based on the number of curies in the QG
-        node_curie_counts = [len(qnode.ids) for qnode in qg.nodes.values() if qnode.ids]
-        num_total_curies_in_qg = sum(node_curie_counts)
-        num_qnodes_with_curies = len(node_curie_counts)
+    def _get_query_timeout_length(self) -> int:
+        # Returns the number of seconds we should wait for a response
         if self.user_timeout:
             return self.user_timeout
-        elif self.kp_name == "RTX-KG2":
-            return 600
-        elif self.user_specified_kp:
-            return 300
-        elif num_qnodes_with_curies == 1:
-            if num_total_curies_in_qg < 250:
-                return 30
-            elif num_total_curies_in_qg < 600:
-                return 60
-            elif num_total_curies_in_qg < 1200:
-                return 120
-            else:
-                return 180
-        else:  # Both nodes in the one-hop query must have curies specified
-            if num_total_curies_in_qg < 600:
-                return 30
-            elif num_total_curies_in_qg < 1200:
-                return 60
-            else:
-                return 120
+        else:
+            return 120
 
