@@ -168,7 +168,18 @@ class ARAXQuery:
             if hasattr(response,'http_status'):
                 response.envelope.http_status = response.http_status
 
-        self.track_query_finish()
+        if mode == 'asynchronous':
+            attributes = {
+                'status': 'Running Async',
+                'message_id': None,
+                'message_code': 'Running',
+                'code_description': 'Query running via /asyncquery'
+            }
+            query_tracker = ARAXQueryTracker()
+            query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+        else:
+            self.track_query_finish()
+
         return response.envelope
 
 
@@ -790,8 +801,12 @@ class ARAXQuery:
             post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'})
             status_code = post_response_content.status_code
             response.info(f"Response from POST to callback URL was {status_code}")
+            if status_code not in [ 200, 201 ]:
+                response.error(f"Response from POST to callback URL was {status_code}", error_code="UnreachableCallback")
+
         except:
-            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost")
+            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost", error_code="UnreachableCallback")
+        self.track_query_finish()
         os._exit(0)
 
 
