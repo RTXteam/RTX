@@ -19,7 +19,7 @@ def receive_sigchld(signal_number, frame):
         try:
             os.waitpid(-1, os.WNOHANG)
         except ChildProcessError as e:
-            flask.current_app.logger.error(repr(e))
+            print(repr(e), file=sys.stderr)
 
 
 def main():
