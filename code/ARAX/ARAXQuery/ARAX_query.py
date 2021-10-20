@@ -792,7 +792,7 @@ class ARAXQuery:
             response.info(f"Response from POST to callback URL was {status_code}")
         except:
             response.error(f"Unable to make a connection to URL {callback} at all. Work is lost")
-        exit(0)
+        os._exit(0)
 
 
 ##################################################################################################
