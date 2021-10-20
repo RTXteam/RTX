@@ -13,7 +13,6 @@ from openapi_server import encoder
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../ARAX/ARAXQuery")
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../reasoningtool/QuestionAnswering")
 
 def receive_sigchld(signal_number, frame):
     if signal_number == signal.SIGCHLD:
