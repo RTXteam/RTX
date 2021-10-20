@@ -16,7 +16,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX
 
 def receive_sigchld(signal_number, frame):
     if signal_number == signal.SIGCHLD:
-        os.waitpid(-1, os.WNOHANG)
+        try:
+            os.waitpid(-1, os.WNOHANG)
+        except ChildProcessError as e:
+            flask.current_app.logger.error(repr(e))
 
 def main():
     app = connexion.App(__name__, specification_dir='./openapi/')
