@@ -26,8 +26,10 @@ def _run_query_and_return_json_generator_stream(query_dict: dict) -> Iterable[st
 
 def run_query_dict_in_child_process(query_dict: dict,
                                     query_runner: Callable) -> Iterable[str]:
+    print("INFO: [query_controller]: Creating pipe and forking a child to handle the query", file=sys.stderr)
     read_fd, write_fd = os.pipe()
     pid = os.fork()
+    print(f"INFO: pid={pid}", file=sys.stderr)
     if pid == 0: # I am the child process
         os.close(read_fd)
         with os.fdopen(write_fd, "w") as write_fo:
