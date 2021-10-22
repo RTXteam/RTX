@@ -15,14 +15,19 @@ import Expand.expand_utilities as eu
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+
 from RTXConfiguration import RTXConfiguration
 
+
 class KnowledgeSourceMetadata:
+
+    #### Define a class variable to cache the meta_knowledge_graph between objects
+    cached_meta_knowledge_graph = None
 
     #### Constructor
     def __init__(self):
         self.predicates = None
-        self.meta_knowledge_graph = None
+        self.meta_knowledge_graph = KnowledgeSourceMetadata.cached_meta_knowledge_graph
         self.RTXConfig = RTXConfiguration()
 
     #### Get a list of all supported subjects, predicates, and objects and reformat to /predicates format
@@ -31,7 +36,7 @@ class KnowledgeSourceMetadata:
 
         #### If we've already loaded the predicates, just return it
         if self.predicates is not None:
-            return predicates
+            return self.predicates
 
         # We always furnish KG2C results
         kg_prefix = 'KG2C'
@@ -78,6 +83,7 @@ class KnowledgeSourceMetadata:
 
         #### If we've already loaded the meta_knowledge_graph, just return it
         if self.meta_knowledge_graph is not None:
+            eprint(f"INFO: Returning previously loaded meta_knowledge_graph")
             return self.meta_knowledge_graph
 
         # We always furnish KG2C results
@@ -93,6 +99,8 @@ class KnowledgeSourceMetadata:
         try:
             with open(input_filename) as infile:
                 self.meta_knowledge_graph = json.load(infile)
+                KnowledgeSourceMetadata.cached_meta_knowledge_graph = self.meta_knowledge_graph
+                eprint("INFO: Loaded meta_knowledge_graph from file and cached it")
                 return self.meta_knowledge_graph
 
         except:
