@@ -202,6 +202,8 @@ function reset_vars() {
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
     document.getElementById("queryplan_container").innerHTML = "";
+    if (document.getElementById("queryplan_stream"))
+	document.getElementById("queryplan_stream").remove();
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
@@ -411,7 +413,7 @@ function postQuery_ARAX(qtype,queryObj) {
     statusdiv.appendChild(document.createTextNode("Processing step "));
     var span = document.createElement("span");
     span.id = "finishedSteps";
-    span.style.fontWeight= "bold";
+    span.style.fontWeight = "bold";
 //    span.className = "menunum numnew";
     span.appendChild(document.createTextNode("0"));
     statusdiv.appendChild(span);
@@ -976,7 +978,7 @@ function process_ars_message(ars_msg, level) {
 	link = document.createTextNode(ars_msg.message);
     else {
 	link = document.createElement("a");
-	link.title='view this response';
+	link.title = 'view this response';
 	link.style.cursor = "pointer";
 	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId(false);');
 	link.appendChild(document.createTextNode(ars_msg.message));
@@ -1737,7 +1739,7 @@ function render_queryplan_table(qp,node) {
 	    td = document.createElement("td");
             if (qp.qedge_keys[edge][kp]["query"] && qp.qedge_keys[edge][kp]["query"] != null) {
                 var link = document.createElement("a");
-		link.title='view the posted query (JSON)';
+		link.title = 'view the posted query (JSON)';
 		link.style.cursor = "pointer";
 		link.onclick = function () { showKPQuery(kp, qp.qedge_keys[edge][kp]["query"]); };
 		link.appendChild(document.createTextNode("query"));
@@ -2172,7 +2174,7 @@ function process_results(reslist,kg,trapi,mainreasoner) {
         td.className = 'cytograph_controls';
 
 	var link = document.createElement("a");
-	link.title='reset zoom and center';
+	link.title = 'reset zoom and center';
         link.setAttribute('onclick', 'cyobj['+num+'].reset();');
         link.appendChild(document.createTextNode("\u21BB"));
         td.appendChild(link);
@@ -2180,31 +2182,65 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	tr.appendChild(td);
 
         link = document.createElement("a");
-	link.title='breadthfirst layout';
+	link.title = 'breadthfirst layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"breadthfirst");');
 	link.appendChild(document.createTextNode("B"));
 	td.appendChild(link);
 	td.appendChild(document.createElement("br"));
 
         link = document.createElement("a");
-	link.title='force-directed layout';
+	link.title = 'force-directed layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"cose");');
 	link.appendChild(document.createTextNode("F"));
 	td.appendChild(link);
 	td.appendChild(document.createElement("br"));
 
         link = document.createElement("a");
-	link.title='circle layout';
+	link.title = 'circle layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"circle");');
 	link.appendChild(document.createTextNode("C"));
 	td.appendChild(link);
 	td.appendChild(document.createElement("br"));
 
         link = document.createElement("a");
-	link.title='random layout';
+	link.title = 'random layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"random");');
 	link.appendChild(document.createTextNode("R"));
 	td.appendChild(link);
+        td.appendChild(document.createElement("br"));
+
+	var span = document.createElement("span");
+	span.style.marginTop = "80px";
+	span.style.display = "inline-block";
+	span.className = "explevel p9";
+	span.style.fontSize = "x-small";
+	span.title = "new: resize graph window!";
+	span.appendChild(document.createTextNode("New"));
+        td.appendChild(span);
+        td.appendChild(document.createElement("br"));
+
+	link = document.createElement("a");
+	link.title = 'small graph';
+	link.setAttribute('onclick', 'cyresize('+num+',"s");');
+	link.appendChild(document.createTextNode("s"));
+	td.appendChild(link);
+        td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+	link.title = 'medium-sized graph';
+	link.setAttribute('onclick', 'cyresize('+num+',"m");');
+	link.appendChild(document.createTextNode("M"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+        link.style.fontWeight = "bold";
+        link.style.fontSize = "larger";
+	link.title = 'Large graph';
+	link.setAttribute('onclick', 'cyresize('+num+',"L");');
+	link.appendChild(document.createTextNode("L"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
 
 	tr.appendChild(td);
 
@@ -2220,16 +2256,27 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 
 
         tr = document.createElement("tr");
-	td = document.createElement("td");
-	tr.appendChild(td);
+	//td = document.createElement("td");
+	//tr.appendChild(td);
 
 	td = document.createElement("td");
+	td.colSpan = '2';
         div2 = document.createElement("div");
 	div2.id = 'd'+num+'_div';
 	div2.className = 'panel';
         link = document.createElement("i");
-        link.appendChild(document.createTextNode("Click on a node or edge to get details"));
+        link.appendChild(document.createTextNode("Click on a node or edge to get details, or click on graph background to see a full list of nodes and edges for this result"));
         div2.appendChild(link);
+
+	var span = document.createElement("span");
+	span.style.display = "inline-block";
+	span.style.marginLeft = '10px';
+	span.className = "explevel p9";
+	span.style.fontSize = "x-small";
+	span.title = "new: full list of nodes and edges!";
+	span.appendChild(document.createTextNode("New"));
+        div2.appendChild(span);
+
 	td.appendChild(div2);
 	tr.appendChild(td);
 
@@ -2349,11 +2396,109 @@ function add_cyto(i) {
 	return;
     }
 
+    cyobj[i].on('tap', function(evt) {
+	if (evt.target === cyobj[i]) {
+            var div = document.getElementById('d'+i+'_div');
+	    div.innerHTML = "";
+
+	    var ne_table = document.createElement("table");
+	    var tr = document.createElement("tr");
+	    var td = document.createElement("td");
+	    td.colSpan = '3';
+	    td.appendChild(document.createTextNode("All nodes and edges:"));
+	    tr.appendChild(td);
+	    ne_table.appendChild(tr);
+
+	    var allnodes = cyobj[i].nodes();
+	    for (var n = 0; n < allnodes.length; n++) {
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+		td.colSpan = '3';
+		td.appendChild(document.createElement("hr"));
+		tr.appendChild(td);
+		ne_table.appendChild(tr);
+
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+
+                var link = document.createElement("a");
+                link.className = "attvalue";
+                link.style.cursor = "pointer";
+		link.dataset.nn = allnodes[n].id();
+		link.title = 'View node details';
+		link.onclick = function () { cyobj[i].getElementById(this.dataset.nn).emit("tap"); cyobj[i].getElementById(this.dataset.nn).select(); };
+		link.appendChild(document.createTextNode(allnodes[n].data('id')));
+		td.appendChild(link);
+
+		tr.appendChild(td);
+		td = document.createElement("td");
+                td.colSpan = '2';
+		td.style.paddingLeft = "15px";
+		td.style.fontStyle = "italic";
+		if (allnodes[n].data('name') != null)
+		    td.appendChild(document.createTextNode(' '+allnodes[n].data('name')));
+		tr.appendChild(td);
+		ne_table.appendChild(tr);
+
+		var nodedges = cyobj[i].edges('[source = "'+allnodes[n].data("id")+'"]');
+		for (var e = 0; e < nodedges.length; e++) {
+		    tr = document.createElement("tr");
+		    td = document.createElement("td");
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+                    var link = document.createElement("a");
+		    link.style.cursor = "pointer";
+		    link.dataset.ee = nodedges[e].id();
+		    link.title = 'View edge details';
+		    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
+		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+		    td.appendChild(link);
+		    td.appendChild(document.createTextNode(" \u{1F87A} "))
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    td.appendChild(document.createTextNode(nodedges[e].data('target')));
+		    tr.appendChild(td);
+		    ne_table.appendChild(tr);
+		}
+
+		nodedges = cyobj[i].edges('[target = "'+allnodes[n].data("id")+'"]');
+		for (var e = 0; e < nodedges.length; e++) {
+		    tr = document.createElement("tr");
+		    td = document.createElement("td");
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    td.appendChild(document.createTextNode(" \u{1F878} "))
+                    var link = document.createElement("a");
+		    link.style.cursor = "pointer";
+		    link.dataset.ee = nodedges[e].id();
+		    link.title = 'View edge details';
+                    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
+		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+		    td.appendChild(link);
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    td.appendChild(document.createTextNode(nodedges[e].data('source')));
+		    tr.appendChild(td);
+		    ne_table.appendChild(tr);
+		}
+	    }
+
+	    div.appendChild(ne_table);
+	    sesame('openmax',document.getElementById('a'+i+'_div'));
+	}
+    });
+
     cyobj[i].on('tap','node', function() {
 	var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
 
-        var fields = [ "name","id","categories" ];
+	var span = document.createElement("span");
+	span.style.float = "right";
+	span.style.fontStyle = "italic";
+	span.appendChild(document.createTextNode("Click on graph background to see a full list of nodes and edges"));
+	div.appendChild(span);
+
+	var fields = [ "name","id","categories" ];
 	for (var field of fields) {
 	    if (this.data(field) == null) continue;
 
@@ -2371,7 +2516,7 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes_1point1(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2379,6 +2524,12 @@ function add_cyto(i) {
     cyobj[i].on('tap','edge', function() {
         var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
+
+	var span = document.createElement("span");
+	span.style.float = "right";
+	span.style.fontStyle = "italic";
+	span.appendChild(document.createTextNode("Click on graph background to see a full list of nodes and edges"));
+	div.appendChild(span);
 
 	var a = document.createElement("a");
 	a.className = 'attvalue';
@@ -2424,14 +2575,16 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes_1point1(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
     cytodata[i] = null;
 }
 
-function show_attributes_1point1(html_div, atts) {
+
+
+function show_attributes(html_div, atts) {
     if (atts == null)  { return; }
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
@@ -2439,105 +2592,200 @@ function show_attributes_1point1(html_div, atts) {
     // always display iri first
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
 
-    var attshtml = "<table>";
+    var atts_table = document.createElement("table");
+
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
-	var snippet = "<tr><td colspan='2'><hr></td></tr>";
-	var value = null;
-
-	for (var nom in att) {
-	    if (nom == "value") {
-		value = att[nom];
-		continue;
-	    }
-	    else if (att[nom] != null) {
-		snippet += "<tr><td><b>" + nom + "</b>: </td><td>";
-
-		if (att[nom].toString().startsWith("http")) {
-		    snippet += "<a href='" + att[nom] + "'";
-		    snippet += " target='_blank'>" + att[nom] + "</a>";
-		}
-		else
-		    snippet += att[nom];
-
-		snippet += "</td></tr>";
-	    }
-	}
-	snippet += "<tr><td><b>value</b>: </td>";
-	if (value != null || value != '') {
-            var fixit = true;
-	    if (Array.isArray(att.value)) {
-		if (att.attribute_type_id == "biolink:publications")
-                    snippet += "<td>";
-		else
-                    snippet += "<td class='attvalue'>";
-		var br = '';
-		for (var val of att.value) {
-		    snippet += br;
-		    if (val == null) {
-			snippet += "--NULL--";
-		    }
-		    else if (typeof val === 'object') {
-			snippet += "<pre>"+JSON.stringify(val,null,2)+"</pre>";
-			fixit = false;
-		    }
-		    else if (val.toString().startsWith("PMID:")) {
-			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
-			snippet += " class='attvalue' title='View in PubMed' target='_blank'>" + val + "</a>";
-			if (semmeddb_sentences && semmeddb_sentences[0] && semmeddb_sentences[0]["value"][val]) {
-			    snippet += ' : <i>"'+semmeddb_sentences[0]["value"][val]["sentence"]+'"</i>';
-			    snippet += ' ('+semmeddb_sentences[0]["value"][val]["publication date"]+')';
-			}
-		    }
-		    else if (val.toString().startsWith("DOI:")) {
-			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
-			snippet += " class='attvalue' title='View in doi.org' target='_blank'>" + val + "</a>";
-		    }
-		    else if (val.toString().startsWith("http")) {
-			snippet += "<a href='" + val + "'";
-			snippet += " class='attvalue' target='_blank'>" + val + "</a>";
-		    }
-		    else {
-			snippet += val;
-		    }
-		    br = '<br>';
-		}
-	    }
-	    else if (typeof att.value === 'object') {
-		snippet += "<td><pre>"+JSON.stringify(att.value,null,2)+"</pre>";
-		fixit = false;
-	    }
-            else if (attributes_to_truncate.includes(att.original_attribute_name)) {
-		snippet += "<td class='attvalue'>";
-		snippet += Number(att.value).toPrecision(3);
-		fixit = false;
-	    }
-	    else if (value.toString().startsWith("http")) {
-		snippet += "<td class='attvalue'>";
-		snippet += "<a href='" + value + "'";
-		snippet += " target='_blank'>" + value + "</a>";
-	    }
-	    else
-		snippet += "<td class='attvalue'>" + att.value;
-
-	    if (att.attribute_type_id == "biolink:original_edge_information")
-                fixit = false;
-
-            if (fixit) {
-		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
-		snippet = snippet.toString().replace(/---/g,'<br>---');
-		snippet = snippet.toString().replace( /;;/g,'<br>;;');
-	    }
-	}
-	else {
-            snippet += "<td><i>-- empty/no value! --</i>";
-	}
-	snippet += "</td></tr>";
-
-        attshtml += snippet;
+	display_attribute(atts_table, att, semmeddb_sentences);
     }
-    html_div.innerHTML += attshtml;
+
+    html_div.appendChild(atts_table);
 }
 
+function display_attribute(tab, att, semmeddb) {
+    var row = document.createElement("tr");
+    var cell = document.createElement("td");
+
+    cell.colSpan = '2';
+    cell.appendChild(document.createElement("hr"));
+    row.appendChild(cell);
+    tab.appendChild(row);
+
+    var sub_atts = null;
+
+    var value = null;
+    for (var nom in att) {
+	if (nom == "value") {
+	    value = att[nom];
+	    continue;
+	}
+	else if (nom == "attributes") {
+	    sub_atts = att[nom];
+	    continue;
+	}
+	else if (att[nom] != null) {
+	    row = document.createElement("tr");
+	    cell = document.createElement("td");
+	    cell.style.fontWeight = "bold";
+            cell.appendChild(document.createTextNode(nom+":"));
+	    row.appendChild(cell);
+            cell = document.createElement("td");
+
+	    if (att[nom].toString().startsWith("http")) {
+		var a = document.createElement("a");
+		a.target = '_blank';
+		a.href = att[nom];
+		a.innerHTML = att[nom];
+		cell.appendChild(a);
+	    }
+	    else
+		cell.appendChild(document.createTextNode(att[nom]));
+
+	    row.appendChild(cell);
+	    tab.appendChild(row);
+	}
+    }
+
+    row = document.createElement("tr");
+    cell = document.createElement("td");
+    cell.style.fontWeight = "bold";
+    cell.appendChild(document.createTextNode("value:"));
+    row.appendChild(cell);
+    cell = document.createElement("td");
+    cell.style.overflowWrap = "anywhere"; //??
+
+    if (value != null && value != '') {
+	if (Array.isArray(att.value)) {
+	    if (att.attribute_type_id != "biolink:publications")
+                cell.className = 'attvalue';
+
+	    var br = false;
+	    for (var val of att.value) {
+		if (br)
+		    cell.appendChild(document.createElement("br"));
+
+		if (val == null) {
+                    cell.appendChild(document.createTextNode("--NULL--"));
+		}
+		else if (typeof val === 'object') {
+		    var pre = document.createElement("pre");
+		    pre.appendChild(document.createTextNode(JSON.stringify(val,null,2)));
+		    cell.appendChild(pre);
+		}
+		else if (val.toString().startsWith("PMID:")) {
+                    var a = document.createElement("a");
+                    a.className = 'attvalue';
+                    a.target = '_blank';
+                    a.href = "https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1];
+		    a.title = 'View in PubMed';
+                    a.innerHTML = val;
+                    cell.appendChild(a);
+
+		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val]) {
+			cell.appendChild(document.createTextNode(" : "));
+			var quote = document.createElement("i");
+			quote.appendChild(document.createTextNode(semmeddb[0]["value"][val]["sentence"]));
+			cell.appendChild(quote);
+			cell.appendChild(document.createTextNode(' ('+semmeddb[0]["value"][val]["publication date"]+')'));
+		    }
+		}
+		else if (val.toString().startsWith("DOI:")) {
+                    var a = document.createElement("a");
+		    a.className = 'attvalue';
+		    a.target = '_blank';
+		    a.href = "https://doi.org/" + val.split(":")[1];
+		    a.title = 'View in doi.org';
+		    a.innerHTML = val;
+		    cell.appendChild(a);
+		}
+		else if (val.toString().startsWith("http")) {
+                    var a = document.createElement("a");
+		    a.className = 'attvalue';
+		    a.target = '_blank';
+		    a.href = val;
+		    a.innerHTML = val;
+		    cell.appendChild(a);
+		}
+		else {
+                    cell.appendChild(document.createTextNode(val));
+		}
+
+		br = true;
+	    }
+	}
+	else if (typeof att.value === 'object') {
+            var pre = document.createElement("pre");
+	    pre.appendChild(document.createTextNode(JSON.stringify(att.value,null,2)));
+	    cell.appendChild(pre);
+	}
+        else if (attributes_to_truncate.includes(att.original_attribute_name)) {
+            cell.className = 'attvalue';
+	    cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
+	}
+	else if (value.toString().startsWith("http")) {
+	    cell.className = 'attvalue';
+            var a = document.createElement("a");
+	    a.target = '_blank';
+	    a.href = value;
+	    a.innerHTML = value;
+	    cell.appendChild(a);
+	}
+	else {
+            cell.className = 'attvalue';
+
+	    var multi = att.value.toString().split(/(-!-|---|\;\;)/);
+	    if (multi.length > 1) {
+		for (var line of multi) {
+		    cell.appendChild(document.createTextNode('\u25BA'));
+                    cell.appendChild(document.createTextNode(line));
+		    cell.appendChild(document.createElement("br"));
+		}
+	    }
+	    else
+		cell.appendChild(document.createTextNode(att.value));
+	}
+    }
+    else {
+        var text = document.createElement("i");
+	text.appendChild(document.createTextNode("-- empty / no value! --"));
+	cell.appendChild(text);
+    }
+
+    row.appendChild(cell);
+    tab.appendChild(row);
+
+    if (sub_atts) {
+	row = document.createElement("tr");
+	cell = document.createElement("td");
+        cell.style.fontWeight = "bold";
+	cell.appendChild(document.createTextNode("(sub)attributes:"));
+	row.appendChild(cell);
+
+	cell = document.createElement("td");
+	var subatts_table = document.createElement("table");
+	subatts_table.className = 't100';
+
+	for (var sub_att of sub_atts)
+	    display_attribute(subatts_table, sub_att, semmeddb);
+
+	cell.appendChild(subatts_table);
+        row.appendChild(cell);
+        tab.appendChild(row);
+    }
+}
+
+
+function cyresize(index,size) {
+    var height = 300;
+    if (size == 'm')
+	height = 500;
+    else if (size == 'L')
+	height = 1000;
+
+    document.getElementById('cy'+index).parentNode.style.height = height+'px';
+    cyobj[index].resize();
+    cyobj[index].fit();
+    sesame('openmax',document.getElementById('a'+index+'_div'));
+}
 
 function cylayout(index,layname) {
     var layout = cyobj[index].layout({
@@ -2568,7 +2816,7 @@ function mapNodeShape(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "rectangle";} //??
     if (ntype.endsWith("CellularComponent"))  { return "ellipse";}
     if (ntype.endsWith("BiologicalProcess"))  { return "tag";}
-    if (ntype.endsWith("ChemicalEntity"))  { return "diamond";}
+    if (ntype.endsWith("ChemicalEntity"))     { return "diamond";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "rhomboid";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "star";}
     return "rectangle";
@@ -2584,7 +2832,7 @@ function mapNodeColor(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "blue";} //??
     if (ntype.endsWith("CellularComponent"))  { return "purple";}
     if (ntype.endsWith("BiologicalProcess"))  { return "green";}
-    if (ntype.endsWith("ChemicalEntity"))  { return "yellowgreen";}
+    if (ntype.endsWith("ChemicalEntity"))     { return "yellowgreen";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "violet";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "indigo";}
     return "#04c";
@@ -4238,7 +4486,7 @@ function retrieveRecentQs() {
 		    else if (field == "query_id") {
                         var link = document.createElement("a");
 			link.target = '_blank';
-			link.title='view the posted query (JSON)';
+			link.title = 'view the posted query (JSON)';
 			link.style.cursor = "pointer";
 			link.href = providers["ARAX"].url + '/status?id=' + query[field];
 			link.appendChild(document.createTextNode(query[field]));
@@ -4248,7 +4496,7 @@ function retrieveRecentQs() {
 		    else if (field == "response_id") {
 			var link = document.createElement("a");
                         link.target = '_blank';
-			link.title='view this response';
+			link.title = 'view this response';
 			link.style.cursor = "pointer";
                         link.href = '//' + window.location.hostname + window.location.pathname + '?r=' + query[field];
 			link.appendChild(document.createTextNode(query[field]));
