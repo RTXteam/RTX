@@ -9,7 +9,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: ARAX Translator Reasoner
-  version: 1.2.5
+  version: 1.2.6
   x-translator:
     component: ARA
     team:
@@ -246,6 +246,16 @@ paths:
   /meta_knowledge_graph:
     get:
       operationId: meta_knowledge_graph
+      parameters:
+      - description: Provide meta_knowledge_graph information in a format other than
+          the default. Default value is 'full'. Also permitted is 'simple'
+        explode: true
+        in: query
+        name: format
+        required: false
+        schema:
+          type: string
+        style: form
       responses:
         "200":
           content:
@@ -369,6 +379,22 @@ paths:
         schema:
           example: 10
           type: integer
+        style: form
+      - description: PID of an ongoing query to terminate
+        explode: true
+        in: query
+        name: terminate_pid
+        required: false
+        schema:
+          type: integer
+        style: form
+      - description: Authorization string required for certain calls to status
+        explode: true
+        in: query
+        name: authorization
+        required: false
+        schema:
+          type: string
         style: form
       responses:
         "200":
