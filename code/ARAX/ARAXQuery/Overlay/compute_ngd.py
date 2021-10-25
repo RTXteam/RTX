@@ -151,6 +151,10 @@ class ComputeNGD:
                     edge.qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
 
+                    #FW: check if results exist then modify them with the ngd edge
+                    if self.message.results is not None and len(self.message.results) > 0:
+                        ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
+
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             if added_flag:
                 #edge_type = parameters['virtual_edge_type']
@@ -170,6 +174,7 @@ class ComputeNGD:
                 #### end FIXME
 
                 self.message.query_graph.edges[relation]=q_edge
+
 
             self.response.info(f"NGD values successfully added to edges")
         else:  # you want to add it for each edge in the KG
