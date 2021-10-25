@@ -92,7 +92,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_bind(parameters, query_graph, response):
         ARAXi = []
-        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
+        ARAXi.append(f"scoreless_resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
     @staticmethod
@@ -268,7 +268,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_complete_results(parameters, query_graph, response):
         ARAXi = []
-        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
+        ARAXi.append(f"scoreless_resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
     @staticmethod

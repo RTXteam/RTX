@@ -168,10 +168,7 @@ def test_score():
     query = {
         "workflow": [
             {
-                "id": "fill",
-                "parameters": {
-                    "allowlist": ["RTX-KG2"]
-                }
+                "id": "lookup"
             },
             {
                 "id": "score"
@@ -191,7 +188,7 @@ def test_score():
                             "CHEBI:45783"
                         ],
                         "categories": [
-                            "biolink:ChemicalSubstance"
+                            "biolink:SmallMolecule"
                         ]
                     }
                 },
@@ -324,6 +321,9 @@ def test_filter_results_top_n():
                 }
             },
             {
+                "id": "bind"
+            },
+            {
                 "id": "score"
             },
             {
@@ -346,7 +346,7 @@ def test_filter_results_top_n():
                             "CHEBI:45783"
                         ],
                         "categories": [
-                            "biolink:ChemicalSubstance"
+                            "biolink:SmallMolecule"
                         ]
                     }
                 },
