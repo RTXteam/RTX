@@ -5,6 +5,7 @@ import itertools
 class WorkflowToARAXi:
     def __init__(self):
         self.implemented = {'lookup',
+                            'lookup_and_score',
                             'overlay_compute_ngd',
                             'overlay_compute_jaccard',
                             'overlay_fisher_exact_test',
@@ -276,6 +277,13 @@ class WorkflowToARAXi:
         ARAXi = []
         ARAXi.append("expand()")
         ARAXi.append(f"scoreless_resultify(ignore_edge_direction=true)")  # ignore edge directions
+        return ARAXi
+
+    @staticmethod
+    def __translate_lookup_and_score(parameters, query_graph, response):
+        ARAXi = []
+        ARAXi.append("expand()")
+        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
 
