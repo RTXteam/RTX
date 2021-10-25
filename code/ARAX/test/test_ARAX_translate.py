@@ -368,6 +368,70 @@ def test_filter_results_top_n():
     for result in message.results:
         assert result.score is not None
 
+def test_overlay_after_lookup():
+    query = {
+        "workflow": [
+            {
+                "id": "lookup"
+            },
+            {
+                "id": "overlay_compute_ngd",
+                "parameters": {
+                    "virtual_relation_label": "NGD1",
+                    "qnode_keys": ["n0", "n1"]
+                }
+            },
+            {
+                "id": "score"
+            },
+            {
+                "id": "filter_results_top_n",
+                "parameters": {
+                    "max_results": 20
+                }
+            }
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:SmallMolecule"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 20
+    ngd_bindings = set()
+    for result in message.results:
+        assert result.score is not None
+        for eb_key, edge_bindings in result.edge_bindings.items():
+            for edge_binding in edge_bindings:
+                if edge_binding.id.startswith("NGD1"):
+                    ngd_bindings.add(edge_binding.id)
+    assert len(ngd_bindings) == len(message.results)
+
 
 
 
