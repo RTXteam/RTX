@@ -24,7 +24,7 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
 
     query_tracker = ARAXQueryTracker()
     if terminate_pid is not None:
-        status = query_tracker.terminate_job(terminate_pid=None, authorization=None)
+        status = query_tracker.terminate_job(terminate_pid, authorization)
     else:
         status = query_tracker.get_status(last_n_hours=last_n_hours, id_=id_)
     return status
