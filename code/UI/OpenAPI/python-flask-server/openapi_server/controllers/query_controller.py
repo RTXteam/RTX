@@ -63,11 +63,18 @@ def query(request_body):  # noqa: E501
     araxq = ARAX_query.ARAXQuery()
 
     if "stream_progress" in query and query['stream_progress'] is True:
+
+        fork_mode = True
+
+        if not fork_mode:
+            return flask.Response(araxq.query_return_stream(query),mimetype='text/event-stream')
+
         json_generator = run_query_dict_in_child_process(query,
                                                          _run_query_and_return_json_generator_stream)
         # Return a stream of data to let the client know what's going on
         resp_obj = flask.Response(json_generator, mimetype='text/plain')
         return resp_obj
+
     # Else perform the query and return the result
     else:
         json_generator = run_query_dict_in_child_process(query,
