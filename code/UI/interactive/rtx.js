@@ -4,7 +4,7 @@ var qgids = [];
 var cyobj = [];
 var cytodata = [];
 var predicates = {};
-var all_predicates = {};
+var all_predicates = [];
 var all_nodes = {};
 var summary_table_html = '';
 var summary_tsv = [];
@@ -55,6 +55,7 @@ const attributes_to_truncate = [
 function main() {
     UIstate["submitter"] = 'ARAX GUI';
     UIstate["timeout"] = '';
+    UIstate["pid"] = null;
     UIstate["version"] = checkUIversion(false);
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
@@ -202,8 +203,10 @@ function reset_vars() {
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
     document.getElementById("queryplan_container").innerHTML = "";
-    if (document.getElementById("queryplan_stream"))
+    if (document.getElementById("queryplan_stream")) {
+	document.getElementById("queryplan_streamhead").remove();
 	document.getElementById("queryplan_stream").remove();
+    }
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
@@ -517,6 +520,7 @@ function postQuery_ARAX(qtype,queryObj) {
 				div = document.getElementById("queryplan_stream");
 			    else {
 				div = document.createElement("div");
+				div.id = "queryplan_streamhead";
 				div.className = 'statushead';
 				div.appendChild(document.createTextNode("Expansion Progress"));
 				document.getElementById("status_container").before(div);
@@ -531,6 +535,10 @@ function postQuery_ARAX(qtype,queryObj) {
 			    div.appendChild(document.createElement("br"));
 			    render_queryplan_table(jsonMsg, div);
 			    div.appendChild(document.createElement("br"));
+			}
+                        else if (jsonMsg.pid) {
+			    UIstate["pid"] = jsonMsg;
+			    display_kill_button();
 			}
 			else {
 			    console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
@@ -558,6 +566,9 @@ function postQuery_ARAX(qtype,queryObj) {
 	    pre.id = "responseJSON";
 	    pre.appendChild(document.createTextNode(JSON.stringify(data,null,2)));
 	    dev.appendChild(pre);
+
+	    if (document.getElementById("killquerybutton"))
+		document.getElementById("killquerybutton").remove();
 
 	    document.getElementById("progressBar").style.width = "800px";
 	    if (data.status == "OK")
@@ -590,6 +601,9 @@ function postQuery_ARAX(qtype,queryObj) {
 
 	})
         .catch(function(err) {
+            if (document.getElementById("killquerybutton"))
+		document.getElementById("killquerybutton").remove();
+
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+err+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with parsing QUERY:<br>"+err;
 	    sesame('openmax',statusdiv);
@@ -600,6 +614,67 @@ function postQuery_ARAX(qtype,queryObj) {
             there_was_an_error();
 	});
 }
+
+function display_kill_button() {
+    var button = document.createElement("input");
+    button.id = 'killquerybutton';
+    button.className = 'questionBox button';
+    button.style.background = "#c40";
+    button.type = 'button';
+    button.name = 'action';
+    button.value = 'Terminate Query!';
+    button.title = 'Kill this request (pid='+UIstate["pid"].pid+')';
+    button.setAttribute('onclick', 'kill_query();');
+
+    document.getElementById("status_container").before(button);
+}
+
+function kill_query() {
+    if (!UIstate["pid"].pid || !UIstate["pid"].authorization) {
+        document.getElementById("killquerybutton").replaceWith('No PID or authorization; cannot terminate query');
+	return;
+    }
+
+    fetch(providers["ARAX"].url + "/status?terminate_pid="+UIstate["pid"].pid+"&authorization="+UIstate["pid"].authorization)
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Something went wrong with termination...');
+	})
+        .then(data => {
+            if (data.status == 'OK') {
+		document.getElementById("killquerybutton").id = 'killquerybuttondead';
+		addCheckBox(document.getElementById("killquerybuttondead"),true);
+		var timeout = setTimeout(function() { document.getElementById("killquerybuttondead").remove(); } , 1500 );
+		statusdiv.innerHTML += "<br><span class='error'>Query terminated by user</span>";
+		if (document.getElementById("cmdoutput")) {
+                    var cmddiv = document.getElementById("cmdoutput");
+		    cmddiv.appendChild(document.createElement("br"));
+		    cmddiv.appendChild(document.createTextNode(data.description));
+                    cmddiv.appendChild(document.createElement("br"));
+		    cmddiv.scrollTop = cmddiv.scrollHeight;
+		    for (var e of document.getElementsByClassName("working")) {
+			e.classList.remove('working');
+			e.classList.remove('p5');
+			e.classList.add('barerror');
+		    }
+		    document.getElementById("progressBar").classList.add("barerror");
+		    document.getElementById("progressBar").innerHTML += " (terminated)\u00A0\u00A0";
+		}
+	    }
+            else if (data.status == 'ERROR') {
+		document.getElementById("killquerybutton").after('Cannot terminate query');
+		console.warn('Query termination attempt error: '+data.description);
+	    }
+	    else throw new Error('Something went wrong while attempting to terminate query...');
+	})
+        .catch(error => {
+	    var span = document.createElement("span");
+	    span.className = 'error';
+	    span.innerHTML = error;
+	    document.getElementById("killquerybutton").after(span);
+	});
+}
+
 
 function lookup_synonym(syn,open) {
     document.getElementById("newsynonym").value = syn.trim();
@@ -2044,6 +2119,7 @@ function process_graph(gne,gid,trapi) {
 			    "_names"     : gnode.ids ? gnode.ids.slice() : [], // make a copy!
 			    "_desc"      : gnode.description,
 			    "categories" : gnode.categories ? gnode.categories : [],
+			    "option_group_id" : gnode.option_group_id ? gnode.option_group_id : null,
 			    "constraints": gnode.constraints ? gnode.constraints : []
 			  };
 
@@ -2057,6 +2133,8 @@ function process_graph(gne,gid,trapi) {
 	    var tmpdata = { "subject"    : gedge.subject,
 			    "object"     : gedge.object,
 			    "predicates" : gedge.predicates ? gedge.predicates : [],
+			    "exclude"    : gedge.exclude ? gedge.exclude : false,
+			    "option_group_id" : gedge.option_group_id ? gedge.option_group_id : null,
 			    "constraints": gedge.constraints ? gedge.constraints : []
 			  };
 	    input_qg.edges[id] = tmpdata;
@@ -2761,6 +2839,7 @@ function display_attribute(tab, att, semmeddb) {
 	row.appendChild(cell);
 
 	cell = document.createElement("td");
+	cell.className = 'subatts';
 	var subatts_table = document.createElement("table");
 	subatts_table.className = 't100';
 
@@ -2886,6 +2965,7 @@ function qg_node(id,render) {
 	newqnode.categories = [];
 	newqnode.constraints = [];
 	newqnode.is_set = false;
+	newqnode.option_group_id = null;
 	newqnode._names = [];
 
 	input_qg.nodes[id] = newqnode;
@@ -2998,6 +3078,22 @@ function qg_node(id,render) {
     }
 
     document.getElementById('nodeeditor_set').checked = input_qg.nodes[id].is_set;
+
+    htmlnode = document.getElementById('nodeeditor_optgpid');
+    htmlnode.innerHTML = '';
+    if (input_qg.nodes[id].option_group_id) {
+	htmlnode.appendChild(document.createTextNode(input_qg.nodes[id].option_group_id));
+
+	var link = document.createElement("a");
+	link.style.float = "right";
+	link.href = 'javascript:qg_remove_optgpid_from_qnode();';
+	link.title = "remove Option Group ID from this Qnode";
+	link.appendChild(document.createTextNode(" [ remove ] "));
+	htmlnode.appendChild(link);
+    }
+    else
+	input_qg.nodes[id].option_group_id = null;
+
     UIstate.editnodeid = id;
 
     qg_update_qnode_list();
@@ -3215,6 +3311,40 @@ function qg_remove_constraint_from_qedge(idx) {
     qg_edge(id);
 }
 
+function qg_update_optgpid_to_qgitem(what) {
+    var id = null;
+    if (what == 'qedge')
+	id = UIstate.editedgeid;
+    else if (what == 'qnode')
+	id = UIstate.editnodeid;
+    if (!id) return;
+
+    var val = document.getElementById(what+"optgpidbox").value.trim();
+    document.getElementById(what+"optgpidbox").value = '';
+    if (!val) return;
+
+    if (what == 'qedge') {
+	input_qg.edges[id]['option_group_id'] = val;
+	qg_edge(id);
+    }
+    else {
+	input_qg.nodes[id]['option_group_id'] = val;
+	qg_node(id);
+    }
+}
+function qg_remove_optgpid_from_qnode() {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+    input_qg.nodes[id]['option_group_id'] = null;
+    qg_node(id);
+}
+function qg_remove_optgpid_from_qedge() {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+    input_qg.edges[id]['option_group_id'] = null;
+    qg_edge(id);
+}
+
 function qg_setset_for_qnode() {
     var id = UIstate.editnodeid;
     if (!id) return;
@@ -3242,6 +3372,8 @@ function qg_edge(id) {
 	var newqedge = {};
 	newqedge.predicates = [];
 	newqedge.constraints = [];
+        newqedge.exclude = false;
+	newqedge.option_group_id = null;
 	// join last two nodes if not specified otherwise [ToDo: specify]
 	newqedge.subject = nodes[nodes.length - 2];
 	newqedge.object = nodes[nodes.length - 1];
@@ -3323,6 +3455,24 @@ function qg_edge(id) {
 	    cindex++;
 	}
     }
+
+    document.getElementById('edgeeditor_xcl').checked = input_qg.edges[id].exclude;
+
+    htmlnode = document.getElementById('edgeeditor_optgpid');
+    htmlnode.innerHTML = '';
+    if (input_qg.edges[id].option_group_id) {
+	htmlnode.appendChild(document.createTextNode(input_qg.edges[id].option_group_id));
+
+	var link = document.createElement("a");
+	link.style.float = "right";
+	link.href = 'javascript:qg_remove_optgpid_from_qedge();';
+	link.title = "remove Option Group ID from this Qedge";
+	link.appendChild(document.createTextNode(" [ remove ] "));
+	htmlnode.appendChild(link);
+    }
+    else
+	input_qg.edges[id].option_group_id = null;
+
 
     if (document.getElementById("showQGjson").checked) {
 	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
@@ -3407,6 +3557,14 @@ function qg_update_qedge() {
     });
     cyobj[99999].reset();
     cylayout(99999,"breadthfirst");
+}
+
+function qg_setxcl_for_qedge() {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+
+    input_qg.edges[id].exclude = document.getElementById('edgeeditor_xcl').checked;
+    qg_edge(id);
 }
 
 function qg_edge_swap_obj_subj() {
@@ -3568,7 +3726,7 @@ function qg_display_edge_predicates(all) {
 
     var preds = [];
     if (all)
-	preds = Object.keys(all_predicates).sort();
+	preds = all_predicates.sort();
     else if (input_qg.nodes[obj]['categories'][0] in predicates[input_qg.nodes[subj]['categories'][0]])
 	preds = predicates[input_qg.nodes[subj]['categories'][0]][input_qg.nodes[obj]['categories'][0]].sort();
 
@@ -3612,6 +3770,7 @@ function add_nodetype_to_query_graph(nodetype) {
     tmpdata["is_set"] = false;
     tmpdata["_name"]  = null;
     tmpdata["_desc"]  = "Generic " + nodetype;
+    tmpdata["option_group_id"] = null;
     if (nodetype != 'NONSPECIFIC')
 	tmpdata["categories"] = [nodetype];
 
@@ -3623,16 +3782,24 @@ function qg_clean_up(xfer) {
     for (var nid in input_qg.nodes) {
 	var gnode = input_qg.nodes[nid];
 
-	for (var att of ["_names","_desc"] ) {
-	    if (gnode.hasOwnProperty(att))
-		delete gnode[att];
+	if (gnode.ids) {
+	    if (gnode.ids[0] == null)
+		delete gnode.ids;
+	    else if (gnode.ids.length == 1)
+		if (gnode['_names'] && gnode['_names'][0] != null)
+		    gnode.name = gnode['_names'][0];
 	}
-	if (gnode.ids && gnode.ids[0] == null)
-	    delete gnode.ids;
 	if (gnode.categories && gnode.categories[0] == null)
 	    delete gnode.categories;
 	if (gnode.constraints && gnode.constraints[0] == null)
 	    delete gnode.constraints;
+	if (gnode.option_group_id == null)
+	    delete gnode.option_group_id;
+
+	for (var att of ["_names","_desc"] ) {
+	    if (gnode.hasOwnProperty(att))
+		delete gnode[att];
+	}
     }
 
     for (var eid in input_qg.edges) {
@@ -3641,6 +3808,10 @@ function qg_clean_up(xfer) {
 	    delete gedge.predicates;
 	if (gedge.constraints && gedge.constraints[0] == null)
 	    delete gedge.constraints;
+        if (gedge.option_group_id == null)
+	    delete gedge.option_group_id;
+        if (!gedge.exclude)
+	    delete gedge.exclude;
     }
 
     if (xfer)
@@ -3769,7 +3940,7 @@ function show_dsl_command_options(command) {
 	}
         else if (araxi_commands[command].parameters[par]['type'] == 'ARAXedge') {
 	    araxi_commands[command].parameters[par]['enum'] = [];
-	    for (const p of Object.keys(all_predicates).sort()) {
+	    for (const p of all_predicates.sort()) {
 		araxi_commands[command].parameters[par]['enum'].push(p);
 	    }
 	}
@@ -4094,7 +4265,7 @@ function show_wf_operation_options(operation, index) {
 	}
 	else if (wf_operations[operation].parameters[par]['type'] == 'ARAXedge') {
 	    wf_operations[operation].parameters[par]['enum'] = [];
-	    for (const p of Object.keys(all_predicates).sort()) {
+	    for (const p of all_predicates.sort()) {
 		wf_operations[operation].parameters[par]['enum'].push(p);
 	    }
 	}
@@ -4280,13 +4451,14 @@ async function import_qg2wf(fromqg) {
 function load_meta_knowledge_graph() {
     var allnodes_node = document.getElementById("allnodetypes");
 
-    fetch(providers["ARAX"].url + "/meta_knowledge_graph")
-	.then(response => {
+    fetch(providers["ARAX"].url + "/meta_knowledge_graph?format=simple")
+        .then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong with /meta_knowledge_graph');
 	})
         .then(data => {
-	    //add_to_dev_info("META_KNOWLEDGE_GRAPH",data);
+	    predicates = data.predicates_by_categories;
+	    all_predicates = data.supported_predicates;
 
 	    allnodes_node.innerHTML = '';
 	    var opt = document.createElement('option');
@@ -4295,63 +4467,26 @@ function load_meta_knowledge_graph() {
 	    opt.innerHTML = "Add Category to Node&nbsp;&nbsp;&nbsp;&#8675;";
 	    allnodes_node.appendChild(opt);
 
-            for (const n in data.nodes) {
+            for (const n in data.predicates_by_categories) {
 		opt = document.createElement('option');
 		opt.value = n;
 		opt.innerHTML = n;
 		allnodes_node.appendChild(opt);
-		// recreate old /predicates structure (simpler/faster lookups)
-		predicates[n] = {};
-		for (const o in data.nodes)
-		    predicates[n][o] = [];
 	    }
-            for (const e of data.edges) {
-		var bad = false;
-		if (!predicates[e.subject])
-                    bad = e.subject;
-		if (!predicates[e.object])
-		    bad = e.object;
-		if (bad) {
-                    console.warn(bad+" * not in nodes!!");
-		    continue;
-		}
-		predicates[e.subject][e.object].push(e.predicate);
-		all_predicates[e.predicate] = 1;
-	    }
-	    // clean up empty ones
-            for (var s in predicates)
-		for (var o in predicates[s])
-		    if (predicates[s][o].length < 1)
-			delete predicates[s][o];
-
-	    opt = document.createElement('option');
+            opt = document.createElement('option');
 	    opt.value = 'NONSPECIFIC';
 	    opt.innerHTML = "Unspecified/Non-specific";
-	    allnodes_node.appendChild(opt);
-
-            opt = document.createElement('option');
-	    opt.id = 'nodesetA';
-	    opt.value = 'LIST_A';
-	    opt.title = "Set of Nodes from List [A]";
-	    opt.innerHTML = "List [A]";
-	    allnodes_node.appendChild(opt);
-
-            opt = document.createElement('option');
-	    opt.id = 'nodesetB';
-	    opt.value = 'LIST_B';
-            opt.title = "Set of Nodes from List [B]";
-	    opt.innerHTML = "List [B]";
 	    allnodes_node.appendChild(opt);
 
 	    qg_display_edge_predicates(true);
 
 	    var all_preds_node = document.getElementById("fullpredicatelist");
 	    all_preds_node.innerHTML = '';
-            opt = document.createElement('option');
+	    opt = document.createElement('option');
 	    opt.value = '';
-            opt.innerHTML = "Full List of Predicates&nbsp;("+Object.keys(all_predicates).length+")&nbsp;&nbsp;&nbsp;&#8675;";
+	    opt.innerHTML = "Full List of Predicates&nbsp;("+all_predicates.length+")&nbsp;&nbsp;&nbsp;&#8675;";
 	    all_preds_node.appendChild(opt);
-            for (const p of Object.keys(all_predicates).sort()) {
+	    for (const p of all_predicates.sort()) {
 		opt = document.createElement('option');
 		opt.value = p;
 		opt.innerHTML = p;
@@ -4366,7 +4501,8 @@ function load_meta_knowledge_graph() {
 	    opt.innerHTML = "-- Error Loading Node Types --";
 	    allnodes_node.appendChild(opt);
 	    console.error(error);
-        });
+	});
+
 }
 
 function retrieveRecentQs() {
