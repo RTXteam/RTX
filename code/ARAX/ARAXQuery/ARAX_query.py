@@ -89,13 +89,23 @@ class ARAXQuery:
             n_messages = len(self.response.messages)
             query_plan_counter = 0
             idle_ticks = 0.0
+            pid = None
 
             while "DONE" not in self.response.status:
                 n_messages = len(self.response.messages)
                 while i_message < n_messages:
-                    yield(json.dumps(self.response.messages[i_message])+"\n")
+                    try:
+                        yield(json.dumps(self.response.messages[i_message])+"\n")
+                    except:
+                        return { 'DONE': True }
                     i_message += 1
                     idle_ticks = 0.0
+
+                if pid is None:
+                    pid = os.getpid()
+                    authorization = str(hash('Pickles' + str(pid)))
+                    yield(json.dumps( { "pid": pid, "authorization": authorization } )+"\n")
+
                 #### Also emit any updates to the query_plan
                 if query_plan_counter < self.response.query_plan['counter']:
                     query_plan_counter = self.response.query_plan['counter']
@@ -105,7 +115,10 @@ class ARAXQuery:
                 idle_ticks += 0.2
                 if idle_ticks > 180.0:
                     timestamp = str(datetime.now().isoformat())
-                    yield(json.dumps({ 'timestamp': timestamp, 'level': 'DEBUG', 'code': '', 'message': 'Query is still progressing...' })+"\n")
+                    try:
+                        yield(json.dumps({ 'timestamp': timestamp, 'level': 'DEBUG', 'code': '', 'message': 'Query is still progressing...' })+"\n")
+                    except:
+                        return { 'DONE': True }
                     idle_ticks = 0.0
 
             # #### If there are any more logging messages in the queue, send them first
