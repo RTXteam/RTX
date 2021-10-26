@@ -81,13 +81,13 @@ class KnowledgeSourceMetadata:
 
 
     #### Get a list of all supported subjects, predicates, and objects and return in /meta_knowledge_graph format
-    def get_meta_knowledge_graph(self, format=format):
+    def get_meta_knowledge_graph(self, format_='full'):
         method_name = inspect.stack()[0][3]
 
         #### If we've already loaded the meta_knowledge_graph, just return it
         if self.meta_knowledge_graph is not None:
             eprint(f"INFO: Returning previously loaded meta_knowledge_graph")
-            if format == 'simple':
+            if format_ == 'simple':
                 return self.simplified_meta_knowledge_graph
             else:
                 return self.meta_knowledge_graph
@@ -102,20 +102,21 @@ class KnowledgeSourceMetadata:
             eprint(f"ERROR [{method_name}]: File '{input_filename}' not found")
             return None
 
-        #try:
-        if True:
+        try:
+        #if True:
             with open(input_filename) as infile:
                 self.meta_knowledge_graph = json.load(infile)
                 KnowledgeSourceMetadata.cached_meta_knowledge_graph = self.meta_knowledge_graph
                 eprint("INFO: Loaded meta_knowledge_graph from file and cached it")
                 self.create_simplified_meta_knowledge_graph()
-                if format == 'simple':
+                KnowledgeSourceMetadata.cached_simplified_meta_knowledge_graph = self.simplified_meta_knowledge_graph
+                if format_ == 'simple':
                     return self.simplified_meta_knowledge_graph
                 else:
                     return self.meta_knowledge_graph
 
-        #except:
-        else:
+        except:
+        #else:
             eprint(f"ERROR [{method_name}]: Unable to read meta_knowledge_graph from file '{input_filename}'")
             return
 
