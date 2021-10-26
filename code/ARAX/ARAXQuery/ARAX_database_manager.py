@@ -266,6 +266,14 @@ class ARAXDatabaseManager:
                 if debug:
                     print("Making fake database...")
                 os.system(f"touch {self.local_paths[database_name]}")
+        #FW: Somewhat hacky solution to slow meta kg downloads from the KPs
+        if debug:
+                print(f"Downloading Meta KG data...")
+        metakg_remote_location = f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:/translator/data/orangeboard/production/RTX/code/ARAX/ARAXQuery/Expand/meta_map_v2.pickle"
+        metakg_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Expand', 'meta_map_v2.pickle'])
+        metakg_docker_path = "/mnt/data/orangeboard/production/RTX/code/ARAX/ARAXQuery/Expand/meta_map_v2.pickle"
+        self.download_database(remote_location=metakg_remote_location, local_path=metakg_filepath, 
+                                remote_path=metakg_docker_path, debug=debug)
         with open(versions_path,"w") as fid:
             if debug:
                 print("Saving new version file...")
