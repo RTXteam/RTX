@@ -13,7 +13,7 @@
   the set of directed edges, and ${\mathcal W}: {\mathcal E} \rightarrow [0,1]$
   contains edge weights. Let $\boldsymbol{A}_g$ be the induced weight matrix
   with components $(\boldsymbol{A}_g)_{v,v'} = \sum_{p \; \textrm{sth.} \;
-    (v,v',p) \in E}(W(v,v',p))$.  Let $G$ be the set of result-graphs. For each
+    (v,v',p) \in {\mathcal E}}({\mathcal W}(v,v',p))$.  Let $G$ be the set of result-graphs. For each
   $g$, ARAX computes three $\mathbb{R}$-scalar scores:
   \begin{enumerate}
   \item $S_1(g) = ||\boldsymbol{A}_g||_F$, the Frobenius norm
