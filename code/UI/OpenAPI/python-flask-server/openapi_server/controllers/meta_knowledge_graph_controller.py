@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX
 from knowledge_source_metadata import KnowledgeSourceMetadata
 
 
-def meta_knowledge_graph(format=None):  # noqa: E501
+def meta_knowledge_graph(format_=None):  # noqa: E501
     """Meta knowledge graph representation of this TRAPI web service.
 
      # noqa: E501
@@ -21,4 +21,4 @@ def meta_knowledge_graph(format=None):  # noqa: E501
     :rtype: MetaKnowledgeGraph
     """
     ksm = KnowledgeSourceMetadata()
-    return(ksm.get_meta_knowledge_graph(format=format))
+    return(ksm.get_meta_knowledge_graph(format_=format_))
