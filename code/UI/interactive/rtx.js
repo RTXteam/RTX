@@ -1,9 +1,10 @@
 var input_qg = { "edges": {}, "nodes": {} };
+var workflow = { 'workflow' : [], 'message' : {} };
 var qgids = [];
 var cyobj = [];
 var cytodata = [];
 var predicates = {};
-var all_predicates = {};
+var all_predicates = [];
 var all_nodes = {};
 var summary_table_html = '';
 var summary_tsv = [];
@@ -54,12 +55,14 @@ const attributes_to_truncate = [
 function main() {
     UIstate["submitter"] = 'ARAX GUI';
     UIstate["timeout"] = '';
+    UIstate["pid"] = null;
     UIstate["version"] = checkUIversion(false);
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
-    get_example_questions();
     load_meta_knowledge_graph();
     populate_dsl_commands();
+    populate_wf_operations();
+    populate_wfjson();
     display_list('A');
     display_list('B');
     add_status_divs();
@@ -88,6 +91,7 @@ function main() {
 	document.getElementById("devdiv").innerHTML =  "Requested response id = " + response_id + "<br>";
 	retrieve_response(providers['ARAX'].url+'/response/'+response_id,response_id,"all");
         pasteId(response_id);
+	selectInput("qid");
     }
     else {
 	add_cyto(99999);
@@ -156,7 +160,7 @@ function selectInput (input_id) {
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
 
-    for (var s of ['qtext_input','qgraph_input','qjson_input','qdsl_input','qid_input','resp_input']) {
+    for (var s of ['qgraph_input','qjson_input','qdsl_input','qwf_input','qid_input','resp_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -183,11 +187,6 @@ function pasteId(id) {
     document.getElementById("qid").value = '';
     document.getElementById("qid").blur();
 }
-function pasteQuestion(question) {
-    document.getElementById("questionForm").elements["questionText"].value = question;
-    document.getElementById("qqq").value = '';
-    document.getElementById("qqq").blur();
-}
 function pasteExample(type) {
     if (type == "DSL") {
 	document.getElementById("dslText").value = '# This program creates two query nodes and a query edge between them, looks for matching edges in the KG,\n# overlays NGD metrics, and returns the top 30 results\nadd_qnode(name=acetaminophen, key=n0)\nadd_qnode(categories=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand()\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
@@ -204,6 +203,10 @@ function reset_vars() {
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
     document.getElementById("queryplan_container").innerHTML = "";
+    if (document.getElementById("queryplan_stream")) {
+	document.getElementById("queryplan_streamhead").remove();
+	document.getElementById("queryplan_stream").remove();
+    }
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
@@ -245,14 +248,13 @@ function viewResponse() {
 
 
 function postQuery(qtype,agent) {
-    var queryObj= {};
+    var queryObj = {};
 
     reset_vars();
     var statusdiv = document.getElementById("statusdiv");
 
     // assemble QueryObject
     if (qtype == "DSL") {
-	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via DSL input --';
 	statusdiv.innerHTML = "Posting DSL.  Looking for answer...";
 	statusdiv.appendChild(document.createElement("br"));
 
@@ -260,8 +262,13 @@ function postQuery(qtype,agent) {
 	queryObj["message"] = {};
 	queryObj["operations"] = { "actions": dslArrayOfLines};
     }
+    else if (qtype == "WorkFlow") {
+        statusdiv.innerHTML = "Posting Workflow JSON.  Awaiting response...";
+	statusdiv.appendChild(document.createElement("br"));
+
+	queryObj = workflow;
+    }
     else if (qtype == "JSON") {
-	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via direct JSON input --';
 	statusdiv.innerHTML = "Posting JSON.  Looking for answer...";
 	statusdiv.appendChild(document.createElement("br"));
 
@@ -290,7 +297,6 @@ function postQuery(qtype,agent) {
 	qg_new(false,false);
     }
     else {  // qGraph
-	document.getElementById("questionForm").elements["questionText"].value = '-- posted async query via graph --';
 	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
         statusdiv.appendChild(document.createElement("br"));
 
@@ -330,6 +336,7 @@ function postQuery_ARS(queryObj) {
 	    document.getElementById("statusdiv").innerHTML += " - got message_id = "+message_id;
 	    document.getElementById("statusdiv").appendChild(document.createElement("br"));
 	    pasteId(message_id);
+	    selectInput("qid");
 	    retrieve_response(providers['ARAX'].url+"/response/"+message_id,message_id,"all");
 	})
         .catch(error => {
@@ -409,7 +416,7 @@ function postQuery_ARAX(qtype,queryObj) {
     statusdiv.appendChild(document.createTextNode("Processing step "));
     var span = document.createElement("span");
     span.id = "finishedSteps";
-    span.style.fontWeight= "bold";
+    span.style.fontWeight = "bold";
 //    span.className = "menunum numnew";
     span.appendChild(document.createTextNode("0"));
     statusdiv.appendChild(span);
@@ -513,6 +520,7 @@ function postQuery_ARAX(qtype,queryObj) {
 				div = document.getElementById("queryplan_stream");
 			    else {
 				div = document.createElement("div");
+				div.id = "queryplan_streamhead";
 				div.className = 'statushead';
 				div.appendChild(document.createTextNode("Expansion Progress"));
 				document.getElementById("status_container").before(div);
@@ -527,6 +535,10 @@ function postQuery_ARAX(qtype,queryObj) {
 			    div.appendChild(document.createElement("br"));
 			    render_queryplan_table(jsonMsg, div);
 			    div.appendChild(document.createElement("br"));
+			}
+                        else if (jsonMsg.pid) {
+			    UIstate["pid"] = jsonMsg;
+			    display_kill_button();
 			}
 			else {
 			    console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
@@ -554,6 +566,9 @@ function postQuery_ARAX(qtype,queryObj) {
 	    pre.id = "responseJSON";
 	    pre.appendChild(document.createTextNode(JSON.stringify(data,null,2)));
 	    dev.appendChild(pre);
+
+	    if (document.getElementById("killquerybutton"))
+		document.getElementById("killquerybutton").remove();
 
 	    document.getElementById("progressBar").style.width = "800px";
 	    if (data.status == "OK")
@@ -586,6 +601,9 @@ function postQuery_ARAX(qtype,queryObj) {
 
 	})
         .catch(function(err) {
+            if (document.getElementById("killquerybutton"))
+		document.getElementById("killquerybutton").remove();
+
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+err+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with parsing QUERY:<br>"+err;
 	    sesame('openmax',statusdiv);
@@ -596,6 +614,67 @@ function postQuery_ARAX(qtype,queryObj) {
             there_was_an_error();
 	});
 }
+
+function display_kill_button() {
+    var button = document.createElement("input");
+    button.id = 'killquerybutton';
+    button.className = 'questionBox button';
+    button.style.background = "#c40";
+    button.type = 'button';
+    button.name = 'action';
+    button.value = 'Terminate Query!';
+    button.title = 'Kill this request (pid='+UIstate["pid"].pid+')';
+    button.setAttribute('onclick', 'kill_query();');
+
+    document.getElementById("status_container").before(button);
+}
+
+function kill_query() {
+    if (!UIstate["pid"].pid || !UIstate["pid"].authorization) {
+        document.getElementById("killquerybutton").replaceWith('No PID or authorization; cannot terminate query');
+	return;
+    }
+
+    fetch(providers["ARAX"].url + "/status?terminate_pid="+UIstate["pid"].pid+"&authorization="+UIstate["pid"].authorization)
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Something went wrong with termination...');
+	})
+        .then(data => {
+            if (data.status == 'OK') {
+		document.getElementById("killquerybutton").id = 'killquerybuttondead';
+		addCheckBox(document.getElementById("killquerybuttondead"),true);
+		var timeout = setTimeout(function() { document.getElementById("killquerybuttondead").remove(); } , 1500 );
+		statusdiv.innerHTML += "<br><span class='error'>Query terminated by user</span>";
+		if (document.getElementById("cmdoutput")) {
+                    var cmddiv = document.getElementById("cmdoutput");
+		    cmddiv.appendChild(document.createElement("br"));
+		    cmddiv.appendChild(document.createTextNode(data.description));
+                    cmddiv.appendChild(document.createElement("br"));
+		    cmddiv.scrollTop = cmddiv.scrollHeight;
+		    for (var e of document.getElementsByClassName("working")) {
+			e.classList.remove('working');
+			e.classList.remove('p5');
+			e.classList.add('barerror');
+		    }
+		    document.getElementById("progressBar").classList.add("barerror");
+		    document.getElementById("progressBar").innerHTML += " (terminated)\u00A0\u00A0";
+		}
+	    }
+            else if (data.status == 'ERROR') {
+		document.getElementById("killquerybutton").after('Cannot terminate query');
+		console.warn('Query termination attempt error: '+data.description);
+	    }
+	    else throw new Error('Something went wrong while attempting to terminate query...');
+	})
+        .catch(error => {
+	    var span = document.createElement("span");
+	    span.className = 'error';
+	    span.innerHTML = error;
+	    document.getElementById("killquerybutton").after(span);
+	});
+}
+
 
 function lookup_synonym(syn,open) {
     document.getElementById("newsynonym").value = syn.trim();
@@ -836,12 +915,7 @@ function getIdStats(id) {
 	document.getElementById("nodedges_"+id).innerHTML = '';
 	document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
-	var wait = document.createElement("span");
-	wait.className = 'loading_cell';
-	var waitbar = document.createElement("span");
-	waitbar.className = 'loading_bar';
-	wait.appendChild(waitbar);
-	document.getElementById("numresults_"+id).appendChild(wait);
+	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
     retrieve_response(providers["ARAX"].url+"/response/"+id,id,"stats");
 }
@@ -856,7 +930,7 @@ function checkRefreshARS() {
 	function countdown() {
 	    if (timetogo == 0) {
 		clearInterval(timeout);
-                sendId();
+                sendId(true);
 		document.getElementById("ars_refresh").innerHTML = "";
 	    }
 	    else {
@@ -870,14 +944,19 @@ function checkRefreshARS() {
     }
 }
 
-function sendId() {
-    var id = document.getElementById("idText").value.trim();
-    if (!id) return;
+function sendId(is_ars_refresh) {
+    var id;
+    if (is_ars_refresh)
+	id = document.getElementById("ars_refresh").dataset.msgid;
+    else {
+	id = document.getElementById("idText").value.trim();
+	pasteId(id);
+	if (!id) return;
 
-    pasteId(id);
-    reset_vars();
-    if (cyobj[99999]) {cyobj[99999].elements().remove();}
-    input_qg = { "edges": {}, "nodes": {} };
+	reset_vars();
+	if (cyobj[99999]) {cyobj[99999].elements().remove();}
+	input_qg = { "edges": {}, "nodes": {} };
+    }
 
     if (document.getElementById("numresults_"+id)) {
 	document.getElementById("numresults_"+id).innerHTML = '';
@@ -885,113 +964,14 @@ function sendId() {
 	document.getElementById("nodedges_"+id).innerHTML = '';
         document.getElementById("nsources_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
-	var wait = document.createElement("span");
-	wait.className = 'loading_cell';
-	var waitbar = document.createElement("span");
-	waitbar.className = 'loading_bar';
-	wait.appendChild(waitbar);
-	document.getElementById("numresults_"+id).appendChild(wait);
+	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
 
     retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
-    openSection('query');
+    if (!is_ars_refresh)
+	openSection('query');
 }
 
-function sendQuestion(e) {
-    reset_vars();
-    if (cyobj[99999]) {cyobj[99999].elements().remove();}
-    input_qg = { "edges": {}, "nodes": {} };
-
-    var bypass_cache = true;
-    if (document.getElementById("useCache").checked) {
-	bypass_cache = false;
-    }
-
-    // collect the form data while iterating over the inputs
-    var q = document.getElementById("questionForm").elements["questionText"].value;
-    var question = q.replace("[A]", get_list_as_string("A"));
-    question = question.replace("[B]", get_list_as_string("B"));
-    question = question.replace("[]", get_list_as_string("A"));
-    question = question.replace(/\$\w+_list/, get_list_as_string("A"));  // e.g. $protein_list
-    var data = { 'text': question, 'language': 'English', 'bypass_cache' : bypass_cache };
-    document.getElementById("statusdiv").innerHTML = "Interpreting your question...";
-    document.getElementById("devdiv").innerHTML = " (bypassing cache : " + bypass_cache + ")";
-
-    sesame('openmax',statusdiv);
-
-    // construct an HTTP request
-    var xhr = new XMLHttpRequest();
-    xhr.open("post", providers["ARAX"].url + "/translate", true);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-
-    // send the collected data as JSON
-    xhr.send(JSON.stringify(data));
-
-    xhr.onloadend = function() {
-	if ( xhr.status == 200 ) {
-	    var jsonObj = JSON.parse(xhr.responseText);
-	    add_to_dev_info("Posted to TRANSLATE",jsonObj);
-
-	    if ( jsonObj.query_type_id && jsonObj.terms ) {
-		document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>Looking for answer...";
-
-		sesame('openmax',statusdiv);
-		var xhr2 = new XMLHttpRequest();
-		xhr2.open("post",  providers["ARAX"].url + "/query", true);
-		xhr2.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
-
-                //var queryObj = { "message" : jsonObj };
-                var queryObj = jsonObj;
-		queryObj.submitter = UIstate["submitter"];
-                queryObj["message"] = { };
-                queryObj.bypass_cache = bypass_cache;
-                //queryObj.max_results = 100;
-
-		add_to_dev_info("Posted to QUERY",queryObj);
-		xhr2.send(JSON.stringify(queryObj));
-		xhr2.onloadend = function() {
-		    if ( xhr2.status == 200 ) {
-			var jsonObj2 = JSON.parse(xhr2.responseText);
-			document.getElementById("devdiv").innerHTML += "<br>================================================================= QUERY::<pre id='responseJSON'>\n" + JSON.stringify(jsonObj2,null,2) + "</pre>";
-
-			document.getElementById("statusdiv").innerHTML = "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<b>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br><br><i>"+jsonObj2["description"]+"</i><br>";
-			sesame('openmax',statusdiv);
-
-			render_message(jsonObj2,true);
-		    }
-		    else if ( jsonObj.message ) { // STILL APPLIES TO 0.9??  TODO
-			document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+jsonObj.message+"</span>";
-			sesame('openmax',statusdiv);
-		    }
-		    else {
-			document.getElementById("statusdiv").innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr2.status+")</span>";
-			document.getElementById("devdiv").innerHTML += "------------------------------------ error with QUERY:<br>"+xhr2.responseText;
-			sesame('openmax',statusdiv);
-		    }
-
-		};
-	    }
-	    else {
-		if ( jsonObj.message ) {
-		    document.getElementById("statusdiv").innerHTML = jsonObj.message;
-		}
-		else if ( jsonObj.error_message ) {
-		    document.getElementById("statusdiv").innerHTML = jsonObj.error_message;
-		}
-		else {
-		    document.getElementById("statusdiv").innerHTML = "ERROR: Unknown error. No message returned.";
-		}
-		sesame('openmax',statusdiv);
-	    }
-
-	}
-	else { // responseText
-	    document.getElementById("statusdiv").innerHTML += "<br><br>An error was encountered:<br><span class='error'>"+xhr.statusText+" ("+xhr.status+")</span>";
-	    sesame('openmax',statusdiv);
-	}
-    };
-
-}
 
 function process_ars_message(ars_msg, level) {
     if (level > 5)
@@ -1018,6 +998,7 @@ function process_ars_message(ars_msg, level) {
 	span.style.marginRight = '20px';
 	span.dataset.total = ars_msg.status == 'Done' ? 999999 : ars_msg["children"].length + 1;
 	span.dataset.count = '';
+	span.dataset.msgid = ars_msg.message;
 	span.appendChild(document.createTextNode("Auto-reload: " + (ars_msg.status == 'Done' ? "OFF" : "ON")));
 	div2.appendChild(span);
 
@@ -1072,9 +1053,9 @@ function process_ars_message(ars_msg, level) {
 	link = document.createTextNode(ars_msg.message);
     else {
 	link = document.createElement("a");
-	link.title='view this response';
+	link.title = 'view this response';
 	link.style.cursor = "pointer";
-	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId();');
+	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId(false);');
 	link.appendChild(document.createTextNode(ars_msg.message));
 	if (!ars_msg["children"] || ars_msg["children"].length == 0)
 	    go = true;
@@ -1140,17 +1121,11 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 
     if (jsonObj2["children"]) {
 	process_ars_message(jsonObj2,0);
-	selectInput("qid");
 	return;
     }
 
-    if (jsonObj2["restated_question"]) {
+    if (jsonObj2["restated_question"])
 	statusdiv.innerHTML += "Your question has been interpreted and is restated as follows:<br>&nbsp;&nbsp;&nbsp;<B>"+jsonObj2["restated_question"]+"?</b><br>Please ensure that this is an accurate restatement of the intended question.<br>";
-	document.getElementById("questionForm").elements["questionText"].value = jsonObj2["restated_question"];
-    }
-    else {
-	document.getElementById("questionForm").elements["questionText"].value = "";
-    }
 
     jsonObj2.araxui_response = resp_id;
 
@@ -1319,8 +1294,7 @@ function retrieve_response(resp_url, resp_id, type) {
 	if ( xhr.status == 200 ) {
             if (document.getElementById("istrapi_"+resp_id))
 		document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
-	    process_response(resp_url, resp_id, type,JSON.parse(xhr.responseText));
-
+	    process_response(resp_url, resp_id, type, JSON.parse(xhr.responseText));
 	}
 	else if ( xhr.status == 404 ) {
 	    update_response_stats_on_error(resp_id,'N/A',true);
@@ -1339,13 +1313,6 @@ function retrieve_response(resp_url, resp_id, type) {
 
 }
 
-
-// DELETE_LATER::
-function render_message(respObj,dispjson) {
-    var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("DEPRECATED FUNCTION!  UPDATE ME..."));
-    sesame('openmax',statusdiv);
-}
 
 function render_response_stats(respObj) {
     if (!document.getElementById("numresults_"+respObj.araxui_response)) return;
@@ -1847,7 +1814,7 @@ function render_queryplan_table(qp,node) {
 	    td = document.createElement("td");
             if (qp.qedge_keys[edge][kp]["query"] && qp.qedge_keys[edge][kp]["query"] != null) {
                 var link = document.createElement("a");
-		link.title='view the posted query (JSON)';
+		link.title = 'view the posted query (JSON)';
 		link.style.cursor = "pointer";
 		link.onclick = function () { showKPQuery(kp, qp.qedge_keys[edge][kp]["query"]); };
 		link.appendChild(document.createTextNode("query"));
@@ -2087,7 +2054,7 @@ function process_graph(gne,gid,trapi) {
 	var gnode = Object.create(gne['nodes'][id]); // make a copy!
 
 	gnode.parentdivnum = gid;   // helps link node to div when displaying node info on click
-	gnode.trapiversion = trapi; // support multiple versions...?
+	gnode.trapiversion = trapi; // deprecate??
 
         if (!gnode.fulltextname) {
 	    if (gnode.name)
@@ -2152,6 +2119,7 @@ function process_graph(gne,gid,trapi) {
 			    "_names"     : gnode.ids ? gnode.ids.slice() : [], // make a copy!
 			    "_desc"      : gnode.description,
 			    "categories" : gnode.categories ? gnode.categories : [],
+			    "option_group_id" : gnode.option_group_id ? gnode.option_group_id : null,
 			    "constraints": gnode.constraints ? gnode.constraints : []
 			  };
 
@@ -2165,6 +2133,8 @@ function process_graph(gne,gid,trapi) {
 	    var tmpdata = { "subject"    : gedge.subject,
 			    "object"     : gedge.object,
 			    "predicates" : gedge.predicates ? gedge.predicates : [],
+			    "exclude"    : gedge.exclude ? gedge.exclude : false,
+			    "option_group_id" : gedge.option_group_id ? gedge.option_group_id : null,
 			    "constraints": gedge.constraints ? gedge.constraints : []
 			  };
 	    input_qg.edges[id] = tmpdata;
@@ -2282,7 +2252,7 @@ function process_results(reslist,kg,trapi,mainreasoner) {
         td.className = 'cytograph_controls';
 
 	var link = document.createElement("a");
-	link.title='reset zoom and center';
+	link.title = 'reset zoom and center';
         link.setAttribute('onclick', 'cyobj['+num+'].reset();');
         link.appendChild(document.createTextNode("\u21BB"));
         td.appendChild(link);
@@ -2290,31 +2260,65 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	tr.appendChild(td);
 
         link = document.createElement("a");
-	link.title='breadthfirst layout';
+	link.title = 'breadthfirst layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"breadthfirst");');
 	link.appendChild(document.createTextNode("B"));
 	td.appendChild(link);
 	td.appendChild(document.createElement("br"));
 
         link = document.createElement("a");
-	link.title='force-directed layout';
+	link.title = 'force-directed layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"cose");');
 	link.appendChild(document.createTextNode("F"));
 	td.appendChild(link);
 	td.appendChild(document.createElement("br"));
 
         link = document.createElement("a");
-	link.title='circle layout';
+	link.title = 'circle layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"circle");');
 	link.appendChild(document.createTextNode("C"));
 	td.appendChild(link);
 	td.appendChild(document.createElement("br"));
 
         link = document.createElement("a");
-	link.title='random layout';
+	link.title = 'random layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"random");');
 	link.appendChild(document.createTextNode("R"));
 	td.appendChild(link);
+        td.appendChild(document.createElement("br"));
+
+	var span = document.createElement("span");
+	span.style.marginTop = "80px";
+	span.style.display = "inline-block";
+	span.className = "explevel p9";
+	span.style.fontSize = "x-small";
+	span.title = "new: resize graph window!";
+	span.appendChild(document.createTextNode("New"));
+        td.appendChild(span);
+        td.appendChild(document.createElement("br"));
+
+	link = document.createElement("a");
+	link.title = 'small graph';
+	link.setAttribute('onclick', 'cyresize('+num+',"s");');
+	link.appendChild(document.createTextNode("s"));
+	td.appendChild(link);
+        td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+	link.title = 'medium-sized graph';
+	link.setAttribute('onclick', 'cyresize('+num+',"m");');
+	link.appendChild(document.createTextNode("M"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+        link.style.fontWeight = "bold";
+        link.style.fontSize = "larger";
+	link.title = 'Large graph';
+	link.setAttribute('onclick', 'cyresize('+num+',"L");');
+	link.appendChild(document.createTextNode("L"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
 
 	tr.appendChild(td);
 
@@ -2330,16 +2334,27 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 
 
         tr = document.createElement("tr");
-	td = document.createElement("td");
-	tr.appendChild(td);
+	//td = document.createElement("td");
+	//tr.appendChild(td);
 
 	td = document.createElement("td");
+	td.colSpan = '2';
         div2 = document.createElement("div");
 	div2.id = 'd'+num+'_div';
 	div2.className = 'panel';
         link = document.createElement("i");
-        link.appendChild(document.createTextNode("Click on a node or edge to get details"));
+        link.appendChild(document.createTextNode("Click on a node or edge to get details, or click on graph background to see a full list of nodes and edges for this result"));
         div2.appendChild(link);
+
+	var span = document.createElement("span");
+	span.style.display = "inline-block";
+	span.style.marginLeft = '10px';
+	span.className = "explevel p9";
+	span.style.fontSize = "x-small";
+	span.title = "new: full list of nodes and edges!";
+	span.appendChild(document.createTextNode("New"));
+        div2.appendChild(span);
+
 	td.appendChild(div2);
 	tr.appendChild(td);
 
@@ -2459,11 +2474,109 @@ function add_cyto(i) {
 	return;
     }
 
+    cyobj[i].on('tap', function(evt) {
+	if (evt.target === cyobj[i]) {
+            var div = document.getElementById('d'+i+'_div');
+	    div.innerHTML = "";
+
+	    var ne_table = document.createElement("table");
+	    var tr = document.createElement("tr");
+	    var td = document.createElement("td");
+	    td.colSpan = '3';
+	    td.appendChild(document.createTextNode("All nodes and edges:"));
+	    tr.appendChild(td);
+	    ne_table.appendChild(tr);
+
+	    var allnodes = cyobj[i].nodes();
+	    for (var n = 0; n < allnodes.length; n++) {
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+		td.colSpan = '3';
+		td.appendChild(document.createElement("hr"));
+		tr.appendChild(td);
+		ne_table.appendChild(tr);
+
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+
+                var link = document.createElement("a");
+                link.className = "attvalue";
+                link.style.cursor = "pointer";
+		link.dataset.nn = allnodes[n].id();
+		link.title = 'View node details';
+		link.onclick = function () { cyobj[i].getElementById(this.dataset.nn).emit("tap"); cyobj[i].getElementById(this.dataset.nn).select(); };
+		link.appendChild(document.createTextNode(allnodes[n].data('id')));
+		td.appendChild(link);
+
+		tr.appendChild(td);
+		td = document.createElement("td");
+                td.colSpan = '2';
+		td.style.paddingLeft = "15px";
+		td.style.fontStyle = "italic";
+		if (allnodes[n].data('name') != null)
+		    td.appendChild(document.createTextNode(' '+allnodes[n].data('name')));
+		tr.appendChild(td);
+		ne_table.appendChild(tr);
+
+		var nodedges = cyobj[i].edges('[source = "'+allnodes[n].data("id")+'"]');
+		for (var e = 0; e < nodedges.length; e++) {
+		    tr = document.createElement("tr");
+		    td = document.createElement("td");
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+                    var link = document.createElement("a");
+		    link.style.cursor = "pointer";
+		    link.dataset.ee = nodedges[e].id();
+		    link.title = 'View edge details';
+		    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
+		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+		    td.appendChild(link);
+		    td.appendChild(document.createTextNode(" \u{1F87A} "))
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    td.appendChild(document.createTextNode(nodedges[e].data('target')));
+		    tr.appendChild(td);
+		    ne_table.appendChild(tr);
+		}
+
+		nodedges = cyobj[i].edges('[target = "'+allnodes[n].data("id")+'"]');
+		for (var e = 0; e < nodedges.length; e++) {
+		    tr = document.createElement("tr");
+		    td = document.createElement("td");
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    td.appendChild(document.createTextNode(" \u{1F878} "))
+                    var link = document.createElement("a");
+		    link.style.cursor = "pointer";
+		    link.dataset.ee = nodedges[e].id();
+		    link.title = 'View edge details';
+                    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
+		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+		    td.appendChild(link);
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    td.appendChild(document.createTextNode(nodedges[e].data('source')));
+		    tr.appendChild(td);
+		    ne_table.appendChild(tr);
+		}
+	    }
+
+	    div.appendChild(ne_table);
+	    sesame('openmax',document.getElementById('a'+i+'_div'));
+	}
+    });
+
     cyobj[i].on('tap','node', function() {
 	var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
 
-        var fields = [ "name","id", "categories" ];
+	var span = document.createElement("span");
+	span.style.float = "right";
+	span.style.fontStyle = "italic";
+	span.appendChild(document.createTextNode("Click on graph background to see a full list of nodes and edges"));
+	div.appendChild(span);
+
+	var fields = [ "name","id","categories" ];
 	for (var field of fields) {
 	    if (this.data(field) == null) continue;
 
@@ -2471,14 +2584,17 @@ function add_cyto(i) {
 	    span.className = "fieldname";
 	    span.appendChild(document.createTextNode(field+": "));
 	    div.appendChild(span);
-	    div.appendChild(document.createTextNode(this.data(field)));
+
+            var a = document.createElement("a");
+	    a.title = 'view ARAX synonyms';
+	    a.href = "javascript:lookup_synonym('"+this.data(field)+"',true)";
+	    a.innerHTML = this.data(field);
+	    div.appendChild(a);
+
 	    div.appendChild(document.createElement("br"));
 	}
 
-	if (this.data('trapiversion').startsWith("1.0"))
-	    show_attributes_1point0(div, this.data('attributes'));
-	else
-	    show_attributes_1point1(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2487,11 +2603,33 @@ function add_cyto(i) {
         var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
 
-        div.appendChild(document.createTextNode(this.data('source')+" "));
-        var span = document.createElement("b");
+	var span = document.createElement("span");
+	span.style.float = "right";
+	span.style.fontStyle = "italic";
+	span.appendChild(document.createTextNode("Click on graph background to see a full list of nodes and edges"));
+	div.appendChild(span);
+
+	var a = document.createElement("a");
+	a.className = 'attvalue';
+	a.title = 'view ARAX synonyms';
+	a.href = "javascript:lookup_synonym('"+this.data('source')+"',true)";
+	a.innerHTML = this.data('source');
+	div.appendChild(a);
+
+        var span = document.createElement("span");
+	span.className = 'attvalue';
+        span.appendChild(document.createTextNode("----"));
 	span.appendChild(document.createTextNode(this.data('predicate')));
+        span.appendChild(document.createTextNode("----"));
         div.appendChild(span);
-	div.appendChild(document.createTextNode(" "+this.data('target')));
+
+        a = document.createElement("a");
+	a.className = 'attvalue';
+	a.title = 'view ARAX synonyms';
+	a.href = "javascript:lookup_synonym('"+this.data('target')+"',true)";
+	a.innerHTML = this.data('target');
+	div.appendChild(a);
+
         div.appendChild(document.createElement("br"));
 
 	var fields = [ "relation","id" ];
@@ -2515,10 +2653,7 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-        if (this.data('trapiversion').startsWith("1.0"))
-	    show_attributes_1point0(div, this.data('attributes'));
-	else
-	    show_attributes_1point1(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2526,7 +2661,8 @@ function add_cyto(i) {
 }
 
 
-function show_attributes_1point1(html_div, atts) {
+
+function show_attributes(html_div, atts) {
     if (atts == null)  { return; }
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
@@ -2534,177 +2670,201 @@ function show_attributes_1point1(html_div, atts) {
     // always display iri first
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
 
-    var attshtml = "<table>";
+    var atts_table = document.createElement("table");
+
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
-	var snippet = "<tr><td colspan='2'><hr></td></tr>";
-	var value = null;
+	display_attribute(atts_table, att, semmeddb_sentences);
+    }
 
-	for (var nom in att) {
-	    if (nom == "value") {
-		value = att[nom];
-		continue;
-	    }
-	    else if (att[nom] != null) {
-		snippet += "<tr><td><b>" + nom + "</b>: </td><td>";
+    html_div.appendChild(atts_table);
+}
 
-		if (att[nom].toString().startsWith("http")) {
-		    snippet += "<a href='" + att[nom] + "'";
-		    snippet += " target='_blank'>" + att[nom] + "</a>";
-		}
-		else
-		    snippet += att[nom];
+function display_attribute(tab, att, semmeddb) {
+    var row = document.createElement("tr");
+    var cell = document.createElement("td");
 
-		snippet += "</td></tr>";
-	    }
+    cell.colSpan = '2';
+    cell.appendChild(document.createElement("hr"));
+    row.appendChild(cell);
+    tab.appendChild(row);
+
+    var sub_atts = null;
+
+    var value = null;
+    for (var nom in att) {
+	if (nom == "value") {
+	    value = att[nom];
+	    continue;
 	}
-	snippet += "<tr><td><b>value</b>: </td><td>";
-	if (value != null || value != '') {
-            var fixit = true;
-	    if (Array.isArray(att.value))
-		for (var val of att.value) {
-		    snippet += "<br>";
-		    if (val == null) {
-			snippet += "--NULL--";
-		    }
-		    else if (typeof val === 'object') {
-			snippet += "<pre>"+JSON.stringify(val,null,2)+"</pre>";
-			fixit = false;
-		    }
-		    else if (val.toString().startsWith("PMID:")) {
-			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
-			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
-			if (semmeddb_sentences && semmeddb_sentences[0] && semmeddb_sentences[0]["value"][val]) {
-			    snippet += ' : <i>"'+semmeddb_sentences[0]["value"][val]["sentence"]+'"</i>';
-			    snippet += ' ('+semmeddb_sentences[0]["value"][val]["publication date"]+')';
-			}
-		    }
-		    else if (val.toString().startsWith("DOI:")) {
-			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
-			snippet += " title='View in doi.org' target='_blank'>" + val + "</a>";
-		    }
-		    else if (val.toString().startsWith("http")) {
-			snippet += "<a href='" + val + "'";
-			snippet += " target='_blank'>" + val + "</a>";
-		    }
-		    else {
-			snippet += val;
-		    }
-		}
-	    else if (typeof att.value === 'object') {
-		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
-		fixit = false;
-	    }
-            else if (attributes_to_truncate.includes(att.original_attribute_name)) {
-		snippet += Number(att.value).toPrecision(3);
-		fixit = false;
-	    }
-	    else if (value.toString().startsWith("http")) {
-		snippet += "<a href='" + value + "'";
-		snippet += " target='_blank'>" + value + "</a>";
+	else if (nom == "attributes") {
+	    sub_atts = att[nom];
+	    continue;
+	}
+	else if (att[nom] != null) {
+	    row = document.createElement("tr");
+	    cell = document.createElement("td");
+	    cell.style.fontWeight = "bold";
+            cell.appendChild(document.createTextNode(nom+":"));
+	    row.appendChild(cell);
+            cell = document.createElement("td");
+
+	    if (att[nom].toString().startsWith("http")) {
+		var a = document.createElement("a");
+		a.target = '_blank';
+		a.href = att[nom];
+		a.innerHTML = att[nom];
+		cell.appendChild(a);
 	    }
 	    else
-		snippet += att.value;
+		cell.appendChild(document.createTextNode(att[nom]));
 
-	    if (att.attribute_type_id == "biolink:original_edge_information")
-                fixit = false;
+	    row.appendChild(cell);
+	    tab.appendChild(row);
+	}
+    }
 
-            if (fixit) {
-		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
-		snippet = snippet.toString().replace(/---/g,'<br>---');
-		snippet = snippet.toString().replace( /;;/g,'<br>;;');
+    row = document.createElement("tr");
+    cell = document.createElement("td");
+    cell.style.fontWeight = "bold";
+    cell.appendChild(document.createTextNode("value:"));
+    row.appendChild(cell);
+    cell = document.createElement("td");
+    cell.style.overflowWrap = "anywhere"; //??
+
+    if (value != null && value != '') {
+	if (Array.isArray(att.value)) {
+	    if (att.attribute_type_id != "biolink:publications")
+                cell.className = 'attvalue';
+
+	    var br = false;
+	    for (var val of att.value) {
+		if (br)
+		    cell.appendChild(document.createElement("br"));
+
+		if (val == null) {
+                    cell.appendChild(document.createTextNode("--NULL--"));
+		}
+		else if (typeof val === 'object') {
+		    var pre = document.createElement("pre");
+		    pre.appendChild(document.createTextNode(JSON.stringify(val,null,2)));
+		    cell.appendChild(pre);
+		}
+		else if (val.toString().startsWith("PMID:")) {
+                    var a = document.createElement("a");
+                    a.className = 'attvalue';
+                    a.target = '_blank';
+                    a.href = "https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1];
+		    a.title = 'View in PubMed';
+                    a.innerHTML = val;
+                    cell.appendChild(a);
+
+		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val]) {
+			cell.appendChild(document.createTextNode(" : "));
+			var quote = document.createElement("i");
+			quote.appendChild(document.createTextNode(semmeddb[0]["value"][val]["sentence"]));
+			cell.appendChild(quote);
+			cell.appendChild(document.createTextNode(' ('+semmeddb[0]["value"][val]["publication date"]+')'));
+		    }
+		}
+		else if (val.toString().startsWith("DOI:")) {
+                    var a = document.createElement("a");
+		    a.className = 'attvalue';
+		    a.target = '_blank';
+		    a.href = "https://doi.org/" + val.split(":")[1];
+		    a.title = 'View in doi.org';
+		    a.innerHTML = val;
+		    cell.appendChild(a);
+		}
+		else if (val.toString().startsWith("http")) {
+                    var a = document.createElement("a");
+		    a.className = 'attvalue';
+		    a.target = '_blank';
+		    a.href = val;
+		    a.innerHTML = val;
+		    cell.appendChild(a);
+		}
+		else {
+                    cell.appendChild(document.createTextNode(val));
+		}
+
+		br = true;
 	    }
+	}
+	else if (typeof att.value === 'object') {
+            var pre = document.createElement("pre");
+	    pre.appendChild(document.createTextNode(JSON.stringify(att.value,null,2)));
+	    cell.appendChild(pre);
+	}
+        else if (attributes_to_truncate.includes(att.original_attribute_name)) {
+            cell.className = 'attvalue';
+	    cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
+	}
+	else if (value.toString().startsWith("http")) {
+	    cell.className = 'attvalue';
+            var a = document.createElement("a");
+	    a.target = '_blank';
+	    a.href = value;
+	    a.innerHTML = value;
+	    cell.appendChild(a);
 	}
 	else {
-            snippet += "<i>-- no value! --</i>";
-	}
-	snippet += "</td></tr>";
+            cell.className = 'attvalue';
 
-        attshtml += snippet;
-    }
-    html_div.innerHTML+= attshtml;
-}
-
-function show_attributes_1point0(html_div, atts) {
-    if (atts == null)  { return; }
-
-    var linebreak = "<hr>";
-
-    // always display iri first
-    var iri = atts.filter(a => a.name == "iri");
-
-    for (var att of iri.concat(atts.filter(a => a.name != "iri"))) {
-	var snippet = linebreak;
-
-	if (att.name != null) {
-	    snippet += "<b>" + att.name + "</b>";
-	    if (att.type != null)
-		snippet += " (" + att.type + ")";
-	    snippet += ": ";
-	}
-	if (att.url != null)
-	    snippet += "<a target='_blank' href='" + att.url + "'>";
-
-
-	if (att.value != null) {
-	    var fixit = true;
-            // truncate floats
-	    if (attributes_to_truncate.includes(att.name)) {
-		snippet += Number(att.value).toPrecision(3);
-		fixit = false;
-	    }
-            else if (Array.isArray(att.value))
-		for (var val of att.value) {
-                    snippet += "<br>&nbsp;&nbsp;&nbsp;";
-		    if (val == null) {
-			snippet += "--NULL--";
-		    }
-		    else if (val.toString().startsWith("PMID:")) {
-			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
-			snippet += " title='View in PubMed' target='_blank'>" + val + "</a>";
-		    }
-		    else if (val.toString().startsWith("DOI:")) {
-			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
-			snippet += " title='View in doi.org' target='_blank'>" + val + "</a>";
-		    }
-		    else if (val.toString().startsWith("http")) {
-                        snippet += "<a href='" + val + "'";
-                        snippet += " target='_blank'>" + val + "</a>";
-		    }
-		    else {
-			snippet += val;
-		    }
+	    var multi = att.value.toString().split(/(-!-|---|\;\;)/);
+	    if (multi.length > 1) {
+		for (var line of multi) {
+		    cell.appendChild(document.createTextNode('\u25BA'));
+                    cell.appendChild(document.createTextNode(line));
+		    cell.appendChild(document.createElement("br"));
 		}
-	    else if (typeof att.value === 'object') {
-		snippet += "<pre>"+JSON.stringify(att.value,null,2)+"</pre>";
-		fixit = false;
 	    }
 	    else
-		snippet += att.value;
-
-	    if (fixit) {
-		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
-		snippet = snippet.toString().replace(/---/g,'<br>---');
-		snippet = snippet.toString().replace( /;;/g,'<br>;;');
-	    }
+		cell.appendChild(document.createTextNode(att.value));
 	}
-	else if (att.url != null)
-	    snippet += att.url;
-	else
-	    snippet += " n/a ";
-
-
-	if (att.url != null)
-	    snippet += "</a>";
-
-        if (att.source != null)
-	    snippet += " [src:" + att.source + "]";
-
-	html_div.innerHTML+= snippet;
-	linebreak = "<br>";
+    }
+    else {
+        var text = document.createElement("i");
+	text.appendChild(document.createTextNode("-- empty / no value! --"));
+	cell.appendChild(text);
     }
 
+    row.appendChild(cell);
+    tab.appendChild(row);
+
+    if (sub_atts) {
+	row = document.createElement("tr");
+	cell = document.createElement("td");
+        cell.style.fontWeight = "bold";
+	cell.appendChild(document.createTextNode("(sub)attributes:"));
+	row.appendChild(cell);
+
+	cell = document.createElement("td");
+	cell.className = 'subatts';
+	var subatts_table = document.createElement("table");
+	subatts_table.className = 't100';
+
+	for (var sub_att of sub_atts)
+	    display_attribute(subatts_table, sub_att, semmeddb);
+
+	cell.appendChild(subatts_table);
+        row.appendChild(cell);
+        tab.appendChild(row);
+    }
 }
 
+
+function cyresize(index,size) {
+    var height = 300;
+    if (size == 'm')
+	height = 500;
+    else if (size == 'L')
+	height = 1000;
+
+    document.getElementById('cy'+index).parentNode.style.height = height+'px';
+    cyobj[index].resize();
+    cyobj[index].fit();
+    sesame('openmax',document.getElementById('a'+index+'_div'));
+}
 
 function cylayout(index,layname) {
     var layout = cyobj[index].layout({
@@ -2735,7 +2895,7 @@ function mapNodeShape(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "rectangle";} //??
     if (ntype.endsWith("CellularComponent"))  { return "ellipse";}
     if (ntype.endsWith("BiologicalProcess"))  { return "tag";}
-    if (ntype.endsWith("ChemicalEntity"))  { return "diamond";}
+    if (ntype.endsWith("ChemicalEntity"))     { return "diamond";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "rhomboid";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "star";}
     return "rectangle";
@@ -2751,7 +2911,7 @@ function mapNodeColor(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "blue";} //??
     if (ntype.endsWith("CellularComponent"))  { return "purple";}
     if (ntype.endsWith("BiologicalProcess"))  { return "green";}
-    if (ntype.endsWith("ChemicalEntity"))  { return "yellowgreen";}
+    if (ntype.endsWith("ChemicalEntity"))     { return "yellowgreen";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "violet";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "indigo";}
     return "#04c";
@@ -2805,6 +2965,7 @@ function qg_node(id,render) {
 	newqnode.categories = [];
 	newqnode.constraints = [];
 	newqnode.is_set = false;
+	newqnode.option_group_id = null;
 	newqnode._names = [];
 
 	input_qg.nodes[id] = newqnode;
@@ -2839,6 +3000,9 @@ function qg_node(id,render) {
 	    else if (input_qg.nodes[id]['categories'].length > 2)
 		daname = "[ "+daname+" +"+(input_qg.nodes[id]['categories'].length - 1)+" ]";
 	}
+
+	if (input_qg.nodes[id].is_set)
+	    daname = "{ "+daname+" }";
 
 	if (daname != cyobj[99999].getElementById(id).data('name'))
 	    cyobj[99999].getElementById(id).data('name',daname);
@@ -2914,6 +3078,22 @@ function qg_node(id,render) {
     }
 
     document.getElementById('nodeeditor_set').checked = input_qg.nodes[id].is_set;
+
+    htmlnode = document.getElementById('nodeeditor_optgpid');
+    htmlnode.innerHTML = '';
+    if (input_qg.nodes[id].option_group_id) {
+	htmlnode.appendChild(document.createTextNode(input_qg.nodes[id].option_group_id));
+
+	var link = document.createElement("a");
+	link.style.float = "right";
+	link.href = 'javascript:qg_remove_optgpid_from_qnode();';
+	link.title = "remove Option Group ID from this Qnode";
+	link.appendChild(document.createTextNode(" [ remove ] "));
+	htmlnode.appendChild(link);
+    }
+    else
+	input_qg.nodes[id].option_group_id = null;
+
     UIstate.editnodeid = id;
 
     qg_update_qnode_list();
@@ -3020,6 +3200,29 @@ function qg_remove_curie_from_qnode(cur) {
     qg_node(id);
 }
 
+function qg_add_curielist_to_qnode(list) {
+    var listId = list.split("LIST_")[1];
+    var id = UIstate.editnodeid;
+    if (!id) return;
+
+    var added = 0;
+    for (var li in listItems[listId]) {
+	if (listItems[listId].hasOwnProperty(li) && listItems[listId][li] == 1) {
+            if (!input_qg.nodes[id]['ids'].includes(entities[li].curie)) {
+		input_qg.nodes[id]['ids'].push(entities[li].curie);
+		input_qg.nodes[id]['_names'].push(entities[li].name);
+		added++;
+	    }
+	    qg_add_category_to_qnode(entities[li].type);
+	}
+    }
+
+    document.getElementById("statusdiv").innerHTML = "<p>Added <b>"+added+"</b> curies to node <b>"+id+"</b> from list <i>"+listId+"</i></p>";
+
+    cyobj[99999].reset();
+    cylayout(99999,"breadthfirst");
+}
+
 function qg_add_category_to_qnode(cat) {
     var id = UIstate.editnodeid;
     if (!id) return;
@@ -3108,6 +3311,40 @@ function qg_remove_constraint_from_qedge(idx) {
     qg_edge(id);
 }
 
+function qg_update_optgpid_to_qgitem(what) {
+    var id = null;
+    if (what == 'qedge')
+	id = UIstate.editedgeid;
+    else if (what == 'qnode')
+	id = UIstate.editnodeid;
+    if (!id) return;
+
+    var val = document.getElementById(what+"optgpidbox").value.trim();
+    document.getElementById(what+"optgpidbox").value = '';
+    if (!val) return;
+
+    if (what == 'qedge') {
+	input_qg.edges[id]['option_group_id'] = val;
+	qg_edge(id);
+    }
+    else {
+	input_qg.nodes[id]['option_group_id'] = val;
+	qg_node(id);
+    }
+}
+function qg_remove_optgpid_from_qnode() {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+    input_qg.nodes[id]['option_group_id'] = null;
+    qg_node(id);
+}
+function qg_remove_optgpid_from_qedge() {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+    input_qg.edges[id]['option_group_id'] = null;
+    qg_edge(id);
+}
+
 function qg_setset_for_qnode() {
     var id = UIstate.editnodeid;
     if (!id) return;
@@ -3135,6 +3372,8 @@ function qg_edge(id) {
 	var newqedge = {};
 	newqedge.predicates = [];
 	newqedge.constraints = [];
+        newqedge.exclude = false;
+	newqedge.option_group_id = null;
 	// join last two nodes if not specified otherwise [ToDo: specify]
 	newqedge.subject = nodes[nodes.length - 2];
 	newqedge.object = nodes[nodes.length - 1];
@@ -3217,6 +3456,24 @@ function qg_edge(id) {
 	}
     }
 
+    document.getElementById('edgeeditor_xcl').checked = input_qg.edges[id].exclude;
+
+    htmlnode = document.getElementById('edgeeditor_optgpid');
+    htmlnode.innerHTML = '';
+    if (input_qg.edges[id].option_group_id) {
+	htmlnode.appendChild(document.createTextNode(input_qg.edges[id].option_group_id));
+
+	var link = document.createElement("a");
+	link.style.float = "right";
+	link.href = 'javascript:qg_remove_optgpid_from_qedge();';
+	link.title = "remove Option Group ID from this Qedge";
+	link.appendChild(document.createTextNode(" [ remove ] "));
+	htmlnode.appendChild(link);
+    }
+    else
+	input_qg.edges[id].option_group_id = null;
+
+
     if (document.getElementById("showQGjson").checked) {
 	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
 	sesame('openmax',statusdiv);
@@ -3262,6 +3519,8 @@ function qg_add_predicate_to_qedge(pred) {
     var id = UIstate.editedgeid;
     if (!id) return;
 
+    document.getElementById("fullpredicatelist").value = '';
+    document.getElementById("fullpredicatelist").blur();
     document.getElementById("qedgepredicatelist").value = '';
     document.getElementById("qedgepredicatelist").blur();
     document.getElementById("qedgepredicatebox").value = '';
@@ -3298,6 +3557,21 @@ function qg_update_qedge() {
     });
     cyobj[99999].reset();
     cylayout(99999,"breadthfirst");
+}
+
+function qg_setxcl_for_qedge() {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+
+    input_qg.edges[id].exclude = document.getElementById('edgeeditor_xcl').checked;
+    qg_edge(id);
+}
+
+function qg_edge_swap_obj_subj() {
+    var tmp = document.getElementById('edgeeditor_subj').value;
+    document.getElementById('edgeeditor_subj').value = document.getElementById('edgeeditor_obj').value;
+    document.getElementById('edgeeditor_obj').value = tmp;
+    qg_update_qedge();
 }
 
 function qg_edit(msg) {
@@ -3452,7 +3726,7 @@ function qg_display_edge_predicates(all) {
 
     var preds = [];
     if (all)
-	preds = Object.keys(all_predicates).sort();
+	preds = all_predicates.sort();
     else if (input_qg.nodes[obj]['categories'][0] in predicates[input_qg.nodes[subj]['categories'][0]])
 	preds = predicates[input_qg.nodes[subj]['categories'][0]][input_qg.nodes[obj]['categories'][0]].sort();
 
@@ -3478,17 +3752,6 @@ function qg_display_edge_predicates(all) {
 }
 
 // unused at the moment
-function add_nodeclass_to_query_graph(nodetype) {
-    document.getElementById("allnodetypes").value = '';
-    document.getElementById("allnodetypes").blur();
-
-    if (nodetype.startsWith("LIST_"))
-	add_nodelist_to_query_graph(nodetype);
-    else
-	add_nodetype_to_query_graph(nodetype);
-
-}
-// unused at the moment
 function add_nodetype_to_query_graph(nodetype) {
     document.getElementById("statusdiv").innerHTML = "<p>Added a node of type <i>"+nodetype+"</i></p>";
     var qgid = get_qg_id('n');
@@ -3507,57 +3770,36 @@ function add_nodetype_to_query_graph(nodetype) {
     tmpdata["is_set"] = false;
     tmpdata["_name"]  = null;
     tmpdata["_desc"]  = "Generic " + nodetype;
+    tmpdata["option_group_id"] = null;
     if (nodetype != 'NONSPECIFIC')
 	tmpdata["categories"] = [nodetype];
 
     input_qg.nodes[qgid] = tmpdata;
 }
-// unused at the moment
-function add_nodelist_to_query_graph(nodetype) {
-    var list = nodetype.split("LIST_")[1];
-
-    document.getElementById("statusdiv").innerHTML = "<p>Added a set of nodes from list <i>"+list+"</i></p>";
-    var qgid = get_qg_id('n');
-
-    cyobj[99999].add( {
-        "data" : { "id"   : qgid,
-		   "name" : nodetype,
-		   "type" : "set",
-		   "parentdivnum" : 99999 }
-    } );
-    cyobj[99999].reset();
-    cylayout(99999,"breadthfirst");
-
-    var tmpdata = {};
-    tmpdata["ids"]    = get_list_as_curie_array(list);
-    tmpdata["is_set"] = true;
-    tmpdata["_name"]  = nodetype;
-    tmpdata["_desc"]  = "Set of nodes from list " + list;
-
-    input_qg.nodes[qgid] = tmpdata;
-}
-
 
 function qg_clean_up(xfer) {
     // clean up non-TRAPI attributes and null arrays
     for (var nid in input_qg.nodes) {
 	var gnode = input_qg.nodes[nid];
 
-	if (gnode.is_set) {
-	    var list = gnode["_name"].split("LIST_")[1];
-	    gnode.ids = get_list_as_curie_array(list);
+	if (gnode.ids) {
+	    if (gnode.ids[0] == null)
+		delete gnode.ids;
+	    else if (gnode.ids.length == 1)
+		if (gnode['_names'] && gnode['_names'][0] != null)
+		    gnode.name = gnode['_names'][0];
 	}
+	if (gnode.categories && gnode.categories[0] == null)
+	    delete gnode.categories;
+	if (gnode.constraints && gnode.constraints[0] == null)
+	    delete gnode.constraints;
+	if (gnode.option_group_id == null)
+	    delete gnode.option_group_id;
 
 	for (var att of ["_names","_desc"] ) {
 	    if (gnode.hasOwnProperty(att))
 		delete gnode[att];
 	}
-	if (gnode.ids && gnode.ids[0] == null)
-	    delete gnode.ids;
-	if (gnode.categories && gnode.categories[0] == null)
-	    delete gnode.categories;
-	if (gnode.constraints && gnode.constraints[0] == null)
-	    delete gnode.constraints;
     }
 
     for (var eid in input_qg.edges) {
@@ -3566,6 +3808,10 @@ function qg_clean_up(xfer) {
 	    delete gedge.predicates;
 	if (gedge.constraints && gedge.constraints[0] == null)
 	    delete gedge.constraints;
+        if (gedge.option_group_id == null)
+	    delete gedge.option_group_id;
+        if (!gedge.exclude)
+	    delete gedge.exclude;
     }
 
     if (xfer)
@@ -3621,6 +3867,7 @@ function get_qg_id(prefix) {
 }
 
 
+// DSL-RELATED FUNCTIONS
 function populate_dsl_commands() {
     var dsl_node = document.getElementById("dsl_command");
     dsl_node.innerHTML = '';
@@ -3693,7 +3940,7 @@ function show_dsl_command_options(command) {
 	}
         else if (araxi_commands[command].parameters[par]['type'] == 'ARAXedge') {
 	    araxi_commands[command].parameters[par]['enum'] = [];
-	    for (const p of Object.keys(all_predicates).sort()) {
+	    for (const p of all_predicates.sort()) {
 		araxi_commands[command].parameters[par]['enum'].push(p);
 	    }
 	}
@@ -3816,114 +4063,457 @@ function abort_dsl() {
 }
 
 
-function get_example_questions() {
-    fetch(providers["ARAX"].url + "/exampleQuestions")
-        .then(response => response.json())
-        .then(data => {
-	    //add_to_dev_info("EXAMPLE Qs",data);
+// WORKFLOW-RELATED FUNCTIONS
+function clearWF() {
+    workflow = { 'workflow' : [], 'message' : {} };
+    populate_wfjson();
+    populate_wflist();
+    abort_wf();
+    document.getElementById("statusdiv").innerHTML = '<br>A blank workflow has been created<br><br>';
+}
 
-	    var qqq = document.getElementById("qqq");
-	    qqq.innerHTML = '';
+function update_wfjson() {
+    var wfj;
+    try {
+	wfj = JSON.parse(document.getElementById("wfJSON").value);
+    }
+    catch(e) {
+	statusdiv.appendChild(document.createElement("br"));
+	if (e.name == "SyntaxError")
+	    statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and resubmit: ";
+	else
+	    statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
+	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+	return;
+    }
 
-            var opt = document.createElement('option');
-	    opt.value = '';
-	    opt.style.borderBottom = "1px solid black";
-	    opt.innerHTML = "Example Questions&nbsp;&nbsp;&nbsp;&#8675;";
-	    qqq.appendChild(opt);
+    workflow = wfj;
+    populate_wfjson();
+    populate_wflist();
+    abort_wf();
+}
 
-	    for (var exq of data) {
-		opt = document.createElement('option');
-		opt.value = exq.question_text;
-		opt.innerHTML = exq.query_type_id+": "+exq.question_text;
-		qqq.appendChild(opt);
-	    }
-	})
-        .catch(error => { //ignore...
+function populate_wfjson() {
+    document.getElementById("wfJSON").value = JSON.stringify(workflow,null,2);
+}
+
+function populate_wflist() {
+    var list_node = document.getElementById("wflist");
+    list_node.innerHTML = '';
+    var count = 0;
+    for (var com of workflow['workflow']) {
+	var item = document.createElement('li');
+	item.className = 'wflistitem';
+	item.draggable = true;
+	item.title = "CLICK to view/edit operation details; DRAG to reorder list";
+	item.dataset.sequence = count;
+	item.innerHTML = com.id;
+	list_node.appendChild(item);
+
+	var items = list_node.getElementsByTagName("li"), current = null;
+
+	item.addEventListener("click", function (ev) {
+	    var operation = workflow['workflow'][this.dataset.sequence]["id"];
+	    show_wf_operation_options(operation, this.dataset.sequence);
+            for (var it of items)
+		it.className = 'wflistitem';
+	    this.className = 'wflistitemselected';
 	});
+
+	item.addEventListener("dragstart", function (ev) {
+	    document.getElementById("wf_operation_form").innerHTML = '';
+	    current = this;
+	    this.className = "wflistitemselected";
+	});
+	item.addEventListener("dragend", function (ev) {
+            populate_wflist();
+	});
+
+	item.addEventListener("dragenter", function (ev) {
+	    if (this != current) { this.style.borderLeft = "15px solid #c40"; }
+	});
+	item.addEventListener("dragleave", function () {
+	    this.style.border = "";
+	    //this.style.border = "1px solid #666";
+	});
+
+	item.addEventListener("dragover", function (evt) {
+	    evt.preventDefault();
+	});
+
+	item.addEventListener("drop", function (evt) {
+	    evt.preventDefault();
+	    current.className = "wflistitem";
+	    if (this != current) {
+		let currentpos = 0, droppedpos = 0;
+		for (let it=0; it<items.length; it++) {
+		    if (current == items[it])
+			currentpos = it;
+		    if (this == items[it])
+			droppedpos = it;
+		}
+		if (currentpos < droppedpos)
+		    this.parentNode.insertBefore(current, this.nextSibling);
+		else
+		    this.parentNode.insertBefore(current, this);
+
+		var tmpwf = [];
+		for (let it=0; it<items.length; it++)
+		    tmpwf.push(workflow['workflow'][items[it].dataset.sequence]);
+		workflow['workflow'] = tmpwf;
+
+		populate_wfjson();
+		populate_wflist();
+	    }
+	});
+
+	count++;
+    }
+
+    if (count == 0) {
+        list_node.appendChild(document.createElement('br'));
+        list_node.appendChild(document.createTextNode("Add workflow operations using the menu on the right, and/or via the JSON import box below."));
+    }
+}
+
+function populate_wf_operations() {
+    var wf_node = document.getElementById("wf_operation");
+    wf_node.innerHTML = '';
+
+    var arax = document.getElementById("arax_only").checked;
+
+    var opt = document.createElement('option');
+    opt.style.borderBottom = "1px solid black";
+    opt.value = '';
+    opt.innerHTML = "Workflow Operation&nbsp;&nbsp;&nbsp;&#8675;";
+    wf_node.appendChild(opt);
+
+    for (var com in wf_operations) {
+	opt = document.createElement('option');
+	opt.value = com;
+	opt.innerHTML = com;
+	if (arax && !wf_operations[com]['in_arax'])
+	    opt.disabled = true;
+	wf_node.appendChild(opt);
+    }
+}
+
+function show_wf_operation_options(operation, index) {
+    document.getElementById("wf_operation").value = '';
+    document.getElementById("wf_operation").blur();
+    if (index == null)
+	populate_wflist();
+
+    var com_node = document.getElementById("wf_operation_form");
+    com_node.innerHTML = '';
+    com_node.appendChild(document.createElement('hr'));
+
+    var h2 = document.createElement('h2');
+    h2.style.marginBottom = 0;
+    h2.innerHTML = operation;
+    if (!wf_operations[operation]['in_arax'])
+	h2.innerHTML += " *";
+    com_node.appendChild(h2);
+
+    if (!wf_operations[operation]) {
+        var span = document.createElement('span');
+	span.className = 'error';
+	span.appendChild(document.createElement('br'));
+        span.appendChild(document.createTextNode("Operation '"+operation+"' not found in workflow operations list!"));
+	com_node.appendChild(span);
+	span.appendChild(document.createElement('br'));
+        com_node.appendChild(get_remove_wf_operation_button(index));
+	return;
+    }
+
+    if (!wf_operations[operation]['in_arax']) {
+	com_node.appendChild(document.createTextNode('* Please note that this workflow operation is not supported in ARAX, though it may be in other actors'));
+        com_node.appendChild(document.createElement('br'));
+    }
+    if (wf_operations[operation].description) {
+	com_node.appendChild(document.createTextNode(wf_operations[operation].description));
+	com_node.appendChild(document.createElement('br'));
+    }
+
+    for (var par in wf_operations[operation].parameters) {
+	com_node.appendChild(document.createElement('br'));
+
+	var span = document.createElement('span');
+	if (wf_operations[operation].parameters[par]['is_required'])
+	    span.className = 'essence';
+	span.appendChild(document.createTextNode(par+":"));
+	com_node.appendChild(span);
+
+	span = document.createElement('span');
+	span.className = 'tiny';
+	span.style.position = "relative";
+	span.style.left = "50px";
+	span.appendChild(document.createTextNode(wf_operations[operation].parameters[par].description));
+	com_node.appendChild(span);
+
+	com_node.appendChild(document.createElement('br'));
+
+	if (wf_operations[operation].parameters[par]['type'] == 'boolean') {
+	    wf_operations[operation].parameters[par]['enum'] = ['true','false'];
+	}
+	else if (wf_operations[operation].parameters[par]['type'] == 'ARAXnode') {
+	    wf_operations[operation].parameters[par]['enum'] = [];
+	    for (const p in predicates) {
+		wf_operations[operation].parameters[par]['enum'].push(p);
+	    }
+	}
+	else if (wf_operations[operation].parameters[par]['type'] == 'ARAXedge') {
+	    wf_operations[operation].parameters[par]['enum'] = [];
+	    for (const p of all_predicates.sort()) {
+		wf_operations[operation].parameters[par]['enum'].push(p);
+	    }
+	}
+
+	var val = '';
+	if (index != null && workflow['workflow'][index]["parameters"]) {
+	    if (workflow['workflow'][index]["parameters"][par])
+		val = workflow['workflow'][index]["parameters"][par];
+	}
+
+	if (wf_operations[operation].parameters[par]['enum']) {
+	    var span = document.createElement('span');
+	    span.className = 'qgselect';
+
+	    var sel = document.createElement('select');
+	    sel.id = "__param__"+par;
+
+	    var opt = document.createElement('option');
+	    opt.style.borderBottom = "1px solid black";
+	    opt.value = '';
+	    opt.innerHTML = "Select&nbsp;&nbsp;&nbsp;&#8675;";
+	    sel.appendChild(opt);
+
+	    for (var vv of wf_operations[operation].parameters[par]['enum']) {
+		opt = document.createElement('option');
+		opt.value = vv;
+		opt.innerHTML = vv;
+		sel.appendChild(opt);
+	    }
+
+	    span.appendChild(sel);
+	    com_node.appendChild(span);
+
+            if (val)
+		sel.value = val;
+	    else if (wf_operations[operation].parameters[par]['default'])
+		sel.value = wf_operations[operation].parameters[par]['default'];
+	}
+	else {
+	    var i = document.createElement('input');
+	    i.id = "__param__"+par;
+	    i.className = 'questionBox';
+	    i.size = 60;
+	    com_node.appendChild(i);
+
+	    if (val)
+		i.value = val;
+	    else if (wf_operations[operation].parameters[par]['default'])
+		i.value = wf_operations[operation].parameters[par]['default'];
+	}
+    }
+
+    com_node.appendChild(document.createElement('br'));
+
+    var button = document.createElement("input");
+    button.className = 'questionBox button';
+    button.type = 'button';
+    button.name = 'action';
+    if (index == null) {
+	button.title = 'Add Operation to Workflow';
+	button.value = 'Add';
+    }
+    else {
+        button.title = 'Save edited Workflow operation';
+	button.value = 'Update';
+    }
+    button.setAttribute('onclick', 'add_wf_operation("'+operation+'",'+index+');');
+    com_node.appendChild(button);
+
+    if (index != null)
+        com_node.appendChild(get_remove_wf_operation_button(index));
+
+    var link = document.createElement("a");
+    link.style.marginLeft = "20px";
+    link.href = 'javascript:abort_wf();';
+    link.appendChild(document.createTextNode(" Cancel "));
+    com_node.appendChild(link);
+}
+
+function get_remove_wf_operation_button(idx) {
+    var button = document.createElement("input");
+    button.className = 'questionBox button';
+    button.type = 'button';
+    button.name = 'action';
+    button.title = 'Remove operation from Workflow';
+    button.value = 'Remove';
+    button.setAttribute('onclick', 'remove_wf_operation('+idx+');');
+    return button;
+}
+
+function remove_wf_operation(idx) {
+    workflow['workflow'].splice(idx, 1);
+    populate_wfjson();
+    populate_wflist();
+    abort_wf();
+}
+
+function add_wf_operation(operation,idx) {
+    var params = document.querySelectorAll('[id^=__param__]');
+
+    var mywf = { "id" : operation };
+
+    var wfparams = {};
+    var has_params = false;
+    for (var p of params) {
+	var val = p.value.trim();
+	if (val.length == 0) continue;
+
+	var pname = p.id.split("__param__")[1];
+	var ptype = wf_operations[operation].parameters[pname]['type'];
+
+	if (ptype == 'array')
+	    val = val.match(/\w+|"[^"]+"/g);
+	else if (ptype == 'number')
+	    val = Number(val);
+	else if (ptype == 'integer')
+	    val = parseInt(val);
+
+	wfparams[pname] = val;
+	has_params = true;
+    }
+
+    if (has_params)
+	mywf['parameters'] = wfparams;
+
+    if (idx == null)
+	workflow['workflow'].push(mywf);
+    else
+	workflow['workflow'][idx] = mywf;
+
+    populate_wfjson();
+    populate_wflist();
+    abort_wf();
+}
+
+function abort_wf() {
+    document.getElementById("wf_operation_form").innerHTML = '';
+    populate_wflist();
+}
+
+async function import_qg2wf(fromqg) {
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.innerHTML = '';
+    statusdiv.appendChild(document.createElement("br"));
+
+    if (fromqg) {
+	var tmpqg = JSON.stringify(input_qg); // preserve helper attributes
+	qg_clean_up(false);
+	workflow['message']['query_graph'] = input_qg;
+        statusdiv.appendChild(document.createTextNode("Imported query_graph into Workflow."));
+	input_qg = JSON.parse(tmpqg);
+	selectInput('qwf');
+    }
+    else {
+	var resp_id = document.getElementById("respId").value.trim();
+	document.getElementById("respId").value = resp_id;
+	if (!resp_id) return;
+
+	statusdiv.appendChild(document.createTextNode("Importing query_graph from response_id = " + resp_id + " ..."));
+	statusdiv.appendChild(document.createElement("br"));
+
+	var button = document.getElementById("ImportQGbutton");
+	var wait = getAnimatedWaitBar(button.offsetWidth+"px");
+	button.parentNode.replaceChild(wait, button);
+
+	var response = await fetch(providers["ARAX"].url + "/response/" + resp_id);
+	var respjson = await response.json();
+
+	if (respjson && respjson.message && respjson.message["query_graph"])
+	    workflow['message']['query_graph'] = respjson.message["query_graph"];
+	else
+	    statusdiv.appendChild(document.createTextNode("No query_graph found in response_id = " + resp_id + "!!"));
+
+        wait.parentNode.replaceChild(button, wait);
+    }
+
+    statusdiv.appendChild(document.createElement("br"));
+    statusdiv.appendChild(document.createElement("br"));
+    populate_wfjson();
 }
 
 
 function load_meta_knowledge_graph() {
     var allnodes_node = document.getElementById("allnodetypes");
-    allnodes_node.innerHTML = '';
 
-    fetch(providers["ARAX"].url + "/meta_knowledge_graph")
-	.then(response => {
+    fetch(providers["ARAX"].url + "/meta_knowledge_graph?format=simple")
+        .then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong with /meta_knowledge_graph');
 	})
         .then(data => {
-	    //add_to_dev_info("META_KNOWLEDGE_GRAPH",data);
+	    predicates = data.predicates_by_categories;
+	    all_predicates = data.supported_predicates;
 
+	    allnodes_node.innerHTML = '';
 	    var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.style.borderBottom = "1px solid black";
 	    opt.innerHTML = "Add Category to Node&nbsp;&nbsp;&nbsp;&#8675;";
 	    allnodes_node.appendChild(opt);
 
-            for (const n in data.nodes) {
+            for (const n in data.predicates_by_categories) {
 		opt = document.createElement('option');
 		opt.value = n;
 		opt.innerHTML = n;
 		allnodes_node.appendChild(opt);
-		// recreate old /predicates structure (simpler/faster lookups)
-		predicates[n] = {};
-		for (const o in data.nodes)
-		    predicates[n][o] = [];
 	    }
-            for (const e of data.edges) {
-		predicates[e.subject][e.object].push(e.predicate);
-		all_predicates[e.predicate] = 1;
-	    }
-	    // clean up empty ones
-            for (var s in predicates)
-		for (var o in predicates[s])
-		    if (predicates[s][o].length < 1)
-			delete predicates[s][o];
-
-	    opt = document.createElement('option');
+            opt = document.createElement('option');
 	    opt.value = 'NONSPECIFIC';
 	    opt.innerHTML = "Unspecified/Non-specific";
 	    allnodes_node.appendChild(opt);
 
-            opt = document.createElement('option');
-	    opt.id = 'nodesetA';
-	    opt.value = 'LIST_A';
-	    opt.title = "Set of Nodes from List [A]";
-	    opt.innerHTML = "List [A]";
-	    allnodes_node.appendChild(opt);
-
-            opt = document.createElement('option');
-	    opt.id = 'nodesetB';
-	    opt.value = 'LIST_B';
-            opt.title = "Set of Nodes from List [B]";
-	    opt.innerHTML = "List [B]";
-	    allnodes_node.appendChild(opt);
-
 	    qg_display_edge_predicates(true);
+
+	    var all_preds_node = document.getElementById("fullpredicatelist");
+	    all_preds_node.innerHTML = '';
+	    opt = document.createElement('option');
+	    opt.value = '';
+	    opt.innerHTML = "Full List of Predicates&nbsp;("+all_predicates.length+")&nbsp;&nbsp;&nbsp;&#8675;";
+	    all_preds_node.appendChild(opt);
+	    for (const p of all_predicates.sort()) {
+		opt = document.createElement('option');
+		opt.value = p;
+		opt.innerHTML = p;
+		all_preds_node.appendChild(opt);
+	    }
 	})
         .catch(error => {
+	    allnodes_node.innerHTML = '';
 	    var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.style.borderBottom = "1px solid black";
 	    opt.innerHTML = "-- Error Loading Node Types --";
 	    allnodes_node.appendChild(opt);
-        });
+	    console.error(error);
+	});
+
 }
 
 function retrieveRecentQs() {
     var recents_node = document.getElementById("recent_queries_container");
     recents_node.innerHTML = '';
+    recents_node.className = '';
 
     var qfspan = document.getElementById("qfilter");
     qfspan.innerHTML = '';
-    var wait = document.createElement("span");
-    wait.className = 'loading_cell';
-    wait.style.width = "100px";
+    var wait = getAnimatedWaitBar("100px");
     wait.style.marginRight = "10px";
-    var waitbar = document.createElement("span");
-    waitbar.className = 'loading_bar';
-    wait.appendChild(waitbar);
     qfspan.appendChild(wait);
     qfspan.appendChild(document.createTextNode('Loading...'));
 
@@ -4032,7 +4622,7 @@ function retrieveRecentQs() {
 		    else if (field == "query_id") {
                         var link = document.createElement("a");
 			link.target = '_blank';
-			link.title='view the posted query (JSON)';
+			link.title = 'view the posted query (JSON)';
 			link.style.cursor = "pointer";
 			link.href = providers["ARAX"].url + '/status?id=' + query[field];
 			link.appendChild(document.createTextNode(query[field]));
@@ -4042,7 +4632,7 @@ function retrieveRecentQs() {
 		    else if (field == "response_id") {
 			var link = document.createElement("a");
                         link.target = '_blank';
-			link.title='view this response';
+			link.title = 'view this response';
 			link.style.cursor = "pointer";
                         link.href = '//' + window.location.hostname + window.location.pathname + '?r=' + query[field];
 			link.appendChild(document.createTextNode(query[field]));
@@ -4348,7 +4938,7 @@ function display_list(listId) {
 	document.getElementById("menunumlistitems"+listId).classList.add("numold");
     }
 
-    listhtml = "Items in this list can be passed as input to queries that support list input, by specifying <b>["+listId+"]</b> as a query parameter.<br><br>" + listhtml + "<hr>Enter new list item or items (space and/or comma-separated; use &quot;double quotes&quot; for multi-word items):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
+    listhtml = "Items in this List can be compared to those in the other List, or added to a node in the query_graph via the bulk import functionality.<br><br>" + listhtml + "<hr>Enter new list item or items (space and/or comma-separated; use &quot;double quotes&quot; for multi-word items):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' onkeydown='enter_item(this, \""+listId+"\");' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
 //    listhtml += "<hr>Enter new list item or items (space and/or comma-separated):<br><input type='text' class='questionBox' id='newlistitem"+listId+"' value='' size='60'><input type='button' class='questionBox button' name='action' value='Add' onClick='javascript:add_new_to_list(\""+listId+"\");'/>";
 
@@ -4499,6 +5089,7 @@ function compare_lists(uniqueonly) {
 }
 
 
+// unused at the moment
 function get_list_as_string(listId) {
     var liststring = '[';
     var comma = '';
@@ -4511,8 +5102,7 @@ function get_list_as_string(listId) {
     liststring += ']';
     return liststring;
 }
-
-
+// unused at the moment
 function get_list_as_curie_array(listId) {
     var carr = [];
     for (var li in listItems[listId])
@@ -4526,7 +5116,7 @@ function get_list_as_curie_array(listId) {
 function add_items_to_list(listId,indx) {
     for (var nitem in columnlist[indx])
 	if (columnlist[indx][nitem]) {
-            nitem = nitem.replace(/['"]+/g,''); // remove all manner of quotes
+            nitem = nitem.replace(/['"]+/g,''); // remove quotes
 	    listItems[listId][nitem] = 1;
 	}
     display_list(listId);
@@ -4539,11 +5129,11 @@ function enter_item(ele, listId) {
 
 function add_new_to_list(listId) {
     //var itemarr = document.getElementById("newlistitem"+listId).value.split(/[\t ,]/);
-    var itemarr = document.getElementById("newlistitem"+listId).value.match(/\w+|"[^"]+"/g);
+    var itemarr = document.getElementById("newlistitem"+listId).value.match(/\w+:?\w+|"[^"]+"/g);
 
     document.getElementById("newlistitem"+listId).value = '';
     for (var item in itemarr) {
-	itemarr[item] = itemarr[item].replace(/['"]+/g,''); // remove all manner of quotes
+	itemarr[item] = itemarr[item].replace(/['"]+/g,''); // remove quotes
         //console.log("=================== item:"+itemarr[item]);
 	if (itemarr[item]) {
 	    listItems[listId][itemarr[item]] = 1;
@@ -4870,6 +5460,17 @@ function addCheckBox(ele,remove) {
 
     if (remove)
 	var timeout = setTimeout(function() { check.remove(); }, 1500 );
+}
+
+function getAnimatedWaitBar(width) {
+    var wait = document.createElement("span");
+    wait.className = 'loading_cell';
+    if (width)
+	wait.style.width = width;
+    var waitbar = document.createElement("span");
+    waitbar.className = 'loading_bar';
+    wait.appendChild(waitbar);
+    return wait;
 }
 
 function submit_on_enter(ele) {

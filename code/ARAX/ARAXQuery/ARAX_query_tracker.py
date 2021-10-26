@@ -5,6 +5,7 @@ import os
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import time
 import re
+import signal
 
 from datetime import datetime
 from sqlalchemy import create_engine
@@ -298,6 +299,26 @@ class ARAXQueryTracker:
 
 
     ##################################################################################################
+    def terminate_job(self, terminate_pid, authorization):
+        if self.session is None:
+            return { 'status': 'ERROR', 'description': 'Internal error ETJ500' }
+        eprint(f"INFO: Entering terminate_job: pid={terminate_pid}, authorization={authorization}")
+        reference_authorization = str(hash( 'Pickles' + str(terminate_pid)))
+        if authorization is None or str(authorization) != reference_authorization:
+            return { 'status': 'ERROR', 'description': 'Invalid authorization provided' }
+
+        try:
+            os.kill(terminate_pid, signal.SIGTERM)
+        except:
+            eprint(f"ERROR: Attempt to terminate pid={terminate_pid} failed")
+            return { 'status': 'ERROR', 'description': f"ERROR: Attempt to terminate pid={terminate_pid} failed" }
+
+
+
+        return { 'status': 'OK', 'description': f"Process {terminate_pid} terminated" }
+
+
+    ####### ###########################################################################################
     def get_query_by_id(self, id_):
         if self.session is None:
             return

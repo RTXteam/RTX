@@ -9,7 +9,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2
-  version: 2.7.3.0
+  version: 2.7.3.1
   x-translator:
     component: KP
     team:
@@ -160,6 +160,16 @@ paths:
   /meta_knowledge_graph:
     get:
       operationId: meta_knowledge_graph
+      parameters:
+      - description: Provide meta_knowledge_graph information in a format other than
+          the default. Default value is 'full'. Also permitted is 'simple'
+        explode: true
+        in: query
+        name: format
+        required: false
+        schema:
+          type: string
+        style: form
       responses:
         "200":
           content:
@@ -227,13 +237,29 @@ paths:
           example: 6
           type: integer
         style: form
-      - description: Set to True if only incomplete queries should be returned
+      - description: Identifier of the log entry
         explode: true
         in: query
-        name: incomplete_only
+        name: id
         required: false
         schema:
-          example: "false"
+          example: 10
+          type: integer
+        style: form
+      - description: PID of an ongoing query to terminate
+        explode: true
+        in: query
+        name: terminate_pid
+        required: false
+        schema:
+          type: integer
+        style: form
+      - description: Authorization string required for certain calls to status
+        explode: true
+        in: query
+        name: authorization
+        required: false
+        schema:
           type: string
         style: form
       responses:

@@ -33,6 +33,7 @@ from openapi_server.models.query_constraint import QueryConstraint
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
+
 def trim_to_size(input_list, length):
     if input_list is None:
         return None
@@ -234,9 +235,9 @@ class ARAXExpander:
                 object_qnode = query_sub_graph.nodes[qedge.object]
                 subject_details = subject_qnode.ids if subject_qnode.ids else subject_qnode.categories
                 object_details = object_qnode.ids if object_qnode.ids else object_qnode.categories
-                subject_details = trim_to_size(subject_details,5)
-                object_details = trim_to_size(object_details,5)
-                predicate_details = trim_to_size(qedge.predicates,5)
+                subject_details = trim_to_size(subject_details, 5)
+                object_details = trim_to_size(object_details, 5)
+                predicate_details = trim_to_size(qedge.predicates, 5)
                 response.update_query_plan(qedge_key, 'edge_properties', 'subject', subject_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
@@ -339,10 +340,9 @@ class ARAXExpander:
                                 response.update_query_plan(qedge_key, kp, "Error",
                                                            f"Process returned error {kp_log.status}")
                             # Merge KP logs as needed, since processes can't share the main log
-                            if len(kps_to_query) > 1:
-                                if kp_log.status != 'OK':
-                                    kp_log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
-                                log.merge(kp_log)
+                            if len(kps_to_query) > 1 and kp_log.status != 'OK':
+                                kp_log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
+                            log.merge(kp_log)
                             if response.status != 'OK':
                                 return response
                 else:
@@ -1190,7 +1190,7 @@ class ARAXExpander:
     def _get_prune_threshold(one_hop_qg: QueryGraph) -> int:
         """
         Returns the prune threshold for the given qedge (i.e., the max number of nodes allowed to be fed in as 'input'
-        curies for this qedge expansion.
+        curies for this qedge expansion).
         """
         qedge = next(qedge for qedge in one_hop_qg.edges.values())
         qnode_a = one_hop_qg.nodes[qedge.subject]

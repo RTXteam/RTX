@@ -182,26 +182,26 @@ class DTDQuerier:
                 elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
                     source_pass_nodes = pass_nodes
                     if len(not_pass_nodes)==1:
-                        log.warning(f"All potential categories of {not_pass_nodes[0]} don't contain drug or disease")
+                        log.warning(f"The potential categories of {not_pass_nodes[0]} don't contain drug or disease, Or we can't determine the category of this node")
                     else:
-                        log.warning(f"All potential categories of these nodes {not_pass_nodes} don't contain drug or disease")
+                        log.warning(f"The potential categories of these nodes {not_pass_nodes} don't contain drug or disease, , Or we can't determine the categories of these nodes")
                 else:
                     if type(source_qnode.ids) is str:
-                        log.error(f"All potential categories of {source_qnode.ids} don't contain drug or disease", error_code="CategoryError")
+                        log.warning(f"The potential categories of {source_qnode.ids} don't contain drug or disease, Or we can't determine the category of this node")
                         return final_kg
                     else:
-                        log.error(f"All potential categories of {source_qnode.ids} don't contain drug or disease", error_code="CategoryError")
+                        log.warning(f"The potential categories of the nodes {source_qnode.ids} don't contain drug or disease, Or we can't determine the categories of these nodes")
                         return final_kg
         else:
             try:
                 categories = [category.replace('biolink:','').replace('_','').lower() for category in source_qnode.categories]
             except AttributeError:
-                log.error(f"The category of query node {source_qnode_key} is empty. Please provide a category.", error_code='NoCategoryError')
+                log.warning(f"The category of query node {source_qnode_key} is empty. Please provide a category.")
                 return final_kg
             if len(set(categories).intersection(set(drug_ancestor_label_list))) > 0 or len(set(categories).intersection(set(disease_ancestor_label_list))) > 0:
                 source_categories = categories
             else:
-                log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be drug or disase or their ancestors", error_code="CategoryError")
+                log.warning(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be drug or disase or their ancestors")
                 return final_kg
 
         if target_qnode.ids is not None:
@@ -219,15 +219,15 @@ class DTDQuerier:
                 elif len(not_pass_nodes)!=0 and len(pass_nodes)!=0:
                     target_pass_nodes = pass_nodes
                     if len(not_pass_nodes)==1:
-                        log.warning(f"All potential categories of {not_pass_nodes[0]} don't contain drug or disease")
+                        log.warning(f"The potential categories of {not_pass_nodes[0]} don't contain drug or disease, Or we can't determine the category of this node")
                     else:
-                        log.warning(f"All potential categories of these nodes {not_pass_nodes} don't contain drug or disease")
+                        log.warning(f"The potential categories of these nodes {not_pass_nodes} don't contain drug or disease, Or we can't determine the categories of these nodes")
                 else:
                     if type(target_qnode.ids) is str:
-                        log.error(f"All potential categories of {target_qnode.ids} don't contain drug or disease", error_code="CategoryError")
+                        log.warning(f"The potential categories of {target_qnode.ids} don't contain drug or disease, Or we can't determine the category of this node")
                         return final_kg
                     else:
-                        log.error(f"All potential categories of {target_qnode.ids} don't contain drug or disease", error_code="CategoryError")
+                        log.warning(f"The potential categories of {target_qnode.ids} don't contain drug or disease, Or we can't determine the categories of these nodes")
                         return final_kg
         else:
             try:
@@ -800,8 +800,8 @@ class DTDQuerier:
                 else:
                     return [False, [], [qnode_id]]
             else:
-                log.error(f"Query node '{qnode_id}' can't get its canonical curie from NodeSynonymizer", error_code="NoPreferredCurie")
-                return [True, [], []]
+                log.warning(f"Query node '{qnode_id}' can't get its canonical curie from NodeSynonymizer")
+                return [False, [], [qnode_id]]
         else:
             pass_nodes_drug_temp = list()
             pass_nodes_disease_temp = list()
@@ -817,12 +817,19 @@ class DTDQuerier:
                     else:
                         not_pass_nodes += [curie]
                 else:
-                    log.error(f"Query node '{curie}' can't get its canonical curie from NodeSynonymizer", error_code="NoPreferredCurie")
-                    return [True, [], []]
+                    log.warning(f"Query node '{curie}' can't get its canonical curie from NodeSynonymizer")
+                    not_pass_nodes += [curie]
 
             if len(pass_nodes_drug_temp)!=0 and len(pass_nodes_disease_temp) != 0:
-                log.error(f"The preferred types of {qnode_id} contain both drug and disease", error_code="MixedTypes")
-                return [True, [], []]
+                print(f"{pass_nodes_drug_temp}, {pass_nodes_disease_temp}", flush=True)
+                if len(pass_nodes_drug_temp) > len(pass_nodes_disease_temp):
+                    pass_nodes = pass_nodes_drug_temp
+                    not_pass_nodes = pass_nodes_disease_temp
+                else:
+                    pass_nodes = pass_nodes_disease_temp
+                    not_pass_nodes = pass_nodes_drug_temp
+                log.warning(f"The preferred types of {qnode_id} contain both drugs and diseases so that the curies {not_pass_nodes} are discarded due to their strange categories.")
+                return [False, pass_nodes, not_pass_nodes]
             else:
                 pass_nodes = pass_nodes_drug_temp + pass_nodes_disease_temp
                 return [False, pass_nodes, not_pass_nodes]

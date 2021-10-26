@@ -48,7 +48,7 @@ def test_command_definitions():
 def test_n_results():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:1227, key=n00)",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
@@ -64,7 +64,7 @@ def test_n_results():
 def test_no_results():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:1227, key=n00)",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
@@ -79,7 +79,7 @@ def test_no_results():
 def test_prune():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:1227, key=n00)",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
@@ -91,7 +91,7 @@ def test_prune():
     [no_prune_response, no_prune_message] = _do_arax_query(query)
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:1227, key=n00)",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
@@ -121,7 +121,7 @@ def test_prune():
 def test_warning():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:1227, key=n00)",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
@@ -135,16 +135,36 @@ def test_warning():
     assert response.status == 'OK'
     assert len(message.results) == 20
 
-def test_sort():
+def test_sort_by_edge_attribute():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:1227, key=n00)",
+            "add_qnode(name=DOID:0060680, key=n00)",
+            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "add_qedge(subject=n01, object=n02, key=e01)",
+            "expand(edge_key=[e00,e01], kp=RTX-KG2)",
+            "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
+            "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=d, max_results=20, qedge_keys=[J2])",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    #return response, message
+    assert response.status == 'OK'
+    assert len(message.results) == 20
+
+def test_sort_by_node_attribute():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=RTX-KG2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20, qnode_keys=[n01])",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -152,6 +172,23 @@ def test_sort():
     assert len(message.results) == 20
     # add something to test if the results are assending and the correct numbers
 
+def test_sort_by_score():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=DOID:4337, key=n00)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "expand(edge_key=e00, kp=RTX-KG2)",
+            "resultify(ignore_edge_direction=true)",
+            "filter_results(action=sort_by_score, direction=a, max_results=20)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 20
+    result_scores = [x.score for x in message.results]
+    assert result_scores == sorted(result_scores)
+    assert max(result_scores) < 1
     
 @pytest.mark.external
 def test_issue1506():

@@ -26,9 +26,10 @@ RUN mkdir -p /mnt/data/orangeboard/kg2
 RUN chown -R rt.rt /mnt/data/orangeboard/kg2
 RUN su rt && cd /mnt/data/orangeboard/kg2 && git clone https://github.com/RTXteam/RTX.git
 RUN chown -R rt.rt /mnt/data/orangeboard/kg2/RTX
+RUN su rt && mv /mnt/data/orangeboard/kg2/RTX/code/UI/interactive/config.js.example /mnt/data/orangeboard/kg2/RTX/code/UI/interactive/config.js
 
 # install apache2 and copy config file
-RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -yq apache2
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -yq apache2
 COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 RUN cd /var/www && mv html html-orig && ln -s /mnt/data/orangeboard/kg2/RTX/code/UI/interactive html
 RUN cd /var/www && a2enmod proxy && a2enmod proxy_html && a2enmod proxy_http && a2enmod rewrite && a2enmod headers

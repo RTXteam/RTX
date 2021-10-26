@@ -133,13 +133,13 @@ class OverlayClinicalInfo:
                 self.response.debug(f"Querying Columbia Open Health data for info about {subject_name} and {object_name}")
                 # convert CURIE to OMOP identifiers
                 # subject_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(subject_curie, 1)]
-                res = self.cohdIndex.get_concept_ids(subject_curie)
+                res = self.mapping_curie_to_omop_ids[subject_curie]
                 if len(res) != 0:
                     subject_OMOPs = res
                 else:
                     subject_OMOPs = []
                 # object_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(object_curie, 1)]
-                res = self.cohdIndex.get_concept_ids(object_curie)
+                res = self.mapping_curie_to_omop_ids[object_curie]
                 if len(res) != 0:
                     object_OMOPs = res
                 else:
@@ -277,6 +277,11 @@ class OverlayClinicalInfo:
         added_flag = False  # check to see if any edges where added
         # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
 
+        ## call COHD api one time to save time
+        curies_to_decorate = set()
+        curies_to_decorate.update(subject_curies_to_decorate)
+        curies_to_decorate.update(object_curies_to_decorate)
+        self.mapping_curie_to_omop_ids = self.cohdIndex.get_concept_ids(curies_to_decorate)
         for (subject_curie, object_curie) in itertools.product(subject_curies_to_decorate, object_curies_to_decorate):
             # create the edge attribute if it can be
             edge_attribute = self.make_edge_attribute_from_curies(subject_curie, object_curie,
@@ -328,6 +333,8 @@ class OverlayClinicalInfo:
                                 attributes=edge_attribute_list)
                 edge.qedge_keys = qedge_keys
                 self.message.knowledge_graph.edges[id] = edge
+                if self.message.results is not None and len(self.message.results) > 0:
+                    ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
 
         # Now add a q_edge the query_graph since I've added an extra edge to the KG
         if added_flag:
@@ -348,8 +355,11 @@ class OverlayClinicalInfo:
 
     def add_all_edges(self, name="", default=0.):
         curies_to_names = dict()
+        all_curie_set = set()
         for key, node in self.message.knowledge_graph.nodes.items():
             curies_to_names[key] = node.name
+            all_curie_set.add(key)
+        self.mapping_curie_to_omop_ids = self.cohdIndex.get_concept_ids(all_curie_set)
         for edge in self.message.knowledge_graph.edges.values():
             if not edge.attributes:  # populate if not already there
                 edge.attributes = []

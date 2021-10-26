@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   description: TRAPI 1.2 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
-  version: 1.2.5
+  version: 1.2.6
   title: ARAX Translator Reasoner
   contact:
     email: edeutsch@systemsbiology.org
@@ -105,6 +105,15 @@ paths:
         - meta_knowledge_graph
       summary: Meta knowledge graph representation of this TRAPI web service.
       operationId: meta_knowledge_graph
+      parameters:
+      - in: query
+        name: format
+        description: >-
+          Provide meta_knowledge_graph information in a format other than the default.
+          Default value is 'full'. Also permitted is 'simple'
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: >-
@@ -398,6 +407,20 @@ paths:
         schema:
           type: integer
           example: 10
+      - in: query
+        name: terminate_pid
+        description: >-
+          PID of an ongoing query to terminate
+        required: false
+        schema:
+          type: integer
+      - in: query
+        name: authorization
+        description: >-
+          Authorization string required for certain calls to status
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: successful operation

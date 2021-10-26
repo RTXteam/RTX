@@ -88,17 +88,38 @@ class ARAXQuery:
             i_message = 0
             n_messages = len(self.response.messages)
             query_plan_counter = 0
+            idle_ticks = 0.0
+            pid = None
 
             while "DONE" not in self.response.status:
                 n_messages = len(self.response.messages)
                 while i_message < n_messages:
-                    yield(json.dumps(self.response.messages[i_message])+"\n")
+                    try:
+                        yield(json.dumps(self.response.messages[i_message])+"\n")
+                    except:
+                        return { 'DONE': True }
                     i_message += 1
+                    idle_ticks = 0.0
+
+                if pid is None:
+                    pid = os.getpid()
+                    authorization = str(hash('Pickles' + str(pid)))
+                    yield(json.dumps( { "pid": pid, "authorization": authorization } )+"\n")
+
                 #### Also emit any updates to the query_plan
                 if query_plan_counter < self.response.query_plan['counter']:
                     query_plan_counter = self.response.query_plan['counter']
                     yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
+                    idle_ticks = 0.0
                 time.sleep(0.2)
+                idle_ticks += 0.2
+                if idle_ticks > 180.0:
+                    timestamp = str(datetime.now().isoformat())
+                    try:
+                        yield(json.dumps({ 'timestamp': timestamp, 'level': 'DEBUG', 'code': '', 'message': 'Query is still progressing...' })+"\n")
+                    except:
+                        return { 'DONE': True }
+                    idle_ticks = 0.0
 
             # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
@@ -106,11 +127,16 @@ class ARAXQuery:
                 yield(json.dumps(self.response.messages[i_message])+"\n")
                 i_message += 1
 
+            #### Also emit any updates to the query_plan
+            if query_plan_counter < self.response.query_plan['counter']:
+                query_plan_counter = self.response.query_plan['counter']
+                yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
+
             # Remove the little DONE flag the other thread used to signal this thread that it is done
             self.response.status = re.sub('DONE,','',self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(self.response.envelope.to_dict()))
+            yield(json.dumps(self.response.envelope.to_dict(),sort_keys=True))
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
@@ -155,7 +181,18 @@ class ARAXQuery:
             if hasattr(response,'http_status'):
                 response.envelope.http_status = response.http_status
 
-        self.track_query_finish()
+        if mode == 'asynchronous':
+            attributes = {
+                'status': 'Running Async',
+                'message_id': None,
+                'message_code': 'Running',
+                'code_description': 'Query running via /asyncquery'
+            }
+            query_tracker = ARAXQueryTracker()
+            query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+        else:
+            self.track_query_finish()
+
         return response.envelope
 
 
@@ -579,6 +616,7 @@ class ARAXQuery:
             #### Process each action in order
             action_stats = { }
             actions = result.data['actions']
+            action = None
             for action in actions:
                 response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
@@ -776,9 +814,13 @@ class ARAXQuery:
             post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'})
             status_code = post_response_content.status_code
             response.info(f"Response from POST to callback URL was {status_code}")
+            if status_code not in [ 200, 201 ]:
+                response.error(f"Response from POST to callback URL was {status_code}", error_code="UnreachableCallback")
+
         except:
-            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost")
-        exit(0)
+            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost", error_code="UnreachableCallback")
+        self.track_query_finish()
+        os._exit(0)
 
 
 ##################################################################################################

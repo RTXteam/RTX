@@ -50,6 +50,7 @@ class ComputeNGD:
         self.connection, self.cursor = self._setup_ngd_database()
         self.curie_to_pmids_map = dict()
         self.ngd_normalizer = 2.2e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
+        self.first_ngd_log = True
 
     def compute_ngd(self):
         """
@@ -71,6 +72,7 @@ class ComputeNGD:
         url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
         qg = self.message.query_graph
         kg = self.message.knowledge_graph
+        
 
         # if you want to add virtual edges, identify the subject/objects, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
         if 'virtual_relation_label' in parameters:
@@ -149,6 +151,10 @@ class ComputeNGD:
                     edge.qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
 
+                    #FW: check if results exist then modify them with the ngd edge
+                    if self.message.results is not None and len(self.message.results) > 0:
+                        ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
+
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             if added_flag:
                 #edge_type = parameters['virtual_edge_type']
@@ -168,6 +174,7 @@ class ComputeNGD:
                 #### end FIXME
 
                 self.message.query_graph.edges[relation]=q_edge
+
 
             self.response.info(f"NGD values successfully added to edges")
         else:  # you want to add it for each edge in the KG
@@ -229,7 +236,10 @@ class ComputeNGD:
             pubmed_id_set = set(self.curie_to_pmids_map.get(subject_curie)).intersection(set(self.curie_to_pmids_map.get(object_curie)))
             n_pmids = len(pubmed_id_set)
             if n_pmids > 30:
-                self.response.debug(f"{n_pmids} publications found for edge ({subject_curie})-[]-({object_curie}) limiting to 30...")
+                if self.first_ngd_log:
+                    #self.response.debug(f"{n_pmids} publications found for edge ({subject_curie})-[]-({object_curie}) limiting to 30...")
+                    self.response.debug(f"More than 30 publications found for some edges limiting to 30...")
+                    self.first_ngd_log = False
                 limited_pmids = set()
                 for i, val in enumerate(itertools.islice(pubmed_id_set, 30)):
                     limited_pmids.add(val)

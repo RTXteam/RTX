@@ -9,7 +9,7 @@ from collections import Counter
 import copy
 import json
 import ast
-from typing import List, Union
+from typing import List, Union, Optional
 
 import numpy as np
 
@@ -23,8 +23,10 @@ sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
 from openapi_server.models.message import Message
 
 
-def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
+def _do_arax_query(query: dict, timeout: Optional[int] = None) -> List[Union[ARAXResponse, Message]]:
     araxq = ARAXQuery()
+    if timeout:
+        query["query_options"] = {"kp_timeout": timeout}
     response = araxq.query(query)
     if response.status != 'OK':
         print(response.show(level=response.DEBUG))
@@ -100,7 +102,7 @@ def test_gene_to_pathway_issue_9():
             }
         }
     }
-    [response, message] = _do_arax_query(query)
+    [response, message] = _do_arax_query(query, timeout=30)
     assert response.status == 'OK'
     assert len(message.results) > 0
 
@@ -127,7 +129,7 @@ def test_chemicals_to_gene_issue_10():
             }
         }
     }
-    [response, message] = _do_arax_query(query)
+    [response, message] = _do_arax_query(query, timeout=30)
     assert response.status == 'OK'
     assert len(message.results) > 0
 
@@ -154,7 +156,7 @@ def test_named_thing_associated_with_acrocynaosis_issue_12():
             }
         }
     }
-    [response, message] = _do_arax_query(query)
+    [response, message] = _do_arax_query(query, timeout=30)
     assert response.status == 'OK'
     assert len(message.results) > 0
 
@@ -183,7 +185,7 @@ def test_chemical_substances_correlated_with_asthma_issue_18():
         }
       }
     }
-    [response, message] = _do_arax_query(query)
+    [response, message] = _do_arax_query(query, timeout=30)
     assert response.status == 'OK'
     assert len(message.results) > 0
 
@@ -211,7 +213,7 @@ def test_diseases_treated_by_drug_issue_20():
         }
       }
      }
-    [response, message] = _do_arax_query(query)
+    [response, message] = _do_arax_query(query, timeout=30)
     assert response.status == 'OK'
     assert len(message.results) > 0
 
@@ -255,7 +257,7 @@ def test_chemical_substances_that_down_regulate_STK11_issue_28():
         }
       }
      }
-    [response, message] = _do_arax_query(query)
+    [response, message] = _do_arax_query(query, timeout=30)
     assert response.status == 'OK'
     assert len(message.results) > 0
 
@@ -285,7 +287,7 @@ def test_phenotypes_for_angel_shaped_phalango_epiphyseal_dysplasia_issue_33():
         }
       }
      }
-    [response, message] = _do_arax_query(query)
+    [response, message] = _do_arax_query(query, timeout=30)
     assert response.status == 'OK'
     assert len(message.results) > 0
 

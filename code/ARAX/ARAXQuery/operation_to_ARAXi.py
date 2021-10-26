@@ -5,6 +5,7 @@ import itertools
 class WorkflowToARAXi:
     def __init__(self):
         self.implemented = {'lookup',
+                            'lookup_and_score',
                             'overlay_compute_ngd',
                             'overlay_compute_jaccard',
                             'overlay_fisher_exact_test',
@@ -18,6 +19,10 @@ class WorkflowToARAXi:
                             'filter_kgraph_percentile',
                             'filter_kgraph_discrete_kedge_attribute',
                             'filter_kgraph_continuous_attribute',
+                            'sort_results_score',
+                            'sort_results_edge_attribute',
+                            'sort_results_node_attribute',
+                            'annotate_nodes',
                             'score',
                             'complete_results'}
 
@@ -88,7 +93,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_bind(parameters, query_graph, response):
         ARAXi = []
-        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
+        ARAXi.append(f"scoreless_resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
     @staticmethod
@@ -199,6 +204,51 @@ class WorkflowToARAXi:
         ARAXi.append(araxi_string)
         return ARAXi
 
+    @staticmethod
+    def __translate_sort_results_edge_attribute(parameters, query_graph, response):
+        if ("edge_attribute" not in parameters) or ("ascending_or_descending" not in parameters):
+            response.error("The operation sort_results_edge_attribute must have the parameters edge_attribute and ascending_or_descending", error_code="KeyError")
+        ARAXi = []
+        # FW: need to update this to handle qedge_keys and qnode_keys
+        araxi_string = f"filter_results(action=sort_by_edge_attribute,edge_attribute={parameters['edge_attribute']},direction={ascending_or_descending}"
+        if "qedge_keys" in parameters and parameters['qedge_keys'] is not None:
+            araxi_string += f",qedge_keys={parameters['qedge_keys']}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
+        return ARAXi
+
+    @staticmethod
+    def __translate_sort_results_node_attribute(parameters, query_graph, response):
+        if ("node_attribute" not in parameters) or ("ascending_or_descending" not in parameters):
+            response.error("The operation sort_results_node_attribute must have the parameters node_attribute and ascending_or_descending", error_code="KeyError")
+        ARAXi = []
+        # FW: need to update this to handle qedge_keys and qnode_keys
+        araxi_string = f"filter_results(action=sort_by_node_attribute,node_attribute={parameters['node_attribute']},direction={ascending_or_descending}"
+        if "qnode_keys" in parameters and parameters['qnode_keys'] is not None:
+            araxi_string += f",remove_connected_nodes=t,qnode_keys={parameters['qnode_keys']}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
+        return ARAXi
+
+    @staticmethod
+    def __translate_sort_results_score(parameters, query_graph, response):
+        if ("ascending_or_descending" not in parameters):
+            response.error("The operation sort_results_score must have the parameter ascending_or_descending", error_code="KeyError")
+        ARAXi = []
+        araxi_string = f"filter_results(action=sort_by_score,direction={ascending_or_descending}"
+        araxi_string += ")"
+        ARAXi.append(araxi_string)
+        return ARAXi
+
+    @staticmethod
+    def __translate_annotate_nodes(parameters, query_graph, response):
+        ARAXi = []
+        attributes = parameters.get('attributes',None)
+        if attributes is None or 'pmids' in attributes:
+            araxi_string = f"overlay(action=add_node_pmids)"
+            ARAXi.append(araxi_string)
+        return ARAXi
+
     def translate(self, workflow, query_graph, response):
         ARAXi = []
         for operation in workflow:
@@ -213,13 +263,13 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_score(parameters, query_graph, response):
         ARAXi = []
-        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
+        ARAXi.append(f"rank_results()")
         return ARAXi
 
     @staticmethod
     def __translate_complete_results(parameters, query_graph, response):
         ARAXi = []
-        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
+        ARAXi.append(f"scoreless_resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
     @staticmethod
@@ -227,6 +277,13 @@ class WorkflowToARAXi:
         ARAXi = []
         ARAXi.append("expand()")
         ARAXi.append(f"scoreless_resultify(ignore_edge_direction=true)")  # ignore edge directions
+        return ARAXi
+
+    @staticmethod
+    def __translate_lookup_and_score(parameters, query_graph, response):
+        ARAXi = []
+        ARAXi.append("expand()")
+        ARAXi.append(f"resultify(ignore_edge_direction=true)")  # ignore edge directions
         return ARAXi
 
 

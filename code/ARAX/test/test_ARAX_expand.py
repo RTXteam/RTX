@@ -24,11 +24,14 @@ from openapi_server.models.attribute import Attribute
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
                                        kg_should_be_incomplete=False, debug=False, should_throw_error=False,
-                                       error_code: Optional[str] = None) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
+                                       error_code: Optional[str] = None, timeout: Optional[int] = None) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
     # Run the query
     araxq = ARAXQuery()
     assert actions or json_query  # Must provide some sort of query to run
-    response = araxq.query({"operations": {"actions": actions}}) if actions else araxq.query({"message": {"query_graph": json_query}})
+    query_object = {"operations": {"actions": actions}} if actions else {"message": {"query_graph": json_query}}
+    if timeout:
+        query_object["query_options"] = {"kp_timeout": timeout}
+    response = araxq.query(query_object)
     message = araxq.message
     if response.status != 'OK':
         print(response.show(level=ARAXResponse.DEBUG))
@@ -688,7 +691,7 @@ def test_issue_1236_b():
         "add_qnode(ids=DOID:14330, categories=biolink:Disease, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:condition_associated_with_gene)",
-        "expand()",
+        "expand(kp=RTX-KG2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -778,7 +781,7 @@ def test_many_kp_query():
         "expand()",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, timeout=10)
 
 
 def test_entity_to_entity_query():

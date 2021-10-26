@@ -86,6 +86,8 @@ class OverlayExposuresData:
                         while id in knowledge_graph.edges:
                             id = old_id+f".{random.randint(10**(9-1), (10**9)-1)}"
                         knowledge_graph.edges[id] = virtual_edge
+                        if self.message.results is not None and len(self.message.results) > 0:
+                            ou.update_results_with_overlay_edge(subject_knode_key=subject_curie, object_knode_key=object_curie, kedge_key=id, message=self.message, log=log)
                         break  # Don't worry about checking remaining synonym combos if we got results
             # Add an 'empty' virtual edge (p-value of None) if we couldn't find any results for this node pair #1009
             id, empty_virtual_edge = self._create_icees_virtual_edge(subject_curie, object_curie, None)
