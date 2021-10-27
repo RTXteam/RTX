@@ -8,6 +8,7 @@ import re
 import signal
 
 from datetime import datetime
+import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, String, DateTime, PickleType
@@ -109,8 +110,9 @@ class ARAXQueryTracker:
         self.engine = engine
 
         #### If the tables don't exist, then create the database
-        if not engine.dialect.has_table(engine, ARAXQuery.__tablename__):
-            print(f"WARNING: {self.engine_type} tables do not exist; creating them")
+        database_info = sqlalchemy.inspect(engine)
+        if not database_info.has_table(ARAXQuery.__tablename__):
+            eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
             Base.metadata.create_all(engine)
 
 
@@ -168,8 +170,9 @@ class ARAXQueryTracker:
         self.engine = engine
 
         #### If the tables don't exist, then create the database
-        if not engine.dialect.has_table(engine, ARAXQuery.__tablename__):
-            print(f"WARNING: {self.engine_type} tables do not exist; creating them")
+        database_info = sqlalchemy.inspect(engine)
+        if not database_info.has_table(ARAXQuery.__tablename__):
+            eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
             Base.metadata.create_all(engine)
 
 

@@ -19,6 +19,7 @@ import requests
 import requests_cache
 from flask import Flask,redirect
 
+import sqlalchemy
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -142,8 +143,9 @@ class ResponseCache:
         self.engine = engine
 
         #### If the tables don't exist, then create the database
-        if not engine.dialect.has_table(engine, Response.__tablename__):
-            print(f"WARNING: {self.engine_type} tables do not exist; creating them")
+        database_info = sqlalchemy.inspect(engine)
+        if not database_info.has_table(Response.__tablename__):
+            eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
             Base.metadata.create_all(engine)
 
 
