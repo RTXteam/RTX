@@ -16,4 +16,4 @@ sudo service apache2 start
 sudo service RTX_OpenAPI_production start
 sudo service RTX_Complete start
 # this line is added to stop container completes with exit code 0
-tail -f /dev/null
+tail -f /var/log/apache2/access.log
