@@ -469,7 +469,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
     def __normalize_Genetics_quantile(self, value):
         """
         For Genetics Provider MAGMA quantile: We decide 2020-09-22 that just using
-        the quantile as-is is best. With DML, SAR, EWD.
+        the quantile as-is is best. With DMK, SAR, EWD.
         """
 
         return value
@@ -486,11 +486,14 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         # option 2:
         try:
-            value = -np.log(value)  # FIXME: could divide by zero
-            max_value = 1.0
-            curve_steepness = 3
-            logistic_midpoint = 2.7
-            normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+            if value <= np.finfo(float).eps:
+                normalized_value = 1.
+            else:
+                value = -np.log(value)
+                max_value = 1.0
+                curve_steepness = 3
+                logistic_midpoint = 2.7
+                normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         except RuntimeWarning:  # this is the case when value is 0 (or nearly so), so should award the max value
             normalized_value = 1.
 
