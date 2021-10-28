@@ -6,6 +6,7 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import time
 import re
 import signal
+import socket
 
 from datetime import datetime
 import sqlalchemy
@@ -28,6 +29,8 @@ class ARAXQuery(Base):
     end_datetime = Column(String(25), nullable=True) ## ISO formatted YYYY-MM-DD HH:mm:ss
     elapsed = Column(Float, nullable=True) ## seconds
     pid = Column(Integer, nullable=False)
+    domain = Column(String(255), nullable=True)
+    hostname = Column(String(255), nullable=True)
     instance_name = Column(String(255), nullable=False)
     origin = Column(String(255), nullable=False)
     input_query = Column(PickleType, nullable=False) ## blob object
@@ -218,16 +221,29 @@ class ARAXQueryTracker:
         if session is None:
             return
 
-        location = os.path.abspath(__file__)
+        location = os.path.dirname(os.path.abspath(__file__))
         instance_name = '??'
         match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
         if match:
             instance_name = match.group(1)
+        if instance_name == 'production':
+            instance_name = 'ARAX'
+
+        try:
+            with open(location + '/../../config.domain') as infile:
+                for line in infile:
+                    domain = line.strip()
+        except:
+            domain = '??'
+
+        hostname = socket.gethostname()
 
         try:
             tracker_entry = ARAXQuery(status="started",
                 start_datetime=datetime.now().isoformat(' ', 'seconds'),
                 pid=os.getpid(),
+                domain = domain,
+                hostname = hostname,
                 instance_name = instance_name,
                 origin=attributes['submitter'],
                 input_query=attributes['input_query'],
@@ -287,6 +303,8 @@ class ARAXQueryTracker:
                 'query_id': entry.query_id,
                 'pid': entry.pid,
                 'start_datetime': entry.start_datetime,
+                'domain': entry.domain,
+                'hostname': entry.hostname,
                 'instance_name': entry.instance_name,
                 'state': entry.status,
                 'elapsed': elapsed,
