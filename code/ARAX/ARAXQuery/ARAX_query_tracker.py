@@ -367,6 +367,8 @@ class ARAXQueryTracker:
         match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
         if match:
             instance_name = match.group(1)
+        if instance_name == 'production':
+            instance_name = 'ARAX'
         eprint(f"INFO: Clearing unfinished tracker entries for instance_name = {instance_name}")
 
         entries = self.session.query(ARAXQuery).filter(ARAXQuery.instance_name == instance_name, ARAXQuery.elapsed == None)
