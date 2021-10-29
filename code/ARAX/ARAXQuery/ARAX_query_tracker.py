@@ -215,6 +215,24 @@ class ARAXQueryTracker:
             tracker_entry.code_description = attributes['code_description'][:254]
         session.commit()
 
+
+    ##################################################################################################
+    def alter_tracker_entry(self, tracker_id, attributes):
+        if tracker_id is None:
+            return
+
+        session = self.session
+        if session is None:
+            return
+
+        tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
+        if len(tracker_entries) > 0:
+            tracker_entry = tracker_entries[0]
+            for key, value in attributes.items():
+                setattr(tracker_entry, key, value)
+        session.commit()
+
+
     ##################################################################################################
     def create_tracker_entry(self, attributes):
         session = self.session
@@ -290,7 +308,7 @@ class ARAXQueryTracker:
 
         for entry in entries:
             elapsed = entry.elapsed
-            if elapsed is None:
+            if elapsed is None or entry.status == 'Running Async':
                 now = datetime.now()
                 then = datetime.strptime(entry.start_datetime, '%Y-%m-%d %H:%M:%S')
                 delta = now - then
@@ -371,7 +389,7 @@ class ARAXQueryTracker:
             instance_name = 'ARAX'
         eprint(f"INFO: Clearing unfinished tracker entries for instance_name = {instance_name}")
 
-        entries = self.session.query(ARAXQuery).filter(ARAXQuery.instance_name == instance_name, ARAXQuery.elapsed == None)
+        entries = self.session.query(ARAXQuery).filter(ARAXQuery.instance_name == instance_name).filter( (ARAXQuery.elapsed == None) | (ARAXQuery.status == 'Running Async') )
 
         for entry in entries:
             eprint(f" - {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
