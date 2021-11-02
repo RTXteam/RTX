@@ -26,7 +26,6 @@ RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt.rt /mnt/data/orangeboard/production
 RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git
 RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
-RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ARAX/ARAXQuery && sed -i 's/and code is/and code ==/g' ARAX_response.py
 
 # install apache2 and copy config file
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -yq apache2
@@ -42,7 +41,6 @@ RUN apt-get install -y software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
 RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-venv
 RUN rm /usr/bin/python3 && ln -s /usr/bin/python3.7 /usr/bin/python3
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && sed -i 's/lockfile==0.12.6/lockfile==0.12.2/g' requirements.txt
 RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.7 -m pip install -r requirements.txt && python3.7 -m pip install flask_cors connexion[swagger-ui] tornado
 
 # setup services
