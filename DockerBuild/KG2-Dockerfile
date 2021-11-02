@@ -24,7 +24,7 @@ RUN chmod -R 700 /home/rt/.ssh
 # clone RTX repo
 RUN mkdir -p /mnt/data/orangeboard/kg2
 RUN chown -R rt.rt /mnt/data/orangeboard/kg2
-RUN su rt && cd /mnt/data/orangeboard/kg2 && git clone https://github.com/RTXteam/RTX.git
+RUN su rt && cd /mnt/data/orangeboard/kg2 && git clone https://github.com/RTXteam/RTX.git && cd RTX && git checkout production
 RUN chown -R rt.rt /mnt/data/orangeboard/kg2/RTX
 RUN su rt && mv /mnt/data/orangeboard/kg2/RTX/code/UI/interactive/config.js.example /mnt/data/orangeboard/kg2/RTX/code/UI/interactive/config.js
 
