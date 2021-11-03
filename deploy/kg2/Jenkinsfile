@@ -61,7 +61,8 @@ pipeline {
       stage('Deploy to AWS EKS Blue') {
           steps {
               configFileProvider([
-                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/kg2/configs/configv2.json')
+                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/kg2/configs/configv2.json'),
+                  configFile(fileId: 'values.ncats.yaml', targetLocation: 'deploy/kg2/values.ncats.yaml')
               ]){
                   withCredentials([
                     sshUserPrivateKey(
