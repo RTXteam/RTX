@@ -26,22 +26,37 @@ def main():
         aws_secret_access_key=ACCESS_KEY
     )
 
-    files = os.listdir('/mnt/data/orangeboard/Cache/responses_1_0')
+    base_dir = '/mnt/data/orangeboard/Cache/responses_1_0'
+    files = sorted(os.listdir(base_dir))
+    #files = os.listdir(base_dir)
 
-    test_mode = True
+    test_mode = False
+    counter = 0
 
     for file in files:
 
-        with open(file) as infile:
+        with open(base_dir + '/' + file) as infile:
 
-            serialized_query_graph = json.read(infile)
+            content = ''
+            for line in infile:
+                content += line
+
+            try:
+                envelope = json.loads(content)
+            except:
+                print(f"ERROR: Unable to parse the JSON in {file}")
+                continue
 
             response_filename = f"/responses/{file}"
             print(f"INFO: Writing {file} to bucket as {response_filename}")
 
             if not test_mode:
-                s3.Object('arax-response-storage', response_filename).put(Body=serialized_query_graph)
+                s3.Object('arax-response-storage', response_filename).put(Body=content)
 
+        counter += 1
+        if counter > 999999:
+            print("INFO: Ending early for testing")
+            break
 
 
 if __name__ == "__main__": main()
