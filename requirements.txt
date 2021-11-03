@@ -33,6 +33,4 @@ asyncio==3.4.3
 aiohttp>=3.7.4
 boto3==1.19.0
 tornado==6.1
-
-# Other things that you may need to pip3 install
-#'connexion[swagger-ui]'
+connexion[swagger-ui]
