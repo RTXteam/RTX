@@ -86,7 +86,6 @@ class KnowledgeSourceMetadata:
 
         #### If we've already loaded the meta_knowledge_graph, just return it
         if self.meta_knowledge_graph is not None:
-            eprint(f"INFO: Returning previously loaded meta_knowledge_graph")
             if format_ == 'simple':
                 return self.simplified_meta_knowledge_graph
             else:
@@ -103,11 +102,9 @@ class KnowledgeSourceMetadata:
             return None
 
         try:
-        #if True:
             with open(input_filename) as infile:
                 self.meta_knowledge_graph = json.load(infile)
                 KnowledgeSourceMetadata.cached_meta_knowledge_graph = self.meta_knowledge_graph
-                eprint("INFO: Loaded meta_knowledge_graph from file and cached it")
                 self.create_simplified_meta_knowledge_graph()
                 KnowledgeSourceMetadata.cached_simplified_meta_knowledge_graph = self.simplified_meta_knowledge_graph
                 if format_ == 'simple':
@@ -116,7 +113,6 @@ class KnowledgeSourceMetadata:
                     return self.meta_knowledge_graph
 
         except:
-        #else:
             eprint(f"ERROR [{method_name}]: Unable to read meta_knowledge_graph from file '{input_filename}'")
             return
 
