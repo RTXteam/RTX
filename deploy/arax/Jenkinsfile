@@ -61,7 +61,8 @@ pipeline {
       stage('Deploy to AWS EKS Blue') {
           steps {
               configFileProvider([
-                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/arax/configs/configv2.json')
+                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/arax/configs/configv2.json'),
+                  configFile(fileId: 'values.ncats.yaml', targetLocation: 'deploy/arax/values.ncats.yaml')
               ]){
                   withCredentials([
                     sshUserPrivateKey(
