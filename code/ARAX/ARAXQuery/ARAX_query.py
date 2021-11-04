@@ -608,6 +608,14 @@ class ARAXQuery:
                 #### The child continues
                 #### The child loses the MySQL connection of the parent, so need to reconnect
                 response_cache.connect()
+                time.sleep(1)
+                attributes = {
+                    'pid': os.getpid(),
+                    'code_description': 'Query executing via /asyncquery'
+                }
+                query_tracker = ARAXQueryTracker()
+                query_tracker.alter_tracker_entry(self.response.tracker_id, attributes)
+
                 
             #### If there is already a KG with edges, recompute the qg_keys
             if message.knowledge_graph is not None and len(message.knowledge_graph.edges) > 0:
