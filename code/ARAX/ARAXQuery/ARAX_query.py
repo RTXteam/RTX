@@ -46,8 +46,6 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
-#from ParseQuestion import ParseQuestion
-#from QueryGraphReasoner import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
@@ -59,6 +57,14 @@ from jsonschema.exceptions import ValidationError
 query_tracker_reset = ARAXQueryTracker()
 query_tracker_reset.clear_unfinished_entries()
 
+class response_locking(ARAXResponse):
+    def __init__(self, lock: threading.Lock):
+        self.lock = lock
+        super().__init__()
+
+    def __add_message(self, message, level, code=None):
+        with self.lock:
+            super().__add_message(message, level, code)
 
 class ARAXQuery:
 
@@ -67,8 +73,8 @@ class ARAXQuery:
         self.response = None
         self.message = None
         self.rtxConfig = RTXConfiguration()
-        
         self.DBManager = ARAXDatabaseManager(live = "Production")
+        self.lock = None
         if self.DBManager.check_versions():
             self.response = ARAXResponse()
             self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
@@ -77,27 +83,38 @@ class ARAXQuery:
     def query_return_stream(self,query, mode='ARAX'):
 
         main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,mode,))
+        self.lock = threading.Lock()
         main_query_thread.start()
 
         if self.response is None or "DONE" not in self.response.status:
 
             # Sleep until a response object has been created
-            while self.response is None:
-                time.sleep(0.1)
+            have_response = False
+            while not have_response:
+                with self.lock:
+                    have_response = (self.response is not None)
+                if not have_response:
+                    time.sleep(0.1)
 
             i_message = 0
-            n_messages = len(self.response.messages)
+            with self.lock:
+                n_messages = len(self.response.messages)
             query_plan_counter = 0
             idle_ticks = 0.0
             pid = None
 
-            while "DONE" not in self.response.status:
-                n_messages = len(self.response.messages)
+            response_status_says_done = False
+            while not response_status_says_done:
+                with self.lock:
+                    response_status_says_done = ("DONE" in self.response.status)
+                if response_status_says_done:
+                    break
+                with self.lock:
+                    n_messages = len(self.response.messages)
                 while i_message < n_messages:
-                    try:
-                        yield(json.dumps(self.response.messages[i_message])+"\n")
-                    except:
-                        return { 'DONE': True }
+                    with self.lock:
+                        i_message_obj = self.response.messages[i_message].copy()
+                    yield(json.dumps(i_message_obj) + "\n")
                     i_message += 1
                     idle_ticks = 0.0
 
@@ -107,64 +124,61 @@ class ARAXQuery:
                     yield(json.dumps( { "pid": pid, "authorization": authorization } )+"\n")
 
                 #### Also emit any updates to the query_plan
-                if query_plan_counter < self.response.query_plan['counter']:
-                    query_plan_counter = self.response.query_plan['counter']
-                    yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
+                with self.lock:
+                    self_query_plan_counter = self.response.query_plan['counter']
+                if query_plan_counter < self_query_plan_counter:
+                    query_plan_counter = self_query_plan_counter
+                    with self.lock:
+                        self_response_query_plan = self.response.query_plan.copy()
+                    yield(json.dumps(self_response_query_plan, sort_keys=True) + "\n")
                     idle_ticks = 0.0
                 time.sleep(0.2)
                 idle_ticks += 0.2
                 if idle_ticks > 180.0:
                     timestamp = str(datetime.now().isoformat())
-                    try:
-                        yield(json.dumps({ 'timestamp': timestamp, 'level': 'DEBUG', 'code': '', 'message': 'Query is still progressing...' })+"\n")
-                    except:
-                        return { 'DONE': True }
+                    yield json.dumps({ 'timestamp': timestamp, 'level': 'DEBUG', 'code': '', 'message': 'Query is still progressing...' }) + "\n"
                     idle_ticks = 0.0
 
             # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
             while i_message < n_messages:
-                yield(json.dumps(self.response.messages[i_message])+"\n")
+                yield(json.dumps(self.response.messages[i_message]) + "\n")
                 i_message += 1
 
             #### Also emit any updates to the query_plan
-            if query_plan_counter < self.response.query_plan['counter']:
-                query_plan_counter = self.response.query_plan['counter']
-                yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
+            self_response_query_plan_counter = self.response.query_plan['counter']
+            if query_plan_counter < self_response_query_plan_counter:
+                query_plan_counter = self_response_query_plan_counter
+                yield(json.dumps(self.response.query_plan, sort_keys=True)+"\n")
 
             # Remove the little DONE flag the other thread used to signal this thread that it is done
-            self.response.status = re.sub('DONE,','',self.response.status)
+            self.response.status = re.sub('DONE,', '', self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(self.response.envelope.to_dict(),sort_keys=True))
+            yield(json.dumps(self.response.envelope.to_dict(), sort_keys=True) + "\n")
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
         self.track_query_finish()
-        return { 'DONE': True }
+        return
 
 
     def asynchronous_query(self,query, mode='ARAX'):
 
         #### Define a new response object if one does not yet exist
-        if self.response is None:
-            self.response = ARAXResponse()
+        with self.lock:
+            have_response = self.response is not None
+        if not have_response:
+            new_response = response_locking(self.lock)
+            with self.lock:
+                self.response = new_response
 
         #### Execute the query
         self.query(query, mode=mode, origin='API')
 
-        #### Do we still need all this cruft?
-        #result = self.query(query)
-        #message = self.message
-        #if message is None:
-        #    message = Message()
-        #    self.message = message
-        #message.message_code = result.error_code
-        #message.code_description = result.message
-        #message.log = result.messages
-
         # Insert a little flag into the response status to denote that this thread is done
-        self.response.status = f"DONE,{self.response.status}"
+        with self.lock:
+            self.response.status = f"DONE,{self.response.status}"
         return
 
 
@@ -218,11 +232,13 @@ class ARAXQuery:
 
 
     ########################################################################################
-    def query(self,query, mode='ARAX', origin='local'):
+    def query(self, query, mode='ARAX', origin='local'):
 
         #### Create the skeleton of the response
-        response = ARAXResponse()
-        self.response = response
+        response = self.response
+        if response is None:
+            response = ARAXResponse()
+            self.response = response
 
         #### Announce the launch of query()
         #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
