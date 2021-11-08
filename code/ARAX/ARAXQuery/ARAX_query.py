@@ -16,7 +16,6 @@ import threading
 import json
 import uuid
 import requests
-import contextlib
 
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -58,10 +57,6 @@ from jsonschema.exceptions import ValidationError
 query_tracker_reset = ARAXQueryTracker()
 query_tracker_reset.clear_unfinished_entries()
 
-@contextlib.contextmanager
-def dummy_context_mgr():
-    yield None
-
 class response_locking(ARAXResponse):
     def __init__(self, lock: threading.Lock):
         self.lock = lock
@@ -79,7 +74,7 @@ class ARAXQuery:
         self.message = None
         self.rtxConfig = RTXConfiguration()
         self.DBManager = ARAXDatabaseManager(live = "Production")
-        self.lock = dummy_context_mgr()
+        self.lock = None
         if self.DBManager.check_versions():
             self.response = ARAXResponse()
             self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
