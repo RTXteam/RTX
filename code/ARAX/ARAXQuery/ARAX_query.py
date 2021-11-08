@@ -62,6 +62,14 @@ query_tracker_reset.clear_unfinished_entries()
 def dummy_context_mgr():
     yield None
 
+class response_locking(ARAXResponse):
+    def __init__(self, lock: threading.Lock):
+        self.lock = lock
+        super().__init__()
+
+    def __add_message(self, message, level, code=None):
+        with self.lock:
+            super().__add_message(message, level, code)
 
 class ARAXQuery:
 
@@ -137,31 +145,22 @@ class ARAXQuery:
                     idle_ticks = 0.0
 
             # #### If there are any more logging messages in the queue, send them first
-            with self.lock:
-                n_messages = len(self.response.messages)
+            n_messages = len(self.response.messages)
             while i_message < n_messages:
-                with self.lock:
-                    i_message_obj = self.response.messages[i_message].copy()
-                yield(json.dumps(i_message_obj) + "\n")
+                yield(json.dumps(self.response.messages[i_message]) + "\n")
                 i_message += 1
 
             #### Also emit any updates to the query_plan
-            with self.lock:
-                self_response_query_plan_counter = self.response.query_plan['counter']
+            self_response_query_plan_counter = self.response.query_plan['counter']
             if query_plan_counter < self_response_query_plan_counter:
                 query_plan_counter = self_response_query_plan_counter
-                with self.lock:
-                    self_response_query_plan = self.response.query_plan.copy()
-                yield(json.dumps(self_response_query_plan, sort_keys=True)+"\n")
+                yield(json.dumps(self.response.query_plan, sort_keys=True)+"\n")
 
             # Remove the little DONE flag the other thread used to signal this thread that it is done
-            with self.lock:
-                self.response.status = re.sub('DONE,', '', self.response.status)
+            self.response.status = re.sub('DONE,', '', self.response.status)
 
             # Stream the resulting message back to the client
-            with self.lock:
-                response_env_dict = self.response.envelope.to_dict()
-            yield(json.dumps(response_env_dict, sort_keys=True) + "\n")
+            yield(json.dumps(self.response.envelope.to_dict(), sort_keys=True) + "\n")
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
@@ -175,7 +174,7 @@ class ARAXQuery:
         with self.lock:
             have_response = self.response is not None
         if not have_response:
-            new_response = ARAXResponse()
+            new_response = response_locking(self.lock)
             with self.lock:
                 self.response = new_response
 
@@ -238,11 +237,13 @@ class ARAXQuery:
 
 
     ########################################################################################
-    def query(self,query, mode='ARAX', origin='local'):
+    def query(self, query, mode='ARAX', origin='local'):
 
         #### Create the skeleton of the response
-        response = ARAXResponse()
-        self.response = response
+        response = self.response
+        if response is None:
+            response = ARAXResponse()
+            self.response = response
 
         #### Announce the launch of query()
         #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
