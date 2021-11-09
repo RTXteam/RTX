@@ -37,7 +37,7 @@ externalDocs:
 servers:
   - url: https://arax.ncats.io/api/rtxkg2/v1.2
     description: ARAX Translator Reasoner API
-    x-maturity: development
+    x-maturity: production
 tags:
   - name: meta_knowledge_graph
     description: Get supported relationships
