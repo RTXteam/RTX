@@ -14,6 +14,7 @@ info:
     component: ARA
     team:
     - Expander Agent
+    infores: infores:arax
     biolink-version: 2.1.0
     externalDocs:
       description: The values for component and team are restricted according to this
@@ -49,6 +50,7 @@ externalDocs:
 servers:
 - description: ARAX Translator Reasoner API
   url: https://arax.ncats.io/api/arax/v1.2
+  x-maturity: production
 tags:
 - description: Get supported relationships
   externalDocs:
