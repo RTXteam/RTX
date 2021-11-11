@@ -7,7 +7,9 @@ import six
 import sys
 import tempfile
 import time
+import resource
 from typing import Iterable, Callable
+rlimit_child_process_bytes = 34359738368
 
 # this is needed for running the module as a script in "test mode" where the CWD is the "query_controllers" directory:
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/../..")
@@ -32,6 +34,7 @@ def run_query_dict_in_child_process(query_dict: dict,
     print(f"INFO: pid={pid}", file=sys.stderr)
     if pid == 0: # I am the child process
         os.close(read_fd)
+        resource.setrlimit(resource.RLIMIT_AS, (rlimit_child_process_bytes, rlimit_child_process_bytes))
         with os.fdopen(write_fd, "w") as write_fo:
             json_string_generator = query_runner(query_dict)
             for json_string in json_string_generator:
