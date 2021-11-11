@@ -21,6 +21,11 @@ def receive_sigchld(signal_number, frame):
         except ChildProcessError as e:
             print(repr(e), file=sys.stderr)
 
+def receive_sigpipe(signal_number, frame):
+    if signal_number == signal.SIGPIPE:
+        print("pipe error", file=sys.stderr)
+        sys.stderr.flush()
+
 def main():
     app = connexion.App(__name__, specification_dir='./openapi/')
     app.app.json_encoder = encoder.JSONEncoder
@@ -29,7 +34,7 @@ def main():
                 pythonic_params=True)
     CORS(app.app)
     signal.signal(signal.SIGCHLD, receive_sigchld)
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGPIPE, receive_sigpipe)
 
     #### Read any load configuration details for this instance
     try:
