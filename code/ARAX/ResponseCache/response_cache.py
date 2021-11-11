@@ -323,7 +323,7 @@ class ResponseCache:
                     try:
                         response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
                     except Exception as e:
-                        return( { "status": 404, "title": f"Remote host {ars_host} unavailable", "detail": f"Connection attempts to {ars_host} failed badly enought to trigger an exception: {e}", "type": "about:blank" }, 404)
+                        return( { "status": 404, "title": f"Remote host {ars_host} unavailable", "detail": f"Connection attempts to {ars_host} triggered an exception: {e}", "type": "about:blank" }, 404)
                 status_code = response_content.status_code
                 #eprint(f"--- Fetch of {response_id} from {ars_host} yielded {status_code}")
                 if status_code == 200:
