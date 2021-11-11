@@ -120,13 +120,14 @@ def test_lookup():
     for result in message.results:
         assert result.score is None
 
-def test_fill():
+def test_fill_success():
     query = {
         "workflow": [
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["RTX-KG2"]
+                    "allowlist": ["RTX-KG2"],
+                    "qedge_keys": ["e01"]
                 }
             }
         ],
@@ -163,6 +164,51 @@ def test_fill():
     assert response.status == 'OK'
     assert len(message.knowledge_graph.nodes) > 0
     assert len(message.knowledge_graph.edges) > 0
+
+def test_fill_error():
+    query = {
+        "workflow": [
+            {
+                "id": "fill",
+                "parameters": {
+                    "allowlist": ["RTX-KG2"],
+                    "qedge_keys": ["asdf"]
+                }
+            }
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalSubstance"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'ERROR'
+    assert len(message.knowledge_graph.nodes) == 0
+    assert len(message.knowledge_graph.edges) == 0
 
 def test_score():
     query = {
