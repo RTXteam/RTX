@@ -64,7 +64,7 @@ class response_locking(ARAXResponse):
 
     def __add_message(self, message, level, code=None):
         with self.lock:
-            super().__add_message(message, level, code)
+            super()._add_message(message, level, code)
 
 class ARAXQuery:
 
