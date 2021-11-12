@@ -25,21 +25,26 @@ info:
     asyncquery: true
     operations:
       - lookup
-      - overlay_connect_knodes
-      - filter_results_top_n
+      - lookup_and_score
       - overlay_compute_ngd
       - overlay_compute_jaccard
       - overlay_fisher_exact_test
+      - overlay_connect_knodes
+      - filter_results_top_n
       - bind
       - fill
       - filter_kgraph_orphans
-      - score
-      - complete_results
       - filter_kgraph_top_n
       - filter_kgraph_std_dev
       - filter_kgraph_percentile
       - filter_kgraph_discrete_kedge_attribute
       - filter_kgraph_continuous_kedge_attribute
+      - sort_results_score
+      - sort_results_edge_attribute
+      - sort_results_node_attribute
+      - annotate_nodes
+      - score
+      - complete_results
     externalDocs:
       description: >-
         The values for version are restricted according to the regex in
