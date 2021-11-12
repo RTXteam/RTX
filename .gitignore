@@ -16,3 +16,5 @@
 
 # config.json
 **/config*.json
+
+code/UI/OpenAPI/python-flask-server/openapi_server/flask_config.json
