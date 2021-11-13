@@ -18,9 +18,6 @@ import uuid
 import requests
 import gc
 
-import ctypes
-libgcc_s = ctypes.CDLL("libgcc_s.so.1")
-
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
