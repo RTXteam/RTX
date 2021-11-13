@@ -17,7 +17,7 @@ class QNode(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, ids=None, categories=None, is_set=False, constraints=[], option_group_id=None):  # noqa: E501
+    def __init__(self, ids=None, categories=None, is_set=False, constraints=[], option_group_id=None, name=None):  # noqa: E501
         """QNode - a model defined in OpenAPI
 
         :param ids: The ids of this QNode.  # noqa: E501
@@ -36,7 +36,8 @@ class QNode(Model):
             'categories': List[str],
             'is_set': bool,
             'constraints': List[QueryConstraint],
-            'option_group_id': str
+            'option_group_id': str,
+            'name': str
         }
 
         self.attribute_map = {
@@ -44,7 +45,8 @@ class QNode(Model):
             'categories': 'categories',
             'is_set': 'is_set',
             'constraints': 'constraints',
-            'option_group_id': 'option_group_id'
+            'option_group_id': 'option_group_id',
+            'name': 'name'
         }
 
         self._ids = ids
@@ -52,6 +54,7 @@ class QNode(Model):
         self._is_set = is_set
         self._constraints = constraints
         self._option_group_id = option_group_id
+        self._name = name
 
     @classmethod
     def from_dict(cls, dikt) -> 'QNode':
@@ -180,3 +183,26 @@ class QNode(Model):
         """
 
         self._option_group_id = option_group_id
+
+    @property
+    def name(self):
+        """Gets the option_group_id of this QNode.
+
+        Optional string acting as a label on a set of nodes and/or edges indicating that they belong to a group that are to be evaluated as a group.   # noqa: E501
+
+        :return: The option_group_id of this QNode.
+        :rtype: str
+        """
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        """Sets the option_group_id of this QNode.
+
+        Optional string acting as a label on a set of nodes and/or edges indicating that they belong to a group that are to be evaluated as a group.   # noqa: E501
+
+        :param option_group_id: The option_group_id of this QNode.
+        :type option_group_id: str
+        """
+
+        self._name = name

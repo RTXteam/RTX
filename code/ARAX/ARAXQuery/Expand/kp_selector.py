@@ -23,7 +23,7 @@ from openapi_server.models.query_graph import QueryGraph
 
 class KPSelector:
 
-    def __init__(self, log: ARAXResponse):
+    def __init__(self, log: ARAXResponse = ARAXResponse()):
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
@@ -57,9 +57,7 @@ class KPSelector:
             else:
                 self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
 
-        kps_to_return = self._select_best_kps(accepting_kps, qg)
-
-        return kps_to_return
+        return accepting_kps
 
     def kp_accepts_single_hop_qg(self, qg: QueryGraph, kp: str) -> Optional[bool]:
         """
@@ -81,10 +79,9 @@ class KPSelector:
 
         return kp_accepts
 
-    def convert_curies_to_supported_prefixes(self, curies: List[str], categories: Optional[List[str]], kp: str) -> List[str]:
+    def get_desirable_equivalent_curies(self, curies: List[str], categories: Optional[List[str]], kp: str) -> List[str]:
         """
-        This function looks up what curie prefixes the KP says it knows about, and makes the query graph
-        only use (synonymous) curies with those prefixes.
+        For each input curie, this function returns an equivalent curie(s) that uses a prefix the KP supports.
         """
         self.log.debug(f"{kp}: Converting curies in the QG to kinds that {kp} can answer")
         if not self.meta_map.get(kp):
@@ -95,25 +92,33 @@ class KPSelector:
             self.log.warning(f"{kp}: No supported prefix info is available for {kp}. Will send curies as they are.")
             return curies
         else:
-            bh = BiolinkHelper()
-            categories_with_descendants = bh.get_descendants(eu.convert_to_list(categories), include_mixins=False)
-            supported_prefixes = {prefix.upper() for category in categories_with_descendants
-                                  for prefix in self.meta_map[kp]["prefixes"].get(category, set())}
-            self.log.debug(f"{kp}: Prefixes {kp} supports for categories {categories} (and descendants) "
-                           f"are: {supported_prefixes}")
+            supported_prefixes = self._get_supported_prefixes(eu.convert_to_list(categories), kp)
+            self.log.debug(f"{kp}: Prefixes {kp} supports for categories {categories} (and descendants) are: "
+                           f"{supported_prefixes}")
             converted_curies = set()
             unsupported_curies = set()
-            # Grab one curie with a preferred prefix for each input concept
-            for input_curie, equivalent_curies in eu.get_curie_synonyms_dict(curies).items():
-                supported_curies = {curie for curie in equivalent_curies if curie.split(":")[0].upper() in supported_prefixes}
-                if supported_curies:
-                    # TODO: Later send only one supported curie per concept? Changes KP answers currently though..
-                    converted_curies = converted_curies.union(supported_curies)
+            synonyms_dict = eu.get_curie_synonyms_dict(curies)
+            # Convert each input curie to a preferred, supported prefix
+            for input_curie, equivalent_curies in synonyms_dict.items():
+                input_curie_prefix = self._get_uppercase_prefix(input_curie)
+                supported_equiv_curies_by_prefix = defaultdict(set)
+                for curie in equivalent_curies:
+                    prefix = self._get_uppercase_prefix(curie)
+                    if prefix in supported_prefixes:
+                        supported_equiv_curies_by_prefix[prefix].add(curie)
+                if supported_equiv_curies_by_prefix:
+                    # Grab equivalent curies with the same prefix as the input curie, if available
+                    if input_curie_prefix in supported_equiv_curies_by_prefix:
+                        curies_to_send = supported_equiv_curies_by_prefix[input_curie_prefix]
+                    # Otherwise pick any supported curie prefix present
+                    else:
+                        curies_to_send = next(curie_set for curie_set in supported_equiv_curies_by_prefix.values())
+                    converted_curies = converted_curies.union(curies_to_send)
                 else:
                     unsupported_curies.add(input_curie)
             if unsupported_curies:
                 self.log.warning(f"{kp}: Could not find curies with prefixes {kp} prefers for these curies: "
-                                 f"{unsupported_curies}; will not send to KP")
+                                 f"{unsupported_curies}; will not send these to KP")
             return list(converted_curies)
 
     # returns True if at least one possible triple exists in the KP's meta map
@@ -156,36 +161,14 @@ class KPSelector:
                             return True
             return False
 
-    def _select_best_kps(self, kps_supporting_qedge: Set[str], qg: QueryGraph) -> Set[str]:
-        qedge_key = next(qedge_key for qedge_key in qg.edges)
-        # Apply some special rules to filter down the KPs we'll use for this QG
-        chosen_kps = kps_supporting_qedge
-
-        # Always hit up KG2 for now (it fails fast anyway)
-        chosen_kps.add("RTX-KG2")
-        # Use NGD only if specific predicate is used (regardless of categories)
-        qedge = next(qedge for qedge in qg.edges.values())
-        if qedge.predicates and "biolink:has_normalized_google_distance_with" in qedge.predicates:
-            chosen_kps.add("NGD")
-
-        # If a qnode has a lot of curies, only use KG2 for now (until figure out which KPs are reasonably fast for this)
-        if any(qnode for qnode in qg.nodes.values() if len(eu.convert_to_list(qnode.ids)) > 100):
-            chosen_kps = {"RTX-KG2"}
-            for kp in kps_supporting_qedge.difference(chosen_kps):
-                self.log.update_query_plan(qedge_key, kp, "Skipped", "Skipping because there are >100 curies in the expansion")
-
-        # TODO: keep a record of which KPs have been timing out recently, and skip them?
-
-        return chosen_kps
-
     def _load_meta_map(self):
         # This function loads the meta map and updates it as needed
         meta_map_file = pathlib.Path(self.meta_map_path)
-        two_days_ago = datetime.now() - timedelta(hours=48)
+        one_day_ago = datetime.now() - timedelta(hours=24)
         if not meta_map_file.exists():
             self.log.debug(f"Creating local copy of meta map for all KPs")
             meta_map = self._refresh_meta_map()
-        elif datetime.fromtimestamp(meta_map_file.stat().st_mtime) < two_days_ago:
+        elif datetime.fromtimestamp(meta_map_file.stat().st_mtime) < one_day_ago:
             self.log.debug(f"Doing a refresh of local meta map for all KPs")
             meta_map = self._refresh_meta_map()
         else:
@@ -306,3 +289,44 @@ class KPSelector:
         else:
             with open(self.timeout_record_path, "rb") as timeout_file:
                 return pickle.load(timeout_file)
+
+    def make_qg_use_supported_prefixes(self, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
+        for qnode_key, qnode in qg.nodes.items():
+            if qnode.ids:
+                if kp_name == "RTX-KG2":
+                    # Just convert them into canonical curies
+                    qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
+                else:
+                    # Otherwise figure out which kind of curies KPs want
+                    categories = eu.convert_to_list(qnode.categories)
+                    supported_prefixes = self._get_supported_prefixes(categories, kp_name)
+                    used_prefixes = {self._get_uppercase_prefix(curie) for curie in qnode.ids}
+                    # Only convert curie(s) if any use an unsupported prefix
+                    if used_prefixes.issubset(supported_prefixes):
+                        self.log.debug(f"{kp_name}: All {qnode_key} curies use prefix(es) {kp_name} supports; no "
+                                       f"conversion necessary")
+                    else:
+                        self.log.debug(f"{kp_name}: One or more {qnode_key} curies use a prefix {kp_name} doesn't "
+                                       f"support; will convert these")
+                        converted_curies = self.get_desirable_equivalent_curies(qnode.ids, qnode.categories, kp_name)
+                        if converted_curies:
+                            log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
+                                      f"{len(converted_curies)} curies tailored for {kp_name}")
+                            qnode.ids = converted_curies
+                        else:
+                            log.info(f"{kp_name} cannot answer the query because no equivalent curies were found "
+                                     f"with prefixes it supports for qnode {qnode_key}. Original curies were: "
+                                     f"{qnode.ids}")
+                            return None
+        return qg
+
+    @staticmethod
+    def _get_uppercase_prefix(curie: str) -> str:
+        return curie.split(":")[0].upper()
+
+    def _get_supported_prefixes(self, categories: List[str], kp: str) -> Set[str]:
+        bh = BiolinkHelper()
+        categories_with_descendants = bh.get_descendants(eu.convert_to_list(categories), include_mixins=False)
+        supported_prefixes = {prefix.upper() for category in categories_with_descendants
+                              for prefix in self.meta_map[kp]["prefixes"].get(category, set())}
+        return supported_prefixes

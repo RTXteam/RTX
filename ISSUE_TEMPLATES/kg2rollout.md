@@ -45,10 +45,11 @@ Associated code changes should go in the `kg2integration` branch.
 
 ##### 5. Final items/clean up:
 
-- [ ] update SmartAPI registration for ARAX @edeutsch
+- [ ] update SmartAPI registration for KG2 @edeutsch
 - [ ] update the test triples that go in some NCATS repo @finnagin
 - [ ] rename the `config_local.json` on arax.ncats.io to `config_local.json_FROZEN_DO-NOT-EDIT-FURTHER` (any additional edits to the config file should be made directly to the master `configv2.json` on araxconfig.rtx.ai going forward)
-- [ ] turn off the old KG2 version's neo4j instance
+- [ ] turn off the old KG2c version's neo4j instance
+- [ ] turn off the old KG2pre version's neo4j instance
 - [ ] turn off the old KG2 version's plover instance
 - [ ] upgrade the NCATS-hosted Plover endpoint (https://kg2cploverdb.ci.transltr.io) to this KG2 version and make the KG2 API start using it (instead of our self-hosted endpoint): 
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)

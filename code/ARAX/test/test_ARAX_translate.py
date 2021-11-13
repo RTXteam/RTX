@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Intended to test our more complicated workflows
+# Intended to test our translate to ARAXi functionality 
 
 import sys
 import os
@@ -98,7 +98,7 @@ def test_lookup():
                             "CHEBI:45783"
                         ],
                         "categories": [
-                            "biolink:ChemicalSubstance"
+                            "biolink:SmallMolecule"
                         ]
                     }
                 },
@@ -119,6 +119,365 @@ def test_lookup():
     assert len(message.results) > 0
     for result in message.results:
         assert result.score is None
+
+def test_fill_success():
+    query = {
+        "workflow": [
+            {
+                "id": "fill",
+                "parameters": {
+                    "allowlist": ["RTX-KG2"],
+                    "qedge_keys": ["e01"]
+                }
+            }
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalSubstance"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.knowledge_graph.nodes) > 0
+    assert len(message.knowledge_graph.edges) > 0
+
+def test_fill_error():
+    query = {
+        "workflow": [
+            {
+                "id": "fill",
+                "parameters": {
+                    "allowlist": ["RTX-KG2"],
+                    "qedge_keys": ["asdf"]
+                }
+            }
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalSubstance"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'ERROR'
+    assert len(message.knowledge_graph.nodes) == 0
+    assert len(message.knowledge_graph.edges) == 0
+
+def test_score():
+    query = {
+        "workflow": [
+            {
+                "id": "lookup"
+            },
+            {
+                "id": "score"
+            }
+
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:SmallMolecule"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+    for result in message.results:
+        assert result.score is not None
+
+def test_bind():
+    query = {
+        "workflow": [
+            {
+                "id": "fill",
+                "parameters": {
+                    "allowlist": ["RTX-KG2"]
+                }
+            },
+            {
+                "id": "bind"
+            }
+
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalSubstance"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+
+def test_complete_results():
+    query = {
+        "workflow": [
+            {
+                "id": "fill",
+                "parameters": {
+                    "allowlist": ["RTX-KG2"]
+                }
+            },
+            {
+                "id": "complete_results"
+            }
+
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalSubstance"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+
+def test_filter_results_top_n():
+    query = {
+        "workflow": [
+            {
+                "id": "fill",
+                "parameters": {
+                    "allowlist": ["RTX-KG2"]
+                }
+            },
+            {
+                "id": "overlay_compute_ngd",
+                "parameters": {
+                    "virtual_relation_label": "NGD1",
+                    "qnode_keys": ["n0", "n1"]
+                }
+            },
+            {
+                "id": "bind"
+            },
+            {
+                "id": "score"
+            },
+            {
+                "id": "filter_results_top_n",
+                "parameters": {
+                    "max_results": 20
+                }
+            }
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:SmallMolecule"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 20
+    for result in message.results:
+        assert result.score is not None
+
+def test_overlay_after_lookup():
+    query = {
+        "workflow": [
+            {
+                "id": "lookup"
+            },
+            {
+                "id": "overlay_compute_ngd",
+                "parameters": {
+                    "virtual_relation_label": "NGD1",
+                    "qnode_keys": ["n0", "n1"]
+                }
+            },
+            {
+                "id": "score"
+            },
+            {
+                "id": "filter_results_top_n",
+                "parameters": {
+                    "max_results": 20
+                }
+            }
+        ],
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:SmallMolecule"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 20
+    ngd_bindings = set()
+    for result in message.results:
+        assert result.score is not None
+        for eb_key, edge_bindings in result.edge_bindings.items():
+            for edge_binding in edge_bindings:
+                if edge_binding.id.startswith("NGD1"):
+                    ngd_bindings.add(edge_binding.id)
+    assert len(ngd_bindings) == len(message.results)
+
 
 
 

@@ -5,8 +5,11 @@ import os
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import time
 import re
+import signal
+import socket
 
 from datetime import datetime
+import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, String, DateTime, PickleType
@@ -26,6 +29,8 @@ class ARAXQuery(Base):
     end_datetime = Column(String(25), nullable=True) ## ISO formatted YYYY-MM-DD HH:mm:ss
     elapsed = Column(Float, nullable=True) ## seconds
     pid = Column(Integer, nullable=False)
+    domain = Column(String(255), nullable=True)
+    hostname = Column(String(255), nullable=True)
     instance_name = Column(String(255), nullable=False)
     origin = Column(String(255), nullable=False)
     input_query = Column(PickleType, nullable=False) ## blob object
@@ -108,8 +113,9 @@ class ARAXQueryTracker:
         self.engine = engine
 
         #### If the tables don't exist, then create the database
-        if not engine.dialect.has_table(engine, ARAXQuery.__tablename__):
-            print(f"WARNING: {self.engine_type} tables do not exist; creating them")
+        database_info = sqlalchemy.inspect(engine)
+        if not database_info.has_table(ARAXQuery.__tablename__):
+            eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
             Base.metadata.create_all(engine)
 
 
@@ -167,8 +173,9 @@ class ARAXQueryTracker:
         self.engine = engine
 
         #### If the tables don't exist, then create the database
-        if not engine.dialect.has_table(engine, ARAXQuery.__tablename__):
-            print(f"WARNING: {self.engine_type} tables do not exist; creating them")
+        database_info = sqlalchemy.inspect(engine)
+        if not database_info.has_table(ARAXQuery.__tablename__):
+            eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
             Base.metadata.create_all(engine)
 
 
@@ -186,6 +193,7 @@ class ARAXQueryTracker:
             pass
 
 
+    ##################################################################################################
     def update_tracker_entry(self, tracker_id, attributes):
         if tracker_id is None:
             return
@@ -207,21 +215,53 @@ class ARAXQueryTracker:
             tracker_entry.code_description = attributes['code_description'][:254]
         session.commit()
 
+
+    ##################################################################################################
+    def alter_tracker_entry(self, tracker_id, attributes):
+        if tracker_id is None:
+            return
+
+        session = self.session
+        if session is None:
+            return
+
+        tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
+        if len(tracker_entries) > 0:
+            tracker_entry = tracker_entries[0]
+            for key, value in attributes.items():
+                setattr(tracker_entry, key, value)
+        session.commit()
+
+
+    ##################################################################################################
     def create_tracker_entry(self, attributes):
         session = self.session
         if session is None:
             return
 
-        location = os.path.abspath(__file__)
+        location = os.path.dirname(os.path.abspath(__file__))
         instance_name = '??'
         match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
         if match:
             instance_name = match.group(1)
+        if instance_name == 'production':
+            instance_name = 'ARAX'
+
+        try:
+            with open(location + '/../../config.domain') as infile:
+                for line in infile:
+                    domain = line.strip()
+        except:
+            domain = '??'
+
+        hostname = socket.gethostname()
 
         try:
             tracker_entry = ARAXQuery(status="started",
                 start_datetime=datetime.now().isoformat(' ', 'seconds'),
                 pid=os.getpid(),
+                domain = domain,
+                hostname = hostname,
                 instance_name = instance_name,
                 origin=attributes['submitter'],
                 input_query=attributes['input_query'],
@@ -233,6 +273,7 @@ class ARAXQueryTracker:
             tracker_id = 1
         return tracker_id
 
+    ##################################################################################################
     def get_entries(self, last_n_hours=24, incomplete_only=False):
         if self.session is None:
             return
@@ -250,11 +291,15 @@ class ARAXQueryTracker:
                 text("""JULIANDAY(start_datetime) - JULIANDAY(datetime('now','localtime')) < :n""")).params(n=last_n_hours/24).all()
 
 
+    ##################################################################################################
     def get_status(self, last_n_hours=24, incomplete_only=False, id_=None):
         if self.session is None:
             return
         if last_n_hours is None or last_n_hours == 0:
             last_n_hours = 24
+
+        if id_ is not None:
+            return self.get_query_by_id(id_)
 
         entries = self.get_entries(last_n_hours=last_n_hours, incomplete_only=incomplete_only)
         result = { 'recent_queries': [], 'current_datetime': datetime.now().strftime("%Y-%m-%d %T") }
@@ -262,29 +307,109 @@ class ARAXQueryTracker:
             return result
 
         for entry in entries:
+            elapsed = entry.elapsed
+            if elapsed is None or entry.status == 'Running Async':
+                now = datetime.now()
+                then = datetime.strptime(entry.start_datetime, '%Y-%m-%d %H:%M:%S')
+                delta = now - then
+                elapsed = int(delta.total_seconds())
+                elapsed -= 1
+                if elapsed < 0:
+                    elapsed = 0
+                eprint(f"--- {then} {elapsed}")
             result['recent_queries'].append( {
                 'query_id': entry.query_id,
                 'pid': entry.pid,
                 'start_datetime': entry.start_datetime,
+                'domain': entry.domain,
+                'hostname': entry.hostname,
                 'instance_name': entry.instance_name,
                 'state': entry.status,
-                'elapsed': entry.elapsed,
+                'elapsed': elapsed,
                 'submitter': entry.origin,
                 'response_id': entry.message_id,
                 'status': entry.message_code,
                 'description': entry.code_description
             } )
-            if id_ is not None and entry.query_id == id_:
-                return entry.input_query
 
         result['recent_queries'].reverse()
         result['current_datetime'] = datetime.now().strftime("%Y-%m-%d %T")
         return result
 
 
+    ##################################################################################################
+    def terminate_job(self, terminate_pid, authorization):
+        if self.session is None:
+            return { 'status': 'ERROR', 'description': 'Internal error ETJ500' }
+        eprint(f"INFO: Entering terminate_job: pid={terminate_pid}, authorization={authorization}")
+        reference_authorization = str(hash( 'Pickles' + str(terminate_pid)))
+        if authorization is None or str(authorization) != reference_authorization:
+            return { 'status': 'ERROR', 'description': 'Invalid authorization provided' }
+
+        try:
+            os.kill(terminate_pid, signal.SIGTERM)
+        except:
+            eprint(f"ERROR: Attempt to terminate pid={terminate_pid} failed")
+            return { 'status': 'ERROR', 'description': f"ERROR: Attempt to terminate pid={terminate_pid} failed" }
+
+
+
+        return { 'status': 'OK', 'description': f"Process {terminate_pid} terminated" }
+
+
+    ####### ###########################################################################################
+    def get_query_by_id(self, id_):
+        if self.session is None:
+            return
+
+        if id_ is None:
+            eprint(f"ERROR: query_id = {id}")
+            return
+
+        entries = self.session.query(ARAXQuery).filter(ARAXQuery.query_id == id_)
+        for entry in entries:
+            return entry.input_query
+
+        eprint(f"ERROR: Unable to find query_id {id}")
+
+
+    ##################################################################################################
+    def clear_unfinished_entries(self):
+        if self.session is None:
+            self.connect()
+        if self.session is None:
+            return
+
+        location = os.path.abspath(__file__)
+        instance_name = '??'
+        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
+        if match:
+            instance_name = match.group(1)
+        if instance_name == 'production':
+            instance_name = 'ARAX'
+        eprint(f"INFO: Clearing unfinished tracker entries for instance_name = {instance_name}")
+
+        entries = self.session.query(ARAXQuery).filter(ARAXQuery.instance_name == instance_name).filter( (ARAXQuery.elapsed == None) | (ARAXQuery.status == 'Running Async') )
+
+        for entry in entries:
+            eprint(f" - {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
+            now = datetime.now()
+            then = datetime.strptime(entry.start_datetime, '%Y-%m-%d %H:%M:%S')
+            delta = now - then
+            elapsed = int(delta.total_seconds())
+            entry.status = 'Reset'
+            entry.message_code = 'Reset'
+            entry.code_description = 'Query was terminated by a process restart'
+            entry.elapsed = elapsed
+        self.session.commit()
+
+
 def main():
 
     query_tracker = ARAXQueryTracker()
+
+    query_tracker.clear_unfinished_entries()
+    return
 
     #query_tracker.create_database()
 

@@ -324,7 +324,7 @@ def test_tuple_bug():
         "add_qedge(key=e00,subject=n00,object=n01)",
         "expand(edge_key=e00, kp=RTX-KG2)",
         "overlay(action=fisher_exact_test,subject_qnode_key=n00,virtual_relation_label=F0,object_qnode_key=n01)",
-        "filter_kg(action=remove_edges_by_top_n,edge_attribute=fisher_exact_test_p-value,direction=below,n=10,remove_connected_nodes=true,qnode_key=[n01])",
+        "filter_kg(action=remove_edges_by_top_n,edge_attribute=fisher_exact_test_p-value,direction=below,n=10,remove_connected_nodes=true,qnode_keys=[n01])",
         "resultify()",
         "filter_results(action=limit_number_of_results, max_results=100)",
         "return(message=true, store=false)",

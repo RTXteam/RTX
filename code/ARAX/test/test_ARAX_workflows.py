@@ -672,6 +672,7 @@ def test_genetics_kp_ranking():
                                     gen_kp_ranking_value[str(result.score)] = [float(attribute.value)]
     assert len(gen_kp_ranking_value) > 0
 
+@pytest.mark.slow
 def test_ranker_float_error_ex1():
     query = {"operations": {"actions": [
         "create_message",
@@ -705,6 +706,66 @@ def test_ranker_float_error_ex2():
     assert response.status == 'OK'
     result_scores = [x.score for x in message.results]
     assert max(result_scores) == 1
+
+@pytest.mark.external
+def test_cmap_ranking():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(key=n00,categories=biolink:Gene,ids=HGNC:321)",
+        "add_qnode(categories=biolink:ChemicalEntity)",
+        "add_qedge(subject=n00,object=n01)",
+        "expand(kp=MolePro)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=500)",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    result_scores = {x.score for x in message.results}
+    assert len(result_scores) > 1
+
+@pytest.mark.slow
+def test_ranker_float_error_ex3():
+    query={"message": {
+            "query_graph": {
+              "edges": {
+                "e00": {
+                  "object": "n01",
+                  "subject": "n00"
+                },
+                "e01": {
+                  "object": "n02",
+                  "subject": "n01"
+                }
+              },
+              "nodes": {
+                "n00": {
+                  "categories": [
+                    "biolink:Disease"
+                  ],
+                  "ids": [
+                    "DOID:14330"
+                  ]
+                },
+                "n01": {
+                  "categories": [
+                    "biolink:NamedThing"
+                  ]
+                },
+                "n02": {
+                  "categories": [
+                    "biolink:Disease"
+                  ],
+                  "ids": [
+                    "DOID:8778"
+                  ]
+                }
+              }
+            }
+          }
+        }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
 
 
 # Not working yet

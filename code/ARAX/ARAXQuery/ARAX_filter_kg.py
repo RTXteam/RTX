@@ -481,6 +481,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 self.response.error(
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
+                return -1
             elif type(item) == list or type(item) == set:
                     for item_val in item:
                         if item_val not in allowable_parameters[key]:
@@ -489,9 +490,9 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                             return -1
             elif item not in allowable_parameters[key]:
                 if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
-                    return
+                    continue
                 elif any([type(x) == int for x in allowable_parameters[key]]):
-                    return
+                    continue
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.warning(
                         f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")

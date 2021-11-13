@@ -113,7 +113,7 @@ hr {
 .stitle {
     display: inline-block;
     margin: 0px;
-    width: 315px;
+    width: 430px;
     border-bottom: 2px solid black;
     text-align: center;
     margin-left: 20px;
@@ -173,8 +173,18 @@ hr {
     height: 30px;
     width: 30px;
 }
+.clwin2 {
+    display: inline-block;
+    height: 30px;
+    width: 30px;
+    position: relative;
+    top: -40px;
+    left: 100%;
+    font-weight: bold;
+    font-size: 16px;
+}
 
-#dslText, #jsonText, #responseText {
+#dslText, #wfJSON, #jsonText, #responseText {
     width: 80%;
     height: 20em;
     overflow:scroll;
@@ -389,7 +399,7 @@ hr {
     animation: 1s working ease-in-out infinite alternate;
 }
 @keyframes working {
-    0%   { background-color: #cc5; }
+    0%   { background-color: #fff; }
     100% { background-color: #f80; }
 }
 
@@ -457,6 +467,7 @@ pre {
 
 .t100 {
     width: 100%;
+    border-collapse:collapse;
 }
 
 table.sumtab {
@@ -502,10 +513,9 @@ table.sumtab {
 td {
     vertical-align:top;
 }
-.textanswer {
-    width: 10%;
-}
 .cytograph_controls {
+    border: 1px solid black;
+    box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
     vertical-align:top;
 }
 .cytograph_controls a {
@@ -546,6 +556,19 @@ td {
 .fieldname {
     font-weight: bold;
     text-transform: capitalize;
+}
+
+.attvalue {
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.subatts {
+    border: 1px solid #444;
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
+    background: #abc;
 }
 
 .questionBox {
@@ -609,6 +632,46 @@ td {
     margin-right: -5px;
 }
 
+.wfpanel {
+    width: 41%;
+    display: inline-block;
+    vertical-align: top;
+    min-height: 300px;
+    margin-right: 10px;
+}
+#wflist {
+    padding-left: 0px;
+    list-style-position: inside;
+}
+.wflistitem {
+    background-color: #047;
+    color: #fff;
+    cursor: pointer;
+    border: 2px solid #000;
+    border-radius: 12px;
+    padding: 10px;
+    margin: 5px 10px;
+    transition: border .1s;
+}
+.wflistitemselected {
+    background-color: #9bc;
+    color: #333;
+    cursor: pointer;
+    border: 2px solid #000;
+    border-radius: 12px;
+    padding: 10px;
+    margin: 5px 10px;
+    transition: border .1s;
+    font-weight: bold;
+}
+.wflistitemselected:before {
+    content: ' \279C ';
+    float: right;
+}
+.wflistitem:hover {
+    background-color: #9bc;
+    color: #333;
+}
 
 .essence {
     font-weight: bold;

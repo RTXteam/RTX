@@ -173,7 +173,7 @@ class ARAXRanker:
                                  'probability_treats', 'paired_concept_frequency',
                                  'observed_expected_ratio', 'chi_square', 'chi_square_pvalue', 'MAGMA-pvalue', 'Genetics-quantile',
                                  'pValue', 'fisher_exact_test_p-value','Richards-effector-genes',
-                                 'feature_coefficient'}
+                                 'feature_coefficient', 'CMAP similarity score'}
         # how much we trust each of the edge attributes
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
@@ -188,7 +188,8 @@ class ARAXRanker:
                                           'pValue': 1.0,
                                           'fisher_exact_test_p-value': 0.8,
                                           'Richards-effector-genes': 0.5,
-                                          'feature_coefficient': 1.0
+                                          'feature_coefficient': 1.0,
+                                          'CMAP similarity score': 1.0
                                           }
         self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
@@ -308,7 +309,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             # else it's all good to proceed
             else:
                 # Fix hyphens or spaces to underscores in names
-                edge_attribute_name = re.sub(r'[- ]','_',edge_attribute_name)
+                edge_attribute_name = re.sub(r'[- \:]','_',edge_attribute_name)
                 # then dispatch to the appropriate function that does the score normalizing to get it to be in [0, 1] with 1 better
                 return getattr(self, '_' + self.__class__.__name__ + '__normalize_' + edge_attribute_name)(value=edge_attribute_value)
 
@@ -468,7 +469,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
     def __normalize_Genetics_quantile(self, value):
         """
         For Genetics Provider MAGMA quantile: We decide 2020-09-22 that just using
-        the quantile as-is is best. With DML, SAR, EWD.
+        the quantile as-is is best. With DMK, SAR, EWD.
         """
 
         return value
@@ -485,14 +486,21 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         # option 2:
         try:
-            value = -np.log(value)  # FIXME: could divide by zero
-            max_value = 1.0
-            curve_steepness = 3
-            logistic_midpoint = 2.7
-            normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
+            if value <= np.finfo(float).eps:
+                normalized_value = 1.
+            else:
+                value = -np.log(value)
+                max_value = 1.0
+                curve_steepness = 3
+                logistic_midpoint = 2.7
+                normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - logistic_midpoint)))
         except RuntimeWarning:  # this is the case when value is 0 (or nearly so), so should award the max value
             normalized_value = 1.
 
+        return normalized_value
+
+    def __normalize_CMAP_similarity_score(self, value):
+        normalized_value = abs(value/100)
         return normalized_value
 
     def __normalize_Richards_effector_genes(self, value):
@@ -553,6 +561,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                                 try:
                                     value = float(edge_attribute.value)
                                 except ValueError:
+                                    continue
+                                except TypeError:
                                     continue
                             # initialize if not None already
                             if attribute_name not in score_stats:

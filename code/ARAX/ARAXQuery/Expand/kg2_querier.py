@@ -65,12 +65,7 @@ class KG2Querier:
 
         # Send the query to plover in batches of input curies
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
-        qedge = query_graph.edges[qedge_key]
-        qnode_a_key = qedge.subject
-        qnode_b_key = qedge.object
-        qnode_a = query_graph.nodes[qnode_a_key]
-        qnode_b = query_graph.nodes[qnode_b_key]
-        input_qnode_key = qnode_a_key if len(eu.convert_to_list(qnode_a.ids)) > len(eu.convert_to_list(qnode_b.ids)) else qnode_b_key
+        input_qnode_key = self._get_input_qnode_key(query_graph)
         input_curies = query_graph.nodes[input_qnode_key].ids
         input_curie_set = set(input_curies)
         curie_batches = [input_curies[i:i+self.curie_batch_size] for i in range(0, len(input_curies), self.curie_batch_size)]
@@ -146,19 +141,21 @@ class KG2Querier:
                 for edge_key in edge_keys_to_remove:
                     kg.edges_by_qg_id[qedge_key].pop(edge_key, None)
                 # Document that not all answers for this input curie are included
-                node = kg.nodes_by_qg_id[input_qnode_key][node_key]
-                if not node.attributes:
-                    node.attributes = []
-                if not any(attribute.attribute_type_id == "biolink:incomplete_result_set" for attribute in node.attributes):
-                    node.attributes.append(Attribute(attribute_type_id="biolink:incomplete_result_set",  # TODO: request this as actual biolink item?
-                                                     value_type_id="metatype:Boolean",
-                                                     value=True,
-                                                     attribute_source=eu.get_translator_infores_curie("RTX-KG2"),
-                                                     description=f"This attribute indicates that not all nodes/edges "
-                                                                 "returned as answers for this input curie were "
-                                                                 "included in the final answer due to size limitations."
-                                                                 f" {max_edges_per_input_curie} edges for this "
-                                                                 f"input curie were kept."))
+                node = kg.nodes_by_qg_id[input_qnode_key].get(node_key)
+                if node:
+                    if not node.attributes:
+                        node.attributes = []
+                    if not any(attribute.attribute_type_id == "biolink:incomplete_result_set"
+                               for attribute in node.attributes):
+                        node.attributes.append(Attribute(attribute_type_id="biolink:incomplete_result_set",  # TODO: request this as actual biolink item?
+                                                         value_type_id="metatype:Boolean",
+                                                         value=True,
+                                                         attribute_source=eu.get_translator_infores_curie("RTX-KG2"),
+                                                         description=f"This attribute indicates that not all "
+                                                                     f"nodes/edges returned as answers for this input "
+                                                                     f"curie were included in the final answer due to "
+                                                                     f"size limitations. {max_edges_per_input_curie} "
+                                                                     f"edges for this input curie were kept."))
         # Then delete any nodes orphaned by removal of edges
         node_keys_used_by_edges = kg.get_all_node_keys_used_by_edges()
         for qnode_key, nodes in kg.nodes_by_qg_id.items():
@@ -231,10 +228,25 @@ class KG2Querier:
                                          value_type_id="biolink:InformationResource",
                                          attribute_source=self.kg2_infores_curie))
         # Create knowledge source attributes for each of this edge's knowledge sources
-        knowledge_source_attributes = [Attribute(attribute_type_id="knowledge_source",
+        knowledge_source_attributes = [Attribute(attribute_type_id="biolink:knowledge_source",
                                                  value=infores_curie,
                                                  value_type_id="biolink:InformationResource",
                                                  attribute_source=self.kg2_infores_curie)
                                        for infores_curie in knowledge_sources]
         edge.attributes += knowledge_source_attributes
         return edge
+
+    @staticmethod
+    def _get_input_qnode_key(one_hop_qg: QueryGraph) -> str:
+        qedge = next(qedge for qedge in one_hop_qg.edges.values())
+        qnode_a_key = qedge.subject
+        qnode_b_key = qedge.object
+        qnode_a = one_hop_qg.nodes[qnode_a_key]
+        qnode_b = one_hop_qg.nodes[qnode_b_key]
+        if qnode_a.ids and qnode_b.ids:
+            # Considering the qnode with fewer curies the 'input' is more efficient for querying Plover
+            return qnode_a_key if len(qnode_a.ids) < len(qnode_b.ids) else qnode_b_key
+        elif qnode_a.ids:
+            return qnode_a_key
+        else:
+            return qnode_b_key

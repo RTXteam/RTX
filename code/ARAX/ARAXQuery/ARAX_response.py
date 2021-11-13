@@ -50,7 +50,7 @@ class ARAXResponse:
 
         if code is None:
             code = ''
-        self.__add_message( message, self.DEBUG, code=code )
+        self._add_message( message, self.DEBUG, code=code )
 
 
     #### Add an info message
@@ -65,7 +65,7 @@ class ARAXResponse:
 
         if code is None:
             code = ''
-        self.__add_message( message, self.INFO, code=code )
+        self._add_message( message, self.INFO, code=code )
 
 
     #### Add a warning message
@@ -81,7 +81,7 @@ class ARAXResponse:
 
         if code is None:
             code = ''
-        self.__add_message( message, self.WARNING, code=code )
+        self._add_message( message, self.WARNING, code=code )
         self.n_warnings += 1
 
 
@@ -108,7 +108,7 @@ class ARAXResponse:
         if error_code is not None and code is 'UnknownError':
             code = error_code
 
-        self.__add_message( message, self.ERROR, code=code )
+        self._add_message( message, self.ERROR, code=code )
         self.n_errors += 1
         self.status = 'ERROR'
         self.http_status = http_status
@@ -117,7 +117,7 @@ class ARAXResponse:
 
 
     #### Add a message
-    def __add_message(self, message, level, code=None):
+    def _add_message(self, message, level, code=None):
         """Private method called by the public methods to actually add the message to the log.
 
         :param message: A natural English statement describing the message.
@@ -215,7 +215,7 @@ class ARAXResponse:
 
 
     #### Add a query_plan element
-    def update_query_plan(self, qedge_key, provider, status, description):
+    def update_query_plan(self, qedge_key, provider, status, description, query=None):
         """Method to add or update an element of the query_plan.
 
         :param edge_key: query_graph qedge key (e.g. 'e00').
@@ -226,6 +226,8 @@ class ARAXResponse:
         :type code: str
         :param description: Description of the result (see below for examples).
         :type code: str
+        :param query: Optional query dict that is sent to the referenced KP.
+        :type code: dict
         """
 
         """
@@ -244,7 +246,13 @@ class ARAXResponse:
                 self.query_plan['qedge_keys'][qedge_key][provider] = {}
             self.query_plan['qedge_keys'][qedge_key][provider][status] = description
         else:
-            self.query_plan['qedge_keys'][qedge_key][provider] = { 'status': status, 'description': description }
+            if provider not in self.query_plan['qedge_keys'][qedge_key]:
+                self.query_plan['qedge_keys'][qedge_key][provider] = { 'status': status, 'description': description, 'query': query }
+            else:
+                self.query_plan['qedge_keys'][qedge_key][provider]['status'] = status
+                self.query_plan['qedge_keys'][qedge_key][provider]['description'] = description
+                if query is not None:
+                    self.query_plan['qedge_keys'][qedge_key][provider]['query'] = query
         self.query_plan['counter'] += 1
 
 

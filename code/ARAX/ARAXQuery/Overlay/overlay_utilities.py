@@ -3,13 +3,15 @@
 import itertools
 import os
 import sys
-from typing import Dict, Optional, Set, Tuple
+import traceback
+from typing import Dict, Optional, Set, Tuple, List
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.message import Message
+from openapi_server.models.edge_binding import EdgeBinding
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_resultify import ARAXResultify
 from ARAX_response import ARAXResponse
@@ -96,3 +98,20 @@ def determine_virtual_qedge_option_group(subject_qnode_key: str, object_qnode_ke
         return None
     else:
         return None
+
+def update_results_with_overlay_edge(subject_knode_key: str, object_knode_key: str, kedge_key: str, message: Message, log: ARAXResponse):
+    try:
+        new_edge_binding = EdgeBinding(id=kedge_key)
+        for result in message.results:
+            for qedge_key in result.edge_bindings.keys():
+                if kedge_key not in set([x.id for x in result.edge_bindings[qedge_key]]):
+                    subject_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].subject]]
+                    object_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].object]]
+                    result_nodes = set(subject_nodes).union(set(object_nodes))
+                    if subject_knode_key in result_nodes and object_knode_key in result_nodes:
+                        result.edge_bindings[qedge_key].append(new_edge_binding)
+    except:
+        tb = traceback.format_exc()
+        log.error(f"Error encountered when modifying results with overlay edge (subject_knode_key)-kedge_key-(object_knode_key):\n{tb}",
+                    error_code="UncaughtError")
+

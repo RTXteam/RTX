@@ -4,12 +4,13 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=3">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=9">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="config.js"></script>
 <script src="rtx.js"></script>
 <script src="araxi.js"></script>
+<script src="wfoperations.js"></script>
 <script src="//unpkg.com/timelines-chart"></script>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
@@ -56,7 +57,7 @@
 <div class="banner" banner-bg-text="ARAX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a id="menuapiurl" href="api/arax/v1.2/ui/">TRAPI 1.2.0</a>
+<a id="menuapiurl" href="api/arax/v1.2/ui/">TRAPI 1.2.1</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
@@ -79,43 +80,12 @@
   <h3 class="stitle">Query</h3>
   <h3 style="width:210px;" class="stitle">Import</h3>
   <br>&nbsp;
-<!--  <img src="qtxt.png"  class="slink" id="qtext_link" onclick="selectInput('qtext');"  title="Enter Query using Natural Language"/> -->
   <img src="qg.png"    class="slink" id="qgraph_link" onclick="selectInput('qgraph');" title="Enter Query Graph"/>
+  <img src="qwf.png"   class="slink" id="qwf_link"    onclick="selectInput('qwf');"    title="Enter Query via Workflow"/>
   <img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/>
   <img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
   <img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/>
   <img src="resp.png"  class="slink" id="resp_link"   onclick="selectInput('resp');"   title="View/Render Response JSON object"/>
-
-  <div class="inputsection" id="qtext_input">
-    <h3 style="display:inline;">Enter question:</h3>
-    <div class="sampleqs">
-      <select id="qqq" onchange="pasteQuestion(this.value);">
-	<option style="border-bottom:1px solid black;" value="">Example Questions&nbsp;&nbsp;&nbsp;&#8675;</option>
-	<option value="what is lovastatin?">Q0: What is lovastatin?</option>
-	<option value="what genetic conditions might offer protection against malaria?">Q1: What genetic conditions might offer protection against malaria?</option>
-	<option value="what is the clinical outcome pathway of physostigmine for treatment of glaucoma?">Q2: What is the clinical outcome pathway of physostigmine for treatment of glaucoma?</option>
-	<option value="what proteins does acetaminophen target?">Q3: What proteins does acetaminophen target?</option>
-	<option value="what diseases are similar to malaria?">Q4: What diseases are similar to malaria?</option>
-      </select>
-    </div>
-
-    <form id="questionForm" name="questionForm" method="post" action="javascript:sendQuestion();">
-      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="typeInput questionBox" id="questionText" name="questionText" size="100" maxlength="1000"/>
-
-      <input type="button" class="questionBox button" name="action" value="ASK" onClick="sendQuestion();"/>
-      <span title="clear question" class="clq" onclick="pasteQuestion('');">&#9587;</span>
-
-      <br>
-      <label id="useCacheText" class="tiny blue">
-	<span class="switch">
-	  <input id="useCache" type="checkbox" checked="checked" onchange="togglecolor(this,'useCacheText');">
-	  <span class="slider"></span>
-	</span>
-	Use cache</label>
-    </form>
-    <br>
-  </div>
-
 
   <div class="inputsection" id="qgraph_input">
     <h3 style="display:inline;">Query Graph:</h3>
@@ -128,9 +98,9 @@
     <div class="cytograph_q">
       <div style="height: 100%; width: 100%" id="cy99999"></div>
     </div>
-
     <label><input id="showQGjson" type="checkbox">Show JSON in Status window</label>
-    <a class="qgmenu" href="javascript:qg_clean_up(true);selectInput('qjson');">Edit in JSON pane</a>
+    <a style="margin-left: 150px;" href="javascript:qg_clean_up(true);selectInput('qjson');">Edit in JSON pane</a>
+    <span class="qgmenu qgbutton" style="top:-1px;" title="transfer this query graph to workflow" class="clq" onclick="import_qg2wf(true);">Use in Workflow &#10140;</span>
 
     <div id="nodeeditor" style="top:400px;left:50px;visibility:hidden;" onfocus="qg_select('node');" tabindex="9999" class="alertbox">
       <div style="margin-top:0;" class="statushead">Edit Query Node<span title="Close window" class="clq clwin" onclick="display_qg_popup('node','hide');">&#9587;</span></div>
@@ -138,9 +108,17 @@
 	<table class="sumtab" style="width:100%">
 	  <tr style="background:#fff;"><td>Node ID<br><br></td><td><h2 style="display:inline;" id="nodeeditor_id"><h2 class="qnodeid" id="nodeeditor_name"></h2></td></tr>
 	  <tr style="background:#eee;"><td style="border:0;">ids</td><td style="border:0;" id="nodeeditor_ids"></td></tr>
-	  <tr style="background:#eee;"><td></td>
-	    <td>
-	      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="qg_enter_curie(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add CURIE" onClick="qg_add_curie_to_qnode();"></td>
+	  <tr style="background:#eee;"><td style="border:0;"></td>
+	    <td style="border:0;">
+	      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newquerynode" name="newquerynode" onkeydown="submit_on_enter(this);" size="30" maxlength="200"/><input type="button" class="questionBox button" name="action" value="Add CURIE" onClick="qg_add_curie_to_qnode();">
+	    </td>
+	  </tr>
+	  <tr style="background:#eee;">
+	    <td class="tiny" style="text-align:right;vertical-align:revert;">Bulk import:</td>
+	    <td style="text-align:right;">
+	      <input type="button" class="questionBox button" name="action" value="List A" onClick="qg_add_curielist_to_qnode('LIST_A');" title="Import curies from List A">
+	      <input type="button" class="questionBox button" name="action" value="List B" onClick="qg_add_curielist_to_qnode('LIST_B');" title="Import curies from List B">
+	    </td>
 	  </tr>
 	  <tr style="background:#fff;"><td style="border:0;">categories</td><td style="border:0;" id="nodeeditor_cat"></td></tr>
           <tr style="background:#fff;"><td></td>
@@ -187,6 +165,16 @@
 	  </tr>
 
 	  <tr style="background:#fff;"><td>is_set</td><td><input id="nodeeditor_set" type="checkbox" onchange="qg_setset_for_qnode();"></td></tr>
+
+          <tr style="background:#eee;"><td style="border:0;">option_group_id</td><td style="border:0;" id="nodeeditor_optgpid"></td></tr>
+          <tr style="background:#eee;">
+	    <td></td>
+	    <td>
+	      <input type="text" style="margin:0;" class="questionBox" id="qnodeoptgpidbox" size="13">
+	      <input type="button" style="margin:0;" class="questionBox button" name="action" value="Update Option Group ID" onClick="qg_update_optgpid_to_qgitem('qnode');">
+	    </td>
+	  </tr>
+
 	</table>
 	<br><br>
 	<input type="button" class="questionBox button" name="action" title="Remove this Node from Query Graph" value="Delete Node" onClick="qg_remove_qnode();">
@@ -194,18 +182,26 @@
       </div>
     </div>
 
-    <div id="edgeeditor" style="top:410px;left:650px;visibility:hidden;" onfocus="qg_select('edge');" tabindex="9997" class="alertbox">
+    <div id="edgeeditor" style="top:400px;left:700px;visibility:hidden;" onfocus="qg_select('edge');" tabindex="9997" class="alertbox">
       <div style="margin-top:0;" class="statushead">Edit Query Edge<span title="Close window" class="clq clwin" onclick="display_qg_popup('edge','hide');">&#9587;</span></div>
       <div class="status" style="cursor:auto; color:black; min-height:300px;" onmousedown="event.stopPropagation();"><br>
 	<table class="sumtab" style="width:100%">
 	  <tr><td>Edge ID<br><br></td><td style="text-align:right;"><h2 class="qedgeid" id="edgeeditor_id"></h2></td></tr>
 	  <tr><td>subject</td><td><span class="qgselect"><select id="edgeeditor_subj" onchange="qg_update_qedge();"></select></span></td></tr>
-	  <tr><td>object</td><td><span class="qgselect"><select id="edgeeditor_obj" onchange="qg_update_qedge();"></select></span></td></tr>
+	  <tr><td>object</td><td><span class="qgselect"><select id="edgeeditor_obj" onchange="qg_update_qedge();"></select></span>
+              <a style="cursor:pointer; float:right;" title="Swap Object and Subject" onclick="qg_edge_swap_obj_subj();">swap</a>
+	  </td></tr>
 	  <tr ><td style="border:0;">predicates</td><td style="border:0;" id="edgeeditor_pred"></td></tr>
 	  <tr style="background:#eee;"><td style="border:0;"></td>
 	    <td style="border:0;">
-	      <span style="float:right;" class="qgselect">
+	      <span style="margin-right:10px;" class="qgselect">
 		<select id="qedgepredicatelist" onchange="qg_add_predicate_to_qedge(this.value);">
+		  <option style="border-bottom:1px solid black;" value="">Add Predicate&nbsp;&nbsp;&nbsp;&#8675;</option>
+		  <option>...loading</option>
+		</select>
+	      </span>
+	      <span style="float:right;" class="qgselect">
+		<select id="fullpredicatelist" onchange="qg_add_predicate_to_qedge(this.value);">
 		  <option style="border-bottom:1px solid black;" value="">Add Predicate&nbsp;&nbsp;&nbsp;&#8675;</option>
 		  <option>...loading</option>
 		</select>
@@ -214,7 +210,7 @@
 	  </tr>
 	  <tr style="background:#eee;">
 	    <td class="tiny" style="vertical-align:revert;">Enter custom Predicate:</td>
-	    <td style="text-align:right;"><input type="text" class="questionBox" id="qedgepredicatebox" onkeydown="qg_enter_predicate(this);" size="30"></td>
+	    <td style="text-align:right;"><input type="text" class="questionBox" id="qedgepredicatebox" onkeydown="submit_on_enter(this);" size="30"></td>
 	  </tr>
 
           <tr style="background:#fff;"><td style="border:0;">constraints</td><td style="border:0;" id="edgeeditor_cons"></td></tr>
@@ -250,6 +246,17 @@
 	    </td>
 	  </tr>
 
+          <tr style="background:#eee;"><td>exclude</td><td><input id="edgeeditor_xcl" type="checkbox" onchange="qg_setxcl_for_qedge();"></td></tr>
+
+	  <tr style="background:#fff;"><td style="border:0;">option_group_id</td><td style="border:0;" id="edgeeditor_optgpid"></td></tr>
+	  <tr style="background:#fff;">
+	    <td></td>
+	    <td>
+	      <input type="text" style="margin:0;" class="questionBox" id="qedgeoptgpidbox" size="13">
+	      <input type="button" style="margin:0;" class="questionBox button" name="action" value="Update Option Group ID" onClick="qg_update_optgpid_to_qgitem('qedge');">
+	    </td>
+	  </tr>
+
 	</table>
 	<br><br>
 	<input type="button" class="questionBox button" name="action" title="Remove this Edge from Query Graph" value="Delete Edge" onClick="qg_remove_qedge();">
@@ -257,9 +264,12 @@
       </div>
     </div>
 
-    <br>
-    <input type="button" class="questionBox button" name="action" value="QUERY (ARAX)" onClick="postQuery('qGraph','ARAX');"/>
-    <input type="button" class="questionBox button" name="action" value="QUERY (ARS)" onClick="postQuery('qGraph','ARS');"/>
+    <br><br>
+    Query submission on this tab submits <b>without</b> a workflow:<br>
+    <input type="button" class="questionBox button" name="action" value="Query ARAX" onClick="postQuery('qGraph','ARAX');"/>
+    <input type="button" class="questionBox button" name="action" value="Query ARS" onClick="postQuery('qGraph','ARS');"/>
+    <input type="button" class="questionBox button" name="action" value="Query OTHER" onClick="postQuery('qGraph','EXT');" title="Send Query to a non-ARAX TRAPI-supporting API endpoint"/>
+    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
   </div>
   
   <div class="inputsection" id="qjson_input">
@@ -267,9 +277,11 @@
     <span class="tiny" style="position:relative; left:150px;">Enter a <b>full Query object</b> <u>&nbsp;&nbsp;or&nbsp;&nbsp;</u> the value of the <b>query_graph</b> element<a href="javascript:pasteExample('JSON');" style="position:relative; left:100px;">Example</a></span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
-	    <br/>
-	    <input type="button" class="questionBox button" name="action" value="POST (ARAX)" onClick="postQuery('JSON','ARAX');">
-	    <input type="button" class="questionBox button" name="action" value="POST (ARS)" onClick="postQuery('JSON','ARS');">
+	    <br>
+	    <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('JSON','ARAX');">
+	    <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('JSON','ARS');">
+	    <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('JSON','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
+	    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
     </form>
   </div>
 
@@ -288,8 +300,47 @@
       <div id="dsl_command_form"></div>
       <br/>
       <br/>
-      <input type="button" class="questionBox button" name="action" value="POST" onClick="postQuery('DSL','ARAX');">
+      <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('DSL','ARAX');">
     </form>
+  </div>
+
+  <div class="inputsection" id="qwf_input">
+    <h3 style="display:inline;">Workflow Input:</h3>
+    <span class="tiny" style="position:relative; left:150px;">Please edit the <b>Query Graph</b> separately;
+          <a href="https://github.com/NCATSTranslator/OperationsAndWorkflows/blob/main/docs/index.md" target="_new">more info here</a></span>
+    <form id="wfForm" name="wfForm" method="post" action="postQuery('WorkFlow','ARAX');">
+      <span class="wfpanel" style="border-right:1px dashed #444;">
+	<ol id="wflist">
+	  <p>Add workflow operations using the menu on the right, and/or via the JSON import box below</p>
+	</ol>
+      </span>
+      <span class="wfpanel">
+	<span class="qgselect">
+	  <select id="wf_operation" onchange="show_wf_operation_options(this.value,null)">
+	    <option style="border-bottom:1px solid black;" value="">Workflow Operation&nbsp;&nbsp;&nbsp;&#8675;</option>
+	  </select>
+	</span>
+	<label style="margin-left:10px;" class="tiny"><input onchange="populate_wf_operations();" id="arax_only" type="checkbox">Enable only ARAX-supported operations</label>
+	<div id="wf_operation_form"></div>
+      </span>
+    </form>
+    <hr>
+    <h3 style="display:inline;">JSON:</h3>
+    <input type="button" class="questionBox button" style="margin-left:150px;" name="action" value="Import/Update JSON" onClick="update_wfjson();">
+    <span id="importQG" style="margin-left:100px;">
+      Import QueryGraph from response id:
+      <input type="text" autocomplete="off" class="questionBox" id="respId" size="10" maxlength="100"/>
+      <input type="button" class="questionBox button" id="ImportQGbutton" name="action" value="Import QG" onClick="import_qg2wf(false);">
+      <a style="margin-left: 50px;" title="transfer main query graph into workflow" href="javascript:import_qg2wf(true);">Import from QG pane</a>
+    </span>
+    <br clear="all">
+    <textarea class="questionBox" wrap="off" id="wfJSON"></textarea>&nbsp;<span title="clear Workflow" class="clq" onclick="clearWF();">&#9587;</span>
+    <br><br>
+    Submission on this tab submits <b>both a query_graph and a workflow</b>:<br>
+    <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('WorkFlow','ARAX');">
+    <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('WorkFlow','ARS');">
+    <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('WorkFlow','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
+    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
   </div>
 
   <div class="inputsection" id="qid_input">
@@ -303,9 +354,9 @@
       </select>
     </div>
 
-    <form id="idForm" name="idForm" method="post" action="javascript:sendId();">
+    <form id="idForm" name="idForm" method="post" action="javascript:sendId(false);">
       <input type="text" autocomplete="off" class="questionBox" id="idText" name="idText" size="100" maxlength="100"/>
-      <input type="button" class="questionBox button" name="action" value="LOAD" onClick="sendId();"/>
+      <input type="button" class="questionBox button" name="action" value="LOAD" onClick="sendId(false);"/>
       <span title="clear id" class="clq" onclick="pasteId('');">&#9587;</span>
     </form>
     <br>
@@ -330,14 +381,12 @@
 
 <div class="pagesection" id="listaDiv">
 <div class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
-<div class="status" id="listdivA">Items in this list can be passed as input to queries that support list input, by specifying [A] as a parameter.</div>
+<div class="status" id="listdivA">Items in this list can be compared to those in List B, or added to a node in the query_graph via the bulk import functionality.</div>
 </div>
-
-
 
 <div class="pagesection" id="listbDiv">
 <div class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
-<div class="status" id="listdivB">Items in this list can be passed as input to queries that support list input, by specifying [B] as a parameter.</div>
+<div class="status" id="listdivB">Items in this list can be compared to those in List A, or added to a node in the query_graph via the bulk import functionality.</div>
 </div>
 
 <div class="pagesection" id="compareDiv">
@@ -381,7 +430,7 @@
 <div class="pagesection" id="synonymDiv">
   <h3 style="display:inline;">Synonym Lookup:</h3>
   <br>
-  <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newsynonym" name="newsynonym" onkeydown="enter_synonym(this);" size="100" maxlength="1000"/>
+  <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newsynonym" name="newsynonym" onkeydown="submit_on_enter(this);" size="100" maxlength="1000"/>
   <input type="button" class="questionBox button" name="action" value="Look Up" onClick="sendSyn();"/>
   <span title="clear" class="clq" onclick="pasteSyn('');">&#9587;</span>
   <div id="synonym_result_container"></div>
@@ -398,7 +447,7 @@
   <div class="statushead">Recent ARAX System Activity</div>
   <div class="status">
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentQs();"/>
-    <input type="text" class="questionBox" id="qftime" value="24" size="3" maxlength="3"/>hours (max.200)
+    <input type="text" class="questionBox" id="qftime" onkeydown="submit_on_enter(this);" value="24" size="3" maxlength="3"/>hours (max.200)
     <span style="margin-left:50px;" id="qfilter"></span>
     <div id="recent_queries_timeline_container"></div>
     <div id="recent_queries_container"><br>Click on the button above to view most recent ARAX services activity<br><br></div>
@@ -408,22 +457,57 @@
 <div class="pagesection" id="settingsDiv">
   <div class="statushead">API Settings</div>
   <div class="status">
-    <h3 style="margin-bottom:0px;">BASE API URL:</h3>
-    <input type="text" class="questionBox" id="base_api_url" onkeyup="enter_url(this,'base_api');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="base_api_url_button" value="Update" onClick="update_url('base_api');"/>
+    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">REMOTE API TIMEOUT DURING ARAX EXPANSION (leave blank for default):</h3>
+    <input type="text" class="questionBox" id="timeout_url" onkeyup="enter_url(this,'timeout');" size="3" maxlength="3"/>
+    seconds
+    <input type="button" style="margin-left:15px;" class="questionBox button" id="timeout_url_button" value="Update" onClick="update_url('timeout',null);"/>
     <br><br>
-    <h3 style="margin-bottom:0px;">ARAX URL:</h3>
+    <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
     <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX');"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">ARS URL:</h3>
-    <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS');"/>
+    <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX',null);"/>
+    <br>
+    <h3 style="margin-bottom:0px;">ARAX QUERY URL:</h3>
+    <input type="text" class="questionBox" id="ARAXQ_url" onkeyup="enter_url(this,'ARAXQ');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="ARAXQ_url_button" value="Update" onClick="update_url('ARAXQ',null);"/>
     <br><br>
     <h3 style="margin-bottom:0px;">ARS API (post query):</h3>
-    <input type="text" class="questionBox" id="ars_api_url" onkeyup="enter_url(this,'ars_api');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ars_api_url_button" value="Update" onClick="update_url('ars_api');"/>
+    <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS',null);"/>
     <br><br>
+    <h3 style="margin-bottom:0px;">EXTERNAL API (post query):</h3>
+    <input type="text" class="questionBox" id="EXT_url" onkeyup="enter_url(this,'EXT');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="EXT_url_button" value="Update" onClick="update_url('EXT',null);"/>
+    <br>
+    <input type="button" class="qprob sbte" value="BTE" onClick="update_url('EXT','https://api.bte.ncats.io/v1');"/>
+    <input type="button" class="qprob p0" value="CHP" onClick="update_url('EXT','http://chp.thayer.dartmouth.edu');"/>
+    <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
+    <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
+    <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
+    <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.2');"/>
+    <input type="button" class="qprob p1" value="ICEES-Asthma" onClick="update_url('EXT','https://icees.renci.org:16339');"/>
+    <input type="button" class="qprob p1" value="ICEES-DILI" onClick="update_url('EXT','https://icees.renci.org:16341');"/>
+    <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.2');"/>
+    <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.2');"/>
+    <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
+    <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
+    <br><br>
+  </div>
+
+  <div class="statushead">Session Settings</div>
+  <div class="status">
+    <h3 style="margin-bottom:0px;">SUBMITTER (enter a generic name to help track queries):</h3>
+    <input type="text" class="questionBox" id="submitter_url" onkeyup="enter_url(this,'submitter');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
+    <br><br>
+
+
+    <!-- label id="useCacheText" class="tiny blue">
+      <span class="switch">
+	<input id="useCache" type="checkbox" checked="checked" onchange="togglecolor(this,'useCacheText');">
+	<span class="slider"></span>
+      </span>
+      Use cache</label -->
+
   </div>
 
   <div class="statushead">Local Cache (<span id="numlistitemsCACHE">-</span>)</div>

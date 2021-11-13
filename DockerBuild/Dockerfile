@@ -28,7 +28,7 @@ RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com
 RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
-RUN export DEBIAN_FRONTEND=noninteractive && apt-get install -yq apache2
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -yq apache2
 COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 RUN cd /var/www && mv html html-orig && ln -s /mnt/data/orangeboard/production/RTX/code/UI/interactive html
 RUN cd /var/www && a2enmod proxy && a2enmod proxy_html && a2enmod proxy_http && a2enmod rewrite && a2enmod headers
@@ -36,8 +36,12 @@ RUN cd /var/www && /usr/sbin/apachectl configtest
 
 # install python and packages
 RUN apt-get update
-RUN apt-get install -y python3 python3-dev python3-pip python3-venv
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && pip3 install -r requirements.txt && pip3 install flask_cors connexion[swagger-ui] tornado
+RUN apt-get install -y python3 python3-pip
+RUN apt-get install -y software-properties-common
+RUN add-apt-repository -y ppa:deadsnakes/ppa
+RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-venv
+RUN rm /usr/bin/python3 && ln -s /usr/bin/python3.7 /usr/bin/python3
+RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.7 -m pip install -r requirements.txt && python3.7 -m pip install flask_cors connexion[swagger-ui] tornado
 
 # setup services
 RUN export DEVAREA=production
