@@ -184,6 +184,7 @@ class ResponseCache:
         session.add(stored_response)
         session.flush()
         session.commit()
+        response_filename = f"/responses/{stored_response.response_id}.json"
 
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
@@ -204,7 +205,6 @@ class ResponseCache:
                 aws_secret_access_key=ACCESS_KEY
             )
             serialized_query_graph = json.dumps(envelope.to_dict(), sort_keys=True, indent=2)
-            response_filename = f"/responses/{stored_response.response_id}.json"
             response.debug(f"Writing response to S3 bucket")
             t0 = timeit.default_timer()
             s3.Object('arax-response-storage', response_filename).put(Body=serialized_query_graph)
