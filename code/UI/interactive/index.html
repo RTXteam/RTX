@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=7">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=9">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="config.js"></script>
@@ -165,6 +165,16 @@
 	  </tr>
 
 	  <tr style="background:#fff;"><td>is_set</td><td><input id="nodeeditor_set" type="checkbox" onchange="qg_setset_for_qnode();"></td></tr>
+
+          <tr style="background:#eee;"><td style="border:0;">option_group_id</td><td style="border:0;" id="nodeeditor_optgpid"></td></tr>
+          <tr style="background:#eee;">
+	    <td></td>
+	    <td>
+	      <input type="text" style="margin:0;" class="questionBox" id="qnodeoptgpidbox" size="13">
+	      <input type="button" style="margin:0;" class="questionBox button" name="action" value="Update Option Group ID" onClick="qg_update_optgpid_to_qgitem('qnode');">
+	    </td>
+	  </tr>
+
 	</table>
 	<br><br>
 	<input type="button" class="questionBox button" name="action" title="Remove this Node from Query Graph" value="Delete Node" onClick="qg_remove_qnode();">
@@ -233,6 +243,17 @@
 	      <input type="text" style="margin:0;" class="questionBox" id="qedgeconstraintUNITIDbox" size="13">
 	      <input type="text" style="margin:0;" class="questionBox" id="qedgeconstraintUNITNAMEbox" size="10">
 	      <input type="button" style="margin:0;" class="questionBox button" name="action" value="Add CONSTRAINT" onClick="qg_add_constraint_to_qgitem('qedge');">
+	    </td>
+	  </tr>
+
+          <tr style="background:#eee;"><td>exclude</td><td><input id="edgeeditor_xcl" type="checkbox" onchange="qg_setxcl_for_qedge();"></td></tr>
+
+	  <tr style="background:#fff;"><td style="border:0;">option_group_id</td><td style="border:0;" id="edgeeditor_optgpid"></td></tr>
+	  <tr style="background:#fff;">
+	    <td></td>
+	    <td>
+	      <input type="text" style="margin:0;" class="questionBox" id="qedgeoptgpidbox" size="13">
+	      <input type="button" style="margin:0;" class="questionBox button" name="action" value="Update Option Group ID" onClick="qg_update_optgpid_to_qgitem('qedge');">
 	    </td>
 	  </tr>
 
@@ -444,6 +465,10 @@
     <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
     <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
     <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX',null);"/>
+    <br>
+    <h3 style="margin-bottom:0px;">ARAX QUERY URL:</h3>
+    <input type="text" class="questionBox" id="ARAXQ_url" onkeyup="enter_url(this,'ARAXQ');" size="100" maxlength="1000"/>
+    <input type="button" class="questionBox button" id="ARAXQ_url_button" value="Update" onClick="update_url('ARAXQ',null);"/>
     <br><br>
     <h3 style="margin-bottom:0px;">ARS API (post query):</h3>
     <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>

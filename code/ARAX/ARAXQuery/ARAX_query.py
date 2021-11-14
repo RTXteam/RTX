@@ -16,6 +16,7 @@ import threading
 import json
 import uuid
 import requests
+import gc
 
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -46,8 +47,6 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
-#from ParseQuestion import ParseQuestion
-#from QueryGraphReasoner import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
@@ -56,9 +55,19 @@ from ARAX_database_manager import ARAXDatabaseManager
 from reasoner_validator import validate
 from jsonschema.exceptions import ValidationError
 
+ARAXResponse.output = 'STDERR'
+
 query_tracker_reset = ARAXQueryTracker()
 query_tracker_reset.clear_unfinished_entries()
 
+class response_locking(ARAXResponse):
+    def __init__(self, lock: threading.Lock):
+        self.lock = lock
+        super().__init__()
+
+    def __add_message(self, message, level, code=None):
+        with self.lock:
+            super()._add_message(message, level, code)
 
 class ARAXQuery:
 
@@ -67,100 +76,133 @@ class ARAXQuery:
         self.response = None
         self.message = None
         self.rtxConfig = RTXConfiguration()
-        
         self.DBManager = ARAXDatabaseManager(live = "Production")
+        self.lock = None
         if self.DBManager.check_versions():
             self.response = ARAXResponse()
             self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
             self.response = self.DBManager.update_databases(True, response=self.response)
 
-    def query_return_stream(self,query, mode='ARAX'):
+    def query_return_stream(self, query, mode='ARAX'):
 
         main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,mode,))
+        self.lock = threading.Lock()
         main_query_thread.start()
 
         if self.response is None or "DONE" not in self.response.status:
 
             # Sleep until a response object has been created
-            while self.response is None:
-                time.sleep(0.1)
+            have_response = False
+            while not have_response:
+                with self.lock:
+                    have_response = (self.response is not None)
+                if not have_response:
+                    time.sleep(0.1)
 
-            i_message = 0
-            n_messages = len(self.response.messages)
-            query_plan_counter = 0
-            idle_ticks = 0.0
+            try:
+                i_message = 0
+                with self.lock:
+                    n_messages = len(self.response.messages)
+                query_plan_counter = 0
+                idle_ticks = 0.0
+                pid = None
 
-            while "DONE" not in self.response.status:
-                n_messages = len(self.response.messages)
-                while i_message < n_messages:
-                    yield(json.dumps(self.response.messages[i_message])+"\n")
-                    i_message += 1
-                    idle_ticks = 0.0
-                #### Also emit any updates to the query_plan
-                if query_plan_counter < self.response.query_plan['counter']:
-                    query_plan_counter = self.response.query_plan['counter']
-                    yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
-                    idle_ticks = 0.0
-                time.sleep(0.2)
-                idle_ticks += 0.2
-                if idle_ticks > 180.0:
-                    timestamp = str(datetime.now().isoformat())
-                    yield(json.dumps({ 'timestamp': timestamp, 'level': 'DEBUG', 'code': '', 'message': 'Query is still progressing...' })+"\n")
-                    idle_ticks = 0.0
+                self.response.debug("In query_return_stream")
+                
+                response_status_says_done = False
+                while not response_status_says_done:
+                    with self.lock:
+                        response_status_says_done = ("DONE" in self.response.status)
+                    if response_status_says_done:
+                        break
+                    with self.lock:
+                        n_messages = len(self.response.messages)
+                    while i_message < n_messages:
+                        with self.lock:
+                            i_message_obj = self.response.messages[i_message].copy()
+                        yield(json.dumps(i_message_obj) + "\n")
+                        i_message += 1
+                        idle_ticks = 0.0
 
-            # #### If there are any more logging messages in the queue, send them first
+                    if pid is None:
+                        pid = os.getpid()
+                        authorization = str(hash('Pickles' + str(pid)))
+                        yield(json.dumps( { "pid": pid, "authorization": authorization } )+"\n")
+
+                    #### Also emit any updates to the query_plan
+                    with self.lock:
+                        self_query_plan_counter = self.response.query_plan['counter']
+                    if query_plan_counter < self_query_plan_counter:
+                        query_plan_counter = self_query_plan_counter
+                        with self.lock:
+                            self_response_query_plan = self.response.query_plan.copy()
+                        yield(json.dumps(self_response_query_plan, sort_keys=True) + "\n")
+                        idle_ticks = 0.0
+                    time.sleep(0.2)
+                    idle_ticks += 0.2
+                    if idle_ticks > 180.0:
+                        timestamp = str(datetime.now().isoformat())
+                        yield json.dumps({ 'timestamp': timestamp, 'level': 'DEBUG', 'code': '', 'message': 'Query is still progressing...' }) + "\n"
+                        idle_ticks = 0.0
+            except MemoryError:
+                gc.collect()
+                self.response.error("ARAX ran out of memory during query processing; no results will be returned for this query")
+                
+                # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
             while i_message < n_messages:
-                yield(json.dumps(self.response.messages[i_message])+"\n")
+                yield(json.dumps(self.response.messages[i_message]) + "\n")
                 i_message += 1
 
             #### Also emit any updates to the query_plan
-            if query_plan_counter < self.response.query_plan['counter']:
-                query_plan_counter = self.response.query_plan['counter']
-                yield(json.dumps(self.response.query_plan,sort_keys=True)+"\n")
+            self_response_query_plan_counter = self.response.query_plan['counter']
+            if query_plan_counter < self_response_query_plan_counter:
+                query_plan_counter = self_response_query_plan_counter
+                yield(json.dumps(self.response.query_plan, sort_keys=True)+"\n")
 
             # Remove the little DONE flag the other thread used to signal this thread that it is done
-            self.response.status = re.sub('DONE,','',self.response.status)
+            self.response.status = re.sub('DONE,', '', self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(self.response.envelope.to_dict(),sort_keys=True))
+            yield(json.dumps(self.response.envelope.to_dict(), sort_keys=True) + "\n")
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
         self.track_query_finish()
-        return { 'DONE': True }
+        return
 
 
     def asynchronous_query(self,query, mode='ARAX'):
 
         #### Define a new response object if one does not yet exist
-        if self.response is None:
-            self.response = ARAXResponse()
+        with self.lock:
+            have_response = self.response is not None
+        if not have_response:
+            new_response = response_locking(self.lock)
+            with self.lock:
+                self.response = new_response
+
+        self.response.debug("in asynchronous_query")
 
         #### Execute the query
         self.query(query, mode=mode, origin='API')
 
-        #### Do we still need all this cruft?
-        #result = self.query(query)
-        #message = self.message
-        #if message is None:
-        #    message = Message()
-        #    self.message = message
-        #message.message_code = result.error_code
-        #message.code_description = result.message
-        #message.log = result.messages
-
         # Insert a little flag into the response status to denote that this thread is done
-        self.response.status = f"DONE,{self.response.status}"
+        with self.lock:
+            self.response.status = f"DONE,{self.response.status}"
         return
 
 
     ########################################################################################
     def query_return_message(self, query, mode='ARAX'):
 
-        self.query(query, mode=mode, origin='API')
+        self.response = ARAXResponse()
         response = self.response
-
+        print("in query_return_message - printing", file=sys.stderr)
+        response.debug("in query_return_message")
+        
+        self.query(query, mode=mode, origin='API')
+        
         #### If the query ended in an error, copy the error to the envelope
         if response.status != 'OK':
             response.envelope.status = response.error_code
@@ -168,7 +210,18 @@ class ARAXQuery:
             if hasattr(response,'http_status'):
                 response.envelope.http_status = response.http_status
 
-        self.track_query_finish()
+        if mode == 'asynchronous':
+            attributes = {
+                'status': 'Running Async',
+                'message_id': None,
+                'message_code': 'Running',
+                'code_description': 'Query running via /asyncquery'
+            }
+            query_tracker = ARAXQueryTracker()
+            query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+        else:
+            self.track_query_finish()
+
         return response.envelope
 
 
@@ -194,15 +247,17 @@ class ARAXQuery:
 
 
     ########################################################################################
-    def query(self,query, mode='ARAX', origin='local'):
+    def query(self, query, mode='ARAX', origin='local'):
 
-        #### Create the skeleton of the response
-        response = ARAXResponse()
-        self.response = response
+        #### Create the skeleton of the response 
+        response = self.response
+        if response is None:  # At this point in the code, the response should only be
+                              # None in regression tests that call ARAXQuery.query() directly
+            response = ARAXResponse()
+            self.response = response
 
         #### Announce the launch of query()
         #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
-        ARAXResponse.output = 'STDERR'
         response.info(f"{mode} Query launching on incoming Query")
 
         #### Create an empty envelope
@@ -238,68 +293,74 @@ class ARAXQuery:
             tracker_id = query_tracker.create_tracker_entry(attributes)
         response.tracker_id = tracker_id
 
-        #### Determine a plan for what to do based on the input
-        #eprint(json.dumps(query, indent=2, sort_keys=True))
-        result = self.examine_incoming_query(query, mode=mode)
-        if result.status != 'OK':
-            return response
-        query_attributes = result.data
-
-        #### Convert the message from dicts to objects
-        if 'message' in query:
-            response.debug(f"Deserializing message")
-            query['message'] = ARAXMessenger().from_dict(query['message'])
-
-        # If there is a workflow, translate it to ARAXi and append it to the operations actions list
-        if "have_workflow" in query_attributes:
-            if query['message'].query_graph is None:
-                response.error(f"Cannot have a workflow with an null query_graph", error_code="MissingQueryGraph")
+        try:
+            #### Determine a plan for what to do based on the input
+            #eprint(json.dumps(query, indent=2, sort_keys=True))
+            result = self.examine_incoming_query(query, mode=mode)
+            if result.status != 'OK':
                 return response
+            query_attributes = result.data
 
-            try:
-                self.convert_workflow_to_ARAXi(query)
-            except Exception as error:
-                exception_type, exception_value, exception_traceback = sys.exc_info()
-                response.error(f"An unhandled error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UnhandledError")
-                return response
-            query_attributes["have_operations"] = True
+            #### Convert the message from dicts to objects
+            if 'message' in query:
+                response.debug(f"Deserializing message")
+                query['message'] = ARAXMessenger().from_dict(query['message'])
 
-        # #### If we have a query_graph in the input query
-        if "have_query_graph" in query_attributes and "have_operations" not in query_attributes:
-
-            response.envelope.message.query_graph = query['message'].query_graph
-
-            #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
-            if mode == 'ARAX' or mode == 'asynchronous':
-                response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
-                interpreter = ARAXQueryGraphInterpreter()
-                interpreter.translate_to_araxi(response)
-                if response.status != 'OK':
+            # If there is a workflow, translate it to ARAXi and append it to the operations actions list
+            if "have_workflow" in query_attributes:
+                if query['message'].query_graph is None:
+                    response.error(f"Cannot have a workflow with an null query_graph", error_code="MissingQueryGraph")
                     return response
-                query['operations'] = {}
-                query['operations']['actions'] = result.data['araxi_commands']
 
-            #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
+                try:
+                    self.convert_workflow_to_ARAXi(query)
+                except Exception as error:
+                    exception_type, exception_value, exception_traceback = sys.exc_info()
+                    response.error(f"An unhandled error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UnhandledError")
+                    return response
+                query_attributes["have_operations"] = True
+
+            # #### If we have a query_graph in the input query
+            if "have_query_graph" in query_attributes and "have_operations" not in query_attributes:
+
+                response.envelope.message.query_graph = query['message'].query_graph
+
+                #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
+                if mode == 'ARAX' or mode == 'asynchronous':
+                    response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                    interpreter = ARAXQueryGraphInterpreter()
+                    interpreter.translate_to_araxi(response)
+                    if response.status != 'OK':
+                        return response
+                    query['operations'] = {}
+                    query['operations']['actions'] = result.data['araxi_commands']
+
+                #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
+                else:
+                    response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
+                    if len(response.envelope.message.query_graph.nodes) > 2:
+                        response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
+                        return response
+                    query['operations'] = {}
+                    query['operations']['actions'] = [ 'expand(kp=RTX-KG2)', 'resultify()', 'return(store=false)' ]
+
+                query_attributes['have_operations'] = True
+
+
+            #### If we have operations, execute them
+            if "have_operations" in query_attributes:
+                response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
+                result = self.execute_processing_plan(query, mode=mode)
+
+            #### This used to support canned queries, but no longer does
             else:
-                response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
-                if len(response.envelope.message.query_graph.nodes) > 2:
-                    response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
-                    return response
-                query['operations'] = {}
-                query['operations']['actions'] = [ 'expand(kp=RTX-KG2)', 'resultify()', 'return(store=false)' ]
+                response.error(f"Unable to determine ARAXi to execute. Error Q213", error_code="UnknownError")
 
-            query_attributes['have_operations'] = True
-
-
-        #### If we have operations, execute them
-        if "have_operations" in query_attributes:
-            response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
-            result = self.execute_processing_plan(query, mode=mode)
-
-        #### This used to support canned queries, but no longer does
-        else:
-            response.error(f"Unable to determine ARAXi to execute. Error Q213", error_code="UnknownError")
-
+        except MemoryError:
+            response.envelope.message.results = []
+            gc.collect()
+            response.error("ARAX ran out of memory during query processing; no results will be returned for this query")
+            
         return response
 
 
@@ -584,6 +645,14 @@ class ARAXQuery:
                 #### The child continues
                 #### The child loses the MySQL connection of the parent, so need to reconnect
                 response_cache.connect()
+                time.sleep(1)
+                attributes = {
+                    'pid': os.getpid(),
+                    'code_description': 'Query executing via /asyncquery'
+                }
+                query_tracker = ARAXQueryTracker()
+                query_tracker.alter_tracker_entry(self.response.tracker_id, attributes)
+
                 
             #### If there is already a KG with edges, recompute the qg_keys
             if message.knowledge_graph is not None and len(message.knowledge_graph.edges) > 0:
@@ -790,9 +859,13 @@ class ARAXQuery:
             post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'})
             status_code = post_response_content.status_code
             response.info(f"Response from POST to callback URL was {status_code}")
+            if status_code not in [ 200, 201 ]:
+                response.error(f"Response from POST to callback URL was {status_code}", error_code="UnreachableCallback")
+
         except:
-            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost")
-        exit(0)
+            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost", error_code="UnreachableCallback")
+        self.track_query_finish()
+        os._exit(0)
 
 
 ##################################################################################################

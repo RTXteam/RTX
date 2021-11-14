@@ -1,22 +1,43 @@
 #!/usr/bin/env python3
 
-import connexion
-from flask_cors import CORS
+import connexion, flask, flask_cors
+import logging
+import json
+import openapi_server.encoder
+import os, sys, signal
 
-from openapi_server import encoder
+logging.basicConfig(level=logging.INFO)  # can change this to logging.DEBUG for debuggging
 
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/ARAXQuery")
+def receive_sigchld(signal_number, frame):
+    if signal_number == signal.SIGCHLD:
+        try:
+            os.waitpid(-1, os.WNOHANG)
+        except ChildProcessError as e:
+            logging.error(repr(e))
+
+def receive_sigpipe(signal_number, frame):
+    if signal_number == signal.SIGPIPE:
+        logging.error("pipe error")
 
 def main():
     app = connexion.App(__name__, specification_dir='./openapi/')
-    app.app.json_encoder = encoder.JSONEncoder
+    app.app.json_encoder = openapi_server.encoder.JSONEncoder
     app.add_api('openapi.yaml',
                 arguments={'title': 'RTX KG2 Translator KP'},
                 pythonic_params=True)
-    CORS(app.app)
-    app.run(port=5008, threaded=True)
+    flask_cors.CORS(app.app)
+    signal.signal(signal.SIGCHLD, receive_sigchld)
+    signal.signal(signal.SIGPIPE, receive_sigpipe)
+
+    #### Read any load configuration details for this instance
+    try:
+        with open('openapi_server/flask_config.json') as infile:
+            local_config = json.load(infile)
+    except:
+        local_config = { "port": 5008 }
+
+    #### Start the service
+    app.run(port=local_config['port'], threaded=True)
 
 
 if __name__ == '__main__':

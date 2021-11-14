@@ -4,7 +4,7 @@ var qgids = [];
 var cyobj = [];
 var cytodata = [];
 var predicates = {};
-var all_predicates = {};
+var all_predicates = [];
 var all_nodes = {};
 var summary_table_html = '';
 var summary_tsv = [];
@@ -16,19 +16,25 @@ var UIstate = {};
 // defaults
 var base = "";
 var baseAPI = base + "api/arax/v1.2";
+var araxQuery = '';
 
 // possibly imported by calling page (e.g. index.html)
 if (typeof config !== 'undefined') {
     if (config.base)
 	base = config.base;
+    if (config.query_endpoint)
+	araxQuery = config.query_endpoint;
     if (config.baseAPI)
 	baseAPI = config.baseAPI;
 }
+if (!araxQuery)
+    araxQuery = baseAPI + '/query';
 
 var providers = {
-    "ARAX": { "url" : baseAPI },
-    "ARS" : { "url" : "https://ars.transltr.io/ars/api/submit" },
-    "EXT" : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.2" }
+    "ARAX" : { "url" : baseAPI },
+    "ARAXQ": { "url" : araxQuery },
+    "ARS"  : { "url" : "https://ars.transltr.io/ars/api/submit" },
+    "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.2" }
 };
 
 // these attributes are floats; truncate them
@@ -54,7 +60,9 @@ const attributes_to_truncate = [
 
 function main() {
     UIstate["submitter"] = 'ARAX GUI';
+    UIstate['autorefresh'] = true;
     UIstate["timeout"] = '';
+    UIstate["pid"] = null;
     UIstate["version"] = checkUIversion(false);
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
@@ -202,6 +210,10 @@ function reset_vars() {
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
     document.getElementById("queryplan_container").innerHTML = "";
+    if (document.getElementById("queryplan_stream")) {
+	document.getElementById("queryplan_streamhead").remove();
+	document.getElementById("queryplan_stream").remove();
+    }
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
@@ -411,7 +423,7 @@ function postQuery_ARAX(qtype,queryObj) {
     statusdiv.appendChild(document.createTextNode("Processing step "));
     var span = document.createElement("span");
     span.id = "finishedSteps";
-    span.style.fontWeight= "bold";
+    span.style.fontWeight = "bold";
 //    span.className = "menunum numnew";
     span.appendChild(document.createTextNode("0"));
     statusdiv.appendChild(span);
@@ -437,7 +449,7 @@ function postQuery_ARAX(qtype,queryObj) {
     sesame('openmax',statusdiv);
 
     add_to_dev_info("Posted to QUERY",queryObj);
-    fetch(providers["ARAX"].url + "/query", {
+    fetch(providers["ARAXQ"].url, {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -515,6 +527,7 @@ function postQuery_ARAX(qtype,queryObj) {
 				div = document.getElementById("queryplan_stream");
 			    else {
 				div = document.createElement("div");
+				div.id = "queryplan_streamhead";
 				div.className = 'statushead';
 				div.appendChild(document.createTextNode("Expansion Progress"));
 				document.getElementById("status_container").before(div);
@@ -529,6 +542,10 @@ function postQuery_ARAX(qtype,queryObj) {
 			    div.appendChild(document.createElement("br"));
 			    render_queryplan_table(jsonMsg, div);
 			    div.appendChild(document.createElement("br"));
+			}
+                        else if (jsonMsg.pid) {
+			    UIstate["pid"] = jsonMsg;
+			    display_kill_button();
 			}
 			else {
 			    console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
@@ -556,6 +573,9 @@ function postQuery_ARAX(qtype,queryObj) {
 	    pre.id = "responseJSON";
 	    pre.appendChild(document.createTextNode(JSON.stringify(data,null,2)));
 	    dev.appendChild(pre);
+
+	    if (document.getElementById("killquerybutton"))
+		document.getElementById("killquerybutton").remove();
 
 	    document.getElementById("progressBar").style.width = "800px";
 	    if (data.status == "OK")
@@ -588,6 +608,9 @@ function postQuery_ARAX(qtype,queryObj) {
 
 	})
         .catch(function(err) {
+            if (document.getElementById("killquerybutton"))
+		document.getElementById("killquerybutton").remove();
+
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+err+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with parsing QUERY:<br>"+err;
 	    sesame('openmax',statusdiv);
@@ -598,6 +621,67 @@ function postQuery_ARAX(qtype,queryObj) {
             there_was_an_error();
 	});
 }
+
+function display_kill_button() {
+    var button = document.createElement("input");
+    button.id = 'killquerybutton';
+    button.className = 'questionBox button';
+    button.style.background = "#c40";
+    button.type = 'button';
+    button.name = 'action';
+    button.value = 'Terminate Query!';
+    button.title = 'Kill this request (pid='+UIstate["pid"].pid+')';
+    button.setAttribute('onclick', 'kill_query();');
+
+    document.getElementById("status_container").before(button);
+}
+
+function kill_query() {
+    if (!UIstate["pid"].pid || !UIstate["pid"].authorization) {
+        document.getElementById("killquerybutton").replaceWith('No PID or authorization; cannot terminate query');
+	return;
+    }
+
+    fetch(providers["ARAX"].url + "/status?terminate_pid="+UIstate["pid"].pid+"&authorization="+UIstate["pid"].authorization)
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Something went wrong with termination...');
+	})
+        .then(data => {
+            if (data.status == 'OK') {
+		document.getElementById("killquerybutton").id = 'killquerybuttondead';
+		addCheckBox(document.getElementById("killquerybuttondead"),true);
+		var timeout = setTimeout(function() { document.getElementById("killquerybuttondead").remove(); } , 1500 );
+		statusdiv.innerHTML += "<br><span class='error'>Query terminated by user</span>";
+		if (document.getElementById("cmdoutput")) {
+                    var cmddiv = document.getElementById("cmdoutput");
+		    cmddiv.appendChild(document.createElement("br"));
+		    cmddiv.appendChild(document.createTextNode(data.description));
+                    cmddiv.appendChild(document.createElement("br"));
+		    cmddiv.scrollTop = cmddiv.scrollHeight;
+		    for (var e of document.getElementsByClassName("working")) {
+			e.classList.remove('working');
+			e.classList.remove('p5');
+			e.classList.add('barerror');
+		    }
+		    document.getElementById("progressBar").classList.add("barerror");
+		    document.getElementById("progressBar").innerHTML += " (terminated)\u00A0\u00A0";
+		}
+	    }
+            else if (data.status == 'ERROR') {
+		document.getElementById("killquerybutton").after('Cannot terminate query');
+		console.warn('Query termination attempt error: '+data.description);
+	    }
+	    else throw new Error('Something went wrong while attempting to terminate query...');
+	})
+        .catch(error => {
+	    var span = document.createElement("span");
+	    span.className = 'error';
+	    span.innerHTML = error;
+	    document.getElementById("killquerybutton").after(span);
+	});
+}
+
 
 function lookup_synonym(syn,open) {
     document.getElementById("newsynonym").value = syn.trim();
@@ -846,24 +930,27 @@ function getIdStats(id) {
 function checkRefreshARS() {
     document.getElementById("ars_refresh").dataset.count += "x";
     var moon = 127765;
-    if (document.getElementById("ars_refresh").dataset.count.length == document.getElementById("ars_refresh").dataset.total) {
-	document.getElementById("ars_refresh").innerHTML = "&#"+moon;
+    if (UIstate['autorefresh'] && document.getElementById("ars_refresh").dataset.count.length == document.getElementById("ars_refresh").dataset.total) {
+	document.getElementById("ars_refresh_anim").innerHTML = "&#"+moon;
 	var timetogo = 8;
 	var timeout = setInterval(countdown, 375);
 	function countdown() {
 	    if (timetogo == 0) {
 		clearInterval(timeout);
-                sendId(true);
-		document.getElementById("ars_refresh").innerHTML = "";
+		if (UIstate['autorefresh'])
+                    sendId(true);
+		document.getElementById("ars_refresh_anim").innerHTML = "";
 	    }
 	    else {
 		moon--;
 		if (moon == 127760) moon = 127768;
-		document.getElementById("ars_refresh").innerHTML = "&#"+moon;
+                if (UIstate['autorefresh'])
+		    document.getElementById("ars_refresh_anim").innerHTML = "&#"+moon;
+		else
+		    timetogo = 1; // stop reloads
 		timetogo--;
 	    }
 	}
-
     }
 }
 
@@ -876,6 +963,7 @@ function sendId(is_ars_refresh) {
 	pasteId(id);
 	if (!id) return;
 
+	UIstate['autorefresh'] = true;
 	reset_vars();
 	if (cyobj[99999]) {cyobj[99999].elements().remove();}
 	input_qg = { "edges": {}, "nodes": {} };
@@ -922,7 +1010,19 @@ function process_ars_message(ars_msg, level) {
 	span.dataset.total = ars_msg.status == 'Done' ? 999999 : ars_msg["children"].length + 1;
 	span.dataset.count = '';
 	span.dataset.msgid = ars_msg.message;
-	span.appendChild(document.createTextNode("Auto-reload: " + (ars_msg.status == 'Done' ? "OFF" : "ON")));
+        if (UIstate['autorefresh'])
+	    span.appendChild(document.createTextNode("Auto-reload: " + (ars_msg.status == 'Done' ? "OFF" : "ON")));
+	if (ars_msg.status != 'Done') {
+	    span.title = "Click to Stop Auto-Refresh";
+	    span.className = "clq";
+	    span.setAttribute('onclick', 'UIstate["autorefresh"] = false; document.getElementById("ars_refresh").innerHTML = "";');
+	}
+	div2.appendChild(span);
+
+	span = document.createElement("span");
+	span.id = 'ars_refresh_anim';
+	span.style.float = 'right';
+	span.style.marginRight = '20px';
 	div2.appendChild(span);
 
 	var div2 = document.createElement("div");
@@ -976,7 +1076,7 @@ function process_ars_message(ars_msg, level) {
 	link = document.createTextNode(ars_msg.message);
     else {
 	link = document.createElement("a");
-	link.title='view this response';
+	link.title = 'view this response';
 	link.style.cursor = "pointer";
 	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId(false);');
 	link.appendChild(document.createTextNode(ars_msg.message));
@@ -1221,7 +1321,15 @@ function retrieve_response(resp_url, resp_id, type) {
 	}
 	else if ( xhr.status == 404 ) {
 	    update_response_stats_on_error(resp_id,'N/A',true);
-	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
+
+	    try {
+		var jsonResp = JSON.parse(xhr.responseText);
+		if (!jsonResp.detail) throw new Error('no detail');
+                statusdiv.innerHTML += "<br><span class='error'>"+jsonResp.detail+"</span>";
+	    }
+	    catch(e) {
+		statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
+	    }
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
 	}
@@ -1737,7 +1845,7 @@ function render_queryplan_table(qp,node) {
 	    td = document.createElement("td");
             if (qp.qedge_keys[edge][kp]["query"] && qp.qedge_keys[edge][kp]["query"] != null) {
                 var link = document.createElement("a");
-		link.title='view the posted query (JSON)';
+		link.title = 'view the posted query (JSON)';
 		link.style.cursor = "pointer";
 		link.onclick = function () { showKPQuery(kp, qp.qedge_keys[edge][kp]["query"]); };
 		link.appendChild(document.createTextNode("query"));
@@ -2042,6 +2150,7 @@ function process_graph(gne,gid,trapi) {
 			    "_names"     : gnode.ids ? gnode.ids.slice() : [], // make a copy!
 			    "_desc"      : gnode.description,
 			    "categories" : gnode.categories ? gnode.categories : [],
+			    "option_group_id" : gnode.option_group_id ? gnode.option_group_id : null,
 			    "constraints": gnode.constraints ? gnode.constraints : []
 			  };
 
@@ -2055,6 +2164,8 @@ function process_graph(gne,gid,trapi) {
 	    var tmpdata = { "subject"    : gedge.subject,
 			    "object"     : gedge.object,
 			    "predicates" : gedge.predicates ? gedge.predicates : [],
+			    "exclude"    : gedge.exclude ? gedge.exclude : false,
+			    "option_group_id" : gedge.option_group_id ? gedge.option_group_id : null,
 			    "constraints": gedge.constraints ? gedge.constraints : []
 			  };
 	    input_qg.edges[id] = tmpdata;
@@ -2172,7 +2283,7 @@ function process_results(reslist,kg,trapi,mainreasoner) {
         td.className = 'cytograph_controls';
 
 	var link = document.createElement("a");
-	link.title='reset zoom and center';
+	link.title = 'reset zoom and center';
         link.setAttribute('onclick', 'cyobj['+num+'].reset();');
         link.appendChild(document.createTextNode("\u21BB"));
         td.appendChild(link);
@@ -2180,31 +2291,65 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	tr.appendChild(td);
 
         link = document.createElement("a");
-	link.title='breadthfirst layout';
+	link.title = 'breadthfirst layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"breadthfirst");');
 	link.appendChild(document.createTextNode("B"));
 	td.appendChild(link);
 	td.appendChild(document.createElement("br"));
 
         link = document.createElement("a");
-	link.title='force-directed layout';
+	link.title = 'force-directed layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"cose");');
 	link.appendChild(document.createTextNode("F"));
 	td.appendChild(link);
 	td.appendChild(document.createElement("br"));
 
         link = document.createElement("a");
-	link.title='circle layout';
+	link.title = 'circle layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"circle");');
 	link.appendChild(document.createTextNode("C"));
 	td.appendChild(link);
 	td.appendChild(document.createElement("br"));
 
         link = document.createElement("a");
-	link.title='random layout';
+	link.title = 'random layout';
 	link.setAttribute('onclick', 'cylayout('+num+',"random");');
 	link.appendChild(document.createTextNode("R"));
 	td.appendChild(link);
+        td.appendChild(document.createElement("br"));
+
+	var span = document.createElement("span");
+	span.style.marginTop = "80px";
+	span.style.display = "inline-block";
+	span.className = "explevel p9";
+	span.style.fontSize = "x-small";
+	span.title = "new: resize graph window!";
+	span.appendChild(document.createTextNode("New"));
+        td.appendChild(span);
+        td.appendChild(document.createElement("br"));
+
+	link = document.createElement("a");
+	link.title = 'small graph';
+	link.setAttribute('onclick', 'cyresize('+num+',"s");');
+	link.appendChild(document.createTextNode("s"));
+	td.appendChild(link);
+        td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+	link.title = 'medium-sized graph';
+	link.setAttribute('onclick', 'cyresize('+num+',"m");');
+	link.appendChild(document.createTextNode("M"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
+
+        link = document.createElement("a");
+        link.style.fontWeight = "bold";
+        link.style.fontSize = "larger";
+	link.title = 'Large graph';
+	link.setAttribute('onclick', 'cyresize('+num+',"L");');
+	link.appendChild(document.createTextNode("L"));
+	td.appendChild(link);
+	td.appendChild(document.createElement("br"));
 
 	tr.appendChild(td);
 
@@ -2220,16 +2365,27 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 
 
         tr = document.createElement("tr");
-	td = document.createElement("td");
-	tr.appendChild(td);
+	//td = document.createElement("td");
+	//tr.appendChild(td);
 
 	td = document.createElement("td");
+	td.colSpan = '2';
         div2 = document.createElement("div");
 	div2.id = 'd'+num+'_div';
 	div2.className = 'panel';
         link = document.createElement("i");
-        link.appendChild(document.createTextNode("Click on a node or edge to get details"));
+        link.appendChild(document.createTextNode("Click on a node or edge to get details, or click on graph background to see a full list of nodes and edges for this result"));
         div2.appendChild(link);
+
+	var span = document.createElement("span");
+	span.style.display = "inline-block";
+	span.style.marginLeft = '10px';
+	span.className = "explevel p9";
+	span.style.fontSize = "x-small";
+	span.title = "new: full list of nodes and edges!";
+	span.appendChild(document.createTextNode("New"));
+        div2.appendChild(span);
+
 	td.appendChild(div2);
 	tr.appendChild(td);
 
@@ -2349,11 +2505,109 @@ function add_cyto(i) {
 	return;
     }
 
+    cyobj[i].on('tap', function(evt) {
+	if (evt.target === cyobj[i]) {
+            var div = document.getElementById('d'+i+'_div');
+	    div.innerHTML = "";
+
+	    var ne_table = document.createElement("table");
+	    var tr = document.createElement("tr");
+	    var td = document.createElement("td");
+	    td.colSpan = '3';
+	    td.appendChild(document.createTextNode("All nodes and edges:"));
+	    tr.appendChild(td);
+	    ne_table.appendChild(tr);
+
+	    var allnodes = cyobj[i].nodes();
+	    for (var n = 0; n < allnodes.length; n++) {
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+		td.colSpan = '3';
+		td.appendChild(document.createElement("hr"));
+		tr.appendChild(td);
+		ne_table.appendChild(tr);
+
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+
+                var link = document.createElement("a");
+                link.className = "attvalue";
+                link.style.cursor = "pointer";
+		link.dataset.nn = allnodes[n].id();
+		link.title = 'View node details';
+		link.onclick = function () { cyobj[i].getElementById(this.dataset.nn).emit("tap"); cyobj[i].getElementById(this.dataset.nn).select(); };
+		link.appendChild(document.createTextNode(allnodes[n].data('id')));
+		td.appendChild(link);
+
+		tr.appendChild(td);
+		td = document.createElement("td");
+                td.colSpan = '2';
+		td.style.paddingLeft = "15px";
+		td.style.fontStyle = "italic";
+		if (allnodes[n].data('name') != null)
+		    td.appendChild(document.createTextNode(' '+allnodes[n].data('name')));
+		tr.appendChild(td);
+		ne_table.appendChild(tr);
+
+		var nodedges = cyobj[i].edges('[source = "'+allnodes[n].data("id")+'"]');
+		for (var e = 0; e < nodedges.length; e++) {
+		    tr = document.createElement("tr");
+		    td = document.createElement("td");
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+                    var link = document.createElement("a");
+		    link.style.cursor = "pointer";
+		    link.dataset.ee = nodedges[e].id();
+		    link.title = 'View edge details';
+		    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
+		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+		    td.appendChild(link);
+		    td.appendChild(document.createTextNode(" \u{1F87A} "))
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    td.appendChild(document.createTextNode(nodedges[e].data('target')));
+		    tr.appendChild(td);
+		    ne_table.appendChild(tr);
+		}
+
+		nodedges = cyobj[i].edges('[target = "'+allnodes[n].data("id")+'"]');
+		for (var e = 0; e < nodedges.length; e++) {
+		    tr = document.createElement("tr");
+		    td = document.createElement("td");
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    td.appendChild(document.createTextNode(" \u{1F878} "))
+                    var link = document.createElement("a");
+		    link.style.cursor = "pointer";
+		    link.dataset.ee = nodedges[e].id();
+		    link.title = 'View edge details';
+                    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
+		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+		    td.appendChild(link);
+		    tr.appendChild(td);
+		    td = document.createElement("td");
+		    td.appendChild(document.createTextNode(nodedges[e].data('source')));
+		    tr.appendChild(td);
+		    ne_table.appendChild(tr);
+		}
+	    }
+
+	    div.appendChild(ne_table);
+	    sesame('openmax',document.getElementById('a'+i+'_div'));
+	}
+    });
+
     cyobj[i].on('tap','node', function() {
 	var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
 
-        var fields = [ "name","id","categories" ];
+	var span = document.createElement("span");
+	span.style.float = "right";
+	span.style.fontStyle = "italic";
+	span.appendChild(document.createTextNode("Click on graph background to see a full list of nodes and edges"));
+	div.appendChild(span);
+
+	var fields = [ "name","id","categories" ];
 	for (var field of fields) {
 	    if (this.data(field) == null) continue;
 
@@ -2371,7 +2625,7 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes_1point1(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2379,6 +2633,12 @@ function add_cyto(i) {
     cyobj[i].on('tap','edge', function() {
         var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
+
+	var span = document.createElement("span");
+	span.style.float = "right";
+	span.style.fontStyle = "italic";
+	span.appendChild(document.createTextNode("Click on graph background to see a full list of nodes and edges"));
+	div.appendChild(span);
 
 	var a = document.createElement("a");
 	a.className = 'attvalue';
@@ -2424,14 +2684,16 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes_1point1(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'));
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
     cytodata[i] = null;
 }
 
-function show_attributes_1point1(html_div, atts) {
+
+
+function show_attributes(html_div, atts) {
     if (atts == null)  { return; }
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
@@ -2439,105 +2701,201 @@ function show_attributes_1point1(html_div, atts) {
     // always display iri first
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
 
-    var attshtml = "<table>";
+    var atts_table = document.createElement("table");
+
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
-	var snippet = "<tr><td colspan='2'><hr></td></tr>";
-	var value = null;
-
-	for (var nom in att) {
-	    if (nom == "value") {
-		value = att[nom];
-		continue;
-	    }
-	    else if (att[nom] != null) {
-		snippet += "<tr><td><b>" + nom + "</b>: </td><td>";
-
-		if (att[nom].toString().startsWith("http")) {
-		    snippet += "<a href='" + att[nom] + "'";
-		    snippet += " target='_blank'>" + att[nom] + "</a>";
-		}
-		else
-		    snippet += att[nom];
-
-		snippet += "</td></tr>";
-	    }
-	}
-	snippet += "<tr><td><b>value</b>: </td>";
-	if (value != null || value != '') {
-            var fixit = true;
-	    if (Array.isArray(att.value)) {
-		if (att.attribute_type_id == "biolink:publications")
-                    snippet += "<td>";
-		else
-                    snippet += "<td class='attvalue'>";
-		var br = '';
-		for (var val of att.value) {
-		    snippet += br;
-		    if (val == null) {
-			snippet += "--NULL--";
-		    }
-		    else if (typeof val === 'object') {
-			snippet += "<pre>"+JSON.stringify(val,null,2)+"</pre>";
-			fixit = false;
-		    }
-		    else if (val.toString().startsWith("PMID:")) {
-			snippet += "<a href='https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1] + "'";
-			snippet += " class='attvalue' title='View in PubMed' target='_blank'>" + val + "</a>";
-			if (semmeddb_sentences && semmeddb_sentences[0] && semmeddb_sentences[0]["value"][val]) {
-			    snippet += ' : <i>"'+semmeddb_sentences[0]["value"][val]["sentence"]+'"</i>';
-			    snippet += ' ('+semmeddb_sentences[0]["value"][val]["publication date"]+')';
-			}
-		    }
-		    else if (val.toString().startsWith("DOI:")) {
-			snippet += "<a href='https://doi.org/" + val.split(":")[1] + "'";
-			snippet += " class='attvalue' title='View in doi.org' target='_blank'>" + val + "</a>";
-		    }
-		    else if (val.toString().startsWith("http")) {
-			snippet += "<a href='" + val + "'";
-			snippet += " class='attvalue' target='_blank'>" + val + "</a>";
-		    }
-		    else {
-			snippet += val;
-		    }
-		    br = '<br>';
-		}
-	    }
-	    else if (typeof att.value === 'object') {
-		snippet += "<td><pre>"+JSON.stringify(att.value,null,2)+"</pre>";
-		fixit = false;
-	    }
-            else if (attributes_to_truncate.includes(att.original_attribute_name)) {
-		snippet += "<td class='attvalue'>";
-		snippet += Number(att.value).toPrecision(3);
-		fixit = false;
-	    }
-	    else if (value.toString().startsWith("http")) {
-		snippet += "<td class='attvalue'>";
-		snippet += "<a href='" + value + "'";
-		snippet += " target='_blank'>" + value + "</a>";
-	    }
-	    else
-		snippet += "<td class='attvalue'>" + att.value;
-
-	    if (att.attribute_type_id == "biolink:original_edge_information")
-                fixit = false;
-
-            if (fixit) {
-		snippet = snippet.toString().replace(/-!-/g,'<br>-!-');
-		snippet = snippet.toString().replace(/---/g,'<br>---');
-		snippet = snippet.toString().replace( /;;/g,'<br>;;');
-	    }
-	}
-	else {
-            snippet += "<td><i>-- empty/no value! --</i>";
-	}
-	snippet += "</td></tr>";
-
-        attshtml += snippet;
+	display_attribute(atts_table, att, semmeddb_sentences);
     }
-    html_div.innerHTML += attshtml;
+
+    html_div.appendChild(atts_table);
 }
 
+function display_attribute(tab, att, semmeddb) {
+    var row = document.createElement("tr");
+    var cell = document.createElement("td");
+
+    cell.colSpan = '2';
+    cell.appendChild(document.createElement("hr"));
+    row.appendChild(cell);
+    tab.appendChild(row);
+
+    var sub_atts = null;
+
+    var value = null;
+    for (var nom in att) {
+	if (nom == "value") {
+	    value = att[nom];
+	    continue;
+	}
+	else if (nom == "attributes") {
+	    sub_atts = att[nom];
+	    continue;
+	}
+	else if (att[nom] != null) {
+	    row = document.createElement("tr");
+	    cell = document.createElement("td");
+	    cell.style.fontWeight = "bold";
+            cell.appendChild(document.createTextNode(nom+":"));
+	    row.appendChild(cell);
+            cell = document.createElement("td");
+
+	    if (att[nom].toString().startsWith("http")) {
+		var a = document.createElement("a");
+		a.target = '_blank';
+		a.href = att[nom];
+		a.innerHTML = att[nom];
+		cell.appendChild(a);
+	    }
+	    else
+		cell.appendChild(document.createTextNode(att[nom]));
+
+	    row.appendChild(cell);
+	    tab.appendChild(row);
+	}
+    }
+
+    row = document.createElement("tr");
+    cell = document.createElement("td");
+    cell.style.fontWeight = "bold";
+    cell.appendChild(document.createTextNode("value:"));
+    row.appendChild(cell);
+    cell = document.createElement("td");
+    cell.style.overflowWrap = "anywhere"; //??
+
+    if (value != null && value != '') {
+	if (Array.isArray(att.value)) {
+	    if (att.attribute_type_id != "biolink:publications")
+                cell.className = 'attvalue';
+
+	    var br = false;
+	    for (var val of att.value) {
+		if (br)
+		    cell.appendChild(document.createElement("br"));
+
+		if (val == null) {
+                    cell.appendChild(document.createTextNode("--NULL--"));
+		}
+		else if (typeof val === 'object') {
+		    var pre = document.createElement("pre");
+		    pre.appendChild(document.createTextNode(JSON.stringify(val,null,2)));
+		    cell.appendChild(pre);
+		}
+		else if (val.toString().startsWith("PMID:")) {
+                    var a = document.createElement("a");
+                    a.className = 'attvalue';
+                    a.target = '_blank';
+                    a.href = "https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1];
+		    a.title = 'View in PubMed';
+                    a.innerHTML = val;
+                    cell.appendChild(a);
+
+		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val]) {
+			cell.appendChild(document.createTextNode(" : "));
+			var quote = document.createElement("i");
+			quote.appendChild(document.createTextNode(semmeddb[0]["value"][val]["sentence"]));
+			cell.appendChild(quote);
+			cell.appendChild(document.createTextNode(' ('+semmeddb[0]["value"][val]["publication date"]+')'));
+		    }
+		}
+		else if (val.toString().startsWith("DOI:")) {
+                    var a = document.createElement("a");
+		    a.className = 'attvalue';
+		    a.target = '_blank';
+		    a.href = "https://doi.org/" + val.split(":")[1];
+		    a.title = 'View in doi.org';
+		    a.innerHTML = val;
+		    cell.appendChild(a);
+		}
+		else if (val.toString().startsWith("http")) {
+                    var a = document.createElement("a");
+		    a.className = 'attvalue';
+		    a.target = '_blank';
+		    a.href = val;
+		    a.innerHTML = val;
+		    cell.appendChild(a);
+		}
+		else {
+                    cell.appendChild(document.createTextNode(val));
+		}
+
+		br = true;
+	    }
+	}
+	else if (typeof att.value === 'object') {
+            var pre = document.createElement("pre");
+	    pre.appendChild(document.createTextNode(JSON.stringify(att.value,null,2)));
+	    cell.appendChild(pre);
+	}
+        else if (attributes_to_truncate.includes(att.original_attribute_name)) {
+            cell.className = 'attvalue';
+	    cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
+	}
+	else if (value.toString().startsWith("http")) {
+	    cell.className = 'attvalue';
+            var a = document.createElement("a");
+	    a.target = '_blank';
+	    a.href = value;
+	    a.innerHTML = value;
+	    cell.appendChild(a);
+	}
+	else {
+            cell.className = 'attvalue';
+
+	    var multi = att.value.toString().split(/(-!-|---|\;\;)/);
+	    if (multi.length > 1) {
+		for (var line of multi) {
+		    cell.appendChild(document.createTextNode('\u25BA'));
+                    cell.appendChild(document.createTextNode(line));
+		    cell.appendChild(document.createElement("br"));
+		}
+	    }
+	    else
+		cell.appendChild(document.createTextNode(att.value));
+	}
+    }
+    else {
+        var text = document.createElement("i");
+	text.appendChild(document.createTextNode("-- empty / no value! --"));
+	cell.appendChild(text);
+    }
+
+    row.appendChild(cell);
+    tab.appendChild(row);
+
+    if (sub_atts) {
+	row = document.createElement("tr");
+	cell = document.createElement("td");
+        cell.style.fontWeight = "bold";
+	cell.appendChild(document.createTextNode("(sub)attributes:"));
+	row.appendChild(cell);
+
+	cell = document.createElement("td");
+	cell.className = 'subatts';
+	var subatts_table = document.createElement("table");
+	subatts_table.className = 't100';
+
+	for (var sub_att of sub_atts)
+	    display_attribute(subatts_table, sub_att, semmeddb);
+
+	cell.appendChild(subatts_table);
+        row.appendChild(cell);
+        tab.appendChild(row);
+    }
+}
+
+
+function cyresize(index,size) {
+    var height = 300;
+    if (size == 'm')
+	height = 500;
+    else if (size == 'L')
+	height = 1000;
+
+    document.getElementById('cy'+index).parentNode.style.height = height+'px';
+    cyobj[index].resize();
+    cyobj[index].fit();
+    sesame('openmax',document.getElementById('a'+index+'_div'));
+}
 
 function cylayout(index,layname) {
     var layout = cyobj[index].layout({
@@ -2568,7 +2926,7 @@ function mapNodeShape(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "rectangle";} //??
     if (ntype.endsWith("CellularComponent"))  { return "ellipse";}
     if (ntype.endsWith("BiologicalProcess"))  { return "tag";}
-    if (ntype.endsWith("ChemicalEntity"))  { return "diamond";}
+    if (ntype.endsWith("ChemicalEntity"))     { return "diamond";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "rhomboid";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "star";}
     return "rectangle";
@@ -2584,7 +2942,7 @@ function mapNodeColor(ele) {
     if (ntype.endsWith("MolecularFunction"))  { return "blue";} //??
     if (ntype.endsWith("CellularComponent"))  { return "purple";}
     if (ntype.endsWith("BiologicalProcess"))  { return "green";}
-    if (ntype.endsWith("ChemicalEntity"))  { return "yellowgreen";}
+    if (ntype.endsWith("ChemicalEntity"))     { return "yellowgreen";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "violet";}
     if (ntype.endsWith("PhenotypicFeature"))  { return "indigo";}
     return "#04c";
@@ -2638,6 +2996,7 @@ function qg_node(id,render) {
 	newqnode.categories = [];
 	newqnode.constraints = [];
 	newqnode.is_set = false;
+	newqnode.option_group_id = null;
 	newqnode._names = [];
 
 	input_qg.nodes[id] = newqnode;
@@ -2750,6 +3109,22 @@ function qg_node(id,render) {
     }
 
     document.getElementById('nodeeditor_set').checked = input_qg.nodes[id].is_set;
+
+    htmlnode = document.getElementById('nodeeditor_optgpid');
+    htmlnode.innerHTML = '';
+    if (input_qg.nodes[id].option_group_id) {
+	htmlnode.appendChild(document.createTextNode(input_qg.nodes[id].option_group_id));
+
+	var link = document.createElement("a");
+	link.style.float = "right";
+	link.href = 'javascript:qg_remove_optgpid_from_qnode();';
+	link.title = "remove Option Group ID from this Qnode";
+	link.appendChild(document.createTextNode(" [ remove ] "));
+	htmlnode.appendChild(link);
+    }
+    else
+	input_qg.nodes[id].option_group_id = null;
+
     UIstate.editnodeid = id;
 
     qg_update_qnode_list();
@@ -2967,6 +3342,40 @@ function qg_remove_constraint_from_qedge(idx) {
     qg_edge(id);
 }
 
+function qg_update_optgpid_to_qgitem(what) {
+    var id = null;
+    if (what == 'qedge')
+	id = UIstate.editedgeid;
+    else if (what == 'qnode')
+	id = UIstate.editnodeid;
+    if (!id) return;
+
+    var val = document.getElementById(what+"optgpidbox").value.trim();
+    document.getElementById(what+"optgpidbox").value = '';
+    if (!val) return;
+
+    if (what == 'qedge') {
+	input_qg.edges[id]['option_group_id'] = val;
+	qg_edge(id);
+    }
+    else {
+	input_qg.nodes[id]['option_group_id'] = val;
+	qg_node(id);
+    }
+}
+function qg_remove_optgpid_from_qnode() {
+    var id = UIstate.editnodeid;
+    if (!id) return;
+    input_qg.nodes[id]['option_group_id'] = null;
+    qg_node(id);
+}
+function qg_remove_optgpid_from_qedge() {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+    input_qg.edges[id]['option_group_id'] = null;
+    qg_edge(id);
+}
+
 function qg_setset_for_qnode() {
     var id = UIstate.editnodeid;
     if (!id) return;
@@ -2994,6 +3403,8 @@ function qg_edge(id) {
 	var newqedge = {};
 	newqedge.predicates = [];
 	newqedge.constraints = [];
+        newqedge.exclude = false;
+	newqedge.option_group_id = null;
 	// join last two nodes if not specified otherwise [ToDo: specify]
 	newqedge.subject = nodes[nodes.length - 2];
 	newqedge.object = nodes[nodes.length - 1];
@@ -3075,6 +3486,24 @@ function qg_edge(id) {
 	    cindex++;
 	}
     }
+
+    document.getElementById('edgeeditor_xcl').checked = input_qg.edges[id].exclude;
+
+    htmlnode = document.getElementById('edgeeditor_optgpid');
+    htmlnode.innerHTML = '';
+    if (input_qg.edges[id].option_group_id) {
+	htmlnode.appendChild(document.createTextNode(input_qg.edges[id].option_group_id));
+
+	var link = document.createElement("a");
+	link.style.float = "right";
+	link.href = 'javascript:qg_remove_optgpid_from_qedge();';
+	link.title = "remove Option Group ID from this Qedge";
+	link.appendChild(document.createTextNode(" [ remove ] "));
+	htmlnode.appendChild(link);
+    }
+    else
+	input_qg.edges[id].option_group_id = null;
+
 
     if (document.getElementById("showQGjson").checked) {
 	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
@@ -3159,6 +3588,14 @@ function qg_update_qedge() {
     });
     cyobj[99999].reset();
     cylayout(99999,"breadthfirst");
+}
+
+function qg_setxcl_for_qedge() {
+    var id = UIstate.editedgeid;
+    if (!id) return;
+
+    input_qg.edges[id].exclude = document.getElementById('edgeeditor_xcl').checked;
+    qg_edge(id);
 }
 
 function qg_edge_swap_obj_subj() {
@@ -3320,7 +3757,7 @@ function qg_display_edge_predicates(all) {
 
     var preds = [];
     if (all)
-	preds = Object.keys(all_predicates).sort();
+	preds = all_predicates.sort();
     else if (input_qg.nodes[obj]['categories'][0] in predicates[input_qg.nodes[subj]['categories'][0]])
 	preds = predicates[input_qg.nodes[subj]['categories'][0]][input_qg.nodes[obj]['categories'][0]].sort();
 
@@ -3364,6 +3801,7 @@ function add_nodetype_to_query_graph(nodetype) {
     tmpdata["is_set"] = false;
     tmpdata["_name"]  = null;
     tmpdata["_desc"]  = "Generic " + nodetype;
+    tmpdata["option_group_id"] = null;
     if (nodetype != 'NONSPECIFIC')
 	tmpdata["categories"] = [nodetype];
 
@@ -3375,16 +3813,24 @@ function qg_clean_up(xfer) {
     for (var nid in input_qg.nodes) {
 	var gnode = input_qg.nodes[nid];
 
-	for (var att of ["_names","_desc"] ) {
-	    if (gnode.hasOwnProperty(att))
-		delete gnode[att];
+	if (gnode.ids) {
+	    if (gnode.ids[0] == null)
+		delete gnode.ids;
+	    else if (gnode.ids.length == 1)
+		if (gnode['_names'] && gnode['_names'][0] != null)
+		    gnode.name = gnode['_names'][0];
 	}
-	if (gnode.ids && gnode.ids[0] == null)
-	    delete gnode.ids;
 	if (gnode.categories && gnode.categories[0] == null)
 	    delete gnode.categories;
 	if (gnode.constraints && gnode.constraints[0] == null)
 	    delete gnode.constraints;
+	if (gnode.option_group_id == null)
+	    delete gnode.option_group_id;
+
+	for (var att of ["_names","_desc"] ) {
+	    if (gnode.hasOwnProperty(att))
+		delete gnode[att];
+	}
     }
 
     for (var eid in input_qg.edges) {
@@ -3393,6 +3839,10 @@ function qg_clean_up(xfer) {
 	    delete gedge.predicates;
 	if (gedge.constraints && gedge.constraints[0] == null)
 	    delete gedge.constraints;
+        if (gedge.option_group_id == null)
+	    delete gedge.option_group_id;
+        if (!gedge.exclude)
+	    delete gedge.exclude;
     }
 
     if (xfer)
@@ -3521,7 +3971,7 @@ function show_dsl_command_options(command) {
 	}
         else if (araxi_commands[command].parameters[par]['type'] == 'ARAXedge') {
 	    araxi_commands[command].parameters[par]['enum'] = [];
-	    for (const p of Object.keys(all_predicates).sort()) {
+	    for (const p of all_predicates.sort()) {
 		araxi_commands[command].parameters[par]['enum'].push(p);
 	    }
 	}
@@ -3846,7 +4296,7 @@ function show_wf_operation_options(operation, index) {
 	}
 	else if (wf_operations[operation].parameters[par]['type'] == 'ARAXedge') {
 	    wf_operations[operation].parameters[par]['enum'] = [];
-	    for (const p of Object.keys(all_predicates).sort()) {
+	    for (const p of all_predicates.sort()) {
 		wf_operations[operation].parameters[par]['enum'].push(p);
 	    }
 	}
@@ -4032,13 +4482,14 @@ async function import_qg2wf(fromqg) {
 function load_meta_knowledge_graph() {
     var allnodes_node = document.getElementById("allnodetypes");
 
-    fetch(providers["ARAX"].url + "/meta_knowledge_graph")
-	.then(response => {
+    fetch(providers["ARAX"].url + "/meta_knowledge_graph?format=simple")
+        .then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong with /meta_knowledge_graph');
 	})
         .then(data => {
-	    //add_to_dev_info("META_KNOWLEDGE_GRAPH",data);
+	    predicates = data.predicates_by_categories;
+	    all_predicates = data.supported_predicates;
 
 	    allnodes_node.innerHTML = '';
 	    var opt = document.createElement('option');
@@ -4047,63 +4498,26 @@ function load_meta_knowledge_graph() {
 	    opt.innerHTML = "Add Category to Node&nbsp;&nbsp;&nbsp;&#8675;";
 	    allnodes_node.appendChild(opt);
 
-            for (const n in data.nodes) {
+            for (const n in data.predicates_by_categories) {
 		opt = document.createElement('option');
 		opt.value = n;
 		opt.innerHTML = n;
 		allnodes_node.appendChild(opt);
-		// recreate old /predicates structure (simpler/faster lookups)
-		predicates[n] = {};
-		for (const o in data.nodes)
-		    predicates[n][o] = [];
 	    }
-            for (const e of data.edges) {
-		var bad = false;
-		if (!predicates[e.subject])
-                    bad = e.subject;
-		if (!predicates[e.object])
-		    bad = e.object;
-		if (bad) {
-                    console.warn(bad+" * not in nodes!!");
-		    continue;
-		}
-		predicates[e.subject][e.object].push(e.predicate);
-		all_predicates[e.predicate] = 1;
-	    }
-	    // clean up empty ones
-            for (var s in predicates)
-		for (var o in predicates[s])
-		    if (predicates[s][o].length < 1)
-			delete predicates[s][o];
-
-	    opt = document.createElement('option');
+            opt = document.createElement('option');
 	    opt.value = 'NONSPECIFIC';
 	    opt.innerHTML = "Unspecified/Non-specific";
-	    allnodes_node.appendChild(opt);
-
-            opt = document.createElement('option');
-	    opt.id = 'nodesetA';
-	    opt.value = 'LIST_A';
-	    opt.title = "Set of Nodes from List [A]";
-	    opt.innerHTML = "List [A]";
-	    allnodes_node.appendChild(opt);
-
-            opt = document.createElement('option');
-	    opt.id = 'nodesetB';
-	    opt.value = 'LIST_B';
-            opt.title = "Set of Nodes from List [B]";
-	    opt.innerHTML = "List [B]";
 	    allnodes_node.appendChild(opt);
 
 	    qg_display_edge_predicates(true);
 
 	    var all_preds_node = document.getElementById("fullpredicatelist");
 	    all_preds_node.innerHTML = '';
-            opt = document.createElement('option');
+	    opt = document.createElement('option');
 	    opt.value = '';
-            opt.innerHTML = "Full List of Predicates&nbsp;("+Object.keys(all_predicates).length+")&nbsp;&nbsp;&nbsp;&#8675;";
+	    opt.innerHTML = "Full List of Predicates&nbsp;("+all_predicates.length+")&nbsp;&nbsp;&nbsp;&#8675;";
 	    all_preds_node.appendChild(opt);
-            for (const p of Object.keys(all_predicates).sort()) {
+	    for (const p of all_predicates.sort()) {
 		opt = document.createElement('option');
 		opt.value = p;
 		opt.innerHTML = p;
@@ -4118,7 +4532,8 @@ function load_meta_knowledge_graph() {
 	    opt.innerHTML = "-- Error Loading Node Types --";
 	    allnodes_node.appendChild(opt);
 	    console.error(error);
-        });
+	});
+
 }
 
 function retrieveRecentQs() {
@@ -4151,6 +4566,8 @@ function retrieveRecentQs() {
 	    stats.state     = {};
 	    stats.status    = {};
 	    stats.submitter = {};
+	    stats.domain    = {};
+	    stats.hostname  = {};
 	    stats.instance_name = {};
 	    var timeline = {};
             timeline["ISB_watchdog"] = { "data": [ { "label": 0 , "data": [] , "_qstart": new Date() } ] };
@@ -4168,7 +4585,7 @@ function retrieveRecentQs() {
 	    var tr = document.createElement("tr");
             tr.dataset.qstatus = "COLUMNHEADER";
 	    var td;
-	    for (var head of ["Qid","Start","Elapsed","Submitter","Instance","pid","Response","State","Status","Description"] ) {
+	    for (var head of ["Qid","Start (UTC)","Elapsed","Submitter","Domain","Hostname","Instance","pid","Response","State","Status","Description"] ) {
 		td = document.createElement("th")
                 if (head == "Description")
 		    td.style.textAlign = "left";
@@ -4186,7 +4603,7 @@ function retrieveRecentQs() {
 		var qend = null;
 		var qdur = null;
 		var qid = null;
-		for (var field of ["query_id","start_datetime","elapsed","submitter","instance_name","pid","response_id","state","status","description"] ) {
+		for (var field of ["query_id","start_datetime","elapsed","submitter","domain","hostname","instance_name","pid","response_id","state","status","description"] ) {
                     td = document.createElement("td");
                     if (field == "start_datetime") {
 			td.style.whiteSpace = "nowrap";
@@ -4205,6 +4622,7 @@ function retrieveRecentQs() {
 			qdur = qdur.getUTCHours()+"h " + qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
 		    }
                     else if (field == "state") {
+                        td.style.whiteSpace = "nowrap";
 			var span = document.createElement("span");
 			if (query[field] == "Completed") {
 			    span.innerHTML = '&check;';
@@ -4214,9 +4632,13 @@ function retrieveRecentQs() {
 			    span.innerHTML = '&cross;';
 			    span.className = 'explevel p5';
 			}
+			else if (query[field] == "Terminated") {
+			    span.innerHTML = '&cross;';
+			    span.className = 'explevel p3';
+			}
 			else {
 			    span.innerHTML = '&#10140;';
-			    span.className = 'explevel p3';
+			    span.className = 'explevel p7';
 			}
 			td.appendChild(span);
 			td.innerHTML += '&nbsp;';
@@ -4225,7 +4647,7 @@ function retrieveRecentQs() {
 			else
 			    stats.state[query[field]] = 1;
 		    }
-                    else if (field == "instance_name" || field == "submitter") {
+                    else if (field == "instance_name" || field == "submitter" || field == "domain" || field == "hostname") {
 			td.style.whiteSpace = "nowrap";
                         if (stats[field][query[field]])
 			    stats[field][query[field]]++;
@@ -4238,7 +4660,7 @@ function retrieveRecentQs() {
 		    else if (field == "query_id") {
                         var link = document.createElement("a");
 			link.target = '_blank';
-			link.title='view the posted query (JSON)';
+			link.title = 'view the posted query (JSON)';
 			link.style.cursor = "pointer";
 			link.href = providers["ARAX"].url + '/status?id=' + query[field];
 			link.appendChild(document.createTextNode(query[field]));
@@ -4248,7 +4670,7 @@ function retrieveRecentQs() {
 		    else if (field == "response_id") {
 			var link = document.createElement("a");
                         link.target = '_blank';
-			link.title='view this response';
+			link.title = 'view this response';
 			link.style.cursor = "pointer";
                         link.href = '//' + window.location.hostname + window.location.pathname + '?r=' + query[field];
 			link.appendChild(document.createTextNode(query[field]));
@@ -4260,8 +4682,12 @@ function retrieveRecentQs() {
                         span.style.padding = "2px 6px";
 			if (query[field] == "OK")
 			    span.className = "explevel p9";
+			else if (query[field] == "Running")
+			    span.className = "explevel p7";
 			else if (query[field] == "Reset")
 			    span.className = "explevel p5";
+			else if (query[field] == "Terminated")
+			    span.className = "explevel p3";
 			else
 			    span.className = "explevel p1";
                         span.appendChild(document.createTextNode(query[field]));
@@ -4427,6 +4853,8 @@ function displayQTimeline(tdata) {
 	.zQualitative(true)
 	.segmentTooltipContent(function(d) { return "Query ID: <strong>"+d.data["_qid"].toString()+"</strong><br>"+d.data["_qdur"]; } )
     (timeline_node);
+
+    timeline_node.appendChild(document.createTextNode("Your computer's local time"));
 }
 
 function filter_queries(tab, span, type) {

@@ -340,10 +340,9 @@ class ARAXExpander:
                                 response.update_query_plan(qedge_key, kp, "Error",
                                                            f"Process returned error {kp_log.status}")
                             # Merge KP logs as needed, since processes can't share the main log
-                            if len(kps_to_query) > 1:
-                                if kp_log.status != 'OK':
-                                    kp_log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
-                                log.merge(kp_log)
+                            if len(kps_to_query) > 1 and kp_log.status != 'OK':
+                                kp_log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
+                            log.merge(kp_log)
                             if response.status != 'OK':
                                 return response
                 else:
@@ -1191,7 +1190,7 @@ class ARAXExpander:
     def _get_prune_threshold(one_hop_qg: QueryGraph) -> int:
         """
         Returns the prune threshold for the given qedge (i.e., the max number of nodes allowed to be fed in as 'input'
-        curies for this qedge expansion.
+        curies for this qedge expansion).
         """
         qedge = next(qedge for qedge in one_hop_qg.edges.values())
         qnode_a = one_hop_qg.nodes[qedge.subject]

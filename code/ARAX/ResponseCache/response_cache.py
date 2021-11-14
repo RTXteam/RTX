@@ -19,6 +19,10 @@ import requests
 import requests_cache
 from flask import Flask,redirect
 
+import boto3
+import timeit
+
+import sqlalchemy
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -142,8 +146,9 @@ class ResponseCache:
         self.engine = engine
 
         #### If the tables don't exist, then create the database
-        if not engine.dialect.has_table(engine, Response.__tablename__):
-            print(f"WARNING: {self.engine_type} tables do not exist; creating them")
+        database_info = sqlalchemy.inspect(engine)
+        if not database_info.has_table(Response.__tablename__):
+            eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
             Base.metadata.create_all(engine)
 
 
@@ -179,29 +184,56 @@ class ResponseCache:
         session.add(stored_response)
         session.flush()
         session.commit()
+        response_filename = f"/responses/{stored_response.response_id}.json"
 
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
             servername = 'arax.ncats.io'
         envelope.id = f"https://{servername}/api/arax/v1.2/response/{stored_response.response_id}"
 
-        #### Instead of storing the large response object in the MySQL database as a blob
-        #### now store it as a JSON file on the filesystem
-        response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
-        if not os.path.exists(response_dir):
-            try:
-                os.mkdir(response_dir)
-            except:
-                eprint(f"ERROR: Unable to create dir {response_dir}")
+        #### New system to store the responses in an S3 bucket
+        rtx_config = RTXConfiguration()
+        KEY_ID = rtx_config.config["Global"]['s3']['access']
+        ACCESS_KEY = rtx_config.config["Global"]['s3']['secret']
+        succeeded_to_s3 = False
 
-        if os.path.exists(response_dir):
-            response_filename = f"{stored_response.response_id}.json"
-            response_path = f"{response_dir}/{response_filename}"
-            try:
-                with open(response_path, 'w') as outfile:
-                    json.dump(envelope.to_dict(), outfile, sort_keys=True, indent=2)
-            except:
-                eprint(f"ERROR: Unable to write response to file {response_path}")
+        try:
+            s3 = boto3.resource(
+                's3',
+                region_name='us-west-2',
+                aws_access_key_id=KEY_ID,
+                aws_secret_access_key=ACCESS_KEY
+            )
+            serialized_query_graph = json.dumps(envelope.to_dict(), sort_keys=True, indent=2)
+            response.debug(f"Writing response to S3 bucket")
+            t0 = timeit.default_timer()
+            s3.Object('arax-response-storage', response_filename).put(Body=serialized_query_graph)
+            t1 = timeit.default_timer()
+            print("Elapsed time: "+str(t1-t0))
+            response.debug(f"Wrote {response_filename} in {t1-t0} seconds")
+            succeeded_to_s3 = True
+
+        except:
+            response.error(f"Unable to store response in S3 bucket as {response_filename}", error_code="InternalError")
+
+
+        #### if the S3 write failed, store it as a JSON file on the filesystem
+        if not succeeded_to_s3:
+            response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
+            if not os.path.exists(response_dir):
+                try:
+                    os.mkdir(response_dir)
+                except:
+                    eprint(f"ERROR: Unable to create dir {response_dir}")
+
+            if os.path.exists(response_dir):
+                response_filename = f"{stored_response.response_id}.json"
+                response_path = f"{response_dir}/{response_filename}"
+                try:
+                    with open(response_path, 'w') as outfile:
+                        json.dump(envelope.to_dict(), outfile, sort_keys=True, indent=2)
+                except:
+                    eprint(f"ERROR: Unable to write response to file {response_path}")
 
         return stored_response.response_id
 
@@ -222,15 +254,46 @@ class ResponseCache:
             #### Find the response
             stored_response = session.query(Response).filter(Response.response_id==int(response_id)).first()
             if stored_response is not None:
+
+                found_response_locally = False
                 response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
                 response_filename = f"{stored_response.response_id}.json"
                 response_path = f"{response_dir}/{response_filename}"
                 try:
                     with open(response_path) as infile:
                         envelope = json.load(infile)
+                    found_response_locally = True
                 except:
-                    eprint(f"ERROR: Unable to read response from file '{response_path}'")
-                    return
+                    eprint(f"ERROR: Unable to read response from file '{response_path}'. Will now try S3")
+
+                #### If the file wasn't local, try it in S3
+                if not found_response_locally:
+                    rtx_config = RTXConfiguration()
+                    KEY_ID = rtx_config.config["Global"]['s3']['access']
+                    ACCESS_KEY = rtx_config.config["Global"]['s3']['secret']
+
+                    try:
+                        s3 = boto3.resource(
+                            's3',
+                            region_name='us-west-2',
+                            aws_access_key_id=KEY_ID,
+                            aws_secret_access_key=ACCESS_KEY
+                        )
+
+                        response_filename = f"/responses/{response_id}.json"
+                        eprint(f"INFO: Attempting to read {response_filename} from S3")
+                        t0 = timeit.default_timer()
+
+                        content = s3.Object('arax-response-storage', response_filename).get()["Body"].read()
+                        envelope = json.loads(content)
+                        t1 = timeit.default_timer()
+                        print("Elapsed time: "+str(t1-t0))
+                        eprint(f"INFO: Successfully read {response_filename} from S3 in {t1-t0} seconds")
+
+                    except:
+                        eprint(f"ERROR: Unable to read {response_filename} from S3")
+                        return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
 
                 #### Perform a validation on it
                 try:
@@ -257,7 +320,10 @@ class ResponseCache:
             ars_hosts = [ 'ars.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
-                    response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
+                    try:
+                        response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
+                    except Exception as e:
+                        return( { "status": 404, "title": f"Remote host {ars_host} unavailable", "detail": f"Connection attempts to {ars_host} triggered an exception: {e}", "type": "about:blank" }, 404)
                 status_code = response_content.status_code
                 #eprint(f"--- Fetch of {response_id} from {ars_host} yielded {status_code}")
                 if status_code == 200:

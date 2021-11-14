@@ -50,7 +50,7 @@ class ARAXResponse:
 
         if code is None:
             code = ''
-        self.__add_message( message, self.DEBUG, code=code )
+        self._add_message( message, self.DEBUG, code=code )
 
 
     #### Add an info message
@@ -65,7 +65,7 @@ class ARAXResponse:
 
         if code is None:
             code = ''
-        self.__add_message( message, self.INFO, code=code )
+        self._add_message( message, self.INFO, code=code )
 
 
     #### Add a warning message
@@ -81,7 +81,7 @@ class ARAXResponse:
 
         if code is None:
             code = ''
-        self.__add_message( message, self.WARNING, code=code )
+        self._add_message( message, self.WARNING, code=code )
         self.n_warnings += 1
 
 
@@ -108,7 +108,7 @@ class ARAXResponse:
         if error_code is not None and code is 'UnknownError':
             code = error_code
 
-        self.__add_message( message, self.ERROR, code=code )
+        self._add_message( message, self.ERROR, code=code )
         self.n_errors += 1
         self.status = 'ERROR'
         self.http_status = http_status
@@ -117,7 +117,7 @@ class ARAXResponse:
 
 
     #### Add a message
-    def __add_message(self, message, level, code=None):
+    def _add_message(self, message, level, code=None):
         """Private method called by the public methods to actually add the message to the log.
 
         :param message: A natural English statement describing the message.

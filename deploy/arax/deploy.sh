@@ -23,4 +23,4 @@ do
 done
 
 # deploy helm chart
-helm -n ${namespace} upgrade --install ${projectName} ./
+helm -n ${namespace} upgrade --install ${projectName} -f arax.values.ncats.yaml ./

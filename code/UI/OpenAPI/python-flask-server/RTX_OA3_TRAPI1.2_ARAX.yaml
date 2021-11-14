@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   description: TRAPI 1.2 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
-  version: 1.2.5
+  version: 1.2.6
   title: ARAX Translator Reasoner
   contact:
     email: edeutsch@systemsbiology.org
@@ -13,6 +13,7 @@ info:
     component: ARA
     team:
       - Expander Agent
+    infores: infores:arax
     biolink-version: 2.1.0
     externalDocs:
       description: >-
@@ -24,21 +25,26 @@ info:
     asyncquery: true
     operations:
       - lookup
-      - overlay_connect_knodes
-      - filter_results_top_n
+      - lookup_and_score
       - overlay_compute_ngd
       - overlay_compute_jaccard
       - overlay_fisher_exact_test
+      - overlay_connect_knodes
+      - filter_results_top_n
       - bind
       - fill
       - filter_kgraph_orphans
-      - score
-      - complete_results
       - filter_kgraph_top_n
       - filter_kgraph_std_dev
       - filter_kgraph_percentile
       - filter_kgraph_discrete_kedge_attribute
       - filter_kgraph_continuous_kedge_attribute
+      - sort_results_score
+      - sort_results_edge_attribute
+      - sort_results_node_attribute
+      - annotate_nodes
+      - score
+      - complete_results
     externalDocs:
       description: >-
         The values for version are restricted according to the regex in
@@ -51,6 +57,7 @@ externalDocs:
 servers:
   - url: https://arax.ncats.io/api/arax/v1.2
     description: ARAX Translator Reasoner API
+    x-maturity: production
 tags:
   - name: meta_knowledge_graph
     description: Get supported relationships
@@ -105,6 +112,15 @@ paths:
         - meta_knowledge_graph
       summary: Meta knowledge graph representation of this TRAPI web service.
       operationId: meta_knowledge_graph
+      parameters:
+      - in: query
+        name: format
+        description: >-
+          Provide meta_knowledge_graph information in a format other than the default.
+          Default value is 'full'. Also permitted is 'simple'
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: >-
@@ -398,6 +414,20 @@ paths:
         schema:
           type: integer
           example: 10
+      - in: query
+        name: terminate_pid
+        description: >-
+          PID of an ongoing query to terminate
+        required: false
+        schema:
+          type: integer
+      - in: query
+        name: authorization
+        description: >-
+          Authorization string required for certain calls to status
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: successful operation

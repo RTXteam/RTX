@@ -405,6 +405,9 @@ class ComputeFTEST:
 
                 self.message.knowledge_graph.edges[edge_id] = edge
 
+                if self.message.results is not None and len(self.message.results) > 0:
+                    ou.update_results_with_overlay_edge(subject_knode_key=value[2], object_knode_key=value[3], kedge_key=edge_id, message=self.message, log=self.response)
+
                 count = count + 1
 
             self.response.debug(f"{count} new virtual edges were added to message KG")

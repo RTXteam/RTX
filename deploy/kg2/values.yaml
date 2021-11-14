@@ -1,0 +1,74 @@
+# Default values for kg2.
+
+replicaCount: 1
+
+initContainer:
+  image:
+    repository: 853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-utils
+    pullPolicy: Always
+    tag: "sftp"
+
+image:
+  repository: 853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-rtx-kg2
+  pullPolicy: IfNotPresent
+  tag: "BUILD_VERSION"
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+service:
+  type: LoadBalancer
+  port: 80
+
+ingress:
+  annotations: 
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/tags: Environment=CI
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=300
+    alb.ingress.kubernetes.io/security-groups: translator-ci-alb-http-sg
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS-1-2-Ext-2018-06
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+    alb.ingress.kubernetes.io/success-codes: '200'
+    alb.ingress.kubernetes.io/healthcheck-path: '/'
+  host: kg2.ci.transltr.io
+
+# With the following two sections, we can restrict the deployment on and only on the specific node
+# toleration to node taint such that this deployment can be scheduled on the tainted node while others without the toleration can not
+tolerations: 
+- key      : "rtx"
+  value    : "kg2"
+  operator : "Equal"
+  effect   : "NoSchedule"
+
+# nodeSelection affinity(application=kg2) such that this deployment will only select the node with that label
+affinity: 
+  # this ensures pod only runs on node with label application=kg2
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: application
+          operator: In
+          values:
+          - kg2
+  # this ensures only ONE pod will run on each node
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchExpressions:
+        - key: app.kubernetes.io/name
+          operator: In
+          values:
+          - kg2
+      topologyKey: "kubernetes.io/hostname"
+
+
