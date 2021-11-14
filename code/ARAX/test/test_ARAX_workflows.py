@@ -139,7 +139,7 @@ def test_example_2():
 @pytest.mark.slow
 def test_example_3():
     query = {"operations": {"actions": [
-        "add_qnode(name=DOID:9406, key=n00)",
+        "add_qnode(name=MONDO:0005301, key=n00)", # CM: change "DOID:9406" to "MONDO:0005301" because DOID:9406 has no matched OMOP id. 
         "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
         "add_qnode(categories=biolink:Protein, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
