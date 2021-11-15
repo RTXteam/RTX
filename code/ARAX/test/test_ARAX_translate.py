@@ -478,7 +478,157 @@ def test_overlay_after_lookup():
                     ngd_bindings.add(edge_binding.id)
     assert len(ngd_bindings) == len(message.results)
 
+@pytest.mark.slow
+def test_connect_knodes_2_nodes():
+    query = {
+      "workflow": [
+        {
+          "id": "fill"
+        },
+        {
+          "id": "overlay_connect_knodes"
+        },
+        {
+          "id": "complete_results"
+        },
+        {
+          "id": "score"
+        },
+        {
+          "id": "sort_results_score",
+          "parameters": {
+            "ascending_or_descending": "descending"
+          }
+        },
+        {
+          "id": "filter_results_top_n",
+          "parameters": {
+            "max_results": 30
+          }
+        }
+      ],
+      "message": {
+        "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalEntity"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+      }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 30
+    connected_bindings = set()
+    for result in message.results:
+        assert result.score is not None
+        for eb_key, edge_bindings in result.edge_bindings.items():
+            for edge_binding in edge_bindings:
+                if edge_binding.id.startswith("connect_knodes"):
+                    connected_bindings.add(edge_binding.id)
+    assert len(connected_bindings) > 0
 
+@pytest.mark.slow
+def test_connect_knodes_3_nodes():
+    query = {
+      "workflow": [
+        {
+          "id": "fill"
+        },
+        {
+          "id": "overlay_connect_knodes"
+        },
+        {
+          "id": "complete_results"
+        },
+        {
+          "id": "score"
+        },
+        {
+          "id": "sort_results_score",
+          "parameters": {
+            "ascending_or_descending": "descending"
+          }
+        },
+        {
+          "id": "filter_results_top_n",
+          "parameters": {
+            "max_results": 30
+          }
+        }
+      ],
+      "message": {
+        "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "categories": [
+                            "biolink:Gene"
+                        ]
+                    },
+                    "n1": {
+                        "ids": [
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalEntity"
+                        ]
+                    },
+                    "n2": {
+                        "categories": [
+                            "biolink:Disease"
+                        ]
+                    }
+                },
+                "edges": {
+                    "e01": {
+                        "subject": "n1",
+                        "object": "n0",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    },
+                    "e02": {
+                        "subject": "n0",
+                        "object": "n2",
+                        "predicates": [
+                            "biolink:related_to"
+                        ]
+                    }
+                }
+            }
+      }
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) == 30
+    connected_bindings = set()
+    for result in message.results:
+        assert result.score is not None
+        for eb_key, edge_bindings in result.edge_bindings.items():
+            for edge_binding in edge_bindings:
+                if edge_binding.id.startswith("connect_knodes"):
+                    connected_bindings.add(edge_binding.id)
+    assert len(connected_bindings) > 0
 
 
 if __name__ == "__main__":
