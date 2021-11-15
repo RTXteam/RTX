@@ -22,7 +22,7 @@ def run_query_dict_in_child_process(query_dict: dict,
     read_fd, write_fd = os.pipe()
 
     child_process_log_filename = tempfile.mkstemp(prefix='arax-query-controller-child-process-', suffix='.log')[1]
-    logging.debug(f"[query_controller]: child process log file name {child_process_log_filename}")
+    logging.info(f"[query_controller]: child process log file name {child_process_log_filename}")
 
     # always flush stdout and stderr before calling fork(); someone could have turned off auto-flushing and we don't want double-output
     sys.stderr.flush()
