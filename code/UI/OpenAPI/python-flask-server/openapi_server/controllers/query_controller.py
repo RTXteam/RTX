@@ -87,7 +87,7 @@ def query(request_body):  # noqa: E501
     mime_type = 'application/json'
 
     http_status = 200
-    if query.get('stream_progress', False):
+    if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:
 
         fork_mode = True # :DEBUG: can turn this to False to disable fork-mode
         http_status = None
