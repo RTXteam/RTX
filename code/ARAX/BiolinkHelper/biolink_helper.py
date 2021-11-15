@@ -205,15 +205,16 @@ class BiolinkHelper:
                     "direct_mappings": mixin_to_categories_map.get(category_mixin, set())
                 }
             del biolink_lookup_map["category_mixins"]["MIXIN"]  # No longer need this imaginary root node
+            predicate_mixins_in_tree = {mixin_node.identifier for mixin_node in predicate_mixin_tree.all_nodes()}
             for predicate_node in predicate_tree.all_nodes():
                 predicate = predicate_node.identifier
                 ancestors = self._get_ancestors_from_tree(predicate, predicate_tree)
                 descendants = self._get_descendants_from_tree(predicate, predicate_tree)
                 mixin_ancestors = {mixin_ancestor for ancestor in ancestors
-                                   for mixin in predicate_to_mixins_map[ancestor]
+                                   for mixin in predicate_to_mixins_map[ancestor].intersection(predicate_mixins_in_tree)  # Skip weird mixins that have non-mixin parents
                                    for mixin_ancestor in biolink_lookup_map["predicate_mixins"][mixin]["ancestors"]}
                 mixin_descendants = {mixin_descendant for descendant in descendants
-                                     for mixin in predicate_to_mixins_map[descendant]
+                                     for mixin in predicate_to_mixins_map[descendant].intersection(predicate_mixins_in_tree)  # Skip weird mixins that have non-mixin parents
                                      for mixin_descendant in biolink_lookup_map["predicate_mixins"][mixin]["descendants"]}
                 biolink_lookup_map["predicates"][predicate] = {
                     "ancestors": ancestors,
