@@ -9,13 +9,13 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2
-  version: 2.7.3.1
+  version: 2.7.4.0
   x-translator:
     component: KP
     team:
     - Expander Agent
     infores: infores:rtx-kg2
-    biolink-version: 2.1.0
+    biolink-version: 2.2.6
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
