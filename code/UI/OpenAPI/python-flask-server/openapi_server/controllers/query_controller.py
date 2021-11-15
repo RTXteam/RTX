@@ -56,6 +56,7 @@ def run_query_dict_in_child_process(query_dict: dict,
         logging.debug("[query_controller]: child process pid={pid}")
         read_fo = os.fdopen(read_fd, "r")
     else:
+        logging.DEBUG("[query_controller]: fork() unsuccessful")
         assert False, "********** fork() unsuccessful; something went very wrong *********"
     return read_fo
 
