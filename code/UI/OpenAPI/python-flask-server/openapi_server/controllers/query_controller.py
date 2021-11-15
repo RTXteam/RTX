@@ -53,7 +53,7 @@ def run_query_dict_in_child_process(query_dict: dict,
         os._exit(0)
     elif pid > 0: # I am the parent process
         os.close(write_fd)  # the parent does not write to the pipe, it reads from it
-        logging.debug("[query_controller]: child process pid={pid}")
+        logging.debug(f"[query_controller]: child process pid={pid}")
         read_fo = os.fdopen(read_fd, "r")
     else:
         logging.error("[query_controller]: fork() unsuccessful")
