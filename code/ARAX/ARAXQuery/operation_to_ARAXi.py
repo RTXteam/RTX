@@ -42,7 +42,7 @@ class WorkflowToARAXi:
     @staticmethod
     def __translate_overlay_connect_knodes(parameters, query_graph, response):
         ARAXi = []
-        if len(query['query_graph']) >= 3:
+        if len(query_graph['nodes']) >= 3:
             response.warning("This query graph has 3 or more nodes. This may take a while")
         qnode_pairs = itertools.combinations(query_graph['nodes'].keys(),2)
         for qnode_pair in qnode_pairs:
@@ -50,7 +50,7 @@ class WorkflowToARAXi:
             ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=connect_knodes_pair_frq,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
             ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=connect_knodes_obs_exp,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
             ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=connect_knodes_chi_sqr,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
-            ARAXi.append(f"overlay(action=predict_drug_treats_disease,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
+            ARAXi.append(f"overlay(action=predict_drug_treats_disease,virtual_relation_label=connect_knodes_dtd,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
             ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label=connect_knodes_fisher,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
             ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label=connect_knodes_fisher,subject_qnode_key={qnode_pair[1]},object_qnode_key={qnode_pair[0]})")
         if len(query_graph['nodes']) >= 3:
@@ -244,7 +244,7 @@ class WorkflowToARAXi:
         if ("ascending_or_descending" not in parameters):
             response.error("The operation sort_results_score must have the parameter ascending_or_descending", error_code="KeyError")
         ARAXi = []
-        araxi_string = f"filter_results(action=sort_by_score,direction={ascending_or_descending}"
+        araxi_string = f"filter_results(action=sort_by_score,direction={parameters['ascending_or_descending']}"
         araxi_string += ")"
         ARAXi.append(araxi_string)
         return ARAXi
