@@ -56,6 +56,7 @@ def run_query_dict_in_child_process(query_dict: dict,
         logging.debug("[query_controller]: child process pid={pid}")
         read_fo = os.fdopen(read_fd, "r")
     else:
+        logging.error("[query_controller]: fork() unsuccessful")
         assert False, "********** fork() unsuccessful; something went very wrong *********"
     return read_fo
 
@@ -98,8 +99,8 @@ def query(request_body):  # noqa: E501
         json_generator = run_query_dict_in_child_process(query,
                                                          _run_query_and_return_json_generator_nonstream)
 
-    return flask.Response(json_generator, mimetype='text/plain')
-
+    return flask.Response(json_generator, mimetype='application/json')
+ 
 
 # :TESTING: vvvvvvvvvvvvvvvvvv
 # if __name__ == "__main__":
