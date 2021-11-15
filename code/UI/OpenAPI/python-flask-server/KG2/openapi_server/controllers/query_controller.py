@@ -84,9 +84,14 @@ def query(request_body):  # noqa: E501
 
     query = connexion.request.get_json()  # :QUESTION: why don't we use `request_body`?
 
-    if query.get('stream_progress', False):
+    mime_type = 'application/json'
+
+    http_status = 200
+    if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:
 
         fork_mode = True # :DEBUG: can turn this to False to disable fork-mode
+        http_status = None
+        mime_type = 'text/event-stream'
 
         if not fork_mode:
             json_generator = _run_query_and_return_json_generator_stream(query)
@@ -99,8 +104,15 @@ def query(request_body):  # noqa: E501
         json_generator = run_query_dict_in_child_process(query,
                                                          _run_query_and_return_json_generator_nonstream)
 
-    return flask.Response(json_generator, mimetype='application/json')
- 
+
+    resp_obj = flask.Response(json_generator, mimetype=mime_type)
+    if http_status is not None and hasattr(resp_obj, 'http_status'):
+        http_status = resp_obj.http_status
+    else:
+        http_status = None
+
+    return (resp_obj, http_status)
+
 
 # :TESTING: vvvvvvvvvvvvvvvvvv
 # if __name__ == "__main__":
