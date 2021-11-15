@@ -84,7 +84,7 @@ def query(request_body):  # noqa: E501
 
     query = connexion.request.get_json()  # :QUESTION: why don't we use `request_body`?
 
-    if query.get('stream_progress', False):
+    if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:
 
         fork_mode = True # :DEBUG: can turn this to False to disable fork-mode
 
