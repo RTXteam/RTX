@@ -17,7 +17,7 @@ fi
 
 cd /mnt/data/orangeboard/$DEVAREA/RTX/code/UI/OpenAPI/python-flask-server/KG2
 
-export PATH=/mnt/data/python/Python-3.7.3/bin:$PATH
+export PATH=/mnt/data/python/Python-3.7.12/bin:$PATH
 
-exec python3 -m openapi_server 1>$LOGFILE 2>$ELOGFILE
+exec python3 -u -m openapi_server 1>$LOGFILE 2>$ELOGFILE
 

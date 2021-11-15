@@ -20,9 +20,15 @@ def main():
     logging.info("SETTING UP FOR NEO4J")
 
     # Get master-config.shinc from the KG2 repo
-    logging.info("Getting master-config.shinc from KG2pre repo")
+    shinc_file_name = "master-config.shinc"
+    logging.info(f"Getting {shinc_file_name} from KG2pre repo")
     rtx_kg2_repo_url = "https://github.com/RTXteam/RTX-KG2/blob/master"
-    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/master-config.shinc?raw=true", "-o", f"{KG2C_DIR}/master-config.shinc"])
+    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/{shinc_file_name}?raw=true", "-o", f"{KG2C_DIR}/{shinc_file_name}"])
+
+    # Get the system memory script from the KG2 repo
+    mem_file_name = "get-system-memory-gb.sh"
+    logging.info(f"Getting {mem_file_name} from KG2pre repo")
+    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/{mem_file_name}?raw=true", "-o", f"{KG2C_DIR}/{mem_file_name}"])
 
     # Get the Neo4j setup script from the KG2 repo
     setup_script_name = "setup-kg2-neo4j.sh"

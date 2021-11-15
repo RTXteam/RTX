@@ -1,7 +1,8 @@
 ##### 1. Build and load KG2c:
 
 - [ ] build a synonymizer from the new KG2
-- [ ] build a new KG2c (neo4j available at http://kg2-X-Yc.rtx.ai:7474/browser/)
+- [ ] build a new KG2c
+- [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] load the new KG2c into plover (available at http://kg2-X-Ycplover.rtx.ai:9990)
 

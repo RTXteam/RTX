@@ -184,6 +184,7 @@ class ResponseCache:
         session.add(stored_response)
         session.flush()
         session.commit()
+        response_filename = f"/responses/{stored_response.response_id}.json"
 
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
@@ -204,7 +205,6 @@ class ResponseCache:
                 aws_secret_access_key=ACCESS_KEY
             )
             serialized_query_graph = json.dumps(envelope.to_dict(), sort_keys=True, indent=2)
-            response_filename = f"/responses/{stored_response.response_id}.json"
             response.debug(f"Writing response to S3 bucket")
             t0 = timeit.default_timer()
             s3.Object('arax-response-storage', response_filename).put(Body=serialized_query_graph)
@@ -320,7 +320,10 @@ class ResponseCache:
             ars_hosts = [ 'ars.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
-                    response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
+                    try:
+                        response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
+                    except Exception as e:
+                        return( { "status": 404, "title": f"Remote host {ars_host} unavailable", "detail": f"Connection attempts to {ars_host} triggered an exception: {e}", "type": "about:blank" }, 404)
                 status_code = response_content.status_code
                 #eprint(f"--- Fetch of {response_id} from {ars_host} yielded {status_code}")
                 if status_code == 200:

@@ -16,19 +16,25 @@ var UIstate = {};
 // defaults
 var base = "";
 var baseAPI = base + "api/arax/v1.2";
+var araxQuery = '';
 
 // possibly imported by calling page (e.g. index.html)
 if (typeof config !== 'undefined') {
     if (config.base)
 	base = config.base;
+    if (config.query_endpoint)
+	araxQuery = config.query_endpoint;
     if (config.baseAPI)
 	baseAPI = config.baseAPI;
 }
+if (!araxQuery)
+    araxQuery = baseAPI + '/query';
 
 var providers = {
-    "ARAX": { "url" : baseAPI },
-    "ARS" : { "url" : "https://ars.transltr.io/ars/api/submit" },
-    "EXT" : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.2" }
+    "ARAX" : { "url" : baseAPI },
+    "ARAXQ": { "url" : araxQuery },
+    "ARS"  : { "url" : "https://ars.transltr.io/ars/api/submit" },
+    "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.2" }
 };
 
 // these attributes are floats; truncate them
@@ -54,6 +60,7 @@ const attributes_to_truncate = [
 
 function main() {
     UIstate["submitter"] = 'ARAX GUI';
+    UIstate['autorefresh'] = true;
     UIstate["timeout"] = '';
     UIstate["pid"] = null;
     UIstate["version"] = checkUIversion(false);
@@ -442,7 +449,7 @@ function postQuery_ARAX(qtype,queryObj) {
     sesame('openmax',statusdiv);
 
     add_to_dev_info("Posted to QUERY",queryObj);
-    fetch(providers["ARAX"].url + "/query", {
+    fetch(providers["ARAXQ"].url, {
 	method: 'post',
 	body: JSON.stringify(queryObj),
 	headers: { 'Content-type': 'application/json' }
@@ -923,24 +930,27 @@ function getIdStats(id) {
 function checkRefreshARS() {
     document.getElementById("ars_refresh").dataset.count += "x";
     var moon = 127765;
-    if (document.getElementById("ars_refresh").dataset.count.length == document.getElementById("ars_refresh").dataset.total) {
-	document.getElementById("ars_refresh").innerHTML = "&#"+moon;
+    if (UIstate['autorefresh'] && document.getElementById("ars_refresh").dataset.count.length == document.getElementById("ars_refresh").dataset.total) {
+	document.getElementById("ars_refresh_anim").innerHTML = "&#"+moon;
 	var timetogo = 8;
 	var timeout = setInterval(countdown, 375);
 	function countdown() {
 	    if (timetogo == 0) {
 		clearInterval(timeout);
-                sendId(true);
-		document.getElementById("ars_refresh").innerHTML = "";
+		if (UIstate['autorefresh'])
+                    sendId(true);
+		document.getElementById("ars_refresh_anim").innerHTML = "";
 	    }
 	    else {
 		moon--;
 		if (moon == 127760) moon = 127768;
-		document.getElementById("ars_refresh").innerHTML = "&#"+moon;
+                if (UIstate['autorefresh'])
+		    document.getElementById("ars_refresh_anim").innerHTML = "&#"+moon;
+		else
+		    timetogo = 1; // stop reloads
 		timetogo--;
 	    }
 	}
-
     }
 }
 
@@ -953,6 +963,7 @@ function sendId(is_ars_refresh) {
 	pasteId(id);
 	if (!id) return;
 
+	UIstate['autorefresh'] = true;
 	reset_vars();
 	if (cyobj[99999]) {cyobj[99999].elements().remove();}
 	input_qg = { "edges": {}, "nodes": {} };
@@ -999,7 +1010,19 @@ function process_ars_message(ars_msg, level) {
 	span.dataset.total = ars_msg.status == 'Done' ? 999999 : ars_msg["children"].length + 1;
 	span.dataset.count = '';
 	span.dataset.msgid = ars_msg.message;
-	span.appendChild(document.createTextNode("Auto-reload: " + (ars_msg.status == 'Done' ? "OFF" : "ON")));
+        if (UIstate['autorefresh'])
+	    span.appendChild(document.createTextNode("Auto-reload: " + (ars_msg.status == 'Done' ? "OFF" : "ON")));
+	if (ars_msg.status != 'Done') {
+	    span.title = "Click to Stop Auto-Refresh";
+	    span.className = "clq";
+	    span.setAttribute('onclick', 'UIstate["autorefresh"] = false; document.getElementById("ars_refresh").innerHTML = "";');
+	}
+	div2.appendChild(span);
+
+	span = document.createElement("span");
+	span.id = 'ars_refresh_anim';
+	span.style.float = 'right';
+	span.style.marginRight = '20px';
 	div2.appendChild(span);
 
 	var div2 = document.createElement("div");
@@ -1298,7 +1321,15 @@ function retrieve_response(resp_url, resp_id, type) {
 	}
 	else if ( xhr.status == 404 ) {
 	    update_response_stats_on_error(resp_id,'N/A',true);
-	    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
+
+	    try {
+		var jsonResp = JSON.parse(xhr.responseText);
+		if (!jsonResp.detail) throw new Error('no detail');
+                statusdiv.innerHTML += "<br><span class='error'>"+jsonResp.detail+"</span>";
+	    }
+	    catch(e) {
+		statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
+	    }
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
 	}
@@ -4535,6 +4566,8 @@ function retrieveRecentQs() {
 	    stats.state     = {};
 	    stats.status    = {};
 	    stats.submitter = {};
+	    stats.domain    = {};
+	    stats.hostname  = {};
 	    stats.instance_name = {};
 	    var timeline = {};
             timeline["ISB_watchdog"] = { "data": [ { "label": 0 , "data": [] , "_qstart": new Date() } ] };
@@ -4552,7 +4585,7 @@ function retrieveRecentQs() {
 	    var tr = document.createElement("tr");
             tr.dataset.qstatus = "COLUMNHEADER";
 	    var td;
-	    for (var head of ["Qid","Start","Elapsed","Submitter","Instance","pid","Response","State","Status","Description"] ) {
+	    for (var head of ["Qid","Start (UTC)","Elapsed","Submitter","Domain","Hostname","Instance","pid","Response","State","Status","Description"] ) {
 		td = document.createElement("th")
                 if (head == "Description")
 		    td.style.textAlign = "left";
@@ -4570,7 +4603,7 @@ function retrieveRecentQs() {
 		var qend = null;
 		var qdur = null;
 		var qid = null;
-		for (var field of ["query_id","start_datetime","elapsed","submitter","instance_name","pid","response_id","state","status","description"] ) {
+		for (var field of ["query_id","start_datetime","elapsed","submitter","domain","hostname","instance_name","pid","response_id","state","status","description"] ) {
                     td = document.createElement("td");
                     if (field == "start_datetime") {
 			td.style.whiteSpace = "nowrap";
@@ -4589,6 +4622,7 @@ function retrieveRecentQs() {
 			qdur = qdur.getUTCHours()+"h " + qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
 		    }
                     else if (field == "state") {
+                        td.style.whiteSpace = "nowrap";
 			var span = document.createElement("span");
 			if (query[field] == "Completed") {
 			    span.innerHTML = '&check;';
@@ -4598,9 +4632,13 @@ function retrieveRecentQs() {
 			    span.innerHTML = '&cross;';
 			    span.className = 'explevel p5';
 			}
+			else if (query[field] == "Terminated") {
+			    span.innerHTML = '&cross;';
+			    span.className = 'explevel p3';
+			}
 			else {
 			    span.innerHTML = '&#10140;';
-			    span.className = 'explevel p3';
+			    span.className = 'explevel p7';
 			}
 			td.appendChild(span);
 			td.innerHTML += '&nbsp;';
@@ -4609,7 +4647,7 @@ function retrieveRecentQs() {
 			else
 			    stats.state[query[field]] = 1;
 		    }
-                    else if (field == "instance_name" || field == "submitter") {
+                    else if (field == "instance_name" || field == "submitter" || field == "domain" || field == "hostname") {
 			td.style.whiteSpace = "nowrap";
                         if (stats[field][query[field]])
 			    stats[field][query[field]]++;
@@ -4644,8 +4682,12 @@ function retrieveRecentQs() {
                         span.style.padding = "2px 6px";
 			if (query[field] == "OK")
 			    span.className = "explevel p9";
+			else if (query[field] == "Running")
+			    span.className = "explevel p7";
 			else if (query[field] == "Reset")
 			    span.className = "explevel p5";
+			else if (query[field] == "Terminated")
+			    span.className = "explevel p3";
 			else
 			    span.className = "explevel p1";
                         span.appendChild(document.createTextNode(query[field]));
@@ -4811,6 +4853,8 @@ function displayQTimeline(tdata) {
 	.zQualitative(true)
 	.segmentTooltipContent(function(d) { return "Query ID: <strong>"+d.data["_qid"].toString()+"</strong><br>"+d.data["_qdur"]; } )
     (timeline_node);
+
+    timeline_node.appendChild(document.createTextNode("Your computer's local time"));
 }
 
 function filter_queries(tab, span, type) {

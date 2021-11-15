@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   description: TRAPI 1.2 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
-  version: 1.2.6
+  version: 1.2.7
   title: ARAX Translator Reasoner
   contact:
     email: edeutsch@systemsbiology.org
@@ -14,7 +14,7 @@ info:
     team:
       - Expander Agent
     infores: infores:arax
-    biolink-version: 2.1.0
+    biolink-version: 2.2.6
     externalDocs:
       description: >-
         The values for component and team are restricted according to this
@@ -25,21 +25,26 @@ info:
     asyncquery: true
     operations:
       - lookup
-      - overlay_connect_knodes
-      - filter_results_top_n
+      - lookup_and_score
       - overlay_compute_ngd
       - overlay_compute_jaccard
       - overlay_fisher_exact_test
+      - overlay_connect_knodes
+      - filter_results_top_n
       - bind
       - fill
       - filter_kgraph_orphans
-      - score
-      - complete_results
       - filter_kgraph_top_n
       - filter_kgraph_std_dev
       - filter_kgraph_percentile
       - filter_kgraph_discrete_kedge_attribute
       - filter_kgraph_continuous_kedge_attribute
+      - sort_results_score
+      - sort_results_edge_attribute
+      - sort_results_node_attribute
+      - annotate_nodes
+      - score
+      - complete_results
     externalDocs:
       description: >-
         The values for version are restricted according to the regex in
@@ -52,7 +57,7 @@ externalDocs:
 servers:
   - url: https://arax.ncats.io/api/arax/v1.2
     description: ARAX Translator Reasoner API
-    x-maturity: development
+    x-maturity: production
 tags:
   - name: meta_knowledge_graph
     description: Get supported relationships
