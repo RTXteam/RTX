@@ -11,6 +11,10 @@ rlimit_child_process_bytes = 34359738368  # 32 GiB
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../../ARAX/ARAXQuery")
 import ARAX_query
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/../models")
+import response
+
+
 def child_receive_sigpipe(signal_number, frame):
     if signal_number == signal.SIGPIPE:
         logging.info("[query_controller]: child process detected a SIGPIPE; exiting python")
@@ -62,7 +66,10 @@ def run_query_dict_in_child_process(query_dict: dict,
 
 
 def _run_query_and_return_json_generator_nonstream(query_dict: dict) -> Iterable[str]:
-    return (json.dumps(ARAX_query.ARAXQuery().query_return_message(query_dict).to_dict()),)
+    envelope = ARAX_query.ARAXQuery().query_return_message(query_dict)
+    envelope_dict = envelope.to_dict()
+    envelope_dict['http_status'] = envelope.http_status
+    return (json.dumps(envelope_dict), )
 
 
 def _run_query_and_return_json_generator_stream(query_dict: dict) -> Iterable[str]:
@@ -86,7 +93,6 @@ def query(request_body):  # noqa: E501
 
     mime_type = 'application/json'
 
-    http_status = 200
     if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:
 
         fork_mode = True # :DEBUG: can turn this to False to disable fork-mode
@@ -99,16 +105,17 @@ def query(request_body):  # noqa: E501
             json_generator = run_query_dict_in_child_process(query,
                                                              _run_query_and_return_json_generator_stream)
 
+        resp_obj = flask.Response(json_generator, mimetype=mime_type)
     # Else perform the query and return the result
+        http_status = None
+
     else:
         json_generator = run_query_dict_in_child_process(query,
                                                          _run_query_and_return_json_generator_nonstream)
-
-    resp_obj = flask.Response(json_generator, mimetype=mime_type)
-    if http_status is not None and hasattr(resp_obj, 'http_status'):
-        http_status = resp_obj.http_status
-    else:
-        http_status = None
+        the_dict = json.loads(next(json_generator))
+        http_status = the_dict.get('http_status', 200)
+        resp_obj = response.Response.from_dict(the_dict)
+        resp_obj.http_status = http_status
 
     return (resp_obj, http_status)
 
