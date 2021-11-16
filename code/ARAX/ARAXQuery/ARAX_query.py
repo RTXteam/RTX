@@ -17,6 +17,7 @@ import json
 import uuid
 import requests
 import gc
+import contextlib
 
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -57,6 +58,8 @@ from jsonschema.exceptions import ValidationError
 
 ARAXResponse.output = 'STDERR'
 
+null_context_manager = contextlib.nullcontext()
+
 query_tracker_reset = ARAXQueryTracker()
 query_tracker_reset.clear_unfinished_entries()
 
@@ -82,6 +85,16 @@ class ARAXQuery:
             self.response = ARAXResponse()
             self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
             self.response = self.DBManager.update_databases(True, response=self.response)
+
+
+    def handle_memory_error(self, e):
+        with self.lock if self.lock is not None else null_context_manager:
+            self.response.envelope.message.results = []
+        gc.collect()
+        print("[asynchronous_query]: " + repr(e), file=sys.stderr)
+        with self.lock if self.lock is not None else null_context_manager:
+            self.response.error("ARAX ran out of memory during query processing; no results will be returned for this query")
+
 
     def query_return_stream(self, query, mode='ARAX'):
 
@@ -144,9 +157,8 @@ class ARAXQuery:
                         timestamp = str(datetime.now().isoformat())
                         yield json.dumps({ 'timestamp': timestamp, 'level': 'DEBUG', 'code': '', 'message': 'Query is still progressing...' }) + "\n"
                         idle_ticks = 0.0
-            except MemoryError:
-                gc.collect()
-                self.response.error("ARAX ran out of memory during query processing; no results will be returned for this query")
+            except MemoryError as e:
+                self.handle_memory_error(e)
                 
                 # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
@@ -158,7 +170,7 @@ class ARAXQuery:
             self_response_query_plan_counter = self.response.query_plan['counter']
             if query_plan_counter < self_response_query_plan_counter:
                 query_plan_counter = self_response_query_plan_counter
-                yield(json.dumps(self.response.query_plan, sort_keys=True)+"\n")
+                yield(json.dumps(self.response.query_plan, sort_keys=True) + "\n")
 
             # Remove the little DONE flag the other thread used to signal this thread that it is done
             self.response.status = re.sub('DONE,', '', self.response.status)
@@ -174,22 +186,28 @@ class ARAXQuery:
 
     def asynchronous_query(self,query, mode='ARAX'):
 
-        #### Define a new response object if one does not yet exist
-        with self.lock:
-            have_response = self.response is not None
-        if not have_response:
-            new_response = response_locking(self.lock)
+        try:
+            #### Define a new response object if one does not yet exist
             with self.lock:
-                self.response = new_response
+                have_response = self.response is not None
+            if not have_response:
+                new_response = response_locking(self.lock)
+                with self.lock:
+                    self.response = new_response
 
-        self.response.debug("in asynchronous_query")
+            self.response.debug("in asynchronous_query")
 
-        #### Execute the query
-        self.query(query, mode=mode, origin='API')
+            #### Execute the query
+            self.query(query, mode=mode, origin='API')
 
+        except MemoryError as e:
+            self.handle_memory_error(e)
+
+            
         # Insert a little flag into the response status to denote that this thread is done
         with self.lock:
             self.response.status = f"DONE,{self.response.status}"
+
         return
 
 
@@ -356,10 +374,8 @@ class ARAXQuery:
             else:
                 response.error(f"Unable to determine ARAXi to execute. Error Q213", error_code="UnknownError")
 
-        except MemoryError:
-            response.envelope.message.results = []
-            gc.collect()
-            response.error("ARAX ran out of memory during query processing; no results will be returned for this query")
+        except MemoryError as e:
+            self.handle_memory_error(e)
             
         return response
 
@@ -1693,4 +1709,5 @@ def main():
     # print the response id at the bottom for convenience too:
     print(f"Returned response id: {envelope.id}")
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()

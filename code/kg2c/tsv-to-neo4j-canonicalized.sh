@@ -72,7 +72,8 @@ sudo chown neo4j:adm ${tsv_dir}/import.report
 sudo service neo4j stop
 sudo rm -rf ${database_path}/databases/${database}
 
-mem_gb=`${CODE_DIR}/get-system-memory-gb.sh`
+script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"  # Thanks https://stackoverflow.com/a/246128
+mem_gb=`${script_dir}/get-system-memory-gb.sh`
 
 # import TSV files into Neo4j as Neo4j
 sudo -u neo4j neo4j-admin import --nodes "${tsv_dir}/${test_prefix}nodes_c_header.tsv,${tsv_dir}/${test_prefix}nodes_c.tsv" \

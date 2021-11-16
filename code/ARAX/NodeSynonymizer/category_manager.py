@@ -87,7 +87,7 @@ class CategoryManager:
             return self.categories['ancestors'][category]
 
         # Build the URL and fetch the result
-        url = f"https://bl-lookup-sri.renci.org/bl/{category}/ancestors?version=2.1.0"
+        url = f"https://bl-lookup-sri.renci.org/bl/{category}/ancestors?version=2.2.6"
         response_content = requests.get(url, headers={'accept': 'application/json'})
         status_code = response_content.status_code
 
