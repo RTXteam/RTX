@@ -636,6 +636,7 @@ class DTDQuerier:
             #     return final_kg, edge_to_nodes_map
             # else:
             cypher_query = self._convert_one_hop_query_graph_to_cypher_query(query_graph, False, log)
+            print(f"{cypher_query}", flush=True)
             if log.status != 'OK':
                 return final_kg
             neo4j_results = self._answer_query_using_neo4j(cypher_query, qedge_key, "KG2c", log)
@@ -727,8 +728,6 @@ class DTDQuerier:
             results_table = neo4j_results[0]
             column_names = [column_name for column_name in results_table]
             res = [(neo4j_edge.get(source_qnode_key),neo4j_edge.get(target_qnode_key)) for column_name in column_names if column_name.startswith('edges') for neo4j_edge in results_table.get(column_name)]
-
-
             if len(res) != 0:
                 count, res, all_probabilities = self.pred.prob_all(res)
 
@@ -821,7 +820,6 @@ class DTDQuerier:
                     not_pass_nodes += [curie]
 
             if len(pass_nodes_drug_temp)!=0 and len(pass_nodes_disease_temp) != 0:
-                print(f"{pass_nodes_drug_temp}, {pass_nodes_disease_temp}", flush=True)
                 if len(pass_nodes_drug_temp) > len(pass_nodes_disease_temp):
                     pass_nodes = pass_nodes_drug_temp
                     not_pass_nodes = pass_nodes_disease_temp
@@ -959,7 +957,14 @@ class DTDQuerier:
     @staticmethod
     def _get_cypher_for_query_edge(qedge_key: str, qg: QueryGraph, enforce_directionality: bool) -> str:
         qedge = qg.edges[qedge_key]
-        qedge_type_cypher = f":`{qedge.predicates}`" if qedge.predicates else ""
+        if type(qedge.predicates) is list:
+            if len(qedge.predicates) != 0:
+                predicates = qedge.predicates[0]
+            else:
+                predicates = ""
+        else:
+            predicates = qedge.predicates
+        qedge_type_cypher = f":`{predicates}`" if predicates else ""
         full_qedge_cypher = f"-[{qedge_key}{qedge_type_cypher}]-"
         if enforce_directionality:
             full_qedge_cypher += ">"
