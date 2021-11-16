@@ -68,7 +68,10 @@ def run_query_dict_in_child_process(query_dict: dict,
 def _run_query_and_return_json_generator_nonstream(query_dict: dict) -> Iterable[str]:
     envelope = ARAX_query.ARAXQuery().query_return_message(query_dict)
     envelope_dict = envelope.to_dict()
-    envelope_dict['http_status'] = envelope.http_status
+    if hasattr(envelope, 'http_status'):
+        envelope_dict['http_status'] = envelope.http_status
+    else:
+        envelope_dict['http_status'] = 200
     return (json.dumps(envelope_dict), )
 
 
