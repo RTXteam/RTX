@@ -3,7 +3,6 @@ import json
 import os, sys, signal
 import resource
 import logging
-import tempfile
 from typing import Iterable, Callable
 
 rlimit_child_process_bytes = 34359738368  # 32 GiB
@@ -25,9 +24,6 @@ def run_query_dict_in_child_process(query_dict: dict,
     logging.debug("[query_controller]: Creating pipe and forking a child to handle the query")
     read_fd, write_fd = os.pipe()
 
-    child_process_log_filename = tempfile.mkstemp(prefix='arax-query-controller-child-process-', suffix='.log')[1]
-    logging.info(f"[query_controller]: child process log file name {child_process_log_filename}")
-
     # always flush stdout and stderr before calling fork(); someone could have turned off auto-flushing and we don't want double-output
     sys.stderr.flush()
     sys.stdout.flush()
@@ -35,14 +31,6 @@ def run_query_dict_in_child_process(query_dict: dict,
     pid = os.fork()
 
     if pid == 0: # I am the child process
-        log_stream = open(child_process_log_filename, 'a')  # not using "with" because we need this stream to persist
-        sys.stderr = log_stream # parent and child process should not share the same stderr stream object
-        logger = logging.getLogger()
-        for hdlr in logger.handlers:  # child process shall not do any logging except what we authorize, to avoid thread issue
-            logger.removeHandler(hdlr)
-        new_handler = logging.StreamHandler(stream=log_stream)
-        new_handler.setLevel(logging.INFO)  # :DEBUG: this can be changed to logging.DEBUG if you want, for debugging purposes
-        logger.addHandler(new_handler)  # install the new logging handler for the child process, that writes to the new stderr
         sys.stdout = open('/dev/null', 'w')         # parent and child process should not share the same stdout stream object
         sys.stdin = open('/dev/null', 'r')          # parent and child process should not share the same stdin stream object
         os.close(read_fd)                   # child doesn't read from the pipe, it writes to it 
@@ -71,7 +59,7 @@ def _run_query_and_return_json_generator_nonstream(query_dict: dict) -> Iterable
     if hasattr(envelope, 'http_status'):
         envelope_dict['http_status'] = envelope.http_status
     else:
-        envelope_dict['http_status'] = 200        
+        envelope_dict['http_status'] = 200
     return (json.dumps(envelope_dict), )
 
 
