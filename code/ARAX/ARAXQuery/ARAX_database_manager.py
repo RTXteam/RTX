@@ -234,7 +234,7 @@ class ARAXDatabaseManager:
             return True
 
     def download_database(self, remote_location, local_path, remote_path, debug=False):
-        if os.path.exists(remote_path): # if on the server symlink instead of downloading
+        if remote_path is not None and os.path.exists(remote_path): # if on the server symlink instead of downloading
             self.symlink_database(local_path=local_path, remote_path=remote_path)
         else:
             self.rsync_database(remote_location=remote_location, local_path=local_path, debug=debug)
@@ -247,6 +247,12 @@ class ARAXDatabaseManager:
         if debug:
             verbose = "vv"
         os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
+
+    def download_to_mnt(self, debug=False):
+        for database_name in self.remote_locations.keys():
+            if debug:
+                print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
+            self.download_database(remote_location=self.remote_locations[database_name], local_path=self.docker_paths[database_name], remote_path=None, debug=debug)
 
     def force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
@@ -313,7 +319,8 @@ class ARAXDatabaseManager:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--check_local", action='store_true')
-    parser.add_argument("-f", "--force_download", action='store_true')
+    parser.add_argument("-f", "--force_download", action='store_true', help="Download all database without checking local versions")
+    parser.add_argument("-m", "--mnt", action='store_true', help="Download all database files to /mnt")
     parser.add_argument("-l", "--live", type=str, help="Live parameter for RTXConfiguration", default="Production", required=False)
     parser.add_argument("-s", "--slim", action='store_true')
     arguments = parser.parse_args()
@@ -325,6 +332,8 @@ def main():
         DBManager.download_slim(debug=True)
     elif arguments.force_download:
         DBManager.force_download_all(debug=True)
+    elif arguments.mnt:
+        DBManager.download_to_mnt(debug=True)
     else:
         DBManager.update_databases(debug=True)
 
