@@ -373,6 +373,27 @@ class ARAXQueryTracker:
         eprint(f"ERROR: Unable to find query_id {id}")
 
 
+    ####### ###########################################################################################
+    def get_logs(self, mode='tail'):
+        if self.session is None:
+            return
+
+        buffer = ''
+        log_file = "/tmp/RTX_OpenAPI_production.elog"
+
+        try:
+            with open(log_file) as infile:
+                for line in infile:
+                    buffer += line
+                return buffer
+        except:
+            buffer = f"ERROR: Unable to read log file '{log_file}'"
+
+
+        eprint(buffer)
+        return(buffer + "\n")
+
+
     ##################################################################################################
     def clear_unfinished_entries(self):
         if self.session is None:
