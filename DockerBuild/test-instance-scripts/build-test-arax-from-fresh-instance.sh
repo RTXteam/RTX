@@ -15,7 +15,8 @@ sudo apt-get install -y netcat # useful for debugging
 sudo apt-get install -y docker.io
 
 # install python3.7 (with pip) into the host OS, using the Ubuntu packages
-export VENV_DIR=/home/ubuntu/venv   # have to set this environment variable for setup-python37-in-ubuntu18.shinc to work properly
+rm -r -f ./venv
+export VENV_DIR=./venv   # have to set this environment variable for setup-python37-in-ubuntu18.shinc to work properly
 source <(curl -s https://raw.githubusercontent.com/RTXteam/RTX-KG2/master/setup-python37-in-ubuntu18.shinc)
 
 # clone the ARAX software repo from GitHub (master branch)
@@ -35,7 +36,7 @@ cat RTX/code/configv2.json | \
 	RTX/code/config_local.json
 
 # download the database files (this step takes a long time)
-venv/bin/python3 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
+./venv/bin/python3 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
 
 # copy the dockerfile to the CWD so we can modify it in-place
 cp RTX/DockerBuild/Merged-Dockerfile .
