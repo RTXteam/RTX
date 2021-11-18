@@ -333,7 +333,7 @@ def main():
     parser.add_argument("-m", "--mnt", action='store_true', help="Download all database files to /mnt")
     parser.add_argument("-l", "--live", type=str, help="Live parameter for RTXConfiguration", default="Production", required=False)
     parser.add_argument("-s", "--slim", action='store_true')
-    parser.add_argument("-g", "--generate-versions-file", action='store_true', dest="generate_versions_file", required=False, help="just generate the db_versions.json file and do nothing else")
+    parser.add_argument("-g", "--generate-versions-file", action='store_true', dest="generate_versions_file", required=False, help="just generate the db_versions.json file and do nothing else (ONLY USED IN TESTING/DEBUGGING)")
     parser.add_argument("-e", "--skip-if-exists", action='store_true', dest='skip_if_exists', required=False, help="for -m mode only, do not download a file if it already exists under /mnt/data/orangeboard/databases/KG2.X.X")
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager(arguments.live)
