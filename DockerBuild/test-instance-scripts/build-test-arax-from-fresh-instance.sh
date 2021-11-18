@@ -63,17 +63,17 @@ sudo docker create --name arax --tty --publish 80:80 \
 sudo docker start arax
 
 # copy the config files into the devareas in the container
-for config_file in configv2.json config_local.json
+
+for devarea in kg2 production
 do
-    for devarea in kg2 production
+    for config_file in configv2.json config_local.json
     do
 	sudo docker cp RTX/code/${config_file} arax:${arax_base}/${devarea}/RTX/code
 	sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/${config_file}
     done
+    # create the required symbolic links for ARAX/KG2 database files, inside the container
+    sudo docker exec arax bash -c "sudo -u rt bash -c 'cd ${arax_base}/${devarea}/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
 done
-
-# create the required symbolic links for ARAX/KG2 database files, inside the container
-sudo docker exec arax bash -c "su rt; cd ${arax_base}/production/RTX; python3 code/ARAX/ARAXQuery/ARAX_database_manager.py"
 
 # start all the services
 sudo docker exec arax service apache2 start
