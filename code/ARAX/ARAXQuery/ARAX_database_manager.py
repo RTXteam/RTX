@@ -250,8 +250,13 @@ class ARAXDatabaseManager:
 
     def download_to_mnt(self, debug=False):
         for database_name in self.remote_locations.keys():
+            database_dir = self.docker_paths[database_name].split('/')[:-1].join('/')
             if debug:
                 print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
+            if not os.path.exists(database_dir):
+                if debug:
+                    print(f"Creating directory {database_dir}...")
+                os.system(f"mkdir -p {database_dir}")
             self.download_database(remote_location=self.remote_locations[database_name], local_path=self.docker_paths[database_name], remote_path=None, debug=debug)
 
     def force_download_all(self, debug=False):
