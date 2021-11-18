@@ -281,6 +281,32 @@ paths:
                 type: object
         '404':
           description: "Entity not found"
+  /status/logs:
+    get:
+      operationId: get_logs
+      parameters:
+      - description: Specify the log sending mode
+        explode: true
+        in: query
+        name: mode
+        required: false
+        schema:
+          example: tail
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: successful operation
+        "404":
+          description: Logs not found
+      summary: Get log information from the server
+      tags:
+      - status
+      x-openapi-router-controller: openapi_server.controllers.status_controller
 components:
   schemas:
     Query:
