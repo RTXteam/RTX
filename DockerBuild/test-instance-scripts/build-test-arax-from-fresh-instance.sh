@@ -11,7 +11,6 @@ sudo apt-get install -y docker.io
 export VENV_DIR=/home/ubuntu/venv
 source <(curl -s https://raw.githubusercontent.com/RTXteam/RTX-KG2/master/setup-python37-in-ubuntu18.shinc)
 git clone https://github.com/RTXteam/RTX.git
-cat /dev/zero | ssh-keygen -q -N ""
 sudo mkdir -p ${arax_base}/databases
 sudo chown ubuntu.ubuntu ${arax_base}/databases
 scp araxconfig@araxconfig.rtx.ai:configv2.json ~
@@ -21,7 +20,6 @@ cat ~/configv2.json | \
 
 # download the database files (this step takes a long time)
 venv/bin/python3 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py -m
-
 
 cp RTX/DockerBuild/Merged-Dockerfile .
 
