@@ -378,8 +378,10 @@ class ARAXQueryTracker:
         if self.session is None:
             return
 
+        instance_name = self.get_instance_name()
+
         buffer = ''
-        log_file = "/tmp/RTX_OpenAPI_production.elog"
+        log_file = f"/tmp/RTX_OpenAPI_{instance_name}.elog"
 
         try:
             with open(log_file) as infile:
@@ -401,14 +403,7 @@ class ARAXQueryTracker:
         if self.session is None:
             return
 
-        location = os.path.abspath(__file__)
-        instance_name = '??'
-        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
-        if match:
-            instance_name = match.group(1)
-        if instance_name == 'production':
-            instance_name = 'ARAX'
-        eprint(f"INFO: Clearing unfinished tracker entries for instance_name = {instance_name}")
+        instance_name = self.get_instance_name()
 
         entries = self.session.query(ARAXQuery).filter(ARAXQuery.instance_name == instance_name).filter( (ARAXQuery.elapsed == None) | (ARAXQuery.status == 'Running Async') )
 
@@ -423,6 +418,16 @@ class ARAXQueryTracker:
             entry.code_description = 'Query was terminated by a process restart'
             entry.elapsed = elapsed
         self.session.commit()
+
+
+    ##################################################################################################
+    def get_instance_name(self):
+        location = os.path.abspath(__file__)
+        instance_name = 'null'
+        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
+        if match:
+            instance_name = match.group(1)
+        return instance_name
 
 
 def main():
