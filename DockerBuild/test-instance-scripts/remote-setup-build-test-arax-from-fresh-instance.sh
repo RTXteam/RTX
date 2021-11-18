@@ -9,13 +9,19 @@ config_server=araxconfig@araxconfig.rtx.ai
 echo "Enter the path to the AWS PEM file configured for the instance in which you wish to install ARAX: "
 read aws_pem_file
 
-echo "Enter the fullly-qualified hostname of your instance (e.g., myaraxtest.rtx.ai): "
+echo "Enter the fullly-qualified hostname of your instance (e.g., myaraxtest.rtx.ai); or if your RSA public key is already installed, just hit return: "
 read instance_hostname
 
 echo "Enter the remote username for your instance (e.g., ubuntu): "
 read remote_username
 
-echo "Using PEM file: ${aws_pem_file}"
+if ! [ -z "${aws_pem_file}" ]
+then
+    echo "Using PEM file: ${aws_pem_file}"
+else
+    echo "Not using a PEM file to log into the remote instance; so we are assuming your RSA public key is already installed"
+fi
+  
 echo "Installing in hostname: ${instance_hostname}"
 read -p "Are the above choices correct? [Y/N] " -n 1 -r
 echo    # (optional) move to a new line
@@ -24,26 +30,29 @@ then
     exit 0
 fi
 
-ssh-keygen -F ${instance_hostname} >/dev/null 2>&1
-if [ $? == 0 ]
+if ! [ -z "${aws_pem_file}" ]
 then
-    ssh-keygen -R ${instance_hostname}
-fi
+    ssh-keygen -F ${instance_hostname} >/dev/null 2>&1
+    if [ $? == 0 ]
+    then
+        ssh-keygen -R ${instance_hostname}
+    fi
 
-if ! ssh -q -o StrictHostKeyChecking=no ${remote_username}@${instance_hostname} exit
-then
-    ## copy the id_rsa.pub file to the instance
-    scp -i ${aws_pem_file} \
-        -o StrictHostKeyChecking=no \
-        ~/.ssh/${public_key_file} \
-        ${remote_username}@${instance_hostname}:
-    ## append the id_rsa.pub file to the authorized_keys file
-    ssh -o StrictHostKeyChecking=no \
-        -i ${aws_pem_file} \
-        ${remote_username}@${instance_hostname} \
-        'cat ${public_key_file} >> ~/.ssh/authorized_keys && rm ${public_key_file}'
+    if ! ssh -q -o StrictHostKeyChecking=no ${remote_username}@${instance_hostname} exit
+    then
+        ## copy the id_rsa.pub file to the instance
+        scp -i ${aws_pem_file} \
+            -o StrictHostKeyChecking=no \
+            ~/.ssh/${public_key_file} \
+            ${remote_username}@${instance_hostname}:
+        ## append the id_rsa.pub file to the authorized_keys file
+        ssh -o StrictHostKeyChecking=no \
+            -i ${aws_pem_file} \
+            ${remote_username}@${instance_hostname} \
+            'cat ${public_key_file} >> ~/.ssh/authorized_keys && rm ${public_key_file}'
+    fi
 fi
-
+    
 ssh ${remote_username}@${instance_hostname} "cat /dev/zero | ssh-keygen -q -t rsa -N '' <<< $'\ny' >/dev/null 2>&1"
 temp_file_name="id_rsa_$$.pub"
 temp_file_path="/tmp/${temp_file_name}"
