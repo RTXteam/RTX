@@ -250,7 +250,7 @@ class ARAXDatabaseManager:
 
     def download_to_mnt(self, debug=False):
         for database_name in self.remote_locations.keys():
-            database_dir = self.docker_paths[database_name].split('/')[:-1].join('/')
+            database_dir = os.path.sep.join(self.docker_paths[database_name].split('/')[:-1])
             if debug:
                 print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
             if not os.path.exists(database_dir):
