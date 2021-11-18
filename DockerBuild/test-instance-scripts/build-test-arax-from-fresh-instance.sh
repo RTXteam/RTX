@@ -19,7 +19,7 @@ cat ~/configv2.json | \
 	RTX/code/config_local.json
 
 # download the database files (this step takes a long time)
-venv/bin/python3 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py -m
+venv/bin/python3 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
 
 cp RTX/DockerBuild/Merged-Dockerfile .
 
