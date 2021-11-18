@@ -43,7 +43,7 @@ do
 	sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/${config_file}
     done
 done
-sudo docker exec sed -i /et
+
 sudo docker exec arax service apache2 start
 sudo docker exec arax service RTX_OpenAPI_kg2 start
 sudo docker exec arax service RTX_OpenAPI_production start
