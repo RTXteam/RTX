@@ -40,3 +40,9 @@ and then in that same bash shell on the remote instance, run
 source <(curl -s -L https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh)
 ```
 
+# Credits
+
+- The shell scripts were written by Stephen Ramsey with a lot of help from Finn Womack.
+- `Merged-Dockerfile` was written by Finn Womack.
+
+
