@@ -6,7 +6,7 @@ of space in the root file system. The EC2 security policy will need to be config
 the hostname that is DNS-associated with the elastic IP address associated withi your instance is `buildarax.rtx.ai`.
 3. On your laptop or dev machine, in a bash shell, run:
 ```
-source <(curl -s -L https://github.com/RTXteam/RTX/blob/master/DockerBuild/test-instance-scripts/remote-setup-build-test-arax-from-fresh-instance.sh)
+source <(curl -s -L https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/remote-setup-build-test-arax-from-fresh-instance.sh)
 ```
 You will be prompted to enter the path to your AWS key file (PEM file) that you assigned to your EC2 instance.
 If you have already installed your RSA public key in the instance's `authorized_keys` file, then just hit return.
