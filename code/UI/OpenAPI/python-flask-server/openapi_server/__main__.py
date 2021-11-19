@@ -10,14 +10,20 @@ logging.basicConfig(level=logging.INFO)  # can change this to logging.DEBUG for 
 
 @atexit.register
 def ignore_sigchld():
+    logging.debug("Setting SIGCHLD to SIG_IGN before exiting")
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
+    
 def receive_sigchld(signal_number, frame):
     if signal_number == signal.SIGCHLD:
-        try:
-            os.waitpid(-1, os.WNOHANG)
-        except ChildProcessError as e:
-            logging.error(repr(e))
+        while True:
+            try:
+                pid, _ = os.waitpid(-1, os.WNOHANG)
+                logging.debug(f"PID returned from call to os.waitpid: {pid}")
+                if pid == 0:
+                    break
+            except ChildProcessError as e:
+                logging.error(repr(e))
 
 def receive_sigpipe(signal_number, frame):
     if signal_number == signal.SIGPIPE:
