@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Stephen Ramsey, Oregon State University
+
 set -o nounset -o pipefail -o errexit
 
 arax_base=/mnt/data/orangeboard
