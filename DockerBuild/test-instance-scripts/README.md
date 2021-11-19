@@ -33,7 +33,8 @@ certificates).
 
 # Can I reuse the instance without having to re-download all the database files?
 
-Yes, you can!  In a bash shell in the remote instance, run
+Yes, you can!  What I normally do is to clear out the Docker container and image, and the RTX code repo in the host OS, as follows:
+In a bash shell in the test instance (e.g., `buildarax.rtx.ai`), run
 ```
 source <(curl -s -L https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/clear-test-instance.sh)
 ```
