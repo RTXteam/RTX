@@ -25,11 +25,11 @@ databases and `araxconfig.rtx.ai` for the ARAX main config file). The script wil
 
 If you look at the shell script `build-test-arax-from-fresh-instance.sh`, you
 will see that it uses the Dockerfile `Merged-Dockerfile` to build a container
-`arax` (constructed from a Docker image `arax:1.0`) that contains both the ARAX
-and RTX-KG2 services. No TLS is configured in the host OS, in contrast to how we
-set up ARAX in production (this decision was made in order to keep things simple
-for deploying a test system, i.e., to avoid having to run `certbot` to get SSL
-certificates).
+`arax` (constructed from a Ubuntu 20.04-based Docker image `arax:1.0`) that
+contains both the ARAX and RTX-KG2 services. No TLS is configured in the host
+OS, in contrast to how we set up ARAX in production (this decision was made in
+order to keep things simple for deploying a test system, i.e., to avoid having
+to run `certbot` to get SSL certificates).
 
 # Can I reuse the instance without having to re-download all the database files?
 
@@ -47,5 +47,11 @@ source <(curl -s -L https://raw.githubusercontent.com/RTXteam/RTX/master/DockerB
 
 - The shell scripts were written by Stephen Ramsey with a lot of help from Finn Womack.
 - `Merged-Dockerfile` was written by Finn Womack.
+
+# Will this work on something other than Ubuntu 18.04 in the host OS?
+
+I have no idea. Give it a try and report back!  These scripts have only been tested under Ubuntu 18.04 for
+the host OS (and running Ubuntu 20.04 inside the container).
+
 
 
