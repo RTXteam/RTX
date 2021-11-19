@@ -12,7 +12,7 @@ You will be prompted to enter the path to your AWS key file (PEM file) that you 
 If you have already installed your RSA public key in the instance's `authorized_keys` file, then just hit return.
 You will then be prompted to enter the instance's hostname; type the full hostname (e.g., `buildarax.rtx.ai`) and 
 hit return. It will take a few hours to install and set up ARAX, mostly due to the time required to rsync the
-various ARAX databases into the instance. This script will set up key exchange between your test instance
+various ARAX databases into the instance. This script will set up the key exchanges between your test instance
 (e.g., `buildarax.rtx.ai`) and the two instances from which files have to be retrieved (namely, `arax.ncats.io` for
 databases and `araxconfig.rtx.ai` for the ARAX main config file). The script will then run the script 
 `build-test-arax-from-fresh-instance.sh` within the test instance, on your behalf, to set up and run ARAX in the instance.
