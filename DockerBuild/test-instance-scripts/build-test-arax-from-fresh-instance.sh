@@ -30,7 +30,7 @@ sudo mkdir -p ${arax_base}/databases
 sudo chown ubuntu.ubuntu ${arax_base}/databases
 
 # copy the config file into the RTX/code directory
-scp araxconfig@araxconfig.rtx.ai:configv2.json RTX/code
+scp -q -o StrictHostKeyChecking=no araxconfig@araxconfig.rtx.ai:configv2.json RTX/code
 
 # create config_local.json that points to the local RTX-KG2 API
 cat RTX/code/configv2.json | \
