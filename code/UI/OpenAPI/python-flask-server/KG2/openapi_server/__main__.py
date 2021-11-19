@@ -24,6 +24,7 @@ def receive_sigchld(signal_number, frame):
                     break
             except ChildProcessError as e:
                 logging.error(repr(e))
+                break
 
 def receive_sigpipe(signal_number, frame):
     if signal_number == signal.SIGPIPE:
