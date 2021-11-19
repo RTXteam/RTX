@@ -2,8 +2,6 @@
 
 # Stephen Ramsey, Oregon State University
 
-set -o nounset -o pipefail -o errexit
-
 public_key_file=id_rsa.pub
 database_server=rtxconfig@arax.ncats.io
 config_server=araxconfig@araxconfig.rtx.ai
@@ -25,8 +23,10 @@ else
 fi
   
 echo "Installing in hostname: ${instance_hostname}"
+echo "Installing for username: ${remote_username}"
+
 read -p "Are the above choices correct? [Y/N] " -n 1 -r
-echo    # (optional) move to a new line
+
 if ! [[ $REPLY =~ ^[Yy]$ ]]
 then
     exit 0
@@ -34,7 +34,8 @@ fi
 
 if ! [ -z "${aws_pem_file}" ]
 then
-    ssh-keygen -F ${instance_hostname} >/dev/null 2>&1
+    ssh-keygen -F ${instance_hostname} 
+
     if [ $? == 0 ]
     then
         ssh-keygen -R ${instance_hostname}
@@ -72,4 +73,6 @@ rm ${temp_file_path}
 ssh ${config_server} "rm ${temp_file_name}"
 ssh ${database_server} "rm ${temp_file_name}"
 
-ssh ${remote_username}@${instance_hostname} bash -s '<(curl -s https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh)'
+ssh ${remote_username}@${instance_hostname} 'curl -s https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh > build-test-arax-from-fresh-instance.sh'
+
+ssh ${remote_username}@${instance_hostname} 'bash build-test-arax-from-fresh-instance.sh'
