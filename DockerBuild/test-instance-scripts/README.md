@@ -35,7 +35,7 @@ Yes, you can!  In a bash shell in the remote instance, run
 ```
 source <(curl -s -L https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/clear-test-instance.sh)
 ```
-and then run
+and then in that same bash shell on the remote instance, run
 ```
 source <(curl -s -L https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh)
 ```
