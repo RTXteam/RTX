@@ -23,7 +23,7 @@ def receive_sigchld(signal_number, frame):
                 if pid == 0:
                     break
             except ChildProcessError as e:
-                logging.error(repr(e))
+                logging.debug(repr(e) + "; this is expected if there are no more child processes to reap")
                 break
 
 def receive_sigpipe(signal_number, frame):
