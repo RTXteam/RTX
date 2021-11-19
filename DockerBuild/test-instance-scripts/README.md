@@ -16,6 +16,7 @@ various ARAX databases into the instance. This script will set up the key exchan
 (e.g., `buildarax.rtx.ai`) and the two instances from which files have to be retrieved (namely, `arax.ncats.io` for
 databases and `araxconfig.rtx.ai` for the ARAX main config file). The script will then run the script 
 `build-test-arax-from-fresh-instance.sh` within the test instance, on your behalf, to set up and run ARAX in the instance.
+
 4. Point your browser at the instance on port 80 via HTTP; for example, if the instance hostname is
 `buildarax.rtx.ai`, then point your browser at https://buildarax.rtx.ai
 5. Have fun with ARAX!
