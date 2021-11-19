@@ -29,8 +29,15 @@ git clone https://github.com/RTXteam/RTX.git
 sudo mkdir -p ${arax_base}/databases
 sudo chown ubuntu.ubuntu ${arax_base}/databases
 
+# do a test login to arax.ncats.io, to make sure rsync won't hang up later
+ssh -q -oStrictHostKeyChecking=no rtxconfig@arax.ncats.io exit
+
+# do a test login to araxconfig.rtx.ai, to make sure the scp won't hang up later
+ssh -q -oStrictHostKeyChecking=no araxconfig@araxconfig.rtx.ai exit
+
 # copy the config file into the RTX/code directory
-scp -q -o StrictHostKeyChecking=no araxconfig@araxconfig.rtx.ai:configv2.json RTX/code
+scp araxconfig@araxconfig.rtx.ai:configv2.json RTX/code
+
 
 # create config_local.json that points to the local RTX-KG2 API
 cat RTX/code/configv2.json | \
