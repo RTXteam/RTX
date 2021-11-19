@@ -33,10 +33,10 @@ to run `certbot` to get SSL certificates).
 
 Yes, you can!  In a bash shell in the remote instance, run
 ```
-source <(curl -s -L https://github.com/RTXteam/RTX/blob/master/DockerBuild/test-instance-scripts/clear-test-instance.sh)
+source <(curl -s -L https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/clear-test-instance.sh)
 ```
 and then run
 ```
-source <(curl -s -L https://github.com/RTXteam/RTX/blob/master/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh)
+source <(curl -s -L https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh)
 ```
 
