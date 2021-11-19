@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Stephen Ramsey, Oregon State University
+
 set -o nounset -o pipefail -o errexit
 
 public_key_file=id_rsa.pub
