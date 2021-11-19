@@ -38,7 +38,7 @@ then
 
     if [ $? == 0 ]
     then
-        ssh-keygen -R ${instance_hostname}
+        ssh-keygen -R ${instance_hostname} >/dev/null 2>&1
     fi
 
     if ! ssh -q -o StrictHostKeyChecking=no ${remote_username}@${instance_hostname} exit
