@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Stephen Ramsey, Oregon State University
+
 set -o nounset -o pipefail -o errexit
 
 read -p "Are you sure you are running this command in the ARAX test instance and not on some other instance? " -n 1 -r
