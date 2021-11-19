@@ -4,9 +4,13 @@ import connexion, flask, flask_cors
 import logging
 import json
 import openapi_server.encoder
-import os, sys, signal
+import os, sys, signal, atexit
 
 logging.basicConfig(level=logging.INFO)  # can change this to logging.DEBUG for debuggging
+
+@atexit.register
+def ignore_sigchld():
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
 def receive_sigchld(signal_number, frame):
     if signal_number == signal.SIGCHLD:
