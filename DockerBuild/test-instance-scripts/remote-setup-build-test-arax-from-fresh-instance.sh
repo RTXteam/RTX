@@ -2,6 +2,9 @@
 
 # Stephen Ramsey, Oregon State University
 
+set -o nounset -o pipefail
+# note: the standard bash "errexit" flag will not work in this script
+
 public_key_file=id_rsa.pub
 database_server=rtxconfig@arax.ncats.io
 config_server=araxconfig@araxconfig.rtx.ai
