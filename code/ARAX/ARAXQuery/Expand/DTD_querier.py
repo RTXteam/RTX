@@ -238,7 +238,7 @@ class DTDQuerier:
             if len(set(categories).intersection(set(drug_ancestor_label_list))) > 0 or len(set(categories).intersection(set(disease_ancestor_label_list))) > 0:
                 target_categories = categories
             else:
-                log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug or disase or their ancestors", error_code="CategoryError")
+                log.warning(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be drug or disase or their ancestors")
                 return final_kg
 
         if (source_pass_nodes is None) and (target_pass_nodes is None):
@@ -260,7 +260,7 @@ class DTDQuerier:
             else:
                 target_category_temp = 'disease'
             if source_category_temp == target_category_temp:
-                log.error(f"The query nodes in both ends of edge are the same type which is {source_category_temp}", error_code="CategoryError")
+                log.warning(f"The query nodes in both ends of edge are the same type which is {source_category_temp}, DTD expand is skipped")
                 return final_kg
             else:
                 for (source_curie, target_curie) in itertools.product(source_pass_nodes, target_pass_nodes):
@@ -322,14 +322,14 @@ class DTDQuerier:
                 if len(set(target_categories).intersection(set(disease_ancestor_label_list))) > 0:
                     target_category_temp = 'disease'
                 else:
-                    log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be a disase or their ancestors", error_code="CategoryError")
+                    log.warning(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be a disase or their ancestors. DTD expand is skipped.")
                     return final_kg
             else:
                 source_category_temp = 'disease'
                 if len(set(target_categories).intersection(set(drug_ancestor_label_list))) > 0:
                     target_category_temp = 'drug'
                 else:
-                    log.error(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be a drug or their ancestors", error_code="CategoryError")
+                    log.warning(f"The category of query node {target_qnode_key} is unsatisfiable. It has to be a drug or their ancestors. DTD expand is skipped")
                     return final_kg
             if source_category_temp == 'drug':
                 for source_curie in source_pass_nodes:
@@ -384,14 +384,14 @@ class DTDQuerier:
                 if len(set(source_categories).intersection(set(disease_ancestor_label_list))) > 0:
                     source_category_temp = 'disease'
                 else:
-                    log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be a disase or their ancestors", error_code="CategoryError")
+                    log.warning(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be a disase or their ancestors. DTD expand is skipped")
                     return final_kg
             else:
                 target_category_temp = 'disease'
                 if len(set(source_categories).intersection(set(drug_ancestor_label_list))) > 0:
                     source_category_temp = 'drug'
                 else:
-                    log.error(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be a drug or their ancestors", error_code="CategoryError")
+                    log.warning(f"The category of query node {source_qnode_key} is unsatisfiable. It has to be a drug or their ancestors. DTD expand is skipped")
                     return final_kg
             if target_category_temp == 'drug':
                 for target_curie in target_pass_nodes:
