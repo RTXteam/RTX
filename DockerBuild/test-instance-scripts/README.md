@@ -3,7 +3,7 @@
 1. If needed, provision a new EC2 instance (for example, a `t2.small` instance) with the Ubuntu 18.04 AMI. Allocate at least 200 GiB
 of space in the root file system. The EC2 security policy will need to be configured to permit traffic to/from TCP port 80 on the instance.
 2. If needed, associate an elastic IP address to the instance and configure a DNS A-record for it. Let's assume that
-the hostname that is DNS-associated with the elastic IP address associated withi your instance is `buildarax.rtx.ai`.
+the hostname that is DNS-associated with the elastic IP address associated with your instance is `buildarax.rtx.ai`.
 3. On your laptop or dev machine, in a bash shell, run:
 ```
 source <(curl -s -L https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/remote-setup-build-test-arax-from-fresh-instance.sh)
