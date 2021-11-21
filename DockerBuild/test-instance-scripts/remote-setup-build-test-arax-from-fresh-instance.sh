@@ -9,10 +9,10 @@ public_key_file=id_rsa.pub
 database_server=rtxconfig@arax.ncats.io
 config_server=araxconfig@araxconfig.rtx.ai
 
-echo "Enter the path to the AWS PEM file configured for the instance in which you wish to install ARAX: "
+echo "Enter the path to the AWS PEM file configured for the instance in which you wish to install ARAX; or if your RSA public key is already installed, just hit return: "
 read aws_pem_file
 
-echo "Enter the fullly-qualified hostname of your instance (e.g., myaraxtest.rtx.ai); or if your RSA public key is already installed, just hit return: "
+echo "Enter the fully-qualified hostname of your instance (e.g., myaraxtest.rtx.ai): "
 read instance_hostname
 
 echo "Enter the remote username for your instance (e.g., ubuntu): "
