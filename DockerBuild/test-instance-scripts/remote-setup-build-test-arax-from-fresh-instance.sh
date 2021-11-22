@@ -14,9 +14,18 @@ read aws_pem_file
 
 echo "Enter the fully-qualified hostname of your instance (e.g., myaraxtest.rtx.ai): "
 read instance_hostname
+if [[ -z "${instance_hostname}" ]]
+then
+    >&2 echo "No hostname supplied; this is an error; exiting"
+    exit 1
+fi
 
-echo "Enter the remote username for your instance (e.g., ubuntu): "
+echo "Enter the remote username for your instance (or hit enter for [ubuntu]): "
 read remote_username
+if [[ -z "${remote_username}" ]]
+then
+    remote_username=ubuntu
+fi
 
 if ! [ -z "${aws_pem_file}" ]
 then
@@ -32,6 +41,7 @@ read -p "Are the above choices correct? [Y/N] " -n 1 -r
 
 if ! [[ $REPLY =~ ^[Yy]$ ]]
 then
+    >&2 echo "User did not verify the run conditions; cancelling the run of the setup script"
     exit 0
 fi
 
