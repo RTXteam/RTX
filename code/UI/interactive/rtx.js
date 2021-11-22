@@ -64,6 +64,7 @@ function main() {
     UIstate["timeout"] = '';
     UIstate["pid"] = null;
     UIstate["version"] = checkUIversion(false);
+    UIstate["maxresults"] = 1000;
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
     load_meta_knowledge_graph();
@@ -79,7 +80,7 @@ function main() {
 	document.getElementById(prov+"_url").value = providers[prov].url;
 	document.getElementById(prov+"_url_button").disabled = true;
     }
-    for (var setting of ["submitter","timeout"]) {
+    for (var setting of ["submitter","timeout","maxresults"]) {
 	document.getElementById(setting+"_url").value = UIstate[setting];
 	document.getElementById(setting+"_url_button").disabled = true;
     }
@@ -102,7 +103,7 @@ function main() {
     }
     else {
 	add_cyto(99999);
-	add_cyto(0);
+	//add_cyto(0); // now done on user click
     }
 
     if (syn) {
@@ -1136,10 +1137,12 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	link.style.left = "30px";
 	link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
 	devdiv.appendChild(link);
-	var pre = document.createElement("pre");
-	pre.id = 'responseJSON';
-	pre.textContent = JSON.stringify(jsonObj2,null,2);
-	devdiv.appendChild(pre);
+	devdiv.appendChild(document.createElement("br"));
+	// remove, for now, as it may gobble up way too much memory and is already available via link anyway:
+	//var pre = document.createElement("pre");
+	//pre.id = 'responseJSON';
+	//pre.textContent = JSON.stringify(jsonObj2,null,2);
+	//devdiv.appendChild(pre);
     }
 
     if (jsonObj2["children"]) {
@@ -1485,9 +1488,13 @@ function render_response(respObj,dispjson) {
 	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
 	    var h2 = document.createElement("h2");
 	    h2.appendChild(document.createTextNode(respObj.message.results.length + rtext));
+	    if (respObj.message.results.length > UIstate["maxresults"])
+		h2.appendChild(document.createTextNode(" (*only showing first "+UIstate["maxresults"]+")"));
 	    document.getElementById("result_container").appendChild(h2);
 
 	    document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
+            if (respObj.message.results.length > UIstate["maxresults"])
+		document.getElementById("menunumresults").innerHTML += '*';
             document.getElementById("menunumresults").classList.add("numnew");
 	    document.getElementById("menunumresults").classList.remove("numold");
 
@@ -1496,6 +1503,10 @@ function render_response(respObj,dispjson) {
 	    if (respObj.reasoner_id)
 		respreas = respObj.reasoner_id;
 	    process_results(respObj.message["results"],respObj.message["knowledge_graph"],respObj["schema_version"],respreas);
+
+
+            if (respObj.message.results.length > UIstate["maxresults"])
+		document.getElementById("result_container").appendChild(h2.cloneNode(true));
 
 	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
 		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
@@ -1704,7 +1715,7 @@ function render_response(respObj,dispjson) {
 	document.getElementById("provenance_container").innerHTML += "<h2>Provenance information not available for this response</h2>";
 
 
-    add_cyto(0);
+    //add_cyto(0); // now done on user click
     add_cyto(99999);
     statusdiv.appendChild(document.createTextNode("done."));
     statusdiv.appendChild(document.createElement("br"));
@@ -2226,6 +2237,9 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	else
             add_to_summary([cnf,ess], num);
 
+	// avoid madness
+	if (num > UIstate["maxresults"]) continue;
+
 	var rsrc = mainreasoner;
 	if (result.reasoner_id)
 	    rsrc = result.reasoner_id;
@@ -2244,7 +2258,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	    (rsrc=="ImProving")? "simp" :
 	    "p0";
 
-        var div = document.createElement("div");
+
+	var div = document.createElement("div");
         div.id = 'h'+num+'_div';
 	div.title = 'Click to expand / collapse result '+num;
         div.className = 'accordion';
@@ -2433,6 +2448,7 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 
 
 function add_cyto(i) {
+    // once rendered, data is set to null so as to only do this once per graph
     if (cytodata[i] == null) return;
 
     var num = Number(i);// + 1;
@@ -5442,6 +5458,13 @@ function update_url(urlkey,value) {
 	UIstate[urlkey] = to;
 	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
+    else if (urlkey == 'maxresults') {
+        var mx = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(mx))
+	    mx = 1000;
+	UIstate[urlkey] = mx;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
     else if (urlkey == 'submitter') {
 	UIstate[urlkey] = document.getElementById(urlkey+"_url").value.trim();
         document.getElementById(urlkey+"_url").value = UIstate[urlkey];
@@ -5454,7 +5477,7 @@ function update_url(urlkey,value) {
     var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
 function update_submit_button(urlkey) {
-    var currval = (urlkey == 'submitter' || urlkey == 'timeout') ? UIstate[urlkey] : providers[urlkey].url;
+    var currval = (urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'maxresults') ? UIstate[urlkey] : providers[urlkey].url;
 
     if (currval == document.getElementById(urlkey+"_url").value)
 	document.getElementById(urlkey+"_url_button").disabled = true;

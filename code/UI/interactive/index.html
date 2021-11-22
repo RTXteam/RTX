@@ -38,7 +38,7 @@
 &nbsp;Output<br>
 <div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
 <div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">Provenance</div>
-<div id="kgMenu" onclick="openSection('kg');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
+<div id="kgMenu" onclick="openSection('kg');add_cyto(0);" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
 <div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
 <div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
 <hr>
@@ -495,6 +495,10 @@
 
   <div class="statushead">Session Settings</div>
   <div class="status">
+    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF RESULTS TO DISPLAY (very large values may crash UI):</h3>
+    <input type="text" class="questionBox" id="maxresults_url" onkeyup="enter_url(this,'maxresults');" size="6" maxlength="6"/>
+    <input type="button" style="margin-left:15px;" class="questionBox button" id="maxresults_url_button" value="Update" onClick="update_url('maxresults',null);"/>
+    <br><br>
     <h3 style="margin-bottom:0px;">SUBMITTER (enter a generic name to help track queries):</h3>
     <input type="text" class="questionBox" id="submitter_url" onkeyup="enter_url(this,'submitter');" size="100" maxlength="1000"/>
     <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
