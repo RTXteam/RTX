@@ -6,6 +6,9 @@ set -o nounset -o pipefail -o errexit
 
 arax_base=/mnt/data/orangeboard
 
+port_number=${1:-80}
+echo "Port Number: ${port_number}"
+
 sudo apt-get update
 
 # --------------------------------------------------------------------------------------------------
@@ -66,7 +69,7 @@ sed -i 's/checkout production/checkout master/g' ./Merged-Dockerfile  # for issu
 sudo docker build --file ./Merged-Dockerfile --no-cache --rm --tag arax:1.0 ./RTX/DockerBuild/
 
 # create the Docker container
-sudo docker create --name arax --tty --publish 80:80 \
+sudo docker create --name arax --tty --publish 80:"${port_number}" \
     --mount type=bind,source="${arax_base}"/databases,target="${arax_base}"/databases \
     arax:1.0
 
