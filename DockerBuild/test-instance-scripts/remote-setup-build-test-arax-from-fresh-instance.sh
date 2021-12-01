@@ -29,7 +29,7 @@ fi
 
 echo "Enter the port number on the host machine you want to use for port 80 inside the conainer (or hit enter for [80]): "
 read port_number
-if [[ -z "${remote_username}" ]]
+if [[ -z "${port_number}" ]]
 then
     port_number=80
 fi
