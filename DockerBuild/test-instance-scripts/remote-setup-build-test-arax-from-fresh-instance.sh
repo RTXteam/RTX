@@ -27,6 +27,13 @@ then
     remote_username=ubuntu
 fi
 
+echo "Enter the port number on the host machine you want to use for port 80 inside the conainer (or hit enter for [80]): "
+read port_number
+if [[ -z "${remote_username}" ]]
+then
+    port_number=80
+fi
+
 if ! [ -z "${aws_pem_file}" ]
 then
     echo "Using PEM file: ${aws_pem_file}"
@@ -88,4 +95,4 @@ ssh ${database_server} "rm ${temp_file_name}"
 
 ssh ${remote_username}@${instance_hostname} 'curl -s https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh > build-test-arax-from-fresh-instance.sh'
 
-ssh ${remote_username}@${instance_hostname} 'bash build-test-arax-from-fresh-instance.sh'
+ssh ${remote_username}@${instance_hostname} 'bash build-test-arax-from-fresh-instance.sh ${port_number}'
