@@ -77,11 +77,8 @@ sudo docker start arax
 
 for devarea in kg2 production
 do
-    for config_file in configv2.json config_local.json
-    do
-	sudo docker cp RTX/code/${config_file} arax:${arax_base}/${devarea}/RTX/code
-	sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/${config_file}
-    done
+    sudo docker cp RTX/code/config_local.json arax:${arax_base}/${devarea}/RTX/code
+    sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/config_local.json
     # create the required symbolic links for ARAX/KG2 database files, inside the container
     sudo docker exec arax bash -c "sudo -u rt bash -c 'cd ${arax_base}/${devarea}/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
 done
