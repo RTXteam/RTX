@@ -17,8 +17,6 @@ sudo apt-get install -y netcat # useful for debugging
 sudo apt-get install -y docker.io
 
 # install python3.7 (with pip) into the host OS, using the Ubuntu packages
-rm -r -f ./venv
-export VENV_DIR=./venv   # have to set this environment variable for setup-python37-in-ubuntu18.shinc to work properly
 source <(curl -s https://raw.githubusercontent.com/RTXteam/RTX-KG2/master/setup-python37-with-pip3-in-ubuntu.shinc)
 
 # clone the ARAX software repo from GitHub (master branch)
