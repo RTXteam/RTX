@@ -47,7 +47,7 @@ cat RTX/code/configv2.json | \
 	RTX/code/config_local.json
 
 # download the database files (this step takes a long time)
-./venv/bin/python3 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
+python3.7 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
 
 # copy the dockerfile to the CWD so we can modify it in-place
 cp RTX/DockerBuild/Merged-Dockerfile .
