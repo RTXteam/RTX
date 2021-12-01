@@ -43,6 +43,7 @@ fi
   
 echo "Installing in hostname: ${instance_hostname}"
 echo "Installing for username: ${remote_username}"
+echo "Using the port number: ${port_number}"
 
 read -p "Are the above choices correct? [Y/N] " -n 1 -r
 
