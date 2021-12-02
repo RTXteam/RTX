@@ -96,4 +96,4 @@ ssh ${database_server} "rm ${temp_file_name}"
 
 ssh ${remote_username}@${instance_hostname} 'curl -s https://raw.githubusercontent.com/RTXteam/RTX/issue1753/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh > build-test-arax-from-fresh-instance.sh'
 
-ssh ${remote_username}@${instance_hostname} 'bash -s' < "build-test-arax-from-fresh-instance.sh" ${port_number}
+ssh ${remote_username}@${instance_hostname} bash build-test-arax-from-fresh-instance.sh ${port_number}
