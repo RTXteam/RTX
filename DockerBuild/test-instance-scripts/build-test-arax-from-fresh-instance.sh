@@ -70,7 +70,7 @@ sed -i 's/checkout production/checkout master/g' ./Merged-Dockerfile  # for issu
 sudo docker build --file ./Merged-Dockerfile --no-cache --rm --tag arax:1.0 ./RTX/DockerBuild/
 
 # create the Docker container
-sudo docker create --name arax --tty --publish 80:"${port_number}" \
+sudo docker create --name arax --tty --publish "${port_number}":80 \
     --mount type=bind,source="${arax_base}"/databases,target="${arax_base}"/databases \
     arax:1.0
 
