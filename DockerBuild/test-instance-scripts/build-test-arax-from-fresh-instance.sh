@@ -23,7 +23,8 @@ sudo apt-get install -y docker.io
 sudo apt-get install -y apt-utils python3 python3-pip
 sudo apt-get install -y software-properties-common
 sudo add-apt-repository -y ppa:deadsnakes/ppa
-sudo apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-venv
+sudo apt-get update
+sudo apt-get install -y python3.7 python3.7-dev python3.7-venv
 python3.7 -m pip install wheel
 
 # clone the ARAX software repo from GitHub (master branch)
