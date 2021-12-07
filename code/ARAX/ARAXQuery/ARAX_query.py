@@ -494,7 +494,6 @@ class ARAXQuery:
             incoming_message = input_operations_dict['message']
             if isinstance(incoming_message,dict):
                 incoming_message = Message.from_dict(incoming_message)
-            eprint(f"TESTING: incoming_test is a {type(incoming_message)}")
             messages = [ incoming_message ]
 
         #### Pull out the main processing plan
