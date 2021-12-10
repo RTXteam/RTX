@@ -1,0 +1,29 @@
+{
+  "message": {
+    "query_graph": {
+      "edges": {
+        "e00": {
+          "subject": "n00",
+          "object": "n01"
+        }
+      },
+      "nodes": {
+        "n00": {
+          "ids": [
+            "DRUGBANK:DB00215",
+            "DRUGBANK:DB01175",
+            "DRUGBANK:DB00472",
+            "DRUGBANK:DB00176",
+            "DRUGBANK:DB00715",
+            "DRUGBANK:DB01104"
+          ],
+          "categories": ["biolink:SmallMolecule"]
+        },
+        "n01": {
+          "ids": ["DOID:5844", "DOID:1936", "DOID:3393"],
+          "categories": ["biolink:Disease"]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+    "message": {
+        "query_graph": {
+            "nodes": {
+                "n0": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ],
+                    "name": "Small Molecule",
+                    "constraints": [
+                        {
+                            "id": "biolink:highest_FDA_approval_status",
+                            "name": "highest FDA approval status",
+                            "operator": "==",
+                            "value": "regular approval"
+                        }
+                    ]
+                },
+                "n1": {
+                    "name": "EGFR",
+                    "ids": [
+                        "NCBIGene:1956"
+                    ]
+                }
+            },
+            "edges": {
+                "e0": {
+                    "subject": "n0",
+                    "object": "n1",
+                    "predicates": [
+                        "biolink:decreases_abundance_of",
+                        "biolink:decreases_activity_of",
+                        "biolink:decreases_expression_of",
+                        "biolink:decreases_synthesis_of",
+                        "biolink:increases_degradation_of",
+                        "biolink:disrupts",
+                        "biolink:entity_negatively_regulates_entity"
+                    ]
+                }
+            }
+        }
+    }
+}

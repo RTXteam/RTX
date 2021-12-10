@@ -1,0 +1,38 @@
+{
+    "message": {
+        "query_graph": {
+            "nodes": {
+                "n0": {
+                     "ids": ["MONDO:0005359", "SNOMEDCT:197354009"],
+                     "categories": ["biolink:DiseaseOrPhenotypicFeature"]
+                },
+                "n1": {
+                    "categories": ["biolink:DiseaseOrPhenotypicFeature"]
+                },
+                "n2": {
+                    "categories": ["biolink:Gene"]
+                },
+                "n3": {
+                    "categories": ["biolink:Drug"]
+                }
+            },
+            "edges": {
+                "e01": {
+                    "subject": "n0",
+                    "object": "n1",
+                    "predicates": ["biolink:has_real_world_evidence_of_association_with"]
+                },
+                "e02": {
+                    "subject": "n2",
+                    "object": "n1",
+                    "predicates": ["biolink:gene_associated_with_condition"]
+                },
+                "e03": {
+                    "subject": "n3",
+                    "object": "n2",
+                    "predicates": ["biolink:affects"]
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,31 @@
+{
+	"message": {
+		"query_graph": {
+            "nodes": {
+                "n0": {
+                    "ids": [
+                        "NCBIGene:1956"
+                    ],
+                    "categories": ["biolink:Gene"]
+                },
+                
+                "n1": {
+                    "categories": ["biolink:SmallMolecule"]
+				}
+			},
+			
+				"edges": {
+				"e01": {
+					"subject": "n0",
+					"object": "n1",
+					"predicates": [
+						"biolink:affects_response_to"
+                    			]
+                		}
+            		
+					
+            }
+        }
+    }
+}
+
