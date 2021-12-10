@@ -6,14 +6,28 @@ import os
 
 dir = '/mnt/data/orangeboard/Cache/callbacks'
 
-counter = 6
+argparser = argparse.ArgumentParser(
+    description='Summarize the results of a series of callbacks')
+argparser.add_argument('--starting_callback_number', action='store', type=int,
+                        help='The first callback number to process')
+argparser.add_argument('--ending_callback_number', action='store', type=int,
+                        help='The last callback number to process')
+
+args = argparser.parse_args()
+
+if not args.starting_callback_number or not args.ending_callback_number:
+    print("ERROR: Must supply both --starting_callback_number and --ending_callback_number")
+    print("       See --help for more information")
+    exit()
+
+counter = args.starting_callback_number
 done = False
 
 results = {}
 queries = {}
 states = {}
 
-while not done:
+while not > args.ending_callback_number:
     filename = f"{counter:05}.json"
     filepath = f"{dir}/{filename}"
 
@@ -57,24 +71,19 @@ sorted_queries = sorted(queries.keys())
 print('Query\tBefore\tAfter')
 print('-----\t------\t-----')
 for query in sorted_queries:
-    try:
-        before_n_results = str(results['before'][query]['n_results'])
-        before_essence = str(results['before'][query]['essence'])
-        before_response_id = str(results['before'][query]['response_id'])
-    except:
-        before_n_results = ''
-        before_n_results = ''
-        before_response_id = ''
-    try:
-        after_n_results = str(results['after'][query]['n_results'])
-        after_essence = str(results['after'][query]['essence'])
-        after_response_id = str(results['after'][query]['response_id'])
-    except:
-        after_n_results = ''
-        after_n_results = ''
-        after_response_id = ''
+    n_results_list = []
+    for state in states:
+        try:
+            n_results = str(results[state][query]['n_results'])
+            essence = str(results[state][query]['essence'])
+            response_id = str(results[state][query]['response_id'])
+        except:
+            n_results = ''
+            n_results = ''
+            response_id = ''
 
-    print(f"{query}\t{before_n_results}\t{after_n_results}\t{before_response_id}\t{after_response_id}")
+        n_results_list.append(n_results)
+    print(f"{query}\t" + "\t".join(n_results_list))
 
 
 
