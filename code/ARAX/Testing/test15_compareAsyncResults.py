@@ -3,6 +3,7 @@ import json
 import requests
 import timeit
 import os
+import argparse
 
 dir = '/mnt/data/orangeboard/Cache/callbacks'
 
@@ -27,7 +28,7 @@ results = {}
 queries = {}
 states = {}
 
-while not > args.ending_callback_number:
+while counter <= args.ending_callback_number:
     filename = f"{counter:05}.json"
     filepath = f"{dir}/{filename}"
 
@@ -68,10 +69,12 @@ while not > args.ending_callback_number:
 
 sorted_queries = sorted(queries.keys())
 
-print('Query\tBefore\tAfter')
-print('-----\t------\t-----')
+print('Query\t' + "\t".join(states))
+print('-------------------------------------------------------')
 for query in sorted_queries:
     n_results_list = []
+    response_id_list = []
+
     for state in states:
         try:
             n_results = str(results[state][query]['n_results'])
@@ -83,7 +86,9 @@ for query in sorted_queries:
             response_id = ''
 
         n_results_list.append(n_results)
-    print(f"{query}\t" + "\t".join(n_results_list))
+        response_id_list.append(response_id)
+
+    print(f"{query}\t" + "\t".join(n_results_list) + "\t" + "\t".join(response_id_list))
 
 
 
