@@ -1,0 +1,43 @@
+{
+    "message": {
+        "query_graph": {
+            "edges": {
+                "e01": {
+                    "object": "n0",
+                    "subject": "n1",
+                    "predicates": [
+                        "biolink:entity_regulates_entity",
+                        "biolink:genetically_interacts_with"
+                    ]
+                },
+                "e02": {
+                    "object": "n1",
+                    "subject": "n2",
+                    "predicates": [
+                        "biolink:related_to"
+                    ]
+                }
+            },
+            "nodes": {
+                "n0": {
+                    "ids": [
+                        "NCBIGene:23221"
+                    ],
+                    "categories": [
+                        "biolink:Gene"
+                    ]
+                },
+                "n1": {
+                    "categories": [
+                        "biolink:Gene"
+                    ]
+                },
+                "n2": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ]
+                }
+            }
+        }
+    }
+}
