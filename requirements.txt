@@ -7,7 +7,7 @@ ipython-cypher==0.2.6
 networkx==2.4
 graphviz==0.17
 pronto==2.1.0
-lxml==4.6.3
+lxml==4.6.5
 nltk==3.6.5
 SQLAlchemy==1.4.26
 scipy==1.7.1
