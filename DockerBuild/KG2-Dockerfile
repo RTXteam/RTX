@@ -50,14 +50,12 @@ RUN export DEVAREA=kg2
 RUN cat /mnt/data/orangeboard/kg2/RTX/code/UI/OpenAPI/python-flask-server/KG2/RTX_OpenAPI_kg2 > /etc/init.d/RTX_OpenAPI_kg2
 RUN chmod 700 /etc/init.d/RTX_OpenAPI_kg2
 RUN update-rc.d RTX_OpenAPI_kg2 defaults
-RUN update-rc.d RTX_OpenAPI_kg2 enable
 
 # autocomplete
 RUN cat /mnt/data/orangeboard/kg2/RTX/code/autocomplete/RTX_Complete | sed 's/devED/kg2/g' > /etc/init.d/RTX_Complete
 RUN chmod 700 /etc/init.d/RTX_Complete
 RUN cd /mnt/data/orangeboard/kg2/RTX/code/autocomplete && sed -i 's/devED/kg2/g' RTX_Complete.start
 RUN update-rc.d RTX_Complete defaults
-RUN update-rc.d RTX_Complete enable
 
 # set production flag to false
 RUN su rt && cd /mnt/data/orangeboard/kg2/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py
