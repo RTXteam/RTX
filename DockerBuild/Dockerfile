@@ -1,12 +1,15 @@
 FROM ubuntu:20.04
 
+# suppress debconf error messages:
+ARG DEBIAN_FRONTEND=noninteractive
+
 # add user "rt" and give sudo privilege:
 RUN useradd rt -m -s /bin/bash
 
 # install git and sudo
 RUN apt-get update
 RUN apt-get update  # running this twice seems to work around a weird 404 error
-RUN apt-get install -y git sudo curl rsync
+RUN apt-get install -y apt-utils git sudo curl rsync
 
 # give sudo privilege to user rt:
 RUN usermod -aG sudo rt
@@ -36,12 +39,12 @@ RUN cd /var/www && /usr/sbin/apachectl configtest
 
 # install python and packages
 RUN apt-get update
-RUN apt-get install -y apt-utils python3 python3-pip
+RUN apt-get install -y python3 python3-pip
 RUN apt-get install -y software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
 RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-venv
 RUN rm /usr/bin/python3 && ln -s /usr/bin/python3.7 /usr/bin/python3
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.7 -m pip install -r requirements.txt && python3.7 -m pip install flask_cors connexion[swagger-ui] tornado
+RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.7 -m pip install click==7.1.2 && python3.7 -m pip install -r requirements.txt && python3.7 -m pip install flask_cors connexion[swagger-ui] tornado
 
 # setup services
 RUN export DEVAREA=production
