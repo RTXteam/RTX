@@ -9,7 +9,8 @@ RUN useradd rt -m -s /bin/bash
 # install git and sudo
 RUN apt-get update
 RUN apt-get update  # running this twice seems to work around a weird 404 error
-RUN apt-get install -y apt-utils git sudo curl rsync
+RUN apt-get install -y apt-utils
+RUN apt-get install -y git sudo curl rsync
 
 # give sudo privilege to user rt:
 RUN usermod -aG sudo rt
