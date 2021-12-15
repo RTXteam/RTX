@@ -1,5 +1,8 @@
 FROM ubuntu:20.04
 
+# suppress debconf error messages:
+ARG DEBIAN_FRONTEND=noninteractive
+
 # add user "rt" and give sudo privilege:
 RUN useradd rt -m -s /bin/bash
 
