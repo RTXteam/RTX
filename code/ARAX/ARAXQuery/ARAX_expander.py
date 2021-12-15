@@ -172,7 +172,7 @@ class ARAXExpander:
                 qnode.categories = [self.bh.get_root_category()]
             qnode.categories = self.bh.add_conflations(qnode.categories)
         # Make sure QG only uses canonical predicates
-        if mode == "ARAX":
+        if mode != "RTXKG2":
             log.debug(f"Making sure QG only uses canonical predicates")
             qedge_keys = set(query_graph.edges)
             for qedge_key in qedge_keys:
@@ -258,7 +258,7 @@ class ARAXExpander:
                 else:
                     pre_prune_threshold = self._get_prune_threshold(one_hop_qg)
                 # Prune back any nodes with more than the specified max of answers
-                if mode == "ARAX":
+                if mode != "RTXKG2":
                     log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}")
                     fulfilled_qnode_keys = set(one_hop_qg.nodes).intersection(set(overarching_kg.nodes_by_qg_id))
                     for qnode_key in fulfilled_qnode_keys:
@@ -354,7 +354,7 @@ class ARAXExpander:
                 for index, response_tuple in enumerate(kp_answers):
                     answer_kg = response_tuple[0]
                     # Store any kryptonite edge answers as needed
-                    if mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
+                    if mode != "RTXKG2" and qedge.exclude and not answer_kg.is_empty():
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
                     # Otherwise just merge the answer into the overarching KG
@@ -384,7 +384,7 @@ class ARAXExpander:
                                           f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
                                 overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
 
-                if mode == "ARAX":
+                if mode != "RTXKG2":
                     # Apply any kryptonite ("not") qedges
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
@@ -420,7 +420,7 @@ class ARAXExpander:
         self._override_node_categories(message.knowledge_graph, message.query_graph)
 
         # Decorate all nodes with additional attributes info from KG2c (iri, description, etc.)
-        if mode == "ARAX":  # Skip doing this for KG2 (until can pass minimal_metadata param)
+        if mode != "RTXKG2":  # Skip doing this for KG2 (until can pass minimal_metadata param)
             decorator = ARAXDecorator()
             decorator.decorate_nodes(response)
             decorator.decorate_edges(response, kind="RTX-KG2")
@@ -808,7 +808,7 @@ class ARAXExpander:
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
             for node_key, node in nodes.items():
                 # Exclude nodes that correspond to a 'pinned' curie in the QG but are fulfilling a different qnode
-                if mode == "ARAX" and node_key in pinned_curies_map:
+                if mode != "RTXKG2" and node_key in pinned_curies_map:
                     if qnode_key in pinned_curies_map[node_key]:
                         overarching_kg.add_node(node_key, node, qnode_key)
                     else:

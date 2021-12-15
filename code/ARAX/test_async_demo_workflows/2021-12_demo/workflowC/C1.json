@@ -1,0 +1,42 @@
+{
+  "message": {
+    "query_graph": {
+      "nodes": {
+        "n00": {
+          "categories": [
+            "biolink:Disease"
+          ],
+          "ids": [
+            "MONDO:0013433",
+            "MONDO:0005083",
+            "MONDO:0011849",
+            "MONDO:0005100",
+            "MONDO:0005101",
+            "MONDO:0007915",
+            "MONDO:0005011",
+            "MONDO:0005306",
+            "MONDO:0010030",
+            "MONDO:0019340",
+            "MONDO:0008538"
+          ],
+          "is_set": true
+        },
+        "n01": {
+          "categories": [
+            "biolink:SmallMolecule"
+          ],
+          "is_set": false
+        }
+      },
+      "edges": {
+        "e00": {
+          "subject": "n00",
+          "object": "n01",
+          "predicates": [
+            "biolink:has_real_world_evidence_of_association_with"
+          ]
+        }
+      }
+    }
+  }
+}

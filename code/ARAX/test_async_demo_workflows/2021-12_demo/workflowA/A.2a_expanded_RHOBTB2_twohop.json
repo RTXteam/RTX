@@ -1,0 +1,58 @@
+{
+    "message": {
+        "query_graph": {
+            "edges": {
+                "e01": {
+                    "object": "n0",
+                    "subject": "n1",
+                    "predicates": [
+                        "biolink:entity_negatively_regulates_entity"
+                    ]
+                },
+                "e02": {
+                    "object": "n1",
+                    "subject": "n2",
+                    "predicates":  [
+                        "biolink:increases_abundance_of", 
+                        "biolink:increases_expression_of", 
+                        "biolink:increases_stability_of", 
+                        "biolink:increases_uptake_of", 
+                        "biolink:decreases_degradation_of", 
+                        "biolink:increases_secretion_of", 
+                        "biolink:increases_metabolic_processing_of", 
+                        "biolink:increases_folding_of", 
+                        "biolink:increases_localization_of", 
+                        "biolink:increases_synthesis_of", 
+                        "biolink:increases_response_to", 
+                        "biolink:increases_splicing_of", 
+                        "biolink:increases_mutation_rate_of", 
+                        "biolink:increases_transport_of", 
+                        "biolink:increases_activity_of", 
+                        "biolink:increases_molecular_modification_of", 
+                        "biolink:increases_molecular_interaction"
+                    ]
+                }
+            },
+            "nodes": {
+                "n0": {
+                    "ids": [
+                        "NCBIGene:23221"
+                    ],
+                    "categories": [
+                        "biolink:Gene"
+                    ]
+                },
+                "n1": {
+                    "categories": [
+                        "biolink:Gene"
+                    ]
+                },
+                "n2": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ]
+                }
+            }
+        }
+    }
+}

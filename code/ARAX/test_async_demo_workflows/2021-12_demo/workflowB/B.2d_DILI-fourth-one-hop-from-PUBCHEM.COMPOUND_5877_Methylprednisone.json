@@ -1,0 +1,27 @@
+{
+    "message": {
+        "query_graph": {
+            "nodes": {
+                "n0": {
+                    "ids": ["PUBCHEM.COMPOUND:5877", "PUBCHEM.COMPOUND:124653", "PUBCHEM.COMPOUND:6741"],
+                    "categories": [
+                        "biolink:ChemicalEntity"
+                    ],
+                    "name": "Methylprednisone"
+                },
+                "n1": {
+                    "categories": [
+                        "biolink:DiseaseOrPhenotypicFeature"
+                    ]
+                }
+            },
+            "edges": {
+                "e0": {
+                    "subject": "n0",
+                    "object": "n1",
+                    "predicates": ["biolink:treats", "biolink:has_real_world_evidence_of_association_with"]
+                }
+            }
+        }
+    }
+}

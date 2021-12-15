@@ -1,0 +1,36 @@
+{
+  "message": {
+    "query_graph": {
+      "nodes": {
+        "n0": {
+          "ids": ["CHEMBL.COMPOUND:CHEMBL1431"],
+          "categories": ["biolink:SmallMolecule"]
+        },
+        "n1": {
+          "categories": ["biolink:Protein"]
+        },
+        "n2": {
+          "categories": ["biolink:Protein"]
+        },
+        "n3": {
+          "ids": ["UniProtKB:P02794", "UniProtKB:P02792"],
+          "categories": ["biolink:Protein"]
+        }
+      },
+      "edges": {
+        "e0": {
+          "subject": "n0",
+          "object": "n1"
+        },
+        "e1": {
+          "subject": "n1",
+          "object": "n2"
+        },
+        "e2": {
+          "subject": "n2",
+          "object": "n3"
+        }
+      }
+    }
+  }
+}
