@@ -1,11 +1,15 @@
 FROM ubuntu:20.04
 
+# suppress debconf error messages:
+ARG DEBIAN_FRONTEND=noninteractive
+
 # add user "rt" and give sudo privilege:
 RUN useradd rt -m -s /bin/bash
 
 # install git and sudo
 RUN apt-get update
 RUN apt-get update  # running this twice seems to work around a weird 404 error
+RUN apt-get install -y apt-utils
 RUN apt-get install -y git sudo curl rsync
 
 # give sudo privilege to user rt:
@@ -24,7 +28,7 @@ RUN chmod -R 700 /home/rt/.ssh
 # clone RTX repo
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt.rt /mnt/data/orangeboard/production
-RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git && cd RTX && git checkout production
+RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git
 RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
@@ -41,7 +45,7 @@ RUN apt-get install -y software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
 RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-venv
 RUN rm /usr/bin/python3 && ln -s /usr/bin/python3.7 /usr/bin/python3
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.7 -m pip install -r requirements.txt && python3.7 -m pip install flask_cors connexion[swagger-ui] tornado
+RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.7 -m pip install click==7.1.2 && python3.7 -m pip install -r requirements.txt && python3.7 -m pip install flask_cors connexion[swagger-ui] tornado
 
 # setup services
 RUN export DEVAREA=production
@@ -50,14 +54,12 @@ RUN chmod 700 /etc/init.d/RTX_OpenAPI_production
 RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server && cp -p RTX_OpenAPI RTX_OpenAPI_production && sed -i 's/template/production/g' RTX_OpenAPI_production
 RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server && cp -p RTX_OpenAPI.start RTX_OpenAPI_production.start && sed -i 's/template/production/g' RTX_OpenAPI_production.start
 RUN update-rc.d RTX_OpenAPI_production defaults
-RUN update-rc.d RTX_OpenAPI_production enable
 
 # autocomplete
 RUN cat /mnt/data/orangeboard/production/RTX/code/autocomplete/RTX_Complete | sed 's/devED/production/g' > /etc/init.d/RTX_Complete
 RUN chmod 700 /etc/init.d/RTX_Complete
 RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED/production/g' RTX_Complete.start
 RUN update-rc.d RTX_Complete defaults
-RUN update-rc.d RTX_Complete enable
 
 # set production flag to false
 RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py

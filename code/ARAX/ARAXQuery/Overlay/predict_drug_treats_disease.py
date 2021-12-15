@@ -15,9 +15,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Overlay.predictor.predictor import predictor
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
-from category_manager import CategoryManager
+# from category_manager import CategoryManager
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
@@ -32,13 +34,16 @@ class PredictDrugTreatsDisease:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
+        self.biolink_helper = BiolinkHelper()
         ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
-        self.categorymanager = CategoryManager()
-        self.drug_label_list = list(set([drug_category_ancestor.replace('biolink:','').replace('_','').lower() for drug_cateogry in ['biolink:Drug','biolink:SmallMolecule'] for drug_category_ancestor in self.categorymanager.get_expansive_categories(drug_cateogry)]))
-        self.disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
+        # self.categorymanager = CategoryManager()
+        # self.drug_label_list = list(set([drug_category_ancestor.replace('biolink:','').replace('_','').lower() for drug_cateogry in ['biolink:Drug','biolink:SmallMolecule'] for drug_category_ancestor in self.categorymanager.get_expansive_categories(drug_cateogry)]))
+        # self.disease_label_list = ['disease','phenotypicfeature','diseaseorphenotypicfeature']
+        self.drug_ancestor_label_list = [category.replace('biolink:','').replace('_','').lower() for category in self.biolink_helper.get_ancestors(["biolink:SmallMolecule","biolink:Drug"], include_mixins=False)]
+        self.disease_ancestor_label_list = [category.replace('biolink:','').replace('_','').lower() for category in self.biolink_helper.get_ancestors(["'biolink:Disease", "biolink:PhenotypicFeature", "biolink:DiseaseOrPhenotypicFeature'"], include_mixins=False)]
 
         ## check if there is LogModel.pkl
         log_model_name = RTXConfig.log_model_path.split("/")[-1]
@@ -193,25 +198,25 @@ class PredictDrugTreatsDisease:
                         continue
                     else:
                         all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_source_curie['all_categories'].keys())]
-                        if (len(set(self.drug_label_list).intersection(set(all_types))) > 0):
+                        if (len(set(self.drug_ancestor_label_list).intersection(set(all_types))) > 0):
                             converted_source_curie = converted_source_curie['preferred_curie']
                             converted_target_curie = self.convert_to_trained_curies(target_curie)
                             if converted_target_curie is None:
                                 continue
                             else:
                                 all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_target_curie['all_categories'].keys())]
-                                if (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
+                                if (len(set(self.disease_ancestor_label_list).intersection(set(all_types))) > 0):
                                     converted_target_curie = converted_target_curie['preferred_curie']
                                 else:
                                     continue
-                        elif (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
+                        elif (len(set(self.disease_ancestor_label_list).intersection(set(all_types))) > 0):
                             converted_target_curie = converted_source_curie['preferred_curie']
                             converted_source_curie = self.convert_to_trained_curies(target_curie)
                             if converted_source_curie is None:
                                 continue
                             else:
                                 all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_source_curie['all_categories'].keys())]
-                                if (len(set(self.drug_label_list).intersection(set(all_types))) > 0):
+                                if (len(set(self.drug_ancestor_label_list).intersection(set(all_types))) > 0):
                                     converted_source_curie = converted_source_curie['preferred_curie']
                                 else:
                                     continue
@@ -336,9 +341,10 @@ class PredictDrugTreatsDisease:
                     # now go and actually get the probability
                     source_curie = edge.subject
                     target_curie = edge.object
-                    source_types = curie_to_type[source_curie]
-                    target_types = curie_to_type[target_curie]
-                    if (("drug" in source_types) or ("small_molecule" in source_types) or ("biolink:Drug" in source_types) or ("biolink:SmallMolecule" in source_types)) and (("disease" in target_types) or ("phenotypic_feature" in target_types) or ("biolink:Disease" in target_types) or ("biolink:PhenotypicFeature" in target_types) or ("biolink:DiseaseOrPhenotypicFeature" in target_types)):
+                    source_types = [item.replace('biolink:','').replace('_','').lower() for item in curie_to_type[source_curie]]
+                    target_types = [item.replace('biolink:','').replace('_','').lower() for item in curie_to_type[target_curie]]
+
+                    if len(set(source_types).intersection(set(self.drug_ancestor_label_list))) > 0 and len(set(target_types).intersection(set(self.disease_ancestor_label_list))) > 0:
                         # loop over all pairs of equivalent curies and take the highest probability
                         # self.response.debug(f"Predicting treatment probability between {curie_to_name[source_curie]} and {curie_to_name[target_curie]}")
                         max_probability = 0
@@ -347,7 +353,7 @@ class PredictDrugTreatsDisease:
                             continue
                         else:
                             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_source_curie['all_categories'].keys())]
-                            if (len(set(self.drug_label_list).intersection(set(all_types))) > 0):
+                            if (len(set(self.drug_ancestor_label_list).intersection(set(all_types))) > 0):
                                 converted_source_curie = converted_source_curie['preferred_curie']
                             else:
                                 continue
@@ -356,7 +362,7 @@ class PredictDrugTreatsDisease:
                             continue
                         else:
                             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_target_curie['all_categories'].keys())]
-                            if (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
+                            if (len(set(self.disease_ancestor_label_list).intersection(set(all_types))) > 0):
                                 converted_target_curie = converted_target_curie['preferred_curie']
                             else:
                                 continue
@@ -386,7 +392,7 @@ class PredictDrugTreatsDisease:
 
                         value = max_probability
 
-                    elif (("drug" in target_types) or ("small_molecule" in target_types) or ("biolink:Drug" in target_types) or ("biolink:SmallMolecule" in target_types)) and (("disease" in source_types) or ("phenotypic_feature" in source_types) or ("biolink:Disease" in source_types) or ("biolink:PhenotypicFeature" in source_types) or ("biolink:DiseaseOrPhenotypicFeature" in source_types)):
+                    elif len(set(target_types).intersection(set(self.drug_ancestor_label_list))) > 0 and len(set(source_types).intersection(set(self.disease_ancestor_label_list))) > 0:
                         #probability = self.pred.prob_single('ChEMBL:' + target_curie[22:], source_curie)  # FIXME: when this was trained, it was ChEMBL:123, not CHEMBL.COMPOUND:CHEMBL123
                         #if probability and np.isfinite(probability):  # finite, that's ok, otherwise, stay with default
                         #    value = probability[0]
@@ -397,7 +403,7 @@ class PredictDrugTreatsDisease:
                             continue
                         else:
                             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_source_curie['all_categories'].keys())]
-                            if (len(set(self.disease_label_list).intersection(set(all_types))) > 0):
+                            if (len(set(self.disease_ancestor_label_list).intersection(set(all_types))) > 0):
                                 converted_source_curie = converted_source_curie['preferred_curie']
                             else:
                                 continue
@@ -406,7 +412,7 @@ class PredictDrugTreatsDisease:
                             continue
                         else:
                             all_types = [item.replace('biolink:','').replace('_','').lower() for item in list(converted_target_curie['all_categories'].keys())]
-                            if (len(set(self.drug_label_list).intersection(set(all_types))) > 0):
+                            if (len(set(self.drug_ancestor_label_list).intersection(set(all_types))) > 0):
                                 converted_target_curie = converted_target_curie['preferred_curie']
                             else:
                                 continue

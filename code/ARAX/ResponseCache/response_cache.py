@@ -479,6 +479,50 @@ class ResponseCache:
         return( { "status": 404, "title": "UnrecognizedResponse_idFormat", "detail": "Unrecognized response_id format", "type": "about:blank" }, 404)
 
 
+    ##################################################################################################
+    #### Store a received callback content
+    def store_callback(self, body):
+
+        data_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/callbacks'
+        if not os.path.exists(data_dir):
+            try:
+                os.mkdir(data_dir)
+            except:
+                eprint(f"ERROR: Unable to create dir {data_dir}")
+                return
+
+        if os.path.exists(data_dir):
+            counter = 1
+            filename = f"{data_dir}/{counter:05}.json"
+            while os.path.exists(filename):
+                counter += 1
+                filename = f"{data_dir}/{counter:05}.json"
+                if counter > 5000:
+                    eprint(f"ERROR: store_callback counter has reach 5000. Time to clean up or there is a runaway")
+                    return
+
+            try:
+                with open(filename, 'w') as outfile:
+                    json.dump(body, outfile, sort_keys=True, indent=2)
+                    eprint(f"INFO: Received a response and wrote it to {filename}")
+                    return
+            except:
+                eprint(f"ERROR: Unable to write response to file {filename}")
+                return
+
+        else:
+            eprint(f"ERROR: Unable to find dir {data_dir}")
+
+
+
+
+
+
+
+
+
+
+
 ############################################ Main ############################################################
 
 #### If this class is run from the command line, perform a short little test to see if it is working correctly

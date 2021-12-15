@@ -1,0 +1,27 @@
+{
+    "message": {
+        "query_graph": {
+            "nodes": {
+                "n0": {
+                    "ids": ["CHEBI:41879"],
+                    "categories": [
+                        "biolink:ChemicalEntity"
+                    ],
+                    "name": "Dexamethasone"
+                },
+                "n1": {
+                    "categories": [
+                        "biolink:DiseaseOrPhenotypicFeature"
+                    ]
+                }
+            },
+            "edges": {
+                "e0": {
+                    "subject": "n0",
+                    "object": "n1",
+                    "predicates": ["biolink:treats", "biolink:has_real_world_evidence_of_association_with"]
+                }
+            }
+        }
+    }
+}

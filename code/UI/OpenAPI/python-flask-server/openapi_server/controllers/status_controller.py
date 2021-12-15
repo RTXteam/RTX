@@ -28,3 +28,19 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
     else:
         status = query_tracker.get_status(last_n_hours=last_n_hours, id_=id_)
     return status
+
+
+def get_logs(mode=None):  # noqa: E501
+    """Get log information from the server
+
+     # noqa: E501
+
+    :param mode: Specify the log sending mode
+    :type mode: string
+
+    :rtype: string
+    """
+
+    query_tracker = ARAXQueryTracker()
+    status = query_tracker.get_logs(mode=mode)
+    return status

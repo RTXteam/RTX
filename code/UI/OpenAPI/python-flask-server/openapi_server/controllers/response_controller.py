@@ -36,7 +36,7 @@ def post_response(body):  # noqa: E501
 
     :rtype: object
     """
-    import json
-    print(json.dumps(body, indent=2, sort_keys=True), file=sys.stderr)
+    response_cache = ResponseCache()
+    response_cache.store_callback(body)
     return 'received!'
 

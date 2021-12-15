@@ -20,3 +20,5 @@
 code/UI/OpenAPI/python-flask-server/openapi_server/flask_config.json
 
 code/config.domain
+
+code/ARAX/KnowledgeSources/db_versions.json
