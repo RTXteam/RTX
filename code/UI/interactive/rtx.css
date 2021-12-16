@@ -496,18 +496,10 @@ table.sumtab {
     border-bottom: 1px solid #aaa;
     padding: 4px 3px;
 }
-.DEBUG {
-    color: #999;
-}
-.INFO {
-    color: #333;
-}
-.WARNING {
-    color: #750;
-}
-.ERROR {
-    color: #c40;
-}
+.DEBUG   { color: #999; }
+.INFO    { color: #333; }
+.WARNING { color: #750; }
+.ERROR   { color: #c40; }
 
 
 td {
@@ -691,6 +683,37 @@ td {
 .blue {
     color: #047
 }
+
+
+.filterhead {
+    cursor: pointer;
+    position: relative;
+}
+.filtermenu {
+    display: none;
+    width: max-content;
+    min-width: 100%;
+    position: absolute;
+    left: 0px;
+    top: 18px;
+    background-color: #eee;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 5;
+}
+.filtermenu a {
+    padding: 4px 5px;
+    text-decoration: none;
+    text-transform: initial;
+    text-align: left;
+    color: initial;
+    display: block;
+}
+.filtermenu a:hover { background-color: #9bc; }
+.filterhead:hover   { background-color: #eee; }
+.filterhead:hover .filtermenu {
+    display: block;
+}
+
 
 .switch {
   position: relative;
