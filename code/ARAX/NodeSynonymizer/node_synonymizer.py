@@ -56,6 +56,8 @@ class NodeSynonymizer:
         self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
         self.engine_type = "sqlite"
 
+        self.logfile_handle = None
+
         self.connection = None
         self.connect()
 
@@ -196,6 +198,10 @@ class NodeSynonymizer:
 
         filename = 'kg2_node_info.tsv'
         filesize = os.path.getsize(filename)
+
+        logfile = 'node_synonymizer_build_log.txt'
+        outfile = open(logfile,'w')
+        self.logfile_handle = outfile
 
         # Correction for Windows line endings
         extra_bytes = 0
@@ -604,6 +610,8 @@ class NodeSynonymizer:
                 print(str(percentage)+"%..", end='', flush=True)
 
         fh.close()
+        self.logfile_handle.close()
+        self.logfile_handle = None
         print("")
 
         print(f"INFO: Freeing SRI node normalizer cache from memory")
@@ -646,16 +654,6 @@ class NodeSynonymizer:
             return None
 
         print(f"INFO: Finished loading previous data structure state from {filename}. Have {len(self.kg_map[kg_nodes])} kg_nodes.")
-
-
-    # ############################################################################################
-    #def show_state(self, concept='insulin'):
-    #    uc_unique_concept_curie = kg_names[concept]['uc_unique_concept_curie']
-    #    uc_node_curie = uc_unique_concept_curie
-    #    if kg_unique_concepts[uc_unique_concept_curie]['remapped_curie'] is not None:
-    #        uc_node_curie = kg_unique_concepts[uc_unique_concept_curie]['remapped_curie']
-    #    print(f"kg_nodes['{uc_node_curie}'] = ",json.dumps(kg_nodes[uc_node_curie], indent=2, sort_keys=True))
-    #    print(f"kg_unique_concepts['{uc_unique_concept_curie}'] = ",json.dumps(kg_unique_concepts[uc_unique_concept_curie], indent=2, sort_keys=True))
 
 
     # ############################################################################################
@@ -1055,19 +1053,33 @@ class NodeSynonymizer:
     #### The input lines are a bit messy. Here is special code to tidy things up a bit using hand curated heuristics
     def scrub_input(self, node_curie, node_name, node_category, debug_flag):
 
-        # Many MONDO names have a ' (disease)' suffix, which seems undesirable, so strip them out
-        if 'MONDO:' in node_curie:
+        original_name = node_name
+
+        # First fix some data-source specific yucky strings before we even record the initial name
+
+        # Some MONDO names have a ' (disease)' suffix quite unnecessarily. Remove them
+        if node_curie.startswith('MONDO:'):
             node_name = re.sub(r'\s*\(disease\)\s*$','',node_name)
+
         # Many PR names have a ' (human)' suffix, which seems undesirable, so strip them out
         if 'PR:' in node_curie or 'HGNC:' in node_curie:
             node_name = re.sub(r'\s*\(human\)\s*$','',node_name)
+
         # Many ENSEMBLs have  [Source:HGNC Symbol;Acc:HGNC:29884], which seems undesirable, so strip them out
         if 'ENSEMBL:' in node_curie:
             node_name = re.sub(r'\s*\[Source:HGNC.+\]\s*','',node_name)
 
 
-        # Create a list of all the possible names we will add to the database
+        # Begin a list of all the possible names that we will add to the database
         names = { node_name: 0 }
+
+
+        # Some MONDO names have some reverse comma notation. Try to reverse it
+        if node_curie.startswith('MONDO:'):
+            if ', primary' in node_name:
+                node_name = 'primary ' + node_name.replace(', primary', '')
+            if ', autosomal recessive' in node_name:
+                node_name = 'autosomal recessive ' + node_name.replace(', autosomal recessive', '')
 
         # OMIM often has multiple names separated by semi-colon. Separate them
         if re.match("OMIM:", node_curie):
@@ -1126,6 +1138,9 @@ class NodeSynonymizer:
         if node_name in supplemental_names:
             names[supplemental_names[node_name]] = 1
 
+        # Log if there was a change
+        if node_name != original_name:
+            print(f"[SCRUB] Changed {node_curie} name from '{original_name}' to '{node_name}'", file=self.logfile_handle)
 
         # Return all the values after scrubbing
         scrubbed_values = { 'node_curie': node_curie, 'node_name': node_name, 'node_category': node_category, 'names': names }
