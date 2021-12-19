@@ -131,7 +131,7 @@ class NodeSynonymizer:
         self.connection.execute(f"CREATE TABLE curies ( uc_curie VARCHAR(255), curie VARCHAR(255), unique_concept_curie VARCHAR(255), name VARCHAR(255), full_name VARCHAR(255), category VARCHAR(255), normalizer_name VARCHAR(255), normalizer_category VARCHAR(255), source VARCHAR(255) )" )
 
         self.connection.execute(f"DROP TABLE IF EXISTS names")
-        self.connection.execute(f"CREATE TABLE names ( lc_name VARCHAR(255), name VARCHAR(255), unique_concept_curie VARCHAR(255), source VARCHAR(255) )" )
+        self.connection.execute(f"CREATE TABLE names ( lc_name VARCHAR(255), name VARCHAR(255), unique_concept_curie VARCHAR(255), source VARCHAR(255), lc_first_word VARCHAR(255) )" )
 
         self.connection.execute(f"DROP TABLE IF EXISTS name_curies")
         self.connection.execute(f"CREATE TABLE name_curies ( lc_name VARCHAR(255), name VARCHAR(255), uc_curie VARCHAR(255), unique_concept_curie VARCHAR(255), source VARCHAR(255) )" )
@@ -154,6 +154,7 @@ class NodeSynonymizer:
         print(f"INFO: Creating INDEXes on names")
         self.connection.execute(f"CREATE INDEX idx_names_lc_name ON names(lc_name)")
         self.connection.execute(f"CREATE INDEX idx_names_unique_concept_curie ON names(unique_concept_curie)")
+        self.connection.execute(f"CREATE INDEX idx_names_lc_first_word ON names(lc_first_word)")
 
         print(f"INFO: Creating INDEXes on name_curies")
         self.connection.execute(f"CREATE INDEX idx_name_curies_lc_name ON name_curies(lc_name)")
@@ -346,11 +347,13 @@ class NodeSynonymizer:
 
                         #### If we don't have this name yet, add it
                         if lc_name not in kg_names:
+                            lc_first_word = lc_name.split(' ')[0]
                             kg_names[lc_name] = {
                                 'name': name,
                                 'uc_unique_concept_curie': uc_unique_concept_curie,
                                 'source': 'KG2syn',
-                                'uc_unique_concept_curies': { uc_unique_concept_curie: True }
+                                'uc_unique_concept_curies': { uc_unique_concept_curie: True },
+                                'lc_first_word': lc_first_word
                             }
                             kg_unique_concepts[uc_unique_concept_curie]['all_lc_names'][lc_name] = True
 
@@ -477,10 +480,10 @@ class NodeSynonymizer:
         rows = []
         print(f"\nINFO: Writing {n_rows} names to the database")
         for lc_synonym_name,synonym in kg_names.items():
-            rows.append( [ lc_synonym_name, synonym['name'], synonym['uc_unique_concept_curie'], synonym['source'] ] )
+            rows.append( [ lc_synonym_name, synonym['name'], synonym['uc_unique_concept_curie'], synonym['source'], synonym['lc_first_word'] ] )
             i_rows += 1
             if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
-                self.connection.executemany(f"INSERT INTO names (lc_name, name, unique_concept_curie, source) values (?,?,?,?)", rows)
+                self.connection.executemany(f"INSERT INTO names (lc_name, name, unique_concept_curie, source, lc_first_word) values (?,?,?,?,?)", rows)
                 self.connection.commit()
                 rows = []
                 percentage = int(i_rows*100.0/n_rows)
@@ -858,11 +861,13 @@ class NodeSynonymizer:
                     kg_names[lc_equivalent_name]['uc_unique_concept_curies'][uc_unique_concept_curie] = 1
                 # If not, then create it
                 else:
+                    lc_first_word = lc_equivalent_name.split(' ')[0]
                     kg_names[lc_equivalent_name] = {
                         'name': equivalent_name,
                         'uc_unique_concept_curie': uc_unique_concept_curie,
                         'source': 'SRI',
-                        'uc_unique_concept_curies': { uc_unique_concept_curie: 1 }
+                        'uc_unique_concept_curies': { uc_unique_concept_curie: 1 },
+                        'lc_first_word': lc_first_word
                     }
                     kg_unique_concepts[uc_unique_concept_curie]['all_lc_names'][lc_equivalent_name] = 1               # FIXME. A count would be fun
 
@@ -919,11 +924,13 @@ class NodeSynonymizer:
                     if debug_flag:
                         print(f"DEBUG: Name '{lc_equivalent_name}' is not in kg_names. Add it")
                         print(f"       node_curie={node_curie}, uc_node_curie={uc_node_curie}, uc_unique_concept_curie={uc_unique_concept_curie}, lc_equivalent_name={lc_equivalent_name}")
+                    lc_first_word = lc_equivalent_name.split(' ')[0]
                     kg_names[lc_equivalent_name] = {
                         'name': equivalent_name,
                         'uc_unique_concept_curie': uc_unique_concept_curie,
                         'source': 'KG2',
-                        'uc_unique_concept_curies': { uc_unique_concept_curie: 1 }
+                        'uc_unique_concept_curies': { uc_unique_concept_curie: 1 },
+                        'lc_first_word': lc_first_word
                     }
                     kg_unique_concepts[uc_unique_concept_curie]['all_lc_names'][lc_equivalent_name] = 1
 
@@ -2226,6 +2233,46 @@ class NodeSynonymizer:
 
 
     # ############################################################################################
+    # Return all concepts which have first words as specified. New in 2021-12
+    # FIXME This loops one at a time. It could be parallelized with a single query (but batched)
+    def get_concepts_by_first_word(self, entities=None):
+
+        # If no entity was passed, then nothing to do
+        if entities is None:
+            return None
+
+        # If the provided value is just a string, turn it into a list
+        if isinstance(entities,str):
+            entities = [ entities ]
+
+        # Loop over all entities and get the results
+        results = {}
+        for entity in entities:
+
+            # If no rows came back, see if it matches a name
+            cursor = self.connection.cursor()
+            cursor.execute( f"SELECT lc_first_word, lc_name, name, unique_concept_curie FROM names WHERE lc_first_word = ?", (entity.lower(),) )
+            rows = cursor.fetchall()
+
+            # If there are still no rows, then just move on
+            if len(rows) == 0:
+                results[entity] = None
+                continue
+
+            # Otherwise create a list and add the results
+            results[entity] = []
+            for row in rows:
+                results[entity].append( {
+                    'lc_first_word': row[0],
+                    'lc_name': row[1],
+                    'name': row[2],
+                    'unique_concept_curie': row[3]
+                    } )
+
+        return results
+
+
+    # ############################################################################################
     def get_total_entity_count(self, node_type, kg_name='KG1'):
 
         # Just get a count of all unique_concepts 
@@ -2512,6 +2559,8 @@ def main():
                         help="If set, run a test of the index by doing several lookups", default=False)
     parser.add_argument('-l', '--lookup', action="store",
                         help="If set to a curie or name, then use the NodeSynonymizer (or SRI normalizer) to lookup the equivalence information for the curie or name", default=None)
+    parser.add_argument('-w', '--first_word_lookup', action="store",
+                        help="Look up all entities where the first word is as specified", default=None)
     parser.add_argument('-n', '--node_list', action="store",
                         help="If set to a curie or name, then return a list of node curies that belong to the group for the specified curie or name", default=None)
     parser.add_argument('-e', '--export', action="store",
@@ -2526,7 +2575,7 @@ def main():
                         help="If set, update the NodeSynonmizer with improved category information")
     args = parser.parse_args()
 
-    if not args.build and not args.test and not args.recollate and not args.lookup and not args.node_list and not args.query and not args.get and not args.update:
+    if not args.build and not args.test and not args.recollate and not args.lookup and not args.first_word_lookup and not args.node_list and not args.query and not args.get and not args.update:
         parser.print_help()
         exit()
 
@@ -2569,6 +2618,25 @@ def main():
             with open(args.export,'w') as outfile:
                 outfile.write(json.dumps(equivalence, indent=2, sort_keys=True) + "\n")
         print(f"INFO: Information retrieved in {t1-t0} sec")
+        return
+
+
+    # If the --first_word_lookup argument is provided, perform the lookup and return
+    if args.first_word_lookup is not None:
+        t0 = timeit.default_timer()
+        entities = args.first_word_lookup.split(',')
+        concepts = synonymizer.get_concepts_by_first_word(entities)
+        t1 = timeit.default_timer()
+        print(json.dumps(concepts, indent=2, sort_keys=True))
+        if args.export:
+            with open(args.export,'w') as outfile:
+                outfile.write(json.dumps(concepts, indent=2, sort_keys=True) + "\n")
+        n_concepts = len(concepts)
+        n_matches = 0
+        for concept_name, concept in concepts.items():
+            if concept is not None:
+                n_matches += len(concept)
+        print(f"INFO: {n_matches} matching names retrieved for {n_concepts} concepts in {t1-t0} sec")
         return
 
 
