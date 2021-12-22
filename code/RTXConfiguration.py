@@ -8,7 +8,7 @@ import time
 
 class RTXConfiguration:
 
-    _GET_FILE_CMD = "pscp araxconfig@araxconfig.rtx.ai:configv2.json "
+    _GET_FILE_CMD = "scp araxconfig@araxconfig.rtx.ai:configv2.json "
 
     # ### Constructor
     def __init__(self):
