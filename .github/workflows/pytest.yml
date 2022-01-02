@@ -1,0 +1,54 @@
+name: "Pytest"
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: [self-hosted, ARAX, docker]
+    permissions:
+      actions: read
+      contents: read
+      security-events: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+    
+    - name: Download config json
+      run: scp araxconfig@araxconfig.rtx.ai:configv2.json /mnt/config/configv2.json
+    
+    - name: Stop any running containers
+      continue-on-error: true
+      run: sudo docker stop $(sudo docker ps -aq)
+    
+    - name: Clean up any left over containers
+      continue-on-error: true
+      run: sudo docker rm $(sudo docker ps -aq)
+        
+    - name: Clean up any left over images
+      continue-on-error: true
+      run: sudo docker rmi $(sudo docker images -q)
+    
+    - name: Build docker image 
+      run: sudo docker build --no-cache=true --rm -t rtx:test DockerBuild/ -f DockerBuild/Dockerfile
+    
+    - name: Run docker container
+      run: sudo docker run -d -it --name rtx_test -v /mnt/data/orangeboard/databases:/mnt/data/orangeboard/databases -v /mnt/config/configv2.json:/mnt/data/orangeboard/production/RTX/code/config_local.json rtx:test
+    
+    - name: Run tests with pytest
+      run: sudo docker exec rtx_test bash -c "cd /mnt/data/orangeboard/production/RTX/code/ARAX/test && pytest -v --disable-pytest-warnings"
+    
+    - name: Remove and delete all docker containers & images
+      continue-on-error: true
+      run: |
+        sudo docker stop $(sudo docker ps -aq)
+        sudo docker rm $(sudo docker ps -aq)
+        sudo docker rmi $(sudo docker images -q)
