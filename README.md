@@ -1,4 +1,4 @@
-![Build Status](https://github.com/RTXteam/rtx/actions/workflows/pytest.yml/badge.svg)
+[![Build Status](https://github.com/RTXteam/rtx/actions/workflows/pytest.yml/badge.svg)](https://github.com/RTXteam/RTX/actions/workflows/pytest.yml)
 [![DOI](https://zenodo.org/badge/111240202.svg)](https://zenodo.org/badge/latestdoi/111240202)
 
 # Table of contents
