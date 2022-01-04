@@ -47,8 +47,8 @@ jobs:
     
     - name: Create symlinks
       run: |
-            sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
-            sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/kg2/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
+        sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
+        sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/kg2/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
     
     - name: Start services
       run: |
