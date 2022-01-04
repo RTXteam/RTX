@@ -553,7 +553,7 @@ def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
         "NGD": "infores:arax-normalized-google-distance",  # TODO: get an official infores curie for this?
         "ClinicalRiskKP": "infores:biothings-multiomics-clinical-risk",
         "WellnessKP": "infores:biothings-multiomics-wellness",
-        "DrugResponseKP": "infores:biothings-multiomics-drug-response",
+        "DrugResponseKP": "infores:biothings-multiomics-biggim-drug-response",
         "TumorGeneMutationKP": "infores:biothings-tcga-mut-freq",
         "ICEES-DILI": "infores:icees-dili",
         "ICEES-Asthma": "infores:icees-asthma"
