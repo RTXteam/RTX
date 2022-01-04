@@ -45,6 +45,18 @@ jobs:
     - name: Run docker container
       run: sudo docker run -d -it --name rtx_test -v /mnt/data/orangeboard/databases:/mnt/data/orangeboard/databases -v /mnt/config/configv2.json:/mnt/data/orangeboard/production/RTX/code/config_local.json rtx:test
     
+    - name: Create symlinks
+      run: |
+            sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
+            sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/kg2/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
+    
+    - name: Start services
+      run: |
+        sudo docker exec rtx_test service apache2 start
+        sudo docker exec rtx_test service RTX_OpenAPI_kg2 start
+        sudo docker exec rtx_test service RTX_OpenAPI_production start
+        sudo docker exec rtx_test service RTX_Complete start
+    
     - name: Run tests with pytest
       run: sudo docker exec rtx_test bash -c "cd /mnt/data/orangeboard/production/RTX/code/ARAX/test && pytest -v --disable-pytest-warnings"
     
