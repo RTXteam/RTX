@@ -4605,6 +4605,11 @@ function retrieveRecentQs() {
 		td = document.createElement("th")
                 if (head == "Description")
 		    td.style.textAlign = "left";
+		else
+		    td.id = 'filter_'+head.toLowerCase();
+                if (head == "Instance")
+		    td.id += '_name';
+		td.dataset.filterstring = '';
 		td.appendChild(document.createTextNode(head));
 		tr.appendChild(td);
 	    }
@@ -4621,6 +4626,7 @@ function retrieveRecentQs() {
 		var qid = null;
 		for (var field of ["query_id","start_datetime","elapsed","submitter","domain","hostname","instance_name","pid","response_id","state","status","description"] ) {
                     td = document.createElement("td");
+		    td.dataset.value = query[field];
                     if (field == "start_datetime") {
 			td.style.whiteSpace = "nowrap";
 			qstart = query[field];
@@ -4769,6 +4775,12 @@ function retrieveRecentQs() {
             recents_node.appendChild(document.createElement("br"));
 	    recents_node.appendChild(document.createElement("br"));
 
+	    for (var filterfield of ["submitter","domain","hostname","instance_name","state","status"] ) {
+		if (Object.keys(stats[filterfield]).length > 1) {
+		    add_filtermenu(filterfield, stats[filterfield]);
+		}
+	    }
+
 	    qfspan.innerHTML = '';
 	    qfspan.appendChild(document.createTextNode("Show:"));
 
@@ -4872,6 +4884,73 @@ function displayQTimeline(tdata) {
 
     timeline_node.appendChild(document.createTextNode("Your computer's local time"));
 }
+
+function add_filtermenu(field, values) {
+    var node = document.getElementById('filter_'+field);
+    //node.title = "Click to filter based on this column's values";
+    node.appendChild(document.createTextNode("\u25BC"));
+    node.className = 'filterhead';
+
+    var fmenu = document.createElement('span');
+    fmenu.className = 'filtermenu';
+
+    var vals = Object.keys(values);
+    vals.unshift('[ Show all ]');
+    for (var val of vals) {
+	var item = document.createElement('a');
+	item.appendChild(document.createTextNode(val));
+	item.setAttribute('onclick', 'filter_querytable("'+field+'","'+val+'");');
+
+	var item2 = document.createElement('span');
+	item2.id = 'filter_'+field+"_"+val;
+	item2.style.marginLeft = "10px";
+	item.appendChild(item2);
+	fmenu.appendChild(item);
+    }
+    node.appendChild(fmenu);
+}
+
+function filter_querytable(field, value) {
+    for (var item of document.querySelectorAll('[id^="filter_'+field+'_"]')) {
+	item.className = '';
+	item.innerHTML = '';
+    }
+    document.getElementById('filter_'+field+"_"+value).className = 'explevel p9';
+    document.getElementById('filter_'+field+"_"+value).innerHTML = '&check;';
+
+    if (value == '[ Show all ]') {
+	document.getElementById('filter_'+field).style.color = 'initial';
+	document.getElementById('filter_'+field).dataset.filterstring = '';
+    }
+    else {
+	document.getElementById('filter_'+field).style.color = '#291';
+	document.getElementById('filter_'+field).dataset.filterstring = value;
+    }
+
+    var trs = document.getElementById('recentqs_table').children;
+    var head = true;
+    for (var tr of trs) {
+	if (head) {
+	    head = false;
+	    continue;
+	}
+	var showrow = true;
+	for (var tdidx in tr.children) {
+	    if (!trs[0].children.hasOwnProperty(tdidx) ||
+		trs[0].children[tdidx].dataset.filterstring == '')
+		continue;
+	    if (trs[0].children[tdidx].dataset.filterstring != tr.children[tdidx].dataset.value) {
+		showrow = false;
+		break;
+	    }
+	}
+	if (showrow)
+	    tr.style.display = 'table-row';
+	else
+	    tr.style.display = 'none';
+    }
+}
+
 
 function filter_queries(tab, span, type) {
     var disp = 'none';

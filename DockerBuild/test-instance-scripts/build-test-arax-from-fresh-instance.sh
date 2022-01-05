@@ -6,6 +6,9 @@ set -o nounset -o pipefail -o errexit
 
 arax_base=/mnt/data/orangeboard
 
+port_number=${1:-80}
+echo "Port Number: ${port_number}"
+
 sudo apt-get update
 
 # --------------------------------------------------------------------------------------------------
@@ -17,9 +20,12 @@ sudo apt-get install -y netcat # useful for debugging
 sudo apt-get install -y docker.io
 
 # install python3.7 (with pip) into the host OS, using the Ubuntu packages
-rm -r -f ./venv
-export VENV_DIR=./venv   # have to set this environment variable for setup-python37-in-ubuntu18.shinc to work properly
-source <(curl -s https://raw.githubusercontent.com/RTXteam/RTX-KG2/master/setup-python37-with-pip3-in-ubuntu.shinc)
+sudo apt-get install -y apt-utils python3 python3-pip
+sudo apt-get install -y software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get install -y python3.7 python3.7-dev python3.7-venv
+python3.7 -m pip install wheel
 
 # clone the ARAX software repo from GitHub (master branch)
 rm -r -f RTX
@@ -45,7 +51,7 @@ cat RTX/code/configv2.json | \
 	RTX/code/config_local.json
 
 # download the database files (this step takes a long time)
-./venv/bin/python3 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
+python3.7 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
 
 # copy the dockerfile to the CWD so we can modify it in-place
 cp RTX/DockerBuild/Merged-Dockerfile .
@@ -64,7 +70,7 @@ sed -i 's/checkout production/checkout master/g' ./Merged-Dockerfile  # for issu
 sudo docker build --file ./Merged-Dockerfile --no-cache --rm --tag arax:1.0 ./RTX/DockerBuild/
 
 # create the Docker container
-sudo docker create --name arax --tty --publish 80:80 \
+sudo docker create --name arax --tty --publish "${port_number}":80 \
     --mount type=bind,source="${arax_base}"/databases,target="${arax_base}"/databases \
     arax:1.0
 
@@ -75,11 +81,8 @@ sudo docker start arax
 
 for devarea in kg2 production
 do
-    for config_file in configv2.json config_local.json
-    do
-	sudo docker cp RTX/code/${config_file} arax:${arax_base}/${devarea}/RTX/code
-	sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/${config_file}
-    done
+    sudo docker cp RTX/code/config_local.json arax:${arax_base}/${devarea}/RTX/code
+    sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/config_local.json
     # create the required symbolic links for ARAX/KG2 database files, inside the container
     sudo docker exec arax bash -c "sudo -u rt bash -c 'cd ${arax_base}/${devarea}/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
 done
