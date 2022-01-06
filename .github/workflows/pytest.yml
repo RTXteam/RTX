@@ -1,8 +1,13 @@
-name: "Pytest"
+name: "Test Build"
 
 on:
   push:
     branches: [ master, production ]
+    paths:
+      - 'code/**'
+      - 'DockerBuild/**'
+      - 'requirements.txt'
+      - '.github/workflows/pytest.yml'
 
 jobs:
   analyze:
