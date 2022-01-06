@@ -34,7 +34,7 @@ sudo docker run --name <container name> -p <host port>:7474 -p <host port>:7687 
 
 If you already have a docker container running neo4j you will need to copy the .jar file into the directory your docker container looks for neo4j plugins. By default this is in `/var/lib/neo4j/plugins` and this is where it is located in rtxdev.
  
-to copy the .jar file into this ditectory siply open the directory containing the .jar file in the terminal and run the following command:
+To copy the .jar file into this ditectory siply open the directory containing the .jar file in the terminal and run the following command:
 
 ```
 sudo docker cp apoc-3.3.0.2-all.jar <container name>:<path to plugins folder within the container>
