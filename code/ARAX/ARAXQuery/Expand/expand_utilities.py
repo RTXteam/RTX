@@ -758,7 +758,7 @@ def get_kp_command_definitions() -> dict:
         },
         "SPOKE": {
             "dsl_command": "expand(kp=SPOKE)",
-            "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
+            "description": "This command reaches out to the SPOKE KP to find all bioentity "
                            "subpaths that satisfy the query graph.",
             "parameters": standard_parameters
         },
