@@ -37,14 +37,6 @@ server {
         add_header 'Access-Control-Allow-Origin' '*';
     }
     
-    location ~ \.php$ {
-        proxy_set_header X-Real-IP  $remote_addr;
-        proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header Host $host;
-
-        proxy_pass   http://127.0.0.1:8080;
-    }
-    
     location / {
 	proxy_read_timeout 3000s;
         add_header 'X-Frame-Options' 'SAMEORIGIN';
@@ -54,7 +46,7 @@ server {
 	proxy_pass http://localhost:8080;
 	proxy_set_header  X-Forwarded-Proto $scheme;
 	proxy_set_header  X-Real-IP         $remote_addr;
-	proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
+	proxy_set_header  X-Forwarded-For   $remote_addr;
 	proxy_set_header  X-Real-IP-AWS	    $remote_addr;
 
         deny 66.27.73.63;
