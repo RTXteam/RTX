@@ -472,6 +472,18 @@ def test_molepro_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
+@pytest.mark.external
+def test_spoke_query():
+    actions_list = [
+        "add_qnode(ids=OMIM:603903, categories=biolink:PhenotypicFeature, key=n00)",
+        "add_qnode(categories=biolink:Gene, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(kp=SPOKE)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
+
 @pytest.mark.slow
 def test_exclude_edge_parallel():
     # First run a query without any kryptonite edges to get a baseline

@@ -530,6 +530,7 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "RTX-KG2": RTXConfig.rtx_kg2_url,
         "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
         "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
+        "SPOKE": "https://spokekp.healthdatascience.cloud/api/v1.2/",
         "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
         "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
         "CHP": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)
@@ -553,6 +554,7 @@ def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
         "NGD": "infores:arax-normalized-google-distance",  # TODO: get an official infores curie for this?
         "ClinicalRiskKP": "infores:biothings-multiomics-clinical-risk",
         "WellnessKP": "infores:biothings-multiomics-wellness",
+        "SPOKE": "infores:spoke",
         "DrugResponseKP": "infores:biothings-multiomics-biggim-drug-response",
         "TumorGeneMutationKP": "infores:biothings-tcga-mut-freq",
         "ICEES-DILI": "infores:icees-dili",
@@ -564,7 +566,7 @@ def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
 def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXResponse) -> List[str]:
     # Order KPs such that those with longer requests will tend to be kicked off earlier
     kp_names = set(kp_names)
-    asyncio_start_order = ["CHP", "BTE", "DrugResponseKP", "ClinicalRiskKP", "WellnessKP", "TumorGeneMutationKP",
+    asyncio_start_order = ["CHP", "BTE", "DrugResponseKP", "ClinicalRiskKP", "WellnessKP", "SPOKE", "TumorGeneMutationKP",
                            "ICEES-DILI", "ICEES-Asthma", "COHD", "MolePro", "RTX-KG2", "GeneticsKP", "NGD", "DTD"]
     unordered_kps = kp_names.difference(set(asyncio_start_order))
     if unordered_kps:
@@ -751,6 +753,12 @@ def get_kp_command_definitions() -> dict:
         "WellnessKP": {
             "dsl_command": "expand(kp=WellnessKP)",
             "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
+                           "subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "SPOKE": {
+            "dsl_command": "expand(kp=SPOKE)",
+            "description": "This command reaches out to the SPOKE KP to find all bioentity "
                            "subpaths that satisfy the query graph.",
             "parameters": standard_parameters
         },
