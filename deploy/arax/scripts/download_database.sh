@@ -66,7 +66,7 @@ do
     # check if existing_db in db_arr, if not, rm it
     if [[ ! ${db_arr[${existing_db}]} ]]
     then
-      #echo "${existing_db} is NOT in db_arr, rm it!"
+     echo "${existing_db} is NOT in db_arr, rm it!"
       # NOTE: commented out for debugging since redownloading takes too long
       # PLEASE UNCOMMENT BELOW TO ENABLE DB CLEANUP FEATURE
     rm ${existing_db}
