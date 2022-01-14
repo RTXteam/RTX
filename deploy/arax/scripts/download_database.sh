@@ -64,13 +64,13 @@ do
   if [[ ! "${existing_db}" == *.md5 ]]
   then
     # check if existing_db in db_arr, if not, rm it
-    #if [[ ! ${db_arr[${existing_db}]} ]]
-    #then
+    if [[ ! ${db_arr[${existing_db}]} ]]
+    then
       #echo "${existing_db} is NOT in db_arr, rm it!"
       # NOTE: commented out for debugging since redownloading takes too long
       # PLEASE UNCOMMENT BELOW TO ENABLE DB CLEANUP FEATURE
-  rm ${existing_db}
-    #fi
+    rm ${existing_db}
+    fi
   fi
 done
 printf "\n"
