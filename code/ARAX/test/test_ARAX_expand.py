@@ -476,7 +476,7 @@ def test_molepro_query():
 def test_spoke_query():
     actions_list = [
         "add_qnode(ids=OMIM:603903, categories=biolink:PhenotypicFeature, key=n00)",
-        "add_qnode(categories=biolink:Gene, key=n01)",
+        "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=SPOKE)",
         "return(message=true, store=false)"
