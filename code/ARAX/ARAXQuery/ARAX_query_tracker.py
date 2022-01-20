@@ -7,6 +7,7 @@ import time
 import re
 import signal
 import socket
+import connexion
 
 from datetime import datetime
 import sqlalchemy
@@ -255,6 +256,10 @@ class ARAXQueryTracker:
             domain = '??'
 
         hostname = socket.gethostname()
+        try:
+            remote_address = connexion.request.headers['x-forwarded-for']
+        except:
+            remote_address = '?'
 
         try:
             tracker_entry = ARAXQuery(status="started",
@@ -263,9 +268,8 @@ class ARAXQueryTracker:
                 domain = domain,
                 hostname = hostname,
                 instance_name = instance_name,
-                origin=attributes['submitter'],
                 input_query=attributes['input_query'],
-                remote_address=attributes['remote_address'])
+                remote_address=remote_address)
             session.add(tracker_entry)
             session.commit()
             tracker_id = tracker_entry.query_id
@@ -329,7 +333,8 @@ class ARAXQueryTracker:
                 'submitter': entry.origin,
                 'response_id': entry.message_id,
                 'status': entry.message_code,
-                'description': entry.code_description
+                'description': entry.code_description,
+                'remote_address': entry.remote_address
             } )
 
         result['recent_queries'].reverse()
