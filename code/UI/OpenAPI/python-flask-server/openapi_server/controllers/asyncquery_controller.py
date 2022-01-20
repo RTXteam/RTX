@@ -22,6 +22,13 @@ def asyncquery(request_body):  # noqa: E501
     # Note that we never even get here if the request_body is not schema-valid JSON
 
     query = connexion.request.get_json()
+
+    #### Record the remote IP address in the query for now so it is available downstream
+    try:
+        query['remote_address'] = connexion.request.headers['x-forwarded-for']
+    except:
+        query['remote_address'] = '???'
+
     araxq = ARAXQuery()
 
     envelope = araxq.query_return_message(query, mode='asynchronous')
