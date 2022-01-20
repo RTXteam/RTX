@@ -18,6 +18,7 @@ import uuid
 import requests
 import gc
 import contextlib
+import connexion
 
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -307,7 +308,8 @@ class ARAXQuery:
         tracker_id = None
         if origin == 'API':
             query_tracker = ARAXQueryTracker()
-            attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': 'test_address' }
+            remote_address = query['remote_address']
+            attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
             tracker_id = query_tracker.create_tracker_entry(attributes)
         response.tracker_id = tracker_id
 
