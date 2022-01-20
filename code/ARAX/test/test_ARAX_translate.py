@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Intended to test our translate to ARAXi functionality 
+# Intended to test our translate to ARAXi functionality
 
 import sys
 import os
@@ -126,7 +126,7 @@ def test_fill_success():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["RTX-KG2"],
+                    "allowlist": ["infores:rtx-kg2"],
                     "qedge_keys": ["e01"]
                 }
             }
@@ -171,7 +171,7 @@ def test_fill_error():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["RTX-KG2"],
+                    "allowlist": ["infores:rtx-kg2"],
                     "qedge_keys": ["asdf"]
                 }
             }
@@ -262,7 +262,7 @@ def test_bind():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["RTX-KG2"]
+                    "allowlist": ["infores:rtx-kg2"]
                 }
             },
             {
@@ -309,7 +309,7 @@ def test_complete_results():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["RTX-KG2"]
+                    "allowlist": ["infores:rtx-kg2"]
                 }
             },
             {
@@ -356,7 +356,7 @@ def test_filter_results_top_n():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["RTX-KG2"]
+                    "allowlist": ["infores:rtx-kg2"]
                 }
             },
             {
@@ -633,4 +633,3 @@ def test_connect_knodes_3_nodes():
 
 if __name__ == "__main__":
     pytest.main(['-v'])
-

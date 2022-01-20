@@ -121,7 +121,7 @@ class ARAXQuery:
                 pid = None
 
                 self.response.debug("In query_return_stream")
-                
+
                 response_status_says_done = False
                 while not response_status_says_done:
                     with self.lock:
@@ -159,7 +159,7 @@ class ARAXQuery:
                         idle_ticks = 0.0
             except MemoryError as e:
                 self.handle_memory_error(e)
-                
+
                 # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
             while i_message < n_messages:
@@ -203,7 +203,7 @@ class ARAXQuery:
         except MemoryError as e:
             self.handle_memory_error(e)
 
-            
+
         # Insert a little flag into the response status to denote that this thread is done
         with self.lock:
             self.response.status = f"DONE,{self.response.status}"
@@ -218,9 +218,9 @@ class ARAXQuery:
         response = self.response
         print("in query_return_message - printing", file=sys.stderr)
         response.debug("in query_return_message")
-        
+
         self.query(query, mode=mode, origin='API')
-        
+
         #### If the query ended in an error, copy the error to the envelope
         if response.status != 'OK':
             response.envelope.status = response.error_code
@@ -267,7 +267,7 @@ class ARAXQuery:
     ########################################################################################
     def query(self, query, mode='ARAX', origin='local'):
 
-        #### Create the skeleton of the response 
+        #### Create the skeleton of the response
         response = self.response
         if response is None:  # At this point in the code, the response should only be
                               # None in regression tests that call ARAXQuery.query() directly
@@ -360,7 +360,7 @@ class ARAXQuery:
                         response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
                         return response
                     query['operations'] = {}
-                    query['operations']['actions'] = [ 'expand(kp=RTX-KG2)', 'resultify()', 'return(store=false)' ]
+                    query['operations']['actions'] = [ 'expand(kp=infores:rtx-kg2)', 'resultify()', 'return(store=false)' ]
 
                 query_attributes['have_operations'] = True
 
@@ -376,7 +376,7 @@ class ARAXQuery:
 
         except MemoryError as e:
             self.handle_memory_error(e)
-            
+
         return response
 
 
@@ -668,7 +668,7 @@ class ARAXQuery:
                 query_tracker = ARAXQueryTracker()
                 query_tracker.alter_tracker_entry(self.response.tracker_id, attributes)
 
-                
+
             #### If there is already a KG with edges, recompute the qg_keys
             if message.knowledge_graph is not None and len(message.knowledge_graph.edges) > 0:
                 resultifier.recompute_qg_keys(response)
@@ -834,7 +834,7 @@ class ARAXQuery:
                 response_id = response_cache.add_new_response(response)
                 response.info(f"Result was stored with id {response_id}. It can be viewed at https://arax.ncats.io/?r={response_id}")
             response.response_id = response_id
- 
+
             #### Record how many results came back
             n_results = len(message.results)
             response.info(f"Processing is complete and resulted in {n_results} results.")
@@ -988,7 +988,7 @@ def main():
             "add_qnode(ids=DOID:12384, key=n00)",
             "add_qnode(categories=biolink:PhenotypicFeature, is_set=True, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00, type=has_phenotype)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             #"overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
@@ -1191,7 +1191,7 @@ def main():
             "add_qnode(name=UMLS:C1452002, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00, type=interacts_with)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "return(message=true, store=false)"
         ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
     elif params.example_number == 101:  # test of filter results code
@@ -1258,7 +1258,7 @@ def main():
             "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
             "add_qnode(key=n01, categories=biolink:Protein, is_set=true)",
             "add_qedge(key=e00, subject=n00, object=n01)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 202:  # KG2 version of demo example 2 (Parkinson's)
@@ -1270,7 +1270,7 @@ def main():
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",  # for KG2
             #"add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",  # for KG1
-            "expand(edge_id=[e00,e01], kp=RTX-KG2)",  # for KG2
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2)",  # for KG2
             #"expand(edge_id=[e00,e01], kp=ARAX/KG1)",  # for KG1
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",  # seems to work just fine
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_key=n02)",
@@ -1287,7 +1287,7 @@ def main():
             "add_qnode(key=n02, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "add_qedge(key=e01, subject=n01, object=n02)",
-            "expand(edge_id=[e00,e01], kp=RTX-KG2)",
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_key=n01)",
@@ -1303,7 +1303,7 @@ def main():
             "add_qnode(key=n02, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "add_qedge(key=e01, subject=n01, object=n02)",
-            "expand(edge_id=[e00,e01], kp=RTX-KG2)",
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=0, remove_connected_nodes=t, qnode_key=n01)",
@@ -1316,7 +1316,7 @@ def main():
             "add_qnode(key=n00, ids=NCBIGene:1017)",  # CDK2
             "add_qnode(key=n01, categories=biolink:ChemicalEntity, is_set=True)",
             "add_qedge(key=e00, subject=n01, object=n00)",
-            "expand(edge_key=e00, kp=BTE)",
+            "expand(edge_key=e00, kp=biothings-explorer)",
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 233:  # KG2 version of demo example 1 (acetaminophen)
@@ -1325,7 +1325,7 @@ def main():
             "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
             "add_qnode(key=n01, categories=biolink:Protein, is_set=true)",
             "add_qedge(key=e00, subject=n00, object=n01)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=https://pharos.nih.gov)",
             "return(message=true, store=false)",
         ]}}
@@ -1528,7 +1528,7 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",
-            "expand(edge_id=[e00,e01], kp=RTX-KG2)",
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2)",
             # overlay a bunch of clinical info
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
@@ -1560,7 +1560,7 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
-            "expand(kp=BTE)",
+            "expand(kp=biothings-explorer)",
             "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=true)"
@@ -1570,13 +1570,13 @@ def main():
             "add_qnode(ids=DOID:11830, key=n0, type=disease)",
             "add_qnode(categories=biolink:ChemicalEntity, ids=n1)",
             "add_qedge(subject=n0, object=n1, ids=e1)",
-            "expand(edge_id=e1, kp=RTX-KG2)",
-            "expand(edge_id=e1, kp=BTE)",
+            "expand(edge_id=e1, kp=infores:rtx-kg2)",
+            "expand(edge_id=e1, kp=biothings-explorer)",
             #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             #"overlay(action=overlay_clinical_info, chi_square=true)",
             "overlay(action=predict_drug_treats_disease)",
-            #"overlay(action=compute_ngd)",
+            #"overlay(action=compute_ngd)",biothings-explorer
             "resultify(ignore_edge_direction=true)",
             #"filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)"
@@ -1587,8 +1587,8 @@ def main():
             "add_qnode(ids=DOID:11830, key=n0, type=disease)",
             "add_qnode(categories=biolink:ChemicalEntity, ids=n1)",
             "add_qedge(subject=n0, object=n1, ids=e1)",
-            # "expand(edge_key=e00, kp=RTX-KG2)",
-            "expand(edge_id=e1, kp=BTE)",
+            # "expand(edge_key=e00, kp=infores:rtx-kg2)",
+            "expand(edge_id=e1, kp=biothings-explorer)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             "overlay(action=overlay_clinical_info, chi_square=true)",
@@ -1604,8 +1604,8 @@ def main():
             "add_qnode(name=DOID:11830, key=n00, type=disease)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
-            "expand(edge_key=e00, kp=BTE)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
+            "expand(edge_key=e00, kp=biothings-explorer)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             "overlay(action=predict_drug_treats_disease)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)",
@@ -1622,10 +1622,10 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",
-            "expand(edge_id=[e00,e01], kp=RTX-KG2, continue_if_no_results=true)",
-            #- expand(edge_id=[e00,e01], kp=BTE, continue_if_no_results=true)",
-            "expand(edge_key=e00, kp=BTE, continue_if_no_results=true)",
-            #- expand(edge_key=e00, kp=GeneticsKP, continue_if_no_results=true)",
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2, continue_if_no_results=true)",
+            #- expand(edge_id=[e00,e01], kp=biothings-explorer, continue_if_no_results=true)",
+            "expand(edge_key=e00, kp=biothings-explorer, continue_if_no_results=true)",
+            #- expand(edge_key=e00, kp=infores:genetics-data-provider, continue_if_no_results=true)",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
             "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
             "overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n02)",
@@ -1653,7 +1653,7 @@ def main():
             "add_qnode(ids=MONDO:0005301, key=n0)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:related_to)",
-            "expand(kp=ClinicalRiskKP, edge_key=e0)",
+            "expand(kp=infores:biothings-multiomics-clinical-risk, edge_key=e0)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
             "resultify()",
             "return(message=true, store=true)",
