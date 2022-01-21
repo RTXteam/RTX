@@ -619,7 +619,7 @@ def test_FET_ranking_2():
         "add_qnode(key=n00,ids=[UniProtKB:P14136,UniProtKB:P35579],is_set=true,categories=biolink:Protein)",
         "add_qnode(categories=biolink:BiologicalProcess, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00,infores:rtx-kg2)",
+        "expand(edge_key=e00,kp=infores:rtx-kg2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET)",
         "resultify()",
         "return(message=true, store=false)"
