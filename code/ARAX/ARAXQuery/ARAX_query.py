@@ -308,7 +308,10 @@ class ARAXQuery:
         tracker_id = None
         if origin == 'API':
             query_tracker = ARAXQueryTracker()
-            remote_address = query['remote_address']
+            if 'remote_address' in query and query['remote_address'] is not None:
+                remote_address = query['remote_address']
+            else:
+                remote_address = '????'
             attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
             tracker_id = query_tracker.create_tracker_entry(attributes)
         response.tracker_id = tracker_id
