@@ -691,6 +691,7 @@ def test_ranker_float_error_ex1():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
 
+@pytest.mark.external
 def test_ranker_float_error_ex2():
     query = {"operations": {"actions": [
         "create_message",
