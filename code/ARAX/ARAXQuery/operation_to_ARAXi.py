@@ -45,12 +45,12 @@ class WorkflowToARAXi:
         if len(query_graph['nodes']) >= 3:
             response.warning("This query graph has 3 or more nodes. This may take a while")
         qnode_pairs = itertools.combinations(query_graph['nodes'].keys(),2)
+        ARAXi.append(f"overlay(action=compute_ngd,default_value=inf)")
+        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency)")
+        #ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=connect_knodes_obs_exp)")
+        #ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=connect_knodes_chi_sqr)")
+        ARAXi.append(f"overlay(action=predict_drug_treats_disease)")
         for qnode_pair in qnode_pairs:
-            ARAXi.append(f"overlay(action=compute_ngd,default_value=inf,virtual_relation_label=connect_knodes_ngd,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
-            ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=connect_knodes_pair_frq,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
-            ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=connect_knodes_obs_exp,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
-            ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=connect_knodes_chi_sqr,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
-            ARAXi.append(f"overlay(action=predict_drug_treats_disease,virtual_relation_label=connect_knodes_dtd,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
             ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label=connect_knodes_fisher,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
             ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label=connect_knodes_fisher,subject_qnode_key={qnode_pair[1]},object_qnode_key={qnode_pair[0]})")
         if len(query_graph['nodes']) >= 3:
