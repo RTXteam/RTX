@@ -1176,6 +1176,7 @@ components:
           default: []
         option_group_id:
           type: string
+          nullable: true
           description: >-
             Optional string acting as a label on a set of nodes and/or edges
             indicating that they belong to a group that are to be
@@ -1228,6 +1229,7 @@ components:
             are excluded from the final results. (optional)
         option_group_id:
           type: string
+          nullable: true
           description: >-
             Optional string acting as a label on a set of nodes and/or edges
             indicating that they belong to a group that are to be
@@ -1309,6 +1311,7 @@ components:
             descriptive phrase here and submit the new type for consideration
             by the appropriate authority.
           example: EDAM:data_1187
+          nullable: true
         attribute_source:
           type: string
           description: >-
@@ -1337,6 +1340,7 @@ components:
             Node attributes provided by this TRAPI web service.
           items:
             $ref: '#/components/schemas/SubAttribute'
+          nullable: true
       required:
         - attribute_type_id
         - value

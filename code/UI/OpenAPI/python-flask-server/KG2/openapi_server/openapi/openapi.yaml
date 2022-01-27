@@ -894,6 +894,7 @@ components:
             edges indicating that they belong to a group that are to be evaluated
             as a group. '
           type: string
+          nullable: true
       title: QNode
       type: object
     QEdge:
@@ -937,6 +938,7 @@ components:
             edges indicating that they belong to a group that are to be evaluated
             as a group. '
           type: string
+          nullable: true
       required:
       - object
       - subject
@@ -1012,6 +1014,7 @@ components:
             url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
           title: CURIE
           type: string
+          nullable: true
         attribute_source:
           description: The source of the core assertion made by the key-value pair
             of an attribute object. Use a CURIE or namespace designator for this resource
@@ -1040,6 +1043,7 @@ components:
             $ref: '#/components/schemas/SubAttribute'
           title: attributes
           type: array
+          nullable: true
       required:
       - attribute_type_id
       - value
