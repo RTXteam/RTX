@@ -19,9 +19,9 @@ if status_code != 200:
 
 # Unpack the response content into a dict
 response_dict = response_content.json()
-print(f"Retrieved a message with {len(response_dict['message']['results'])} results")
+print(f"Retrieved a message with {len(response_dict['message']['results'])} results:")
 
-print(f"Removing scores")
+# Summarize the results
 for result in response_dict['message']['results']:
     if 'score' in result:
         score = result['score']
@@ -33,8 +33,20 @@ for result in response_dict['message']['results']:
         essence = result['essence']
     print("  -" + '{:6.3f}'.format(score) + f"\t{essence}")
 
+print(f"\nAfter score removal:")
+for result in response_dict['message']['results']:
+    if 'score' in result:
+        score = result['score']
+    else:
+        score = '???'
+    essence = '?'
+    if 'essence' in result:
+        essence = result['essence']
+    print("  -" + str(score) + f"\t{essence}")
+
 
 # Create a new request, including previous response message and a simple filter_results_top_n action
+print("\nCreate a new request with the previous message and a workflow to rerank (overlay_connect_knodes,complete_results,score)")
 request = {
     "message": response_dict['message'],
     "workflow": [
