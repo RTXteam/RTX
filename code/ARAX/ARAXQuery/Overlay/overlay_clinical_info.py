@@ -133,13 +133,13 @@ class OverlayClinicalInfo:
                 self.response.debug(f"Querying Columbia Open Health data for info about {subject_name} and {object_name}")
                 # convert CURIE to OMOP identifiers
                 # subject_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(subject_curie, 1)]
-                res = self.mapping_curie_to_omop_ids[subject_curie]
+                res = self.mapping_curie_to_omop_ids.get(subject_curie,[])
                 if len(res) != 0:
                     subject_OMOPs = res
                 else:
                     subject_OMOPs = []
                 # object_OMOPs = [str(x['omop_standard_concept_id']) for x in COHD.get_xref_to_OMOP(object_curie, 1)]
-                res = self.mapping_curie_to_omop_ids[object_curie]
+                res = self.mapping_curie_to_omop_ids.get(object_curie,[])
                 if len(res) != 0:
                     object_OMOPs = res
                 else:
