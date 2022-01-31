@@ -276,7 +276,7 @@ def test_FET_ex1():
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
         #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
-        assert edge_attributes_dict['provided_by'] == 'infores:ARAX'
+        assert edge_attributes_dict['provided_by'] == 'infores:arax'
         if relation_name == 'FET1':
             assert 0 <= float(edge.attributes[0].value) < 0.001
         else:
