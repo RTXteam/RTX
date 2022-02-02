@@ -4584,7 +4584,8 @@ function retrieveRecentQs() {
 	    stats.submitter = {};
 	    stats.domain    = {};
 	    stats.hostname  = {};
-	    stats.instance_name = {};
+	    stats.instance_name  = {};
+	    stats.remote_address = {};
 	    var timeline = {};
             timeline["ISB_watchdog"] = { "data": [ { "label": 0 , "data": [] , "_qstart": new Date() } ] };
 
@@ -4601,7 +4602,7 @@ function retrieveRecentQs() {
 	    var tr = document.createElement("tr");
             tr.dataset.qstatus = "COLUMNHEADER";
 	    var td;
-	    for (var head of ["Qid","Start (UTC)","Elapsed","Submitter","Domain","Hostname","Instance","pid","Response","State","Status","Description"] ) {
+	    for (var head of ["Qid","Start (UTC)","Elapsed","Submitter","Remote IP","Domain","Hostname","Instance","pid","Response","State","Status","Description"] ) {
 		td = document.createElement("th")
                 if (head == "Description")
 		    td.style.textAlign = "left";
@@ -4609,6 +4610,8 @@ function retrieveRecentQs() {
 		    td.id = 'filter_'+head.toLowerCase();
                 if (head == "Instance")
 		    td.id += '_name';
+                else if (head == "Remote IP")
+		    td.id = 'filter_remote_address';
 		td.dataset.filterstring = '';
 		td.appendChild(document.createTextNode(head));
 		tr.appendChild(td);
@@ -4624,7 +4627,7 @@ function retrieveRecentQs() {
 		var qend = null;
 		var qdur = null;
 		var qid = null;
-		for (var field of ["query_id","start_datetime","elapsed","submitter","domain","hostname","instance_name","pid","response_id","state","status","description"] ) {
+		for (var field of ["query_id","start_datetime","elapsed","submitter","remote_address","domain","hostname","instance_name","pid","response_id","state","status","description"] ) {
                     td = document.createElement("td");
 		    td.dataset.value = query[field];
                     if (field == "start_datetime") {
@@ -4669,7 +4672,7 @@ function retrieveRecentQs() {
 			else
 			    stats.state[query[field]] = 1;
 		    }
-                    else if (field == "instance_name" || field == "submitter" || field == "domain" || field == "hostname") {
+                    else if (field == "instance_name" || field == "submitter" || field == "remote_address" || field == "domain" || field == "hostname") {
 			td.style.whiteSpace = "nowrap";
                         if (stats[field][query[field]])
 			    stats[field][query[field]]++;
@@ -4760,11 +4763,21 @@ function retrieveRecentQs() {
 		}
 		table.appendChild(tr);
 	    }
-	    // add dummy data point to scale timeline to current time
+	    // add dummy data points to scale timeline to match requested timespan
 	    timeline["ISB_watchdog"]["data"][0]["data"].push(
 		{
 		    "timeRange": [Date.now(), Date.now()],
-		    "val": "production",
+		    "val": "ARAX",
+		    "_qid": null,
+		    "_qdur": null
+		}
+	    );
+	    var xhoursago = new Date();
+	    xhoursago.setHours(xhoursago.getHours() - hours);
+	    timeline["ISB_watchdog"]["data"][0]["data"].push(
+		{
+		    "timeRange": [xhoursago, xhoursago],
+		    "val": "ARAX",
 		    "_qid": null,
 		    "_qdur": null
 		}
@@ -4775,7 +4788,7 @@ function retrieveRecentQs() {
             recents_node.appendChild(document.createElement("br"));
 	    recents_node.appendChild(document.createElement("br"));
 
-	    for (var filterfield of ["submitter","domain","hostname","instance_name","state","status"] ) {
+	    for (var filterfield of ["submitter","remote_address","domain","hostname","instance_name","state","status"] ) {
 		if (Object.keys(stats[filterfield]).length > 1) {
 		    add_filtermenu(filterfield, stats[filterfield]);
 		}
