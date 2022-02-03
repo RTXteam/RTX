@@ -687,6 +687,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         results.append(result)
 
     log.info(f"Resultify created {len(results)} results")
+    log.total_results_count = len(results)
     return results
 
 
