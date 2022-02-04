@@ -813,6 +813,14 @@ class ARAXQuery:
             response.envelope.description = response.message
             if response.envelope.operations is None:
                 response.envelope.operations = operations
+
+            #### Provide the total results count in the Response if it is available
+            #### FIXME Temporarily in context until we make the needed schema change
+            try:
+                response.envelope.context = response.total_results_count
+            except:
+                response.envelope.context = None
+
             #response.envelope.operations['actions'] = operations.actions
 
             # Update the reasoner_id to ARAX if not already present
