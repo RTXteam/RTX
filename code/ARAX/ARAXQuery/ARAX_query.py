@@ -1316,7 +1316,7 @@ def main():
             "add_qnode(key=n00, ids=NCBIGene:1017)",  # CDK2
             "add_qnode(key=n01, categories=biolink:ChemicalEntity, is_set=True)",
             "add_qedge(key=e00, subject=n01, object=n00)",
-            "expand(edge_key=e00, kp=biothings-explorer)",
+            "expand(edge_key=e00, kp=infores:biothings-explorer)",
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 233:  # KG2 version of demo example 1 (acetaminophen)
@@ -1560,7 +1560,7 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
-            "expand(kp=biothings-explorer)",
+            "expand(kp=infores:biothings-explorer)",
             "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=true)"
@@ -1571,12 +1571,12 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, ids=n1)",
             "add_qedge(subject=n0, object=n1, ids=e1)",
             "expand(edge_id=e1, kp=infores:rtx-kg2)",
-            "expand(edge_id=e1, kp=biothings-explorer)",
+            "expand(edge_id=e1, kp=infores:biothings-explorer)",
             #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             #"overlay(action=overlay_clinical_info, chi_square=true)",
             "overlay(action=predict_drug_treats_disease)",
-            #"overlay(action=compute_ngd)",biothings-explorer
+            #"overlay(action=compute_ngd)",infores:biothings-explorer
             "resultify(ignore_edge_direction=true)",
             #"filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)"
@@ -1588,7 +1588,7 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, ids=n1)",
             "add_qedge(subject=n0, object=n1, ids=e1)",
             # "expand(edge_key=e00, kp=infores:rtx-kg2)",
-            "expand(edge_id=e1, kp=biothings-explorer)",
+            "expand(edge_id=e1, kp=infores:biothings-explorer)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             "overlay(action=overlay_clinical_info, chi_square=true)",
@@ -1605,7 +1605,7 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=infores:rtx-kg2)",
-            "expand(edge_key=e00, kp=biothings-explorer)",
+            "expand(edge_key=e00, kp=infores:biothings-explorer)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             "overlay(action=predict_drug_treats_disease)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)",
@@ -1623,8 +1623,8 @@ def main():
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",
             "expand(edge_id=[e00,e01], kp=infores:rtx-kg2, continue_if_no_results=true)",
-            #- expand(edge_id=[e00,e01], kp=biothings-explorer, continue_if_no_results=true)",
-            "expand(edge_key=e00, kp=biothings-explorer, continue_if_no_results=true)",
+            #- expand(edge_id=[e00,e01], kp=infores:biothings-explorer, continue_if_no_results=true)",
+            "expand(edge_key=e00, kp=infores:biothings-explorer, continue_if_no_results=true)",
             #- expand(edge_key=e00, kp=infores:genetics-data-provider, continue_if_no_results=true)",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
             "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",

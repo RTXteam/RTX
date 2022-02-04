@@ -612,7 +612,7 @@ def test_issue_892():
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=biothings-explorer)",
+        "expand(kp=infores:biothings-explorer)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1, threshold=0.5)",
         "resultify(ignore_edge_direction=true)",
         "return(message=true, store=false)"

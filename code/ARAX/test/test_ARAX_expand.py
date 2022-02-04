@@ -174,7 +174,7 @@ def test_bte_query():
         "add_qnode(ids=UniProtKB:P16471, categories=biolink:Protein, key=n00)",
         "add_qnode(categories=biolink:Cell, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=biothings-explorer)",
+        "expand(kp=infores:biothings-explorer)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -898,7 +898,7 @@ def test_merging_node_attributes_1450():
         "add_qnode(key=n0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=n1, categories=biolink:Disease)",
         "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats)",
-        "expand(kp=biothings-explorer)",
+        "expand(kp=infores:biothings-explorer)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -909,7 +909,7 @@ def test_merging_node_attributes_1450():
         "add_qnode(key=n1, categories=biolink:Disease)",
         "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats)",
         "expand(kp=infores:rtx-kg2)",
-        "expand(kp=biothings-explorer)",
+        "expand(kp=infores:biothings-explorer)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
