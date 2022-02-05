@@ -815,11 +815,10 @@ class ARAXQuery:
                 response.envelope.operations = operations
 
             #### Provide the total results count in the Response if it is available
-            #### FIXME Temporarily in context until we make the needed schema change
             try:
-                response.envelope.context = response.total_results_count
+                response.envelope.total_results_count = response.total_results_count
             except:
-                response.envelope.context = None
+                pass
 
             #response.envelope.operations['actions'] = operations.actions
 
