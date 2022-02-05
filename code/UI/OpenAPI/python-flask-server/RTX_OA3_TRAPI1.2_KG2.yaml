@@ -573,6 +573,17 @@ components:
           description: >-
             Validation results and other summary stats computed
             for this Response.
+        total_results_count:
+          type: integer
+          nullable: true
+          description: >-
+            The total number of results that were generated prior
+            to any filtering.
+        info:
+          type: string
+          nullable: true
+          description: >-
+            A placholder for including some additional information
       additionalProperties: true
       required:
         - message
