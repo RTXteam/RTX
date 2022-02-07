@@ -13,7 +13,11 @@ endpoint_url = 'https://arax.ncats.io/beta/api/arax/v1.2'
 # One of our own results
 #response_content = requests.get(endpoint_url + '/response/35965', headers={'accept': 'application/json'})
 # Try a BTE result from a recent standup
-response_content = requests.get(endpoint_url + '/response/843990fb-4cd0-46c0-95cb-644990b226e5', headers={'accept': 'application/json'})
+#response_content = requests.get(endpoint_url + '/response/843990fb-4cd0-46c0-95cb-644990b226e5', headers={'accept': 'application/json'})
+# Try reranking a Chris example
+endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/clinical_DCP/result.json'
+response_content = requests.get(endpoint_url, headers={'accept': 'application/json'})
+
 status_code = response_content.status_code
 if status_code != 200:
     print("ERROR returned with status "+str(status_code))
@@ -28,13 +32,17 @@ print(f"Retrieved a message with {len(response_dict['message']['results'])} resu
 for result in response_dict['message']['results']:
     if 'score' in result:
         score = result['score']
+        if score is None:
+            score = str(score)
+        else:
+            score = '{:6.3f}'.format(score)
         result['score'] = None
     else:
         score = '???'
     essence = '?'
     if 'essence' in result:
         essence = result['essence']
-    print("  -" + '{:6.3f}'.format(score) + f"\t{essence}")
+    print("  -" + score + f"\t{essence}")
 
 print(f"\nAfter score removal:")
 for result in response_dict['message']['results']:
@@ -55,9 +63,6 @@ request = {
     "workflow": [
         {
         "id": "overlay_connect_knodes"
-        },
-        {
-        "id": "complete_results"
         },
         {
         "id": "score"
