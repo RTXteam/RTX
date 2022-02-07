@@ -34,7 +34,12 @@ endpoint_url = 'https://arax.ncats.io/beta/api/arax/v1.2'
 # Try a BTE result from a recent standup
 #response_content = requests.get(endpoint_url + '/response/843990fb-4cd0-46c0-95cb-644990b226e5', headers={'accept': 'application/json'})
 # Try reranking a Chris example
-rerank_endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/clinical_DCP/result.json'
+# clinical DCP
+# rerank_endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/clinical_DCP/result.json'
+# genes_genetically_associated_to_asthma
+# rerank_endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/genes_genetically_associated_to_asthma/result.json'
+# treats_hyperlipidemia
+rerank_endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/treats_hyperlipidemia/result.json'
 response_content = requests.get(rerank_endpoint_url, headers={'accept': 'application/json'})
 
 status_code = response_content.status_code
