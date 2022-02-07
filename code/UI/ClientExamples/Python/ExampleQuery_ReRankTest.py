@@ -5,6 +5,25 @@
 import requests
 import json
 import re
+import argparse
+import os
+import sys
+
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code','ARAX','ARAXQuery']))
+from ARAX_query import ARAXQuery
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-l", "--local", action='store_true')
+arguments = parser.parse_args()
+
+def _do_arax_query(query: dict):
+    araxq = ARAXQuery()
+    response = araxq.query(query)
+    if response.status != 'OK':
+        print(response.show(level=response.DEBUG))
+    return [response, response.envelope.message]
 
 # Set the base URL for the ARAX reasonaer TRAPI 1.1 base
 endpoint_url = 'https://arax.ncats.io/beta/api/arax/v1.2'
@@ -70,16 +89,21 @@ request = {
   ]
  }
 
-# Send the request to ARAX and check the status
-response_content = requests.post(endpoint_url + '/query', json=request, headers={'accept': 'application/json'})
-status_code = response_content.status_code
-if status_code != 200:
-    print("ERROR returned with status "+str(status_code))
-    print(response_content)
-    exit()
+if arguments.local:
+    [response_dict, message_dict] = _do_arax_query(request)
+    message_dict = message_dict.to_dict()
+    response_dict = {"message":message_dict}
+else:
+    # Send the request to ARAX and check the status
+    response_content = requests.post(endpoint_url + '/query', json=request, headers={'accept': 'application/json'})
+    status_code = response_content.status_code
+    if status_code != 200:
+        print("ERROR returned with status "+str(status_code))
+        print(response_content)
+        exit()
 
-# Unpack the JSON response content into a dict
-response_dict = response_content.json()
+    # Unpack the JSON response content into a dict
+    response_dict = response_content.json()
 
 # Display a summary of the results
 print(f"Results ({len(response_dict['message']['results'])}):")
@@ -93,9 +117,11 @@ for result in response_dict['message']['results']:
         essence = result['essence']
     print("  -" + '{:6.3f}'.format(score) + f"\t{essence}")
 
-# These URLs provide direct access to resulting data and GUI
-print(f"Data: {response_dict['id']}")
-if response_dict['id'] is not None:
-    match = re.search(r'(\d+)$', response_dict['id'])
-    if match:
-        print(f"GUI: https://arax.ncats.io/beta/?r={match.group(1)}")
+
+if not arguments.local:
+    # These URLs provide direct access to resulting data and GUI
+    print(f"Data: {response_dict['id']}")
+    if response_dict['id'] is not None:
+        match = re.search(r'(\d+)$', response_dict['id'])
+        if match:
+            print(f"GUI: https://arax.ncats.io/beta/?r={match.group(1)}")
