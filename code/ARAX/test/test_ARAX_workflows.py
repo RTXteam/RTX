@@ -793,6 +793,28 @@ def test_ranker_float_error_ex3():
 #     _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
 #     _virtual_tester(message, 'biolink:has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
 
+@pytest.mark.slow
+def test_example_3_issue_679():
+    query = {"operations": { "actions": [
+            "create_message",
+            "add_qnode(name=DOID:9406, key=n00)",
+            "add_qnode(categories=[biolink:ChemicalEntity], is_set=true, key=n01)",
+            "add_qnode(categories=[biolink:Protein], key=n02)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "add_qedge(subject=n01, object=n02, key=e01)",
+            "expand()",
+            "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
+            "filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute=observed_expected_ratio,direction=below,threshold=3,remove_connected_nodes=true,qnode_keys=n01)",
+            "filter_kg(action=remove_orphaned_nodes,node_category=biolink:Protein)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
+            "filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute=ngd,direction=above,threshold=0.85,remove_connected_nodes=true,qnode_keys=n02)",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert message.results[0].essence is not None
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
