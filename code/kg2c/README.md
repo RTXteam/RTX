@@ -173,6 +173,8 @@ aws s3 sp content_metadata.json s3://rtx-kg2-public
 
 (6) Click `Done uploading` once all three files are uploaded. 
 
+(7) Rename `edges.tsv`, `nodes.tsv`, and `content_metadata.json` with current version number and move to private s3 bucket, `s3://rtx-kg2`.
+
 # Contact
 ## Maintainer
 - Amy Glen, Oregon State University (glena@oregonstate.edu)
