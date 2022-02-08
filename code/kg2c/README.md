@@ -138,8 +138,8 @@ python3 RTX/code/kg2c/setup_for_neo4j.py
 bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
 ```
 
-# Upload KG2C to KGE (Knowledge Graph Exchange)
-### Generate TSV files
+### Upload KG2C to KGE (Knowledge Graph Exchange)
+##### Generate TSV files
 
 The following should be run in the build system, typically `buildkg2c.rtx.ai`, in the folder where the files `nodes_c.tsv` and `edges_c.tsv` are stored. 
 
@@ -159,6 +159,8 @@ python3.7 kg2c_tsv_to_kgx.py
 ```
 bash -x kgx-validation-and-metagraph.sh
 ```
+
+##### Upload to KGE 
 
 (4) Upload `edges.tsv`, `nodes.tsv`, and `content_metadata.json` to a public S3 bucket. 
 ```
