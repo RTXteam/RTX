@@ -105,6 +105,9 @@ def update_results_with_overlay_edge(subject_knode_key: str, object_knode_key: s
         for result in message.results:
             for qedge_key in result.edge_bindings.keys():
                 if kedge_key not in set([x.id for x in result.edge_bindings[qedge_key]]):
+                    if qedge_key not in message.query_graph.edges:
+                        log.warning(f"Encountered a result edge binding which does not exist in the query graph")
+                        continue
                     subject_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].subject]]
                     object_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].object]]
                     result_nodes = set(subject_nodes).union(set(object_nodes))

@@ -37,6 +37,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -
 COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 RUN cd /var/www && mv html html-orig && ln -s /mnt/data/orangeboard/kg2/RTX/code/UI/interactive html
 RUN cd /var/www && a2enmod proxy && a2enmod proxy_html && a2enmod proxy_http && a2enmod rewrite && a2enmod headers
+RUN a2enmod remoteip
+COPY remoteip.conf /etc/apache2/conf-available/remoteip.conf
+RUN a2enconf remoteip
 RUN cd /var/www && /usr/sbin/apachectl configtest
 
 # install python and packages

@@ -573,6 +573,17 @@ components:
           description: >-
             Validation results and other summary stats computed
             for this Response.
+        total_results_count:
+          type: integer
+          nullable: true
+          description: >-
+            The total number of results that were generated prior
+            to any filtering.
+        info:
+          type: string
+          nullable: true
+          description: >-
+            A placholder for including some additional information
       additionalProperties: true
       required:
         - message
@@ -934,6 +945,7 @@ components:
           default: []
         option_group_id:
           type: string
+          nullable: true
           description: >-
             Optional string acting as a label on a set of nodes and/or edges
             indicating that they belong to a group that are to be
@@ -986,6 +998,7 @@ components:
             are excluded from the final results. (optional)
         option_group_id:
           type: string
+          nullable: true
           description: >-
             Optional string acting as a label on a set of nodes and/or edges
             indicating that they belong to a group that are to be
@@ -1060,6 +1073,7 @@ components:
           example: 0.000153
         value_type_id:
           $ref: '#/components/schemas/CURIE'
+          nullable: true
           description: >-
             CURIE describing the semantic type of an  attribute's value. Use
             a Biolink class if possible, otherwise a term from an external
@@ -1091,6 +1105,7 @@ components:
           nullable: true
         attributes:
           type: array
+          nullable: true
           description: >-
             Node attributes provided by this TRAPI web service.
           items:

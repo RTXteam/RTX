@@ -18,6 +18,7 @@ import uuid
 import requests
 import gc
 import contextlib
+import connexion
 
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -307,7 +308,11 @@ class ARAXQuery:
         tracker_id = None
         if origin == 'API':
             query_tracker = ARAXQueryTracker()
-            attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': 'test_address' }
+            if 'remote_address' in query and query['remote_address'] is not None:
+                remote_address = query['remote_address']
+            else:
+                remote_address = '????'
+            attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
             tracker_id = query_tracker.create_tracker_entry(attributes)
         response.tracker_id = tracker_id
 
@@ -808,6 +813,13 @@ class ARAXQuery:
             response.envelope.description = response.message
             if response.envelope.operations is None:
                 response.envelope.operations = operations
+
+            #### Provide the total results count in the Response if it is available
+            try:
+                response.envelope.total_results_count = response.total_results_count
+            except:
+                pass
+
             #response.envelope.operations['actions'] = operations.actions
 
             # Update the reasoner_id to ARAX if not already present

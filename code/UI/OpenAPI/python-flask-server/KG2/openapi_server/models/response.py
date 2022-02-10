@@ -23,7 +23,7 @@ class Response(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, message=None, status=None, description=None, logs=None, workflow=None, submitter=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_options=None, context=None, type=None, id=None, validation_result=None):  # noqa: E501
+    def __init__(self, message=None, status=None, description=None, logs=None, workflow=None, submitter=None, operations=None, reasoner_id=None, tool_version=None, schema_version=None, datetime=None, table_column_names=None, original_question=None, restated_question=None, query_options=None, context=None, type=None, id=None, validation_result=None, total_results_count=None, info=None):  # noqa: E501
         """Response - a model defined in OpenAPI
 
         :param message: The message of this Response.  # noqa: E501
@@ -64,6 +64,10 @@ class Response(Model):
         :type id: str
         :param validation_result: The validation_result of this Response.  # noqa: E501
         :type validation_result: object
+        :param total_results_count: The total_results_count of this Response.  # noqa: E501
+        :type total_results_count: int
+        :param info: The info of this Response.  # noqa: E501
+        :type info: str
         """
         self.openapi_types = {
             'message': Message,
@@ -84,7 +88,9 @@ class Response(Model):
             'context': str,
             'type': str,
             'id': str,
-            'validation_result': object
+            'validation_result': object,
+            'total_results_count': int,
+            'info': str
         }
 
         self.attribute_map = {
@@ -106,7 +112,9 @@ class Response(Model):
             'context': 'context',
             'type': 'type',
             'id': 'id',
-            'validation_result': 'validation_result'
+            'validation_result': 'validation_result',
+            'total_results_count': 'total_results_count',
+            'info': 'info'
         }
 
         self._message = message
@@ -128,6 +136,8 @@ class Response(Model):
         self._type = type
         self._id = id
         self._validation_result = validation_result
+        self._total_results_count = total_results_count
+        self._info = info
 
     @classmethod
     def from_dict(cls, dikt) -> 'Response':
@@ -576,3 +586,50 @@ class Response(Model):
         """
 
         self._validation_result = validation_result
+
+    @property
+    def total_results_count(self):
+        """Gets the total_results_count of this Response.
+
+        The total number of results that were generated prior to any filtering.  # noqa: E501
+
+        :return: The total_results_count of this Response.
+        :rtype: int
+        """
+        return self._total_results_count
+
+    @total_results_count.setter
+    def total_results_count(self, total_results_count):
+        """Sets the total_results_count of this Response.
+
+        The total number of results that were generated prior to any filtering.  # noqa: E501
+
+        :param total_results_count: The total_results_count of this Response.
+        :type total_results_count: int
+        """
+
+        self._total_results_count = total_results_count
+
+    @property
+    def info(self):
+        """Gets the info of this Response.
+
+        A placholder for including some additional information  # noqa: E501
+
+        :return: The info of this Response.
+        :rtype: str
+        """
+        return self._info
+
+    @info.setter
+    def info(self, info):
+        """Sets the info of this Response.
+
+        A placholder for including some additional information  # noqa: E501
+
+        :param info: The info of this Response.
+        :type info: str
+        """
+
+        self._info = info
+
