@@ -35,12 +35,23 @@ endpoint_url = 'https://arax.ncats.io/beta/api/arax/v1.2'
 #response_content = requests.get(endpoint_url + '/response/843990fb-4cd0-46c0-95cb-644990b226e5', headers={'accept': 'application/json'})
 # Try reranking a Chris example
 # clinical DCP
+# results: https://arax.ncats.io/beta/?r=36704
 # rerank_endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/clinical_DCP/result.json'
 # genes_genetically_associated_to_asthma
+# Results: https://arax.ncats.io/beta/?r=36703
 # rerank_endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/genes_genetically_associated_to_asthma/result.json'
 # treats_hyperlipidemia
-rerank_endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/treats_hyperlipidemia/result.json'
+# Results: https://arax.ncats.io/beta/?r=36702
+# rerank_endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/treats_hyperlipidemia/result.json'
+# two_hop_acromegaly
+# Results: https://arax.ncats.io/beta/?r=36742
+rerank_endpoint_url = 'https://raw.githubusercontent.com/TranslatorSRI/RankingComparison/main/inputs/two_hop_acromegaly/result.json'
+# two_hop_hypothyroidism (not up yet)
+# Results: 
+# rerank_endpoint_url = ''
 response_content = requests.get(rerank_endpoint_url, headers={'accept': 'application/json'})
+# Error test
+# response_content = requests.get(endpoint_url + '/response/99adc6b5-0803-4c52-972e-fe587744a7aa', headers={'accept': 'application/json'})
 
 status_code = response_content.status_code
 if status_code != 200:
