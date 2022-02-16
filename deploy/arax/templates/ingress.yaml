@@ -14,14 +14,14 @@ spec:
       http:
         paths:
         - path: /*
-          pathType: Prefix
+          pathType: ImplementationSpecific
           backend:
             service:
               name: ssl-redirect
               port:
                 name: use-annotation
         - path: /*
-          pathType: Prefix
+          pathType: ImplementationSpecific
           backend:
             service:
               name: {{ $fullName }}

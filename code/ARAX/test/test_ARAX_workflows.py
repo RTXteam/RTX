@@ -507,7 +507,7 @@ def test_two_hop_based_on_types_1():
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand(edge_key=e00, infores:rtx-kg2)",
-            #"expand(edge_key=e00, kp=biothings-explorer)",
+            #"expand(edge_key=e00, kp=infores:biothings-explorer)",
             "expand(edge_key=e01, infores:rtx-kg2)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
@@ -542,7 +542,7 @@ def test_one_hop_based_on_types_1():
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, infores:rtx-kg2)",
-            "expand(edge_key=e00, kp=biothings-explorer)",
+            "expand(edge_key=e00, kp=infores:biothings-explorer)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             "overlay(action=predict_drug_treats_disease)",
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_keys=[n01])",
@@ -567,7 +567,7 @@ def test_one_hop_kitchen_sink_BTE_1():
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e1)",
         #"expand(edge_key=e00, infores:rtx-kg2)",
-        "expand(edge_key=e1, kp=biothings-explorer)",
+        "expand(edge_key=e1, kp=infores:biothings-explorer)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         "overlay(action=overlay_clinical_info, chi_square=true)",
@@ -596,7 +596,7 @@ def test_one_hop_kitchen_sink_BTE_2():
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e1)",
         #"expand(edge_key=e00, infores:rtx-kg2)",
-        "expand(edge_key=e1, kp=biothings-explorer)",
+        "expand(edge_key=e1, kp=infores:biothings-explorer)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         "overlay(action=overlay_clinical_info, chi_square=true)",
@@ -691,6 +691,7 @@ def test_ranker_float_error_ex1():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
 
+@pytest.mark.external
 def test_ranker_float_error_ex2():
     query = {"operations": {"actions": [
         "create_message",
@@ -791,6 +792,28 @@ def test_ranker_float_error_ex3():
 #     assert message.results[0].essence is not None
 #     _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
 #     _virtual_tester(message, 'biolink:has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
+
+@pytest.mark.slow
+def test_example_3_issue_679():
+    query = {"operations": { "actions": [
+            "create_message",
+            "add_qnode(name=DOID:9406, key=n00)",
+            "add_qnode(categories=[biolink:ChemicalEntity], is_set=true, key=n01)",
+            "add_qnode(categories=[biolink:Protein], key=n02)",
+            "add_qedge(subject=n00, object=n01, key=e00)",
+            "add_qedge(subject=n01, object=n02, key=e01)",
+            "expand()",
+            "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
+            "filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute=observed_expected_ratio,direction=below,threshold=3,remove_connected_nodes=true,qnode_keys=n01)",
+            "filter_kg(action=remove_orphaned_nodes,node_category=biolink:Protein)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
+            "filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute=ngd,direction=above,threshold=0.85,remove_connected_nodes=true,qnode_keys=n02)",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert message.results[0].essence is not None
 
 
 if __name__ == "__main__":

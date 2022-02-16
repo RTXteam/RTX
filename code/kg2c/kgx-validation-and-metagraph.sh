@@ -8,6 +8,11 @@
 
 set -o nounset -o pipefail -o errexit
 
+## setup for running this script:
+##  python3.7 -m venv venv
+##  venv/bin/pip3.7 install kgx
+##  source venv/bin/activate
+
 ## validate the TSV files produced by kg2c_tsv_to_kgx_tsv.py
 kgx validate \
     --input-format tsv \

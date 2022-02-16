@@ -708,6 +708,7 @@ components:
                 categories:
                 - biolink:Protein
         type: TranslatorAPIResponse
+        total_results_count: 0
         schema_version: 1.2.0
         datetime: 2021-01-09 12:34:45
         operations: ""
@@ -728,6 +729,7 @@ components:
           message: message
           timestamp: 2020-09-03T18:13:49Z
         status: Success
+        info: info
       properties:
         message:
           $ref: '#/components/schemas/Message'
@@ -855,6 +857,15 @@ components:
           description: Validation results and other summary stats computed for this
             Response.
           type: object
+        total_results_count:
+          description: The total number of results that were generated prior to any
+            filtering.
+          nullable: true
+          type: integer
+        info:
+          description: A placholder for including some additional information
+          nullable: true
+          type: string
       required:
       - message
       title: Response
@@ -1199,6 +1210,7 @@ components:
           description: 'Optional string acting as a label on a set of nodes and/or
             edges indicating that they belong to a group that are to be evaluated
             as a group. '
+          nullable: true
           type: string
       title: QNode
       type: object
@@ -1242,6 +1254,7 @@ components:
           description: 'Optional string acting as a label on a set of nodes and/or
             edges indicating that they belong to a group that are to be evaluated
             as a group. '
+          nullable: true
           type: string
       required:
       - object
@@ -1316,6 +1329,7 @@ components:
             to form a full URI.
           externalDocs:
             url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          nullable: true
           title: CURIE
           type: string
         attribute_source:
@@ -1344,6 +1358,7 @@ components:
           description: Node attributes provided by this TRAPI web service.
           items:
             $ref: '#/components/schemas/SubAttribute'
+          nullable: true
           title: attributes
           type: array
       required:

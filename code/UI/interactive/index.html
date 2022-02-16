@@ -100,7 +100,7 @@
     </div>
     <label><input id="showQGjson" type="checkbox">Show JSON in Status window</label>
     <a style="margin-left: 150px;" href="javascript:qg_clean_up(true);selectInput('qjson');">Edit in JSON pane</a>
-    <span class="qgmenu qgbutton" style="top:-1px;" title="transfer this query graph to workflow" class="clq" onclick="import_qg2wf(true);">Use in Workflow &#10140;</span>
+    <span class="qgmenu qgbutton" style="top:-1px;" title="transfer this query graph to workflow" class="clq" onclick="import_intowf('query_graph',true);">Use in Workflow &#10140;</span>
 
     <div id="nodeeditor" style="top:400px;left:50px;visibility:hidden;" onfocus="qg_select('node');" tabindex="9999" class="alertbox">
       <div style="margin-top:0;" class="statushead">Edit Query Node<span title="Close window" class="clq clwin" onclick="display_qg_popup('node','hide');">&#9587;</span></div>
@@ -327,11 +327,12 @@
     <hr>
     <h3 style="display:inline;">JSON:</h3>
     <input type="button" class="questionBox button" style="margin-left:150px;" name="action" value="Import/Update JSON" onClick="update_wfjson();">
-    <span id="importQG" style="margin-left:100px;">
-      Import QueryGraph from response id:
-      <input type="text" autocomplete="off" class="questionBox" id="respId" size="10" maxlength="100"/>
-      <input type="button" class="questionBox button" id="ImportQGbutton" name="action" value="Import QG" onClick="import_qg2wf(false);">
-      <a style="margin-left: 50px;" title="transfer main query graph into workflow" href="javascript:import_qg2wf(true);">Import from QG pane</a>
+    <span id="importQG" style="margin-left:70px;">
+      Import from response id <b>or</b> URL:
+      <input type="text" autocomplete="off" class="questionBox" id="respId" size="30" maxlength="1000"/>
+      <input type="button" class="questionBox button" id="ImportQGbutton" name="action" value="Import QG" onClick="import_intowf('query_graph',false);">
+      <input type="button" class="questionBox button" id="ImportMSGbutton" name="action" value="Import Message" onClick="import_intowf('message',false);">
+      <a style="margin-left: 50px;" title="transfer main query graph into workflow" href="javascript:import_intowf('query_graph',true);">Import from QG pane</a>
     </span>
     <br clear="all">
     <textarea class="questionBox" wrap="off" id="wfJSON"></textarea>&nbsp;<span title="clear Workflow" class="clq" onclick="clearWF();">&#9587;</span>
@@ -344,7 +345,7 @@
   </div>
 
   <div class="inputsection" id="qid_input">
-    <h3 style="display:inline;">Enter a TRAPI Response identifier to load:</h3>
+    <h3 style="display:inline;">Enter a TRAPI Response identifier or a URL to a response to load:</h3>
     <div class="sampleqs">
       <select id="qid" onchange="pasteId(this.value);">
 	<option style="border-bottom:1px solid black;" value="">Example Ids&nbsp;&nbsp;&nbsp;&#8675;</option>
@@ -355,7 +356,7 @@
     </div>
 
     <form id="idForm" name="idForm" method="post" action="javascript:sendId(false);">
-      <input type="text" autocomplete="off" class="questionBox" id="idText" name="idText" size="100" maxlength="100"/>
+      <input type="text" autocomplete="off" class="questionBox" id="idText" name="idText" size="100" maxlength="1000"/>
       <input type="button" class="questionBox button" name="action" value="LOAD" onClick="sendId(false);"/>
       <span title="clear id" class="clq" onclick="pasteId('');">&#9587;</span>
     </form>

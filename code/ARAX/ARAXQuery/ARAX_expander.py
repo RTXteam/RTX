@@ -1272,7 +1272,7 @@ def main():
         "add_qnode(key=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
         "add_qnode(key=n01, category=protein, is_set=true)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(edge_key=e00, kp=biothings-explorer)",
+        "expand(edge_key=e00, kp=infores:infores:biothings-explorer)",
         "return(message=true, store=false)",
     ]
 
