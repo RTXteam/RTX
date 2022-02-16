@@ -29,7 +29,7 @@ class KG2Querier:
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
         self.biolink_helper = BiolinkHelper()
-        self.kg2_infores_curie = eu.get_translator_infores_curie("RTX-KG2")
+        self.kg2_infores_curie = "infores:rtx-kg2"
         self.max_allowed_edges = 1000000
         self.max_edges_per_input_curie = 1000
         self.curie_batch_size = 100
@@ -150,7 +150,7 @@ class KG2Querier:
                         node.attributes.append(Attribute(attribute_type_id="biolink:incomplete_result_set",  # TODO: request this as actual biolink item?
                                                          value_type_id="metatype:Boolean",
                                                          value=True,
-                                                         attribute_source=eu.get_translator_infores_curie("RTX-KG2"),
+                                                         attribute_source="infores:rtx-kg2",
                                                          description=f"This attribute indicates that not all "
                                                                      f"nodes/edges returned as answers for this input "
                                                                      f"curie were included in the final answer due to "
