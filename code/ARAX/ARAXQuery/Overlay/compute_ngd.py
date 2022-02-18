@@ -72,6 +72,11 @@ class ComputeNGD:
         url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
         qg = self.message.query_graph
         kg = self.message.knowledge_graph
+        ngd_description = """
+        Normalized google distance is a metric based on edge subject/object node co-occurrence in abstracts of all [PubMed](https://pubmed.ncbi.nlm.nih.gov/) articles. 
+        The formula can be found here on [wikipedia.](https://en.wikipedia.org/wiki/Normalized_Google_distance) 
+        Where in this case f(x,y) is the number of PubMed abstracts both concepts apear in, f(x)/f(y) are the number of abstracts individual concepts apear in, and N is the number of pubmed articles times the average numbver of search terms per article (27 million * 20).
+        """
         
 
         # if you want to add virtual edges, identify the subject/objects, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
@@ -96,7 +101,7 @@ class ComputeNGD:
                     edge_value = ngd_value
                 else:
                     edge_value = default_value
-                edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url)  # populate the NGD edge attribute
+                edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
                 pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
                 if edge_attribute:
                     added_flag = True
@@ -198,7 +203,7 @@ class ComputeNGD:
                         edge_value = ngd_value
                     else:
                         edge_value = default_value
-                    ngd_edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url)  # populate the NGD edge attribute
+                    ngd_edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
                     pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=[f"PMID:{pmid}" for pmid in pmid_set])
                     edge.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
                     edge.attributes.append(pmid_edge_attribute)
