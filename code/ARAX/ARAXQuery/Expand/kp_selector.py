@@ -49,7 +49,7 @@ class KPSelector:
         obj_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.object].categories))
         predicates = set(self.biolink_helper.get_descendants(qedge.predicates))
 
-        symmetrical_predicates = list(filter(self.biolink_helper.is_symmetric, predicates))
+        symmetrical_predicates = set(filter(self.biolink_helper.is_symmetric, predicates))
 
         # use metamap to check kp for predicate triple
         accepting_kps = set()
@@ -83,7 +83,7 @@ class KPSelector:
         kp_accepts = self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories)
 
         # account for symmetrical predicates by checking if kp accepts with swapped sub and obj categories
-        symmetrical_predicates = list(filter(self.biolink_helper.is_symmetric, predicates))
+        symmetrical_predicates = set(filter(self.biolink_helper.is_symmetric, predicates))
         kp_accepts = kp_accepts or self._triple_is_in_meta_map(kp, obj_categories, symmetrical_predicates, sub_categories)
 
         return kp_accepts
