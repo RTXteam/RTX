@@ -767,7 +767,7 @@ def test_multiomics_drug_response_kp():
         "add_qnode(ids=NCBIGene:7157, categories=biolink:Gene, key=n00)",
         "add_qnode(categories=biolink:SmallMolecule, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=infores:biothings-multiomics-biggim-drug-response)",
+        "expand(kp=infores:biothings-multiomics-biggim-drug-response, predicates=biolink:associated_with_sensitivity_to)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
