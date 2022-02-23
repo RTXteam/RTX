@@ -475,14 +475,15 @@ def test_molepro_query():
 @pytest.mark.external
 def test_spoke_query():
     actions_list = [
-        "add_qnode(ids=UniProtKB:P42857, categories=biolink:Protein, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n00)",
+        "add_qnode(ids=UniProtKB:O00533, categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:molecularly_interacts_with)",
         "expand(kp=infores:spoke)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
+#ids=chembl.compound:CHEMBL3911379
 
 # @pytest.mark.external
 # def test_spoke_query_2():
