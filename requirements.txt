@@ -34,3 +34,4 @@ aiohttp>=3.7.4
 boto3==1.19.0
 tornado==6.1
 connexion[swagger-ui]
+markupsafe==2.0.1

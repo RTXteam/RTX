@@ -48,7 +48,7 @@ class KPSelector:
         sub_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.subject].categories))
         obj_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.object].categories))
         predicates = set(self.biolink_helper.get_descendants(qedge.predicates))
-        
+
         # use metamap to check kp for predicate triple
         accepting_kps = set()
         for kp in self.meta_map:
@@ -235,10 +235,10 @@ class KPSelector:
                     else:
                         self.log.warning(f"Unable to access {kp}'s /meta_knowledge_graph endpoint (returned status of "
                                          f"{kp_response.status_code})")
-            elif kp == "DTD":
+            elif kp == "infores:arax-drug-treats-disease":
                 meta_map[kp] = {"predicates": self._get_dtd_meta_map(),
                                 "prefixes": dict()}
-            elif kp == "NGD":
+            elif kp == "infores:arax-normalized-google-distance":
                 # This is just a placeholder; not really used for KP selection
                 predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:has_normalized_google_distance_with"}}}
                 meta_map[kp] = {"predicates": predicates,
@@ -293,7 +293,7 @@ class KPSelector:
     def make_qg_use_supported_prefixes(self, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
         for qnode_key, qnode in qg.nodes.items():
             if qnode.ids:
-                if kp_name == "RTX-KG2":
+                if kp_name == "infores:rtx-kg2":
                     # Just convert them into canonical curies
                     qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
                 else:
