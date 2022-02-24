@@ -162,6 +162,15 @@ class ARAXExpander:
             if qnode.ids and not qnode.categories:
                 # Infer categories for expand's internal use (in KP selection and etc.)
                 qnode.categories = eu.get_preferred_categories(qnode.ids, log)
+                # remove all descendent categories of "biolink:ChemicalEntity" and replace them with "biolink:ChemicalEntity"
+                # This is so SPOKE will be correctly chosen as a KP for queries where a pinned qnode has a category which descends from ChemicalEntity. More info on Github issue1773
+                categories_set = set(qnode.categories)
+                chem_entity_descendents = set(self.bh.get_descendants("biolink:ChemicalEntity"))
+                filtered_categories = categories_set - chem_entity_descendents
+                if categories_set != filtered_categories:
+                    filtered_categories.add("biolink:ChemicalEntity")
+                qnode.categories = list(filtered_categories)
+
                 log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
             elif not qnode.categories:
                 # Default to NamedThing if no category was specified
