@@ -31,7 +31,7 @@ from openapi_server.models.result import Result
 class TRAPIQuerier:
 
     def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, user_timeout: Optional[int],
-                 kp_selector: KPSelector = KPSelector(), force_local: bool = False):
+                 kp_selector: KPSelector = KPSelector(), force_local: bool = False, impatient_mode: bool = False):
         self.log = response_object
         self.kp_name = kp_name
         self.user_specified_kp = user_specified_kp
@@ -39,6 +39,7 @@ class TRAPIQuerier:
         self.force_local = force_local
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.kp_selector = kp_selector
+        self.impatient_mode = impatient_mode
 
     async def answer_one_hop_query_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -356,6 +357,8 @@ class TRAPIQuerier:
         # Returns the number of seconds we should wait for a response
         if self.user_timeout:
             return self.user_timeout
+        elif self.impatient_mode:
+            return 30
         elif self.kp_name == "infores:rtx-kg2":
             return 600
         else:
