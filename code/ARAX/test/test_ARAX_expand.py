@@ -487,7 +487,9 @@ def test_spoke_query():
 @pytest.mark.external
 def test_spoke_query_2():
     actions_list = [
-        "add_qnode(ids=NCBIGene:7157, categories=biolink:Gene, key=n00)", "add_qnode(categories=biolink:ChemicalEntity, key=n01)", "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:molecularly_interacts_with)",
+        "add_qnode(ids=NCBIGene:7157, categories=biolink:Gene, key=n00)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:molecularly_interacts_with)",
         "expand(kp=infores:spoke)",
         "return(message=true, store=false)"
     ]
