@@ -46,7 +46,7 @@ class WorkflowToARAXi:
             response.warning("This query graph has 3 or more nodes. This may take a while")
         nodes_keys_with_categories = [key for key,node in query_graph['nodes'].items() if node['categories'] is not None]
         qnode_pairs = itertools.combinations(nodes_keys_with_categories,2)
-        ARAXi.append(f"overlay(action=compute_ngd,default_value=inf)")
+        ARAXi.append(f"overlay(action=compute_ngd,default_value=inf,virtual_relation_label=connect_knodes_ngd)")
         ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency)")
         #ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=connect_knodes_obs_exp)")
         #ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=connect_knodes_chi_sqr)")
