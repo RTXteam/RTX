@@ -311,7 +311,8 @@ class TRAPIQuerier:
                     attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
 
             # Check if KPs are properly indicating that these edges came from them (indicate it ourselves if not)
-            if not any(attribute.value == self.kp_name for attribute in returned_edge.attributes):
+            attribute_has_kp_name = lambda value, kp_name: (type(attribute.value) is list and kp_name in attribute.value) or (value == kp_name)
+            if not any(attribute_has_kp_name(attribute.value, self.kp_name) for attribute in returned_edge.attributes):
                 returned_edge.attributes.append(eu.get_kp_source_attribute(self.kp_name))
             # Add an attribute to indicate that this edge passed through ARAX
             returned_edge.attributes.append(eu.get_arax_source_attribute())
