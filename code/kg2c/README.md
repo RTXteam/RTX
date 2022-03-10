@@ -152,7 +152,7 @@ source venv/bin/activate
 
 (2) Run the script `kg2c_tsv_to_kgx_tsv.py` to generate output files `nodes.tsv` and `edges.tsv`.
 ```
-python3.7 kg2c_tsv_to_kgx.py
+python3.7 kg2c_tsv_to_kgx_tsv.py
 ```
 
 (3) Validate output files and generate `content_metadata.json` using `kgx-validation-and-metagraph.sh`.
