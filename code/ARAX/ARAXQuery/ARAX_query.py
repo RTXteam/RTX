@@ -714,7 +714,7 @@ class ARAXQuery:
                             except:
                                 response.error(f"Unable to convert user_timeout '{user_timeout} into an integer", error_code="UserTimeoutNotInt")
                                 return response
-                        expander.apply(response, action['parameters'], mode=mode, user_timeout=user_timeout)
+                        expander.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'filter':
                         filter.apply(response,action['parameters'])
