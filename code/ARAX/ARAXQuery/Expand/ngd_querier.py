@@ -118,7 +118,7 @@ class NGDQuerier:
                                          value=ngd_value)]
         kp_description = "ARAX's in-house normalized google distance database."
         ngd_edge.attributes += [self.decorator.create_attribute("publications", pmid_list),
-                                eu.get_kp_source_attribute("NGD", arax_kp=True, description=kp_description),
+                                eu.get_kp_source_attribute("infores:arax-normalized-google-distance", arax_kp=True, description=kp_description),
                                 eu.get_arax_source_attribute(),
                                 eu.get_computed_value_attribute()]
         return ngd_edge_key, ngd_edge

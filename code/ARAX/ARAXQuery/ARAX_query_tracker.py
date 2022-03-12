@@ -329,7 +329,8 @@ class ARAXQueryTracker:
                 'submitter': entry.origin,
                 'response_id': entry.message_id,
                 'status': entry.message_code,
-                'description': entry.code_description
+                'description': entry.code_description,
+                'remote_address': entry.remote_address
             } )
 
         result['recent_queries'].reverse()

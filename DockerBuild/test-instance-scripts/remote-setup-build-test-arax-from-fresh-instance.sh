@@ -9,14 +9,30 @@ public_key_file=id_rsa.pub
 database_server=rtxconfig@arax.ncats.io
 config_server=araxconfig@araxconfig.rtx.ai
 
-echo "Enter the path to the AWS PEM file configured for the instance in which you wish to install ARAX: "
+echo "Enter the path to the AWS PEM file configured for the instance in which you wish to install ARAX; or if your RSA public key is already installed, just hit return: "
 read aws_pem_file
 
-echo "Enter the fullly-qualified hostname of your instance (e.g., myaraxtest.rtx.ai); or if your RSA public key is already installed, just hit return: "
+echo "Enter the fully-qualified hostname of your instance (e.g., myaraxtest.rtx.ai): "
 read instance_hostname
+if [[ -z "${instance_hostname}" ]]
+then
+    >&2 echo "No hostname supplied; this is an error; exiting"
+    exit 1
+fi
 
-echo "Enter the remote username for your instance (e.g., ubuntu): "
+echo "Enter the remote username for your instance (or hit enter for [ubuntu]): "
 read remote_username
+if [[ -z "${remote_username}" ]]
+then
+    remote_username=ubuntu
+fi
+
+echo "Enter the port number on the host machine you want to use for port 80 inside the conainer (or hit enter for [80]): "
+read port_number
+if [[ -z "${port_number}" ]]
+then
+    port_number=80
+fi
 
 if ! [ -z "${aws_pem_file}" ]
 then
@@ -27,11 +43,13 @@ fi
   
 echo "Installing in hostname: ${instance_hostname}"
 echo "Installing for username: ${remote_username}"
+echo "Using the port number: ${port_number}"
 
 read -p "Are the above choices correct? [Y/N] " -n 1 -r
 
 if ! [[ $REPLY =~ ^[Yy]$ ]]
 then
+    >&2 echo "User did not verify the run conditions; cancelling the run of the setup script"
     exit 0
 fi
 
@@ -78,4 +96,4 @@ ssh ${database_server} "rm ${temp_file_name}"
 
 ssh ${remote_username}@${instance_hostname} 'curl -s https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh > build-test-arax-from-fresh-instance.sh'
 
-ssh ${remote_username}@${instance_hostname} 'bash build-test-arax-from-fresh-instance.sh'
+ssh ${remote_username}@${instance_hostname} bash build-test-arax-from-fresh-instance.sh ${port_number}

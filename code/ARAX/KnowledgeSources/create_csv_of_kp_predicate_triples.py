@@ -212,28 +212,28 @@ def main():
     print("----- starting script -----")
     
     #kg1_triple_df = get_kg1_predicate_triples()
-    kg2_triple_df, KG2_examples_json = get_kg2_predicate_triples_examples()
+    #kg2_triple_df, KG2_examples_json = get_kg2_predicate_triples_examples()
     kg2c_triple_df, KG2c_examples_json = get_kg2c_predicate_triples_examples()
     #kg1_triple_df.to_csv("KG1_allowed_predicate_triples.csv", index=False)
-    kg2_triple_df.to_csv("KG2_allowed_predicate_triples.csv", index=False)
-    with open('RTX_KG2_Data.json','w') as fid:
-        json.dump(KG2_examples_json, fid, indent=4)
+    #kg2_triple_df.to_csv("KG2_allowed_predicate_triples.csv", index=False)
+    #with open('RTX_KG2_Data.json','w') as fid:
+    #    json.dump(KG2_examples_json, fid, indent=4)
     kg2c_triple_df.to_csv("KG2c_allowed_predicate_triples.csv", index=False)
     with open('RTX_KG2c_Data.json','w') as fid:
         json.dump(KG2c_examples_json, fid, indent=4)
 
     #kg1_labels_df = get_kg1_node_labels()
-    kg2_labels_df = get_kg2_node_labels()
+    #kg2_labels_df = get_kg2_node_labels()
     kg2c_labels_df = get_kg2c_node_labels()
     #kg1_labels_df.to_csv("KG1_allowed_node_labels.csv", index=False)
-    kg2_labels_df.to_csv("KG2_allowed_node_labels.csv", index=False)
+    #kg2_labels_df.to_csv("KG2_allowed_node_labels.csv", index=False)
     kg2c_labels_df.to_csv("KG2c_allowed_node_labels.csv", index=False)
 
     #kg1_labels_df = get_kg1_relationship_types()
-    kg2_labels_df = get_kg2_relationship_types()
+    #kg2_labels_df = get_kg2_relationship_types()
     kg2c_labels_df = get_kg2c_relationship_types()
     #kg1_labels_df.to_csv("KG1_allowed_relationship_types.csv", index=False)
-    kg2_labels_df.to_csv("KG2_allowed_relationship_types.csv", index=False)
+    #kg2_labels_df.to_csv("KG2_allowed_relationship_types.csv", index=False)
     kg2c_labels_df.to_csv("KG2c_allowed_relationship_types.csv", index=False)
     print("----- script finished -----")
 

@@ -126,6 +126,7 @@ Notes developing the new KGNodeIndex
 
 New data structures (Database tables do not have kg_ prefix):
 
+#### One entry per actual node in KG2pre
 kg_nodes{uc_curie}:		- Every node has a unique curie and an entry here. Upper case index dict key
 0- uc_curie (tbl only)		- Every node has a unique curie and an entry here. Upper case
 1- curie			- Every node has a unique curie and an entry here. Original case
@@ -135,6 +136,7 @@ kg_nodes{uc_curie}:		- Every node has a unique curie and an entry here. Upper ca
 5- category			- Category of the node in the database
 6- uc_unique_concept_curie	- Curie of the unique concept coalescing this node
 
+#### One entry per unique concept, what becomes a KG2c entry
 kg_unique_concepts{uc_curie}:	- Curie identifying the unique concept coalescing many equivalent curies or nodes. Upper case index dict key
 0- uc_curie (tbl only)		- Curie identifying the unique concept coalescing many equivalent curies or nodes. Upper case
 1- curie			- Curie identifying the unique concept coalescing many equivalent curies or nodes. Original case
@@ -146,6 +148,7 @@ kg_unique_concepts{uc_curie}:	- Curie identifying the unique concept coalescing 
  * all_uc_curies{}		- A map of all curies for this concept
  * all_lc_names{}		- A map of all names for this concept (probably expendable. Useful for debugging)
 
+#### One entry per known CURIE, either from KG2pre or from the SRI Node Normalizer
 kg_curies{uc_curie}:		- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Upper case index dict key
 0- uc_curie (tbl only)		- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Upper case
 1- curie			- Complete catalog of all curies, both in the KGs and in SRI normalizer, or even elsewhere. Original case
@@ -157,6 +160,7 @@ kg_curies{uc_curie}:		- Complete catalog of all curies, both in the KGs and in S
 7- normalizer_category		- Category according to the SRI Normalizer
 8- source			- Source of this curie
 
+#### One entry per unique lower-cased name, either from a KG2pre node or the SRI Node Normalizer, but not the wild kg2_synonyms.json
 kg_names{lc_name}		- All names lower cased, not curies. Lower case index dict key
 0- lc_name (tbl only)		- All names lower cased, not curies. Lower case
 1- name				- Original non-lower-case name
@@ -165,6 +169,7 @@ kg_names{lc_name}		- All names lower cased, not curies. Lower case index dict ke
 4- has_ambiguitiy		- True or False. If true, then look in kg_ambiguous_names for alternatives
  * uc_unique_concept_curies	- Dict of curies with this name if not coalesced
 
+#### One entry per unique name in kg2_synonyms.json, some of which can be a bit crazy
 kg_name_curies{lc_name_uc_curie} - All names lower cased plus upper cased curie dict key
 0- lc_name (tbl only)		- All names lower cased, not curies. Lower case
 1- name				- Original non-lower-case name

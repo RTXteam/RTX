@@ -1,0 +1,44 @@
+{
+    "message": {
+      "query_graph": {
+        "edges": {
+          "e00": {
+            "subject": "n00",
+            "object": "n01"
+          },
+          "e01": {
+            "subject": "n01",
+            "object": "n02"
+          },
+          "e02": {
+            "subject": "n02",
+            "object": "n03"
+          },
+          "e03": {
+            "subject": "n03",
+            "object": "n04"
+          }
+        },
+        "nodes": {
+          "n00": {
+            "ids": ["DRUGBANK:DB00150"],
+            "categories": ["biolink:SmallMolecule"]
+          },
+          "n01": {
+            "categories": ["biolink:Protein"]
+          },
+          "n02": {
+            "categories": ["biolink:MolecularActivity"]
+          },
+          "n03": {
+            "categories": ["biolink:MolecularActivity"]
+          },
+          "n04": {
+            "ids": ["KEGG.COMPOUND:C02700"],
+            "categories": ["biolink:SmallMolecule"]
+          }
+        }
+      }
+    }
+  }
+  

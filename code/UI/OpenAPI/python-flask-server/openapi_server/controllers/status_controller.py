@@ -1,5 +1,6 @@
-import connexion
 import six
+import os
+import sys
 
 from openapi_server import util
 from ARAX_query_tracker import ARAXQueryTracker
@@ -40,6 +41,9 @@ def get_logs(mode=None):  # noqa: E501
 
     :rtype: string
     """
+
+    if mode is not None and mode == 'env':
+        return str(os.environ)
 
     query_tracker = ARAXQueryTracker()
     status = query_tracker.get_logs(mode=mode)
