@@ -502,8 +502,8 @@ class DataGeneration:
 if __name__ == "__main__":
     dataGenerator = DataGeneration()
     drugs = dataGenerator.get_drug_curies_from_graph()
-    drugs.to_csv('/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_3/raw_training_data/drugs.txt',sep='\t',index=False)
-    dataGenerator.generate_MyChemData(drugs=drugs, output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_3/raw_training_data',dist=2, batchsize=50)
+    drugs.to_csv('/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_5/raw_training_data/drugs.txt',sep='\t',index=False)
+    dataGenerator.generate_MyChemData(drugs=drugs, output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_5/raw_training_data',dist=2, batchsize=50)
 #     For semmedVER43_2020_R_PREDICATION.sql.gz, you might dowload from /data/orangeboard/databases/KG2.3.4/semmedVER43_2020_R_PREDICATION.sql.gz on arax.ncats.io server or directly download the latest one from semmedb website
 #     dataGenerator.generate_SemmedData(mysqldump_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/semmedVER43_2020_R_PREDICATION.sql.gz', output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_5_1/raw_training_data/')
     
