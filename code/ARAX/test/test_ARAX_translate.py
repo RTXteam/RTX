@@ -512,7 +512,7 @@ def test_connect_knodes_2_nodes():
                 "nodes": {
                     "n0": {
                         "categories": [
-                            "biolink:Gene"
+                            "biolink:Disease"
                         ]
                     },
                     "n1": {
@@ -529,7 +529,7 @@ def test_connect_knodes_2_nodes():
                         "subject": "n0",
                         "object": "n1",
                         "predicates": [
-                            "biolink:related_to"
+                            "biolink:treats"
                         ]
                     }
                 }
@@ -541,6 +541,7 @@ def test_connect_knodes_2_nodes():
     assert len(message.results) == 30
     connected_bindings_ngd = set()
     connected_bindings_fisher = set()
+    connected_bindings_paired_freq = set()
     for result in message.results:
         assert result.score is not None
         for eb_key, edge_bindings in result.edge_bindings.items():
@@ -549,8 +550,11 @@ def test_connect_knodes_2_nodes():
                     connected_bindings_fisher.add(edge_binding.id)
                 elif edge_binding.id.startswith("connect_knodes_ngd"):
                     connected_bindings_ngd.add(edge_binding.id)
+                elif edge_binding.id.startswith("connect_knodes_paired_freq"):
+                    connected_bindings_paired_freq.add(edge_binding.id)
     assert len(connected_bindings_ngd) > 0
     assert len(connected_bindings_fisher) > 0
+    assert len(connected_bindings_paired_freq) > 0
 
 @pytest.mark.slow
 def test_connect_knodes_3_nodes():
