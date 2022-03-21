@@ -97,7 +97,7 @@ class ComputeNGD:
                 else:
                     seen_node_pairs.add(qnode_key_pair)
                     # FW: Now add the edge for this qnode pair
-                    # FW NOTE: If we decide to keep these changes we should really pull this out into a method as everything after this was copy pasted from below
+                    # FW NOTE: If we decide to keep these changes we should really pull this out into a method as everything after this was copy pasted from below in the 'virtual_relation_label' in parameters section
                     node_pairs_to_evaluate = ou.get_node_pairs_to_overlay(subject_qnode_key, object_qnode_key, qg, kg, self.response)
                     # Grab PMID lists for all involved nodes
                     involved_curies = {curie for node_pair in node_pairs_to_evaluate for curie in node_pair}
