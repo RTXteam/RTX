@@ -2814,7 +2814,7 @@ function display_attribute(tab, att, semmeddb) {
                     var a = document.createElement("a");
                     a.className = 'attvalue';
                     a.target = '_blank';
-                    a.href = "https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1];
+                    a.href = "https://pubmed.ncbi.nlm.nih.gov/" + val.split(":")[1];
 		    a.title = 'View in PubMed';
                     a.innerHTML = val;
                     cell.appendChild(a);
