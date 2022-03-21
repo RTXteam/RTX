@@ -8,6 +8,7 @@ import re
 import numpy as np
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
+from ARAX_expander import ARAXExpander
 import traceback
 from collections import Counter
 from collections.abc import Hashable
@@ -204,7 +205,7 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'connect_nodes'},
                                     'max_path_length': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
+                                    'qnode_keys': set(self.message.query_graph.nodes.keys())
                                 }
         else:
             allowable_parameters = {'action': {'connect_nodes'},
@@ -227,8 +228,9 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
 
         # Set defaults and check parameters:
         if 'qnode_keys' not in self.parameters or len(self.parameters['qnode_keys']) == 0:
-            self.parameters['qnode_keys'] = list(set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]))
-            if len(self.parameters['qnode_keys']) <= 2:
+            self.parameters['qnode_keys'] = list(set(self.message.query_graph.nodes.keys()))
+            print(f"set of qnode keys: {self.parameters['qnode_keys']}")
+            if len(self.parameters['qnode_keys']) < 2:
                 self.response.error(
                     f"Query graph must have at least 2 nodes to connect.",
                     error_code="QueryGraphError")
