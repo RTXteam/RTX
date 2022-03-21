@@ -229,7 +229,6 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         # Set defaults and check parameters:
         if 'qnode_keys' not in self.parameters or len(self.parameters['qnode_keys']) == 0:
             self.parameters['qnode_keys'] = list(set(self.message.query_graph.nodes.keys()))
-            print(f"set of qnode keys: {self.parameters['qnode_keys']}")
             if len(self.parameters['qnode_keys']) < 2:
                 self.response.error(
                     f"Query graph must have at least 2 nodes to connect.",
@@ -273,7 +272,7 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                     new_qnode_key = f'arax_connect_edge_{node_n}'
                     node_n += 1
                     # make new names until we find a node key not in the query graph
-                    while new_qnode_key in self.response.query_graph.nodes:
+                    while new_qnode_key in self.response.envelope.message.query_graph.nodes:
                         new_qnode_key = f'arax_connect_edge_{node_n}'
                         node_n += 1
                     node_pair_list.append(new_qnode_key)
@@ -291,7 +290,7 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                     new_qedge_key = f'connected_edge_{edge_n}'
                     edge_n += 1
                     # make new names until we find an edge key not in the query graph
-                    while new_qedge_key in self.response.query_graph.edges:
+                    while new_qedge_key in self.response.envelope.message.query_graph.edges:
                         new_qedge_key = f'arax_connect_edge_{edge_n}'
                         edge_n += 1
                     qedge_keys.append(new_qedge_key)
@@ -309,7 +308,9 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                 new_response = expander.apply(new_response, expand_params, mode=mode, user_timeout=timeout)
                 if new_response.status == 'OK':
                     added_connection = True
-                    self.response = copy.deepcopy(new_response)
+                    # FW: confirm with Eric that this is the correct way to merge response objects
+                    self.response.envelope = new_response.envelope
+                    self.response.merge(new_response)
                     # FW: If we do not want to stop when we find the shortest connection we could add an option 
                     # for shortest path and then check that here to deside if we want to break
                     break
