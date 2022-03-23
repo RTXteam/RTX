@@ -274,7 +274,7 @@ class ComputeFTEST:
             kp = 'infores:rtx-kg2'
         else:
             kp = 'infores:rtx-kg2'
-            self.response.warning(f"Most of edges between the subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key} are from {kp} rather than infores:rtx-kg2. But we can't access the total number of nodes with specific node type from {kp}, so infores:rtx-kg2 was still used to calcualte Fisher's exact test.")
+            self.response.warning(f"There is more than one knowledge source for the edges between the subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key} and most of them are from {kp}. The infores:rtx-kg2 is still used to calculate Fisher's exact test.")
 
         if kp == 'ARAX/KG1':
             ## This warning can be removed once KG1 is deprecated
