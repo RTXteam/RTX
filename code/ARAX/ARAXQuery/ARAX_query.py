@@ -709,6 +709,8 @@ class ARAXQuery:
                         self.inject_default_value_into_parameters('kp_timeout', response.envelope.query_options, action['parameters'], 'UserTimeoutNotInt')
                         self.inject_default_value_into_parameters('prune_threshold', response.envelope.query_options, action['parameters'], 'PruneThresholdNotInt')
                         if response.status == 'ERROR':
+                            if mode == 'asynchronous':
+                                self.send_to_callback(callback, response)
                             return response
                         expander.apply(response, action['parameters'], mode=mode)
 
