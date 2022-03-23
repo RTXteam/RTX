@@ -894,16 +894,16 @@ class ARAXQuery:
     ############################################################################################
     def inject_default_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
         parameter_value = None
-        if query_options is not None and parameter_name in query_options and query_options['parameter_name'] is not None:
+        if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
             parameter_value = query_options[parameter_name]
             #### Try to convery the value to an integer
             try:
                 parameter_value = int(parameter_value)
             except:
-                self.response.error(f"Unable to convert parameter parameter_name '{parameter_value} into an integer", error_code=error_code)
+                self.response.error(f"Unable to convert parameter {parameter_name} = '{parameter_value}' into an integer", error_code=error_code)
                 return
         #### Only update the value in parameters if one was not explicitly specified
-        if parameter_name not in parameters:
+        if parameter_name not in parameters and parameter_value is not None:
             parameters[parameter_name] = parameter_value
 
 
