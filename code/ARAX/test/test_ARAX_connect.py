@@ -102,7 +102,7 @@ def test_connect_nodes_2_hop():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 0
+    assert len(message.query_graph.edges) == 2
     assert len(message.results) > 0
 
 
