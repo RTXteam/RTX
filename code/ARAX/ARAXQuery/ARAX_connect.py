@@ -306,7 +306,7 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                     'edge_key':qedge_keys
                 }
                 new_response = expander.apply(new_response, expand_params, mode=mode, user_timeout=timeout)
-                if new_response.status == 'OK':
+                if new_response.status == 'OK' and len(new_response.envelope.message.knowledge_graph.edges) > len(self.response.envelope.message.knowledge_graph.edges):
                     added_connection = True
                     # FW: confirm with Eric that this is the correct way to merge response objects
                     self.response.envelope = new_response.envelope
