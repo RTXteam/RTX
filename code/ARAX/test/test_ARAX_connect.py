@@ -91,6 +91,20 @@ def test_connect_nodes():
     assert len(message.query_graph.edges) > 0
     assert len(message.results) > 0
 
+def test_connect_nodes_2_hop():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=UniProtKB:P18509, key=n00)",
+            "add_qnode(name=MESH:D004781, key=n01)",
+            "connect(action=connect_nodes)",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=fale)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) > 0
+    assert len(message.results) > 0
+
 
 
 if __name__ == "__main__":
