@@ -2082,6 +2082,10 @@ class NodeSynonymizer:
     # Return results in the Node Normalizer format, either from SRI or KG1 or KG2
     def get_normalizer_results(self, entities=None):
 
+        # If the provided value is a dict, turn it into a list
+        if isinstance(entities,dict):
+            entities = entities.get('terms')
+
         # If no entity was passed, then nothing to do
         if entities is None:
             return None
