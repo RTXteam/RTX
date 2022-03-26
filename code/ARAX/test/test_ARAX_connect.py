@@ -105,6 +105,22 @@ def test_connect_nodes_2_hop():
     assert len(message.query_graph.edges) == 2
     assert len(message.results) > 0
 
+def test_connect_nodes_subgraph_2_hop():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=UniProtKB:P54105,key=n02)",
+            "add_qnode(name=UniProtKB:P18509,key=n00)",
+            "add_qedge(subject=n00,object=n02,key=e00)",
+            "expand(kp=infores:rtx-kg2,edge_key=e00)",
+            "add_qnode(name=MESH:D004781,key=n01)",
+            "connect(action=connect_nodes,qnode_keys=[n00,n01])",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=fale)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) == 3
+    assert len(message.results) > 0
 
 
 if __name__ == "__main__":
