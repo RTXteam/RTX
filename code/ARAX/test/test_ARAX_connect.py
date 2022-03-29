@@ -122,6 +122,22 @@ def test_connect_nodes_subgraph_2_hop():
     assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
+@pytest.mark.slow
+def test_connect_3_nodes():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=UniProtKB:P54105,key=n02)",
+            "add_qnode(name=UniProtKB:P18509,key=n00)",
+            "add_qnode(name=MESH:D004781,key=n01)",
+            "connect(action=connect_nodes)",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=fale)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) > 3
+    assert len(message.results) > 0
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
