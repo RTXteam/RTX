@@ -255,9 +255,9 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
 
         # Expand parameters
         mode = 'ARAX'
-        timeout = 30
+        timeout = 60
         kp = 'infores:rtx-kg2'
-        prune_threshold = 100
+        prune_threshold = 500
 
         qnode_key_pairs = list(combinations(self.parameters['qnode_keys'], 2))
         edge_n = 1
@@ -265,15 +265,17 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         for qnode_pair in qnode_key_pairs:
             added_connection = False
             for n_new_nodes in range(self.parameters['max_path_length']):
-                new_response = copy.deepcopy(self.response)
+                new_response = ARAXResponse()
+                messenger.create_envelope(new_response)
+                new_response.envelope.message.query_graph.nodes = {k:v for k,v in self.response.envelope.message.query_graph.nodes.items() if k in qnode_pair}
                 qedge_keys = []
                 node_pair_list = [qnode_pair[0]]
                 for i in range(n_new_nodes):
-                    new_qnode_key = f'arax_connect_edge_{node_n}'
+                    new_qnode_key = f'arax_connect_node_{node_n}'
                     node_n += 1
                     # make new names until we find a node key not in the query graph
                     while new_qnode_key in self.response.envelope.message.query_graph.nodes:
-                        new_qnode_key = f'arax_connect_edge_{node_n}'
+                        new_qnode_key = f'arax_connect_node_{node_n}'
                         node_n += 1
                     node_pair_list.append(new_qnode_key)
                     add_qnode_params = {
@@ -309,7 +311,10 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                 if new_response.status == 'OK' and len(new_response.envelope.message.knowledge_graph.edges) > len(self.response.envelope.message.knowledge_graph.edges):
                     added_connection = True
                     # FW: confirm with Eric that this is the correct way to merge response objects
-                    self.response.envelope = new_response.envelope
+                    self.response.envelope.message.query_graph.edges.update(new_response.envelope.message.query_graph.edges)
+                    self.response.envelope.message.query_graph.nodes.update(new_response.envelope.message.query_graph.nodes)
+                    self.response.envelope.message.knowledge_graph.edges.update(new_response.envelope.message.knowledge_graph.edges)
+                    self.response.envelope.message.knowledge_graph.nodes.update(new_response.envelope.message.knowledge_graph.nodes)
                     self.response.merge(new_response)
                     # FW: If we do not want to stop when we find the shortest connection we could add an option 
                     # for shortest path and then check that here to deside if we want to break
