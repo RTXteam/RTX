@@ -77,7 +77,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     assert len(values) >= num_different_values
 
 
-def test_connect_nodes():
+def test_connect_nodes_1_hop():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=DOID:3312, key=n00)",
@@ -123,7 +123,7 @@ def test_connect_nodes_subgraph_2_hop():
     assert len(message.results) > 0
 
 @pytest.mark.slow
-def test_connect_3_nodes():
+def test_connect_nodes_3_disconnected_nodes():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(name=UniProtKB:P54105,key=n02)",
