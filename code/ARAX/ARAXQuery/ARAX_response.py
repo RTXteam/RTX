@@ -321,11 +321,11 @@ def main():
     response.warning('This does not look good')
     response.error('Bad news, Pal', code='BadNewsError')
 
-    #### Example for 
+    #### Example for
     if params.example == 2:
-        response.update_query_plan('e00', 'MolePro', 'Skipped', "KP does not support predicate 'biolink:physically_interacts_with'")
-        response.update_query_plan('e00', 'RTX-KG2', 'Done', "Query returned 89 results")
-        response.update_query_plan('e00', 'GeneticsKP', 'Waiting', "Query with 12 CURIEs sent: waiting for response")
+        response.update_query_plan('e00', 'infores:molepro', 'Skipped', "KP does not support predicate 'biolink:physically_interacts_with'")
+        response.update_query_plan('e00', 'infores:rtx-kg2', 'Done', "Query returned 89 results")
+        response.update_query_plan('e00', 'infores:genetics-data-provider', 'Waiting', "Query with 12 CURIEs sent: waiting for response")
         print(json.dumps(response.query_plan,sort_keys=True,indent=2))
         return
 

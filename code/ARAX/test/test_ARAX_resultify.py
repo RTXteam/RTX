@@ -660,7 +660,7 @@ def test09():
         "add_qnode(name=DOID:731, key=n00, categories=biolink:Disease, is_set=false)",
         "add_qnode(categories=biolink:PhenotypicFeature, is_set=false, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=RTX-KG2)",
+        "expand(edge_key=e00, kp=infores:rtx-kg2)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "filter_results(action=limit_number_of_results, max_results=100)",
         "return(message=true, store=false)"
@@ -683,7 +683,7 @@ def test_example1():
         "add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=qg1, categories=biolink:Protein)",
         "add_qedge(subject=qg1, object=qg0, key=qe0)",
-        "expand(edge_key=qe0, kp=RTX-KG2)",
+        "expand(edge_key=qe0, kp=infores:rtx-kg2)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)"
     ]
@@ -806,7 +806,7 @@ def test_issue680():
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
+        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_keys=[n02])",
         "resultify(ignore_edge_direction=true, debug=true)",
@@ -840,7 +840,7 @@ def test_issue686a():
     # Tests that an error is thrown when an invalid parameter is passed to resultify
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=RTX-KG2)',
+        'expand(kp=infores:rtx-kg2)',
         'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
         "return(message=true, store=false)"
     ]
@@ -852,7 +852,7 @@ def test_issue686b():
     # Tests that resultify can be called with no parameters passed in
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=RTX-KG2)',
+        'expand(kp=infores:rtx-kg2)',
         'resultify()',
         "return(message=true, store=false)"
     ]
@@ -864,7 +864,7 @@ def test_issue686c():
     # Tests that setting ignore_edge_direction to an invalid value results in an error
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=RTX-KG2)',
+        'expand(kp=infores:rtx-kg2)',
         'resultify(ignore_edge_direction=foo)',
         "return(message=true, store=false)"
     ]
@@ -876,7 +876,7 @@ def test_issue687():
     # Tests that ignore_edge_direction need not be specified
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=RTX-KG2)',
+        'expand(kp=infores:rtx-kg2)',
         'resultify(debug=true)',
         "return(message=true, store=false)"
     ]
@@ -927,7 +927,7 @@ def test_issue731b():
         "add_qnode(categories=biolink:Disease, key=n2)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(edge_key=[e0,e1], kp=RTX-KG2)",
+        "expand(edge_key=[e0,e1], kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1016,7 +1016,7 @@ def test_issue720_1():
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1035,7 +1035,7 @@ def test_issue720_2():
         "add_qnode(key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1055,7 +1055,7 @@ def test_issue720_3():
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:interacts_with)",
         "add_qedge(key=e02, subject=n02, object=n03, predicates=biolink:interacts_with)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1108,7 +1108,7 @@ def test_issue833_extraneous_intermediate_nodes():
 def test_single_node():
     actions = [
         "add_qnode(name=ibuprofen, key=n00)",
-        "expand(node_key=n00, kp=RTX-KG2)",
+        "expand(node_key=n00, kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1182,7 +1182,7 @@ def test_issue1119_a():
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, key=e01)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1197,7 +1197,7 @@ def test_issue1119_a():
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, exclude=true, key=ex0)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1219,7 +1219,7 @@ def test_issue1119_b():
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "add_qnode(categories=biolink:Pathway, key=n03)",
         "add_qedge(subject=n01, object=n03, key=e02, predicates=biolink:participates_in, exclude=true)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1239,7 +1239,7 @@ def test_issue1119_c():
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:predisposes, option_group_id=1)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1256,7 +1256,7 @@ def test_issue1119_c():
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1269,7 +1269,7 @@ def test_issue1119_c():
         "add_qnode(key=n00, ids=DOID:3312)",
         f"add_qnode(key=n01, ids=[{', '.join([node_key for node_key, node in message.knowledge_graph.nodes.items() if 'n01' in node.qnode_keys])}])",
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:predisposes)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
         # Note: skipping resultify here due to issue #1152
     ]
@@ -1289,7 +1289,7 @@ def test_issue1119_d():
         "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:affects, option_group_id=1)",
         "add_qedge(key=e02, subject=n01, object=n00, predicates=biolink:disrupts, option_group_id=2)",
         "add_qedge(key=e03, subject=n01, object=n00, exclude=True, predicates=biolink:predisposes)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1313,7 +1313,7 @@ def test_issue1146_a():
         "add_qnode(key=n1, categories=biolink:Protein, is_set=true)",
         "add_qedge(key=e0, subject=n2, object=n1, predicates=biolink:physically_interacts_with)",
         "add_qedge(key=e1, subject=n1, object=n0, predicates=biolink:causes)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n0, object_qnode_key=n2)",
         "resultify(debug=true)",
         "filter_results(action=limit_number_of_results, max_results=4)",
@@ -1340,7 +1340,7 @@ def test_disconnected_qg():
         "add_qnode(name=acetaminophen, key=n01)",
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(key=e00, subject=n01, object=n02)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1400,7 +1400,7 @@ def test_issue_1446():
         "add_qedge(key=e0,subject=n0,object=n1, predicates=biolink:entity_negatively_regulates_entity)",
         "add_qedge(key=e1,subject=n0,object=n1, predicates=biolink:decreases_activity_of, option_group_id=1)",
         "add_qedge(key=e2,subject=n0,object=n1, predicates=biolink:decreases_expression_of, option_group_id=2)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
         "resultify()",
         "filter_results(action=limit_number_of_results, max_results=100)",
