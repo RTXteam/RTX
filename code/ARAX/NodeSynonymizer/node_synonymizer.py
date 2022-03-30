@@ -2103,6 +2103,14 @@ class NodeSynonymizer:
     # Return results in the Node Normalizer format, either from SRI or KG1 or KG2
     def get_normalizer_results(self, entities=None):
 
+        output_format = 'normal'
+
+        # If the provided value is a dict, turn it into a list
+        if isinstance(entities,dict):
+            if entities.get('format') is not None:
+                output_format = entities.get('format')
+            entities = entities.get('terms')
+
         # If no entity was passed, then nothing to do
         if entities is None:
             return None
@@ -2241,14 +2249,19 @@ class NodeSynonymizer:
 
 
             # Add this entry to the final results dict
-            results[entity] = {
-                'nodes': nodes,
-                'equivalent_identifiers': curies,
-                'synonyms': names,
-                'synonym_provenance': synonym_provenance,
-                'id': id,
-                'categories': categories
-            }
+            if output_format == 'minimal':
+                results[entity] = {
+                    'id': id
+                }
+            else:
+                results[entity] = {
+                    'nodes': nodes,
+                    'equivalent_identifiers': curies,
+                    'synonyms': names,
+                    'synonym_provenance': synonym_provenance,
+                    'id': id,
+                    'categories': categories
+                }
 
         return results
 
