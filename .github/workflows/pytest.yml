@@ -2,7 +2,7 @@ name: "Test Build"
 
 on:
   push:
-    branches: [ master, production ]
+    branches: [ master, production, dependabot/pip/ujson-5.1.0]
     paths:
       - 'code/**'
       - 'DockerBuild/**'
