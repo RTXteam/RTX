@@ -8,7 +8,7 @@ networkx==2.4
 graphviz==0.17
 pronto==2.1.0
 lxml==4.6.5
-nltk==3.6.5
+nltk==3.6.6
 SQLAlchemy==1.4.26
 scipy==1.7.1
 scikit-learn==1.0.1
