@@ -87,6 +87,12 @@ def query(request_body):  # noqa: E501
 
     query = connexion.request.get_json()  # :QUESTION: why don't we use `request_body`?
 
+    #### Record the remote IP address in the query for now so it is available downstream
+    try:
+        query['remote_address'] = connexion.request.headers['x-forwarded-for']
+    except:
+        query['remote_address'] = '???'
+
     mime_type = 'application/json'
 
     if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:

@@ -67,6 +67,7 @@ class RemoveEdges:
                 self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
                 i = 0
                 nodes_to_remove = set()
+                skipped_qnode_keys = set()
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_keys_to_remove:
@@ -79,9 +80,11 @@ class RemoveEdges:
                                         else:
                                             node.qnode_keys.remove(param_qnode_key)
                                     else:
-                                        del node_keys_to_remove[key]
+                                        # del node_keys_to_remove[key]
+                                        skipped_qnode_keys.add(key)
                             else:
-                                del node_keys_to_remove[key]
+                                # del node_keys_to_remove[key]
+                                skipped_qnode_keys.add(key)
                         else:
                             if len(node.qnode_keys) == 1:
                                 nodes_to_remove.add(key)
@@ -90,6 +93,8 @@ class RemoveEdges:
                                     node.qnode_keys.remove(node_key)
                                 if len(node.qnode_keys) == 0:
                                     nodes_to_remove.add(key)
+                for key in skipped_qnode_keys:
+                    del node_keys_to_remove[key]
                 # remove connected nodes
                 #self.message.knowledge_graph.nodes = [val for idx,val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
                 for key in nodes_to_remove:
@@ -199,6 +204,7 @@ class RemoveEdges:
                 self.response.debug(f"Removing Nodes")
                 self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
                 nodes_to_remove = set()
+                skipped_qnode_keys = set()
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_keys_to_remove:
@@ -211,9 +217,11 @@ class RemoveEdges:
                                         else:
                                             node.qnode_keys.remove(param_qnode_key)
                                     else:
-                                        del node_keys_to_remove[key]
+                                        # del node_keys_to_remove[key]
+                                        skipped_qnode_keys.add(key)
                             else:
-                                del node_keys_to_remove[key]
+                                # del node_keys_to_remove[key]
+                                skipped_qnode_keys.add(key)
                         else:
                             if len(node.qnode_keys) == 1:
                                 nodes_to_remove.add(key)
@@ -222,6 +230,8 @@ class RemoveEdges:
                                     node.qnode_keys.remove(node_key)
                                 if len(node.qnode_keys) == 0:
                                     nodes_to_remove.add(key)
+                for key in skipped_qnode_keys:
+                    del node_keys_to_remove[key]
                 # remove connected nodes
                 #self.message.knowledge_graph.nodes = [val for idx,val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
                 for key in nodes_to_remove:
@@ -299,6 +309,7 @@ class RemoveEdges:
                 self.response.debug(f"Removing Nodes")
                 self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
                 nodes_to_remove = set()
+                skipped_qnode_keys = set()
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_keys_to_remove:
@@ -311,9 +322,11 @@ class RemoveEdges:
                                         else:
                                             node.qnode_keys.remove(param_qnode_key)
                                     else:
-                                        del node_keys_to_remove[key]
+                                        # del node_keys_to_remove[key]
+                                        skipped_qnode_keys.add(key)
                             else:
-                                del node_keys_to_remove[key]
+                                # del node_keys_to_remove[key]
+                                skipped_qnode_keys.add(key)
                         else:
                             if len(node.qnode_keys) == 1:
                                 nodes_to_remove.add(key)
@@ -322,6 +335,8 @@ class RemoveEdges:
                                     node.qnode_keys.remove(node_key)
                                 if len(node.qnode_keys) == 0:
                                     nodes_to_remove.add(key)
+                for key in skipped_qnode_keys:
+                    del node_keys_to_remove[key]
                 # remove connected nodes
                 #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
                 for key in nodes_to_remove:
@@ -439,6 +454,7 @@ class RemoveEdges:
                 self.response.debug(f"Removing Nodes")
                 self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
                 nodes_to_remove = set()
+                skipped_qnode_keys = set()
                 # iterate over nodes find adjacent connected nodes
                 for key, node in self.message.knowledge_graph.nodes.items():
                     if key in node_keys_to_remove:
@@ -451,9 +467,11 @@ class RemoveEdges:
                                         else:
                                             node.qnode_keys.remove(param_qnode_key)
                                     else:
-                                        del node_keys_to_remove[key]
+                                        # del node_keys_to_remove[key]
+                                        skipped_qnode_keys.add(key)
                             else:
-                                del node_keys_to_remove[key]
+                                # del node_keys_to_remove[key]
+                                skipped_qnode_keys.add(key)
                         else:
                             if len(node.qnode_keys) == 1:
                                 nodes_to_remove.add(key)
@@ -462,6 +480,8 @@ class RemoveEdges:
                                     node.qnode_keys.remove(node_key)
                                 if len(node.qnode_keys) == 0:
                                     nodes_to_remove.add(key)
+                for key in skipped_qnode_keys:
+                    del node_keys_to_remove[key]
                 # remove connected nodes
                 #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
                 for key in nodes_to_remove:

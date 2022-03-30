@@ -65,7 +65,7 @@ def test_kitchen_sink_api():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-            "expand(edge_key=[e00,e01], kp=RTX-KG2)",
+            "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n02)",
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=probably_treats, direction=below, threshold=.8, remove_connected_nodes=t, qnode_keys=[n02])",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",

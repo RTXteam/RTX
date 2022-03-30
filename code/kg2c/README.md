@@ -138,6 +138,43 @@ python3 RTX/code/kg2c/setup_for_neo4j.py
 bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
 ```
 
+### Upload KG2C to KGE (Knowledge Graph Exchange)
+##### Generate TSV files
+
+The following should be run in the build system, typically `buildkg2c.rtx.ai`, in the folder where the files `nodes_c.tsv` and `edges_c.tsv` are stored. 
+
+(1) Use python3.7 in a virtual environment and install kgx, if kgx has not yet been installed.
+```
+python3.7 -m venv venv
+venv/bin/pip3.7 install kgx
+source venv/bin/activate
+```
+
+(2) Run the script `kg2c_tsv_to_kgx_tsv.py` to generate output files `nodes.tsv` and `edges.tsv`.
+```
+python3.7 kg2c_tsv_to_kgx_tsv.py
+```
+
+(3) Validate output files and generate `content_metadata.json` using `kgx-validation-and-metagraph.sh`.
+```
+bash -x kgx-validation-and-metagraph.sh
+```
+
+##### Upload to KGE 
+
+(4) Upload `edges.tsv`, `nodes.tsv`, and `content_metadata.json` to a public S3 bucket. 
+```
+aws s3 sp edges.tsv s3://rtx-kg2-public
+aws s3 sp nodes.tsv s3://rtx-kg2-public
+aws s3 sp content_metadata.json s3://rtx-kg2-public
+```
+
+(5) Upload `edges.tsv`, `nodes.tsv`, and `content_metadata.json` to the Knowledge Graph Exchange at `https://archive.translator.ncats.io/home`. Select `RTX_KG2c` from the dropdown next to `Choose a Knowledge Graph`. Click `Add a new file set`. Use the URLs for each file in the S3 buckets to upload to KGE. 
+
+(6) Click `Done uploading` once all three files are uploaded. 
+
+(7) Rename `edges.tsv`, `nodes.tsv`, and `content_metadata.json` with current version number and move to private s3 bucket, `s3://rtx-kg2`.
+
 # Contact
 ## Maintainer
 - Amy Glen, Oregon State University (glena@oregonstate.edu)

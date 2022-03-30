@@ -37,6 +37,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -
 COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 RUN cd /var/www && mv html html-orig && ln -s /mnt/data/orangeboard/kg2/RTX/code/UI/interactive html
 RUN cd /var/www && a2enmod proxy && a2enmod proxy_html && a2enmod proxy_http && a2enmod rewrite && a2enmod headers
+RUN a2enmod remoteip
+COPY remoteip.conf /etc/apache2/conf-available/remoteip.conf
+RUN a2enconf remoteip
 RUN cd /var/www && /usr/sbin/apachectl configtest
 
 # install python and packages
@@ -46,7 +49,7 @@ RUN apt-get install -y software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
 RUN apt-get update && apt-get install -y python3.7 python3.7-dev python3.7-venv
 RUN rm /usr/bin/python3 && ln -s /usr/bin/python3.7 /usr/bin/python3
-RUN su rt && cd /mnt/data/orangeboard/kg2/RTX && python3.7 -m pip install click==7.1.2 && python3.7 -m pip install -r requirements.txt && python3.7 -m pip install flask_cors connexion[swagger-ui] tornado
+RUN su rt && cd /mnt/data/orangeboard/kg2/RTX && python3.7 -m pip install click==7.1.2 && python3.7 -m pip install -r requirements.txt 
 
 
 # setup services

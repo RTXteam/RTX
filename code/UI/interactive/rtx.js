@@ -61,7 +61,8 @@ const attributes_to_truncate = [
 function main() {
     UIstate["submitter"] = 'ARAX GUI';
     UIstate['autorefresh'] = true;
-    UIstate["timeout"] = '';
+    UIstate["timeout"] = '30';
+    UIstate["pruning"] = '50';
     UIstate["pid"] = null;
     UIstate["version"] = checkUIversion(false);
     UIstate["maxresults"] = 1000;
@@ -80,7 +81,7 @@ function main() {
 	document.getElementById(prov+"_url").value = providers[prov].url;
 	document.getElementById(prov+"_url_button").disabled = true;
     }
-    for (var setting of ["submitter","timeout","maxresults"]) {
+    for (var setting of ["submitter","timeout","pruning","maxresults"]) {
 	document.getElementById(setting+"_url").value = UIstate[setting];
 	document.getElementById(setting+"_url_button").disabled = true;
     }
@@ -415,6 +416,11 @@ function postQuery_ARAX(qtype,queryObj) {
 	if (!queryObj.query_options)
 	    queryObj.query_options = {};
 	queryObj.query_options['kp_timeout'] = UIstate["timeout"];
+    }
+    if (UIstate["pruning"]) {
+	if (!queryObj.query_options)
+	    queryObj.query_options = {};
+	queryObj.query_options['prune_threshold'] = UIstate["pruning"];
     }
     var cmddiv = document.createElement("div");
     cmddiv.id = "cmdoutput";
@@ -979,7 +985,10 @@ function sendId(is_ars_refresh) {
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
 
-    retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
+    if (id.startsWith("http"))
+	retrieve_response(id,id,"all");
+    else
+	retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
     if (!is_ars_refresh)
 	openSection('query');
 }
@@ -1298,10 +1307,13 @@ function retrieve_response(resp_url, resp_id, type) {
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.appendChild(document.createTextNode("Retrieving response id = " + resp_id));
 
+    if (resp_id.startsWith("http"))
+	resp_id = "URL:"+hashCode(resp_id);
+
     if (response_cache[resp_id]) {
         if (document.getElementById("istrapi_"+resp_id))
 	    document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
-	statusdiv.appendChild(document.createTextNode(" ...from cache"));
+	statusdiv.appendChild(document.createTextNode(" ...from cache ("+resp_id+")"));
 	statusdiv.appendChild(document.createElement("hr"));
 	sesame('openmax',statusdiv);
 	// 50ms timeout allows css animation to start before processing locks the thread
@@ -1314,7 +1326,7 @@ function retrieve_response(resp_url, resp_id, type) {
 
     var xhr = new XMLHttpRequest();
     xhr.open("get",  resp_url, true);
-    xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+    //xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
     xhr.send(null);
     xhr.onloadend = function() {
 	if ( xhr.status == 200 ) {
@@ -1331,7 +1343,11 @@ function retrieve_response(resp_url, resp_id, type) {
                 statusdiv.innerHTML += "<br><span class='error'>"+jsonResp.detail+"</span>";
 	    }
 	    catch(e) {
-		statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
+		if (resp_id.startsWith("URL:"))
+		    statusdiv.innerHTML += "<br>No response found at <span class='error'>"+resp_url+"</span> (404).";
+		else
+		    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
+
 	    }
 	    sesame('openmax',statusdiv);
 	    there_was_an_error();
@@ -1486,10 +1502,14 @@ function render_response(respObj,dispjson) {
 	}
 	else {
 	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
+	    if (respObj.total_results_count && respObj.total_results_count > respObj.message.results.length)
+		rtext += " (truncated from a total of " + respObj.total_results_count + ")";
 	    var h2 = document.createElement("h2");
 	    h2.appendChild(document.createTextNode(respObj.message.results.length + rtext));
-	    if (respObj.message.results.length > UIstate["maxresults"])
-		h2.appendChild(document.createTextNode(" (*only showing first "+UIstate["maxresults"]+")"));
+	    if (respObj.message.results.length > UIstate["maxresults"]) {
+		h2.appendChild(document.createTextNode(" (*only showing first "+UIstate["maxresults"]+") [ ? ]"));
+		h2.title = "* You can change this value in the Settings section on the left menu";
+	    }
 	    document.getElementById("result_container").appendChild(h2);
 
 	    document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
@@ -2333,17 +2353,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	td.appendChild(link);
         td.appendChild(document.createElement("br"));
 
-	var span = document.createElement("span");
-	span.style.marginTop = "80px";
-	span.style.display = "inline-block";
-	span.className = "explevel p9";
-	span.style.fontSize = "x-small";
-	span.title = "new: resize graph window!";
-	span.appendChild(document.createTextNode("New"));
-        td.appendChild(span);
-        td.appendChild(document.createElement("br"));
-
 	link = document.createElement("a");
+	link.style.marginTop = "80px";
 	link.title = 'small graph';
 	link.setAttribute('onclick', 'cyresize('+num+',"s");');
 	link.appendChild(document.createTextNode("s"));
@@ -2391,15 +2402,6 @@ function process_results(reslist,kg,trapi,mainreasoner) {
         link = document.createElement("i");
         link.appendChild(document.createTextNode("Click on a node or edge to get details, or click on graph background to see a full list of nodes and edges for this result"));
         div2.appendChild(link);
-
-	var span = document.createElement("span");
-	span.style.display = "inline-block";
-	span.style.marginLeft = '10px';
-	span.className = "explevel p9";
-	span.style.fontSize = "x-small";
-	span.title = "new: full list of nodes and edges!";
-	span.appendChild(document.createTextNode("New"));
-        div2.appendChild(span);
 
 	td.appendChild(div2);
 	tr.appendChild(td);
@@ -2800,7 +2802,7 @@ function display_attribute(tab, att, semmeddb) {
                     var a = document.createElement("a");
                     a.className = 'attvalue';
                     a.target = '_blank';
-                    a.href = "https://www.ncbi.nlm.nih.gov/pubmed/" + val.split(":")[1];
+                    a.href = "https://pubmed.ncbi.nlm.nih.gov/" + val.split(":")[1] + '/';
 		    a.title = 'View in PubMed';
                     a.innerHTML = val;
                     cell.appendChild(a);
@@ -4453,12 +4455,18 @@ function abort_wf() {
     populate_wflist();
 }
 
-async function import_qg2wf(fromqg) {
+async function import_intowf(what,fromqg) {
+    if (!(what == 'query_graph' || what == 'message'))
+	return;
+
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.innerHTML = '';
     statusdiv.appendChild(document.createElement("br"));
 
     if (fromqg) {
+	if (what == 'message')
+	    return;  // No
+
 	var tmpqg = JSON.stringify(input_qg); // preserve helper attributes
 	qg_clean_up(false);
 	workflow['message']['query_graph'] = input_qg;
@@ -4471,20 +4479,30 @@ async function import_qg2wf(fromqg) {
 	document.getElementById("respId").value = resp_id;
 	if (!resp_id) return;
 
-	statusdiv.appendChild(document.createTextNode("Importing query_graph from response_id = " + resp_id + " ..."));
+	statusdiv.appendChild(document.createTextNode("Importing "+what+" from response_id = " + resp_id + " ..."));
 	statusdiv.appendChild(document.createElement("br"));
 
-	var button = document.getElementById("ImportQGbutton");
+	var button = document.getElementById((what=='message'?"ImportMSGbutton":"ImportQGbutton"));
 	var wait = getAnimatedWaitBar(button.offsetWidth+"px");
 	button.parentNode.replaceChild(wait, button);
 
-	var response = await fetch(providers["ARAX"].url + "/response/" + resp_id);
+	var response;
+	if (resp_id.startsWith("http"))
+	    response = await fetch(resp_id);
+	else
+	    response = await fetch(providers["ARAX"].url + "/response/" + resp_id);
 	var respjson = await response.json();
 
-	if (respjson && respjson.message && respjson.message["query_graph"])
-	    workflow['message']['query_graph'] = respjson.message["query_graph"];
+	if (respjson && respjson.message) {
+	    if (what == 'message')
+		workflow['message'] = respjson.message;
+	    else if (respjson.message["query_graph"])
+		workflow['message']['query_graph'] = respjson.message["query_graph"];
+	    else
+		statusdiv.appendChild(document.createTextNode("No query_graph found in response_id = " + resp_id + "!!"));
+	}
 	else
-	    statusdiv.appendChild(document.createTextNode("No query_graph found in response_id = " + resp_id + "!!"));
+	    statusdiv.appendChild(document.createTextNode("No message found in response_id = " + resp_id + "!!"));
 
         wait.parentNode.replaceChild(button, wait);
     }
@@ -4584,7 +4602,8 @@ function retrieveRecentQs() {
 	    stats.submitter = {};
 	    stats.domain    = {};
 	    stats.hostname  = {};
-	    stats.instance_name = {};
+	    stats.instance_name  = {};
+	    stats.remote_address = {};
 	    var timeline = {};
             timeline["ISB_watchdog"] = { "data": [ { "label": 0 , "data": [] , "_qstart": new Date() } ] };
 
@@ -4601,7 +4620,7 @@ function retrieveRecentQs() {
 	    var tr = document.createElement("tr");
             tr.dataset.qstatus = "COLUMNHEADER";
 	    var td;
-	    for (var head of ["Qid","Start (UTC)","Elapsed","Submitter","Domain","Hostname","Instance","pid","Response","State","Status","Description"] ) {
+	    for (var head of ["Qid","Start (UTC)","Elapsed","Submitter","Remote IP","Domain","Hostname","Instance","pid","Response","State","Status","Description"] ) {
 		td = document.createElement("th")
                 if (head == "Description")
 		    td.style.textAlign = "left";
@@ -4609,6 +4628,8 @@ function retrieveRecentQs() {
 		    td.id = 'filter_'+head.toLowerCase();
                 if (head == "Instance")
 		    td.id += '_name';
+                else if (head == "Remote IP")
+		    td.id = 'filter_remote_address';
 		td.dataset.filterstring = '';
 		td.appendChild(document.createTextNode(head));
 		tr.appendChild(td);
@@ -4624,7 +4645,7 @@ function retrieveRecentQs() {
 		var qend = null;
 		var qdur = null;
 		var qid = null;
-		for (var field of ["query_id","start_datetime","elapsed","submitter","domain","hostname","instance_name","pid","response_id","state","status","description"] ) {
+		for (var field of ["query_id","start_datetime","elapsed","submitter","remote_address","domain","hostname","instance_name","pid","response_id","state","status","description"] ) {
                     td = document.createElement("td");
 		    td.dataset.value = query[field];
                     if (field == "start_datetime") {
@@ -4669,7 +4690,7 @@ function retrieveRecentQs() {
 			else
 			    stats.state[query[field]] = 1;
 		    }
-                    else if (field == "instance_name" || field == "submitter" || field == "domain" || field == "hostname") {
+                    else if (field == "instance_name" || field == "submitter" || field == "remote_address" || field == "domain" || field == "hostname") {
 			td.style.whiteSpace = "nowrap";
                         if (stats[field][query[field]])
 			    stats[field][query[field]]++;
@@ -4760,11 +4781,21 @@ function retrieveRecentQs() {
 		}
 		table.appendChild(tr);
 	    }
-	    // add dummy data point to scale timeline to current time
+	    // add dummy data points to scale timeline to match requested timespan
 	    timeline["ISB_watchdog"]["data"][0]["data"].push(
 		{
 		    "timeRange": [Date.now(), Date.now()],
-		    "val": "production",
+		    "val": "ARAX",
+		    "_qid": null,
+		    "_qdur": null
+		}
+	    );
+	    var xhoursago = new Date();
+	    xhoursago.setHours(xhoursago.getHours() - hours);
+	    timeline["ISB_watchdog"]["data"][0]["data"].push(
+		{
+		    "timeRange": [xhoursago, xhoursago],
+		    "val": "ARAX",
 		    "_qid": null,
 		    "_qdur": null
 		}
@@ -4775,7 +4806,7 @@ function retrieveRecentQs() {
             recents_node.appendChild(document.createElement("br"));
 	    recents_node.appendChild(document.createElement("br"));
 
-	    for (var filterfield of ["submitter","domain","hostname","instance_name","state","status"] ) {
+	    for (var filterfield of ["submitter","remote_address","domain","hostname","instance_name","state","status"] ) {
 		if (Object.keys(stats[filterfield]).length > 1) {
 		    add_filtermenu(filterfield, stats[filterfield]);
 		}
@@ -5295,23 +5326,24 @@ function delete_list(listId) {
 
 function check_entities_batch(batchsize) {
     var batches = [];
-    var thisbatch = '';
-    var items = 0;
+    var thisbatch = [];
     for (var entity in entities) {
 	if (entities[entity].checkHTML != '--') continue;
-	if (items == batchsize) {
+	if (thisbatch.length == batchsize) {
 	    batches.push(thisbatch);
-	    thisbatch = '';
-	    items = 0;
+	    thisbatch = [];
 	}
-	thisbatch += "&q="+entity;
-	items++;
+	thisbatch.push(entity);
     }
     // last one
     if (thisbatch) batches.push(thisbatch);
 
     for (let batch of batches) {
-        fetch(providers["ARAX"].url + "/entity?output_mode=minimal" + batch)
+	fetch(providers["ARAX"].url + "/entity", {
+	    method: 'post',
+	    body: JSON.stringify({"format":"minimal","terms":batch}),
+	    headers: { 'Content-type': 'application/json' }
+	})
 	    .then(response => response.json())
 	    .then(data => {
 		add_to_dev_info("ENTITIES:"+batch,data);
@@ -5421,7 +5453,11 @@ async function check_entity(term,wantall) {
 	data = entities[term];
     }
     else {
-	var response = await fetch(providers["ARAX"].url + "/entity?q=" + term);
+	var response = await fetch(providers["ARAX"].url + "/entity", {
+	    method: 'post',
+	    body: JSON.stringify({"terms":[term]}),
+	    headers: { 'Content-type': 'application/json' }
+	});
 	var fulldata = await response.json();
 
 	add_to_dev_info("ENTITY:"+term,fulldata);
@@ -5533,7 +5569,14 @@ function update_url(urlkey,value) {
     if (urlkey == 'timeout') {
 	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
 	if (isNaN(to))
-	    to = '';
+	    to = '30';
+	UIstate[urlkey] = to;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
+    else if (urlkey == 'pruning') {
+	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(to))
+	    to = '50';
 	UIstate[urlkey] = to;
 	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
@@ -5556,7 +5599,7 @@ function update_url(urlkey,value) {
     var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
 function update_submit_button(urlkey) {
-    var currval = (urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'maxresults') ? UIstate[urlkey] : providers[urlkey].url;
+    var currval = (urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxresults') ? UIstate[urlkey] : providers[urlkey].url;
 
     if (currval == document.getElementById(urlkey+"_url").value)
 	document.getElementById(urlkey+"_url_button").disabled = true;
@@ -5736,4 +5779,13 @@ function dragElement(ele) {
 	document.onmouseup = null;
 	document.onmousemove = null;
     }
+}
+
+// from stackoverflow.com/questions/65824393/make-short-hash-from-long-string
+//  and gist.github.com/jlevy/c246006675becc446360a798e2b2d781
+function hashCode(s) {
+    for (var h = 0, i = 0; i < s.length; h &= h)
+	h = 31 * h + s.charCodeAt(i++);
+    //return h;
+    return new Uint32Array([h])[0].toString(36);
 }
