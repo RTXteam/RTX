@@ -686,7 +686,8 @@ def get_standard_parameters() -> dict:
             "type": "integer",
             "default": None,
             "examples": [30, 120],
-            "description": "The number of seconds the querier will wait for a response from each kp queried before timing out and proceeding with no results."
+            "description": "The number of seconds Expand will wait for a response from a KP before "
+                           "cutting the query off and proceeding without results from that KP."
         }
 
     }
