@@ -313,7 +313,6 @@ class TRAPIQuerier:
             # Check if KPs are properly indicating that these edges came from them (indicate it ourselves if not)
             attribute_has_kp_name = lambda value, kp_name: (type(value) is list and kp_name in value) or (value == kp_name)
             if not any(attribute_has_kp_name(attribute.value, self.kp_name) for attribute in returned_edge.attributes):
-                self.log.debug("kp name not in attributes")
                 returned_edge.attributes.append(eu.get_kp_source_attribute(self.kp_name))
             # Add an attribute to indicate that this edge passed through ARAX
             returned_edge.attributes.append(eu.get_arax_source_attribute())
