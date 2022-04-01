@@ -30,12 +30,12 @@ from openapi_server.models.result import Result
 
 class TRAPIQuerier:
 
-    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, user_timeout: Optional[int],
+    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, kp_timeout: Optional[int],
                  kp_selector: KPSelector = KPSelector(), force_local: bool = False):
         self.log = response_object
         self.kp_name = kp_name
         self.user_specified_kp = user_specified_kp
-        self.user_timeout = user_timeout
+        self.kp_timeout = kp_timeout
         self.force_local = force_local
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.kp_selector = kp_selector
@@ -355,9 +355,9 @@ class TRAPIQuerier:
 
     def _get_query_timeout_length(self) -> int:
         # Returns the number of seconds we should wait for a response
-        if self.user_timeout:
-            return self.user_timeout
-        elif self.kp_name == "infores:rtx-kg2":
+        if self.kp_name == "infores:rtx-kg2":
             return 600
+        elif self.kp_timeout:
+            return self.kp_timeout
         else:
             return 120

@@ -680,7 +680,16 @@ def get_standard_parameters() -> dict:
             "examples": [500, 2000],
             "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of "
                            "this threshold will be pruned, using Fisher Exact Test to rank answers."
+        },
+        "kp_timeout": {
+            "is_required": False,
+            "type": "integer",
+            "default": None,
+            "examples": [30, 120],
+            "description": "The number of seconds Expand will wait for a response from a KP before "
+                           "cutting the query off and proceeding without results from that KP."
         }
+
     }
     return standard_parameters
 

@@ -80,7 +80,7 @@ class ARAXExpander:
             }
         return [kp_less] + list(self.kp_command_definitions.values())
 
-    def apply(self, response, input_parameters, mode: str = "ARAX", user_timeout: Optional[int] = None):
+    def apply(self, response, input_parameters, mode: str = "ARAX"):
         force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
@@ -123,6 +123,12 @@ class ARAXExpander:
         if not parameters['edge_key'] and not parameters['node_key']:
             parameters['edge_key'] = list(message.query_graph.edges)
             parameters['node_key'] = self._get_orphan_qnode_keys(message.query_graph)
+
+        # set timeout based on input parameters, it'll be used later
+        if parameters.get("kp_timeout"):
+            kp_timeout = parameters["kp_timeout"]
+        else:
+            kp_timeout = None
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = copy.deepcopy(message.query_graph)
@@ -302,7 +308,8 @@ class ARAXExpander:
                         loop = asyncio.new_event_loop()  # Need to create NEW event loop for threaded environments
                         asyncio.set_event_loop(loop)
                         tasks = [self._expand_edge_async(one_hop_qg, kp_to_use, input_parameters, user_specified_kp,
-                                                         user_timeout, force_local, kp_selector, log, multiple_kps=True)
+                                                         kp_timeout, force_local,
+                                                         kp_selector, log, multiple_kps=True)
                                  for kp_to_use in kps_to_query]
                         task_group = asyncio.gather(*tasks)
                         kp_answers = loop.run_until_complete(task_group)
@@ -319,7 +326,7 @@ class ARAXExpander:
                         self.logger.info(f"PID {os.getpid()}: BEFORE pool: About to create {len(kps_to_query)} child processes from {multiprocessing.current_process()}")
                         with multiprocessing.Pool(len(kps_to_query)) as pool:
                             kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                           user_specified_kp, user_timeout, force_local,
+                                                                           user_specified_kp, kp_timeout, force_local,
                                                                            kp_selector, empty_log, True]
                                                                           for kp_to_use in kps_to_query])
                         self.logger.info(f"PID {os.getpid()}: AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
@@ -410,7 +417,7 @@ class ARAXExpander:
         if input_qnode_keys:
             kp_to_use = parameters["kp"] if user_specified_kp else "infores:rtx-kg2"  # Only KG2 does single-node queries
             for qnode_key in input_qnode_keys:
-                answer_kg = self._expand_node(qnode_key, kp_to_use, query_graph, mode, user_specified_kp, user_timeout,
+                answer_kg = self._expand_node(qnode_key, kp_to_use, query_graph, mode, user_specified_kp, kp_timeout,
                                               force_local, log)
                 if log.status != 'OK':
                     return response
@@ -441,7 +448,7 @@ class ARAXExpander:
         return response
 
     async def _expand_edge_async(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
-                                 user_specified_kp: bool, user_timeout: Optional[int], force_local: bool,
+                                 user_specified_kp: bool, kp_timeout: Optional[int], force_local: bool,
                                  kp_selector: KPSelector, log: ARAXResponse, multiple_kps: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
@@ -492,7 +499,7 @@ class ARAXExpander:
                 kp_querier = TRAPIQuerier(response_object=log,
                                           kp_name=kp_to_use,
                                           user_specified_kp=user_specified_kp,
-                                          user_timeout=user_timeout,
+                                          kp_timeout=kp_timeout,
                                           kp_selector=kp_selector,
                                           force_local=force_local)
                 answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
@@ -549,7 +556,7 @@ class ARAXExpander:
         return answer_kg, log
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
-                     user_specified_kp: bool, user_timeout: Optional[int], force_local: bool, kp_selector: KPSelector,
+                     user_specified_kp: bool, kp_timeout: Optional[int], force_local: bool, kp_selector: KPSelector,
                      log: ARAXResponse, multiprocessed: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
         if multiprocessed:
@@ -589,7 +596,7 @@ class ARAXExpander:
                 kp_querier = TRAPIQuerier(response_object=log,
                                           kp_name=kp_to_use,
                                           user_specified_kp=user_specified_kp,
-                                          user_timeout=user_timeout,
+                                          kp_timeout=kp_timeout,
                                           kp_selector=kp_selector,
                                           force_local=force_local)
             # Actually answer the query using the Querier we identified above
@@ -626,7 +633,7 @@ class ARAXExpander:
         return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, query_graph: QueryGraph, mode: str,
-                     user_specified_kp: bool, user_timeout: Optional[int], force_local: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     user_specified_kp: bool, kp_timeout: Optional[int], force_local: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -649,7 +656,7 @@ class ARAXExpander:
                 kp_querier = TRAPIQuerier(response_object=log,
                                           kp_name=kp_to_use,
                                           user_specified_kp=user_specified_kp,
-                                          user_timeout=user_timeout,
+                                          kp_timeout=kp_timeout,
                                           force_local=force_local)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
