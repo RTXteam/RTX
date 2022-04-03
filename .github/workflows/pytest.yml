@@ -2,7 +2,7 @@ name: "Test Build"
 
 on:
   push:
-    branches: [ master, production, issue-1793 ]
+    branches: [ master, production ]
     paths:
       - 'code/**'
       - 'DockerBuild/**'
