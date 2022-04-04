@@ -305,9 +305,10 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                 expand_params = {
                     'kp':kp,
                     'prune_threshold':prune_threshold,
-                    'edge_key':qedge_keys
+                    'edge_key':qedge_keys,
+                    'kp_timeout':timeout
                 }
-                new_response = expander.apply(new_response, expand_params, mode=mode, user_timeout=timeout)
+                new_response = expander.apply(new_response, expand_params, mode=mode)
                 if new_response.status == 'OK' and len(new_response.envelope.message.knowledge_graph.edges) > len(self.response.envelope.message.knowledge_graph.edges):
                     added_connection = True
                     # FW: confirm with Eric that this is the correct way to merge response objects
