@@ -512,7 +512,7 @@ def test_connect_knodes_2_nodes():
                 "nodes": {
                     "n0": {
                         "categories": [
-                            "biolink:Gene"
+                            "biolink:Disease"
                         ]
                     },
                     "n1": {
@@ -529,7 +529,7 @@ def test_connect_knodes_2_nodes():
                         "subject": "n0",
                         "object": "n1",
                         "predicates": [
-                            "biolink:related_to"
+                            "biolink:treats"
                         ]
                     }
                 }
@@ -539,14 +539,27 @@ def test_connect_knodes_2_nodes():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert len(message.results) == 30
-    connected_bindings = set()
+    connected_bindings_ngd = set()
+    connected_bindings_fisher = set()
+    connected_bindings_paired_freq = set()
+    connected_bindings_pred_dtd = set()
     for result in message.results:
         assert result.score is not None
         for eb_key, edge_bindings in result.edge_bindings.items():
             for edge_binding in edge_bindings:
-                if edge_binding.id.startswith("connect_knodes"):
-                    connected_bindings.add(edge_binding.id)
-    assert len(connected_bindings) > 0
+                if edge_binding.id.startswith("connect_knodes_fisher"):
+                    connected_bindings_fisher.add(edge_binding.id)
+                elif edge_binding.id.startswith("connect_knodes_ngd"):
+                    connected_bindings_ngd.add(edge_binding.id)
+                elif edge_binding.id.startswith("connect_knodes_paired_freq"):
+                    connected_bindings_paired_freq.add(edge_binding.id)
+                elif edge_binding.id.startswith("connect_knodes_pred_dtd"):
+                    connected_bindings_pred_dtd.add(edge_binding.id)
+                    
+    assert len(connected_bindings_ngd) > 0
+    assert len(connected_bindings_fisher) > 0
+    assert len(connected_bindings_paired_freq) > 0
+    assert len(connected_bindings_pred_dtd) > 0
 
 @pytest.mark.slow
 def test_connect_knodes_3_nodes():

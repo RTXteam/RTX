@@ -708,15 +708,13 @@ class ARAXQuery:
                         messenger.add_qedge(response,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        user_timeout = None
-                        if response.envelope.query_options is not None and 'kp_timeout' in response.envelope.query_options:
-                            user_timeout = response.envelope.query_options['kp_timeout']
-                            try:
-                                user_timeout = int(user_timeout)
-                            except:
-                                response.error(f"Unable to convert user_timeout '{user_timeout} into an integer", error_code="UserTimeoutNotInt")
-                                return response
-                        expander.apply(response, action['parameters'], mode=mode, user_timeout=user_timeout)
+                        self.inject_default_value_into_parameters('kp_timeout', response.envelope.query_options, action['parameters'], 'UserTimeoutNotInt')
+                        self.inject_default_value_into_parameters('prune_threshold', response.envelope.query_options, action['parameters'], 'PruneThresholdNotInt')
+                        if response.status == 'ERROR':
+                            if mode == 'asynchronous':
+                                self.send_to_callback(callback, response)
+                            return response
+                        expander.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'filter':
                         filter.apply(response,action['parameters'])
@@ -898,6 +896,22 @@ class ARAXQuery:
             response.error(f"Unable to make a connection to URL {callback} at all. Work is lost", error_code="UnreachableCallback")
         self.track_query_finish()
         os._exit(0)
+
+
+    ############################################################################################
+    def inject_default_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
+        parameter_value = None
+        if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
+            parameter_value = query_options[parameter_name]
+            #### Try to convery the value to an integer
+            try:
+                parameter_value = int(parameter_value)
+            except:
+                self.response.error(f"Unable to convert parameter {parameter_name} = '{parameter_value}' into an integer", error_code=error_code)
+                return
+        #### Only update the value in parameters if one was not explicitly specified
+        if parameter_name not in parameters and parameter_value is not None:
+            parameters[parameter_name] = parameter_value
 
 
 ##################################################################################################
