@@ -213,7 +213,7 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'connect_nodes'},
                                     'shortest_path': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'max_path_length': {int()}
+                                    'max_path_length': {int()},
                                     'qnode_keys': set(self.message.query_graph.nodes.keys())
                                 }
         else:
