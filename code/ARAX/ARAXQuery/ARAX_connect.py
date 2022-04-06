@@ -46,6 +46,13 @@ class ARAXConnect:
             "type": "list",
             "description": "List of qnode keys to connect. If not provided or empty all qnode_keys will be connected. If not empty must have at least 2 elements."
         }
+        self.shortest_path_info = {
+            "is_required": False,
+            "enum": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
+            "type": "boolean",
+            "description": "Indicates whether or not you would like to return the shorest connection. If false all paths of length less than or equal to the max path value will be returned.",
+            "default": 'True'
+        }
         
 
         #command descriptions
@@ -71,7 +78,8 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                     """,
                 "parameters": {
                     "max_path_length": self.max_path_length_info,
-                    "qnode_keys": self.qnode_keys_info
+                    "qnode_keys": self.qnode_keys_info,
+                    "shortest_path":self.shortest_path_info
                 }
             }
         }
