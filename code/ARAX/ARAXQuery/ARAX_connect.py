@@ -204,11 +204,13 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'connect_nodes'},
-                                    'max_path_length': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'shortest_path': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'max_path_length': {int()}
                                     'qnode_keys': set(self.message.query_graph.nodes.keys())
                                 }
         else:
             allowable_parameters = {'action': {'connect_nodes'},
+                                    'shortest_path': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'max_path_length': {'a maximum path length to use to connect qnodes. Defaults to 2.'},
                                     'qnode_keys':{'a list of query node keys to connect'}
                                 }
@@ -227,6 +229,13 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
 
 
         # Set defaults and check parameters:
+        if 'shortest_path' in self.parameters:
+            if self.parameters['shortest_path'] in {'true', 'True', 't', 'T'}:
+                self.parameters['shortest_path'] = True
+            elif self.parameters['shortest_path'] in {'false', 'False', 'f', 'F'}:
+                self.parameters['shortest_path'] = False
+        else:
+            self.parameters['shortest_path'] = True
         if 'qnode_keys' not in self.parameters or len(self.parameters['qnode_keys']) == 0:
             self.parameters['qnode_keys'] = list(set(self.message.query_graph.nodes.keys()))
             if len(self.parameters['qnode_keys']) < 2:
