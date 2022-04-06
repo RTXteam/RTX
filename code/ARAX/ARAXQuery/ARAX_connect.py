@@ -328,7 +328,8 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                     self.response.merge(new_response)
                     # FW: If we do not want to stop when we find the shortest connection we could add an option 
                     # for shortest path and then check that here to deside if we want to break
-                    break
+                    if self.parameters['shortest_path']:
+                        break
             if not added_connection:
                 #FW: may want to change this to an error
                 self.response.warning(f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} with a max path length of {self.parameters['max_path_length']}.")        
