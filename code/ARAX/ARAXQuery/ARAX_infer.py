@@ -49,6 +49,13 @@ class ARAXInfer:
             "type": "integer",
             "description": "The number of drug nodes to return. If not provided defaults to 50."
         }
+        self.n_paths_info = {
+            "is_required": False,
+            "examples": [5,50,100],
+            "default": 20,
+            "type": "integer",
+            "description": "The number of paths connecting to each returned drug node. If not provided defaults to 20."
+        }
         
 
         #command descriptions
@@ -67,7 +74,8 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
                     """,
                 "parameters": {
                     "node_curie": self.node_curie_info,
-                    "n_drugs": self.n_drugs_info
+                    "n_drugs": self.n_drugs_info,
+                    "n_paths":self.n_paths_info
                 }
             }
         }
@@ -201,12 +209,14 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
                                     'node_curie': {x for x in self.message.knowledge_graph.nodes.keys()},
-                                    'n_drugs': {int()}
+                                    'n_drugs': {int()},
+                                    'n_paths': {int()}
                                 }
         else:
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
                                     'node_curie': {'The node to predict drug treatments for.'},
-                                    'n_drugs': {'The number of drugs to return. Defaults to 50.'}
+                                    'n_drugs': {'The number of drugs to return. Defaults to 50.'},
+                                    'n_paths': {'The number of paths connecting each drug to return. Defaults to 20.'}
                                 }
 
         # A little function to describe what this thing does
@@ -234,6 +244,17 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         else:
             self.parameters['n_drugs'] = 50
 
+        if 'n_paths' in self.parameters:
+            if isinstance(self.parameters['n_paths'], float):
+                if self.parameters['n_paths'].is_integer():
+                    self.parameters['n_paths'] = int(self.parameters['n_paths'])
+            if not isinstance(self.parameters['n_paths'], int) or self.parameters['n_paths'] < 1:
+                self.response.error(
+                f"The `n_paths` value must be a positive integer. The provided value was {self.parameters['n_paths']}.",
+                error_code="ValueError")
+        else:
+            self.parameters['n_paths'] = 20
+
         if self.response.status != 'OK':
             return self.response
 
@@ -249,8 +270,8 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         dtd = creativeDTD(data_path, model_path, use_gpu=False)
 
         dtd.set_query_disease(self.parameters['node_curie'])
-        dtd.predict_top_N_drugs(50)
-        dtd.predict_top_M_paths(20)
+        dtd.predict_top_N_drugs(self.parameters['n_drugs'])
+        dtd.predict_top_M_paths(self.parameters['n_paths'])
 
         # FW: code that will add resulting paths to the query graph and knowledge graph goes here
 
