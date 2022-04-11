@@ -320,7 +320,8 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                     }
                     new_response = messenger.add_qedge(new_response, add_qedge_params)
                 expand_params = {
-                    'kp':kp,
+                    # FW: commenting to reach out to all kps
+                    #'kp':kp,
                     'prune_threshold':prune_threshold,
                     'edge_key':qedge_keys,
                     'kp_timeout':timeout
