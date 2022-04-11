@@ -20,6 +20,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 
+# FW: need to add import path for this
+from creativeDTD import creativeDTD
+
 class ARAXInfer:
 
     #### Constructor
@@ -221,7 +224,10 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
 
         # Set defaults and check parameters:
         if 'n_drugs' in self.parameters:
-            if self.parameters['n_drugs'] < 1:
+            if isinstance(self.parameters['n_drugs'], float):
+                if self.parameters['n_drugs'].is_integer():
+                    self.parameters['n_drugs'] = int(self.parameters['n_drugs'])
+            if not isinstance(self.parameters['n_drugs'], int) or self.parameters['n_drugs'] < 1:
                 self.response.error(
                 f"The `n_drugs` value must be a positive integer. The provided value was {self.parameters['n_drugs']}.",
                 error_code="ValueError")
@@ -235,8 +241,18 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         expander = ARAXExpander()
         messenger = ARAXMessenger()
 
+        # FW: placeholder, need to edit this
+        data_path = '/home/grads/cqm5886/work/creative_DTD_endpoint/data'
+        model_path = '/home/grads/cqm5886/work/creative_DTD_endpoint/models'
 
-        # Chunyu code here
+
+        dtd = creativeDTD(data_path, model_path, use_gpu=False)
+
+        dtd.set_query_disease(self.parameters['node_curie'])
+        dtd.predict_top_N_drugs(50)
+        dtd.predict_top_M_paths(20)
+
+        # FW: code that will add resulting paths to the query graph and knowledge graph goes here
 
         return self.response
 
