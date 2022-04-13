@@ -24,7 +24,8 @@ Copies of all of these should be put in `/data/orangeboard/databases/KG2.X.Y` on
 - [ ] refreshed DTD @chunyuma
 - [ ] DTD model @chunyuma _(may be skipped - depends on the KG2 version)_
 - [ ] DTD database @chunyuma _(may be skipped - depends on the KG2 version)_
-- [ ] 'slim' databases (used for Travis) @chunyuma / @finnagin
+- [ ] replace the configv2.json file on cicd.rtx.ai with the new one @finnagin
+- [ ] download the new database files to cicd.rtx.ai @finnagin
 
 **NOTE**: As databases are rebuilt, the new copy of `config_local.json` will need to be updated to point to their new paths. However, if the rollout of KG2 has already occurred, then you should update the master `configv2.json` directly. 
 
