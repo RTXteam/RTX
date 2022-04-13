@@ -28,7 +28,7 @@ def _setup_rtx_config_local(synonymizer_name: str):
     """
     This function creates a config_local.json file based off of configv2.json, but modified for our needs.
     """
-    logging.info("Creating a config_local.json file pointed to the right KG2 Neo4j and synonymizer..")
+    logging.info("Creating a config_local.json file pointed to the right synonymizer..")
 
     # First remove any existing configv2.json or config_local.json
     subprocess.call(["rm", "-f", f"{CODE_DIR}/configv2.json"])
