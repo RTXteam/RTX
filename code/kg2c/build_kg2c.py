@@ -24,7 +24,7 @@ KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
 CODE_DIR = f"{KG2C_DIR}/.."
 
 
-def _setup_rtx_config_local(kg2_endpoint: str, synonymizer_name: str):
+def _setup_rtx_config_local(synonymizer_name: str):
     """
     This function creates a config_local.json file based off of configv2.json, but modified for our needs.
     """
@@ -40,8 +40,8 @@ def _setup_rtx_config_local(kg2_endpoint: str, synonymizer_name: str):
     RTXConfiguration()  # Regenerates configv2.json with the latest version
     with open(f"{CODE_DIR}/configv2.json") as configv2_file:
         rtx_config_dict = json.load(configv2_file)
-    # Point to the 'right' KG2 (the one specified in the KG2c config) and synonymizer (we always use simple name)
-    rtx_config_dict["Contextual"]["KG2"]["neo4j"]["bolt"] = f"bolt://{kg2_endpoint}:7687"
+    # Clear the kg2 endpoint to avoid confusion (since KG2pre Neo4j is no longer used)
+    rtx_config_dict["Contextual"]["KG2"]["neo4j"]["bolt"] = f"bolt://XXX:7687"
     for mode, path_info in rtx_config_dict["Contextual"].items():
         path_info["node_synonymizer"]["path"] = f"/something/{synonymizer_name}"  # Only need name, not full path
 
@@ -76,7 +76,6 @@ def main():
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
     kg2_version = kg2c_config_info["kg2pre_version"]
-    kg2_endpoint = kg2c_config_info["kg2pre_neo4j_endpoint"]
     biolink_version = kg2c_config_info["biolink_version"]
     build_kg2c = kg2c_config_info["kg2c"]["build"]
     upload_to_s3 = kg2c_config_info["kg2c"]["upload_to_s3"]
@@ -84,7 +83,7 @@ def main():
     synonymizer_name = kg2c_config_info["synonymizer"]["name"]
     upload_to_arax_ncats_io = kg2c_config_info["upload_to_arax.ncats.io"]
     upload_directory = kg2c_config_info["upload_directory"]
-    logging.info(f"KG2 version to use is {kg2_version}")
+    logging.info(f"KG2pre version to use is {kg2_version}")
     logging.info(f"Biolink model version to use is {biolink_version}")
     logging.info(f"Synonymizer to use is {synonymizer_name}")
     synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
@@ -109,7 +108,7 @@ def main():
                              f"must put a copy of it there or use a different synonymizer.")
 
     # Set up an RTX config_local.json file that points to the right KG2 and synonymizer
-    _setup_rtx_config_local(kg2_endpoint, synonymizer_name)
+    _setup_rtx_config_local(synonymizer_name)
 
     # Build a new node synonymizer, if we're supposed to
     if build_synonymizer and not args.test:
