@@ -1,3 +1,5 @@
+_NOTE: To create a new issue based on this template, simply go to: https://github.com/RTXteam/RTX/issues/new?template=kg2rollout.md_
+
 ##### 1. Build and load KG2c:
 
 - [ ] merge `master` into the `kg2integration` branch
