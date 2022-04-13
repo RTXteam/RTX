@@ -1,11 +1,19 @@
 ##### 1. Build and load KG2c:
 
-- [ ] update the synonymizer's and BiolinkHelper's biolink version number (as applicable)
-- [ ] build a synonymizer from the new KG2
-- [ ] build a new KG2c
-- [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/
+- [ ] merge `master` into the `kg2integration` branch
+- [ ] update the hardcoded biolink versions in the `kg2integration` branch (as applicable):
+  - [ ] for ARAX [here](https://github.com/RTXteam/RTX/blob/0107502d7da4f1ee70d76c2ca5e406a07b8012d1/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18)
+  - [ ] for the KG2 API [here](https://github.com/RTXteam/RTX/blob/0107502d7da4f1ee70d76c2ca5e406a07b8012d1/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18)
+- [ ] build a new KG2c on `buildkg2c.rtx.ai` from the `kg2integration` branch (how-to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#build-kg2canonicalized))
+  - [ ] make sure to choose to build a new synonymizer in `kg2c_config.json`, as described in the how-to
+  - [ ] verify the build looks ok:
+    - [ ] the synonymizer sqlite should be around 15-17GB
+    - [ ] the entire build process (synonymizer + KG2c) shouldn't have taken more than about 16 hours
+    - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax.ncats.io` (`/data/orangeboard/databases/KG2.X.Y`)
+- [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] load the new KG2c into plover (available at http://kg2-X-Ycplover.rtx.ai:9990)
+- [ ] generate KGX files and upload them to the KGE Archive
 
 ##### 2. Rebuild downstream databases:
 
