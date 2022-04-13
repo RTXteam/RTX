@@ -1,7 +1,7 @@
 ##### 1. Build and load KG2c:
 
 - [ ] merge `master` into the `kg2integration` branch
-- [ ] update the hardcoded biolink versions in the `kg2integration` branch (as applicable):
+- [ ] update the hardcoded biolink version numbers in the `kg2integration` branch (as applicable):
   - [ ] for ARAX [here](https://github.com/RTXteam/RTX/blob/0107502d7da4f1ee70d76c2ca5e406a07b8012d1/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18)
   - [ ] for the KG2 API [here](https://github.com/RTXteam/RTX/blob/0107502d7da4f1ee70d76c2ca5e406a07b8012d1/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18)
 - [ ] build a new KG2c on `buildkg2c.rtx.ai` from the `kg2integration` branch (how-to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#build-kg2canonicalized))
@@ -39,12 +39,12 @@ Copies of all of these should be put in `/data/orangeboard/databases/KG2.X.Y` on
 
 ##### 3. Update the ARAX codebase:
 
-Associated code changes should go in the `kg2integration` branch.
+All code changes should go in the `kg2integration` branch.
 
+- [ ] update the KG2 version number (to 2.X.Y) in the KG2 `openapi.yaml`
 - [ ] update Expand code as needed
 - [ ] update any other modules as needed
 - [ ] test everything together (entire ARAX pytest suite should pass when using the new `config_local.json` - must locally set `force_local = True` in `ARAX_expander.py` to avoid using the old KG2 API)
-- [ ] update the ARAX, KG2, and Biolink version numbers in openapi yaml files @edeutsch
 
 ##### 4. Do the rollout:
 
@@ -61,8 +61,8 @@ Associated code changes should go in the `kg2integration` branch.
 - [ ] update the test triples that go in some NCATS repo @finnagin
 - [ ] rename the `config_local.json` on arax.ncats.io to `config_local.json_FROZEN_DO-NOT-EDIT-FURTHER` (any additional edits to the config file should be made directly to the master `configv2.json` on araxconfig.rtx.ai going forward)
 - [ ] turn off the old KG2c version's neo4j instance
-- [ ] turn off the old KG2pre version's neo4j instance
 - [ ] turn off the old KG2 version's plover instance
+- [ ] turn off the new KG2pre version's neo4j instance
 - [ ] upgrade the NCATS-hosted Plover endpoint (https://kg2cploverdb.ci.transltr.io) to this KG2 version and make the KG2 API start using it (instead of our self-hosted endpoint): 
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
     - [ ] wait about 45 minutes for the endpoint to rebuild and then run Plover tests to verify it's working
