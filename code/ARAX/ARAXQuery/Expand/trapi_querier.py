@@ -30,12 +30,12 @@ from openapi_server.models.result import Result
 
 class TRAPIQuerier:
 
-    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, user_timeout: Optional[int],
+    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, kp_timeout: Optional[int],
                  kp_selector: KPSelector = KPSelector(), force_local: bool = False):
         self.log = response_object
         self.kp_name = kp_name
         self.user_specified_kp = user_specified_kp
-        self.user_timeout = user_timeout
+        self.kp_timeout = kp_timeout
         self.force_local = force_local
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.kp_selector = kp_selector
@@ -57,7 +57,7 @@ class TRAPIQuerier:
             return final_kg
 
         # Verify that the KP accepts these predicates/categories/prefixes
-        if self.kp_name != "RTX-KG2":
+        if self.kp_name != "infores:rtx-kg2":
             if self.user_specified_kp:  # This is already done if expand chose the KP itself
                 if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_name):
                     log.error(f"{self.kp_name} cannot answer queries with the specified categories/predicates",
@@ -94,7 +94,7 @@ class TRAPIQuerier:
             return final_kg
 
         # Verify that the KP accepts these predicates/categories/prefixes
-        if self.kp_name != "RTX-KG2":
+        if self.kp_name != "infores:rtx-kg2":
             if self.user_specified_kp:  # This is already done if expand chose the KP itself
                 if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_name):
                     log.error(f"{self.kp_name} cannot answer queries with the specified categories/predicates",
@@ -182,7 +182,7 @@ class TRAPIQuerier:
         waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
         self.log.update_query_plan(qedge_key, self.kp_name, "Waiting", waiting_message, query=query_sent)
         start = time.time()
-        if self.force_local and self.kp_name == 'RTX-KG2':
+        if self.force_local and self.kp_name == 'infores:rtx-kg2':
             json_response = self._answer_query_force_local(request_body)
         # Otherwise send the query graph to the KP's TRAPI API
         else:
@@ -225,7 +225,7 @@ class TRAPIQuerier:
         query_timeout = self._get_query_timeout_length()
 
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
-        if self.force_local and self.kp_name == 'RTX-KG2':
+        if self.force_local and self.kp_name == 'infores:rtx-kg2':
             json_response = self._answer_query_force_local(request_body)
         # Otherwise send the query graph to the KP's TRAPI API
         else:
@@ -269,8 +269,8 @@ class TRAPIQuerier:
         # Load the query into a JSON Query object
         json_qg = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
         body = {'message': {'query_graph': json_qg}}
-        if self.kp_name == "RTX-KG2":
-            body['submitter'] = eu.get_translator_infores_curie('ARAX')
+        if self.kp_name == "infores:rtx-kg2":
+            body['submitter'] = "infores:arax"
             # TODO: Later add submitter for all KP queries (isn't yet supported by all KPs - part of TRAPI 1.2.1) #1654
         return body
 
@@ -311,8 +311,8 @@ class TRAPIQuerier:
                     attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
 
             # Check if KPs are properly indicating that these edges came from them (indicate it ourselves if not)
-            kp_infores_curie = eu.get_translator_infores_curie(self.kp_name)
-            if not any(attribute.value == kp_infores_curie for attribute in returned_edge.attributes):
+            attribute_has_kp_name = lambda value, kp_name: (type(value) is list and kp_name in value) or (value == kp_name)
+            if not any(attribute_has_kp_name(attribute.value, self.kp_name) for attribute in returned_edge.attributes):
                 returned_edge.attributes.append(eu.get_kp_source_attribute(self.kp_name))
             # Add an attribute to indicate that this edge passed through ARAX
             returned_edge.attributes.append(eu.get_arax_source_attribute())
@@ -355,10 +355,9 @@ class TRAPIQuerier:
 
     def _get_query_timeout_length(self) -> int:
         # Returns the number of seconds we should wait for a response
-        if self.user_timeout:
-            return self.user_timeout
-        elif self.kp_name == "RTX-KG2":
+        if self.kp_name == "infores:rtx-kg2":
             return 600
+        elif self.kp_timeout:
+            return self.kp_timeout
         else:
             return 120
-

@@ -51,7 +51,7 @@ def test_n_results():
             "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
@@ -67,7 +67,7 @@ def test_no_results():
             "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
             "return(message=true, store=false)"
@@ -82,7 +82,7 @@ def test_prune():
             "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20, prune_kg=f)",
@@ -94,7 +94,7 @@ def test_prune():
             "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
@@ -124,7 +124,7 @@ def test_warning():
             "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
@@ -143,7 +143,7 @@ def test_sort_by_edge_attribute():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
-            "expand(edge_key=[e00,e01], kp=RTX-KG2)",
+            "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J2)",
             "resultify(ignore_edge_direction=true)",
@@ -161,7 +161,7 @@ def test_sort_by_node_attribute():
             "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20, qnode_keys=[n01])",
@@ -178,7 +178,7 @@ def test_sort_by_score():
             "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_score, direction=a, max_results=20)",
             "return(message=true, store=false)"
@@ -189,7 +189,7 @@ def test_sort_by_score():
     result_scores = [x.score for x in message.results]
     assert result_scores == sorted(result_scores)
     assert max(result_scores) < 1
-    
+
 @pytest.mark.external
 def test_issue1506():
     query = {"operations": {"actions": [
@@ -197,7 +197,7 @@ def test_issue1506():
             "add_qnode(ids=MONDO:0005301, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:related_to)",
-            "expand(kp=ClinicalRiskKP, edge_key=e00)",
+            "expand(kp=infores:biothings-multiomics-clinical-risk, edge_key=e00)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n00)",
             "resultify()",
             "filter_results(action=sort_by_edge_attribute, edge_attribute=feature_coefficient, direction=descending, max_results=30, prune_kg=true)",

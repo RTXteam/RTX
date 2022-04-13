@@ -179,17 +179,24 @@ class ResponseCache:
         envelope = response.envelope
         message = envelope.message
 
-        stored_response = Response(response_datetime=datetime.now(),tool_version=self.rtxConfig.version,
-            response_code=envelope.status,message=envelope.description,n_results=len(envelope.message.results))
-        session.add(stored_response)
-        session.flush()
-        session.commit()
-        response_filename = f"/responses/{stored_response.response_id}.json"
+        response.debug(f"Writing response record to MySQL")
+        try:
+            stored_response = Response(response_datetime=datetime.now(),tool_version=self.rtxConfig.version,
+                response_code=envelope.status,message=envelope.description,n_results=len(envelope.message.results))
+            session.add(stored_response)
+            session.flush()
+            session.commit()
+            response_id = stored_response.response_id
+            response_filename = f"/responses/{response_id}.json"
+        except:
+            response.error(f"Unable to store response record in MySQL", error_code="InternalError")
+            response_filename = f"/responses/error.json"
+            response_id = 0
 
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
             servername = 'arax.ncats.io'
-        envelope.id = f"https://{servername}/api/arax/v1.2/response/{stored_response.response_id}"
+        envelope.id = f"https://{servername}/api/arax/v1.2/response/{response_id}"
 
         #### New system to store the responses in an S3 bucket
         rtx_config = RTXConfiguration()
@@ -198,6 +205,7 @@ class ResponseCache:
         succeeded_to_s3 = False
 
         try:
+            response.debug(f"Writing response JSON to S3 bucket")
             s3 = boto3.resource(
                 's3',
                 region_name='us-west-2',
@@ -205,7 +213,6 @@ class ResponseCache:
                 aws_secret_access_key=ACCESS_KEY
             )
             serialized_query_graph = json.dumps(envelope.to_dict(), sort_keys=True, indent=2)
-            response.debug(f"Writing response to S3 bucket")
             t0 = timeit.default_timer()
             s3.Object('arax-response-storage', response_filename).put(Body=serialized_query_graph)
             t1 = timeit.default_timer()
@@ -477,6 +484,50 @@ class ResponseCache:
 
 
         return( { "status": 404, "title": "UnrecognizedResponse_idFormat", "detail": "Unrecognized response_id format", "type": "about:blank" }, 404)
+
+
+    ##################################################################################################
+    #### Store a received callback content
+    def store_callback(self, body):
+
+        data_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/callbacks'
+        if not os.path.exists(data_dir):
+            try:
+                os.mkdir(data_dir)
+            except:
+                eprint(f"ERROR: Unable to create dir {data_dir}")
+                return
+
+        if os.path.exists(data_dir):
+            counter = 1
+            filename = f"{data_dir}/{counter:05}.json"
+            while os.path.exists(filename):
+                counter += 1
+                filename = f"{data_dir}/{counter:05}.json"
+                if counter > 5000:
+                    eprint(f"ERROR: store_callback counter has reach 5000. Time to clean up or there is a runaway")
+                    return
+
+            try:
+                with open(filename, 'w') as outfile:
+                    json.dump(body, outfile, sort_keys=True, indent=2)
+                    eprint(f"INFO: Received a response and wrote it to {filename}")
+                    return
+            except:
+                eprint(f"ERROR: Unable to write response to file {filename}")
+                return
+
+        else:
+            eprint(f"ERROR: Unable to find dir {data_dir}")
+
+
+
+
+
+
+
+
+
 
 
 ############################################ Main ############################################################

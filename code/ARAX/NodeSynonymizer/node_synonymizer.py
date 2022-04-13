@@ -56,6 +56,8 @@ class NodeSynonymizer:
         self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
         self.engine_type = "sqlite"
 
+        self.logfile_handle = None
+
         self.connection = None
         self.connect()
 
@@ -129,7 +131,7 @@ class NodeSynonymizer:
         self.connection.execute(f"CREATE TABLE curies ( uc_curie VARCHAR(255), curie VARCHAR(255), unique_concept_curie VARCHAR(255), name VARCHAR(255), full_name VARCHAR(255), category VARCHAR(255), normalizer_name VARCHAR(255), normalizer_category VARCHAR(255), source VARCHAR(255) )" )
 
         self.connection.execute(f"DROP TABLE IF EXISTS names")
-        self.connection.execute(f"CREATE TABLE names ( lc_name VARCHAR(255), name VARCHAR(255), unique_concept_curie VARCHAR(255), source VARCHAR(255) )" )
+        self.connection.execute(f"CREATE TABLE names ( lc_name VARCHAR(255), name VARCHAR(255), unique_concept_curie VARCHAR(255), source VARCHAR(255), lc_first_word VARCHAR(255) )" )
 
         self.connection.execute(f"DROP TABLE IF EXISTS name_curies")
         self.connection.execute(f"CREATE TABLE name_curies ( lc_name VARCHAR(255), name VARCHAR(255), uc_curie VARCHAR(255), unique_concept_curie VARCHAR(255), source VARCHAR(255) )" )
@@ -152,6 +154,7 @@ class NodeSynonymizer:
         print(f"INFO: Creating INDEXes on names")
         self.connection.execute(f"CREATE INDEX idx_names_lc_name ON names(lc_name)")
         self.connection.execute(f"CREATE INDEX idx_names_unique_concept_curie ON names(unique_concept_curie)")
+        self.connection.execute(f"CREATE INDEX idx_names_lc_first_word ON names(lc_first_word)")
 
         print(f"INFO: Creating INDEXes on name_curies")
         self.connection.execute(f"CREATE INDEX idx_name_curies_lc_name ON name_curies(lc_name)")
@@ -188,7 +191,340 @@ class NodeSynonymizer:
                     eprint(f"ERROR: Unable to interpret {line} in Exceptions.txt")
 
 
+    # ############################################################################################
+    def import_equivalencies(self):
 
+        filename = 'kg2_equivalencies.tsv'
+        if not os.path.exists(filename):
+            print(f"WARNING: Did not find equivalencies file {filename}. Skipping import")
+            return
+        print(f"INFO: Reading equivalencies from {filename}")
+        filesize = os.path.getsize(filename)
+        bytes_read = 0
+        previous_percentage = -1
+        problem_counter = 0
+
+        kg_curies = self.kg_map['kg_curies']
+        kg_unique_concepts = self.kg_map['kg_unique_concepts']
+
+        stats = { 'already equivalent': 0, 'add new linked curie': 0, 'neither curie found': 0, 'association conflict': 0 }
+
+        iline = 0
+        with open(filename) as infile:
+            for line in infile:
+
+                bytes_read += len(line)
+
+                #### Skip the column titles
+                if iline == 0 and "n1.id" in line:
+                    iline += 1
+                    continue
+
+                #### Strip and skip blank lines
+                line = line.strip()
+                match = re.match(r'\s*$',line)
+                if match:
+                    continue
+                iline += 1
+
+                #print(f"line={line}")
+                columns = line.split("\t")
+                node1_curie = columns[0]
+                node2_curie = columns[1]
+                #print(f"{node1_curie}  -  {node2_curie}")
+
+                uc_node1_curie = node1_curie.upper()
+                uc_node2_curie = node2_curie.upper()
+
+                linking_curie = None
+                uc_linking_curie = None
+                done = False
+
+                if uc_node1_curie in kg_curies:
+                    linking_curie = node1_curie
+                    uc_linking_curie = linking_curie.upper()
+                    second_curie = node2_curie
+                    uc_second_curie = second_curie.upper()
+
+                elif uc_node2_curie in kg_curies:
+                    linking_curie = node2_curie
+                    uc_linking_curie = linking_curie.upper()
+                    second_curie = node1_curie
+                    uc_second_curie = second_curie.upper()
+
+                else:
+                    #print(f"ERROR: Niether {uc_node1_curie} nor {uc_node2_curie} found in kg_curies at line {iline+1}")
+                    stats['neither curie found'] += 1
+                    done = True
+
+                if not done:
+                    uc_linking_unique_concept_curie = kg_curies[uc_linking_curie]['uc_unique_concept_curie']
+                    linking_category = kg_curies[uc_linking_curie]['category']
+
+                    if uc_second_curie in kg_curies:
+                        uc_second_unique_concept_curie = kg_curies[uc_second_curie]['uc_unique_concept_curie']
+                        if 'KG2equivs' not in kg_curies[uc_second_curie]['source']:
+                            kg_curies[uc_second_curie]['source'] += ',KG2equivs'
+
+                        #### If the two kg_curies already share the same unique concept
+                        if uc_linking_unique_concept_curie == uc_second_unique_concept_curie:
+                            stats['already equivalent'] += 1
+
+                        #### But if they have different unique concepts, this potentially a problem, but one that will be cleaned up later probably
+                        else:
+                            stats['association conflict'] += 1
+                            #print(f"WARNING: Association conflict: {linking_curie}->{uc_linking_unique_concept_curie} and {second_curie}->{uc_second_unique_concept_curie}")
+                            kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 'KG2equivs'
+                            kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_unique_concept_curie] = 'KG2equivs'
+
+                            # This probably isn't needed, but things are not working the way that I want. FIXME
+                            #kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_curie] = 1
+                            #kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_unique_concept_curie] = 1
+
+                    else:
+                        print(f"Adding a new curie based on line '{line}'")
+                        problem_counter += 1
+                        #if problem_counter > 100:
+                        #    exit()
+                        stats['add new linked curie'] += 1
+                        kg_curies[uc_second_curie] = { 
+                            'curie': second_curie, 
+                            'uc_unique_concept_curie': uc_linking_unique_concept_curie, 
+                            'name': None,
+                            'full_name': None,
+                            'category': linking_category,
+                            'normalizer_name': None,
+                            'normalizer_category': None,
+                            'source': 'KG2equivs' }
+                        kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 'KG2equivs'
+
+                percentage = int(bytes_read*100.0/filesize)
+                if percentage > previous_percentage:
+                    previous_percentage = percentage
+                    print(str(percentage)+"%..", end='', flush=True)
+
+
+        print("")
+        print(f"INFO: Read {iline} equivalencies from {filename}")
+        for stat_name,stat in stats.items():
+            print(f"      - {stat_name}: {stat}")
+        return
+
+
+    # ############################################################################################
+    def import_synonyms(self):
+
+        filename = 'kg2_synonyms.json'
+        if not os.path.exists(filename):
+            print(f"WARNING: Did not find synonyms file {filename}. Skipping import")
+            return
+        print(f"INFO: Reading synonyms from {filename}")
+
+        kg_curies = self.kg_map['kg_curies']
+        kg_unique_concepts = self.kg_map['kg_unique_concepts']
+        kg_names = self.kg_map['kg_names']
+        kg_name_curies = self.kg_map['kg_name_curies']
+
+        stats = { 'curie_found': 0, 'curie_not_found': 0 }
+
+        with open(filename) as infile:
+            node_synonyms = json.load(infile)
+            inode = 0
+            for curie,curie_names in node_synonyms.items():
+                #print(f"{node} has synonyms {node_data}")
+                inode += 1
+
+                uc_curie = curie.upper()
+                if uc_curie in kg_curies:
+                    stats['curie_found'] += 1
+
+                    uc_unique_concept_curie = kg_curies[uc_curie]['uc_unique_concept_curie']
+
+                    for name in curie_names:
+                        #print(f"- {uc_curie} is also {name}")
+                        lc_name = name.lower()
+                        combined_key = lc_name + '---' + uc_curie
+
+                        #### If we don't have this name yet, add it
+                        if lc_name not in kg_names:
+                            lc_first_word = lc_name.split(' ')[0]
+                            kg_names[lc_name] = {
+                                'name': name,
+                                'uc_unique_concept_curie': uc_unique_concept_curie,
+                                'source': 'KG2syn',
+                                'uc_unique_concept_curies': { uc_unique_concept_curie: True },
+                                'lc_first_word': lc_first_word
+                            }
+                            kg_unique_concepts[uc_unique_concept_curie]['all_lc_names'][lc_name] = True
+
+                        #### If this provenance record is not there yet, add it
+                        if combined_key not in kg_name_curies:
+                            kg_name_curies[combined_key] = {
+                                'name': name,
+                                'uc_curie': uc_curie,
+                                'uc_unique_concept_curie': uc_unique_concept_curie,
+                                'source': 'KG2syn'
+                            }
+
+                else:
+                    #print(f"ERROR: {filename} has a curie {curie} that was not previously recorded!")
+                    stats['curie_not_found'] += 1
+
+
+        print("")
+        print(f"INFO: Read {inode} synonyms from {filename}")
+        for stat_name,stat in stats.items():
+            print(f"      - {stat_name}: {stat}")
+        return
+
+
+    # ############################################################################################
+    def save_state(self):
+
+        filename = f"node_synonymizer_map_state.pickle"
+        print(f"INFO: Writing the state to {filename}")
+
+        try:
+            with open(filename, "wb") as outfile:
+                pickle.dump(self.kg_map, outfile)
+            return True
+        except:
+            print(f"ERROR: Unable to save state to {filename}")
+            return None
+
+
+    # ############################################################################################
+    def reload_state(self):
+
+        filename = f"node_synonymizer_map_state.pickle"
+        print(f"INFO: Loading previous data structure state from {filename}")
+
+        try:
+            with open(filename, "rb") as infile:
+                self.kg_map = pickle.load(infile)
+            print(f"INFO: Finished loading previous data structure state from {filename}. Have {len(self.kg_map[kg_nodes])} kg_nodes.")
+            return True
+        except:
+            print(f"ERROR: Unable to reload previous state from {filename}")
+            return None
+
+
+    # ############################################################################################
+    #### Store the built-up in-memory index to the database
+    def store_kg_map(self):
+
+        kg_nodes = self.kg_map['kg_nodes']
+        kg_unique_concepts = self.kg_map['kg_unique_concepts']
+        kg_curies = self.kg_map['kg_curies']
+        kg_names = self.kg_map['kg_names']
+        kg_name_curies = self.kg_map['kg_name_curies']
+
+        # Write all nodes
+        n_rows = len(kg_nodes)
+        i_rows = 0
+        previous_percentage = -1
+        rows = []
+        print(f"INFO: Writing {n_rows} nodes to the database")
+        for uc_curie,node in kg_nodes.items():
+            rows.append( [ uc_curie, node['curie'], node['original_name'], node['adjusted_name'], node['full_name'], node['category'], node['uc_unique_concept_curie'] ] )
+            i_rows += 1
+            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
+                self.connection.executemany(f"INSERT INTO nodes (uc_curie, curie, original_name, adjusted_name, full_name, category, unique_concept_curie) values (?,?,?,?,?,?,?)", rows)
+                self.connection.commit()
+                rows = []
+                percentage = int(i_rows*100.0/n_rows)
+                if percentage > previous_percentage:
+                    previous_percentage = percentage
+                    print(str(percentage)+"%..", end='', flush=True)
+
+        # Write all unique concepts
+        n_rows = len(kg_unique_concepts)
+        i_rows = 0
+        previous_percentage = -1
+        rows = []
+        print(f"\nINFO: Writing {n_rows} unique_concepts to the database")
+        for uc_curie,concept in kg_unique_concepts.items():
+            rows.append( [ uc_curie, concept['curie'], concept['name'], concept['category'], concept['normalizer_curie'], concept['normalizer_name'], concept['normalizer_category'] ] )
+            i_rows += 1
+            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
+                self.connection.executemany(f"INSERT INTO unique_concepts (uc_curie, curie, name, category, normalizer_curie, normalizer_name, normalizer_category) values (?,?,?,?,?,?,?)", rows)
+                self.connection.commit()
+                rows = []
+                percentage = int(i_rows*100.0/n_rows)
+                if percentage > previous_percentage:
+                    previous_percentage = percentage
+                    print(str(percentage)+"%..", end='', flush=True)
+
+        # Write all curies
+        n_rows = len(kg_curies)
+        i_rows = 0
+        previous_percentage = -1
+        rows = []
+        print(f"\nINFO: Writing {n_rows} curies to the database")
+        for uc_curie,concept in kg_curies.items():
+            rows.append( [ uc_curie, concept['curie'], concept['uc_unique_concept_curie'], concept['name'], concept['full_name'], concept['category'], concept['normalizer_name'], concept['normalizer_category'], concept['source'] ] )
+            i_rows += 1
+            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
+                self.connection.executemany(f"INSERT INTO curies (uc_curie, curie, unique_concept_curie, name, full_name, category, normalizer_name, normalizer_category, source) values (?,?,?,?,?,?,?,?,?)", rows)
+                self.connection.commit()
+                rows = []
+                percentage = int(i_rows*100.0/n_rows)
+                if percentage > previous_percentage:
+                    previous_percentage = percentage
+                    print(str(percentage)+"%..", end='', flush=True)
+
+        # Write all synonyms
+        n_rows = len(kg_names)
+        i_rows = 0
+        previous_percentage = -1
+        rows = []
+        print(f"\nINFO: Writing {n_rows} names to the database")
+        for lc_synonym_name,synonym in kg_names.items():
+            rows.append( [ lc_synonym_name, synonym['name'], synonym['uc_unique_concept_curie'], synonym['source'], synonym['lc_first_word'] ] )
+            i_rows += 1
+            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
+                self.connection.executemany(f"INSERT INTO names (lc_name, name, unique_concept_curie, source, lc_first_word) values (?,?,?,?,?)", rows)
+                self.connection.commit()
+                rows = []
+                percentage = int(i_rows*100.0/n_rows)
+                if percentage > previous_percentage:
+                    previous_percentage = percentage
+                    print(str(percentage)+"%..", end='', flush=True)
+        print("")
+
+        # Write all name-curies
+        n_rows = len(kg_name_curies)
+        i_rows = 0
+        previous_percentage = -1
+        rows = []
+        print(f"\nINFO: Writing {n_rows} name_curies to the database")
+        for lc_name_uc_curie, synonym in kg_name_curies.items():
+            rows.append( [ synonym['name'].lower(), synonym['name'], synonym['uc_curie'], synonym['uc_unique_concept_curie'], synonym['source'] ] )
+            i_rows += 1
+            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
+                self.connection.executemany(f"INSERT INTO name_curies (lc_name, name, uc_curie, unique_concept_curie, source) values (?,?,?,?,?)", rows)
+                self.connection.commit()
+                rows = []
+                percentage = int(i_rows*100.0/n_rows)
+                if percentage > previous_percentage:
+                    previous_percentage = percentage
+                    print(str(percentage)+"%..", end='', flush=True)
+        print("")
+
+
+
+
+
+
+
+
+
+
+    # ############################################################################################
+    # ############################################################################################
+    # ############################################################################################
+
+    # Main building methods
 
     # ############################################################################################
     # Create the KG node table
@@ -196,6 +532,10 @@ class NodeSynonymizer:
 
         filename = 'kg2_node_info.tsv'
         filesize = os.path.getsize(filename)
+
+        logfile = 'node_synonymizer_build_log.txt'
+        outfile = open(logfile,'w')
+        self.logfile_handle = outfile
 
         # Correction for Windows line endings
         extra_bytes = 0
@@ -521,11 +861,13 @@ class NodeSynonymizer:
                     kg_names[lc_equivalent_name]['uc_unique_concept_curies'][uc_unique_concept_curie] = 1
                 # If not, then create it
                 else:
+                    lc_first_word = lc_equivalent_name.split(' ')[0]
                     kg_names[lc_equivalent_name] = {
                         'name': equivalent_name,
                         'uc_unique_concept_curie': uc_unique_concept_curie,
                         'source': 'SRI',
-                        'uc_unique_concept_curies': { uc_unique_concept_curie: 1 }
+                        'uc_unique_concept_curies': { uc_unique_concept_curie: 1 },
+                        'lc_first_word': lc_first_word
                     }
                     kg_unique_concepts[uc_unique_concept_curie]['all_lc_names'][lc_equivalent_name] = 1               # FIXME. A count would be fun
 
@@ -582,11 +924,13 @@ class NodeSynonymizer:
                     if debug_flag:
                         print(f"DEBUG: Name '{lc_equivalent_name}' is not in kg_names. Add it")
                         print(f"       node_curie={node_curie}, uc_node_curie={uc_node_curie}, uc_unique_concept_curie={uc_unique_concept_curie}, lc_equivalent_name={lc_equivalent_name}")
+                    lc_first_word = lc_equivalent_name.split(' ')[0]
                     kg_names[lc_equivalent_name] = {
                         'name': equivalent_name,
                         'uc_unique_concept_curie': uc_unique_concept_curie,
                         'source': 'KG2',
-                        'uc_unique_concept_curies': { uc_unique_concept_curie: 1 }
+                        'uc_unique_concept_curies': { uc_unique_concept_curie: 1 },
+                        'lc_first_word': lc_first_word
                     }
                     kg_unique_concepts[uc_unique_concept_curie]['all_lc_names'][lc_equivalent_name] = 1
 
@@ -604,6 +948,8 @@ class NodeSynonymizer:
                 print(str(percentage)+"%..", end='', flush=True)
 
         fh.close()
+        self.logfile_handle.close()
+        self.logfile_handle = None
         print("")
 
         print(f"INFO: Freeing SRI node normalizer cache from memory")
@@ -617,150 +963,132 @@ class NodeSynonymizer:
 
 
     # ############################################################################################
-    def save_state(self):
+    #### The input lines are a bit messy. Here is special code to tidy things up a bit using hand curated heuristics
+    def scrub_input(self, node_curie, node_name, node_category, debug_flag):
 
-        filename = f"node_synonymizer_map_state.pickle"
-        print(f"INFO: Writing the state to {filename}")
+        original_name = node_name
 
-        try:
-            with open(filename, "wb") as outfile:
-                pickle.dump(self.kg_map, outfile)
-            return True
-        except:
-            print(f"ERROR: Unable to save state to {filename}")
-            return None
+        # First fix some data-source specific yucky strings before we even record the initial name
+
+        # Some MONDO names have a ' (disease)' suffix quite unnecessarily. Remove them
+        if node_curie.startswith('MONDO:'):
+            node_name = re.sub(r'\s*\(disease\)\s*$','',node_name)
+
+        # Many PR names have a ' (human)' suffix, which seems undesirable, so strip them out
+        if 'PR:' in node_curie or 'HGNC:' in node_curie:
+            node_name = re.sub(r'\s*\(human\)\s*$','',node_name)
+
+        # Many ENSEMBLs have  [Source:HGNC Symbol;Acc:HGNC:29884], which seems undesirable, so strip them out
+        if 'ENSEMBL:' in node_curie:
+            node_name = re.sub(r'\s*\[Source:HGNC.+\]\s*','',node_name)
+
+
+        # Begin a list of all the possible names that we will add to the database
+        names = { node_name: 0 }
+
+
+        # Some MONDO names have some reverse comma notation. Try to reverse it
+        if node_curie.startswith('MONDO:'):
+            if ', primary' in node_name:
+                node_name = 'primary ' + node_name.replace(', primary', '')
+            if ', severe' in node_name:
+                node_name = 'severe ' + node_name.replace(', severe', '')
+            if ', autosomal recessive' in node_name:
+                node_name = 'autosomal recessive ' + node_name.replace(', autosomal recessive', '')
+            if ', susceptibility to' in node_name:
+                node_name = 'susceptibility to ' + node_name.replace(', susceptibility to', '')
+            if ', common variable' in node_name:
+                node_name = 'common variable ' + node_name.replace(', common variable', '')
+            if ', infantile' in node_name:
+                node_name = 'infantile ' + node_name.replace(', infantile', '')
+            if ', autosomal dominant' in node_name:
+                node_name = 'autosomal dominant ' + node_name.replace(', autosomal dominant', '')
+            if ', recurrent' in node_name:
+                node_name = 'recurrent ' + node_name.replace(', recurrent', '')
+            match = re.search(r',( \d+)\s*$', node_name)
+            if match:
+                node_name = re.sub(r', \d+\s*$',match.group(1),node_name)
+
+        # OMIM often has multiple names separated by semi-colon. Separate them
+        if re.match("OMIM:", node_curie):
+            multipleNames = node_name.split("; ")
+            if len(multipleNames) > 1:
+                for possibleName in multipleNames:
+                    #### Changed behavior 2020-12-14 to only keep the first in the list of semi-colon separated, so as to avoid gene symbol clashes, see #1165
+                    if possibleName == multipleNames[0]:
+                        #next
+                        break
+                    names[possibleName] = 0
+                    break
+
+        # Reactome names sometimes have an abbrevation in parentheses. Extract it and store both the abbreviation and the name without it
+        elif re.match("REACT:R-HSA-", node_curie):
+            # Also store the path name without embedded abbreviations
+            match = re.search(r' \(([A-Z0-9\-]{1,8})\)', node_name)
+            if match:
+                names[match.group(1)] = 0
+                newName = re.sub(
+                    r' \([A-Z0-9\-]{1,8}\)', "", node_name, flags=re.IGNORECASE)
+                names[newName] = 0
+
+        # If this is a UniProt identifier, add a synonym that is the naked identifier without the prefix
+        elif re.match("UniProtKB:[A-Z][A-Z0-9]{5}", node_curie) or re.match("UniProtKB:A[A-Z0-9]{9}", node_curie):
+            tmp = re.sub("UniProtKB:", "", node_curie)
+            names[tmp] = 0
+
+        # If this is a PR identifier, add a synonym that is the naked identifier without the prefix
+        elif re.match("PR:[A-Z][A-Z0-9]{5}", node_curie) or re.match("PR:A[A-Z0-9]{9}", node_curie):
+            tmp = re.sub("PR:", "", node_curie)
+            names[tmp] = 0
+
+        # Create duplicates for various DoctorName's diseases
+        # Cannot add to names{} in place while looping, so put in a new dict and then append when done
+        more_names = {}
+        for name in names:
+            if re.search("'s ", name):
+                newName = re.sub("'s ", "s ", name)
+                more_names[newName] = 0
+                newName = re.sub("'s ", " ", name)
+                more_names[newName] = 0
+        for name in more_names:
+            names[name] = more_names[name]
+
+        # A few special cases
+        if re.search("alzheimer ", node_name, flags=re.IGNORECASE):
+            newName = re.sub("alzheimer ", "alzheimers ", node_name, flags=re.IGNORECASE)
+            names[newName] = 0
+
+            newName = re.sub("alzheimer ", "alzheimer's ", node_name, flags=re.IGNORECASE)
+            names[newName] = 0
+
+        # Define a set of names that we will supplement with another name manually
+        supplemental_names = { 'insulin human': 'insulin' }
+        if node_name in supplemental_names:
+            names[supplemental_names[node_name]] = 1
+
+        # Log if there was a change
+        if node_name != original_name:
+            print(f"[SCRUB] Changed {node_curie} name from '{original_name}' to '{node_name}'", file=self.logfile_handle)
+
+        # Return all the values after scrubbing
+        scrubbed_values = { 'node_curie': node_curie, 'node_name': node_name, 'node_category': node_category, 'names': names }
+        return scrubbed_values
+
+
+
+
+
+
+
+
+
 
 
     # ############################################################################################
-    def reload_state(self):
-
-        filename = f"node_synonymizer_map_state.pickle"
-        print(f"INFO: Loading previous data structure state from {filename}")
-
-        try:
-            with open(filename, "rb") as infile:
-                self.kg_map = pickle.load(infile)
-            return True
-        except:
-            print(f"ERROR: Unable to reload previous state from {filename}")
-            return None
-
-        print(f"INFO: Finished loading previous data structure state from {filename}. Have {len(self.kg_map[kg_nodes])} kg_nodes.")
-
-
     # ############################################################################################
-    #def show_state(self, concept='insulin'):
-    #    uc_unique_concept_curie = kg_names[concept]['uc_unique_concept_curie']
-    #    uc_node_curie = uc_unique_concept_curie
-    #    if kg_unique_concepts[uc_unique_concept_curie]['remapped_curie'] is not None:
-    #        uc_node_curie = kg_unique_concepts[uc_unique_concept_curie]['remapped_curie']
-    #    print(f"kg_nodes['{uc_node_curie}'] = ",json.dumps(kg_nodes[uc_node_curie], indent=2, sort_keys=True))
-    #    print(f"kg_unique_concepts['{uc_unique_concept_curie}'] = ",json.dumps(kg_unique_concepts[uc_unique_concept_curie], indent=2, sort_keys=True))
-
-
     # ############################################################################################
-    #### Store the built-up in-memory index to the database
-    def store_kg_map(self):
 
-        kg_nodes = self.kg_map['kg_nodes']
-        kg_unique_concepts = self.kg_map['kg_unique_concepts']
-        kg_curies = self.kg_map['kg_curies']
-        kg_names = self.kg_map['kg_names']
-        kg_name_curies = self.kg_map['kg_name_curies']
-
-        # Write all nodes
-        n_rows = len(kg_nodes)
-        i_rows = 0
-        previous_percentage = -1
-        rows = []
-        print(f"INFO: Writing {n_rows} nodes to the database")
-        for uc_curie,node in kg_nodes.items():
-            rows.append( [ uc_curie, node['curie'], node['original_name'], node['adjusted_name'], node['full_name'], node['category'], node['uc_unique_concept_curie'] ] )
-            i_rows += 1
-            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
-                self.connection.executemany(f"INSERT INTO nodes (uc_curie, curie, original_name, adjusted_name, full_name, category, unique_concept_curie) values (?,?,?,?,?,?,?)", rows)
-                self.connection.commit()
-                rows = []
-                percentage = int(i_rows*100.0/n_rows)
-                if percentage > previous_percentage:
-                    previous_percentage = percentage
-                    print(str(percentage)+"%..", end='', flush=True)
-
-        # Write all unique concepts
-        n_rows = len(kg_unique_concepts)
-        i_rows = 0
-        previous_percentage = -1
-        rows = []
-        print(f"\nINFO: Writing {n_rows} unique_concepts to the database")
-        for uc_curie,concept in kg_unique_concepts.items():
-            rows.append( [ uc_curie, concept['curie'], concept['name'], concept['category'], concept['normalizer_curie'], concept['normalizer_name'], concept['normalizer_category'] ] )
-            i_rows += 1
-            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
-                self.connection.executemany(f"INSERT INTO unique_concepts (uc_curie, curie, name, category, normalizer_curie, normalizer_name, normalizer_category) values (?,?,?,?,?,?,?)", rows)
-                self.connection.commit()
-                rows = []
-                percentage = int(i_rows*100.0/n_rows)
-                if percentage > previous_percentage:
-                    previous_percentage = percentage
-                    print(str(percentage)+"%..", end='', flush=True)
-
-        # Write all curies
-        n_rows = len(kg_curies)
-        i_rows = 0
-        previous_percentage = -1
-        rows = []
-        print(f"\nINFO: Writing {n_rows} curies to the database")
-        for uc_curie,concept in kg_curies.items():
-            rows.append( [ uc_curie, concept['curie'], concept['uc_unique_concept_curie'], concept['name'], concept['full_name'], concept['category'], concept['normalizer_name'], concept['normalizer_category'], concept['source'] ] )
-            i_rows += 1
-            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
-                self.connection.executemany(f"INSERT INTO curies (uc_curie, curie, unique_concept_curie, name, full_name, category, normalizer_name, normalizer_category, source) values (?,?,?,?,?,?,?,?,?)", rows)
-                self.connection.commit()
-                rows = []
-                percentage = int(i_rows*100.0/n_rows)
-                if percentage > previous_percentage:
-                    previous_percentage = percentage
-                    print(str(percentage)+"%..", end='', flush=True)
-
-        # Write all synonyms
-        n_rows = len(kg_names)
-        i_rows = 0
-        previous_percentage = -1
-        rows = []
-        print(f"\nINFO: Writing {n_rows} names to the database")
-        for lc_synonym_name,synonym in kg_names.items():
-            rows.append( [ lc_synonym_name, synonym['name'], synonym['uc_unique_concept_curie'], synonym['source'] ] )
-            i_rows += 1
-            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
-                self.connection.executemany(f"INSERT INTO names (lc_name, name, unique_concept_curie, source) values (?,?,?,?)", rows)
-                self.connection.commit()
-                rows = []
-                percentage = int(i_rows*100.0/n_rows)
-                if percentage > previous_percentage:
-                    previous_percentage = percentage
-                    print(str(percentage)+"%..", end='', flush=True)
-        print("")
-
-        # Write all name-curies
-        n_rows = len(kg_name_curies)
-        i_rows = 0
-        previous_percentage = -1
-        rows = []
-        print(f"\nINFO: Writing {n_rows} name_curies to the database")
-        for lc_name_uc_curie, synonym in kg_name_curies.items():
-            rows.append( [ synonym['name'].lower(), synonym['name'], synonym['uc_curie'], synonym['uc_unique_concept_curie'], synonym['source'] ] )
-            i_rows += 1
-            if i_rows == int(i_rows/5000.0)*5000 or i_rows == n_rows:
-                self.connection.executemany(f"INSERT INTO name_curies (lc_name, name, uc_curie, unique_concept_curie, source) values (?,?,?,?,?)", rows)
-                self.connection.commit()
-                rows = []
-                percentage = int(i_rows*100.0/n_rows)
-                if percentage > previous_percentage:
-                    previous_percentage = percentage
-                    print(str(percentage)+"%..", end='', flush=True)
-        print("")
-
-
+    # Finishing / Reorg methods
 
     #############################################################################################
     #### Go through all unique concepts and merge any that are split due to build order issues
@@ -1049,272 +1377,6 @@ class NodeSynonymizer:
 
         #### Perform the remapping
         self.remap_concepts(concept_remap)
-
-
-    # ############################################################################################
-    #### The input lines are a bit messy. Here is special code to tidy things up a bit using hand curated heuristics
-    def scrub_input(self, node_curie, node_name, node_category, debug_flag):
-
-        # Many MONDO names have a ' (disease)' suffix, which seems undesirable, so strip them out
-        if 'MONDO:' in node_curie:
-            node_name = re.sub(r'\s*\(disease\)\s*$','',node_name)
-        # Many PR names have a ' (human)' suffix, which seems undesirable, so strip them out
-        if 'PR:' in node_curie or 'HGNC:' in node_curie:
-            node_name = re.sub(r'\s*\(human\)\s*$','',node_name)
-        # Many ENSEMBLs have  [Source:HGNC Symbol;Acc:HGNC:29884], which seems undesirable, so strip them out
-        if 'ENSEMBL:' in node_curie:
-            node_name = re.sub(r'\s*\[Source:HGNC.+\]\s*','',node_name)
-
-
-        # Create a list of all the possible names we will add to the database
-        names = { node_name: 0 }
-
-        # OMIM often has multiple names separated by semi-colon. Separate them
-        if re.match("OMIM:", node_curie):
-            multipleNames = node_name.split("; ")
-            if len(multipleNames) > 1:
-                for possibleName in multipleNames:
-                    #### Changed behavior 2020-12-14 to only keep the first in the list of semi-colon separated, so as to avoid gene symbol clashes, see #1165
-                    if possibleName == multipleNames[0]:
-                        #next
-                        break
-                    names[possibleName] = 0
-                    break
-
-        # Reactome names sometimes have an abbrevation in parentheses. Extract it and store both the abbreviation and the name without it
-        elif re.match("REACT:R-HSA-", node_curie):
-            # Also store the path name without embedded abbreviations
-            match = re.search(r' \(([A-Z0-9\-]{1,8})\)', node_name)
-            if match:
-                names[match.group(1)] = 0
-                newName = re.sub(
-                    r' \([A-Z0-9\-]{1,8}\)', "", node_name, flags=re.IGNORECASE)
-                names[newName] = 0
-
-        # If this is a UniProt identifier, add a synonym that is the naked identifier without the prefix
-        elif re.match("UniProtKB:[A-Z][A-Z0-9]{5}", node_curie) or re.match("UniProtKB:A[A-Z0-9]{9}", node_curie):
-            tmp = re.sub("UniProtKB:", "", node_curie)
-            names[tmp] = 0
-
-        # If this is a PR identifier, add a synonym that is the naked identifier without the prefix
-        elif re.match("PR:[A-Z][A-Z0-9]{5}", node_curie) or re.match("PR:A[A-Z0-9]{9}", node_curie):
-            tmp = re.sub("PR:", "", node_curie)
-            names[tmp] = 0
-
-        # Create duplicates for various DoctorName's diseases
-        # Cannot add to names{} in place while looping, so put in a new dict and then append when done
-        more_names = {}
-        for name in names:
-            if re.search("'s ", name):
-                newName = re.sub("'s ", "s ", name)
-                more_names[newName] = 0
-                newName = re.sub("'s ", " ", name)
-                more_names[newName] = 0
-        for name in more_names:
-            names[name] = more_names[name]
-
-        # A few special cases
-        if re.search("alzheimer ", node_name, flags=re.IGNORECASE):
-            newName = re.sub("alzheimer ", "alzheimers ", node_name, flags=re.IGNORECASE)
-            names[newName] = 0
-
-            newName = re.sub("alzheimer ", "alzheimer's ", node_name, flags=re.IGNORECASE)
-            names[newName] = 0
-
-        # Define a set of names that we will supplement with another name manually
-        supplemental_names = { 'insulin human': 'insulin' }
-        if node_name in supplemental_names:
-            names[supplemental_names[node_name]] = 1
-
-
-        # Return all the values after scrubbing
-        scrubbed_values = { 'node_curie': node_curie, 'node_name': node_name, 'node_category': node_category, 'names': names }
-        return scrubbed_values
-
-
-    # ############################################################################################
-    def import_equivalencies(self):
-
-        filename = 'kg2_equivalencies.tsv'
-        if not os.path.exists(filename):
-            print(f"WARNING: Did not find equivalencies file {filename}. Skipping import")
-            return
-        print(f"INFO: Reading equivalencies from {filename}")
-        filesize = os.path.getsize(filename)
-        bytes_read = 0
-        previous_percentage = -1
-        problem_counter = 0
-
-        kg_curies = self.kg_map['kg_curies']
-        kg_unique_concepts = self.kg_map['kg_unique_concepts']
-
-        stats = { 'already equivalent': 0, 'add new linked curie': 0, 'neither curie found': 0, 'association conflict': 0 }
-
-        iline = 0
-        with open(filename) as infile:
-            for line in infile:
-
-                bytes_read += len(line)
-
-                #### Skip the column titles
-                if iline == 0 and "n1.id" in line:
-                    iline += 1
-                    continue
-
-                #### Strip and skip blank lines
-                line = line.strip()
-                match = re.match(r'\s*$',line)
-                if match:
-                    continue
-                iline += 1
-
-                #print(f"line={line}")
-                columns = line.split("\t")
-                node1_curie = columns[0]
-                node2_curie = columns[1]
-                #print(f"{node1_curie}  -  {node2_curie}")
-
-                uc_node1_curie = node1_curie.upper()
-                uc_node2_curie = node2_curie.upper()
-
-                linking_curie = None
-                uc_linking_curie = None
-                done = False
-
-                if uc_node1_curie in kg_curies:
-                    linking_curie = node1_curie
-                    uc_linking_curie = linking_curie.upper()
-                    second_curie = node2_curie
-                    uc_second_curie = second_curie.upper()
-
-                elif uc_node2_curie in kg_curies:
-                    linking_curie = node2_curie
-                    uc_linking_curie = linking_curie.upper()
-                    second_curie = node1_curie
-                    uc_second_curie = second_curie.upper()
-
-                else:
-                    #print(f"ERROR: Niether {uc_node1_curie} nor {uc_node2_curie} found in kg_curies at line {iline+1}")
-                    stats['neither curie found'] += 1
-                    done = True
-
-                if not done:
-                    uc_linking_unique_concept_curie = kg_curies[uc_linking_curie]['uc_unique_concept_curie']
-                    linking_category = kg_curies[uc_linking_curie]['category']
-
-                    if uc_second_curie in kg_curies:
-                        uc_second_unique_concept_curie = kg_curies[uc_second_curie]['uc_unique_concept_curie']
-                        if 'KG2equivs' not in kg_curies[uc_second_curie]['source']:
-                            kg_curies[uc_second_curie]['source'] += ',KG2equivs'
-
-                        #### If the two kg_curies already share the same unique concept
-                        if uc_linking_unique_concept_curie == uc_second_unique_concept_curie:
-                            stats['already equivalent'] += 1
-
-                        #### But if they have different unique concepts, this potentially a problem, but one that will be cleaned up later probably
-                        else:
-                            stats['association conflict'] += 1
-                            #print(f"WARNING: Association conflict: {linking_curie}->{uc_linking_unique_concept_curie} and {second_curie}->{uc_second_unique_concept_curie}")
-                            kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 'KG2equivs'
-                            kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_unique_concept_curie] = 'KG2equivs'
-
-                            # This probably isn't needed, but things are not working the way that I want. FIXME
-                            #kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_curie] = 1
-                            #kg_unique_concepts[uc_second_unique_concept_curie]['all_uc_curies'][uc_linking_unique_concept_curie] = 1
-
-                    else:
-                        print(f"Adding a new curie based on line '{line}'")
-                        problem_counter += 1
-                        #if problem_counter > 100:
-                        #    exit()
-                        stats['add new linked curie'] += 1
-                        kg_curies[uc_second_curie] = { 
-                            'curie': second_curie, 
-                            'uc_unique_concept_curie': uc_linking_unique_concept_curie, 
-                            'name': None,
-                            'full_name': None,
-                            'category': linking_category,
-                            'normalizer_name': None,
-                            'normalizer_category': None,
-                            'source': 'KG2equivs' }
-                        kg_unique_concepts[uc_linking_unique_concept_curie]['all_uc_curies'][uc_second_curie] = 'KG2equivs'
-
-                percentage = int(bytes_read*100.0/filesize)
-                if percentage > previous_percentage:
-                    previous_percentage = percentage
-                    print(str(percentage)+"%..", end='', flush=True)
-
-
-        print("")
-        print(f"INFO: Read {iline} equivalencies from {filename}")
-        for stat_name,stat in stats.items():
-            print(f"      - {stat_name}: {stat}")
-        return
-
-
-    # ############################################################################################
-    def import_synonyms(self):
-
-        filename = 'kg2_synonyms.json'
-        if not os.path.exists(filename):
-            print(f"WARNING: Did not find synonyms file {filename}. Skipping import")
-            return
-        print(f"INFO: Reading synonyms from {filename}")
-
-        kg_curies = self.kg_map['kg_curies']
-        kg_unique_concepts = self.kg_map['kg_unique_concepts']
-        kg_names = self.kg_map['kg_names']
-        kg_name_curies = self.kg_map['kg_name_curies']
-
-        stats = { 'curie_found': 0, 'curie_not_found': 0 }
-
-        with open(filename) as infile:
-            node_synonyms = json.load(infile)
-            inode = 0
-            for curie,curie_names in node_synonyms.items():
-                #print(f"{node} has synonyms {node_data}")
-                inode += 1
-
-                uc_curie = curie.upper()
-                if uc_curie in kg_curies:
-                    stats['curie_found'] += 1
-
-                    uc_unique_concept_curie = kg_curies[uc_curie]['uc_unique_concept_curie']
-
-                    for name in curie_names:
-                        #print(f"- {uc_curie} is also {name}")
-                        lc_name = name.lower()
-                        combined_key = lc_name + '---' + uc_curie
-
-                        #### If we don't have this name yet, add it
-                        if lc_name not in kg_names:
-                            kg_names[lc_name] = {
-                                'name': name,
-                                'uc_unique_concept_curie': uc_unique_concept_curie,
-                                'source': 'KG2syn',
-                                'uc_unique_concept_curies': { uc_unique_concept_curie: True }
-                            }
-                            kg_unique_concepts[uc_unique_concept_curie]['all_lc_names'][lc_name] = True
-
-                        #### If this provenance record is not there yet, add it
-                        if combined_key not in kg_name_curies:
-                            kg_name_curies[combined_key] = {
-                                'name': name,
-                                'uc_curie': uc_curie,
-                                'uc_unique_concept_curie': uc_unique_concept_curie,
-                                'source': 'KG2syn'
-                            }
-
-                else:
-                    #print(f"ERROR: {filename} has a curie {curie} that was not previously recorded!")
-                    stats['curie_not_found'] += 1
-
-
-        print("")
-        print(f"INFO: Read {inode} synonyms from {filename}")
-        for stat_name,stat in stats.items():
-            print(f"      - {stat_name}: {stat}")
-        return
 
 
     #############################################################################################
@@ -1659,6 +1721,8 @@ class NodeSynonymizer:
 
 
 
+    # ############################################################################################
+    # ############################################################################################
     # ############################################################################################
 
     # Access methods
@@ -2018,6 +2082,14 @@ class NodeSynonymizer:
     # Return results in the Node Normalizer format, either from SRI or KG1 or KG2
     def get_normalizer_results(self, entities=None):
 
+        output_format = 'normal'
+
+        # If the provided value is a dict, turn it into a list
+        if isinstance(entities,dict):
+            if entities.get('format') is not None:
+                output_format = entities.get('format')
+            entities = entities.get('terms')
+
         # If no entity was passed, then nothing to do
         if entities is None:
             return None
@@ -2156,14 +2228,59 @@ class NodeSynonymizer:
 
 
             # Add this entry to the final results dict
-            results[entity] = {
-                'nodes': nodes,
-                'equivalent_identifiers': curies,
-                'synonyms': names,
-                'synonym_provenance': synonym_provenance,
-                'id': id,
-                'categories': categories
-            }
+            if output_format == 'minimal':
+                results[entity] = {
+                    'id': id
+                }
+            else:
+                results[entity] = {
+                    'nodes': nodes,
+                    'equivalent_identifiers': curies,
+                    'synonyms': names,
+                    'synonym_provenance': synonym_provenance,
+                    'id': id,
+                    'categories': categories
+                }
+
+        return results
+
+
+    # ############################################################################################
+    # Return all concepts which have first words as specified. New in 2021-12
+    # FIXME This loops one at a time. It could be parallelized with a single query (but batched)
+    def get_concepts_by_first_word(self, entities=None):
+
+        # If no entity was passed, then nothing to do
+        if entities is None:
+            return None
+
+        # If the provided value is just a string, turn it into a list
+        if isinstance(entities,str):
+            entities = [ entities ]
+
+        # Loop over all entities and get the results
+        results = {}
+        for entity in entities:
+
+            # If no rows came back, see if it matches a name
+            cursor = self.connection.cursor()
+            cursor.execute( f"SELECT lc_first_word, lc_name, name, unique_concept_curie FROM names WHERE lc_first_word = ?", (entity.lower(),) )
+            rows = cursor.fetchall()
+
+            # If there are still no rows, then just move on
+            if len(rows) == 0:
+                results[entity] = None
+                continue
+
+            # Otherwise create a list and add the results
+            results[entity] = []
+            for row in rows:
+                results[entity].append( {
+                    'lc_first_word': row[0],
+                    'lc_name': row[1],
+                    'name': row[2],
+                    'unique_concept_curie': row[3]
+                    } )
 
         return results
 
@@ -2455,6 +2572,8 @@ def main():
                         help="If set, run a test of the index by doing several lookups", default=False)
     parser.add_argument('-l', '--lookup', action="store",
                         help="If set to a curie or name, then use the NodeSynonymizer (or SRI normalizer) to lookup the equivalence information for the curie or name", default=None)
+    parser.add_argument('-w', '--first_word_lookup', action="store",
+                        help="Look up all entities where the first word is as specified", default=None)
     parser.add_argument('-n', '--node_list', action="store",
                         help="If set to a curie or name, then return a list of node curies that belong to the group for the specified curie or name", default=None)
     parser.add_argument('-e', '--export', action="store",
@@ -2469,7 +2588,7 @@ def main():
                         help="If set, update the NodeSynonmizer with improved category information")
     args = parser.parse_args()
 
-    if not args.build and not args.test and not args.recollate and not args.lookup and not args.node_list and not args.query and not args.get and not args.update:
+    if not args.build and not args.test and not args.recollate and not args.lookup and not args.first_word_lookup and not args.node_list and not args.query and not args.get and not args.update:
         parser.print_help()
         exit()
 
@@ -2512,6 +2631,25 @@ def main():
             with open(args.export,'w') as outfile:
                 outfile.write(json.dumps(equivalence, indent=2, sort_keys=True) + "\n")
         print(f"INFO: Information retrieved in {t1-t0} sec")
+        return
+
+
+    # If the --first_word_lookup argument is provided, perform the lookup and return
+    if args.first_word_lookup is not None:
+        t0 = timeit.default_timer()
+        entities = args.first_word_lookup.split(',')
+        concepts = synonymizer.get_concepts_by_first_word(entities)
+        t1 = timeit.default_timer()
+        print(json.dumps(concepts, indent=2, sort_keys=True))
+        if args.export:
+            with open(args.export,'w') as outfile:
+                outfile.write(json.dumps(concepts, indent=2, sort_keys=True) + "\n")
+        n_concepts = len(concepts)
+        n_matches = 0
+        for concept_name, concept in concepts.items():
+            if concept is not None:
+                n_matches += len(concept)
+        print(f"INFO: {n_matches} matching names retrieved for {n_concepts} concepts in {t1-t0} sec")
         return
 
 

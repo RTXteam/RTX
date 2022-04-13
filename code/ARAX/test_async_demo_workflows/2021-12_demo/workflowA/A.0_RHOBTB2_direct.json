@@ -1,0 +1,37 @@
+{
+    "message": {
+        "query_graph": {
+            "edges": {
+                "e01": {
+                    "object": "n0",
+                    "subject": "n1",
+                    "predicates": [
+                        "biolink:entity_negatively_regulates_entity",
+                        "biolink:decreases_abundance_of", 
+                        "biolink:decreases_expression_of", 
+                        "biolink:decreases_stability_of", 
+                        "biolink:decreases_uptake_of", 
+                        "biolink:increases_degradation_of", 
+                        "biolink:decreases_synthesis_of", 
+                        "biolink:decreases_activity_of"
+                    ]
+                }
+            },
+            "nodes": {
+                "n0": {
+                    "ids": [
+                        "NCBIGene:23221"
+                    ],
+                    "categories": [
+                        "biolink:Gene"
+                    ]
+                },
+                "n1": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ]
+                }
+            }
+        }
+    }
+}

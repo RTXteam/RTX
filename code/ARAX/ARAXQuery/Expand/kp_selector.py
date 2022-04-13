@@ -48,14 +48,22 @@ class KPSelector:
         sub_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.subject].categories))
         obj_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.object].categories))
         predicates = set(self.biolink_helper.get_descendants(qedge.predicates))
-        
+
+        symmetrical_predicates = set(filter(self.biolink_helper.is_symmetric, predicates))
+
         # use metamap to check kp for predicate triple
         accepting_kps = set()
         for kp in self.meta_map:
             if self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories):
                 accepting_kps.add(kp)
+            # account for symmetrical predicates by checking if kp accepts with swapped sub and obj categories
+            elif self._triple_is_in_meta_map(kp, obj_categories, symmetrical_predicates, sub_categories):
+                accepting_kps.add(kp)
             else:
                 self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
+        kps_missing_meta_info = self.all_kps.difference(set(self.meta_map))
+        for missing_kp in kps_missing_meta_info:
+            self.log.update_query_plan(qedge_key, missing_kp, "Skipped", "No MetaKG info available")
 
         return accepting_kps
 
@@ -76,6 +84,10 @@ class KPSelector:
         obj_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.object].categories))
         predicates = set(self.biolink_helper.get_descendants(qedge.predicates))
         kp_accepts = self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories)
+
+        # account for symmetrical predicates by checking if kp accepts with swapped sub and obj categories
+        symmetrical_predicates = set(filter(self.biolink_helper.is_symmetric, predicates))
+        kp_accepts = kp_accepts or self._triple_is_in_meta_map(kp, obj_categories, symmetrical_predicates, sub_categories)
 
         return kp_accepts
 
@@ -235,10 +247,10 @@ class KPSelector:
                     else:
                         self.log.warning(f"Unable to access {kp}'s /meta_knowledge_graph endpoint (returned status of "
                                          f"{kp_response.status_code})")
-            elif kp == "DTD":
+            elif kp == "infores:arax-drug-treats-disease":
                 meta_map[kp] = {"predicates": self._get_dtd_meta_map(),
                                 "prefixes": dict()}
-            elif kp == "NGD":
+            elif kp == "infores:arax-normalized-google-distance":
                 # This is just a placeholder; not really used for KP selection
                 predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:has_normalized_google_distance_with"}}}
                 meta_map[kp] = {"predicates": predicates,
@@ -293,7 +305,7 @@ class KPSelector:
     def make_qg_use_supported_prefixes(self, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
         for qnode_key, qnode in qg.nodes.items():
             if qnode.ids:
-                if kp_name == "RTX-KG2":
+                if kp_name == "infores:rtx-kg2":
                     # Just convert them into canonical curies
                     qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
                 else:

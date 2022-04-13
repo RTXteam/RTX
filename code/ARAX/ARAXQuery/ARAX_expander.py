@@ -80,7 +80,7 @@ class ARAXExpander:
             }
         return [kp_less] + list(self.kp_command_definitions.values())
 
-    def apply(self, response, input_parameters, mode: str = "ARAX", user_timeout: Optional[int] = None):
+    def apply(self, response, input_parameters, mode: str = "ARAX"):
         force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
@@ -119,14 +119,16 @@ class ARAXExpander:
             return response
         parameters = self._set_and_validate_parameters(kp, input_parameters, log)
 
-        # Handle situation where 'RTX-KG2c' is entered as the kp (technically invalid, but we won't error out)
-        if kp and parameters['kp'].upper() == "RTX-KG2C":
-            parameters['kp'] = "RTX-KG2"
-
         # Default to expanding the entire query graph if the user didn't specify what to expand
         if not parameters['edge_key'] and not parameters['node_key']:
             parameters['edge_key'] = list(message.query_graph.edges)
             parameters['node_key'] = self._get_orphan_qnode_keys(message.query_graph)
+
+        # set timeout based on input parameters, it'll be used later
+        if parameters.get("kp_timeout"):
+            kp_timeout = parameters["kp_timeout"]
+        else:
+            kp_timeout = None
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = copy.deepcopy(message.query_graph)
@@ -166,13 +168,22 @@ class ARAXExpander:
             if qnode.ids and not qnode.categories:
                 # Infer categories for expand's internal use (in KP selection and etc.)
                 qnode.categories = eu.get_preferred_categories(qnode.ids, log)
+                # remove all descendent categories of "biolink:ChemicalEntity" and replace them with "biolink:ChemicalEntity"
+                # This is so SPOKE will be correctly chosen as a KP for queries where a pinned qnode has a category which descends from ChemicalEntity. More info on Github issue1773
+                categories_set = set(qnode.categories)
+                chem_entity_descendents = set(self.bh.get_descendants("biolink:ChemicalEntity"))
+                filtered_categories = categories_set - chem_entity_descendents
+                if categories_set != filtered_categories:
+                    filtered_categories.add("biolink:ChemicalEntity")
+                qnode.categories = list(filtered_categories)
+
                 log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
             elif not qnode.categories:
                 # Default to NamedThing if no category was specified
                 qnode.categories = [self.bh.get_root_category()]
             qnode.categories = self.bh.add_conflations(qnode.categories)
         # Make sure QG only uses canonical predicates
-        if mode == "ARAX":
+        if mode != "RTXKG2":
             log.debug(f"Making sure QG only uses canonical predicates")
             qedge_keys = set(query_graph.edges)
             for qedge_key in qedge_keys:
@@ -258,7 +269,7 @@ class ARAXExpander:
                 else:
                     pre_prune_threshold = self._get_prune_threshold(one_hop_qg)
                 # Prune back any nodes with more than the specified max of answers
-                if mode == "ARAX":
+                if mode != "RTXKG2":
                     log.debug(f"For {qedge_key}, pre-prune threshold is {pre_prune_threshold}")
                     fulfilled_qnode_keys = set(one_hop_qg.nodes).intersection(set(overarching_kg.nodes_by_qg_id))
                     for qnode_key in fulfilled_qnode_keys:
@@ -286,7 +297,7 @@ class ARAXExpander:
                 use_asyncio = True  # Flip this to False if you want to use multiprocessing instead
 
                 # Use a non-concurrent method to expand with KG2 when bypassing the KG2 API
-                if kps_to_query == ["RTX-KG2"] and mode == "RTXKG2":
+                if kps_to_query == ["infores:rtx-kg2"] and mode == "RTXKG2":
                     kp_answers = [self._expand_edge_kg2_local(one_hop_qg, log)]
                 # Otherwise concurrently send this query to each KP selected to answer it
                 elif kps_to_query:
@@ -297,7 +308,8 @@ class ARAXExpander:
                         loop = asyncio.new_event_loop()  # Need to create NEW event loop for threaded environments
                         asyncio.set_event_loop(loop)
                         tasks = [self._expand_edge_async(one_hop_qg, kp_to_use, input_parameters, user_specified_kp,
-                                                         user_timeout, force_local, kp_selector, log, multiple_kps=True)
+                                                         kp_timeout, force_local,
+                                                         kp_selector, log, multiple_kps=True)
                                  for kp_to_use in kps_to_query]
                         task_group = asyncio.gather(*tasks)
                         kp_answers = loop.run_until_complete(task_group)
@@ -314,7 +326,7 @@ class ARAXExpander:
                         self.logger.info(f"PID {os.getpid()}: BEFORE pool: About to create {len(kps_to_query)} child processes from {multiprocessing.current_process()}")
                         with multiprocessing.Pool(len(kps_to_query)) as pool:
                             kp_answers = pool.starmap(self._expand_edge, [[one_hop_qg, kp_to_use, input_parameters,
-                                                                           user_specified_kp, user_timeout, force_local,
+                                                                           user_specified_kp, kp_timeout, force_local,
                                                                            kp_selector, empty_log, True]
                                                                           for kp_to_use in kps_to_query])
                         self.logger.info(f"PID {os.getpid()}: AFTER pool: Pool of {len(kps_to_query)} processes is done, back in {multiprocessing.current_process()}")
@@ -354,7 +366,7 @@ class ARAXExpander:
                 for index, response_tuple in enumerate(kp_answers):
                     answer_kg = response_tuple[0]
                     # Store any kryptonite edge answers as needed
-                    if mode == "ARAX" and qedge.exclude and not answer_kg.is_empty():
+                    if mode != "RTXKG2" and qedge.exclude and not answer_kg.is_empty():
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
                     # Otherwise just merge the answer into the overarching KG
@@ -384,7 +396,7 @@ class ARAXExpander:
                                           f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
                                 overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
 
-                if mode == "ARAX":
+                if mode != "RTXKG2":
                     # Apply any kryptonite ("not") qedges
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
@@ -403,9 +415,9 @@ class ARAXExpander:
 
         # Expand any specified nodes
         if input_qnode_keys:
-            kp_to_use = parameters["kp"] if user_specified_kp else "RTX-KG2"  # Only KG2 does single-node queries
+            kp_to_use = parameters["kp"] if user_specified_kp else "infores:rtx-kg2"  # Only KG2 does single-node queries
             for qnode_key in input_qnode_keys:
-                answer_kg = self._expand_node(qnode_key, kp_to_use, query_graph, mode, user_specified_kp, user_timeout,
+                answer_kg = self._expand_node(qnode_key, kp_to_use, query_graph, mode, user_specified_kp, kp_timeout,
                                               force_local, log)
                 if log.status != 'OK':
                     return response
@@ -420,7 +432,7 @@ class ARAXExpander:
         self._override_node_categories(message.knowledge_graph, message.query_graph)
 
         # Decorate all nodes with additional attributes info from KG2c (iri, description, etc.)
-        if mode == "ARAX":  # Skip doing this for KG2 (until can pass minimal_metadata param)
+        if mode != "RTXKG2":  # Skip doing this for KG2 (until can pass minimal_metadata param)
             decorator = ARAXDecorator()
             decorator.decorate_nodes(response)
             decorator.decorate_edges(response, kind="RTX-KG2")
@@ -436,7 +448,7 @@ class ARAXExpander:
         return response
 
     async def _expand_edge_async(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
-                                 user_specified_kp: bool, user_timeout: Optional[int], force_local: bool,
+                                 user_specified_kp: bool, kp_timeout: Optional[int], force_local: bool,
                                  kp_selector: KPSelector, log: ARAXResponse, multiple_kps: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
@@ -461,13 +473,13 @@ class ARAXExpander:
 
         # Route this query to the proper place depending on the KP
         try:
-            use_custom_querier = kp_to_use in {'DTD', 'NGD'}
+            use_custom_querier = kp_to_use in {'infores:arax-drug-treats-disease', 'infores:arax-normalized-google-distance'}
             if use_custom_querier:
                 num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in edge_qg.nodes.values()])
                 waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
                 log.update_query_plan(qedge_key, kp_to_use, "Waiting", waiting_message)
                 start = time.time()
-                if kp_to_use == 'DTD':
+                if kp_to_use == 'infores:arax-drug-treats-disease':
                     from Expand.DTD_querier import DTDQuerier
                     kp_querier = DTDQuerier(log)
                 else:
@@ -487,7 +499,7 @@ class ARAXExpander:
                 kp_querier = TRAPIQuerier(response_object=log,
                                           kp_name=kp_to_use,
                                           user_specified_kp=user_specified_kp,
-                                          user_timeout=user_timeout,
+                                          kp_timeout=kp_timeout,
                                           kp_selector=kp_selector,
                                           force_local=force_local)
                 answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
@@ -511,7 +523,7 @@ class ARAXExpander:
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
-        if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated and uses canonical predicates
+        if kp_to_use != 'infores:rtx-kg2':  # KG2c is already deduplicated and uses canonical predicates
             answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
             answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
@@ -532,7 +544,7 @@ class ARAXExpander:
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
-            log.error(f"An uncaught error was thrown while trying to Expand using RTX-KG2 (local). Error was: {tb}",
+            log.error(f"An uncaught error was thrown while trying to Expand using infores:rtx-kg2 (local). Error was: {tb}",
                       error_code=f"UncaughtError")
 
         if log.status != 'OK':
@@ -544,7 +556,7 @@ class ARAXExpander:
         return answer_kg, log
 
     def _expand_edge(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
-                     user_specified_kp: bool, user_timeout: Optional[int], force_local: bool, kp_selector: KPSelector,
+                     user_specified_kp: bool, kp_timeout: Optional[int], force_local: bool, kp_selector: KPSelector,
                      log: ARAXResponse, multiprocessed: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
         if multiprocessed:
@@ -572,10 +584,10 @@ class ARAXExpander:
 
         # Route this query to the proper place depending on the KP
         try:
-            if kp_to_use == 'DTD':
+            if kp_to_use == 'infores:arax-drug-treats-disease':
                 from Expand.DTD_querier import DTDQuerier
                 kp_querier = DTDQuerier(log)
-            elif kp_to_use == 'NGD':
+            elif kp_to_use == 'infores:arax-normalized-google-distance':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
             else:
@@ -584,7 +596,7 @@ class ARAXExpander:
                 kp_querier = TRAPIQuerier(response_object=log,
                                           kp_name=kp_to_use,
                                           user_specified_kp=user_specified_kp,
-                                          user_timeout=user_timeout,
+                                          kp_timeout=kp_timeout,
                                           kp_selector=kp_selector,
                                           force_local=force_local)
             # Actually answer the query using the Querier we identified above
@@ -610,7 +622,7 @@ class ARAXExpander:
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
-        if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated and uses canonical predicates
+        if kp_to_use != 'infores:rtx-kg2':  # KG2c is already deduplicated and uses canonical predicates
             answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
             answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
         if eu.qg_is_fulfilled(edge_qg, answer_kg):
@@ -621,7 +633,7 @@ class ARAXExpander:
         return answer_kg, log
 
     def _expand_node(self, qnode_key: str, kp_to_use: str, query_graph: QueryGraph, mode: str,
-                     user_specified_kp: bool, user_timeout: Optional[int], force_local: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     user_specified_kp: bool, kp_timeout: Optional[int], force_local: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider
         log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -634,9 +646,9 @@ class ARAXExpander:
             return answer_kg
 
         # Answer the query using the proper KP (only our own KP answers single-node queries)
-        valid_kps_for_single_node_queries = ["RTX-KG2"]
+        valid_kps_for_single_node_queries = ["infores:rtx-kg2"]
         if kp_to_use in valid_kps_for_single_node_queries:
-            if kp_to_use == 'RTX-KG2' and mode == 'RTXKG2':
+            if kp_to_use == 'infores:rtx-kg2' and mode == 'RTXKG2':
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log)
             else:
@@ -644,12 +656,12 @@ class ARAXExpander:
                 kp_querier = TRAPIQuerier(response_object=log,
                                           kp_name=kp_to_use,
                                           user_specified_kp=user_specified_kp,
-                                          user_timeout=user_timeout,
+                                          kp_timeout=kp_timeout,
                                           force_local=force_local)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
-            if kp_to_use != 'RTX-KG2':  # KG2c is already deduplicated
+            if kp_to_use != 'infores:rtx-kg2':  # KG2c is already deduplicated
                 answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
 
             return answer_kg
@@ -808,7 +820,7 @@ class ARAXExpander:
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
             for node_key, node in nodes.items():
                 # Exclude nodes that correspond to a 'pinned' curie in the QG but are fulfilling a different qnode
-                if mode == "ARAX" and node_key in pinned_curies_map:
+                if mode != "RTXKG2" and node_key in pinned_curies_map:
                     if qnode_key in pinned_curies_map[node_key]:
                         overarching_kg.add_node(node_key, node, qnode_key)
                     else:
@@ -1082,7 +1094,7 @@ class ARAXExpander:
     def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], log: ARAXResponse) -> Dict[str, any]:
         parameters = {"kp": kp}
         if not kp:
-            kp = "RTX-KG2"  # We'll use a standard set of parameters (like for KG2)
+            kp = "infores:rtx-kg2"  # We'll use a standard set of parameters (like for KG2)
 
         # First set parameters to their defaults
         for kp_parameter_name, info_dict in self.kp_command_definitions[kp]["parameters"].items():
@@ -1267,7 +1279,7 @@ def main():
         "add_qnode(key=n00, curie=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
         "add_qnode(key=n01, category=protein, is_set=true)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(edge_key=e00, kp=BTE)",
+        "expand(edge_key=e00, kp=infores:infores:biothings-explorer)",
         "return(message=true, store=false)",
     ]
 

@@ -19,5 +19,5 @@ cd /mnt/data/orangeboard/$DEVAREA/RTX/code/UI/OpenAPI/python-flask-server
 
 export PATH=/mnt/data/python/Python-3.7.3/bin:$PATH
 
-exec /usr/bin/python3 -m openapi_server 1>$LOGFILE 2>$ELOGFILE
+exec /usr/bin/python3 -u -m openapi_server 1>$LOGFILE 2>$ELOGFILE
 

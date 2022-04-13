@@ -4,16 +4,27 @@ import connexion, flask, flask_cors
 import logging
 import json
 import openapi_server.encoder
-import os, sys, signal
+import os, sys, signal, atexit
 
 logging.basicConfig(level=logging.INFO)  # can change this to logging.DEBUG for debuggging
 
+@atexit.register
+def ignore_sigchld():
+    logging.debug("Setting SIGCHLD to SIG_IGN before exiting")
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
+    
 def receive_sigchld(signal_number, frame):
     if signal_number == signal.SIGCHLD:
-        try:
-            os.waitpid(-1, os.WNOHANG)
-        except ChildProcessError as e:
-            logging.error(repr(e))
+        while True:
+            try:
+                pid, _ = os.waitpid(-1, os.WNOHANG)
+                logging.debug(f"PID returned from call to os.waitpid: {pid}")
+                if pid == 0:
+                    break
+            except ChildProcessError as e:
+                logging.debug(repr(e) + "; this is expected if there are no more child processes to reap")
+                break
 
 def receive_sigpipe(signal_number, frame):
     if signal_number == signal.SIGPIPE:

@@ -1,5 +1,6 @@
 ##### 1. Build and load KG2c:
 
+- [ ] update the synonymizer's and BiolinkHelper's biolink version number (as applicable)
 - [ ] build a synonymizer from the new KG2
 - [ ] build a new KG2c
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/
@@ -23,7 +24,8 @@ Copies of all of these should be put in `/data/orangeboard/databases/KG2.X.Y` on
 - [ ] refreshed DTD @chunyuma
 - [ ] DTD model @chunyuma _(may be skipped - depends on the KG2 version)_
 - [ ] DTD database @chunyuma _(may be skipped - depends on the KG2 version)_
-- [ ] 'slim' databases (used for Travis) @chunyuma / @finnagin
+- [ ] replace the configv2.json file on cicd.rtx.ai with the new one @finnagin
+- [ ] download the new database files to cicd.rtx.ai @finnagin
 
 **NOTE**: As databases are rebuilt, the new copy of `config_local.json` will need to be updated to point to their new paths. However, if the rollout of KG2 has already occurred, then you should update the master `configv2.json` directly. 
 
@@ -31,10 +33,10 @@ Copies of all of these should be put in `/data/orangeboard/databases/KG2.X.Y` on
 
 Associated code changes should go in the `kg2integration` branch.
 
-- [ ] update the Biolink version number and KG2 version number in the openapi yaml @edeutsch?
 - [ ] update Expand code as needed
 - [ ] update any other modules as needed
 - [ ] test everything together (entire ARAX pytest suite should pass when using the new `config_local.json` - must locally set `force_local = True` in `ARAX_expander.py` to avoid using the old KG2 API)
+- [ ] update the ARAX, KG2, and Biolink version numbers in openapi yaml files @edeutsch
 
 ##### 4. Do the rollout:
 
@@ -42,6 +44,7 @@ Associated code changes should go in the `kg2integration` branch.
 - [ ] merge `kg2integration` into `master`
 - [ ] make `config_local.json` the new master config file on araxconfig.rtx.ai (rename it to `configv2.json`)
 - [ ] roll `master` out to the various arax.ncats.io endpoints and delete their `configv2.json`s
+- [ ] run the database manager
 - [ ] run the pytest suite on the various endpoints
 
 ##### 5. Final items/clean up:

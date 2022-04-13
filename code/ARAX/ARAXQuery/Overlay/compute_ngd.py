@@ -12,6 +12,7 @@ import numpy as np
 from datetime import datetime
 from typing import List
 import itertools
+import copy
 
 import random
 import time
@@ -72,10 +73,131 @@ class ComputeNGD:
         url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
         qg = self.message.query_graph
         kg = self.message.knowledge_graph
+        ngd_description = """
+        Normalized google distance is a metric based on edge subject/object node co-occurrence in abstracts of all [PubMed](https://pubmed.ncbi.nlm.nih.gov/) articles. 
+        The formula can be found here on [wikipedia.](https://en.wikipedia.org/wiki/Normalized_Google_distance) 
+        Where in this case f(x,y) is the number of PubMed abstracts both concepts apear in, f(x)/f(y) are the number of abstracts individual concepts apear in, and N is the number of pubmed articles times the average numbver of search terms per article (27 million * 20).
+        """
         
-
         # if you want to add virtual edges, identify the subject/objects, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
-        if 'virtual_relation_label' in parameters:
+        # FW: changing this so if there is a virtual relation label but no subject and object then add edges for all subject object pairs in the quesry graph.
+        if 'subject_qnode_key' not in parameters and 'object_qnode_key' not in parameters and 'virtual_relation_label' in parameters:
+            seen_node_pairs = set()
+            qgraph_edges = copy.deepcopy(list(qg.edges.values()))
+            for query_edge in qgraph_edges:
+                subject_qnode_key = query_edge.subject
+                object_qnode_key = query_edge.object
+                if subject_qnode_key < object_qnode_key:
+                    qnode_key_pair = (subject_qnode_key,object_qnode_key)
+                else:
+                    qnode_key_pair = (object_qnode_key,subject_qnode_key)
+                # FW: check if we have already added an edge for this pair
+                if qnode_key_pair in seen_node_pairs:
+                    pass
+                else:
+                    seen_node_pairs.add(qnode_key_pair)
+                    # FW: Now add the edge for this qnode pair
+                    # FW NOTE: If we decide to keep these changes we should really pull this out into a method as everything after this was copy pasted from below in the 'virtual_relation_label' in parameters section
+                    node_pairs_to_evaluate = ou.get_node_pairs_to_overlay(subject_qnode_key, object_qnode_key, qg, kg, self.response)
+                    # Grab PMID lists for all involved nodes
+                    involved_curies = {curie for node_pair in node_pairs_to_evaluate for curie in node_pair}
+                    canonicalized_curie_lookup = self._get_canonical_curies_map(list(involved_curies))
+                    self.load_curie_to_pmids_data(canonicalized_curie_lookup.values())
+                    added_flag = False  # check to see if any edges where added
+                    self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
+                    # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
+                    for (subject_curie, object_curie) in node_pairs_to_evaluate:
+                        # create the edge attribute if it can be
+                        canonical_subject_curie = canonicalized_curie_lookup.get(subject_curie, subject_curie)
+                        canonical_object_curie = canonicalized_curie_lookup.get(object_curie, object_curie)
+                        ngd_value, pmid_set = self.calculate_ngd_fast(canonical_subject_curie, canonical_object_curie)
+                        if np.isfinite(ngd_value):  # if ngd is finite, that's ok, otherwise, stay with default
+                            edge_value = ngd_value
+                        else:
+                            edge_value = default_value
+                        edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
+                        pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
+                        if edge_attribute:
+                            added_flag = True
+                            # make the edge, add the attribute
+
+                            # edge properties
+                            now = datetime.now()
+                            edge_type = "biolink:has_normalized_google_distance_with"
+                            qedge_keys = [parameters['virtual_relation_label']]
+                            relation = parameters['virtual_relation_label']
+                            is_defined_by = "ARAX"
+                            defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
+                            provided_by = "infores:arax"
+                            confidence = None
+                            weight = None  # TODO: could make the actual value of the attribute
+                            subject_key = subject_curie
+                            object_key = object_curie
+
+                            # now actually add the virtual edges in
+                            id = f"{relation}_{self.global_iter}"
+                            # ensure the id is unique
+                            # might need to change after expand is implemented for TRAPI 1.0
+                            while id in self.message.knowledge_graph.edges:
+                                id = f"{relation}_{self.global_iter}.{random.randint(10**(9-1), (10**9)-1)}"
+                            self.global_iter += 1
+                            edge_attribute_list = [
+                                edge_attribute,
+                                pmid_attribute,
+                                EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="biolink:Unknown"),
+                                #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
+                                EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                                EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+                                EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
+                                #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
+                                #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
+                                #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)
+                            ]
+                            # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key,
+                            #             object_key=object_key,
+                            #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
+                            #             provided_by=provided_by,
+                            #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
+
+                            #### FIXME temporary hack by EWD
+                            #edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
+                            #            attributes=edge_attribute_list)
+                            edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
+                                        attributes=edge_attribute_list)
+                            #edge.relation = relation
+                            #### /end FIXME
+
+                            edge.qedge_keys = qedge_keys
+                            self.message.knowledge_graph.edges[id] = edge
+
+                            #FW: check if results exist then modify them with the ngd edge
+                            if self.message.results is not None and len(self.message.results) > 0:
+                                ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
+
+                    # Now add a q_edge the query_graph since I've added an extra edge to the KG
+                    if added_flag:
+                        #edge_type = parameters['virtual_edge_type']
+                        edge_type = [ "biolink:has_normalized_google_distance_with" ]
+                        relation = parameters['virtual_relation_label']
+                        option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, qg, self.response)
+                        # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
+                        #                subject_key=subject_qnode_key, object_key=object_qnode_key,
+                        #                option_group_id=option_group_id)
+
+                        #### FIXME by EWD. For later fixing
+                        #q_edge = QEdge(predicates=edge_type, relation=relation, subject=subject_qnode_key,
+                        #           object=object_qnode_key, option_group_id=option_group_id)
+                        q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key,
+                                   object=object_qnode_key, option_group_id=option_group_id)
+                        q_edge.relation = relation
+                        #### end FIXME
+
+                        self.message.query_graph.edges[relation]=q_edge
+
+
+                    self.response.info(f"NGD values successfully added to edges for the qnode pair ({subject_qnode_key},{object_qnode_key})")
+
+        elif 'virtual_relation_label' in parameters:
             # Figure out which node pairs to compute NGD between
             subject_qnode_key = parameters['subject_qnode_key']
             object_qnode_key = parameters['object_qnode_key']
@@ -96,7 +218,7 @@ class ComputeNGD:
                     edge_value = ngd_value
                 else:
                     edge_value = default_value
-                edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url)  # populate the NGD edge attribute
+                edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
                 pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
                 if edge_attribute:
                     added_flag = True
@@ -198,7 +320,7 @@ class ComputeNGD:
                         edge_value = ngd_value
                     else:
                         edge_value = default_value
-                    ngd_edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url)  # populate the NGD edge attribute
+                    ngd_edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
                     pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=[f"PMID:{pmid}" for pmid in pmid_set])
                     edge.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
                     edge.attributes.append(pmid_edge_attribute)

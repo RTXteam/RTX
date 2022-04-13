@@ -267,14 +267,14 @@ class ComputeFTEST:
             self.response.warning(f"More than one knowledge provider were detected to be used for expanding the edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
             self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
 
-        ## check if kp is "ARAX/KG1" or "RTX-KG2", if not, report error
+        ## check if kp is "ARAX/KG1" or "infores:rtx-kg2", if not, report error
         if kp == "rtx_kg1_kp":
             kp = 'ARAX/KG1'
         elif kp == "rtx-kg2":
-            kp = 'RTX-KG2'
+            kp = 'infores:rtx-kg2'
         else:
-            kp = 'RTX-KG2'
-            self.response.warning(f"Most of edges between the subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key} are from {kp} rather than RTX-KG2. But we can't access the total number of nodes with specific node type from {kp}, so RTX-KG2 was still used to calcualte Fisher's exact test.")
+            kp = 'infores:rtx-kg2'
+            self.response.warning(f"There is more than one knowledge source for the edges between the subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key} and most of them are from {kp}. The infores:rtx-kg2 is still used to calculate Fisher's exact test.")
 
         if kp == 'ARAX/KG1':
             ## This warning can be removed once KG1 is deprecated
@@ -291,9 +291,9 @@ class ComputeFTEST:
             self.response.debug(f"{len(object_node_dict)} object nodes with qnode key {object_qnode_key} and node type {object_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
 
 
-        # find all nodes with the same type of 'subject_qnode_key' nodes in specified KP ('ARAX/KG1','RTX-KG2') that are adjacent to target nodes
+        # find all nodes with the same type of 'subject_qnode_key' nodes in specified KP ('ARAX/KG1','infores:rtx-kg2') that are adjacent to target nodes
         # if rel_edge_key is not None, query adjacent node from database otherwise query adjacent node with DSL command by providing a list of query nodes to add_qnode()
-        ## Note: Regarding of whether kp='ARAX/KG1' or kp='RTX-KG2', it will always query adjacent node count based on kg2c
+        ## Note: Regarding of whether kp='ARAX/KG1' or kp='infores:rtx-kg2', it will always query adjacent node count based on kg2c
         if rel_edge_key:
             if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
                 self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total object nodes in Fisher's Exact Test")
@@ -303,11 +303,11 @@ class ComputeFTEST:
                     self.response.warning(f"The edges with specified qedge key {rel_edge_key} have no category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
                 else:
                     self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
-                self.response.debug(f"RTX-KG2 was used to calculate total object nodes in Fisher's Exact Test")
-                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='RTX-KG2', rel_type=None)
+                self.response.debug(f"infores:rtx-kg2 was used to calculate total object nodes in Fisher's Exact Test")
+                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='infores:rtx-kg2', rel_type=None)
         else:  # if no rel_edge_key is specified, we ignore the edge predicate and use all categories to find all subject nodes in KP
-            self.response.debug(f"RTX-KG2 was used to calculate total object nodes in Fisher's Exact Test")
-            result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='RTX-KG2', rel_type=None)
+            self.response.debug(f"infores:rtx-kg2 was used to calculate total object nodes in Fisher's Exact Test")
+            result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='infores:rtx-kg2', rel_type=None)
 
         if result is None:
             return self.response  ## Something wrong happened for querying the adjacent nodes
@@ -327,7 +327,7 @@ class ComputeFTEST:
         if len(object_node_dict) != 0:
             ## Based on KP detected in message KG, find the total count of node with the same type of source node
             ## Note: Regardless of whether kg='KG1' or kg='KG2' is specified in self.size_of_given_type_in_KP, it will always query total count based on kg2c
-            if kp=='ARAX/KG1' or kp=='RTX-KG2':
+            if kp=='ARAX/KG1' or kp=='infores:rtx-kg2':
                 size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0])
                 self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in KG2c based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
             else:
@@ -429,13 +429,13 @@ class ComputeFTEST:
         return self.response
 
 
-    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="RTX-KG2", rel_type=None):
+    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="infores:rtx-kg2", rel_type=None):
         """
         Query adjacent nodes of a given source node based on adjacent node type.
         :param node_curie: (required) the curie id of query node. It accepts both single curie id or curie id list eg. "UniProtKB:P14136" or ['UniProtKB:P02675', 'UniProtKB:P01903', 'UniProtKB:P09601', 'UniProtKB:Q02878']
         :param source_type: (required) the type of source node, eg. "gene"
         :param adjacent_type: (required) the type of adjacent node, eg. "biological_process"
-        :param kp: (optional) the knowledge provider to use, eg. "RTX-KG2"(default)
+        :param kp: (optional) the knowledge provider to use, eg. "infores:rtx-kg2"(default)
         :param rel_type: (optional) edge type to consider, eg. "involved_in"
         :return a tuple with a dict containing the number of adjacent nodes for the query node and a list of removed nodes
         """
@@ -519,7 +519,7 @@ class ComputeFTEST:
             try:
                 result = araxq.query(query)
                 if result.status != 'OK':
-                    self.response.error(f"Fail to query adjacent nodes from RTX-KG2 for {node_curie}")
+                    self.response.error(f"Fail to query adjacent nodes from infores:rtx-kg2 for {node_curie}")
                     return res
                 else:
                     res_dict = dict()

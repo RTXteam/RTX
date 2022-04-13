@@ -38,6 +38,7 @@ class RTXConfiguration:
         # This is the flag/property to switch between the two containers
         self.live = "Production"
         # self.live = "KG2"
+        # self.live = "KG2c"
         # self.live = "rtxdev"
         # self.live = "staging"
         # self.live = "local"

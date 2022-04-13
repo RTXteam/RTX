@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   description: TRAPI 1.2 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
-  version: 1.2.6
+  version: 1.2.7
   title: ARAX Translator Reasoner
   contact:
     email: edeutsch@systemsbiology.org
@@ -14,7 +14,7 @@ info:
     team:
       - Expander Agent
     infores: infores:arax
-    biolink-version: 2.1.0
+    biolink-version: 2.2.6
     externalDocs:
       description: >-
         The values for component and team are restricted according to this
@@ -437,6 +437,32 @@ paths:
                 type: object
         '404':
           description: "Entity not found"
+  /status/logs:
+    get:
+      operationId: get_logs
+      parameters:
+      - description: Specify the log sending mode
+        explode: true
+        in: query
+        name: mode
+        required: false
+        schema:
+          example: tail
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: successful operation
+        "404":
+          description: Logs not found
+      summary: Get log information from the server
+      tags:
+      - status
+      x-openapi-router-controller: openapi_server.controllers.status_controller
 components:
   schemas:
     Query:
@@ -789,6 +815,17 @@ components:
           description: >-
             Validation results and other summary stats computed
             for this Response.
+        total_results_count:
+          type: integer
+          nullable: true
+          description: >-
+            The total number of results that were generated prior
+            to any filtering.
+        info:
+          type: string
+          nullable: true
+          description: >-
+            A placholder for including some additional information
       additionalProperties: true
       required:
         - message
@@ -1150,6 +1187,7 @@ components:
           default: []
         option_group_id:
           type: string
+          nullable: true
           description: >-
             Optional string acting as a label on a set of nodes and/or edges
             indicating that they belong to a group that are to be
@@ -1202,6 +1240,7 @@ components:
             are excluded from the final results. (optional)
         option_group_id:
           type: string
+          nullable: true
           description: >-
             Optional string acting as a label on a set of nodes and/or edges
             indicating that they belong to a group that are to be
@@ -1283,6 +1322,7 @@ components:
             descriptive phrase here and submit the new type for consideration
             by the appropriate authority.
           example: EDAM:data_1187
+          nullable: true
         attribute_source:
           type: string
           description: >-
@@ -1311,6 +1351,7 @@ components:
             Node attributes provided by this TRAPI web service.
           items:
             $ref: '#/components/schemas/SubAttribute'
+          nullable: true
       required:
         - attribute_type_id
         - value

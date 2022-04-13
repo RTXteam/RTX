@@ -1,0 +1,29 @@
+{
+  "message": {
+    "query_graph": {
+      "edges": {
+        "e00": {
+          "subject": "n00",
+          "object": "n01"
+        },
+        "e01": {
+          "subject": "n01",
+          "object": "n02"
+        }
+      },
+      "nodes": {
+        "n00": {
+          "ids": ["DOID:14330"],
+          "categories": ["biolink:Disease"]
+        },
+        "n01": {
+          "categories": ["biolink:NamedThing"]
+        },
+        "n02": {
+          "ids": ["DOID:8778"],
+          "categories": ["biolink:Disease"]
+        }
+      }
+    }
+  }
+}

@@ -494,7 +494,7 @@ def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, 
 
 
 def get_arax_source_attribute() -> Attribute:
-    arax_infores_curie = get_translator_infores_curie("ARAX")
+    arax_infores_curie = "infores:arax"
     return Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
                      value=arax_infores_curie,
                      value_type_id="biolink:InformationResource",
@@ -506,14 +506,14 @@ def get_kp_source_attribute(kp_name: str, arax_kp: bool = False, description: Op
         description = f"ARAX inserted this attribute because the KP ({kp_name}) did not seem to provide such " \
                       f"an attribute (indicating that this edge came from them)."
     return Attribute(attribute_type_id="biolink:knowledge_source",
-                     value=get_translator_infores_curie(kp_name),
+                     value=kp_name,
                      value_type_id="biolink:InformationResource",
                      description=description,
-                     attribute_source=get_translator_infores_curie("ARAX"))
+                     attribute_source="infores:arax")
 
 
 def get_computed_value_attribute() -> Attribute:
-    arax_infores_curie = get_translator_infores_curie("ARAX")
+    arax_infores_curie = "infores:arax"
     return Attribute(attribute_type_id="biolink:computed_value",
                      value=True,
                      value_type_id="metatype:Boolean",
@@ -524,48 +524,28 @@ def get_computed_value_attribute() -> Attribute:
 
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
-        "BTE": "https://api.bte.ncats.io/v1",  # TODO: Enter 1.2 endpoint once available..
-        "GeneticsKP": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.2",
-        "MolePro": "https://translator.broadinstitute.org/molepro/trapi/v1.2",
-        "RTX-KG2": RTXConfig.rtx_kg2_url,
-        "ClinicalRiskKP": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
-        "WellnessKP": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
-        "DrugResponseKP": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
-        "TumorGeneMutationKP": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
-        "CHP": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)
-        "COHD": "https://cohd.io/api",
-        "ICEES-DILI": "https://icees.renci.org:16341",  # TODO: Enter 1.2 endpoint once available..
-        "ICEES-Asthma": "https://icees.renci.org:16339"  # TODO: Enter 1.2 endpoint once available..
+        "infores:biothings-explorer": "https://api.bte.ncats.io/v1",  # TODO: Enter 1.2 endpoint once available..
+        "infores:genetics-data-provider": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.2",
+        "infores:molepro": "https://translator.broadinstitute.org/molepro/trapi/v1.2",
+        "infores:rtx-kg2": RTXConfig.rtx_kg2_url,
+        "infores:biothings-multiomics-clinical-risk": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
+        "infores:biothings-multiomics-wellness": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
+        "infores:spoke": "https://spokekp.healthdatascience.cloud/api/v1.2/",
+        "infores:biothings-multiomics-biggim-drug-response": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
+        "infores:biothings-tcga-mut-freq": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
+        "infores:connections-hypothesis": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)
+        "infores:cohd": "https://cohd.io/api",
+        "infores:icees-dili": "https://icees-dili.renci.org",
+        "infores:icees-asthma": "https://icees-asthma.renci.org"
     }
     return endpoint_map.get(kp_name)
-
-
-def get_translator_infores_curie(kp_name: str) -> Union[str, None]:
-    endpoint_map = {
-        "ARAX": "infores:arax",
-        "BTE": "infores:biothings-explorer",
-        "GeneticsKP": "infores:genetics-data-provider",
-        "MolePro": "infores:molepro",
-        "RTX-KG2": "infores:rtx-kg2",
-        "CHP": "infores:connections-hypothesis",
-        "COHD": "infores:cohd",
-        "DTD": "infores:arax-drug-treats-disease",  # TODO: get an official infores curie for this?
-        "NGD": "infores:arax-normalized-google-distance",  # TODO: get an official infores curie for this?
-        "ClinicalRiskKP": "infores:biothings-multiomics-clinical-risk",
-        "WellnessKP": "infores:biothings-multiomics-wellness",
-        "DrugResponseKP": "infores:biothings-multiomics-drug-response",
-        "TumorGeneMutationKP": "infores:biothings-tcga-mut-freq",
-        "ICEES-DILI": "infores:icees-dili",
-        "ICEES-Asthma": "infores:icees-asthma"
-    }
-    return endpoint_map.get(kp_name, kp_name)
 
 
 def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXResponse) -> List[str]:
     # Order KPs such that those with longer requests will tend to be kicked off earlier
     kp_names = set(kp_names)
-    asyncio_start_order = ["CHP", "BTE", "DrugResponseKP", "ClinicalRiskKP", "WellnessKP", "TumorGeneMutationKP",
-                           "ICEES-DILI", "ICEES-Asthma", "COHD", "MolePro", "RTX-KG2", "GeneticsKP", "NGD", "DTD"]
+    asyncio_start_order = ["infores:connections-hypothesis", "infores:biothings-explorer", "infores:biothings-multiomics-biggim-drug-response", "infores:biothings-multiomics-clinical-risk", "infores:biothings-multiomics-wellness", "infores:spoke", "infores:biothings-tcga-mut-freq",
+                           "infores:icees-dili", "infores:icees-asthma", "infores:cohd", "infores:molepro", "infores:rtx-kg2", "infores:genetics-data-provider", "infores:arax-normalized-google-distance", "infores:arax-drug-treats-disease"]
     unordered_kps = kp_names.difference(set(asyncio_start_order))
     if unordered_kps:
         log.warning(f"Selected KP(s) don't have asyncio start ordering specified: {unordered_kps}")
@@ -700,7 +680,16 @@ def get_standard_parameters() -> dict:
             "examples": [500, 2000],
             "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of "
                            "this threshold will be pruned, using Fisher Exact Test to rank answers."
+        },
+        "kp_timeout": {
+            "is_required": False,
+            "type": "integer",
+            "default": None,
+            "examples": [30, 120],
+            "description": "The number of seconds Expand will wait for a response from a KP before "
+                           "cutting the query off and proceeding without results from that KP."
         }
+
     }
     return standard_parameters
 
@@ -708,14 +697,14 @@ def get_standard_parameters() -> dict:
 def get_kp_command_definitions() -> dict:
     standard_parameters = get_standard_parameters()
     return {
-        "RTX-KG2": {
-            "dsl_command": "expand(kp=RTX-KG2)",
+        "infores:rtx-kg2": {
+            "dsl_command": "expand(kp=infores:rtx-kg2)",
             "description": "This command reaches out to the RTX-KG2 API to find all bioentity subpaths "
                            "that satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "BTE": {
-            "dsl_command": "expand(kp=BTE)",
+        "infores:biothings-explorer": {
+            "dsl_command": "expand(kp=infores:biothings-explorer)",
             "description": "This command uses BioThings Explorer (from the Service Provider) to find all bioentity "
                            "subpaths that satisfy the query graph. Of note, all query nodes must have a type "
                            "specified for BTE queries. In addition, bi-directional queries are only partially "
@@ -724,70 +713,76 @@ def get_kp_command_definitions() -> dict:
                            "answers matching the input edge direction).",
             "parameters": standard_parameters
         },
-        "COHD": {
-            "dsl_command": "expand(kp=COHD)",
+        "infores:cohd": {
+            "dsl_command": "expand(kp=infores:cohd)",
             "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
                            " satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "GeneticsKP": {
-            "dsl_command": "expand(kp=GeneticsKP)",
+        "infores:genetics-data-provider": {
+            "dsl_command": "expand(kp=infores:genetics-data-provider)",
             "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
                            "satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "MolePro": {
-            "dsl_command": "expand(kp=MolePro)",
+        "infores:molepro": {
+            "dsl_command": "expand(kp=infores:molepro)",
             "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
                            "subpaths that satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "ClinicalRiskKP": {
-            "dsl_command": "expand(kp=ClinicalRiskKP)",
+        "infores:biothings-multiomics-clinical-risk": {
+            "dsl_command": "expand(kp=infores:biothings-multiomics-clinical-risk)",
             "description": "This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity "
                            "subpaths that satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "WellnessKP": {
-            "dsl_command": "expand(kp=WellnessKP)",
+        "infores:biothings-multiomics-wellness": {
+            "dsl_command": "expand(kp=infores:biothings-multiomics-wellness)",
             "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
                            "subpaths that satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "DrugResponseKP": {
-            "dsl_command": "expand(kp=DrugResponseKP)",
+        "infores:spoke": {
+            "dsl_command": "expand(kp=infores:spoke)",
+            "description": "This command reaches out to the SPOKE KP to find all bioentity "
+                           "subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:biothings-multiomics-biggim-drug-response": {
+            "dsl_command": "expand(kp=infores:biothings-multiomics-biggim-drug-response)",
             "description": "This command reaches out to the Multiomics Big GIM II Drug Response KP to find all "
                            "bioentity subpaths that satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "TumorGeneMutationKP": {
-            "dsl_command": "expand(kp=TumorGeneMutationKP)",
+        "infores:biothings-tcga-mut-freq": {
+            "dsl_command": "expand(kp=infores:biothings-tcga-mut-freq)",
             "description": "This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find "
                            "all bioentity subpaths that satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "NGD": {
-            "dsl_command": "expand(kp=NGD)",
+        "infores:arax-normalized-google-distance": {
+            "dsl_command": "expand(kp=infores:arax-normalized-google-distance)",
             "description": "This command uses ARAX's in-house normalized google distance (NGD) database to expand "
                            "a query graph; it returns edges between nodes with an NGD value below a certain "
                            "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
                            "configurable/smarter in the future.",
             "parameters": standard_parameters
         },
-        "ICEES-DILI": {
-            "dsl_command": "expand(kp=ICEES-DILI)",
+        "infores:icees-dili": {
+            "dsl_command": "expand(kp=infores:icees-dili)",
             "description": "This command reaches out to the ICEES knowledge provider's DILI instance to find "
                            "all bioentity subpaths that satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "ICEES-Asthma": {
-            "dsl_command": "expand(kp=ICEES-Asthma)",
+        "infores:icees-asthma": {
+            "dsl_command": "expand(kp=infores:icees-asthma)",
             "description": "This command reaches out to the ICEES knowledge provider's Asthma instance to find "
                            "all bioentity subpaths that satisfy the query graph.",
             "parameters": standard_parameters
         },
-        "CHP": {
-            "dsl_command": "expand(kp=CHP)",
+        "infores:connections-hypothesis": {
+            "dsl_command": "expand(kp=infores:connections-hypothesis)",
             "description": "This command reaches out to CHP (the Connections Hypothesis Provider) to query the probability "
                            "of the form P(Outcome | Gene Mutations, Disease, Therapeutics, ...). It currently can answer a question like "
                            "'Given a gene or a batch of genes, what is the probability that the survival time (day) >= a given threshold for this gene "
@@ -796,8 +791,8 @@ def get_kp_command_definitions() -> dict:
                            "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
             "parameters": standard_parameters
         },
-        "DTD": {
-            "dsl_command": "expand(kp=DTD)",
+        "infores:arax-drug-treats-disease": {
+            "dsl_command": "expand(kp=infores:arax-drug-treats-disease)",
             "description": "This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
                            "a query graph; it returns edges between nodes with an DTD probability above a certain "
                            "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
