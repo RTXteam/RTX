@@ -138,7 +138,7 @@ class SriNodeNormalizer:
                     supported_curies += 1
                     batch.append(normalizer_node_curie)
 
-                if len(batch) > 250 or keep == 99:
+                if len(batch) > 150 or keep == 99:
                     if bytes_read + 3 > filesize:
                         print("Drain final batch")
                     results = self.get_node_normalizer_results(batch)
