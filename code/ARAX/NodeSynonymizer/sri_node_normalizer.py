@@ -286,7 +286,7 @@ class SriNodeNormalizer:
             error_state = False
 
             try:
-                response_content = requests.post(url, data={"curies": curies}, headers={'accept': 'application/json'})
+                response_content = requests.post(url, json={"curies": curies}, headers={'accept': 'application/json'})
             except:
                 print("Uncaught error during web request to SRI normalizer")
                 error_state = True
