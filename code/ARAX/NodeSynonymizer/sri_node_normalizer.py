@@ -138,7 +138,7 @@ class SriNodeNormalizer:
                     supported_curies += 1
                     batch.append(normalizer_node_curie)
 
-                if len(batch) > 150 or keep == 99:
+                if len(batch) > 500 or keep == 99:
                     if bytes_read + 3 > filesize:
                         print("Drain final batch")
                     results = self.get_node_normalizer_results(batch)
@@ -273,12 +273,7 @@ class SriNodeNormalizer:
             print(f"ERROR: Call to sri_node_normalizer requested cache_only and we missed the cache with {curies}")
 
         # Build the URL and fetch the result
-        url = f"{BASE_URL}/get_normalized_nodes?"
-
-        prefix = ''
-        for curie in curies:
-            url += f"{prefix}curie={curie}"
-            prefix = '&'
+        url = f"{BASE_URL}/get_normalized_nodes"
 
         #eprint(f"{len(url)},")
 
@@ -291,19 +286,21 @@ class SriNodeNormalizer:
             error_state = False
 
             try:
-                response_content = requests.get(url, headers={'accept': 'application/json'})
+                response_content = requests.post(url, data={"curies": curies}, headers={'accept': 'application/json'})
             except:
                 print("Uncaught error during web request to SRI normalizer")
                 error_state = True
-
-            status_code = response_content.status_code
+                status_code = 0
+                response_content = "uncaught error - no response content"
+            else:
+                status_code = response_content.status_code
 
             # Check for a returned error
             if status_code == 404:
                 #eprint(f"INFO: No normalization data for {curie}")
                 return
             elif status_code != 200:
-                eprint(f"ERROR returned with status {status_code} while searching with URL of length {len(url)} including {curie}")
+                eprint(f"ERROR returned with status {status_code} while searching with curie list of length {len(curies)} including {curies[0]}")
                 eprint(response_content)
                 error_state = True
 
