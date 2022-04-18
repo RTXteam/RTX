@@ -57,6 +57,11 @@ class SmartAPI:
             except KeyError:
                 operations = None
 
+            try:
+                infores_name = hit["info"]["x-translator"]["infores"]
+            except KeyError:
+                infores_name = None
+
             if version is not None:
                 if url_version is None:
                     continue
@@ -68,9 +73,77 @@ class SmartAPI:
                 "url": url,
                 "operations": operations,
                 "version": url_version,
+                "infores_name": infores_name
             })
 
         return endpoints
+
+
+    @lru_cache(maxsize=None)
+    def get_infores_KPs(self, version=None):
+        """Find all endpoints that match a query for TRAPI which are classified as KPs and have infores names"""
+        with requests_cache.disabled():
+            response_content = requests.get(
+                self.base_url + "/query?limit=1000&q=TRAPI",
+                headers={"accept": "application/json"},
+            )
+
+        KPs = []
+
+        try:
+            response_content.raise_for_status()
+            response_dict = response_content.json()
+        except:
+            return KPs
+
+        for hit in response_dict["hits"]:
+            try:
+                url = hit["servers"][0]["url"]
+            except (KeyError, IndexError):
+                url = None
+            try:
+                url_version = hit["info"]["x-trapi"]["version"]
+            except KeyError:
+                url_version = None
+            try:
+                operations = hit["info"]["x-trapi"]["operations"]
+            except KeyError:
+                operations = None
+
+            try:
+                infores_name = hit["info"]["x-translator"]["infores"]
+            except KeyError:
+                infores_name = None
+
+            try:
+                component = hit["info"]["x-translator"]["component"]
+            except KeyError:
+                component = None
+
+            try:
+                title = hit["info"]["title"]
+            except KeyError:
+                title = None
+
+            if version is not None:
+                if url_version is None:
+                    continue
+                match = re.match(version, url_version)
+                if not match:
+                    continue
+
+            if infores_name == None or component != "KP":
+                continue
+
+            KPs.append({
+                "url": url,
+                "operations": operations,
+                "version": url_version,
+                "infores_name": infores_name,
+                "title": title
+            })
+
+        return KPs
 
 
 def main():
