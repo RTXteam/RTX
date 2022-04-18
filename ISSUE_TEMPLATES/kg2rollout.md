@@ -3,25 +3,24 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
 ##### 1. Build and load KG2c:
 
 - [ ] merge `master` into the `kg2integration` branch
-- [ ] update the hardcoded biolink version numbers in the `kg2integration` branch (as applicable):
+- [ ] update the two hardcoded biolink version numbers in the `kg2integration` branch (as applicable):
   - [ ] for ARAX [here](https://github.com/RTXteam/RTX/blob/0107502d7da4f1ee70d76c2ca5e406a07b8012d1/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18)
   - [ ] for the KG2 API [here](https://github.com/RTXteam/RTX/blob/0107502d7da4f1ee70d76c2ca5e406a07b8012d1/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18)
 - [ ] build a new KG2c on `buildkg2c.rtx.ai` from the `kg2integration` branch (how-to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#build-kg2canonicalized))
   - [ ] make sure to choose to build a new synonymizer in `kg2c_config.json`, as described in the how-to
   - [ ] verify the build looks ok:
-    - [ ] the synonymizer sqlite should be around 15-17GB
-    - [ ] the entire build process (synonymizer + KG2c) shouldn't have taken more than about 16 hours
+    - [ ] the synonymizer sqlite should be around 15-20 GB
+    - [ ] the entire build process (synonymizer + KG2c) shouldn't have taken more than ~24 hours
     - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax.ncats.io` (`/data/orangeboard/databases/KG2.X.Y`)
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] load the new KG2c into plover (available at http://kg2-X-Ycplover.rtx.ai:9990)
-- [ ] generate KGX files and upload them to the KGE Archive
 
 ##### 2. Rebuild downstream databases:
 
 Copies of all of these should be put in `/data/orangeboard/databases/KG2.X.Y` on arax.ncats.io.
 
-- [ ] configv2.json (should point to the new KG2/KG2c/plover)
+- [ ] configv2.json (should point to the new KG2pre/KG2c/plover)
     - note: save this as `config_local.json`, since we want it to be used over `configv2.json` during testing
 - [ ] NodeSynonymizer
 - [ ] KG2c meta knowledge graph
@@ -59,11 +58,12 @@ All code changes should go in the `kg2integration` branch.
 
 ##### 5. Final items/clean up:
 
+- [ ] generate KGX files and upload them to the KGE Archive @acevedol
 - [ ] update SmartAPI registration for KG2 @edeutsch
 - [ ] update the test triples that go in some NCATS repo @finnagin
 - [ ] rename the `config_local.json` on arax.ncats.io to `config_local.json_FROZEN_DO-NOT-EDIT-FURTHER` (any additional edits to the config file should be made directly to the master `configv2.json` on araxconfig.rtx.ai going forward)
 - [ ] turn off the old KG2c version's neo4j instance
-- [ ] turn off the old KG2 version's plover instance
+- [ ] turn off the old KG2c version's plover instance
 - [ ] turn off the new KG2pre version's neo4j instance
 - [ ] upgrade the NCATS-hosted Plover endpoint (https://kg2cploverdb.ci.transltr.io) to this KG2 version and make the KG2 API start using it (instead of our self-hosted endpoint): 
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
