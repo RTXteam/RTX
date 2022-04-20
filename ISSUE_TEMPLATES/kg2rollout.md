@@ -33,8 +33,6 @@ Copies of all of these should be put in `/data/orangeboard/databases/KG2.X.Y` on
 - [ ] refreshed DTD @chunyuma
 - [ ] DTD model @chunyuma _(may be skipped - depends on the KG2 version)_
 - [ ] DTD database @chunyuma _(may be skipped - depends on the KG2 version)_
-- [ ] replace the configv2.json file on cicd.rtx.ai with the new one @finnagin
-- [ ] download the new database files to cicd.rtx.ai @finnagin
 
 **NOTE**: As databases are rebuilt, the new copy of `config_local.json` will need to be updated to point to their new paths. However, if the rollout of KG2 has already occurred, then you should update the master `configv2.json` directly. 
 
@@ -42,17 +40,20 @@ Copies of all of these should be put in `/data/orangeboard/databases/KG2.X.Y` on
 
 All code changes should go in the `kg2integration` branch.
 
-- [ ] update the KG2 version number (to 2.X.Y) in the KG2 `openapi.yaml`
 - [ ] update Expand code as needed
 - [ ] update any other modules as needed
 - [ ] test everything together (entire ARAX pytest suite should pass when using the new `config_local.json` - must locally set `force_local = True` in `ARAX_expander.py` to avoid using the old KG2 API)
+- [ ] update the KG2 version number (to 2.X.Y) in the KG2 `openapi.yaml`
 
 ##### 4. Do the rollout:
 
+- [ ] update the CI/CD instance:
+  - [ ] replace the `configv2.json` file on `cicd.rtx.ai` with the new one
+  - [ ] download the new database files to `cicd.rtx.ai`
 - [ ] merge `master` into `kg2integration`
 - [ ] merge `kg2integration` into `master`
-- [ ] make `config_local.json` the new master config file on araxconfig.rtx.ai (rename it to `configv2.json`)
-- [ ] roll `master` out to the various arax.ncats.io endpoints and delete their `configv2.json`s
+- [ ] make `config_local.json` the new master config file on `araxconfig.rtx.ai` (rename it to `configv2.json`)
+- [ ] roll `master` out to the various `arax.ncats.io` endpoints and delete their `configv2.json`s
 - [ ] run the database manager
 - [ ] run the pytest suite on the various endpoints
 
