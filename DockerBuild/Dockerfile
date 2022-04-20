@@ -64,5 +64,5 @@ RUN chmod 700 /etc/init.d/RTX_Complete
 RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED/production/g' RTX_Complete.start
 RUN update-rc.d RTX_Complete defaults
 
-# set production flag to false
-RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && sed -i 's/self.is_production_server = True/self.is_production_server = False/g' RTXConfiguration.py
+# setup config.domain
+RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "UNKNOWN ITRB INSTANCE" > config.domain
