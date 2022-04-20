@@ -52,8 +52,8 @@ jobs:
     
     - name: Add config.domain
       run: |
-        sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX/code && \'RTXTeam/RTX Github actions test suite\' > config.domain'"
-        sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/kg2/RTX/code && \'RTXTeam/RTX Github actions test suite\' > config.domain'"
+        sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX/code && echo \'RTXTeam/RTX Github actions test suite\' > config.domain'"
+        sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/kg2/RTX/code && echo \'RTXTeam/RTX Github actions test suite\' > config.domain'"
 
     - name: Create symlinks
       run: |

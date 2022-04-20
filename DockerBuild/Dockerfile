@@ -65,4 +65,4 @@ RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED
 RUN update-rc.d RTX_Complete defaults
 
 # setup config.domain
-RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && "UNKNOWN ITRB INSTANCE" > config.domain
+RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "UNKNOWN ITRB INSTANCE" > config.domain
