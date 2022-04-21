@@ -3,9 +3,11 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
 ##### 1. Build and load KG2c:
 
 - [ ] merge `master` into the `kg2integration` branch
-- [ ] update the two hardcoded biolink version numbers in the `kg2integration` branch (as applicable):
-  - [ ] for ARAX [here](https://github.com/RTXteam/RTX/blob/0107502d7da4f1ee70d76c2ca5e406a07b8012d1/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18)
-  - [ ] for the KG2 API [here](https://github.com/RTXteam/RTX/blob/0107502d7da4f1ee70d76c2ca5e406a07b8012d1/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18)
+- [ ] update the four hardcoded biolink version numbers in the `kg2integration` branch (as needed):
+  - [ ] in [code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml)
+  - [ ] in [code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml)
+  - [ ] in [code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_ARAX.yaml](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_ARAX.yaml)
+  - [ ] in [code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_KG2.yaml](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_KG2.yaml)
 - [ ] build a new KG2c on `buildkg2c.rtx.ai` from the `kg2integration` branch (how-to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#build-kg2canonicalized))
   - [ ] make sure to choose to build a new synonymizer in `kg2c_config.json`, as described in the how-to
   - [ ] verify the build looks ok:
@@ -43,24 +45,23 @@ All code changes should go in the `kg2integration` branch.
 - [ ] update Expand code as needed
 - [ ] update any other modules as needed
 - [ ] test everything together (entire ARAX pytest suite should pass when using the new `config_local.json` - must locally set `force_local = True` in `ARAX_expander.py` to avoid using the old KG2 API)
-- [ ] update the KG2 version number (to 2.X.Y) in the KG2 `openapi.yaml`
+- [ ] update the KG2 and ARAX version numbers in the appropriate places (`openapi.yaml`, etc.) @edeutsch
 
 ##### 4. Do the rollout:
 
-- [ ] update the CI/CD instance:
-  - [ ] replace the `configv2.json` file on `cicd.rtx.ai` with the new one
-  - [ ] download the new database files to `cicd.rtx.ai`
 - [ ] merge `master` into `kg2integration`
 - [ ] merge `kg2integration` into `master`
 - [ ] make `config_local.json` the new master config file on `araxconfig.rtx.ai` (rename it to `configv2.json`)
 - [ ] roll `master` out to the various `arax.ncats.io` endpoints and delete their `configv2.json`s
 - [ ] run the database manager
 - [ ] run the pytest suite on the various endpoints
+- [ ] update the CI/CD instance:
+  - [ ] replace the `configv2.json` file on `cicd.rtx.ai` with the new one
+  - [ ] download the new database files to `cicd.rtx.ai`
 
 ##### 5. Final items/clean up:
 
 - [ ] generate KGX files and upload them to the KGE Archive @acevedol
-- [ ] update SmartAPI registration for KG2 @edeutsch
 - [ ] update the test triples that go in some NCATS repo @finnagin
 - [ ] rename the `config_local.json` on arax.ncats.io to `config_local.json_FROZEN_DO-NOT-EDIT-FURTHER` (any additional edits to the config file should be made directly to the master `configv2.json` on araxconfig.rtx.ai going forward)
 - [ ] turn off the old KG2c version's neo4j instance
