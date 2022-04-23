@@ -29,8 +29,8 @@ RUN chmod -R 700 /home/rt/.ssh
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt.rt /mnt/data/orangeboard/production
 RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git
-RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 RUN su rt && cd /mnt/data/orangeboard/production/RTX && git checkout production
+RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -yq apache2
