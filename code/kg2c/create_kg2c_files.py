@@ -202,22 +202,26 @@ def _load_publications_info(raw_publications_info: Union[str, dict], kg2_edge_id
     return publications_info
 
 
-def _load_kg2pre_tsv(local_tsv_dir_path: str, nodes_or_edges: str) -> List[Dict[str, any]]:
+def _load_kg2pre_tsv(local_tsv_dir_path: str, nodes_or_edges: str, is_test: bool) -> List[Dict[str, any]]:
     tsv_path = f"{local_tsv_dir_path}/{nodes_or_edges}.tsv"
     tsv_header_path = f"{local_tsv_dir_path}/{nodes_or_edges}_header.tsv"
     kg2pre_objects = []
     logging.info(f"Loading {nodes_or_edges} from KG2pre TSV ({tsv_path})..")
     headers = _get_kg2pre_headers(tsv_header_path)
     kg2pre_property_names = _get_kg2pre_properties(nodes_or_edges)
+    counter = 0
     with open(tsv_path) as kg2pre_file:
         reader = csv.reader(kg2pre_file, delimiter="\t")
         for row in reader:
+            counter += 1
             new_object = dict()
             for property_name in kg2pre_property_names:
                 property_info = PROPERTIES_LOOKUP[nodes_or_edges][property_name]
                 raw_property_value = row[headers.index(property_name)]
                 new_object[property_name] = _load_property(raw_property_value, property_info["type"])
             kg2pre_objects.append(new_object)
+            if is_test and counter > 100000:
+                break
     return kg2pre_objects
 
 
@@ -641,7 +645,7 @@ def create_kg2c_files(is_test=False):
         # First make sure the KG2pre TSV directory exists as it should
         local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
         if not pathlib.Path(local_tsv_dir_path).exists():
-            if is_test:
+            if is_test and use_local_kg2pre_tsvs:
                 raise ValueError(f"You must put your own test KG2pre TSVs into place (in {local_tsv_dir_path}). They "
                                  f"must be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
             elif use_local_kg2pre_tsvs:
@@ -650,7 +654,7 @@ def create_kg2c_files(is_test=False):
             else:
                 subprocess.check_call(["mkdir", local_tsv_dir_path])
         # Download the KG2pre TSVs from the AWS S3 bucket
-        if not is_test and not use_local_kg2pre_tsvs:
+        if not use_local_kg2pre_tsvs:
             kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
             logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
             subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
@@ -658,7 +662,7 @@ def create_kg2c_files(is_test=False):
             subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
 
         # Canonicalize nodes
-        kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes")
+        kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes", is_test)
         canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
         # Add a node containing information about this KG2C build
         build_node = _create_build_node(kg2_version, biolink_version)
@@ -668,7 +672,7 @@ def create_kg2c_files(is_test=False):
         gc.collect()
 
         # Canonicalize edges
-        kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges")
+        kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges", is_test)
         canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
         del kg2pre_edges
         gc.collect()

@@ -595,7 +595,10 @@ This information is included in edge attributes with the name 'icees_p-value'.
         # Check if all virtual edge params have been provided properly
 
         # FIXME : this will need to be fixed
-        self.check_virtual_edge_params(allowable_parameters)
+        # self.check_virtual_edge_params(allowable_parameters)
+        # FW: changing this to only check if subject_qnode_key or object_qnode_key is present
+        if 'subject_qnode_key' in parameters or 'object_qnode_key' in parameters:
+            self.check_virtual_edge_params(allowable_parameters)
         if self.response.status != 'OK':
             return self.response
 
@@ -671,7 +674,10 @@ This information is included in edge attributes with the name 'icees_p-value'.
             return self.response
 
         # Check if all virtual edge params have been provided properly
-        self.check_virtual_edge_params(allowable_parameters)
+        # self.check_virtual_edge_params(allowable_parameters)
+        # FW: changing this to only check if subject_qnode_key or object_qnode_key is present
+        if 'subject_qnode_key' in parameters or 'object_qnode_key' in parameters:
+            self.check_virtual_edge_params(allowable_parameters)
         if self.response.status != 'OK':
             return self.response
 
@@ -839,7 +845,10 @@ This information is included in edge attributes with the name 'icees_p-value'.
         if self.response.status != 'OK':
             return self.response
         # Check if all virtual edge params have been provided properly
-        self.check_virtual_edge_params(allowable_parameters)
+        # self.check_virtual_edge_params(allowable_parameters)
+        # FW: changing this to only check if subject_qnode_key or object_qnode_key is present
+        if 'subject_qnode_key' in parameters or 'object_qnode_key' in parameters:
+            self.check_virtual_edge_params(allowable_parameters)
         if self.response.status != 'OK':
             return self.response
 

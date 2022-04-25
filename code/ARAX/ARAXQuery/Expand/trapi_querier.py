@@ -30,12 +30,12 @@ from openapi_server.models.result import Result
 
 class TRAPIQuerier:
 
-    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, user_timeout: Optional[int],
+    def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, kp_timeout: Optional[int],
                  kp_selector: KPSelector = KPSelector(), force_local: bool = False):
         self.log = response_object
         self.kp_name = kp_name
         self.user_specified_kp = user_specified_kp
-        self.user_timeout = user_timeout
+        self.kp_timeout = kp_timeout
         self.force_local = force_local
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.kp_selector = kp_selector
@@ -311,7 +311,8 @@ class TRAPIQuerier:
                     attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
 
             # Check if KPs are properly indicating that these edges came from them (indicate it ourselves if not)
-            if not any(attribute.value == self.kp_name for attribute in returned_edge.attributes):
+            attribute_has_kp_name = lambda value, kp_name: (type(value) is list and kp_name in value) or (value == kp_name)
+            if not any(attribute_has_kp_name(attribute.value, self.kp_name) for attribute in returned_edge.attributes):
                 returned_edge.attributes.append(eu.get_kp_source_attribute(self.kp_name))
             # Add an attribute to indicate that this edge passed through ARAX
             returned_edge.attributes.append(eu.get_arax_source_attribute())
@@ -354,9 +355,9 @@ class TRAPIQuerier:
 
     def _get_query_timeout_length(self) -> int:
         # Returns the number of seconds we should wait for a response
-        if self.user_timeout:
-            return self.user_timeout
-        elif self.kp_name == "infores:rtx-kg2":
+        if self.kp_name == "infores:rtx-kg2":
             return 600
+        elif self.kp_timeout:
+            return self.kp_timeout
         else:
             return 120
