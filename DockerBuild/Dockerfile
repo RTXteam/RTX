@@ -66,4 +66,4 @@ RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED
 RUN update-rc.d RTX_Complete defaults
 
 # setup config.domain
-RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "arax.ci.transltr.io" > config.domain
+RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "arax.transltr.io" > config.domain
