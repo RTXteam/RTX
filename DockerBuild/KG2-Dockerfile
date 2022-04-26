@@ -66,5 +66,5 @@ RUN cd /mnt/data/orangeboard/kg2/RTX/code/autocomplete && sed -i 's/devED/kg2/g'
 RUN update-rc.d RTX_Complete defaults
 
 # setup config.domain
-RUN su rt && cd /mnt/data/orangeboard/kg2/RTX/code/ && echo "kg2.ci.transltr.io" > config.domain
+RUN su rt && cd /mnt/data/orangeboard/kg2/RTX/code/ && echo "kg2.test.transltr.io" > config.domain
 
