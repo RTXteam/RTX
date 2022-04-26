@@ -135,7 +135,7 @@ def test_connect_nodes_3_disconnected_nodes():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 3
+    assert len(message.query_graph.edges) >= 3
     assert len(message.results) > 0
 
 

@@ -276,12 +276,79 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         kp = 'infores:rtx-kg2'
         prune_threshold = 500
 
-        qnode_key_pairs = list(combinations(self.parameters['qnode_keys'], 2))
+        qnode_key_pairs = [[x[0],x[1],False] for x in combinations(self.parameters['qnode_keys'], 2)]
         edge_n = 1
         node_n = 1
-        for qnode_pair in qnode_key_pairs:
+        # FW: old way, try running all pairs through at once
+        # for qnode_pair in qnode_key_pairs:
+        #     added_connection = False
+        #     for n_new_nodes in range(self.parameters['max_path_length']):
+        #         new_response = ARAXResponse()
+        #         messenger.create_envelope(new_response)
+        #         new_response.envelope.message.query_graph.nodes = {k:v for k,v in self.response.envelope.message.query_graph.nodes.items() if k in qnode_pair}
+        #         qedge_keys = []
+        #         node_pair_list = [qnode_pair[0]]
+        #         for i in range(n_new_nodes):
+        #             new_qnode_key = f'arax_connect_node_{node_n}'
+        #             node_n += 1
+        #             # make new names until we find a node key not in the query graph
+        #             while new_qnode_key in self.response.envelope.message.query_graph.nodes:
+        #                 new_qnode_key = f'arax_connect_node_{node_n}'
+        #                 node_n += 1
+        #             node_pair_list.append(new_qnode_key)
+        #             add_qnode_params = {
+        #                 'is_set' : 'true',
+        #                 'key' : new_qnode_key
+        #             }
+        #             new_response = messenger.add_qnode(new_response, add_qnode_params)
+        #         node_pair_list.append(qnode_pair[1])
+        #         assert len(node_pair_list) == 2 + n_new_nodes
+        #         # This zip command grabs nodes next to each other and puts them into tuple pairs
+        #         # E.G. [1,2,3,4,5] -> [(1,2),(2,3),(3,4),(4,5)]
+        #         new_qnode_key_pairs = list(zip(node_pair_list,node_pair_list[1:]))
+        #         for new_qnode_pair in new_qnode_key_pairs:
+        #             new_qedge_key = f'connected_edge_{edge_n}'
+        #             edge_n += 1
+        #             # make new names until we find an edge key not in the query graph
+        #             while new_qedge_key in self.response.envelope.message.query_graph.edges:
+        #                 new_qedge_key = f'arax_connect_edge_{edge_n}'
+        #                 edge_n += 1
+        #             qedge_keys.append(new_qedge_key)
+        #             add_qedge_params = {
+        #                 'key' : new_qedge_key,
+        #                 'subject' : new_qnode_pair[0],
+        #                 'object' : new_qnode_pair[1]
+        #             }
+        #             new_response = messenger.add_qedge(new_response, add_qedge_params)
+        #         expand_params = {
+        #             # FW: commenting to reach out to all kps
+        #             #'kp':kp,
+        #             'prune_threshold':prune_threshold,
+        #             'edge_key':qedge_keys,
+        #             'kp_timeout':timeout
+        #         }
+        #         new_response = expander.apply(new_response, expand_params, mode=mode)
+        #         if new_response.status == 'OK' and len(new_response.envelope.message.knowledge_graph.edges) > len(self.response.envelope.message.knowledge_graph.edges):
+        #             added_connection = True
+        #             # FW: confirm with Eric that this is the correct way to merge response objects
+        #             self.response.envelope.message.query_graph.edges.update(new_response.envelope.message.query_graph.edges)
+        #             self.response.envelope.message.query_graph.nodes.update(new_response.envelope.message.query_graph.nodes)
+        #             self.response.envelope.message.knowledge_graph.edges.update(new_response.envelope.message.knowledge_graph.edges)
+        #             self.response.envelope.message.knowledge_graph.nodes.update(new_response.envelope.message.knowledge_graph.nodes)
+        #             self.response.merge(new_response)
+        #             # FW: If we do not want to stop when we find the shortest connection we could add an option 
+        #             # for shortest path and then check that here to deside if we want to break
+        #             if self.parameters['shortest_path']:
+        #                 break
+        #     if not added_connection:
+        #         #FW: may want to change this to an error
+        #         self.response.warning(f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} with a max path length of {self.parameters['max_path_length']}.")        
+        # FW: New way
+        for n_new_nodes in range(self.parameters['max_path_length']):
             added_connection = False
-            for n_new_nodes in range(self.parameters['max_path_length']):
+            for qnode_pair in qnode_key_pairs:
+                if qnode_pair[2]:
+                    continue
                 new_response = ARAXResponse()
                 messenger.create_envelope(new_response)
                 new_response.envelope.message.query_graph.nodes = {k:v for k,v in self.response.envelope.message.query_graph.nodes.items() if k in qnode_pair}
@@ -333,15 +400,19 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                     self.response.envelope.message.query_graph.edges.update(new_response.envelope.message.query_graph.edges)
                     self.response.envelope.message.query_graph.nodes.update(new_response.envelope.message.query_graph.nodes)
                     self.response.envelope.message.knowledge_graph.edges.update(new_response.envelope.message.knowledge_graph.edges)
+                    for knode_id, knode in new_response.envelope.message.knowledge_graph.nodes.items():
+                        if knode_id in self.response.envelope.message.knowledge_graph.nodes:
+                            new_response.envelope.message.knowledge_graph.nodes[knode_id].qnode_keys += self.response.envelope.message.knowledge_graph.nodes[knode_id].qnode_keys
+                            self.response.envelope.message.knowledge_graph.nodes[knode_id].qnode_keys = new_response.envelope.message.knowledge_graph.nodes[knode_id].qnode_keys
                     self.response.envelope.message.knowledge_graph.nodes.update(new_response.envelope.message.knowledge_graph.nodes)
                     self.response.merge(new_response)
                     # FW: If we do not want to stop when we find the shortest connection we could add an option 
                     # for shortest path and then check that here to deside if we want to break
                     if self.parameters['shortest_path']:
-                        break
+                        qnode_pair[2] = True
             if not added_connection:
                 #FW: may want to change this to an error
-                self.response.warning(f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} with a max path length of {self.parameters['max_path_length']}.")        
+                self.response.warning(f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} with a max path length of {self.parameters['max_path_length']}.") 
         return self.response
 
 
