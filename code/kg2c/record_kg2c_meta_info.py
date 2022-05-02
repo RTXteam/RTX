@@ -32,12 +32,9 @@ def serialize_with_sets(obj: any) -> any:
 
 
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
-                  meta_kg_file_name: str, is_test: bool):
+                  meta_kg_file_name: str, biolink_helper: BiolinkHelper, is_test: bool):
     logging.info(f"Building meta KG..")
     logging.info(" Gathering all meta triples..")
-    with open("kg2c_config.json") as config_file:
-        config_info = json.load(config_file)
-    biolink_helper = BiolinkHelper(config_info["biolink_version"])
     meta_triples = set()
     for edge in edges_by_id.values():
         subject_node_id = edge["subject"]
@@ -168,23 +165,31 @@ def generate_fda_approved_drugs_pickle(edges_by_id: Dict[str, Dict[str, any]], f
 
 
 def record_meta_kg_info(is_test: bool):
-    input_kg_file_name = f"kg2c_lite{'_test' if is_test else ''}.json"
+    kg2c_lite_file_name = f"kg2c_lite{'_test' if is_test else ''}.json"
     meta_kg_file_name = f"kg2c_meta_kg{'_test' if is_test else ''}.json"
     sqlite_file_name = f"kg2c{'_test' if is_test else ''}.sqlite"
     fda_approved_file_name = f"fda_approved_drugs{'_test' if is_test else ''}.pickle"
-    label_property_name = "all_categories"
+    # Initiate a BiolinkHelper for the proper Biolink model version
+    with open("kg2c_config.json") as config_file:
+        config_info = json.load(config_file)
+    bh = BiolinkHelper(config_info["biolink_version"])
 
     start = time.time()
-    with open(f"{KG2C_DIR}/{input_kg_file_name}", "r") as input_kg_file:
-        logging.info(f"Loading {input_kg_file_name} into memory..")
+    # Load the 'lite' KG2c file into node/edge dictionaries
+    with open(f"{KG2C_DIR}/{kg2c_lite_file_name}", "r") as input_kg_file:
+        logging.info(f"Loading {kg2c_lite_file_name} into memory..")
         kg2c_dict = json.load(input_kg_file)
         nodes_by_id = {node["id"]: node for node in kg2c_dict["nodes"]}
         edges_by_id = {edge["id"]: edge for edge in kg2c_dict["edges"]}
         del kg2c_dict
+    # Add the 'expanded' node labels (including category ancestors) into the node dictionary
+    expanded_labels_property_name = "expanded_labels"
+    for node in nodes_by_id.values():
+        node[expanded_labels_property_name] = bh.get_ancestors(node["all_categories"], include_mixins=True)
 
-    build_meta_kg(nodes_by_id, edges_by_id, meta_kg_file_name, is_test)
-    add_neighbor_counts_to_sqlite(nodes_by_id, edges_by_id, sqlite_file_name, label_property_name, is_test)
-    add_category_counts_to_sqlite(nodes_by_id, sqlite_file_name, label_property_name)
+    build_meta_kg(nodes_by_id, edges_by_id, meta_kg_file_name, bh, is_test)
+    add_neighbor_counts_to_sqlite(nodes_by_id, edges_by_id, sqlite_file_name, expanded_labels_property_name, is_test)
+    add_category_counts_to_sqlite(nodes_by_id, sqlite_file_name, expanded_labels_property_name)
     generate_fda_approved_drugs_pickle(edges_by_id, fda_approved_file_name)
 
     logging.info(f"Recording meta KG info took {round((time.time() - start) / 60, 1)} minutes.")

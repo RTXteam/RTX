@@ -79,7 +79,7 @@ To run the build:
 1. Make sure you have the **latest code** from whatever branch you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
 1. Locally modify the KG2c build **config file** (`RTX/code/kg2c/kg2c_config.json`) for your particular needs:
     - `kg2pre_version`: Specify the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
-    - `kg2pre_neo4j_endpoint`: Should point to the Neo4j endpoint for your specified KG2pre version (e.g., `kg2endpoint-kg2-6-7.rtx.ai`)
+    - `kg2pre_neo4j_endpoint`: Should point to the Neo4j endpoint for your specified KG2pre version (e.g., `kg2endpoint-kg2-6-7.rtx.ai`); used only for the synonymizer build process
     - `biolink_version`: Should match the Biolink version used by the KG2pre you specified (e.g., 1.8.1)
     - `upload_to_arax.ncats.io`: Specify whether build artifacts should be uploaded to arax.ncats.io (generally should be `true` unless you're doing a debugging build)
     - `upload_directory`: The path to the directory on arax.ncats.io where artifacts should be uploaded (e.g., `/translator/data/orangeboard/databases/KG2.6.7`)
