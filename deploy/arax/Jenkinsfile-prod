@@ -15,9 +15,9 @@ pipeline {
         pollSCM('H/5 * * * *')
     }
     environment {
-        DOCKER_REPO_NAME = "translator-rtx-kg2"
-        KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-ci-blue-cluster"
-        KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
+        DOCKER_REPO_NAME = "translator-rtx-arax"
+        KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-prod-blue-cluster"
+        KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-prod-green-cluster"
         NAMESPACE = "rtx"
         SECRET_NAME = "sftp-ssh-key"
         CONFIG_JSON_CONFIGMAP = "configv2"
@@ -28,7 +28,7 @@ pipeline {
           steps{
               script {
                   BUILD_VERSION_GENERATED = VersionNumber(
-                      versionNumberString: 'v${BUILD_YEAR, XX}.${BUILD_MONTH, XX}${BUILD_DAY, XX}.${BUILDS_TODAY}',
+                      versionNumberString: 'v${BUILD_YEAR, XX}.${BUILD_MONTH, XX}${BUILD_DAY, XX}.${BUILDS_TODAY}-prod',
                       projectStartDate:    '1970-01-01',
                       skipFailedBuilds:    true)
                   currentBuild.displayName = BUILD_VERSION_GENERATED
@@ -47,10 +47,10 @@ pipeline {
          when { expression { return env.BUILD == 'true' }}
           steps {
             configFileProvider([
-                configFile(fileId: 'ci-configv2.json', targetLocation: 'DockerBuild/configv2.json')
+                configFile(fileId: 'configv2.json', targetLocation: 'DockerBuild/configv2.json')
             ]){
                 script {
-                    docker.build(env.DOCKER_REPO_NAME, "--no-cache -f ./DockerBuild/KG2-Dockerfile ./DockerBuild/")
+                    docker.build(env.DOCKER_REPO_NAME, "--no-cache ./DockerBuild/")
                     docker.withRegistry('https://853771734544.dkr.ecr.us-east-1.amazonaws.com', 'ecr:us-east-1:aws-ifx-deploy') {
                         docker.image(env.DOCKER_REPO_NAME).push("${BUILD_VERSION}")
                     }
@@ -61,21 +61,21 @@ pipeline {
       stage('Deploy to AWS EKS Blue') {
           steps {
               configFileProvider([
-                  configFile(fileId: 'ci-configv2.json', targetLocation: 'deploy/kg2/configs/configv2.json'),
-                  configFile(fileId: 'kg2.values.ncats.yaml', targetLocation: 'deploy/kg2/kg2.values.ncats.yaml')
+                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/arax/configs/configv2.json'),
+                  configFile(fileId: 'arax.values.ncats.yaml', targetLocation: 'deploy/arax/arax.values.ncats.yaml')
               ]){
                   withCredentials([
                     sshUserPrivateKey(
                       credentialsId: 'team-expander-ops-sshkey',
                       keyFileVariable: 'SECRET_FILE')
                   ]){
-                    withAWS(credentials:'aws-ifx-deploy') 
+                    withAWS(credentials:'eks-prod-access') 
                     {
                         sh '''
-                        # Need to save the credential to a file with base64 encoded under deploy/kg2/secret
-                        cat $SECRET_FILE >> deploy/kg2/secrets/team-expander-ops-sshkey-secret
+                        # Need to save the credential to a file with base64 encoded under deploy/secret
+                        cat $SECRET_FILE >> deploy/arax/secrets/team-expander-ops-sshkey-secret
                         aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-                        cd deploy/kg2 && /bin/bash deploy.sh
+                        cd deploy/arax && /bin/bash deploy.sh
                         # aws --region ${AWS_REGION} sts get-caller-identity
                         '''
                     }
