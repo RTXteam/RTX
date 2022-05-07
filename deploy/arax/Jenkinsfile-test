@@ -16,8 +16,8 @@ pipeline {
     }
     environment {
         DOCKER_REPO_NAME = "translator-rtx-arax"
-        KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-ci-blue-cluster"
-        KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
+        KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-test-blue-cluster"
+        KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-test-green-cluster"
         NAMESPACE = "rtx"
         SECRET_NAME = "sftp-ssh-key"
         CONFIG_JSON_CONFIGMAP = "configv2"
@@ -28,7 +28,7 @@ pipeline {
           steps{
               script {
                   BUILD_VERSION_GENERATED = VersionNumber(
-                      versionNumberString: 'v${BUILD_YEAR, XX}.${BUILD_MONTH, XX}${BUILD_DAY, XX}.${BUILDS_TODAY}',
+                      versionNumberString: 'v${BUILD_YEAR, XX}.${BUILD_MONTH, XX}${BUILD_DAY, XX}.${BUILDS_TODAY}-test',
                       projectStartDate:    '1970-01-01',
                       skipFailedBuilds:    true)
                   currentBuild.displayName = BUILD_VERSION_GENERATED
@@ -47,7 +47,7 @@ pipeline {
          when { expression { return env.BUILD == 'true' }}
           steps {
             configFileProvider([
-                configFile(fileId: 'ci-configv2.json', targetLocation: 'DockerBuild/configv2.json')
+                configFile(fileId: 'configv2.json', targetLocation: 'DockerBuild/configv2.json')
             ]){
                 script {
                     docker.build(env.DOCKER_REPO_NAME, "--no-cache ./DockerBuild/")
@@ -61,7 +61,7 @@ pipeline {
       stage('Deploy to AWS EKS Blue') {
           steps {
               configFileProvider([
-                  configFile(fileId: 'ci-configv2.json', targetLocation: 'deploy/arax/configs/configv2.json'),
+                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/arax/configs/configv2.json'),
                   configFile(fileId: 'arax.values.ncats.yaml', targetLocation: 'deploy/arax/arax.values.ncats.yaml')
               ]){
                   withCredentials([
@@ -69,7 +69,7 @@ pipeline {
                       credentialsId: 'team-expander-ops-sshkey',
                       keyFileVariable: 'SECRET_FILE')
                   ]){
-                    withAWS(credentials:'aws-ifx-deploy') 
+                    withAWS(credentials:'eks-test-access') 
                     {
                         sh '''
                         # Need to save the credential to a file with base64 encoded under deploy/secret
