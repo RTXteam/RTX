@@ -14,6 +14,29 @@ class SmartAPI:
 
 
     @lru_cache(maxsize=None)
+    def get_all_trapi_endpoint_info(self):
+        """Find all endpoints that match a query for TRAPI and return all the data about each of them"""
+        """Find all endpoints that match a query for TRAPI."""
+        with requests_cache.disabled():
+            response_content = requests.get(
+                self.base_url + "/query?limit=1000&q=TRAPI",
+                headers={"accept": "application/json"},
+            )
+
+        endpoints = []
+
+        try:
+            response_content.raise_for_status()
+            response_dict = response_content.json()
+        except:
+            return endpoints
+
+        for hit in response_dict["hits"]:
+            endpoints.append(hit)
+        return endpoints
+
+
+    @lru_cache(maxsize=None)
     def get_operations_endpoints(self):
         """Find all endpoints that support at least one workflow operation."""
         endpoints = self.get_trapi_endpoints()
@@ -62,59 +85,6 @@ class SmartAPI:
             except KeyError:
                 infores_name = None
 
-            if version is not None:
-                if url_version is None:
-                    continue
-                match = re.match(version, url_version)
-                if not match:
-                    continue
-
-            endpoints.append({
-                "url": url,
-                "operations": operations,
-                "version": url_version,
-                "infores_name": infores_name
-            })
-
-        return endpoints
-
-
-    @lru_cache(maxsize=None)
-    def get_infores_KPs(self, version=None):
-        """Find all endpoints that match a query for TRAPI which are classified as KPs and have infores names"""
-        with requests_cache.disabled():
-            response_content = requests.get(
-                self.base_url + "/query?limit=1000&q=TRAPI",
-                headers={"accept": "application/json"},
-            )
-
-        KPs = []
-
-        try:
-            response_content.raise_for_status()
-            response_dict = response_content.json()
-        except:
-            return KPs
-
-        for hit in response_dict["hits"]:
-            try:
-                url = hit["servers"][0]["url"]
-            except (KeyError, IndexError):
-                url = None
-            try:
-                url_version = hit["info"]["x-trapi"]["version"]
-            except KeyError:
-                url_version = None
-            try:
-                operations = hit["info"]["x-trapi"]["operations"]
-            except KeyError:
-                operations = None
-
-            try:
-                infores_name = hit["info"]["x-translator"]["infores"]
-            except KeyError:
-                infores_name = None
-
             try:
                 component = hit["info"]["x-translator"]["component"]
             except KeyError:
@@ -125,6 +95,23 @@ class SmartAPI:
             except KeyError:
                 title = None
 
+            servers = []
+            for server in hit["servers"]:
+                try:
+                    url = server["url"]
+                except KeyError:
+                    url = None
+                try:
+                    description = server["description"]
+                except KeyError:
+                    description = None
+                try:
+                    maturity = server["x-maturity"]
+                except KeyError:
+                    maturity = None
+                log.debug("DEBUGGING LOOP HERE")
+                servers.append({"description": description, "url": url, "maturity": maturity})
+
             if version is not None:
                 if url_version is None:
                     continue
@@ -132,16 +119,53 @@ class SmartAPI:
                 if not match:
                     continue
 
-            if infores_name == None or component != "KP":
-                continue
-
-            KPs.append({
-                "url": url,
+            endpoints.append({
+                "servers": servers,
                 "operations": operations,
                 "version": url_version,
+                "component": component,
                 "infores_name": infores_name,
                 "title": title
             })
+
+        return endpoints
+
+
+    @lru_cache(maxsize=None)
+    def get_kps(self, version=None, reqMaturity=None):
+        """Find all endpoints that match a query for TRAPI which are classified as KPs"""
+
+        endpoints = self.get_trapi_endpoints()
+        KPs = list(filter(lambda x: x["component"] == "KP", endpoints))
+        return KPs
+
+    @lru_cache(maxsize=None)
+    def get_dev_kps(self, version=None, reqMaturity=None):
+        """Find all endpoints that match a query for TRAPI which are classified as KPs and have servers which are classified as 'development'"""
+
+        KPs = self.get_kps()
+        # remove servers from server list which are not "development"
+        for KP in KPs:
+            dev_servers = [server for server in KP["servers"] if server["maturity"] == "development"]
+            # dev_servers = list(filter(lambda x: x["maturity"] == "development", dev_servers))
+            KP["servers"] = dev_servers
+        # remove KPs which have no servers left after removing non-dev servers
+        # KPs = list(filter(lambda x: len(KP["servers"]) > 0, KPs))
+
+        return KPs
+
+    @lru_cache(maxsize=None)
+    def get_prod_kps(self, version=None, reqMaturity=None):
+        """Find all endpoints that match a query for TRAPI which are classified as KPs and have servers which are classified as 'development'"""
+
+        KPs = self.get_kps()
+        # remove servers from server list which are not "production"
+        for KP in KPs:
+            dev_servers = KP["servers"]
+            dev_servers = list(filter(lambda x: x["maturity"] == "production", dev_servers))
+            KP["servers"] = dev_servers
+        # remove KPs which have no servers left after removing non-prod servers
+        KPs = list(filter(lambda x: len(KP["servers"]) > 0, KPs))
 
         return KPs
 
