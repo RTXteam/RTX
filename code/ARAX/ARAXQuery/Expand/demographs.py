@@ -417,3 +417,137 @@ query_graph_9 = QueryGraph.from_dict(
   }
 }
 )
+
+query_graph_10 = QueryGraph.from_dict(
+{
+  "edges": {
+    "e00": {
+      "subject": "n00",
+      "object": "n01"
+    },
+    "e01": {
+      "subject": "n01",
+      "object": "n02"
+    },
+    "e02": {
+      "subject": "n02",
+      "object": "n03"
+    },
+    "e02": {
+      "subject": "n03",
+      "object": "n00"
+    }
+  },
+  "nodes": {
+    "n00": {
+      "ids": [
+        "FMA:74637"
+      ],
+      "categories": [
+        "biolink:Gene"
+      ]
+    },
+    "n01": {
+      "categories": [
+        "biolink:Protein"
+      ]
+    },
+    "n02": {
+      "ids": [
+        "FMA:83376"
+      ],
+      "categories": [
+        "biolink:ChemicalEntity"
+      ]
+    },
+    "n03": {
+      "categories": [
+        "biolink:ChemicalEntity"
+      ]
+    }
+  }
+}
+)
+
+query_graph_11 = QueryGraph.from_dict(
+{
+  "edges": {
+    "e00": {
+      "subject": "n00",
+      "object": "n01"
+    },
+    "e01": {
+      "subject": "n01",
+      "object": "n02"
+    },
+    "e02": {
+      "subject": "n01",
+      "object": "n03"
+    },
+    "e03": {
+      "subject": "n03",
+      "object": "n04"
+    },
+    "e04": {
+      "subject": "n02",
+      "object": "n05"
+    },
+    "e05": {
+      "subject": "n02",
+      "object": "n06"
+    }
+  },
+  "nodes": {
+    "n00": {
+      "ids": [
+        "FMA:74637"
+      ],
+      "categories": [
+        "biolink:Gene"
+      ]
+    },
+    "n01": {
+      "ids": [
+        "FMA:83376"
+      ],
+      "categories": [
+        "biolink:Protein"
+      ]
+    },
+    "n02": {
+      "categories": [
+        "biolink:ChemicalEntity"
+      ]
+    },
+    "n03": {
+      "categories": [
+        "biolink:ChemicalEntity"
+      ]
+    },
+    "n04": {
+      "ids": [
+        "FMA:83376"
+      ],
+      "categories": [
+        "biolink:ChemicalEntity"
+      ]
+    },
+    "n05": {
+      "ids": [
+        "FMA:83376"
+      ],
+      "categories": [
+        "biolink:ChemicalEntity"
+      ]
+    },
+    "n06": {
+      "ids": [
+        "FMA:83376"
+      ],
+      "categories": [
+        "biolink:ChemicalEntity"
+      ]
+    }
+  }
+}
+)

@@ -20,46 +20,58 @@ class GraphSplitter:
         return pinned_nodes
 
 
+    def _traverse_outward(self, traversed_edges, traversed_nodes, path, node, distance):
+        """Recursively traverses the tree, and returns the closest pinned node (if one is found), along with the distance to that node and the path to that node. The 'closest' node, however, may not be adjacent to the original given node. I.e. it may not have a distance of 1. This function should only be called via the wrapper function _find_nearest_pinned_node"""
+        # utility function to get the node of an edge that hasn't been traversed
+        get_untraversed_node = lambda edge: edge.subject if edge.subject not in traversed_nodes else edge.object
+        # make deep copy of path to not interfere with other recursive calls
+        path = [this_node for this_node in path]
+        path.append(node)
+
+        # positive base case, when we have found a pinned node, return the node and info pertaining to how it was found. Note that nodes adjacent to the original source node are ignored here.
+        if self.qg.nodes[node].ids and distance > 1:
+            return (node, distance, path)
+
+        edges_to_traverse = eu.get_connected_qedge_keys(node, self.qg)
+        # ensure we don't traverse the same edge multiple times with this
+        edges_to_traverse -= traversed_edges
+        # negative base case, when there are no more edges to traverse, return None for no found pinned node
+        if len(edges_to_traverse) == 0:
+            return None
+
+        # recurse into each adjacent node, appending its nearest pinned node if it has one. If not, None will be appended to nearest_pinned_nodes
+        nearest_pinned_nodes = []
+        for edge_key in edges_to_traverse:
+            node_to_add = get_untraversed_node(self.qg.edges[edge_key])
+            print("node to add for edge:",edge_key," is:",node_to_add)
+            traversed_edges.add(edge_key)
+            traversed_nodes.add(node_to_add)
+            nearest_pinned_nodes.append(self._traverse_outward(traversed_edges, traversed_nodes, path, node_to_add, distance+1))
+
+        # filter the 'None' entries out of nearest_pinned_nodes
+        nearest_pinned_nodes = [x for x in nearest_pinned_nodes if x != None]
+        if len(nearest_pinned_nodes) == 0:
+            return None
+
+        # find the node tuple with the lowest 'distance' attribute and return it
+        closest_pinned_node = nearest_pinned_nodes[0]
+        for tuple in nearest_pinned_nodes:
+            if tuple[1] < closest_pinned_node[1]:
+                closest_pinned_node = tuple
+        return closest_pinned_node
+
+
     def _find_nearest_pinned_node(self, source_node_key):
-        """Starting at a given pinned node, this traverses the tree outward in all directions to find the nearest pinned node to the given node"""
+        """Starting at a given pinned node, this traverses the tree outward in all directions to find the nearest pinned node to the given node. This is intended as a wrapper for the recursive function _traverse_outward"""
 
         if not self.qg.nodes[source_node_key].ids:
             raise TypeError("Was given an unpinned node")
 
-        traversed_edges = set()
-        traversed_nodes = {source_node_key}
-        # gets the node of an edge that has not yet been traversed, used below
-        get_untraversed_node = lambda edge: edge.subject if edge.subject not in traversed_nodes else edge.object
+        closest_pinned_node = self._traverse_outward(set(), {source_node_key}, [], source_node_key, 0)
 
-        edges_to_traverse = eu.get_connected_qedge_keys(source_node_key, self.qg)
-        # edges_to_traverse = sorted(edges_to_traverse, key=lambda x: x
-
-        # while there are untraversed edges, continuing traversing the tree
-        distance = 1
-        while edges_to_traverse:
-            distance += 1
-            # traverse "outward" in the graph by one edge in all directions
-            # print("Main Loop\n","="*64,)
-            next_edges_to_traverse = set()
-            # one iteration here is expanding outward from one node
-            for edge_key in edges_to_traverse:
-
-                # if we found a pinned node at this edge, return!
-                node_to_add = get_untraversed_node(self.qg.edges[edge_key])
-                if self.qg.nodes[node_to_add].ids and distance != 1:
-                    return node_to_add, distance
-
-                # tracking what we've already traversed
-                traversed_edges.add(edge_key)
-                traversed_nodes.add(node_to_add)
-                # defining the set of edges to traverse when we expand outward by one more edge in the next while loop run
-                next_edges_to_traverse |= eu.get_connected_qedge_keys(node_to_add, self.qg)
-                next_edges_to_traverse -= traversed_edges
-                edges_to_traverse = next_edges_to_traverse
-            # print("Edges to traverse at end of for loop: ", edges_to_traverse)
-            # print("Edges traversed at end of for loop: ", traversed_edges)
-            # print("Nodes traversed at the end of for loop: ", traversed_nodes)
-        raise TypeError("Could not find non-adjacent pinned node to pair with this pinned node")
+        if closest_pinned_node == None:
+            raise TypeError("Could not find non-adjacent pinned node to pair with this pinned node")
+        return closest_pinned_node[0], closest_pinned_node[2]
 
 
     def split(self, qg):
@@ -74,8 +86,8 @@ class GraphSplitter:
         start_node = self.sorted_pinned_nodes[0]
         print("start node:",start_node)
 
-        paired_node, distance = self._find_nearest_pinned_node(start_node)
-        print("paired node:",paired_node)
+        self._find_nearest_pinned_node(start_node)
+        # print("paired node:",paired_node)
 
 
 def main():
@@ -85,8 +97,9 @@ def main():
     #     gs.split(demographs.query_graph_1)
     # except TypeError:
     #     pass
-    gs.split(demographs.query_graph_8)
+    gs.split(demographs.query_graph_11)
     print("done")
+
 
 main()
 
