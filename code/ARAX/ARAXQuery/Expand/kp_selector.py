@@ -61,6 +61,9 @@ class KPSelector:
                 accepting_kps.add(kp)
             else:
                 self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
+        kps_missing_meta_info = self.all_kps.difference(set(self.meta_map))
+        for missing_kp in kps_missing_meta_info:
+            self.log.update_query_plan(qedge_key, missing_kp, "Skipped", "No MetaKG info available")
 
         return accepting_kps
 

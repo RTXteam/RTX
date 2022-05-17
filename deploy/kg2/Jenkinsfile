@@ -47,7 +47,7 @@ pipeline {
          when { expression { return env.BUILD == 'true' }}
           steps {
             configFileProvider([
-                configFile(fileId: 'configv2.json', targetLocation: 'DockerBuild/configv2.json')
+                configFile(fileId: 'ci-configv2.json', targetLocation: 'DockerBuild/configv2.json')
             ]){
                 script {
                     docker.build(env.DOCKER_REPO_NAME, "--no-cache -f ./DockerBuild/KG2-Dockerfile ./DockerBuild/")
@@ -61,7 +61,7 @@ pipeline {
       stage('Deploy to AWS EKS Blue') {
           steps {
               configFileProvider([
-                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/kg2/configs/configv2.json'),
+                  configFile(fileId: 'ci-configv2.json', targetLocation: 'deploy/kg2/configs/configv2.json'),
                   configFile(fileId: 'kg2.values.ncats.yaml', targetLocation: 'deploy/kg2/kg2.values.ncats.yaml')
               ]){
                   withCredentials([

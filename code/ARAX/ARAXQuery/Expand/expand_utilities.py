@@ -535,8 +535,8 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
         "infores:biothings-tcga-mut-freq": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
         "infores:connections-hypothesis": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)
         "infores:cohd": "https://cohd.io/api",
-        "infores:icees-dili": "https://icees.renci.org:16341",  # TODO: Enter 1.2 endpoint once available..
-        "infores:icees-asthma": "https://icees.renci.org:16339"  # TODO: Enter 1.2 endpoint once available..
+        "infores:icees-dili": "https://icees-dili.renci.org",
+        "infores:icees-asthma": "https://icees-asthma.renci.org"
     }
     return endpoint_map.get(kp_name)
 
@@ -680,7 +680,16 @@ def get_standard_parameters() -> dict:
             "examples": [500, 2000],
             "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of "
                            "this threshold will be pruned, using Fisher Exact Test to rank answers."
+        },
+        "kp_timeout": {
+            "is_required": False,
+            "type": "integer",
+            "default": None,
+            "examples": [30, 120],
+            "description": "The number of seconds Expand will wait for a response from a KP before "
+                           "cutting the query off and proceeding without results from that KP."
         }
+
     }
     return standard_parameters
 

@@ -24,13 +24,13 @@
     - [expand(kp=infores:connections-hypothesis)](#expandkpinforesconnections-hypothesis)
     - [expand(kp=infores:arax-drug-treats-disease)](#expandkpinforesarax-drug-treats-disease)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
-    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
-    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
     - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
+    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
     - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
+    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
+    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
     - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -262,6 +262,18 @@ This command will expand (aka, answer/fill) your query graph in an edge-by-edge 
 
     - If not specified the default input will be None. 
 
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 ### expand(kp=infores:rtx-kg2)
 This command reaches out to the RTX-KG2 API to find all bioentity subpaths that satisfy the query graph.
 
@@ -296,6 +308,18 @@ This command reaches out to the RTX-KG2 API to find all bioentity subpaths that 
     - This is not a required parameter and may be omitted.
 
     - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -336,6 +360,18 @@ This command uses BioThings Explorer (from the Service Provider) to find all bio
 
     - If not specified the default input will be None. 
 
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 ### expand(kp=infores:cohd)
 This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that satisfy the query graph.
 
@@ -370,6 +406,18 @@ This command uses the Clinical Data Provider (COHD) to find all bioentity subpat
     - This is not a required parameter and may be omitted.
 
     - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -410,6 +458,18 @@ This command reaches out to the Genetics Provider to find all bioentity subpaths
 
     - If not specified the default input will be None. 
 
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 ### expand(kp=infores:molepro)
 This command reaches out to MolePro (the Molecular Provider) to find all bioentity subpaths that satisfy the query graph.
 
@@ -444,6 +504,18 @@ This command reaches out to MolePro (the Molecular Provider) to find all bioenti
     - This is not a required parameter and may be omitted.
 
     - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -484,6 +556,18 @@ This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioe
 
     - If not specified the default input will be None. 
 
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 ### expand(kp=infores:biothings-multiomics-wellness)
 This command reaches out to the Multiomics Wellness KP to find all bioentity subpaths that satisfy the query graph.
 
@@ -518,6 +602,18 @@ This command reaches out to the Multiomics Wellness KP to find all bioentity sub
     - This is not a required parameter and may be omitted.
 
     - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -558,6 +654,18 @@ This command reaches out to the SPOKE KP to find all bioentity subpaths that sat
 
     - If not specified the default input will be None. 
 
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 ### expand(kp=infores:biothings-multiomics-biggim-drug-response)
 This command reaches out to the Multiomics Big GIM II Drug Response KP to find all bioentity subpaths that satisfy the query graph.
 
@@ -592,6 +700,18 @@ This command reaches out to the Multiomics Big GIM II Drug Response KP to find a
     - This is not a required parameter and may be omitted.
 
     - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -632,6 +752,18 @@ This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to 
 
     - If not specified the default input will be None. 
 
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 ### expand(kp=infores:arax-normalized-google-distance)
 This command uses ARAX's in-house normalized google distance (NGD) database to expand a query graph; it returns edges between nodes with an NGD value below a certain threshold. This threshold is currently hardcoded as 0.5, though this will be made configurable/smarter in the future.
 
@@ -666,6 +798,18 @@ This command uses ARAX's in-house normalized google distance (NGD) database to e
     - This is not a required parameter and may be omitted.
 
     - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -706,6 +850,18 @@ This command reaches out to the ICEES knowledge provider's DILI instance to find
 
     - If not specified the default input will be None. 
 
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 ### expand(kp=infores:icees-asthma)
 This command reaches out to the ICEES knowledge provider's Asthma instance to find all bioentity subpaths that satisfy the query graph.
 
@@ -740,6 +896,18 @@ This command reaches out to the ICEES knowledge provider's Asthma instance to fi
     - This is not a required parameter and may be omitted.
 
     - `500` and `2000` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -780,6 +948,18 @@ This command reaches out to CHP (the Connections Hypothesis Provider) to query t
 
     - If not specified the default input will be None. 
 
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 ### expand(kp=infores:arax-drug-treats-disease)
 This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand a query graph; it returns edges between nodes with an DTD probability above a certain threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to to call DTD model to do a real-time calculation.
 
@@ -817,6 +997,18 @@ This command uses ARAX's in-house drug-treats-disease (DTD) database (built from
 
     - If not specified the default input will be None. 
 
+* ##### kp_timeout
+
+    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `30` and `120` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
 * ##### DTD_threshold
 
     - What cut-off/threshold to use for expanding the DTD virtual edges.
@@ -846,227 +1038,6 @@ This command uses ARAX's in-house drug-treats-disease (DTD) database (built from
     - If not specified the default input will be false. 
 
 ## ARAX_overlay
-### overlay(action=overlay_exposures_data)
-
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
-
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=compute_jaccard)
-
-`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
-The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
-This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
-This can be used for downstream filtering to concentrate on relevant bioentities.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### start_node_key
-
-    - A curie id specifying the starting node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### intermediate_node_key
-
-    - A curie id specifying the intermediate node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### end_node_key
-
-    - A curie id specifying the ending node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `N1`, `J2`, and `FET` are examples of valid inputs.
-
-### overlay(action=overlay_clinical_info)
-
-`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
-All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
-This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
-This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
-These virtual edges have the following types:
-
-* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
-* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
-* `chi_square` has the virtual edge type `has_chi_square_with`
-
-Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
-
-* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge subject and object nodes and adds these values as edge attributes.
-* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge subject and object nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
-* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge subject/object nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
-* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-**NOTE:** The parameters `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are mutually exclusive and thus will cause an error when more than one is included.
-
-#### parameters: 
-
-* ##### COHD_method
-
-    - Which measure from COHD should be considered.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
-
-    - If not specified the default input will be paired_concept_frequency. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=compute_ngd)
-
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### default_value
-
-    - The default value of the normalized Google distance (if its value cannot be determined)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0` and `inf` are examples of valid inputs.
-
-    - If not specified the default input will be inf. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
 ### overlay(action=predict_drug_treats_disease)
 
 `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
@@ -1141,6 +1112,64 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - If not specified the default input will be false. 
 
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
 ### overlay(action=add_node_pmids)
 
 `add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
@@ -1163,6 +1192,117 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     - `all`, `5`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be 100. 
+
+### overlay(action=overlay_exposures_data)
+
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+                    
+
+#### parameters: 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=overlay_clinical_info)
+
+`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+These virtual edges have the following types:
+
+* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
+* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
+* `chi_square` has the virtual edge type `has_chi_square_with`
+
+Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
+
+* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge subject and object nodes and adds these values as edge attributes.
+* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge subject and object nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
+* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge subject/object nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+**NOTE:** The parameters `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are mutually exclusive and thus will cause an error when more than one is included.
+
+#### parameters: 
+
+* ##### COHD_method
+
+    - Which measure from COHD should be considered.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
+
+    - If not specified the default input will be paired_concept_frequency. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
 
 ### overlay(action=fisher_exact_test)
 
@@ -1264,6 +1404,58 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
     - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
+
+### overlay(action=compute_jaccard)
+
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
+The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
+This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
+This can be used for downstream filtering to concentrate on relevant bioentities.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### start_node_key
+
+    - A curie id specifying the starting node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### intermediate_node_key
+
+    - A curie id specifying the intermediate node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### end_node_key
+
+    - A curie id specifying the ending node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
 
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_predicate)
