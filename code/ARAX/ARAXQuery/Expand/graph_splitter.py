@@ -43,7 +43,6 @@ class GraphSplitter:
         nearest_pinned_nodes = []
         for edge_key in edges_to_traverse:
             node_to_add = get_untraversed_node(self.qg.edges[edge_key])
-            print("node to add for edge:",edge_key," is:",node_to_add)
             traversed_edges.add(edge_key)
             traversed_nodes.add(node_to_add)
             nearest_pinned_nodes.append(self._traverse_outward(traversed_edges, traversed_nodes, path, node_to_add, distance+1))
@@ -71,7 +70,17 @@ class GraphSplitter:
 
         if closest_pinned_node == None:
             raise TypeError("Could not find non-adjacent pinned node to pair with this pinned node")
-        return closest_pinned_node[0], closest_pinned_node[2]
+        return closest_pinned_node
+
+
+    def _node_connected_to_node(graph, n1, n2):
+        print("node connected to node")
+        connected = eu.find_qnode_connected_to_sub_qg()
+        print(connected)
+
+
+    def _split_at_node(self, graph, node):
+        pass
 
 
     def split(self, qg):
@@ -81,13 +90,18 @@ class GraphSplitter:
         if len(self.sorted_pinned_nodes) == 0:
             raise IndexError("There are no pinned nodes in this query graph")
         if len(self.sorted_pinned_nodes) == 1:
-            raise TypeError("Cannot split a query graph with only one pinned node")
+            return self.qg
 
+        # find the node to split on by finding another pinned node, called 'paired_node', and then picking a node about halfway between start_node and paired_node
         start_node = self.sorted_pinned_nodes[0]
-        print("start node:",start_node)
+        paired_node, dist, path = self._find_nearest_pinned_node(start_node)
+        split_node = path[round(dist/2)]
 
-        self._find_nearest_pinned_node(start_node)
-        # print("paired node:",paired_node)
+        print("start node:",start_node)
+        print("paired node:",paired_node)
+        print("split node:",split_node)
+
+        return _split_at_node(split_node)
 
 
 def main():
@@ -97,7 +111,8 @@ def main():
     #     gs.split(demographs.query_graph_1)
     # except TypeError:
     #     pass
-    gs.split(demographs.query_graph_11)
+    # gs.split(demographs.query_graph_11)
+    gs._node_connected_to_node(demographs.query_graph_12)
     print("done")
 
 
