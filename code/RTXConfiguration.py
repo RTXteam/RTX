@@ -14,6 +14,37 @@ class RTXConfiguration:
     def __init__(self):
         self.version = "ARAX 1.2.1"
 
+        location = os.path.dirname(os.path.abspath(__file__))
+        self.instance_name = '??'
+        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
+        if match:
+            self.instance_name = match.group(1)
+        if self.instance_name == 'production':
+            self.instance_name = 'ARAX'
+
+        try:
+            with open(location + 'config.domain') as infile:
+                for line in infile:
+                    self.domain = line.strip()
+        except:
+            self.domain = '??'
+
+        if self.domain == "arax.ci.transltr.io":
+            self.maturity = "staging"
+        elif self.domain == "arax.test.transltr.io":
+            self.maturity = "testing"
+        elif self.domain == "arax.transltr.io":
+            self.maturity = "production"
+        elif self.domain == "arax.ncats.io":
+            if self.instance_name == "ARAX":
+                self.maturity = "production"
+            elif self.instance_name == "test":
+                self.maturity = "testing"
+            else:
+                self.maturity = "development"
+        else:
+            self.maturity = "development"
+
         file_path = os.path.dirname(os.path.abspath(__file__)) + '/configv2.json'
         local_path = os.path.dirname(os.path.abspath(__file__)) + '/config_local.json'
 
