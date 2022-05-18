@@ -7,6 +7,7 @@ import json
 import ast
 import re
 import numpy as np
+import math
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
 from ARAX_expander import ARAXExpander
@@ -29,6 +30,7 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'A
 # from creativeDTD import creativeDTD
 
 import pickle
+import pandas as pd
 
 
 class ARAXInfer:
@@ -157,6 +159,8 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
                     continue
                 elif any([type(x) == int for x in allowable_parameters[key]]):
                     continue
+                elif any([x is None for x in allowable_parameters[key]]):
+                    continue
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.warning(
                         f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
@@ -220,7 +224,7 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
-                                    'node_curie': {x for x in self.message.knowledge_graph.nodes.keys()},
+                                    'node_curie': {None},
                                     'n_drugs': {int()},
                                     'n_paths': {int()}
                                 }
@@ -289,133 +293,143 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
 
         # FW: temp fix to use the pickle fil for dev work rather than recomputing
         
+        top_drugs = pd.read_csv(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"top_n_drugs.csv"]))
         with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
             top_paths = pickle.load(fid)
-
-        max_path_len = 0
-        add_base_query_graph = True
+        path_lengths = set([math.floor(len(x[0].split("->"))/2.) for paths in top_paths.values() for x in paths])
+        max_path_len = max(path_lengths)
+        disease = list(top_paths.keys())[0][1]
+        add_qnode_params = {
+            'key' : "disease",
+            'name': disease
+        }
+        self.response = messenger.add_qnode(self.response, add_qnode_params)
+        add_qnode_params = {
+            'key' : "drug",
+            'categories': ['biolink:Drug']
+        }
+        self.response = messenger.add_qnode(self.response, add_qnode_params)
+        add_qedge_params = {
+            'key' : "probably_treats",
+            'subject' : "drug",
+            'object' : "disease",
+            'predicates': ["biolink:probably_treats"]
+        }
+        self.response = messenger.add_qedge(self.response, add_qedge_params)
+        path_keys = [{} for i in range(max_path_len)]
+        for i in range(max_path_len+1):
+            if (i+1) in path_lengths:
+                path_qnodes = ["drug"]
+                for j in range(i):
+                    new_qnode_key = f"creative_DTD_qnode_{self.qnode_global_iter}"
+                    path_qnodes.append(new_qnode_key)
+                    add_qnode_params = {
+                        'key' : new_qnode_key,
+                        'option_group_id': f"creative_DTD_option_group_{self.option_global_iter}",
+                        "is_set": "true"
+                    }
+                    self.response = messenger.add_qnode(self.response, add_qnode_params)
+                    self.qnode_global_iter += 1
+                path_qnodes.append("disease")
+                qnode_pairs = list(zip(path_qnodes,path_qnodes[1:]))
+                qedge_key_list = []
+                for qnode_pair in qnode_pairs:
+                    add_qedge_params = {
+                        'key' : f"creative_DTD_qedge_{self.qedge_global_iter}",
+                        'subject' : qnode_pair[0],
+                        'object' : qnode_pair[1],
+                        'option_group_id': f"creative_DTD_option_group_{self.option_global_iter}"
+                    }
+                    qedge_key_list.append(f"creative_DTD_qedge_{self.qedge_global_iter}")
+                    self.qedge_global_iter += 1
+                    self.response = messenger.add_qedge(self.response, add_qedge_params)
+                path_keys[i]["qnode_pairs"] = qnode_pairs
+                path_keys[i]["qedge_keys"] = qedge_key_list
+                self.option_global_iter += 1
 
         # FW: code that will add resulting paths to the query graph and knowledge graph goes here
+        essence_scores = {}
         for (drug, disease), paths in top_paths.items():
-            if add_base_query_graph:
-                add_base_query_graph = False
-                add_qnode_params = {
-                    'key' : "disease",
-                    'name': disease
-                }
-                self.response = messenger.add_qnode(self.response, add_qnode_params)
-                add_qnode_params = {
-                    'key' : "drug",
-                    'categories': ['biolink:Drug']
-                }
-                self.response = messenger.add_qnode(self.response, add_qnode_params)
-                add_qedge_params = {
-                    'key' : "probably_treated_by",
-                    'subject' : "disease",
-                    'object' : "drug",
-                    'predicates': [edge_tuple[1]]
-                }
-                self.response = messenger.add_qedge(self.response, add_qedge_params)
-            new_response = ARAXResponse()
-            added_tuples = set()
-            added_nodes = {}
-            node_n = 0
-            edge_n = 0
-            drug_n = 0
-            max_path_len = 0
+            path_added = False
             # Splits the paths which are encodes as strings into a list of nodes names and edge predicates
             # The x[0] is here since each element consists of the string path and a score we are currently ignoring the score
             split_paths = [x[0].split("->") for x in paths]
             for path in split_paths:
+                new_response = ARAXResponse()
+                messenger.create_envelope(new_response)
                 n_elements = len(path)
                 # Creates edge tuples of the form (node name 1, edge predicate, node name 2)
                 edge_tuples = [(path[i],path[i+1],path[i+2]) for i in range(0,n_elements-2,2)]
-                max_path_len = max(max_path_len, len(edge_tuples))
-                for edge_tuple in edge_tuples:
-                    if edge_tuple not in added_tuples:
-                        added_tuples.add(edge_tuple)
-                        if edge_tuple[0] not in added_nodes:
-                            new_qnode_key = f'n{node_n}'
-                            added_nodes[edge_tuple[0]] = new_qnode_key
-                            node_n += 1
-                            add_qnode_params = {
-                                'key' : new_qnode_key,
-                                'name': edge_tuple[0]
-                            }
-                            new_response = messenger.add_qnode(new_response, add_qnode_params)
-                        if edge_tuple[2] not in added_nodes:
-                            new_qnode_key = f'n{node_n}'
-                            added_nodes[edge_tuple[2]] = new_qnode_key
-                            node_n += 1
-                            add_qnode_params = {
-                                'key' : new_qnode_key,
-                                'name': edge_tuple[2]
-                            }
-                            new_response = messenger.add_qnode(new_response, add_qnode_params)
-                        new_qedge_key = f'e{edge_n}'
-                        edge_n += 1
-                        add_qedge_params = {
-                            'key' : new_qedge_key,
-                            'subject' : added_nodes[edge_tuple[0]],
-                            'object' : added_nodes[edge_tuple[2]],
-                            'predicates': [edge_tuple[1]]
+                path_idx = len(edge_tuples)-1
+                added_nodes = set()
+                for i in range(path_idx+1):
+                    if path_keys[path_idx]["qnode_pairs"][i][0] not in added_nodes:
+                        add_qnode_params = {
+                            'key' : path_keys[path_idx]["qnode_pairs"][i][0],
+                            'name': edge_tuples[i][0]
                         }
-                        new_response = messenger.add_qedge(new_response, add_qedge_params)
-            expand_params = {
-                'kp':kp,
-                'prune_threshold':prune_threshold,
-                'edge_key':qedge_keys,
-                'kp_timeout':timeout
-            }
-            new_response = expander.apply(new_response, expand_params, mode=mode)
-            if new_response.status == 'OK':
-                self.response.merge(new_response)
-                self.response.envelope.message.knowledge_graph.edges.update(new_response.envelope.message.knowledge_graph.edges)
-                self.response.envelope.message.knowledge_graph.nodes.update(new_response.envelope.message.knowledge_graph.nodes)
+                        new_response = messenger.add_qnode(new_response, add_qnode_params)
+                        added_nodes.add(path_keys[path_idx]["qnode_pairs"][i][0])
+                    if path_keys[path_idx]["qnode_pairs"][i][1] not in added_nodes:
+                        add_qnode_params = {
+                            'key' : path_keys[path_idx]["qnode_pairs"][i][1],
+                            'name': edge_tuples[i][2]
+                        }
+                        new_response = messenger.add_qnode(new_response, add_qnode_params)
+                        added_nodes.add(path_keys[path_idx]["qnode_pairs"][i][1])
+                    new_qedge_key = path_keys[path_idx]["qedge_keys"][i]
+                    add_qedge_params = {
+                        'key' : new_qedge_key,
+                        'subject' : path_keys[path_idx]["qnode_pairs"][i][0],
+                        'object' : path_keys[path_idx]["qnode_pairs"][i][1],
+                        'predicates': [edge_tuples[i][1]]
+                    }
+                    new_response = messenger.add_qedge(new_response, add_qedge_params)
+                expand_params = {
+                    'kp':kp,
+                    'prune_threshold':prune_threshold,
+                    'edge_key':path_keys[path_idx]["qedge_keys"],
+                    'kp_timeout':timeout
+                }
+                new_response = expander.apply(new_response, expand_params, mode=mode)
+                if new_response.status == 'OK':
+                    for knode_id, knode in new_response.envelope.message.knowledge_graph.nodes.items():
+                        if 'disease' in knode.qnode_keys:
+                            normalized_disease = knode_id
+                        if 'drug' in knode.qnode_keys:
+                            normalized_drug = knode_id
+                            normalized_drug_name = knode.name
+                        if knode_id in self.response.envelope.message.knowledge_graph.nodes:
+                            new_response.envelope.message.knowledge_graph.nodes[knode_id].qnode_keys += self.response.envelope.message.knowledge_graph.nodes[knode_id].qnode_keys
+                            self.response.envelope.message.knowledge_graph.nodes[knode_id].qnode_keys = new_response.envelope.message.knowledge_graph.nodes[knode_id].qnode_keys
+                    self.response.envelope.message.knowledge_graph.nodes.update(new_response.envelope.message.knowledge_graph.nodes)
+                    self.response.envelope.message.knowledge_graph.edges.update(new_response.envelope.message.knowledge_graph.edges)
+                    self.response.merge(new_response)
+                    path_added = True
+            if path_added:
+                treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]
+                essence_scores[normalized_drug_name] = treat_score
                 edge_attribute_list = [
                     # EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
+                    EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                    EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats", value=str(treat_score))
                 ]
-                fixed_edge = Edge(predicate="biolink:probably_treated_by", subject=disease, object=drug,
+                fixed_edge = Edge(predicate="biolink:probably_treats", subject=normalized_drug, object=normalized_disease,
                                 attributes=edge_attribute_list)
-                fixed_edge.qedge_keys = ["probably_treated_by"]
+                fixed_edge.qedge_keys = ["probably_treats"]
                 self.response.envelope.message.knowledge_graph.edges[f"creative_DTD_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1
             else:
-                self.response.error(f"Something went wrong when adding the subgraph for the drug-disease pair ({drug},{disease}) to the knowledge graph.")
-                return self.response
-        for i in range(max_path_len):
-            path_qnodes = ["disease"]
-            for j in range(i):
-                new_qnode_key = f"creative_DTD_qnode_{self.qnode_global_iter}"
-                path_qnodes.append(new_qnode_key)
-                add_qnode_params = {
-                    'key' : new_qnode_key,
-                    'option_group_id': f"creative_DTD_option_group_{self.option_global_iter}",
-                    "is_set": True
-                }
-                self.response = messenger.add_qnode(self.response, add_qnode_params)
-                self.qnode_global_iter += 1
-            path_qnodes.append("drug")
-            for qnode_pair in list(zip(path_qnodes,path_qnodes[1:])):
-                add_qedge_params = {
-                    'key' : f"creative_DTD_qedge_{self.qedge_global_iter}",
-                    'subject' : qnode_pair[0],
-                    'object' : qnode_pair[1],
-                    'option_group_id': f"creative_DTD_option_group_{self.option_global_iter}"
-                }
-                self.qedge_global_iter += 1
-                self.response = messenger.add_qedge(self.response, add_qedge_params)
-            self.option_global_iter += 1
+                self.response.warning(f"Something went wrong when adding the subgraph for the drug-disease pair ({drug},{disease}) to the knowledge graph. Skipping this result....")
         resultifier = ARAXResultify()
         resultify_params = {
             "ignore_edge_direction": "true"
         }
-        self.response = resultifier.apply(self.response, action['parameters'])
-        if self.response.status != 'OK':
-            return self.response
-
+        self.response = resultifier.apply(self.response, resultify_params)
+        for result in self.response.envelope.message.results:
+            result.score = essence_scores[result.essence]
+        self.response.envelope.message.results.sort(key=lambda x: x.score, reverse=True)
         return self.response
 
 

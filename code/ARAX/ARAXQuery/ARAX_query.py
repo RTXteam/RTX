@@ -638,12 +638,14 @@ class ARAXQuery:
             from ARAX_filter_kg import ARAXFilterKG
             from ARAX_resultify import ARAXResultify
             from ARAX_filter_results import ARAXFilterResults
+            from ARAX_infer import ARAXInfer
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
+            infer = ARAXInfer()
             self.message = message
 
             #### Create some empty stubs if they don't exist
@@ -728,6 +730,9 @@ class ARAXQuery:
 
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         filter_kg.apply(response, action['parameters'])
+
+                    elif action['command'] == 'infer':  # recognize the infer command
+                        infer.apply(response, action['parameters'])
 
                     elif action['command'] == 'filter_results':  # recognize the filter_results command
                         response.debug(f"Before filtering, there are {len(response.envelope.message.results)} results")
