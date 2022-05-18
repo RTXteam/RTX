@@ -30,17 +30,15 @@ class RTXConfiguration:
         except:
             self.domain = '??'
 
-        if self.domain == "arax.ci.transltr.io":
+        if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io", "Github actions ARAX test suite"]:
             self.maturity = "staging"
-        elif self.domain == "arax.test.transltr.io":
+        elif self.domain == ["arax.test.transltr.io", "kg2.test.transltr.io"]:
             self.maturity = "testing"
-        elif self.domain == "arax.transltr.io":
+        elif self.domain == ["arax.transltr.io", "kg2.transltr.io"]:
             self.maturity = "production"
         elif self.domain == "arax.ncats.io":
-            if self.instance_name == "ARAX":
+            if self.instance_name in ["ARAX", "kg2"]:
                 self.maturity = "production"
-            elif self.instance_name == "test":
-                self.maturity = "testing"
             else:
                 self.maturity = "development"
         else:
