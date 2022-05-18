@@ -63,17 +63,17 @@ tags:
     description: Get supported relationships
     externalDocs:
       description: Documentation for the reasoner predicates function
-      url: http://arax.ncats.io/overview.html#predicates
+      url: https://arax.ncats.io/overview.html#predicates
   - name: query
     description: Initiate a query and wait to receive the response
     externalDocs:
       description: Documentation for the reasoner query function
-      url: http://arax.ncats.io/overview.html#query
+      url: https://arax.ncats.io/overview.html#query
   - name: asyncquery
     description: Initiate a query with a callback to receive the response
     externalDocs:
       description: Documentation for the reasoner asynchquery function
-      url: http://arax.ncats.io/overview.html#asyncquery
+      url: https://arax.ncats.io/overview.html#asyncquery
   - name: translator
     description: Required for SmartAPI validation of x-translator
   - name: trapi

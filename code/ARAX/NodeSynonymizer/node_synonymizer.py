@@ -18,7 +18,7 @@ from sri_node_normalizer import SriNodeNormalizer
 from category_manager import CategoryManager
 
 # Testing and debugging flags
-DEBUG = False
+DEBUG = True
 
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
@@ -35,6 +35,8 @@ class NodeSynonymizer:
     def __init__(self, live="Production"):
 
         self.databaseLocation = os.path.dirname(os.path.abspath(__file__))
+        #self.databaseLocation = "G:/local/tmp"
+
         self.options = {}
         self.kg_map = {
             'kg_nodes': {},
@@ -633,6 +635,11 @@ class NodeSynonymizer:
             uc_node_curie = node_curie.upper()
             original_node_name = node_name
 
+            #### If we're in test subset mode, only continue the the node_curie is in the test subset
+            if test_subset_flag:
+                if node_curie not in test_set['identifiers']:
+                    continue
+
             #### Skip some known problems
             if node_curie in exceptions_isnot and exceptions_isnot[node_curie] == node_name:
                 continue
@@ -643,11 +650,6 @@ class NodeSynonymizer:
             if uc_node_curie in self.exceptions['rename']:
                 node_name = self.exceptions['rename'][uc_node_curie]
                 print(f"INFO: Based on manual exception, renaming {uc_node_curie} from {original_node_name} to {node_name}")
-
-            #### If we're in test subset mode, only continue the the node_curie is in the test subset
-            if test_subset_flag:
-                if node_curie not in test_set['identifiers']:
-                    continue
 
             #### For debugging problems
             #debug_flag = False
@@ -678,14 +680,17 @@ class NodeSynonymizer:
                 if debug_flag:
                     print(f"DEBUG: This curie was already seen. Setting to its uc_unique_concept_curie to {uc_unique_concept_curie}")
 
-            # Check to see if this is a supported prefix or in the translation table
+            # If this curie has a prefix that is supported by the SRI Node Normalizer, then we will consult it
             if curie_prefix in normalizer.curie_prefix_tx_arax2sri or curie_prefix in normalizer_supported_prefixes:
+
+                #### If there is a manual exception, then skip it
                 if node_curie in self.exceptions['skip_SRI']:
                     print(f"WARNING: Skipping SRI NN lookup for {node_curie} due to directive in Exceptions.txt file")
                     equivalence = { 'status': 'SRI NN skipped per exceptions', 'equivalent_identifiers': [], 'equivalent_names': [],
                         'preferred_curie': '', 'preferred_curie_name': '', 'type': ''
                     }
 
+                #### Otherwise, get the equivalence information from the SRI Node Normalizer
                 else:
                     equivalence = normalizer.get_curie_equivalence(node_curie, cache_only=True)
                     if debug_flag:
@@ -713,7 +718,7 @@ class NodeSynonymizer:
                 normalizer_category = ''
 
 
-            # If the normalizer has something for us, then use that as the unique_concept_curie
+            #### If the normalizer has something for us, then use that as the unique_concept_curie
             overridden_normalizer_category = normalizer_category
             if equivalence['status'] == 'OK':
 
@@ -730,7 +735,7 @@ class NodeSynonymizer:
                     unique_concept_curie = normalizer_curie
                     uc_unique_concept_curie = normalizer_curie.upper()
 
-            # And if the normalizer did not have anything for us
+            #### And if the normalizer did not have anything for us
             else:
 
                 # If we've already seen this synonym, then switch to that unique concept
@@ -759,6 +764,7 @@ class NodeSynonymizer:
                 'normalizer_category': normalizer_category,
                 'source': 'KG2'
             }
+
 
             # If this unique_concept_curie already exists, embrace it
             if uc_unique_concept_curie in kg_unique_concepts:
@@ -798,7 +804,8 @@ class NodeSynonymizer:
                         'all_lc_names': { node_name.lower(): True }
                     }
 
-            # Loop through the equivalent identifiers from the SRI normalizer and add those to the list
+
+            #### Loop through the equivalent identifiers from the SRI node normalizer and add those to the list
             for equivalent_concept in equivalence['equivalent_identifiers']:
 
                 equivalent_identifier = equivalent_concept['identifier']
@@ -847,19 +854,21 @@ class NodeSynonymizer:
                     kg_unique_concepts[uc_unique_concept_curie]['all_uc_curies'][uc_equivalent_identifier] = True
 
 
-            # Loop through the equivalent names from the SRI normalizer and add those to the list
+            #### Loop through the equivalent names from the SRI node normalizer and add those to the list
             for equivalent_name in equivalence['equivalent_names']:
 
+                #### Ensure that the SRI Node Normalizer indeed gave us a name
                 if equivalent_name == '':
                     print(f"ERROR: SRI normalizer equivalent_name is '' for {uc_unique_concept_curie}");
                     exit()
 
-                # If this equivalent name is already there, just make sure the unique_concept_curie is the same
+                #### If this equivalent name is already there, just make sure the unique_concept_curie is the same
                 lc_equivalent_name = equivalent_name.lower()
                 if lc_equivalent_name in kg_names:
                     #print(f"INFO: Adding {unique_concept_curie} to synonym {lc_equivalent_name}")
                     kg_names[lc_equivalent_name]['uc_unique_concept_curies'][uc_unique_concept_curie] = 1
-                # If not, then create it
+
+                #### If the equivalent name is not there yet, then create it
                 else:
                     lc_first_word = lc_equivalent_name.split(' ')[0]
                     kg_names[lc_equivalent_name] = {
@@ -895,7 +904,8 @@ class NodeSynonymizer:
                     'uc_unique_concept_curie': uc_unique_concept_curie
                 }
 
-            # Loop over all scrubbed names for this node to insert kg_names
+
+            #### Loop over all scrubbed names for this node to insert kg_names
             for equivalent_name in names:
                 lc_equivalent_name = equivalent_name.lower()
 
@@ -967,6 +977,7 @@ class NodeSynonymizer:
     def scrub_input(self, node_curie, node_name, node_category, debug_flag):
 
         original_name = node_name
+        additional_names = []
 
         # First fix some data-source specific yucky strings before we even record the initial name
 
@@ -983,8 +994,18 @@ class NodeSynonymizer:
             node_name = re.sub(r'\s*\[Source:HGNC.+\]\s*','',node_name)
 
 
+        # Some SMPDB names have the abbreviation as part of the name
+        if node_curie.startswith('SMPDB:') or node_curie.startswith('PathWhiz:'):
+            match = re.search(r'\s+\(([A-Z]+)\)\s*$', node_name)
+            if match:
+                additional_names.append(match.group(1))
+                node_name = re.sub(r'\s+\(([A-Z]+)\)\s*$','',node_name)
+
+
         # Begin a list of all the possible names that we will add to the database
         names = { node_name: 0 }
+        for additional_name in additional_names:
+            names[additional_name] = True
 
 
         # Some MONDO names have some reverse comma notation. Try to reverse it
