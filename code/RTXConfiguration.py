@@ -4,6 +4,7 @@ import os
 import datetime
 import json
 import time
+import re
 
 
 class RTXConfiguration:
