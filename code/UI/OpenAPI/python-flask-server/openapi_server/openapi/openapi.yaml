@@ -60,17 +60,17 @@ tags:
 - description: Get supported relationships
   externalDocs:
     description: Documentation for the reasoner predicates function
-    url: http://arax.ncats.io/overview.html#predicates
+    url: https://arax.ncats.io/overview.html#predicates
   name: meta_knowledge_graph
 - description: Initiate a query and wait to receive the response
   externalDocs:
     description: Documentation for the reasoner query function
-    url: http://arax.ncats.io/overview.html#query
+    url: https://arax.ncats.io/overview.html#query
   name: query
 - description: Initiate a query with a callback to receive the response
   externalDocs:
     description: Documentation for the reasoner asynchquery function
-    url: http://arax.ncats.io/overview.html#asyncquery
+    url: https://arax.ncats.io/overview.html#asyncquery
   name: asyncquery
 - description: Required for SmartAPI validation of x-translator
   name: translator
@@ -478,14 +478,10 @@ components:
         a log level could allow a user to override the default log level in order
         to receive more fine-grained log information when debugging an issue.
       example:
-        submitter: submitter
+        submitter: Example
         bypass_cache: false
         page_number: 1
-        operations: ""
-        workflow:
-        - ""
-        - ""
-        log_level: ""
+        log_level: DEBUG
         enforce_edge_directionality: false
         return_minimal_metadata: false
         max_results: 100
