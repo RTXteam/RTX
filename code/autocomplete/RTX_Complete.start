@@ -19,5 +19,5 @@ cd /mnt/data/orangeboard/$DEVAREA/RTX/code/autocomplete
 
 export PATH=/mnt/data/python/Python-3.7.3/bin:$PATH
 
-exec python3 server.py 1>$LOGFILE 2>$ELOGFILE
+exec python3 -u server.py 1>$LOGFILE 2>$ELOGFILE
 
