@@ -110,6 +110,7 @@ paths:
       operationId: pubmed_mesh_ngd
       parameters:
       - description: First of two terms. Order not important.
+        example: PTGS2
         explode: false
         in: path
         name: term1
@@ -118,6 +119,7 @@ paths:
           type: string
         style: simple
       - description: Second of two terms. Order not important.
+        example: acetaminophen
         explode: false
         in: path
         name: term2
@@ -345,6 +347,7 @@ paths:
       operationId: get_response
       parameters:
       - description: Identifier of the response to return
+        example: 41651
         explode: false
         in: path
         name: response_id
