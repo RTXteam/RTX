@@ -706,8 +706,9 @@ class ARAXQuery:
                         messenger.add_qedge(response,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        self.inject_default_value_into_parameters('kp_timeout', response.envelope.query_options, action['parameters'], 'UserTimeoutNotInt')
-                        self.inject_default_value_into_parameters('prune_threshold', response.envelope.query_options, action['parameters'], 'PruneThresholdNotInt')
+                        self.inject_int_value_into_parameters('kp_timeout', response.envelope.query_options, action['parameters'], 'UserTimeoutNotInt')
+                        self.inject_int_value_into_parameters('prune_threshold', response.envelope.query_options, action['parameters'], 'PruneThresholdNotInt')
+                        self.inject_boolean_value_into_parameters('return_minimal_metadata', response.envelope.query_options, action['parameters'], 'InternalError')
                         if response.status == 'ERROR':
                             if mode == 'asynchronous':
                                 self.send_to_callback(callback, response)
@@ -894,7 +895,7 @@ class ARAXQuery:
 
 
     ############################################################################################
-    def inject_default_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
+    def inject_int_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
         parameter_value = None
         if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
             parameter_value = query_options[parameter_name]
@@ -907,6 +908,15 @@ class ARAXQuery:
         #### Only update the value in parameters if one was not explicitly specified
         if parameter_name not in parameters and parameter_value is not None:
             parameters[parameter_name] = parameter_value
+
+
+    ############################################################################################
+    def inject_boolean_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
+        parameter_value = False
+        if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
+            if query_options[parameter_name] is True:
+                parameter_value = True
+        parameters[parameter_name] = parameter_value
 
 
 ##################################################################################################
