@@ -693,7 +693,7 @@ def get_standard_parameters() -> dict:
             "is_required": False,
             "examples": ["true", "false"],
             "type": "boolean",
-            "description": "Whether to include supporting data on nodes/edges in the results (e.g., publications, "
+            "description": "Whether to omit supporting data on nodes/edges in the results (e.g., publications, "
                            "description, etc.)."
         }
     }
