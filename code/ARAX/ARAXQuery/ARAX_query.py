@@ -289,6 +289,10 @@ class ARAXQuery:
         else:
             response.envelope.query_options = {}
 
+        #### Need to put certain input Query parameters into query_options to later use by Expand et al.
+        if 'return_minimal_metadata' in query:
+            response.envelope.query_options['return_minimal_metadata'] = query['return_minimal_metadata']
+
         #### If a submitter came in, reflect that back into the response
         if "callback" in query and query['callback'] is not None and query['callback'].startswith('http://localhost:8000/ars/'):
             response.envelope.submitter = 'ARS'
