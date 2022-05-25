@@ -233,6 +233,7 @@ paths:
         - in: path
           name: response_id
           description: Identifier of the response to return
+          example: 41651
           required: true
           schema:
             type: string
@@ -375,12 +376,14 @@ paths:
           required: true
           schema:
             type: string
+          example: PTGS2
         - in: path
           name: term2
           description: Second of two terms. Order not important.
           required: true
           schema:
             type: string
+          example: acetaminophen
       responses:
         '200':
           description: successful operation
