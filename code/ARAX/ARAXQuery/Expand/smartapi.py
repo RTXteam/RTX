@@ -136,7 +136,7 @@ class SmartAPI:
 
 
     def _filter_kps_by_maturity(self, KPs, req_maturity, flexible, hierarchy):
-        """Return a list of KPs which have been filtered based on the maturity attribute of their servers. If strict is true, it will remove servers from each KP whose maturity does not match req_maturity. If strict is false, it will use the specified 'hierarchy' to look use the next best maturity level for each server until at least one server has been found. It returns only the KPs with servers remaining after they have been filtered in this way."""
+        """Return a list of KPs which have been filtered based on the maturity attribute of their servers. If flexible is false, it will remove servers from each KP whose maturity does not match req_maturity. If flexible is true, it will use the specified 'hierarchy' to look use the next best maturity level for each server until at least one server has been found. It returns only the KPs with servers remaining after they have been filtered in this way."""
         if not flexible:
             for kp in KPs:
                 kp["servers"] = [server for server in kp["servers"] if server["maturity"] == req_maturity]
