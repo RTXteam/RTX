@@ -36,10 +36,10 @@ class SmartAPI:
         return endpoints
 
 
-    @lru_cache(maxsize=None)
-    def get_operations_endpoints(self):
+    # @lru_cache(maxsize=None)
+    def get_operations_endpoints(self, version=None, whitelist=None, blacklist=None):
         """Find all endpoints that support at least one workflow operation."""
-        endpoints = self.get_trapi_endpoints()
+        endpoints = self.get_trapi_endpoints(whitelist=whitelist, blacklist=blacklist)
 
         operations_endpoints = []
         for endpoint in endpoints:
@@ -49,8 +49,8 @@ class SmartAPI:
         return operations_endpoints
 
 
-    @lru_cache(maxsize=None)
-    def get_trapi_endpoints(self, version=None):
+    # @lru_cache(maxsize=None)
+    def get_trapi_endpoints(self, version=None, whitelist=None, blacklist=None):
         """Find all endpoints that match a query for TRAPI."""
         with requests_cache.disabled():
             response_content = requests.get(
@@ -109,7 +109,6 @@ class SmartAPI:
                     maturity = server["x-maturity"]
                 except KeyError:
                     maturity = None
-                log.debug("DEBUGGING LOOP HERE")
                 servers.append({"description": description, "url": url, "maturity": maturity})
 
             if version is not None:
@@ -119,6 +118,7 @@ class SmartAPI:
                 if not match:
                     continue
 
+            # print("appending endpoint:",infores_name,"with component:",component)
             endpoints.append({
                 "servers": servers,
                 "operations": operations,
@@ -128,44 +128,50 @@ class SmartAPI:
                 "title": title
             })
 
+        if whitelist:
+            endpoints = [ep for ep in endpoints if ep["infores_name"] in whitelist]
+        if blacklist:
+            endpoints = [ep for ep in endpoints if ep["infores_name"] not in blacklist]
+
         return endpoints
 
 
-    @lru_cache(maxsize=None)
-    def get_kps(self, version=None, reqMaturity=None):
-        """Find all endpoints that match a query for TRAPI which are classified as KPs"""
+    def _filter_kps_by_maturity(self, KPs, req_maturity, strict, hierarchy):
+        """Return a list of KPs which have been filtered based on the maturity attribute of their servers. If strict is true, it will remove servers from each KP whose maturity does not match req_maturity. If strict is false, it will use the specified 'hierarchy' to look use the next best maturity level for each server until at least one server has been found. It returns only the KPs with servers remaining after they have been filtered in this way."""
+        if strict:
+            for kp in KPs:
+                kp["servers"] = [server for server in kp["servers"] if server["maturity"] == req_maturity]
+            KPs = [kp for kp in KPs if len(kp["servers"]) != 0]
+            return KPs
 
-        endpoints = self.get_trapi_endpoints()
-        KPs = list(filter(lambda x: x["component"] == "KP", endpoints))
+        maturity_thresh = hierarchy.index(req_maturity)
+        acceptable_maturities = hierarchy[maturity_thresh:]
+        for kp in KPs:
+            for maturity in acceptable_maturities:
+                servers = [server for server in kp["servers"] if server["maturity"] == maturity]
+                if len(servers) != 0:
+                    kp["servers"] = servers
+                    break
+            else:
+                kp["servers"] = []
+
+        KPs = [kp for kp in KPs if len(kp["servers"]) != 0]
         return KPs
 
-    @lru_cache(maxsize=None)
-    def get_dev_kps(self, version=None, reqMaturity=None):
-        """Find all endpoints that match a query for TRAPI which are classified as KPs and have servers which are classified as 'development'"""
 
-        KPs = self.get_kps()
-        # remove servers from server list which are not "development"
-        for KP in KPs:
-            dev_servers = [server for server in KP["servers"] if server["maturity"] == "development"]
-            # dev_servers = list(filter(lambda x: x["maturity"] == "development", dev_servers))
-            KP["servers"] = dev_servers
-        # remove KPs which have no servers left after removing non-dev servers
-        # KPs = list(filter(lambda x: len(KP["servers"]) > 0, KPs))
+    # @lru_cache(maxsize=None)
+    def get_kps(self, version=None, req_maturity=None, strict=True, hierarchy=None, whitelist=None, blacklist=None):
+        """Find all endpoints that match a query for TRAPI which are classified as KPs. If req_maturity is given and strict is true, this will only return KPs and KP servers with maturity levels that match req_maturity. If strict is false, the hierarchy will be used to find the preferred maturity level if no servers match req_maturity for that KP. If no hierarchy is given, the hierarchy compliant with the standard set by Translator will be used. The whitelist and blacklist should be given as sets of infores_names, which can be used to restrict the list of KPs that are returned. Note that some KPs may not have infores names."""
 
-        return KPs
+        endpoints = self.get_trapi_endpoints(version=version, whitelist=whitelist, blacklist=blacklist)
+        KPs = [ep for ep in endpoints if ep["component"] == "KP"]
 
-    @lru_cache(maxsize=None)
-    def get_prod_kps(self, version=None, reqMaturity=None):
-        """Find all endpoints that match a query for TRAPI which are classified as KPs and have servers which are classified as 'development'"""
-
-        KPs = self.get_kps()
-        # remove servers from server list which are not "production"
-        for KP in KPs:
-            dev_servers = KP["servers"]
-            dev_servers = list(filter(lambda x: x["maturity"] == "production", dev_servers))
-            KP["servers"] = dev_servers
-        # remove KPs which have no servers left after removing non-prod servers
-        KPs = list(filter(lambda x: len(KP["servers"]) > 0, KPs))
+        if req_maturity:
+            if hierarchy == None:
+                hierarchy = ["development","staging","testing","production"]
+            if req_maturity not in hierarchy:
+                raise ValueError("Invalid maturity passed to get_kps")
+            KPs = self._filter_kps_by_maturity(KPs, req_maturity, strict, hierarchy)
 
         return KPs
 
@@ -176,42 +182,79 @@ def main():
     import json
 
     argparser = argparse.ArgumentParser(
-        description="CLI testing of the ResponseCache class"
+        description="CLI Interface of the smartapi class which enables users to fetch TRAPI endpoints from the smartapi registry"
     )
     argparser.add_argument(
-        "--get_trapi_endpoints",
-        action="count",
-        help="Get a list of TRAPI endpoints",
+        "results_type",
+        choices=["get_trapi_endpoints", "get_operations_endpoints", "get_trapi_kps"],
+        help="Specifying what type of results to return",
     )
     argparser.add_argument(
-        "--get_operations_endpoints",
-        action="count",
-        help="Get a list of TRAPI endpoints that support operations",
+        "-m",
+        "--req_maturity",
+        action="store",
+        help="Optionally used with 'get_trapi_kps' to filter results to KPs with a specific maturity level"
     )
     argparser.add_argument(
+        "-s",
+        "--strict",
+        action="store_true",
+        help="Optionally used when --req_maturity is given. If strict is true, only KPs with specified maturity will be returned"
+    )
+    argparser.add_argument(
+        "-i",
+        "--hierarchy",
+        action="store",
+        nargs="+",
+        help="Optionally used as the ordering of the four KP maturity levels used when --req_maturity is given and --strict is not given"
+    )
+    argparser.add_argument(
+        "-w",
+        "--whitelist",
+        action="store",
+        nargs="*",
+        help="A list of infores names which is optionally used to filter results"
+    )
+    argparser.add_argument(
+        "-b",
+        "--blacklist",
+        action="store",
+        nargs="*",
+        help="A list of infores names which is optionally used to filter results"
+    )
+    argparser.add_argument(
+        "-v",
         "--version",
         action="store",
         help="TRAPI version number to limit to (e.g. '1.1')",
     )
     args = argparser.parse_args()
 
-    if (
-        args.get_trapi_endpoints is None
-        and args.get_operations_endpoints is None
-    ):
-        argparser.print_help()
-        return
-
     smartapi = SmartAPI()
 
-    if args.get_trapi_endpoints:
-        endpoints = smartapi.get_trapi_endpoints(version=args.version)
+    if args.results_type == "get_trapi_endpoints":
+        if args.req_maturity or args.strict or args.hierarchy:
+            argparser.print_help()
+            return
+        endpoints = smartapi.get_trapi_endpoints(version=args.version, whitelist=args.whitelist, blacklist=args.blacklist)
         print(json.dumps(endpoints, sort_keys=True, indent=2))
 
-    if args.get_operations_endpoints:
-        endpoints = smartapi.get_operations_endpoints()
+    elif args.results_type == "get_operations_endpoints":
+        if args.req_maturity or args.strict or args.hierarchy:
+            argparser.print_help()
+            return
+        endpoints = smartapi.get_operations_endpoints(whitelist=args.whitelist, blacklist=args.blacklist)
         print(json.dumps(endpoints, sort_keys=True, indent=2))
 
+    elif args.results_type == "get_trapi_kps":
+        if (args.hierarchy != None or args.strict) and (args.req_maturity == None):
+            argparser.print_help()
+            return
+        if args.hierarchy and args.strict:
+            argparser.print_help()
+            return
+        kps = smartapi.get_kps(version=args.version, req_maturity=args.req_maturity, strict=args.strict, hierarchy=args.hierarchy, whitelist=args.whitelist, blacklist=args.blacklist)
+        print(json.dumps(kps, sort_keys=True, indent=2))
 
 if __name__ == "__main__":
     main()
