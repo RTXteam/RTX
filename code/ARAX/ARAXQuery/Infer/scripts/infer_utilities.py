@@ -33,6 +33,8 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'N
 from node_synonymizer import NodeSynonymizer
 
 
+
+
 class InferUtilities:
 
     #### Constructor
@@ -44,6 +46,12 @@ class InferUtilities:
 
     def __get_formated_edge_key(self, edge: Edge, kp: str = 'infores:rtx-kg2') -> str:
         return f"{kp}:{edge.subject}-{edge.predicate}-{edge.object}"
+
+    def __none_to_zero(self, val):
+        if val is None:
+            return 0
+        else: 
+            return val
 
     def genrete_treat_subgraphs(self, response: ARAXResponse, top_drugs: pd.DataFrame, top_paths: dict, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
         self.response = response
@@ -192,8 +200,12 @@ class InferUtilities:
         }
         self.response = resultifier.apply(self.response, resultify_params)
         for result in self.response.envelope.message.results:
-            result.score = essence_scores[result.essence]
-        self.response.envelope.message.results.sort(key=lambda x: x.score, reverse=True)
+            if result.essence in essence_scores:
+                result.score = essence_scores[result.essence]
+            else:
+                result.score = None
+                self.response.warning(f"Error retrieving score for result essence {result.essence}. Setting result score to None.")
+        self.response.envelope.message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
         
 
         return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
