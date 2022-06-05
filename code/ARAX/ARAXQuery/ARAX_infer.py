@@ -292,10 +292,12 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         # top_paths = dtd.predict_top_M_paths(self.parameters['n_paths'])
 
         # FW: temp fix to use the pickle fil for dev work rather than recomputing
+        # Comment out the following 3 lines and uncomment the above for prod deploy
         top_drugs = pd.read_csv(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"top_n_drugs.csv"]))
         with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
             top_paths = pickle.load(fid)
-
+        
+        # TRAPI-ifies the results of the model
         iu = InferUtilities()
         self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_drugs, top_paths, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
         
