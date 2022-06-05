@@ -2,7 +2,7 @@ name: "Test Build"
 
 on:
   push:
-    branches: [ master, production, itrb-test , arax_connect ]
+    branches: [ master, production, itrb-test ]
     paths:
       - 'code/**'
       - 'DockerBuild/**'
