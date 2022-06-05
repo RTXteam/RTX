@@ -53,9 +53,30 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: ARAX Translator Reasoner API
+- description: ARAX TRAPI 1.2 endpoint - production
+  url: https://arax.transltr.io/api/arax/v1.2
+  x-maturity: production
+- description: ARAX TRAPI 1.2 endpoint - production
   url: https://arax.ncats.io/api/arax/v1.2
   x-maturity: production
+- description: ARAX TRAPI 1.2 endpoint - testing
+  url: https://arax.test.transltr.io/api/arax/v1.2
+  x-maturity: testing
+- description: ARAX TRAPI 1.2 endpoint - staging
+  url: https://arax.ci.transltr.io/api/arax/v1.2
+  x-maturity: staging
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/beta/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/test/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/devED/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/devLM/api/arax/v1.2
+  x-maturity: development
 tags:
 - description: Get supported relationships
   externalDocs:
@@ -110,6 +131,7 @@ paths:
       operationId: pubmed_mesh_ngd
       parameters:
       - description: First of two terms. Order not important.
+        example: PTGS2
         explode: false
         in: path
         name: term1
@@ -118,6 +140,7 @@ paths:
           type: string
         style: simple
       - description: Second of two terms. Order not important.
+        example: acetaminophen
         explode: false
         in: path
         name: term2
@@ -345,6 +368,7 @@ paths:
       operationId: get_response
       parameters:
       - description: Identifier of the response to return
+        example: 41651
         explode: false
         in: path
         name: response_id

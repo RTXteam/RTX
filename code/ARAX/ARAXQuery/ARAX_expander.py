@@ -431,8 +431,8 @@ class ARAXExpander:
         # Override node types so that they match what was asked for in the query graph (where applicable) #987
         self._override_node_categories(message.knowledge_graph, message.query_graph)
 
-        # Decorate all nodes with additional attributes info from KG2c (iri, description, etc.)
-        if mode != "RTXKG2":  # Skip doing this for KG2 (until can pass minimal_metadata param)
+        # Decorate all nodes with additional attributes info from KG2c if requested (iri, description, etc.)
+        if mode != "RTXKG2" or not parameters.get("return_minimal_metadata"):
             decorator = ARAXDecorator()
             decorator.decorate_nodes(response)
             decorator.decorate_edges(response, kind="RTX-KG2")
