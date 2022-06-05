@@ -54,6 +54,13 @@ class InferUtilities:
             return val
 
     def genrete_treat_subgraphs(self, response: ARAXResponse, top_drugs: pd.DataFrame, top_paths: dict, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
+        """
+        top_drugs and top_paths returned by Chunyu's createDTD.py code (predict_top_n_drugs and predict_top_m_paths respectively).
+        Ammends the response effectively TRAPI-ifying the paths returned by Chunyu's code.
+        May not work on partially filled out response (as it assumes fresh QG and KG, i.e. not stuff partially filled out).
+        The *_global_iter vars are to keep count of qedge and kedge if this is run multiple times. But see previous line for proviso.
+        Returns the response and all the *_global_iters
+        """
         self.response = response
         self.kedge_global_iter = 0
         self.qedge_global_iter = 0
