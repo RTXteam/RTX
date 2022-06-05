@@ -642,12 +642,14 @@ class ARAXQuery:
             from ARAX_filter_kg import ARAXFilterKG
             from ARAX_resultify import ARAXResultify
             from ARAX_filter_results import ARAXFilterResults
+            from ARAX_connect import ARAXConnect
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
+            connect = ARAXConnect()
             self.message = message
 
             #### Create some empty stubs if they don't exist
@@ -744,6 +746,9 @@ class ARAXQuery:
                         message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
                         self.message = message
                         nonstandard_result = True
+
+                    elif action['command'] == 'connect':
+                        connect.apply(response, action['parameters'])
 
                     elif action['command'] == 'return':
                         action_stats['return_action'] = action
