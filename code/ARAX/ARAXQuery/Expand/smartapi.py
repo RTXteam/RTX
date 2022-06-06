@@ -148,8 +148,8 @@ class SmartAPI:
         # collate all endpoint entries into a dict
         entries = {}
         for ep in endpoints:
-            infores_name = ep["infores_name"]
-            component = ep["component"]
+            infores_name = str(ep["infores_name"])
+            component = str(ep["component"])
             maturities = {server["maturity"] for server in ep["servers"] if server["maturity"] != None}
             n_entries = 1
             # if new entry: start with n_entries = 1
