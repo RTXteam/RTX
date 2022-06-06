@@ -134,6 +134,49 @@ class SmartAPI:
 
         return endpoints
 
+    # helper for _collate_and_print
+    def _stringify_list(self, string_list):
+        if len(string_list) == 0:
+            return ""
+        pretty_list = string_list[0]
+        for elem in string_list[1:]:
+            pretty_list += ", " + elem
+        return pretty_list
+
+
+    def _collate_and_print(self, endpoints):
+        # collate all endpoint entries into a dict
+        entries = {}
+        for ep in endpoints:
+            infores_name = ep["infores_name"]
+            component = ep["component"]
+            maturities = {server["maturity"] for server in ep["servers"] if server["maturity"] != None}
+            n_entries = 1
+            # if new entry: start with n_entries = 1
+            if infores_name not in entries:
+                entries[infores_name] = [component,maturities,n_entries]
+            # if existing entry, combine maturities sets and increment n_entries
+            else:
+                entries[infores_name][1] |= maturities
+                entries[infores_name][2] += 1
+
+        # convert entries dict to sorted list of 'rows'
+        rows = []
+        for name in entries:
+            row = [name] + entries[name]
+            # convert maturity set to more readable format
+            row[2] = self._stringify_list(list(row[2]))
+            rows.append(row)
+        rows.sort(key=lambda x:x[0])
+
+        # find longest infores_name to determine column width
+        l = max(len(row[0]) for row in rows)
+        # pretty print rows
+        format_str = "{:<"+str(l)+"}{:<10}{:<40}{:<4}"
+        print(format_str.format("infores name","component","maturities","n_entries"))
+        for row in rows:
+            print(format_str.format(*row))
+
 
     def _filter_kps_by_maturity(self, KPs, req_maturity, flexible, hierarchy):
         """Return a list of KPs which have been filtered based on the maturity attribute of their servers. If flexible is false, it will remove servers from each KP whose maturity does not match req_maturity. If flexible is true, it will use the specified 'hierarchy' to look use the next best maturity level for each server until at least one server has been found. It returns only the KPs with servers remaining after they have been filtered in this way."""
@@ -179,6 +222,7 @@ class SmartAPI:
         return KPs
 
 
+
 def main():
     """Run CLI."""
     import argparse
@@ -191,6 +235,12 @@ def main():
         "results_type",
         choices=["get_trapi_endpoints", "get_operations_endpoints", "get_trapi_kps"],
         help="Specifying what type of results to return",
+    )
+    argparser.add_argument(
+        "-p",
+        "--pretty",
+        action="store_true",
+        help="Used to produce output in 'pretty' table form instead of raw json. This also collates registry entries based on the infores name"
     )
     argparser.add_argument(
         "-m",
@@ -239,15 +289,13 @@ def main():
         if args.req_maturity or args.flexible or args.hierarchy:
             argparser.print_help()
             return
-        endpoints = smartapi.get_trapi_endpoints(version=args.version, whitelist=args.whitelist, blacklist=args.blacklist)
-        print(json.dumps(endpoints, sort_keys=True, indent=2))
+        output = smartapi.get_trapi_endpoints(version=args.version, whitelist=args.whitelist, blacklist=args.blacklist)
 
     elif args.results_type == "get_operations_endpoints":
         if args.req_maturity or args.flexible or args.hierarchy:
             argparser.print_help()
             return
-        endpoints = smartapi.get_operations_endpoints(whitelist=args.whitelist, blacklist=args.blacklist)
-        print(json.dumps(endpoints, sort_keys=True, indent=2))
+        output = smartapi.get_operations_endpoints(whitelist=args.whitelist, blacklist=args.blacklist)
 
     elif args.results_type == "get_trapi_kps":
         if (args.hierarchy or args.flexible) and (args.req_maturity == None):
@@ -256,8 +304,12 @@ def main():
         if args.hierarchy and args.flexible == None:
             argparser.print_help()
             return
-        kps = smartapi.get_kps(version=args.version, req_maturity=args.req_maturity, flexible=args.flexible, hierarchy=args.hierarchy, whitelist=args.whitelist, blacklist=args.blacklist)
-        print(json.dumps(kps, sort_keys=True, indent=2))
+        output = smartapi.get_kps(version=args.version, req_maturity=args.req_maturity, flexible=args.flexible, hierarchy=args.hierarchy, whitelist=args.whitelist, blacklist=args.blacklist)
+
+    if args.pretty:
+        smartapi._collate_and_print(output)
+    else:
+        print(json.dumps(output, sort_keys=True, indent=2))
 
 if __name__ == "__main__":
     main()
