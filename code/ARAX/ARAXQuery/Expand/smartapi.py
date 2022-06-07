@@ -154,7 +154,7 @@ class SmartAPI:
             component = str(ep["component"])
             maturities = {server["maturity"] for server in ep["servers"] if server["maturity"] != None}
             n_entries = 1
-            # if new entry: start with n_entries = 1
+            # if new entry, start with n_entries = 1
             if infores_name not in entries:
                 entries[infores_name] = [component,maturities,n_entries]
             # if existing entry, combine maturities sets and increment n_entries
@@ -226,7 +226,7 @@ class SmartAPI:
 
 
 def setup_cli():
-    """Setup and return argparser for the CLI"""
+    """Setup and return argparser for the CLI."""
 
     import argparse
     argparser = argparse.ArgumentParser(
