@@ -172,6 +172,7 @@ class SmartAPI:
         rows.sort(key=lambda x:x[0])
 
         if len(rows) == 0:
+            print("No results")
             return
 
         # find longest infores_name to determine column width
