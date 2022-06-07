@@ -171,6 +171,9 @@ class SmartAPI:
             rows.append(row)
         rows.sort(key=lambda x:x[0])
 
+        if len(rows) == 0:
+            return
+
         # find longest infores_name to determine column width
         l = max(len(row[0]) for row in rows)+1
         # pretty print rows
