@@ -2,6 +2,7 @@
 
 import requests
 import requests_cache
+import json
 import re
 from functools import lru_cache
 
@@ -134,7 +135,7 @@ class SmartAPI:
 
         return endpoints
 
-    # helper for _collate_and_print
+    # helper for collate_and_print
     def _stringify_list(self, string_list):
         if len(string_list) == 0:
             return ""
@@ -144,7 +145,8 @@ class SmartAPI:
         return pretty_list
 
 
-    def _collate_and_print(self, endpoints):
+    def collate_and_print(self, endpoints):
+        """Pretty print list of trapi endpoints. This function takes list of JSON-formatted TRAPI endpoints, aggregates entries that share the same infores name, and then prints their names and maturity levels in a formatted table. This is intended to get a quick view of endpoints when used with the -p/--pretty flag via the CLI"""
         # collate all endpoint entries into a dict
         entries = {}
         for ep in endpoints:
@@ -164,13 +166,13 @@ class SmartAPI:
         rows = []
         for name in entries:
             row = [name] + entries[name]
-            # convert maturity set to more readable format
+            # convert maturity set to more readable string format
             row[2] = self._stringify_list(list(row[2]))
             rows.append(row)
         rows.sort(key=lambda x:x[0])
 
         # find longest infores_name to determine column width
-        l = max(len(row[0]) for row in rows)
+        l = max(len(row[0]) for row in rows)+1
         # pretty print rows
         format_str = "{:<"+str(l)+"}{:<10}{:<40}{:<4}"
         print(format_str.format("infores name","component","maturities","n_entries"))
@@ -223,11 +225,10 @@ class SmartAPI:
 
 
 
-def main():
-    """Run CLI."""
-    import argparse
-    import json
+def setup_cli():
+    """Setup and return argparser for the CLI"""
 
+    import argparse
     argparser = argparse.ArgumentParser(
         description="CLI Interface of the smartapi class which enables users to fetch TRAPI endpoints from the smartapi registry"
     )
@@ -281,6 +282,13 @@ def main():
         action="store",
         help="TRAPI version number to limit to (e.g. '1.1')",
     )
+    return argparser
+
+
+def main():
+    """Run CLI."""
+
+    argparser = setup_cli()
     args = argparser.parse_args()
 
     smartapi = SmartAPI()
@@ -307,9 +315,10 @@ def main():
         output = smartapi.get_kps(version=args.version, req_maturity=args.req_maturity, flexible=args.flexible, hierarchy=args.hierarchy, whitelist=args.whitelist, blacklist=args.blacklist)
 
     if args.pretty:
-        smartapi._collate_and_print(output)
+        smartapi.collate_and_print(output)
     else:
         print(json.dumps(output, sort_keys=True, indent=2))
+
 
 if __name__ == "__main__":
     main()
