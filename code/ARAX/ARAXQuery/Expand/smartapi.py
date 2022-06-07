@@ -234,7 +234,7 @@ def setup_cli():
     )
     argparser.add_argument(
         "results_type",
-        choices=["get_trapi_endpoints", "get_operations_endpoints", "get_trapi_kps"],
+        choices=["get_trapi_endpoints", "get_operations_endpoints", "get_kps"],
         help="Specifying what type of results to return",
     )
     argparser.add_argument(
@@ -247,7 +247,7 @@ def setup_cli():
         "-m",
         "--req_maturity",
         action="store",
-        help="Optionally used with 'get_trapi_kps' to filter results to KPs with a specific maturity level"
+        help="Optionally used with 'get_kps' to filter results to KPs with a specific maturity level"
     )
     argparser.add_argument(
         "-f",
@@ -305,7 +305,7 @@ def main():
             return
         output = smartapi.get_operations_endpoints(whitelist=args.whitelist, blacklist=args.blacklist)
 
-    elif args.results_type == "get_trapi_kps":
+    elif args.results_type == "get_kps":
         if (args.hierarchy or args.flexible) and (args.req_maturity == None):
             argparser.print_help()
             return
