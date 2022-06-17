@@ -108,6 +108,7 @@ class OverlayExposuresData:
                           predicate=self.icees_edge_type,
                           option_group_id=ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                                   query_graph, log))
+        new_qedge.filled = True
         query_graph.edges[self.virtual_relation_label] = new_qedge
 
         if num_node_pairs_recognized:
