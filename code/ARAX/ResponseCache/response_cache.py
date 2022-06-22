@@ -324,7 +324,7 @@ class ResponseCache:
 
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
-            ars_hosts = [ 'ars.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
+            ars_hosts = [ 'ars.transltr.io', 'ars-prod.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
                     try:
@@ -355,7 +355,7 @@ class ResponseCache:
             except:
                 return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
-            if 'fields' in response_dict and 'actor' in response_dict['fields'] and str(response_dict['fields']['actor']) == '9':
+            if 'fields' in response_dict and 'actor' in response_dict['fields'] and ( str(response_dict['fields']['actor']) == '9' or str(response_dict['fields']['actor']) == '19' ):
                 with requests_cache.disabled():
                     response_content = requests.get(f"https://{ars_host}/ars/api/messages/" + response_id + '?trace=y', headers={'accept': 'application/json'})
                 status_code = response_content.status_code
