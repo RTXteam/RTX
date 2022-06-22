@@ -423,6 +423,7 @@ class ComputeFTEST:
                                subject=subject_qnode_key, object=object_qnode_key,
                                option_group_id=option_group_id)
                 q_edge.relation = virtual_relation_label
+                q_edge.filled = True
                 self.message.query_graph.edges[qedge_id] = q_edge
                 self.response.debug(f"One virtual edge was added to message QG")
 
