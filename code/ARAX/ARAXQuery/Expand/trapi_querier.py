@@ -271,6 +271,7 @@ class TRAPIQuerier:
         body = {'message': {'query_graph': json_qg}}
         if self.kp_name == "infores:rtx-kg2":
             body['submitter'] = "infores:arax"
+            body['return_minimal_metadata'] = True  # Don't want KG2 attributes because ARAX adds them later (faster)
             # TODO: Later add submitter for all KP queries (isn't yet supported by all KPs - part of TRAPI 1.2.1) #1654
         return body
 

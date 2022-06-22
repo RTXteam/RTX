@@ -326,8 +326,8 @@
     </form>
     <hr>
     <h3 style="display:inline;">JSON:</h3>
-    <input type="button" class="questionBox button" style="margin-left:150px;" name="action" value="Import/Update JSON" onClick="update_wfjson();">
-    <span id="importQG" style="margin-left:70px;">
+    <input type="button" class="questionBox button" style="margin-left:150px;" name="action" value="Import/Update JSON &nbsp;&nbsp;&nbsp;&#8673;" onClick="update_wfjson();">
+    <span id="importQG" style="margin-left:55px;">
       Import from response id <b>or</b> URL:
       <input type="text" autocomplete="off" class="questionBox" id="respId" size="30" maxlength="1000"/>
       <input type="button" class="questionBox button" id="ImportQGbutton" name="action" value="Import QG" onClick="import_intowf('query_graph',false);">
@@ -461,12 +461,12 @@
     <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">REMOTE API TIMEOUT DURING ARAX EXPANSION (leave blank for default):</h3>
     <input type="text" class="questionBox" id="timeout_url" onkeyup="enter_url(this,'timeout');" size="3" maxlength="3" value="30"/>
     seconds
-    <input type="button" style="margin-left:15px;" class="questionBox button" id="timeout_url_button" value="Update" onClick="update_url('timeout',null);"/>
+    <input type="button" style="margin-left:14px;" class="questionBox button" id="timeout_url_button" value="Update" onClick="update_url('timeout',null);"/>
     <br><br>
     <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">DEFAULT PRUNING THRESHOLD DURING ARAX EXPANSION:</h3>
-    <input type="text" class="questionBox" id="pruning_url" onkeyup="enter_url(this,'pruning');" size="3" maxlength="3" value="50"/>
+    <input type="text" class="questionBox" id="pruning_url" onkeyup="enter_url(this,'pruning');" size="5" maxlength="5" value="50"/>
     nodes
-    <input type="button" style="margin-left:135px;" class="questionBox button" id="pruning_url_button" value="Update" onClick="update_url('pruning',null);"/>
+    <input type="button" style="margin-left:107px;" class="questionBox button" id="pruning_url_button" value="Update" onClick="update_url('pruning',null);"/>
     <br><br>
     <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
     <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
