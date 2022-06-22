@@ -2044,8 +2044,7 @@ components:
                 type: array
                 items:
                   type: string
-                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their
- connected nodes, will be filled. If not included all edges will be filled.
+                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their connected nodes, will be filled. If not included all edges will be filled.
             type: object
           - additionalProperties: false
             properties:
@@ -2062,8 +2061,7 @@ components:
                 type: array
                 items:
                   type: string
-                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their
- connected nodes, will be filled. If not included all edges will be filled.
+                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their connected nodes, will be filled. If not included all edges will be filled.
             type: object
           type: object
       required:
