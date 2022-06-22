@@ -30,6 +30,7 @@ Copies of all of these should be put in `/data/orangeboard/databases/KG2.X.Y` on
 - [ ] KG2c TSV tarball
 - [ ] KG2c neo4j dump (this is created on the neo4j hosting instance when loading KG2c, at `/home/ubuntu/kg2-build/kg2c.dump`)
 - [ ] FDA-approved drugs pickle
+- [ ] autocomplete sqlite
 - [ ] NGD database
 - [ ] COHD database @chunyuma
 - [ ] refreshed DTD @chunyuma

@@ -476,7 +476,7 @@ function postQuery_ARAX(qtype,queryObj) {
 		    stream: !result.done
 		});
 
-		var completeMsgs = partialMsg.split("\n");
+		var completeMsgs = partialMsg.split("}\n");
 		//console.log("================ completeMsgs::");
 		//console.log(completeMsgs);
 
@@ -490,7 +490,6 @@ function postQuery_ARAX(qtype,queryObj) {
 		for (var msg of completeMsgs) {
 		    msg = msg.trim();
 		    if (msg == null) continue;
-
 		    //console.log("================ msg::");
 		    //console.log(msg);
 
@@ -498,6 +497,8 @@ function postQuery_ARAX(qtype,queryObj) {
 			respjson += msg;
 		    }
 		    else {
+			msg += "}"; // lost in the split, above
+
 			var jsonMsg = JSON.parse(msg);
 			if (jsonMsg.logs) { // was:: (jsonMsg.description) {
 			    enqueue = true;
@@ -553,6 +554,11 @@ function postQuery_ARAX(qtype,queryObj) {
                         else if (jsonMsg.pid) {
 			    UIstate["pid"] = jsonMsg;
 			    display_kill_button();
+			}
+			else if (jsonMsg.detail) {
+			    cmddiv.appendChild(document.createElement("br"));
+                            cmddiv.appendChild(document.createTextNode("ERROR:\u00A0"+jsonMsg.detail));
+			    throw new Error(jsonMsg.detail);
 			}
 			else {
 			    console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
@@ -621,10 +627,10 @@ function postQuery_ARAX(qtype,queryObj) {
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+err+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with parsing QUERY:<br>"+err;
 	    sesame('openmax',statusdiv);
-	    if (err.log) {
+	    if (err.log)
 		process_log(err.log);
-	    }
 	    console.log(err.message);
+
             there_was_an_error();
 	});
 }
@@ -1625,29 +1631,38 @@ function render_response(respObj,dispjson) {
 	td.colSpan = "2";
 	tr.appendChild(td);
 	table.appendChild(tr);
+
+        var semmeddb_counts = {};
+
 	var previous0 = 'RandomTextToPurposelyTriggerThickTopBorderForFirstRowAndRepeatedDisplayOfPredicate';
 	var previous1 = 'RandomTextToOmitRepatedDisplayOfPredicateProviderType';
 	for (var prov in respObj.validation_result.provenance_summary.provenance_counts) {
+	    var provdata = respObj.validation_result.provenance_summary.provenance_counts[prov].slice();  // creates a copy (instead of a reference)
 	    var changed0 = false;
 	    var changed1 = false;
-	    if (previous0 != respObj.validation_result.provenance_summary.provenance_counts[prov][0]) {
+	    if (previous0 != provdata[0]) {
 		changed0 = true;
 		changed1 = true;
 	    }
-	    else if (previous1 != respObj.validation_result.provenance_summary.provenance_counts[prov][1])
+	    else if (previous1 != provdata[1])
 		changed1 = true;
 
-	    previous0 = respObj.validation_result.provenance_summary.provenance_counts[prov][0];
-            previous1 = respObj.validation_result.provenance_summary.provenance_counts[prov][1];
+	    previous0 = provdata[0];
+            previous1 = provdata[1];
 
 	    if (!changed0)
-		respObj.validation_result.provenance_summary.provenance_counts[prov][0] = '';
+		provdata[0] = '';
+	    else
+		semmeddb_counts[previous0] = 0;
+	    if (provdata[2] == 'infores:semmeddb')
+		semmeddb_counts[previous0] += provdata[3];
+
 	    if (!changed1)
-		respObj.validation_result.provenance_summary.provenance_counts[prov][1] = '';
+		provdata[1] = '';
 
 	    tr = document.createElement("tr");
             tr.className = 'hoverable';
-	    for (var pc of respObj.validation_result.provenance_summary.provenance_counts[prov]) {
+	    for (var pc of provdata) {
 		td = document.createElement("td");
 		if (changed0)
 		    td.style.borderTop = "2px solid #444";
@@ -1662,12 +1677,12 @@ function render_response(respObj,dispjson) {
 		td.style.borderTop = "2px solid #444";
 	    var span = document.createElement("span");
 	    span.className = "bar";
-	    var barw = 0.5*Number(respObj.validation_result.provenance_summary.provenance_counts[prov][3]);
+	    var barw = 0.5*Number(provdata[3]);
 	    if (barw > 500) {
 		barw = 501;
 		span.style.background = "#3d6d98";
 	    }
-	    if (respObj.validation_result.provenance_summary.provenance_counts[prov][2] == 'no provenance')
+	    if (provdata[2] == 'no provenance')
 		span.style.background = "#b00";
 	    span.style.width = barw + "px";
 	    span.style.height = "8px";
@@ -1698,11 +1713,20 @@ function render_response(respObj,dispjson) {
 	td.style.background = '#fff';
 	td.colSpan = "3";
 	tr.appendChild(td);
+
+	td = document.createElement("th");
+	td.style.background = '#fff';
+	td.appendChild(document.createTextNode("SEMMEDDB Sub-Counts"));
+	td.colSpan = "3";
+	td.style.textAlign = "left";
+	tr.appendChild(td);
+
+
 	table.appendChild(tr);
         for (var pred in respObj.validation_result.provenance_summary.predicate_counts) {
 	    tr = document.createElement("tr");
 	    tr.className = 'hoverable';
-	    td = document.createElement("td")
+	    td = document.createElement("td");
 	    td.colSpan = "3";
 	    td.appendChild(document.createTextNode(pred));
 	    tr.appendChild(td);
@@ -1724,6 +1748,32 @@ function render_response(respObj,dispjson) {
 	    td.appendChild(span);
 	    tr.appendChild(td);
 
+
+	    td = document.createElement("td");
+	    td.style.textAlign = "right";
+	    td.appendChild(document.createTextNode(semmeddb_counts[pred]));
+	    tr.appendChild(td);
+            // fancy bar bar
+	    td = document.createElement("td");
+	    var span = document.createElement("span");
+	    span.className = "bar";
+	    var barw = Math.round(100*Number(semmeddb_counts[pred]/respObj.validation_result.provenance_summary.predicate_counts[pred]));
+	    if (barw > 100) {
+		barw = 101;
+		span.style.background = "#3d6d98";
+	    }
+	    else
+		span.style.background = "#f80";
+	    span.style.width = barw + "px";
+	    span.style.height = "8px";
+	    td.appendChild(span);
+	    tr.appendChild(td);
+
+	    td = document.createElement("td");
+	    td.style.textAlign = "right";
+	    td.appendChild(document.createTextNode(" "+barw+"%"));
+
+	    tr.appendChild(td);
 	    table.appendChild(tr);
 	}
 	div.appendChild(table);
@@ -4261,8 +4311,6 @@ function show_wf_operation_options(operation, index) {
     var h2 = document.createElement('h2');
     h2.style.marginBottom = 0;
     h2.innerHTML = operation;
-    if (!wf_operations[operation]['in_arax'])
-	h2.innerHTML += " *";
     com_node.appendChild(h2);
 
     if (!wf_operations[operation]) {
@@ -4273,10 +4321,17 @@ function show_wf_operation_options(operation, index) {
 	com_node.appendChild(span);
 	span.appendChild(document.createElement('br'));
         com_node.appendChild(get_remove_wf_operation_button(index));
+
+	var link = document.createElement("a");
+	link.style.marginLeft = "20px";
+	link.href = 'javascript:abort_wf();';
+	link.appendChild(document.createTextNode("Cancel"));
+	com_node.appendChild(link);
 	return;
     }
 
     if (!wf_operations[operation]['in_arax']) {
+        h2.innerHTML += " *";
 	com_node.appendChild(document.createTextNode('* Please note that this workflow operation is not supported in ARAX, though it may be in other actors'));
         com_node.appendChild(document.createElement('br'));
     }
@@ -4367,6 +4422,13 @@ function show_wf_operation_options(operation, index) {
 	}
     }
 
+    if (wf_operations[operation].warning) {
+	com_node.appendChild(document.createElement('br'));
+        var span = document.createElement('span');
+	span.className = 'essence';
+	span.appendChild(document.createTextNode(wf_operations[operation].warning));
+	com_node.appendChild(span);
+    }
     com_node.appendChild(document.createElement('br'));
 
     var button = document.createElement("input");
@@ -4390,7 +4452,7 @@ function show_wf_operation_options(operation, index) {
     var link = document.createElement("a");
     link.style.marginLeft = "20px";
     link.href = 'javascript:abort_wf();';
-    link.appendChild(document.createTextNode(" Cancel "));
+    link.appendChild(document.createTextNode("Cancel"));
     com_node.appendChild(link);
 }
 

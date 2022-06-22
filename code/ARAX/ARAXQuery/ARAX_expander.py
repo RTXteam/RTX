@@ -259,7 +259,10 @@ class ARAXExpander:
             for qedge_key in ordered_qedge_keys_to_expand:
                 log.debug(f"Expanding qedge {qedge_key}")
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Expanding')
+                message.query_graph.edges[qedge_key].filled = True  # Mark as expanded in overarching QG #1848
                 qedge = query_graph.edges[qedge_key]
+                qedge.filled = True  # Also mark as expanded in local QG #1848
+
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
 
@@ -431,8 +434,8 @@ class ARAXExpander:
         # Override node types so that they match what was asked for in the query graph (where applicable) #987
         self._override_node_categories(message.knowledge_graph, message.query_graph)
 
-        # Decorate all nodes with additional attributes info from KG2c (iri, description, etc.)
-        if mode != "RTXKG2":  # Skip doing this for KG2 (until can pass minimal_metadata param)
+        # Decorate all nodes with additional attributes info from KG2c if requested (iri, description, etc.)
+        if mode != "RTXKG2" or not parameters.get("return_minimal_metadata"):
             decorator = ARAXDecorator()
             decorator.decorate_nodes(response)
             decorator.decorate_edges(response, kind="RTX-KG2")

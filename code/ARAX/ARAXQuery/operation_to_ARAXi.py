@@ -264,6 +264,8 @@ class WorkflowToARAXi:
         for operation in workflow:
             if operation['id'] not in self.implemented:
                 response.error("This operation has not yet been implemented to the workflow to ARAXi translator", error_code="NotImplementedError")
+                # immediately return since we don't know what to do with an operation that isn't implemented
+                return
             if 'parameters' in operation:
                 ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters'], query_graph, response))
             else:
