@@ -91,6 +91,8 @@ def test_connect_nodes_1_hop():
     assert len(message.query_graph.edges) > 0
     assert len(message.results) > 0
 
+
+@pytest.mark.slow
 def test_connect_nodes_2_hop():
     query = {"operations": {"actions": [
             "create_message",
