@@ -644,5 +644,62 @@ def test_connect_knodes_3_nodes():
     assert len(connected_bindings) > 0
 
 
+def test_unknown_operation():
+    # Tests if unknown operations are handled correctly
+        query = {
+            "workflow": [
+                {
+                    "id": "gobbledegook"
+                },
+                {
+                    "id": "overlay_compute_ngd",
+                    "parameters": {
+                        "virtual_relation_label": "NGD1",
+                        "qnode_keys": ["n0", "n1"]
+                    }
+                },
+                {
+                    "id": "score"
+                },
+                {
+                    "id": "filter_results_top_n",
+                    "parameters": {
+                        "max_results": 20
+                    }
+                }
+            ],
+            "message": {
+                "query_graph": {
+                    "nodes": {
+                        "n0": {
+                            "categories": [
+                                "biolink:Gene"
+                            ]
+                        },
+                        "n1": {
+                            "ids": [
+                                "CHEBI:45783"
+                            ],
+                            "categories": [
+                                "biolink:SmallMolecule"
+                            ]
+                        }
+                    },
+                    "edges": {
+                        "e01": {
+                            "subject": "n0",
+                            "object": "n1",
+                            "predicates": [
+                                "biolink:related_to"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        [response, message] = _do_arax_query(query)
+        assert response.status == 'ERROR'
+
+
 if __name__ == "__main__":
     pytest.main(['-v'])
