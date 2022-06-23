@@ -36,6 +36,9 @@ servers:
 - description: ARAX Translator Reasoner API
   url: https://arax.ncats.io/api/rtxkg2/v1.2
   x-maturity: production
+- description: ARAX Translator Reasoner API
+  url: https://arax.ncats.io/beta/api/rtxkg2/v1.2
+  x-maturity: development
 tags:
 - description: Get supported relationships
   externalDocs:
