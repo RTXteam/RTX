@@ -78,7 +78,8 @@ servers:
   x-maturity: development
 - description: ARAX TRAPI 1.2 endpoint - development
   url: https://arax.ncats.io/devLM/api/arax/v1.2
-  x-maturity: developmenttags:
+  x-maturity: development
+tags:
   - name: meta_knowledge_graph
     description: Get supported relationships
     externalDocs:
