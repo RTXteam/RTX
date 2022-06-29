@@ -34,10 +34,10 @@ from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'scripts']))
 from infer_utilities import InferUtilities
 # from creativeDTD import creativeDTD
+from ExplianableDTD_db import ExplainableDTD
 
 import pickle
 import pandas as pd
-
 
 
 class ARAXInfer:
@@ -77,7 +77,7 @@ class ARAXInfer:
             "type": "integer",
             "description": "The number of paths connecting to each returned drug node. If not provided defaults to 20."
         }
-        
+        self.EDTD = ExplainableDTD()
 
         #command descriptions
         self.command_definitions = {
@@ -290,12 +290,14 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         # dtd.set_query_disease(self.parameters['node_curie'])
         # top_drugs = dtd.predict_top_N_drugs(self.parameters['n_drugs'])
         # top_paths = dtd.predict_top_M_paths(self.parameters['n_paths'])
+        top_drugs = self.EDTD.get_top_drugs_for_disease(disease_ids=self.parameters['node_curie'])
+        top_paths = self.EDTD.get_top_paths_for_disease(disease_ids=self.parameters['node_curie'])
 
         # FW: temp fix to use the pickle fil for dev work rather than recomputing
         # Comment out the following 3 lines and uncomment the above for prod deploy
-        top_drugs = pd.read_csv(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"top_n_drugs.csv"]))
-        with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
-            top_paths = pickle.load(fid)
+        # top_drugs = pd.read_csv(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"top_n_drugs.csv"]))
+        # with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
+        #     top_paths = pickle.load(fid)
         
         # TRAPI-ifies the results of the model
         iu = InferUtilities()

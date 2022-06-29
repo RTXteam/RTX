@@ -159,6 +159,11 @@ class RTXConfiguration:
         self.autocomplete_path = self.config["Contextual"][self.live]["autocomplete"]["path"]
         self.autocomplete_version = self.config["Contextual"][self.live]["autocomplete"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
 
+        self.explainable_dtd_db_host = self.config["Global"]["explainable_dtd_db"]["host"]
+        self.explainable_dtd_db_username = self.config["Global"]["explainable_dtd_db"]["username"]
+        self.explainable_dtd_db_path = self.config["Contextual"][self.live]["explainable_dtd_db"]["path"]
+        self.explainable_dtd_db_version = self.config["Contextual"][self.live]["explainable_dtd_db"]["path"].split('/')[-1].split('_v')[-1].replace('.db','')
+
         self.rtx_kg2_url = self.config["Contextual"][self.live]["RTX-KG2"]["url"]
 
         self.mysql_feedback_host = self.config["Global"]["mysql_feedback"]["host"]
