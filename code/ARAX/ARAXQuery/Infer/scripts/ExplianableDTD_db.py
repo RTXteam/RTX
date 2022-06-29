@@ -297,7 +297,6 @@ def main():
         parser.print_help()
         sys.exit(2)
 
-    # FIXME: the below is an unresolved reference
     EDTDdb = ExplainableDTD(args.path_to_score_results, args.path_to_path_results, database_name=args.database_name, outdir=args.outdir)
 
     # To (re)build
