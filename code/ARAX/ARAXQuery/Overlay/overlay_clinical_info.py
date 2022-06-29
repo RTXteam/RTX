@@ -6,6 +6,7 @@ import traceback
 import numpy as np
 import itertools
 from datetime import datetime
+import copy
 
 import random
 import time
@@ -351,6 +352,7 @@ class OverlayClinicalInfo:
             q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
             q_edge.relation = relation
+            q_edge.filled = True
             self.message.query_graph.edges[relation]=q_edge
 
     def add_all_edges(self, name="", default=0.):
@@ -386,7 +388,28 @@ class OverlayClinicalInfo:
         # Now add the edges or virtual edges
         try:
             if 'virtual_relation_label' in parameters:
-                self.add_virtual_edge(name="paired_concept_frequency", default=default)
+                if 'subject_qnode_key' in parameters and 'object_qnode_key' in parameters:
+                    self.add_virtual_edge(name="paired_concept_frequency", default=default)
+                else:
+                    seen_node_pairs = set()
+                    qgraph_edges = copy.deepcopy(list(self.response.envelope.message.query_graph.edges.values()))
+                    for query_edge in qgraph_edges:
+                        current_subject_qnode_key = query_edge.subject
+                        current_object_qnode_key = query_edge.object
+                        if current_subject_qnode_key < current_object_qnode_key:
+                            qnode_key_pair = (current_subject_qnode_key,current_object_qnode_key)
+                        else:
+                            qnode_key_pair = (current_object_qnode_key,current_subject_qnode_key)
+                        # FW: check if we have already added an edge for this pair
+                        if qnode_key_pair in seen_node_pairs:
+                            pass
+                        else:
+                            seen_node_pairs.add(qnode_key_pair)
+                            parameters['subject_qnode_key'] = current_subject_qnode_key
+                            parameters['object_qnode_key'] = current_object_qnode_key
+                            self.add_virtual_edge(name="paired_concept_frequency", default=default)
+                            parameters.pop('subject_qnode_key')
+                            parameters.pop('object_qnode_key')
             else:  # otherwise, just add to existing edges in the KG
                 self.add_all_edges(name="paired_concept_frequency", default=default)
 
@@ -409,7 +432,28 @@ class OverlayClinicalInfo:
         # Now add the edges or virtual edges
         try:
             if 'virtual_relation_label' in parameters:
-                self.add_virtual_edge(name="observed_expected_ratio", default=default)
+                if 'subject_qnode_key' in parameters and 'object_qnode_key' in parameters:
+                    self.add_virtual_edge(name="observed_expected_ratio", default=default)
+                else:
+                    seen_node_pairs = set()
+                    qgraph_edges = copy.deepcopy(list(self.response.envelope.message.query_graph.edges.values()))
+                    for query_edge in qgraph_edges:
+                        current_subject_qnode_key = query_edge.subject
+                        current_object_qnode_key = query_edge.object
+                        if current_subject_qnode_key < current_object_qnode_key:
+                            qnode_key_pair = (current_subject_qnode_key,current_object_qnode_key)
+                        else:
+                            qnode_key_pair = (current_object_qnode_key,current_subject_qnode_key)
+                        # FW: check if we have already added an edge for this pair
+                        if qnode_key_pair in seen_node_pairs:
+                            pass
+                        else:
+                            seen_node_pairs.add(qnode_key_pair)
+                            parameters['subject_qnode_key'] = current_subject_qnode_key
+                            parameters['object_qnode_key'] = current_object_qnode_key
+                            self.add_virtual_edge(name="observed_expected_ratio", default=default)
+                            parameters.pop('subject_qnode_key')
+                            parameters.pop('object_qnode_key')
             else:  # otherwise, just add to existing edges in the KG
                 self.add_all_edges(name="observed_expected_ratio", default=default)
 
@@ -432,7 +476,28 @@ class OverlayClinicalInfo:
         # Now add the edges or virtual edges
         try:
             if 'virtual_relation_label' in parameters:
-                self.add_virtual_edge(name="chi_square", default=default)
+                if 'subject_qnode_key' in parameters and 'object_qnode_key' in parameters:
+                    self.add_virtual_edge(name="chi_square", default=default)
+                else:
+                    seen_node_pairs = set()
+                    qgraph_edges = copy.deepcopy(list(self.response.envelope.message.query_graph.edges.values()))
+                    for query_edge in qgraph_edges:
+                        current_subject_qnode_key = query_edge.subject
+                        current_object_qnode_key = query_edge.object
+                        if current_subject_qnode_key < current_object_qnode_key:
+                            qnode_key_pair = (current_subject_qnode_key,current_object_qnode_key)
+                        else:
+                            qnode_key_pair = (current_object_qnode_key,current_subject_qnode_key)
+                        # FW: check if we have already added an edge for this pair
+                        if qnode_key_pair in seen_node_pairs:
+                            pass
+                        else:
+                            seen_node_pairs.add(qnode_key_pair)
+                            parameters['subject_qnode_key'] = current_subject_qnode_key
+                            parameters['object_qnode_key'] = current_object_qnode_key
+                            self.add_virtual_edge(name="chi_square", default=default)
+                            parameters.pop('subject_qnode_key')
+                            parameters.pop('object_qnode_key')
             else:  # otherwise, just add to existing edges in the KG
                 self.add_all_edges(name="chi_square", default=default)
 

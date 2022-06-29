@@ -1,86 +1,72 @@
 openapi: 3.0.1
 info:
-  description: TRAPI 1.2 endpoint for the NCATS Biomedical Translator KP called RTX KG2
-  version: 2.7.5.0
-  title: RTX KG2
+  description: INSERT-DESCRIPTION-OF-YOUR-SERVICE-HERE
+  version: INSERT-VERSION-OF-YOUR-SERVICE-HERE
+  title: INSERT-TITLE-OF-YOUR-SERVICE-HERE
   contact:
-    email: edeutsch@systemsbiology.org
+    email: INSERT@EMAIL-ADDRESS-OF-IMPLEMENTER-HERE.ORG
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
+  termsOfService: INSERT-URL-HERE
   x-translator:
-    component: KP
+    component: INSERT-EITHER-ARA-OR-KP-OR-ARS-OR-Utility-HERE
     team:
-      - Expander Agent
-    infores: infores:rtx-kg2
-    biolink-version: 2.2.11
+      - INSERT-ONE-TRANSLATOR-TEAM-NAME-PER-ELEMENT-HERE
+    biolink-version: INSERT-BIOLINK-MODEL-VERSION-HERE
     externalDocs:
       description: >-
         The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
-      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/\
+        production/x-translator/
   x-trapi:
-    version: 1.2.1
-    asyncquery: false
+    version: 1.2.0
+    asyncquery: REPLACE-WITH-true-IF-/asyncquery-IS-IMPLEMENTED-ELSE-false
     operations:
-      - lookup
+      - LIST-ALL-SUPPORTED-OPERATION-IDS-HERE-OR-REMOVE-THIS-SECTION
     externalDocs:
       description: >-
         The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
-      url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-trapi/
+      url: https://github.com/NCATSTranslator/translator_extensions/blob/\
+        production/x-trapi/
+servers:
+  - url: INSERT-URL-HERE
+    description: INSERT-SERVER-DESCRIPTION-HERE
 externalDocs:
   description: >-
     Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
-servers:
-  - url: https://arax.ncats.io/api/rtxkg2/v1.2
-    description: ARAX Translator Reasoner API
-    x-maturity: production
 tags:
   - name: meta_knowledge_graph
-    description: Get supported relationships
+    description: >-
+      Retreive the meta knowledge graph representation of this
+      TRAPI web service.
     externalDocs:
-      description: Documentation for the reasoner predicates function
-      url: http://arax.ncats.io/overview.html#predicates
+      description: >-
+        Documentation for the reasoner meta_knowledge_graph function
+      url: INSERT-URL-HERE-OR-REMOVE-EXTERNALDOCS-IF-NA
   - name: query
     description: Initiate a query and wait to receive the response
     externalDocs:
       description: Documentation for the reasoner query function
-      url: http://arax.ncats.io/overview.html#query
+      url: INSERT-URL-HERE-OR-REMOVE-EXTERNALDOCS-IF-NA
   - name: asyncquery
     description: Initiate a query with a callback to receive the response
     externalDocs:
       description: Documentation for the reasoner asynchquery function
-      url: http://arax.ncats.io/overview.html#asyncquery
+      url: INSERT-URL-HERE-OR-REMOVE-EXTERNALDOCS-IF-NA
   - name: translator
     description: Required for SmartAPI validation of x-translator
   - name: trapi
     description: Required for SmartAPI validation of x-trapi
-  - name: entity
-    description: Return identifier and type of some entity in the knowledge graph
-    externalDocs:
-      description: Documentation for the reasoner entity function
-      url: 'https://arax.ncats.io/overview.html#entity'
-  - name: status
-    description: Return status information about the endpoint
 paths:
   /meta_knowledge_graph:
     get:
       tags:
         - meta_knowledge_graph
       summary: Meta knowledge graph representation of this TRAPI web service.
-      operationId: meta_knowledge_graph
-      parameters:
-      - in: query
-        name: format
-        description: >-
-          Provide meta_knowledge_graph information in a format other than the default.
-          Default value is 'full'. Also permitted is 'simple'
-        required: false
-        schema:
-          type: string
       responses:
         '200':
           description: >-
@@ -96,7 +82,6 @@ paths:
         - query
       summary: Initiate a query and wait to receive a Response
       description: ''
-      operationId: query
       requestBody:
         description: Query information to be submitted
         required: true
@@ -142,7 +127,6 @@ paths:
         - asyncquery
       summary: Initiate a query with a callback to receive the response
       description: ''
-      operationId: asyncquery
       requestBody:
         description: Query information to be submitted
         required: true
@@ -182,131 +166,6 @@ paths:
             application/json:
               schema:
                 type: string
-  /entity:
-    get:
-      tags:
-      - entity
-      summary: Obtain CURIE and synonym information about a search term
-      description: ''
-      operationId: get_entity
-      parameters:
-      - in: query
-        name: q
-        description: >-
-          A string to search by (name, abbreviation, CURIE, etc.).
-          The parameter may be repeated for multiple search strings.
-        required: true
-        schema:
-          type: array
-          example:
-          - MESH:D014867
-          - NCIT:C34373
-          items:
-            type: string
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          description: "Entity not found"
-    post:
-      tags:
-      - entity
-      summary: Obtain CURIE and synonym information about search terms
-      description: ''
-      operationId: post_entity
-      requestBody:
-        description: List of terms to get information about
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EntityQuery'
-        '404':
-          description: "Entity not found"
-  /status:
-    get:
-      tags:
-      - status
-      summary: Obtain status information about the endpoint
-      description: ''
-      operationId: get_status
-      parameters:
-      - in: query
-        name: last_n_hours
-        description: >-
-          Limit results to the past N hours
-        required: false
-        schema:
-          type: integer
-          example: 6
-      - in: query
-        name: id
-        description: >-
-          Identifier of the log entry
-        required: false
-        schema:
-          type: integer
-          example: 10
-      - in: query
-        name: terminate_pid
-        description: >-
-          PID of an ongoing query to terminate
-        required: false
-        schema:
-          type: integer
-      - in: query
-        name: authorization
-        description: >-
-          Authorization string required for certain calls to status
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          description: "Entity not found"
-  /status/logs:
-    get:
-      operationId: get_logs
-      parameters:
-      - description: Specify the log sending mode
-        explode: true
-        in: query
-        name: mode
-        required: false
-        schema:
-          example: tail
-          type: string
-        style: form
-      responses:
-        "200":
-          content:
-            text/plain:
-              schema:
-                type: string
-          description: successful operation
-        "404":
-          description: Logs not found
-      summary: Get log information from the server
-      tags:
-      - status
-      x-openapi-router-controller: openapi_server.controllers.status_controller
 components:
   schemas:
     Query:
@@ -336,69 +195,7 @@ components:
           nullable: true
         workflow:
           description: List of workflow steps to be executed.
-          type: array
-          example: null
-          items:
-            oneOf:
-              - $ref: '#/components/schemas/OperationLookup'
-        submitter:
-          type: string
-          description: >-
-            Any string for self-identifying the submitter of a query. The
-            purpose of this optional field is to aid in the tracking of
-            the source of queries for development and issue resolution.
-          nullable: true
-        bypass_cache:
-          type: boolean
-          default: false
-          description: >-
-            Set to true in order to bypass any possible cached
-            response and try to answer the query from scratch
-        stream_progress:
-          type: boolean
-          default: false
-          description: >-
-            Set to true in order to receive a stream of LogEntry objects
-            as the query is progressing
-        enforce_edge_directionality:
-          type: boolean
-          default: false
-          description: >-
-            Set to true in order to enforce edge directionality during queries.
-            By default, edge directionality can be reversed without penalty.
-        return_minimal_metadata:
-          type: boolean
-          default: false
-          description: >-
-            Set to true in order to return only the most minimal metadata.
-            By default, rich metadata for nodes and edges are supplied, which
-            may cause a very large and slower Response.
-        max_results:
-          type: integer
-          example: 100
-          default: 100
-          description: Maximum number of individual results to return
-        page_size:
-          type: integer
-          example: 100
-          default: 100
-          description: Split the results into pages with this number of results each
-        page_number:
-          type: integer
-          example: 1
-          default: 1
-          description: >-
-            Page number of results when the number of results exceeds the
-            page_size, with page 1 as the first page
-        operations:
-          description: >-
-            Container for one or more Message objects or identifiers for one or
-            more Messages along with a processing plan and options for how those
-            messages should be processed and returned
-          example: null
-          allOf:
-            - $ref: '#/components/schemas/Operations'
-          nullable: true
+          $ref: http://standards.ncats.io/workflow/1.0.0/schema
       additionalProperties: true
       required:
         - message
@@ -437,18 +234,7 @@ components:
           nullable: true
         workflow:
           description: List of workflow steps to be executed.
-          type: array
-          example: null
-          items:
-            oneOf:
-              - $ref: '#/components/schemas/OperationLookup'
-        submitter:
-          type: string
-          description: >-
-            Any string for self-identifying the submitter of a query. The
-            purpose of this optional field is to aid in the tracking of
-            the source of queries for development and issue resolution.
-          nullable: true
+          $ref: http://standards.ncats.io/workflow/1.0.0/schema
       additionalProperties: true
       required:
         - callback
@@ -488,102 +274,8 @@ components:
             $ref: '#/components/schemas/LogEntry'
           nullable: true
         workflow:
-          description: A list of operations that were executed.
-          type: array
-          items:
-            oneOf:
-              - $ref: '#/components/schemas/OperationLookup'
-        submitter:
-          type: string
-          description: >-
-            Any string for self-identifying the submitter of a query. The
-            purpose of this optional field is to aid in the tracking of
-            the source of queries for development and issue resolution.
-          nullable: true
-        operations:
-          description: >-
-            Container for one or more Message objects or identifiers for one or
-            more Messages along with the processing plan and options for how those
-            messages were processed and returned
-          allOf:
-            - $ref: '#/components/schemas/Operations'
-        reasoner_id:
-          type: string
-          example: ARAX
-          description: >-
-            Identifier string of the reasoner that provided this response
-            (one of ARAX, Robokop, etc.)
-        tool_version:
-          type: string
-          example: ARAX 0.8.0
-          description: Version label of the tool that generated this response
-        schema_version:
-          type: string
-          example: 1.2.0
-          description: Version label of this TRAPI schema
-        datetime:
-          type: string
-          example: '2021-01-09 12:34:45'
-          description: >-
-            Datetime string for the time that this response was generated
-        table_column_names:
-          type: array
-          example:
-            - chemical_substance.name
-            - chemical_substance.id
-          description: >-
-            List of column names that corresponds to the row_data for
-            each result
-          items:
-            type: string
-        original_question:
-          type: string
-          example: what proteins are affected by sickle cell anemia
-          description: The original question text typed in by the user
-        restated_question:
-          type: string
-          example: Which proteins are affected by sickle cell anemia?
-          description: >-
-            A precise restatement of the question, as understood by the
-            Translator, for which the answer applies. The user should verify
-            that the restated question matches the intent of their original
-            question (it might not).
-        query_options:
-          type: object
-          example:
-            coalesce: true
-            threshold: 0.9
-          description: >-
-            Dict of options that can be sent with the query. Options are tool
-            specific and not stipulated here
-        context:
-          type: string
-          example: 'https://rtx.ncats.io/ns/translator.jsonld'
-          description: JSON-LD context URI
-        type:
-          type: string
-          example: TranslatorAPIResponse
-          description: Entity type of this response
-        id:
-          type: string
-          example: 'https://arax.ncats.io/api/rtx/v1.2/response/123'
-          description: URI for this response
-        validation_result:
-          type: object
-          description: >-
-            Validation results and other summary stats computed
-            for this Response.
-        total_results_count:
-          type: integer
-          nullable: true
-          description: >-
-            The total number of results that were generated prior
-            to any filtering.
-        info:
-          type: string
-          nullable: true
-          description: >-
-            A placholder for including some additional information
+          description: List of workflow steps that were executed.
+          $ref: http://standards.ncats.io/workflow/1.0.0/schema
       additionalProperties: true
       required:
         - message
@@ -601,7 +293,9 @@ components:
       properties:
         results:
           description: >-
-            List of all returned Result objects for the query posed
+            List of all returned Result objects for the query posed.
+            The list SHOULD NOT be assumed to be ordered. The 'score' property,
+             if present, MAY be used to infer result rankings.
           type: array
           items:
             $ref: '#/components/schemas/Result'
@@ -621,18 +315,6 @@ components:
             - $ref: '#/components/schemas/KnowledgeGraph'
           nullable: true
       additionalProperties: false
-      example:
-        query_graph:
-          edges:
-            e00:
-              subject: n00
-              object: n01
-              predicates: [ biolink:physically_interacts_with ]
-          nodes:
-            n00:
-              ids: [ CHEMBL.COMPOUND:CHEMBL112 ]
-            n01:
-              categories: [ biolink:Protein ]
     LogEntry:
       description: >-
         The LogEntry object contains information useful for tracing
@@ -675,8 +357,6 @@ components:
         - WARNING
         - INFO
         - DEBUG
-      example: DEBUG
-      x-nullable: true
     Result:
       type: object
       description: >-
@@ -712,95 +392,14 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/EdgeBinding'
-        id:
-          type: string
-          example: result:234
-          description: URI for this result
-          nullable: true
-        description:
-          type: string
-          example: >-
-            The genetic condition sickle cell anemia may provide protection
-            from cerebral malaria via genetic alterations of proteins HBB
-            (P68871) and HMOX1 (P09601).
-          description: >-
-            A free text description of this result answer from the reasoner
-          nullable: true
-        essence:
-          type: string
-          example: ibuprofen
-          description: >-
-            A single string that is the terse essence of the result (useful for
-            simple answers)
-          nullable: true
-        essence_category:
-          type: string
-          example: biolink:ChemicalEntity
-          description: A Translator BioLink bioentity category of the essence
-          nullable: true
-        row_data:
-          type: array
-          example:
-            - ibuprofen
-            - CHEMBL:CHEMBL521
-          description: >-
-            An arbitrary list of values that captures the essence of the result
-            that can be turned into a tabular result across all answers (each
-            result is a row) for a user that wants simplified tabular output
-          items:
-            oneOf:
-              - type: string
-              - type: number
-          nullable: true
         score:
           type: number
           format: float
           example: 163.233
-          description: Any type of score associated with this result
-          nullable: true
-        score_name:
-          type: string
-          example: Jaccard distance
-          description: Name for the score
-          nullable: true
-        score_direction:
-          type: string
-          example: lower_is_better
           description: >-
-            Sorting indicator for the score: one of higher_is_better or
-            lower_is_better
-          nullable: true
-        confidence:
-          type: number
-          format: float
-          example: 0.9234
-          description: >-
-            Confidence metric for this result, a value between (inclusive)
-             0.0 (no confidence) and 1.0 (highest confidence)
-          nullable: true
-        result_group:
-          type: integer
-          example: 1
-          description: >-
-            An integer group number for results for use in cases where several
-            results should be grouped together. Also useful to control sorting
-            ascending.
-          nullable: true
-        result_group_similarity_score:
-          type: number
-          format: float
-          example: 0.95
-          description: >-
-            A score that denotes the similarity of this result to other members
-            of the result_group
-          nullable: true
-        reasoner_id:
-          type: string
-          example: ARAX
-          description: >-
-            Identifier string of the reasoner that provided this result (e.g.,
-            ARAX, Robokop, etc.)
-          nullable: true
+            A numerical score associated with this result indicating the
+            relevance or confidence of this result relative to others in the
+            returned set. Higher MUST be better.
       additionalProperties: true
       required:
         - node_bindings
@@ -871,7 +470,6 @@ components:
       required:
         - nodes
         - edges
-      x-nullable: true
     QueryGraph:
       type: object
       description: >-
@@ -942,40 +540,19 @@ components:
             to AND)
           items:
             $ref: '#/components/schemas/QueryConstraint'
-          default: []
-        option_group_id:
-          type: string
           nullable: true
-          description: >-
-            Optional string acting as a label on a set of nodes and/or edges
-            indicating that they belong to a group that are to be
-            evaluated as a group. 
       additionalProperties: true
     QEdge:
       type: object
       description: >-
         An edge in the QueryGraph used as an filter pattern specification in a
-        query. If the optional predicate property is not specified,
-        it is assumed to be a wildcard match to the target knowledge space.
+        query. If optional predicate or relation properties are not specified,
+        they are assumed to be wildcard matches to the target knowledge space.
         If specified, the ontological inheritance hierarchy associated with
-        the term provided is assumed, such that edge bindings returned may be
-        an exact match to the given QEdge predicate term,
-        or to a term that is a descendant of the QEdge predicate term.
+        the terms provided is assumed, such that edge bindings returned may be
+        an exact match to the given QEdge predicate or relation term ('class'),
+        or to a term which is a subclass of the QEdge specified term.
       properties:
-        knowledge_type:
-          description: >-
-            Indicates the type of knowledge that the client wants from the
-            server between the subject and object. If the value is
-            'lookup', then the client wants direct lookup information from
-            knowledge sources. If the value is 'inferred', then the client
-            wants the server to get creative and connect the subject and
-            object in more speculative and non-direct-lookup ways. If this
-            property is absent or null, it MUST be assumed to mean
-            'lookup'. This feature is currently experimental and may be
-            further extended in the future.
-          example: lookup
-          nullable: true
-          type: string
         predicates:
           type: array
           items:
@@ -1004,19 +581,7 @@ components:
             to AND)
           items:
             $ref: '#/components/schemas/QueryConstraint'
-          default: []
-        exclude:
-          type: boolean
-          description: >-
-            If set to true, then all subgraphs containing this edge
-            are excluded from the final results. (optional)
-        option_group_id:
-          type: string
           nullable: true
-          description: >-
-            Optional string acting as a label on a set of nodes and/or edges
-            indicating that they belong to a group that are to be
-            evaluated as a group. 
       additionalProperties: true
       required:
         - subject
@@ -1086,8 +651,8 @@ components:
             Value of the attribute. May be any data type, including a list.
           example: 0.000153
         value_type_id:
-          $ref: '#/components/schemas/CURIE'
-          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CURIE'
           description: >-
             CURIE describing the semantic type of an  attribute's value. Use
             a Biolink class if possible, otherwise a term from an external
@@ -1095,6 +660,7 @@ components:
             descriptive phrase here and submit the new type for consideration
             by the appropriate authority.
           example: EDAM:data_1187
+          nullable: true
         attribute_source:
           type: string
           description: >-
@@ -1119,11 +685,13 @@ components:
           nullable: true
         attributes:
           type: array
-          nullable: true
           description: >-
-            Node attributes provided by this TRAPI web service.
+            A list of attributes providing further information about the
+            parent attribute (for example to provide provenance
+            information about the parent attribute).
           items:
             $ref: '#/components/schemas/SubAttribute'
+          nullable: true
       required:
         - attribute_type_id
         - value
@@ -1291,9 +859,6 @@ components:
           items:
             $ref: '#/components/schemas/MetaEdge'
           minItems: 1
-      required:
-        - nodes
-        - edges
     MetaNode:
       type: object
       description: >-
@@ -1327,7 +892,7 @@ components:
           $ref: '#/components/schemas/BiolinkEntity'
           description: >-
             Subject node category of this relationship edge.
-          example: biolink:ChemicalEntity
+          example: biolink:ChemicalSubstance
         predicate:
           $ref: '#/components/schemas/BiolinkPredicate'
           description: >-
@@ -1344,7 +909,6 @@ components:
             Edge attributes provided by this TRAPI web service.
           items:
             $ref: '#/components/schemas/MetaAttribute'
-          nullable: true
       required:
         - subject
         - predicate
@@ -1364,15 +928,12 @@ components:
           description: >-
             Source of an attribute provided by this TRAPI web service.
           example: infores:chembl
-          nullable: true
         original_attribute_names:
           type: array
           items:
             type: string
           description: >-
             Names of an the attribute as provided by the source.
-          nullable: true
-          minItems: 1
         constraint_use:
           type: boolean
           description: >-
@@ -1385,7 +946,6 @@ components:
             Human-readable name or label for the constraint concept.
             Required whenever constraint_use is true.
           example: p-value
-          nullable: true
       required:
         - attribute_type_id
     QueryConstraint:
@@ -1404,6 +964,7 @@ components:
             submit the new type for consideration by the appropriate
             authority.
           example: EDAM:data_0844
+          nullable: false
         name:
           type: string
           description: >-
@@ -1412,6 +973,7 @@ components:
             as the 'id'. This is redundant but required for human
             readability.
           example: molecular mass
+          nullable: false
         not:
           type: boolean
           default: false
@@ -1452,7 +1014,6 @@ components:
             property. The Units of Measurement Ontology (UO) should be used
             if possible. The unit_id MUST be provided for (lists of)
             numerical values that correspond to a quantity that has units.
-          nullable: true
         unit_name:
           example: kilodalton
           description: >-
@@ -1461,74 +1022,9 @@ components:
             property. The Units of Measurement Ontology (UO) SHOULD be used
             if possible. This property SHOULD be provided if a unit_id is
             provided. This is redundant but recommended for human readability.
-          nullable: true
       required:
         - name
         - id
         - operator
         - value
       additionalProperties: false
-    Operations:
-      type: object
-      description: >-
-        Container for one or more Message objects or identifiers for one or
-        more Messages along with a processing plan and options for how those
-        messages should be processed and returned
-      properties:
-        message_uris:
-          type: array
-          example:
-            - 'https://arax.ncats.io/api/arax/v1.2/response/38'
-          description: >-
-            List of URIs for Message or Response objects to fetch and process
-          items:
-            type: string
-        messages:
-          type: array
-          description: List of Message objects to process
-          items:
-            $ref: '#/components/schemas/Message'
-        actions:
-          type: array
-          example:
-            - add_qnode(name=acetaminophen, key=n00)
-            - add_qnode(category=biolink:Protein, key=n01)
-            - add_qedge(subject=n01, object=n00, key=e00)
-            - expand(edge_key=e00)
-            - resultify()
-            - filter_results(action=limit_number_of_results, max_results=10)
-          description: >-
-            List of order-dependent operations to execute
-          items:
-            type: string
-        options:
-          type: object
-          example:
-            halt_on_warning: False
-          description: >-
-            Map of order independent options that apply during processing
-          additionalProperties: true
-      additionalProperties: true
-      nullable: true
-    EntityQuery:
-      type: object
-      properties:
-        terms:
-          type: array
-          description: List of term strings to search for
-          items:
-            type: string
-        format:
-          type: string
-          description: Format of the response (full or compact)
-    OperationLookup:
-      additionalProperties: false
-      properties:
-        id:
-          enum:
-          - lookup
-          type: string
-        parameters: {}
-      required:
-      - id
-      type: object

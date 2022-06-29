@@ -64,7 +64,7 @@ cohd_DSL_queries = [
         "add_qnode(ids=MONDO:0005301, key=n00)",
         "add_qnode(categories=biolink:SmallMolecule, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:correlated_with)",
-        "expand(edge_key=e00, kp=COHD)",
+        "expand(edge_key=e00, kp=infores:cohd)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
@@ -72,7 +72,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -82,7 +82,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, COHD_method=paired_concept_frequency)",
         "resultify()",
         "return(message=true, store=false)"
@@ -92,7 +92,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info,observed_expected_ratio=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -102,7 +102,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio)",
         "resultify()",
         "return(message=true, store=false)"
@@ -112,7 +112,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -122,7 +122,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, COHD_method=chi_square)",
         "resultify()",
         "return(message=true, store=false)"
@@ -132,7 +132,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -142,7 +142,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -152,7 +152,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "resultify()",
         "return(message=true, store=false)"
@@ -162,7 +162,7 @@ cohd_DSL_queries = [
         "add_qnode(name=UniProtKB:P62328, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -172,7 +172,7 @@ cohd_DSL_queries = [
         "add_qnode(name=UniProtKB:P62328, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "resultify()",
         "return(message=true, store=false)"
@@ -181,7 +181,7 @@ cohd_DSL_queries = [
         "create_message",
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(name=Sotos syndrome, key=n1)",
-        "expand(kp=RTX-KG2)",
+        "expand(kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
         "overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=C2,subject_qnode_key=n0,object_qnode_key=n1)",
         "overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=C3,subject_qnode_key=n0,object_qnode_key=n1)",
@@ -195,7 +195,7 @@ cohd_DSL_queries = [
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
+        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
         # overlay a bunch of clinical info
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
@@ -213,8 +213,8 @@ cohd_DSL_queries = [
         "add_qnode(ids=DOID:11830, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=RTX-KG2)",
-        "expand(edge_key=e00, kp=BTE)",
+        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:biothings-explorer)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         "overlay(action=predict_drug_treats_disease)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_keys=[n01])",
@@ -245,14 +245,14 @@ dtd_DSL_queries = [
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(name=Sotos syndrome, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
+        "expand(edge_key=e0, kp=infores:arax-drug-treats-disease, DTD_threshold=0, DTD_slow_mode=True)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(categories=biolink:Disease, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
+        "expand(edge_key=e0, kp=infores:arax-drug-treats-disease, DTD_threshold=0.8, DTD_slow_mode=True)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
@@ -260,7 +260,7 @@ dtd_DSL_queries = [
         "add_qnode(ids=DOID:0080909, key=n0, categories=biolink:Disease)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -270,7 +270,7 @@ dtd_DSL_queries = [
         "add_qnode(ids=DOID:0080909, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=predict_drug_treats_disease, threshold=0.7)",
         "resultify()",
         "return(message=true, store=false)"
@@ -280,7 +280,7 @@ dtd_DSL_queries = [
         "add_qnode(ids=DOID:0080909, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -290,7 +290,7 @@ dtd_DSL_queries = [
         "add_qnode(ids=UniProtKB:P62328, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -301,7 +301,7 @@ dtd_DSL_queries = [
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=BTE)",
+        "expand(kp=infores:biothings-explorer)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1, threshold=0.5)",
         "resultify(ignore_edge_direction=true)",
         "return(message=true, store=false)"
@@ -311,8 +311,8 @@ dtd_DSL_queries = [
         "add_qnode(ids=DOID:11830, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=RTX-KG2)",
-        "expand(edge_key=e00, kp=BTE)",
+        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:biothings-explorer)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         "overlay(action=predict_drug_treats_disease)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_keys=[n01])",
@@ -341,14 +341,14 @@ dtd_DSL_queries = [
 #         "add_qnode(name=acetaminophen, key=n0)",
 #         "add_qnode(name=Sotos syndrome, key=n1)",
 #         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
+#         "expand(edge_key=e0, kp=infores:arax-drug-treats-disease, DTD_threshold=0, DTD_slow_mode=True)",
 #         "return(message=true, store=false)"
 # ]}},
 # {"operations": {"actions": [
 # "add_qnode(name=acetaminophen, key=n0)",
 #         "add_qnode(category=disease, key=n1)",
 #         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
+#         "expand(edge_key=e0, kp=infores:arax-drug-treats-disease, DTD_threshold=0.8, DTD_slow_mode=True)",
 #         "return(message=true, store=false)"
 # ]}},
 # {"operations": {"actions": [
