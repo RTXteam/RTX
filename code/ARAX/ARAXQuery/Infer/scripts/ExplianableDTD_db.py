@@ -10,6 +10,7 @@ import sqlite3
 import logging
 import pandas as pd
 import numpy as np
+import tqdm
 
 # import internal modules
 pathlist = os.path.realpath(__file__).split(os.path.sep)
@@ -285,6 +286,7 @@ def main():
         parser.print_help()
         sys.exit(2)
 
+    # FIXME: the below is an unresolved reference
     EDTDdb = BuildExplainableDTD(args.path_to_score_results, args.path_to_path_results, database_name=args.database_name, outdir=args.outdir)
 
     # To (re)build
