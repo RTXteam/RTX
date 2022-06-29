@@ -48,7 +48,11 @@ class ExplainableDTD(object):
             database_name (str, optional): database name (Defaults: ExplainableDTD.db).
             outdir (str, optional): path to a folder where the database is generated (Defaults: ./).
         """
-        self.logger = get_logger('temp.log')
+        self.logger = get_logger('log')
+
+        # Property to keep track if the database is already connected or not
+        self.is_connected = False
+        self.test_iter = 1
 
         if build:
             if path_to_score_results is None:
@@ -96,21 +100,28 @@ class ExplainableDTD(object):
     # Create and store a database connection
     def connect(self):
         database = f"{self.outdir}/{self.database_name}"
-
-        if os.path.exists(database):
-            self.connection = sqlite3.connect(database)
-            self.logger.info("Connecting to database")
-            return True
+        if self.is_connected is False:
+            # Get if locally
+            if os.path.exists(database):
+                self.connection = sqlite3.connect(database)
+                self.logger.info("Connecting to database")
+                self.test_iter += 1
+                self.logger.info(f"Test iteration: {self.test_iter}")
+                self.is_connected = True
+                return True
+            else:
+                # get it remotely
+                os.system(f"scp {RTXConfig.explainable_dtd_db_username}@{RTXConfig.explainable_dtd_db_host}:{RTXConfig.explainable_dtd_db_path} {database}")
+                self.connection = sqlite3.connect(database)
+                print("INFO: Connecting to database", flush=True)
+                self.is_connected = True
+                return True
         else:
-            os.system(f"scp {RTXConfig.explainable_dtd_db_username}@{RTXConfig.explainable_dtd_db_host}:{RTXConfig.explainable_dtd_db_path} {database}")
-            self.connection = sqlite3.connect(database)
-            print("INFO: Connecting to database", flush=True)
             return True
 
     # Destroy the database connection
     def disconnect(self):
-
-        if self.success_con is True:
+        if self.success_con is True or self.is_connected is True:
             self.connection.commit()
             self.connection.close()
             self.logger.info("Disconnecting from database")
@@ -287,7 +298,7 @@ def main():
         sys.exit(2)
 
     # FIXME: the below is an unresolved reference
-    EDTDdb = BuildExplainableDTD(args.path_to_score_results, args.path_to_path_results, database_name=args.database_name, outdir=args.outdir)
+    EDTDdb = ExplainableDTD(args.path_to_score_results, args.path_to_path_results, database_name=args.database_name, outdir=args.outdir)
 
     # To (re)build
     if args.build:
