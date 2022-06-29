@@ -143,6 +143,10 @@ class ARAXDatabaseManager:
             'autocomplete': {
                 'path': self.local_paths['autocomplete'],
                 'version': self.RTXConfig.autocomplete_version
+            },
+            'explainable_dtd_db': {
+                'path': self.local_paths['explainable_dtd_db'],
+                'version': self.RTXConfig.explainable_dtd_db_version
             }
         }
 
