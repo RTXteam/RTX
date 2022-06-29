@@ -29,6 +29,7 @@ RUN chmod -R 700 /home/rt/.ssh
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt.rt /mnt/data/orangeboard/production
 RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git
+RUN su rt && cd /mnt/data/orangeboard/production/RTX && git checkout production
 RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
@@ -65,4 +66,4 @@ RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED
 RUN update-rc.d RTX_Complete defaults
 
 # setup config.domain
-RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "arax.ci.transltr.io" > config.domain
+RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "arax.transltr.io" > config.domain
