@@ -1411,5 +1411,28 @@ def test_issue_1446():
     assert message.results
 
 
+@pytest.mark.slow
+def test_issue_1848():
+    # Verifies that only the part of the QG that's already been expanded is resultified
+    actions = [
+        "add_qnode(key=n0, ids=MONDO:0019391)",
+        "add_qnode(key=n1, categories=biolink:Gene)",
+        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:causes)",
+        "expand(kp=infores:rtx-kg2)",
+        "add_qnode(key=n2, categories=biolink:Drug)",
+        "add_qedge(key=e1, subject=n1, object=n2)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    kg = response.envelope.message.knowledge_graph
+    assert response.status == "OK"
+    assert kg.nodes
+    assert kg.edges
+    assert message.results
+    qedge_bindings_in_kg = {qedge_key for edge in kg.edges.values() for qedge_key in edge.qedge_keys}
+    assert qedge_bindings_in_kg == {"e0"}
+
+
 if __name__ == '__main__':
     pytest.main(['-v', 'test_ARAX_resultify.py'])

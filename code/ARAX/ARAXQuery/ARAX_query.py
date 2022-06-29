@@ -439,6 +439,12 @@ class ARAXQuery:
         # Convert the TRAPI workflow into ARAXi
         converter = WorkflowToARAXi()
         araxi = converter.translate(query['workflow'], query['message'].query_graph.to_dict(), response)
+        # The translation returns a list of ARAXi commands. If this list is empty, something went wrong
+        # When convert_workflow_to_ARAXi is called, it's wrapped in a try/except, so raise an Exception to indicate
+        # that something went wrong
+        if not araxi:
+            response.error("Unable to translate workflow into ARAXi", error_code="TranslationFailed")
+            raise Exception
 
         # If there are not already operations, create empty stubs
         if 'operations' not in query:
@@ -460,7 +466,7 @@ class ARAXQuery:
 
         # Define allowed qnode and qedge attributes to check later
         allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'option_group_id': 1, 'name': 1, 'constraints': 1 }
-        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'constraints': 1 }
+        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'constraints': 1, 'knowledge_type': 1 }
 
         #### Loop through nodes checking the attributes
         for id,qnode in message['query_graph']['nodes'].items():
@@ -643,6 +649,7 @@ class ARAXQuery:
             from ARAX_resultify import ARAXResultify
             from ARAX_filter_results import ARAXFilterResults
             from ARAX_infer import ARAXInfer
+            from ARAX_connect import ARAXConnect
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
@@ -650,6 +657,7 @@ class ARAXQuery:
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
             infer = ARAXInfer()
+            connect = ARAXConnect()
             self.message = message
 
             #### Create some empty stubs if they don't exist
@@ -749,6 +757,9 @@ class ARAXQuery:
                         message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
                         self.message = message
                         nonstandard_result = True
+
+                    elif action['command'] == 'connect':
+                        connect.apply(response, action['parameters'])
 
                     elif action['command'] == 'return':
                         action_stats['return_action'] = action
@@ -1702,6 +1713,25 @@ def main():
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
             "resultify()",
             "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 1848:
+        query = {"operations": {"actions": ["add_qnode(key=n0, ids=[MONDO:0009061], is_set=false)",
+            "add_qnode(key=n1, is_set=false, categories=[biolink:ChemicalEntity])",
+            "add_qedge(key=e0, subject=n0, object=n1, predicates=[biolink:has_real_world_evidence_of_association_with])",
+            "expand(kp=infores:cohd)",
+            "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N1,subject_qnode_key=n0,object_qnode_key=n1)",
+            "scoreless_resultify(ignore_edge_direction=true)",
+            "rank_results()",
+            "filter_results(action=limit_number_of_results,max_results=3,prune_kg=true)",
+            "add_qnode(key=n2, is_set=false, categories=[biolink:Gene,biolink:Protein])",
+            "add_qedge(key=e1, subject=n1, object=n2, predicates=[biolink:increases_activity_of])",
+            "add_qnode(key=n3, is_set=false, categories=[biolink:ChemicalEntity])",
+            "add_qedge(key=e2, subject=n3, object=n2, predicates=[biolink:increases_activity_of])",
+            "add_qedge(key=e3, subject=n1, object=n2, predicates=[biolink:decreases_activity_of], option_group_id=decr)",
+            "add_qedge(key=e4, subject=n3, object=n2, predicates=[biolink:decreases_activity_of], option_group_id=decr)",
+            "expand(kp=infores:rtx-kg2)",
+            "scoreless_resultify(ignore_edge_direction=true)",
+            "rank_results()"
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")

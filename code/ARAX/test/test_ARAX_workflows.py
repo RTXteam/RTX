@@ -769,6 +769,129 @@ def test_ranker_float_error_ex3():
     assert response.status == 'OK'
 
 
+@pytest.mark.external
+def test_issue_1848():
+    query = {
+            "workflow": [
+                {
+                    "id": "fill",
+                    "parameters": { "allowlist": ["infores:cohd"],
+                        "qedge_keys": [
+                            "e0"
+                        ]
+                    }
+                },
+                {
+                    "id": "overlay_compute_ngd",
+                    "parameters": {
+                        "virtual_relation_label": "N1",
+                        "qnode_keys": [
+                            "n0",
+                            "n1"
+                        ]
+                    }
+                },
+                {
+                    "id": "bind"
+                },
+                {
+                    "id": "score"
+                },
+                {
+                    "id": "filter_results_top_n",
+                    "parameters": {
+                        "max_results": 3
+                    }
+                },
+                {
+                    "id": "fill",
+                    "parameters": { "allowlist": ["infores:rtx-kg2"],
+                        "qedge_keys": [
+                            "e1",
+                            "e2",
+                            "e3",
+                            "e4"
+                        ]
+                    }
+                },
+                {
+                    "id": "bind"
+                },
+                {
+                    "id": "score"
+                }
+            ],
+            "message": {
+                "query_graph": {
+                    "edges": {
+                        "e0": {
+                            "subject": "n0",
+                            "object": "n1",
+                            "predicates": [
+                                "biolink:has_real_world_evidence_of_association_with"
+                            ]
+                        },
+                        "e1": {
+                            "subject": "n1",
+                            "object": "n2",
+                            "predicates": [
+                                "biolink:increases_activity_of"
+                            ]
+                        },
+                        "e2": {
+                            "subject": "n3",
+                            "object": "n2",
+                            "predicates": [
+                                "biolink:increases_activity_of"
+                            ]
+                        },
+                        "e3": {
+                            "subject": "n1",
+                            "object": "n2",
+                            "predicates": [
+                                "biolink:decreases_activity_of"
+                            ],
+                            "option_group_id": "decr"
+                        },
+                        "e4": {
+                            "subject": "n3",
+                            "object": "n2",
+                            "predicates": [
+                                "biolink:decreases_activity_of"
+                            ],
+                            "option_group_id": "decr"
+                        }
+                    },
+                    "nodes": {
+                        "n0": {
+                            "ids": [
+                                "MONDO:0009061"
+                            ],
+                            "name": "MONDO:0009061"
+                        },
+                        "n1": {
+                            "categories": [
+                                "biolink:ChemicalEntity"
+                            ]
+                        },
+                        "n2": {
+                            "categories": [
+                                "biolink:Gene",
+                                "biolink:Protein"
+                            ]
+                        },
+                        "n3": {
+                            "categories": [
+                                "biolink:ChemicalEntity"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+
 # Not working yet
 # def test_example_3_kg2():
 #     query = {"operations": { "actions": [

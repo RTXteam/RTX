@@ -1243,6 +1243,20 @@ components:
         edge bindings returned may be an exact match to the given QEdge predicate
         term, or to a term that is a descendant of the QEdge predicate term.
       properties:
+        knowledge_type:
+          description: >-
+            Indicates the type of knowledge that the client wants from the
+            server between the subject and object. If the value is
+            'lookup', then the client wants direct lookup information from
+            knowledge sources. If the value is 'inferred', then the client
+            wants the server to get creative and connect the subject and
+            object in more speculative and non-direct-lookup ways. If this
+            property is absent or null, it MUST be assumed to mean
+            'lookup'. This feature is currently experimental and may be
+            further extended in the future.
+          example: lookup
+          nullable: true
+          type: string
         predicates:
           items:
             $ref: '#/components/schemas/BiolinkPredicate'
@@ -2040,6 +2054,11 @@ components:
                   type: string
                 minLength: 1
                 type: array
+              qedge_keys:
+                type: array
+                items:
+                  type: string
+                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their connected nodes, will be filled. If not included all edges will be filled.
             type: object
           - additionalProperties: false
             properties:
@@ -2052,6 +2071,11 @@ components:
                   type: string
                 minLength: 1
                 type: array
+              qedge_keys:
+                type: array
+                items:
+                  type: string
+                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their connected nodes, will be filled. If not included all edges will be filled.
             type: object
           type: object
       required:
