@@ -18,7 +18,7 @@ from openapi_server.models.attribute import Attribute
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
                                        kg_should_be_incomplete=False, debug=False, should_throw_error=False,
-                                       error_code: Optional[str] = None, timeout: Optional[int] = None) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
+                                       error_code: Optional[str] = None, timeout: Optional[int] = None) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]], ARAXResponse]:
     # Run the query
     araxq = ARAXQuery()
     assert actions or json_query  # Must provide some sort of query to run
@@ -58,7 +58,7 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
     _check_property_format(nodes_by_qg_id, edges_by_qg_id)
     _check_node_categories(message.knowledge_graph.nodes, message.query_graph)
 
-    return nodes_by_qg_id, edges_by_qg_id
+    return nodes_by_qg_id, edges_by_qg_id, response
 
 
 def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -163,12 +163,93 @@ def test_query_by_query_graph_2():
     #araxq.query(query)
     #response = araxq.response
     #print(response.show())
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
-    print(nodes_by_qg_id)
+    nodes_by_qg_id, edges_by_qg_id, response = _run_query_and_do_standard_testing(json_query=query)
     #assert response.status == 'OK'
     #message = response.envelope.message
     #assert len(message.results) >= 20
     #assert response.envelope.schema_version == '1.2.0'
+
+
+def test_ngd_added():
+    """
+    Test that the NGD added property is set correctly and was added by the QGI
+    """
+    query = {
+        "edges": {
+            "e00": {
+                "subject": "n00",
+                "object": "n01",
+                "predicates": ["biolink:physically_interacts_with"]
+            }
+        },
+        "nodes": {
+            "n00": {
+                "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
+            },
+            "n01": {
+                "categories": ["biolink:Protein"]
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id, response = _run_query_and_do_standard_testing(json_query=query)
+    qg = response.envelope.message.query_graph
+    assert 'N1' in qg.edges
+    assert 'biolink:has_normalized_google_distance_with' in qg.edges['N1'].predicates
+
+
+def test_workflow1():
+    """
+    Test a fill (with one KP), bind, score workflow
+    """
+    query = {
+        "workflow": [
+            {
+                "id": "fill",
+                "parameters": {
+                    "allowlist": [
+                        "infores:rtx-kg2"
+                    ],
+                    "qedge_keys": [
+                        "e00"
+                    ]
+                }
+            },
+            {
+                "id": "bind"
+            },
+            {
+                "id": "score"
+            }
+        ],
+        "message": {
+            "query_graph": {
+                "edges": {
+                    "e00": {
+                        "subject": "n00",
+                        "object": "n01",
+                        "predicates": [
+                            "biolink:physically_interacts_with"
+                        ]
+                    }
+                },
+                "nodes": {
+                    "n00": {
+                        "ids": [
+                            "CHEMBL.COMPOUND:CHEMBL112"
+                        ]
+                    },
+                    "n01": {
+                        "categories": [
+                            "biolink:Protein"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id, response = _run_query_and_do_standard_testing(json_query=query)
+    essences = [x.to_dict()['essence'] for x in response.envelope.message.results]
+    assert 'METICRANE' in essences
 
 
 if __name__ == "__main__":
