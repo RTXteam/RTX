@@ -49,7 +49,7 @@ class ARAXQueryGraphInterpreter:
 
         #### Extract the message from the response
         message = response.envelope.message
-        debug = True
+        debug = False
 
         #### Ensure that query_graph_templates is ready
         if self.query_graph_templates is None:
@@ -309,7 +309,7 @@ class ARAXQueryGraphInterpreter:
 ##########################################################################################
 
 def QGI_test1():
-
+    # FIXME: this uses the old id/curie/category scheme instead of ids/curies/categories
     #### Some qnode examples
     test_query_graphs = [
         [ { 'id': 'n10', 'curie': 'DOID:9281', 'category': 'disease'}, { 'id': 'n11', 'category': 'chemical_substance'}, { 'id': 'e10', 'source_id': 'n10', 'target_id': 'n11', 'category': 'treats'} ],
@@ -370,7 +370,7 @@ def QGI_test1():
 ##########################################################################################
 
 def QGI_test2():
-
+    # FIXME: this uses the old id/curie/category scheme instead of ids/curies/categories
     #### Set example query_graph
     # TRAPI 0.9.2
     input_query_graph = { "message": { "query_graph": { "nodes": [ { "id": "n1", "category": "chemical_substance" }, { "id": "n2", "curie": "UMLS:C0002395" } ], "edges": [ { "id": "e1", "predicate": "clinically_tested_approved_unknown_phase", "source_id": "n1", "target_id": "n2" } ] } } }
@@ -836,7 +836,8 @@ def main():
 
     #print(params.test_number)
     if params.test_number[0] == '2':
-        QGI_test2()
+        #QGI_test2()
+        print("Test 2 needs to be updated, please select a different test")
     elif params.test_number[0] == '3':
         QGI_test3()
     elif params.test_number[0] == '4':
@@ -850,7 +851,7 @@ def main():
     elif params.test_number[0] == '8':
         QGI_test8()
     else:
-        QGI_test1()
+        print("Test 1 needs to be updated, please select a different test")
 
 
 if __name__ == "__main__": main()
