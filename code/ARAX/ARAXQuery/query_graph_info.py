@@ -258,7 +258,7 @@ class QueryGraphInfo:
         node_order = [ start_node ]
         edge_order = [ ]
         edges = current_node['edges']
-        debug = False
+        debug = False  #
         loop_counter = 0
 
         #### Starting with the start node, loop until we run out of nodes to create node_order
@@ -327,14 +327,25 @@ class QueryGraphInfo:
             content = ''
             component = { 'component_type': 'node', 'component_id': component_id, 'has_ids': node['has_ids'], 'has_categories': node['has_categories'], 'categories_value': None }
             self.query_graph_templates['detailed']['components'].append(component)
+            # FIXME: the following logic does not add the included category if it also has a CURIE
             if node['has_ids']:
                 content = 'ids'
+            # If it also has categories, do add those in too
+            if node['has_ids'] and node['has_categories'] and node['node_object'].categories is not None:
+                content = 'ids,'
+                category = node['node_object'].categories
+                if isinstance(category,list):
+                    category = category[0]                                      # FIXME: Can we be smarter than just taking the first?
+                content += f"categories={category}"
+                component['categories_value'] = node['node_object'].categories
+            # If no IDs, but does have categories, then add those in
             elif node['has_categories'] and node['node_object'].categories is not None:
                 category = node['node_object'].categories
                 if isinstance(category,list):
                     category = category[0]                                      # FIXME: Can we be smarter than just taking the first?
                 content = f"categories={category}"
                 component['categories_value'] = node['node_object'].categories
+            # If no IDs or categories, then just add the node type
             elif node['has_categories']:
                 content = 'categories'
             template_part = f"{component_id}({content})"

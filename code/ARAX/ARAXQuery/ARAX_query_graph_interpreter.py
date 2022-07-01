@@ -49,7 +49,7 @@ class ARAXQueryGraphInterpreter:
 
         #### Extract the message from the response
         message = response.envelope.message
-        debug = False
+        debug = True
 
         #### Ensure that query_graph_templates is ready
         if self.query_graph_templates is None:
@@ -156,7 +156,6 @@ class ARAXQueryGraphInterpreter:
                 if tree_pointer['score'] > best_score:
                     query_graph_template_name = tree_pointer['pointer']['name']
                     best_score = tree_pointer['score']
-
 
         # If the final best template name is a real one in templates, then get the ARAXI for it
         if query_graph_template_name in self.query_graph_templates['templates']:
@@ -776,6 +775,56 @@ def QGI_test7():
     # save message to file (since I can't get the UI working locally for some reason)
     with open('QGI_test7.json', 'w', encoding='utf-8') as f:
         json.dump(ast.literal_eval(repr(envelope)), f, ensure_ascii=False, indent=4)
+
+
+def QGI_test8():
+    input_query_graph = {
+    "message": {
+        "query_graph": {
+            "edges": {
+                "e00": {
+                    "subject": "n00",
+                    "object": "n01",
+                    "categories": ['biolink:treats']
+                }
+            },
+            "nodes": {
+                "n00": {
+                    "ids": [
+                        "MONDO:0021783",
+                    ],
+                    "categories": [
+                        "biolink:Disease"
+                    ]
+                },
+                "n01": {
+                    "categories": [
+                        "biolink:ChemicalEntity"
+                    ]
+                }
+            }
+        }
+    }
+    }
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+
 ##########################################################################################
 def main():
 
@@ -798,6 +847,8 @@ def main():
         QGI_test6()
     elif params.test_number[0] == '7':
         QGI_test7()
+    elif params.test_number[0] == '8':
+        QGI_test8()
     else:
         QGI_test1()
 
