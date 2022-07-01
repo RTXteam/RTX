@@ -197,6 +197,30 @@ def test_ngd_added():
     assert 'biolink:has_normalized_google_distance_with' in qg.edges['N1'].predicates
 
 
+def test_drug_disease_query():
+    query = {
+        "edges": {
+            "e00": {
+                "subject": "n00",
+                "object": "n01"
+            }
+        },
+        "nodes": {
+            "n00": {
+                "ids": ["MONDO:0021783"],
+                "categories": ["biolink:Disease"]
+            },
+            "n01": {
+                "categories": ["biolink:ChemicalEntity"]
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id, response = _run_query_and_do_standard_testing(json_query=query)
+    qg = response.envelope.message.query_graph
+    assert 'N1' in qg.edges
+    assert 'biolink:has_normalized_google_distance_with' in qg.edges['N1'].predicates
+
+
 def test_workflow1():
     """
     Test a fill (with one KP), bind, score workflow
