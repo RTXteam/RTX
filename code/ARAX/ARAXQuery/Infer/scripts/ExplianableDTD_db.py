@@ -108,7 +108,7 @@ class ExplainableDTD(object):
                 self.connection = sqlite3.connect(database)
                 self.logger.info("Connecting to database")
                 self.test_iter += 1
-                self.logger.info(f"Test iteration: {self.test_iter}")
+                #self.logger.info(f"Test iteration: {self.test_iter}")
                 self.is_connected = True
                 return True
             else:
