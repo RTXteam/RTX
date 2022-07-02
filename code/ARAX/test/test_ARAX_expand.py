@@ -1061,5 +1061,27 @@ def test_inverted_treats_handling():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
 
 
+def test_xdtd_expand():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:ChemicalEntity"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
