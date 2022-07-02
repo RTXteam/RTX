@@ -63,6 +63,12 @@ class ARAXInfer:
             "type": "string",
             "description": "The curie for the node you wish to predict drugs which will treat."
         }
+        self.qedge_id_info = {
+            "is_required": False,
+            "examples": ["qedge_id_1","qedge_id_2","qedge_id_3"],
+            "type": "string",
+            "description": "The id of the qedge you wish to perform the drug treatment inference expansion."
+        }
         self.n_drugs_info = {
             "is_required": False,
             "examples": [5,50,100],
@@ -95,8 +101,9 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
                     """,
                 "parameters": {
                     "node_curie": self.node_curie_info,
+                    "qedge_id": self.qedge_id_info,
                     "n_drugs": self.n_drugs_info,
-                    "n_paths":self.n_paths_info
+                    "n_paths": self.n_paths_info
                 }
             }
         }
@@ -161,7 +168,7 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
             elif type(item) == list or type(item) == set:
                     for item_val in item:
                         if item_val not in allowable_parameters[key]:
-                            self.response.warning(
+                            self.response.error(
                                 f"Supplied value {item_val} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
                             return -1
             elif item not in allowable_parameters[key]:
@@ -171,18 +178,20 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
                     continue
                 elif any([x is None for x in allowable_parameters[key]]):
                     continue
+                elif key == "node_curie":  #FIXME: For now, if it's a node curie, just accept it as it is
+                    continue
                 else:  # otherwise, it's really not an allowable parameter
-                    self.response.warning(
-                        f"Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
+                    self.response.error(
+                        f"This Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
                     return -1
 
     #### Top level decision maker for applying filters
-    def apply(self, input_response, input_parameters):
+    def apply(self, response, input_parameters):
 
-        #### Define a default response
-        #response = ARAXResponse()
-        self.response = input_response
-        self.message = input_response.envelope.message
+        if response is None:
+            response = ARAXResponse()
+        self.response = response
+        self.message = response.envelope.message
 
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -234,13 +243,15 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
-                                    'node_curie': {None},
+                                    'node_curie': {str()},
+                                    'qedge_id': set([key for key in self.message.query_graph.edges.keys()]),
                                     'n_drugs': {int()},
                                     'n_paths': {int()}
                                 }
         else:
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
                                     'node_curie': {'The node to predict drug treatments for.'},
+                                    'qedge_id': {'The edge to place the predicted mechanism of action on. If none is provided, the query graph must be empty and a new one will be inserted.'},
                                     'n_drugs': {'The number of drugs to return. Defaults to 50.'},
                                     'n_paths': {'The number of paths connecting each drug to return. Defaults to 20.'}
                                 }
@@ -301,8 +312,10 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         
         # TRAPI-ifies the results of the model
         iu = InferUtilities()
-        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_drugs, top_paths, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
-        
+        qedge_id = self.parameters.get('qedge_id')
+
+        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_drugs, top_paths, qedge_id, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+
         return self.response
 
 

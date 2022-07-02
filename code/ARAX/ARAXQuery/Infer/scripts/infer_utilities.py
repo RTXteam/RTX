@@ -28,6 +28,7 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
+from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
@@ -53,7 +54,7 @@ class InferUtilities:
         else: 
             return val
 
-    def genrete_treat_subgraphs(self, response: ARAXResponse, top_drugs: pd.DataFrame, top_paths: dict, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
+    def genrete_treat_subgraphs(self, response: ARAXResponse, top_drugs: pd.DataFrame, top_paths: dict, qedge_id=None, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
         """
         top_drugs and top_paths returned by Chunyu's createDTD.py code (predict_top_n_drugs and predict_top_m_paths respectively).
         Ammends the response effectively TRAPI-ifying the paths returned by Chunyu's code.
@@ -66,6 +67,16 @@ class InferUtilities:
         self.qedge_global_iter = 0
         self.qnode_global_iter = 0
         self.option_global_iter = 0
+        self.qedge_id = qedge_id
+        # check to make sure that the qedge_id either exists and is in the QG, or else does not exist and the QG is empty
+        if qedge_id is not None:
+            if not hasattr(self.response.envelope.message, 'query_graph') or qedge_id not in self.response.envelope.message.query_graph.edges:
+                self.response.error(f"qedge_id {qedge_id} not in QG, QG is {self.response.envelope.message.query_graph}")
+                raise Exception(f"qedge_id {qedge_id} not in QG")
+        elif hasattr(self.response.envelope.message, 'query_graph'):
+            if len(self.response.envelope.message.query_graph.edges) > 0:
+                self.response.error("qedge_id is None but QG is not empty")
+                raise Exception("qedge_id is None but QG is not empty")
 
         expander = ARAXExpander()
         messenger = ARAXMessenger()
@@ -83,31 +94,51 @@ class InferUtilities:
         path_lengths = set([math.floor(len(x[0].split("->"))/2.) for paths in top_paths.values() for x in paths])
         max_path_len = max(path_lengths)
         disease = list(top_paths.keys())[0][1]
+        disease_curie = disease
         disease_name = list(top_paths.values())[0][0][0].split("->")[-1]
-        add_qnode_params = {
-            'key' : "disease",
-            'name': disease
-        }
-        self.response = messenger.add_qnode(self.response, add_qnode_params)
-        self.response.envelope.message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=['biolink:DiseaseOrPhenotypicFeature'])
-        self.response.envelope.message.knowledge_graph.nodes[disease].qnode_keys = ['disease']
-        node_name_to_id[disease_name] = disease
-        add_qnode_params = {
-            'key' : "drug",
-            'categories': ['biolink:Drug']
-        }
-        self.response = messenger.add_qnode(self.response, add_qnode_params)
-        add_qedge_params = {
-            'key' : "probably_treats",
-            'subject' : "drug",
-            'object' : "disease",
-            'predicates': ["biolink:probably_treats"]
-        }
-        self.response = messenger.add_qedge(self.response, add_qedge_params)
+        # Only add these in if the query graph is empty
+        if not hasattr(self.response.envelope.message, 'query_graph') or len(self.response.envelope.message.query_graph.edges) == 0:
+            add_qnode_params = {
+                'key': "disease",
+                'name': disease_curie,
+            }
+            self.response = messenger.add_qnode(self.response, add_qnode_params)
+            self.response.envelope.message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=['biolink:DiseaseOrPhenotypicFeature'])
+            self.response.envelope.message.knowledge_graph.nodes[disease].qnode_keys = ['disease']
+            node_name_to_id[disease_name] = disease
+            add_qnode_params = {
+                'key': "drug",
+                'categories': ['biolink:Drug']
+            }
+            self.response = messenger.add_qnode(self.response, add_qnode_params)
+            add_qedge_params = {
+                'key': "probably_treats",
+                'subject': "drug",
+                'object': "disease",
+                'predicates': ["biolink:probably_treats"]
+            }
+            self.response = messenger.add_qedge(self.response, add_qedge_params)
+            drug_qnode_key = 'drug'
+            disease_qnode_key = 'disease'
+        else:
+            # FIXME: will need to add the disease to the knowledge graph itself
+            # add the disease to the knowledge graph
+            if not self.response.envelope.message.knowledge_graph:  # if the knowledge graph is empty, create it
+                self.response.envelope.message.knowledge_graph = KnowledgeGraph()
+                self.response.envelope.message.knowledge_graph.nodes = {}
+                self.response.envelope.message.knowledge_graph.edges = {}
+            # FIXME: is this the best way to be adding the node to the knowledge graph?
+            self.response.envelope.message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=[
+                'biolink:DiseaseOrPhenotypicFeature'])
+            drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
+            disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
+            self.response.envelope.message.knowledge_graph.nodes[disease].qnode_keys = [disease_qnode_key]
+            # Just use the drug and disease that are currently in the QG
+
         path_keys = [{} for i in range(max_path_len)]
         for i in range(max_path_len+1):
             if (i+1) in path_lengths:
-                path_qnodes = ["drug"]
+                path_qnodes = [drug_qnode_key]
                 for j in range(i):
                     new_qnode_key = f"creative_DTD_qnode_{self.qnode_global_iter}"
                     path_qnodes.append(new_qnode_key)
@@ -118,7 +149,7 @@ class InferUtilities:
                     }
                     self.response = messenger.add_qnode(self.response, add_qnode_params)
                     self.qnode_global_iter += 1
-                path_qnodes.append("disease")
+                path_qnodes.append(disease_qnode_key)
                 qnode_pairs = list(zip(path_qnodes,path_qnodes[1:]))
                 qedge_key_list = []
                 for qnode_pair in qnode_pairs:
@@ -169,6 +200,7 @@ class InferUtilities:
                         self.response.envelope.message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category])
                         self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys = [object_qnode_key]
                     elif object_qnode_key not in self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys:
+                        print(self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys)
                         self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
                     new_edge = Edge(subject=subject_curie, object=object_curie, predicate=edge_tuples[i][1], attributes=[])
                     new_edge.attributes.append(EdgeAttribute(attribute_type_id="biolink:aggregator_knowledge_source",
