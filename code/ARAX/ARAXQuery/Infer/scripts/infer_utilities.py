@@ -70,13 +70,14 @@ class InferUtilities:
         self.qnode_global_iter = 0
         self.option_global_iter = 0
         self.qedge_id = qedge_id
+        message = self.response.envelope.message
         # check to make sure that the qedge_id either exists and is in the QG, or else does not exist and the QG is empty
         if qedge_id is not None:
-            if not hasattr(self.response.envelope.message, 'query_graph') or qedge_id not in self.response.envelope.message.query_graph.edges:
-                self.response.error(f"qedge_id {qedge_id} not in QG, QG is {self.response.envelope.message.query_graph}")
+            if not hasattr(message, 'query_graph') or qedge_id not in message.query_graph.edges:
+                self.response.error(f"qedge_id {qedge_id} not in QG, QG is {message.query_graph}")
                 raise Exception(f"qedge_id {qedge_id} not in QG")
-        elif hasattr(self.response.envelope.message, 'query_graph'):
-            if len(self.response.envelope.message.query_graph.edges) > 0:
+        elif hasattr(message, 'query_graph'):
+            if len(message.query_graph.edges) > 0:
                 self.response.error("qedge_id is None but QG is not empty")
                 raise Exception("qedge_id is None but QG is not empty")
 
@@ -99,15 +100,15 @@ class InferUtilities:
         disease_curie = disease
         disease_name = list(top_paths.values())[0][0][0].split("->")[-1]
         # Only add these in if the query graph is empty
-        if not hasattr(self.response.envelope.message, 'query_graph') or len(self.response.envelope.message.query_graph.edges) == 0:
+        if not hasattr(message, 'query_graph') or len(message.query_graph.edges) == 0:
             qedge_id = "probably_treats"
             add_qnode_params = {
                 'key': "disease",
                 'name': disease_curie,
             }
             self.response = messenger.add_qnode(self.response, add_qnode_params)
-            self.response.envelope.message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=['biolink:DiseaseOrPhenotypicFeature'])
-            self.response.envelope.message.knowledge_graph.nodes[disease].qnode_keys = ['disease']
+            message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=['biolink:DiseaseOrPhenotypicFeature'])
+            message.knowledge_graph.nodes[disease].qnode_keys = ['disease']
             node_name_to_id[disease_name] = disease
             add_qnode_params = {
                 'key': "drug",
@@ -121,31 +122,31 @@ class InferUtilities:
                 'predicates': [f"biolink:{qedge_id}"]
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
-            self.response.envelope.message.query_graph.edges[add_qedge_params['key']].filled = True
+            message.query_graph.edges[add_qedge_params['key']].filled = True
             drug_qnode_key = 'drug'
             disease_qnode_key = 'disease'
         else:
             # add the disease to the knowledge graph
-            if not self.response.envelope.message.knowledge_graph:  # if the knowledge graph is empty, create it
-                self.response.envelope.message.knowledge_graph = KnowledgeGraph()
-                self.response.envelope.message.knowledge_graph.nodes = {}
-                self.response.envelope.message.knowledge_graph.edges = {}
+            if not message.knowledge_graph:  # if the knowledge graph is empty, create it
+                message.knowledge_graph = KnowledgeGraph()
+                message.knowledge_graph.nodes = {}
+                message.knowledge_graph.edges = {}
             # FIXME: is this the best way to be adding the node to the knowledge graph?
-            #self.response.envelope.message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=[
+            #message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=[
             #    'biolink:DiseaseOrPhenotypicFeature', 'biolink:Disease'])
             categories_to_add = set()
             categories_to_add.update(self.bh.get_ancestors('biolink:Disease'))
             categories_to_add.update(list(synonymizer.get_normalizer_results(disease_curie)[disease_curie]['categories'].keys()))
             categories_to_add = list(categories_to_add)
-            self.response.envelope.message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=categories_to_add)
+            message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=categories_to_add)
             drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
             disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
-            self.response.envelope.message.knowledge_graph.nodes[disease].qnode_keys = [disease_qnode_key]
+            message.knowledge_graph.nodes[disease].qnode_keys = [disease_qnode_key]
             # Don't add a new edge in for the probably_treats as there is already an edge there with the knowledge type inferred
             # But do say that this edge has been filled
-            self.response.envelope.message.query_graph.edges[qedge_id].filled = True
+            message.query_graph.edges[qedge_id].filled = True
             # Nuke the drug categories since they vary depending on what the model returns
-            self.response.envelope.message.query_graph.nodes[drug_qnode_key].categories = ['biolink:NamedThing']
+            message.query_graph.nodes[drug_qnode_key].categories = ['biolink:NamedThing']
             # Just use the drug and disease that are currently in the QG
 
         path_keys = [{} for i in range(max_path_len)]
@@ -175,7 +176,7 @@ class InferUtilities:
                     qedge_key_list.append(f"creative_DTD_qedge_{self.qedge_global_iter}")
                     self.qedge_global_iter += 1
                     self.response = messenger.add_qedge(self.response, add_qedge_params)
-                    self.response.envelope.message.query_graph.edges[add_qedge_params['key']].filled = True
+                    message.query_graph.edges[add_qedge_params['key']].filled = True
                 path_keys[i]["qnode_pairs"] = qnode_pairs
                 path_keys[i]["qedge_keys"] = qedge_key_list
                 self.option_global_iter += 1
@@ -201,28 +202,28 @@ class InferUtilities:
                     subject_name = edge_tuples[i][0]
                     subject_curie = node_name_to_id[subject_name]
                     subject_category = node_info[subject_name]['preferred_category']
-                    if subject_curie not in self.response.envelope.message.knowledge_graph.nodes:
-                        self.response.envelope.message.knowledge_graph.nodes[subject_curie] = Node(name=subject_name, categories=[subject_category, 'biolink:NamedThing'])
-                        self.response.envelope.message.knowledge_graph.nodes[subject_curie].qnode_keys = [subject_qnode_key]
-                    elif subject_qnode_key not in self.response.envelope.message.knowledge_graph.nodes[subject_curie].qnode_keys:
-                        self.response.envelope.message.knowledge_graph.nodes[subject_curie].qnode_keys.append(subject_qnode_key)
+                    if subject_curie not in message.knowledge_graph.nodes:
+                        message.knowledge_graph.nodes[subject_curie] = Node(name=subject_name, categories=[subject_category, 'biolink:NamedThing'])
+                        message.knowledge_graph.nodes[subject_curie].qnode_keys = [subject_qnode_key]
+                    elif subject_qnode_key not in message.knowledge_graph.nodes[subject_curie].qnode_keys:
+                        message.knowledge_graph.nodes[subject_curie].qnode_keys.append(subject_qnode_key)
                     object_qnode_key = path_keys[path_idx]["qnode_pairs"][i][1]
                     object_name = edge_tuples[i][2]
                     object_curie = node_name_to_id[object_name]
                     object_category = node_info[object_name]['preferred_category']
-                    if object_curie not in self.response.envelope.message.knowledge_graph.nodes:
-                        self.response.envelope.message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category, 'biolink:NamedThing'])
-                        self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys = [object_qnode_key]
-                    elif object_qnode_key not in self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys:
-                        self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
+                    if object_curie not in message.knowledge_graph.nodes:
+                        message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category, 'biolink:NamedThing'])
+                        message.knowledge_graph.nodes[object_curie].qnode_keys = [object_qnode_key]
+                    elif object_qnode_key not in message.knowledge_graph.nodes[object_curie].qnode_keys:
+                        message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
                     new_edge = Edge(subject=subject_curie, object=object_curie, predicate=edge_tuples[i][1], attributes=[])
                     new_edge.attributes.append(EdgeAttribute(attribute_type_id="biolink:aggregator_knowledge_source",
                                          value=kp,
                                          value_type_id="biolink:InformationResource",
                                          attribute_source=kp))
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=kp)
-                    self.response.envelope.message.knowledge_graph.edges[new_edge_key] = new_edge
-                    self.response.envelope.message.knowledge_graph.edges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
+                    message.knowledge_graph.edges[new_edge_key] = new_edge
+                    message.knowledge_graph.edges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
                 path_added = True
             if path_added:
                 treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]
@@ -237,7 +238,7 @@ class InferUtilities:
                                 attributes=edge_attribute_list)
                 #fixed_edge.qedge_keys = ["probably_treats"]
                 fixed_edge.qedge_keys = [qedge_id]
-                self.response.envelope.message.knowledge_graph.edges[f"creative_DTD_prediction_{self.kedge_global_iter}"] = fixed_edge
+                message.knowledge_graph.edges[f"creative_DTD_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1
             else:
                 self.response.warning(f"Something went wrong when adding the subgraph for the drug-disease pair ({drug},{disease}) to the knowledge graph. Skipping this result....")
@@ -255,13 +256,13 @@ class InferUtilities:
             "ignore_edge_direction": "true"
         }
         self.response = resultifier.apply(self.response, resultify_params)
-        for result in self.response.envelope.message.results:
+        for result in message.results:
             if result.essence in essence_scores:
                 result.score = essence_scores[result.essence]
             else:
                 result.score = None
                 self.response.warning(f"Error retrieving score for result essence {result.essence}. Setting result score to None.")
-        self.response.envelope.message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
+        message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
         
 
         return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
