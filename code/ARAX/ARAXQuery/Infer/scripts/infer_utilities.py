@@ -229,7 +229,12 @@ class InferUtilities:
                         knodes[object_curie].qnode_keys = [object_qnode_key]
                     elif object_qnode_key not in knodes[object_curie].qnode_keys:
                         knodes[object_curie].qnode_keys.append(object_qnode_key)
-                    new_edge = Edge(subject=subject_curie, object=object_curie, predicate=edge_tuples[i][1], attributes=[])
+                    predicate = edge_tuples[i][1]
+                    # Handle the self-loop relation
+                    if predicate == "SELF_LOOP_RELATION":
+                        self.response.warning(f"Self-loop relation detected: {subject_name} {predicate} {object_name}, replacing with placeholder 'biolink:self_loop_relation'")
+                        predicate = "biolink:self_loop_relation"
+                    new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[])
                     new_edge.attributes.append(EdgeAttribute(attribute_type_id="biolink:aggregator_knowledge_source",
                                          value=kp,
                                          value_type_id="biolink:InformationResource",
@@ -247,7 +252,11 @@ class InferUtilities:
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats", value=str(treat_score))
                 ]
-                fixed_edge = Edge(predicate=qedge_id, subject=node_name_to_id[drug_name], object=node_name_to_id[disease_name],
+                #edge_predicate = qedge_id
+                edge_predicate = "biolink:probably_treats"
+                if hasattr(qedges[qedge_id], 'predicates') and qedges[qedge_id].predicates:
+                    edge_predicate = qedges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
+                fixed_edge = Edge(predicate=edge_predicate, subject=node_name_to_id[drug_name], object=node_name_to_id[disease_name],
                                 attributes=edge_attribute_list)
                 #fixed_edge.qedge_keys = ["probably_treats"]
                 fixed_edge.qedge_keys = [qedge_id]
