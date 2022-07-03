@@ -245,7 +245,7 @@ class ARAXExpander:
                     subject_curie = "MONDO:0004975"
                     log.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie}")
                     from ARAX_infer import ARAXInfer
-                    infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': subject_curie}
+                    infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': subject_curie, 'qedge_id': inferred_qedge_key}
                     inferer = ARAXInfer()
                     infer_response = inferer.apply(response, infer_input_parameters)
                     return infer_response

@@ -90,7 +90,7 @@ class InferUtilities:
         #node_info = synonymizer.get_canonical_curies(curies=list(node_curies))
         node_names = set([y for paths in top_paths.values() for x in paths for y in x[0].split("->")[::2] if y != ''])
         node_info = synonymizer.get_canonical_curies(names=list(node_names))
-        node_name_to_id = {k:v['preferred_curie'] for k,v in node_info.items() if v is not None}
+        node_name_to_id = {k: v['preferred_curie'] for k, v in node_info.items() if v is not None}
         path_lengths = set([math.floor(len(x[0].split("->"))/2.) for paths in top_paths.values() for x in paths])
         max_path_len = max(path_lengths)
         disease = list(top_paths.keys())[0][1]
@@ -98,6 +98,7 @@ class InferUtilities:
         disease_name = list(top_paths.values())[0][0][0].split("->")[-1]
         # Only add these in if the query graph is empty
         if not hasattr(self.response.envelope.message, 'query_graph') or len(self.response.envelope.message.query_graph.edges) == 0:
+            qedge_id = "probably_treats"
             add_qnode_params = {
                 'key': "disease",
                 'name': disease_curie,
@@ -112,12 +113,13 @@ class InferUtilities:
             }
             self.response = messenger.add_qnode(self.response, add_qnode_params)
             add_qedge_params = {
-                'key': "probably_treats",
+                'key': qedge_id,
                 'subject': "drug",
                 'object': "disease",
-                'predicates': ["biolink:probably_treats"]
+                'predicates': [f"biolink:{qedge_id}"]
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
+            self.response.envelope.message.query_graph.edges[add_qedge_params['key']].filled = True
             drug_qnode_key = 'drug'
             disease_qnode_key = 'disease'
         else:
@@ -132,13 +134,16 @@ class InferUtilities:
             drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
             disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
             self.response.envelope.message.knowledge_graph.nodes[disease].qnode_keys = [disease_qnode_key]
-            add_qedge_params = {
-                'key': "probably_treats",
-                'subject': drug_qnode_key,
-                'object': disease_qnode_key,
-                'predicates': ["biolink:probably_treats"]
-            }
-            self.response = messenger.add_qedge(self.response, add_qedge_params)
+            # Don't add a new edge in for the probably_treats as there is already an edge there with the knowledge type inferred
+            #add_qedge_params = {
+            #    'key': "probably_treats",
+            #    'subject': drug_qnode_key,
+            #    'object': disease_qnode_key,
+            #    'predicates': ["biolink:probably_treats"]
+            #}
+            #self.response = messenger.add_qedge(self.response, add_qedge_params)
+            # But do say that this edge has been filled
+            self.response.envelope.message.query_graph.edges[qedge_id].filled = True
             # Just use the drug and disease that are currently in the QG
 
         path_keys = [{} for i in range(max_path_len)]
@@ -160,14 +165,15 @@ class InferUtilities:
                 qedge_key_list = []
                 for qnode_pair in qnode_pairs:
                     add_qedge_params = {
-                        'key' : f"creative_DTD_qedge_{self.qedge_global_iter}",
-                        'subject' : qnode_pair[0],
-                        'object' : qnode_pair[1],
+                        'key': f"creative_DTD_qedge_{self.qedge_global_iter}",
+                        'subject': qnode_pair[0],
+                        'object': qnode_pair[1],
                         'option_group_id': f"creative_DTD_option_group_{self.option_global_iter}"
                     }
                     qedge_key_list.append(f"creative_DTD_qedge_{self.qedge_global_iter}")
                     self.qedge_global_iter += 1
                     self.response = messenger.add_qedge(self.response, add_qedge_params)
+                    self.response.envelope.message.query_graph.edges[add_qedge_params['key']].filled = True
                 path_keys[i]["qnode_pairs"] = qnode_pairs
                 path_keys[i]["qedge_keys"] = qedge_key_list
                 self.option_global_iter += 1
@@ -225,11 +231,10 @@ class InferUtilities:
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats", value=str(treat_score))
                 ]
-                fixed_edge = Edge(predicate="biolink:probably_treats", subject=node_name_to_id[drug_name], object=node_name_to_id[disease_name],
+                fixed_edge = Edge(predicate=qedge_id, subject=node_name_to_id[drug_name], object=node_name_to_id[disease_name],
                                 attributes=edge_attribute_list)
                 #fixed_edge.qedge_keys = ["probably_treats"]
-                # For resultify, it is expecting an edge with the key qedge_id, but we also added a virtual edge probably_treats so add both of them
-                fixed_edge.qedge_keys = [qedge_id, "probably_treats"]
+                fixed_edge.qedge_keys = [qedge_id]
                 self.response.envelope.message.knowledge_graph.edges[f"creative_DTD_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1
             else:
