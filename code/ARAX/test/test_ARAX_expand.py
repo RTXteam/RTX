@@ -1145,5 +1145,27 @@ def test_xdtd_different_categories():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
 
 
+def test_xdtd_multiple_categories():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
