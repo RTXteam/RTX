@@ -189,7 +189,7 @@ class InferUtilities:
                     qedge_key_list.append(f"creative_DTD_qedge_{self.qedge_global_iter}")
                     self.qedge_global_iter += 1
                     self.response = messenger.add_qedge(self.response, add_qedge_params)
-                    message.query_graph.edges[add_qedge_params['key']].filled = True
+                    qedges[add_qedge_params['key']].filled = True
                 path_keys[i]["qnode_pairs"] = qnode_pairs
                 path_keys[i]["qedge_keys"] = qedge_key_list
                 self.option_global_iter += 1
@@ -215,28 +215,28 @@ class InferUtilities:
                     subject_name = edge_tuples[i][0]
                     subject_curie = node_name_to_id[subject_name]
                     subject_category = node_info[subject_name]['preferred_category']
-                    if subject_curie not in knowledge_graph.nodes:
-                        knowledge_graph.nodes[subject_curie] = Node(name=subject_name, categories=[subject_category, 'biolink:NamedThing'])
-                        knowledge_graph.nodes[subject_curie].qnode_keys = [subject_qnode_key]
-                    elif subject_qnode_key not in knowledge_graph.nodes[subject_curie].qnode_keys:
-                        knowledge_graph.nodes[subject_curie].qnode_keys.append(subject_qnode_key)
+                    if subject_curie not in knodes:
+                        knodes[subject_curie] = Node(name=subject_name, categories=[subject_category, 'biolink:NamedThing'])
+                        knodes[subject_curie].qnode_keys = [subject_qnode_key]
+                    elif subject_qnode_key not in knodes[subject_curie].qnode_keys:
+                        knodes[subject_curie].qnode_keys.append(subject_qnode_key)
                     object_qnode_key = path_keys[path_idx]["qnode_pairs"][i][1]
                     object_name = edge_tuples[i][2]
                     object_curie = node_name_to_id[object_name]
                     object_category = node_info[object_name]['preferred_category']
-                    if object_curie not in knowledge_graph.nodes:
-                        knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category, 'biolink:NamedThing'])
-                        knowledge_graph.nodes[object_curie].qnode_keys = [object_qnode_key]
-                    elif object_qnode_key not in knowledge_graph.nodes[object_curie].qnode_keys:
-                        knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
+                    if object_curie not in knodes:
+                        knodes[object_curie] = Node(name=object_name, categories=[object_category, 'biolink:NamedThing'])
+                        knodes[object_curie].qnode_keys = [object_qnode_key]
+                    elif object_qnode_key not in knodes[object_curie].qnode_keys:
+                        knodes[object_curie].qnode_keys.append(object_qnode_key)
                     new_edge = Edge(subject=subject_curie, object=object_curie, predicate=edge_tuples[i][1], attributes=[])
                     new_edge.attributes.append(EdgeAttribute(attribute_type_id="biolink:aggregator_knowledge_source",
                                          value=kp,
                                          value_type_id="biolink:InformationResource",
                                          attribute_source=kp))
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=kp)
-                    knowledge_graph.edges[new_edge_key] = new_edge
-                    knowledge_graph.edges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
+                    kedges[new_edge_key] = new_edge
+                    kedges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
                 path_added = True
             if path_added:
                 treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]
@@ -251,7 +251,7 @@ class InferUtilities:
                                 attributes=edge_attribute_list)
                 #fixed_edge.qedge_keys = ["probably_treats"]
                 fixed_edge.qedge_keys = [qedge_id]
-                knowledge_graph.edges[f"creative_DTD_prediction_{self.kedge_global_iter}"] = fixed_edge
+                kedges[f"creative_DTD_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1
             else:
                 self.response.warning(f"Something went wrong when adding the subgraph for the drug-disease pair ({drug},{disease}) to the knowledge graph. Skipping this result....")
