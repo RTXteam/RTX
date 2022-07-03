@@ -239,13 +239,17 @@ class ARAXExpander:
                 if set(treats_ancestors).intersection(set(qedge.predicates)):
                     # Call XDTD and simply return whatever it returns
                     # Get the subject of this edge
-                    #subject_qnode = query_graph.nodes[qedge.subject]
-                    #print(f"Subject qnode is {subject_qnode}")
-                    #subject_curie = subject_qnode.ids[0]  #FIXME: will need a way to handle multiple IDs
-                    subject_curie = "MONDO:0004975"
-                    log.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie}")
+                    subject_qnode = query_graph.nodes[qedge.subject]  # drug
+                    object_qnode = query_graph.nodes[qedge.object]  # disease
+                    if object_qnode.ids and len(object_qnode.ids) >= 1:
+                        object_curie = object_qnode.ids[0]  #FIXME: will need a way to handle multiple IDs
+                    else:
+                        log.error(f"No CURIEs found for {object_qnode.name}", error_code="NoCURIEs")
+                        #raise Exception(f"No CURIEs found for {object_qnode.name}")
+                        return
+                    log.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
                     from ARAX_infer import ARAXInfer
-                    infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': subject_curie, 'qedge_id': inferred_qedge_key}
+                    infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': object_curie, 'qedge_id': inferred_qedge_key}
                     inferer = ARAXInfer()
                     infer_response = inferer.apply(response, infer_input_parameters)
                     return infer_response
