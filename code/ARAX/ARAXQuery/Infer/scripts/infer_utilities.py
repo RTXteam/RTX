@@ -14,6 +14,7 @@ from ARAX_messenger import ARAXMessenger
 from ARAX_expander import ARAXExpander
 from ARAX_resultify import ARAXResultify
 from ARAX_decorator import ARAXDecorator
+from biolink_helper import BiolinkHelper
 import traceback
 from collections import Counter
 from collections.abc import Hashable
@@ -43,7 +44,8 @@ class InferUtilities:
         self.response = None
         self.message = None
         self.parameters = None
-        self.report_stats = True  
+        self.report_stats = True
+        self.bh = BiolinkHelper()
 
     def __get_formated_edge_key(self, edge: Edge, kp: str = 'infores:rtx-kg2') -> str:
         return f"{kp}:{edge.subject}-{edge.predicate}-{edge.object}"
@@ -129,8 +131,13 @@ class InferUtilities:
                 self.response.envelope.message.knowledge_graph.nodes = {}
                 self.response.envelope.message.knowledge_graph.edges = {}
             # FIXME: is this the best way to be adding the node to the knowledge graph?
-            self.response.envelope.message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=[
-                'biolink:DiseaseOrPhenotypicFeature'])
+            #self.response.envelope.message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=[
+            #    'biolink:DiseaseOrPhenotypicFeature', 'biolink:Disease'])
+            categories_to_add = set()
+            categories_to_add.update(self.bh.get_ancestors('biolink:Disease'))
+            categories_to_add.update(list(synonymizer.get_normalizer_results(disease_curie)[disease_curie]['categories'].keys()))
+            categories_to_add = list(categories_to_add)
+            self.response.envelope.message.knowledge_graph.nodes[disease] = Node(name=disease_name, categories=categories_to_add)
             drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
             disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
             self.response.envelope.message.knowledge_graph.nodes[disease].qnode_keys = [disease_qnode_key]
