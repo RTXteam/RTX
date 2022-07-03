@@ -128,10 +128,13 @@ class ExplainableDTD(object):
 
     # Destroy the database connection
     def disconnect(self):
+        #self.logger.info("Disconnecting from database")
         if self.success_con is True or self.is_connected is True:
-            self.connection.commit()
-            self.connection.close()
-            self.logger.info("Disconnecting from database")
+            try:
+                self.connection.commit()
+                self.connection.close()
+            except:
+                self.logger.info("Database appears to be already disconnected")
             self.success_con = False
         else:
             self.logger.info("No database was connected! So skip disconnecting from database.")
