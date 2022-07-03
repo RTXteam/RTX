@@ -121,7 +121,6 @@ class InferUtilities:
             drug_qnode_key = 'drug'
             disease_qnode_key = 'disease'
         else:
-            # FIXME: will need to add the disease to the knowledge graph itself
             # add the disease to the knowledge graph
             if not self.response.envelope.message.knowledge_graph:  # if the knowledge graph is empty, create it
                 self.response.envelope.message.knowledge_graph = KnowledgeGraph()
@@ -133,6 +132,13 @@ class InferUtilities:
             drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
             disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
             self.response.envelope.message.knowledge_graph.nodes[disease].qnode_keys = [disease_qnode_key]
+            add_qedge_params = {
+                'key': "probably_treats",
+                'subject': drug_qnode_key,
+                'object': disease_qnode_key,
+                'predicates': ["biolink:probably_treats"]
+            }
+            self.response = messenger.add_qedge(self.response, add_qedge_params)
             # Just use the drug and disease that are currently in the QG
 
         path_keys = [{} for i in range(max_path_len)]
@@ -200,7 +206,6 @@ class InferUtilities:
                         self.response.envelope.message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category])
                         self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys = [object_qnode_key]
                     elif object_qnode_key not in self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys:
-                        print(self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys)
                         self.response.envelope.message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
                     new_edge = Edge(subject=subject_curie, object=object_curie, predicate=edge_tuples[i][1], attributes=[])
                     new_edge.attributes.append(EdgeAttribute(attribute_type_id="biolink:aggregator_knowledge_source",
@@ -222,7 +227,9 @@ class InferUtilities:
                 ]
                 fixed_edge = Edge(predicate="biolink:probably_treats", subject=node_name_to_id[drug_name], object=node_name_to_id[disease_name],
                                 attributes=edge_attribute_list)
-                fixed_edge.qedge_keys = ["probably_treats"]
+                #fixed_edge.qedge_keys = ["probably_treats"]
+                # For resultify, it is expecting an edge with the key qedge_id, but we also added a virtual edge probably_treats so add both of them
+                fixed_edge.qedge_keys = [qedge_id, "probably_treats"]
                 self.response.envelope.message.knowledge_graph.edges[f"creative_DTD_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1
             else:
