@@ -240,6 +240,9 @@ class InferUtilities:
         self.response = decorator.decorate_edges(self.response)
         if self.response.status != 'OK':
             return self.response
+
+        #FIXME: this might cause a problem since it doesn't add optional groups for 1 and 2 hops
+        # This might also cause issues when infer is on an intermediate edge
         resultifier = ARAXResultify()
         resultify_params = {
             "ignore_edge_direction": "true"
