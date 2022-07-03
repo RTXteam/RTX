@@ -1230,5 +1230,35 @@ def test_xdtd_no_curies():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
 
 
+def test_xdtd_with_other_edges():
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["UMLS:C4023597"]
+            },
+            "chemical": {
+                "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+            },
+            "gene": {
+                "categories": ["biolink:Gene", "biolink:Protein"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:affects"],
+                "knowledge_type": "inferred"
+            },
+            "non_t_edge": {
+                "object": "gene",
+                "subject": "chemical"
+            }
+        }
+    }
+    #FIXME: this test is failing since the ability to mix inferred with lookup edges is not yet implemented
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
