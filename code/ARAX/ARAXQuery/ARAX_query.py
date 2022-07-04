@@ -648,6 +648,7 @@ class ARAXQuery:
             from ARAX_filter_kg import ARAXFilterKG
             from ARAX_resultify import ARAXResultify
             from ARAX_filter_results import ARAXFilterResults
+            from ARAX_infer import ARAXInfer
             from ARAX_connect import ARAXConnect
             expander = ARAXExpander()
             filter = ARAXFilter()
@@ -655,6 +656,7 @@ class ARAXQuery:
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
+            infer = ARAXInfer()
             connect = ARAXConnect()
             self.message = message
 
@@ -741,6 +743,9 @@ class ARAXQuery:
 
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         filter_kg.apply(response, action['parameters'])
+
+                    elif action['command'] == 'infer':  # recognize the infer command
+                        infer.apply(response, action['parameters'])
 
                     elif action['command'] == 'filter_results':  # recognize the filter_results command
                         response.debug(f"Before filtering, there are {len(response.envelope.message.results)} results")
