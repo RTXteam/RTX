@@ -11,6 +11,8 @@ You need to make your environment point to the particular KG2pre version and syn
 3. **Fetch the latest code**: Do `git pull origin [your-branch]` or the like to make sure you're running the latest code in whatever branch you're using.
 4. **Activate virtual env**: Make sure to use a Python version [compatible with ARAX](https://github.com/RTXteam/RTX/wiki/Dev-info#setting-up-for-local-dev-work-on-arax) and run `pip install -r requirements.txt` as needed.   
     * _For ARAX team: If you're using `ngdbuild.rtx.ai`, a virtual env already exists that you can activate like so: `source ~/ngd_venv/bin/activate`_
+5. **Turn on KG2pre neo4j**: If the KG2pre neo4j instance hosting the KG2 version you're building this NGD database from is not already running, turn it on and start neo4j. (e.g., do `ssh ubuntu@kg2endpointX.rtx.ai`, and then `sudo service neo4j start`)
+
 ### Then do the build:
 
 You have two options: a full build or a partial build.

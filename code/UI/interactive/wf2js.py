@@ -6,8 +6,8 @@ import urllib.request
 
 jsdefs = {}
 
-# schema at:   https://github.com/NCATSTranslator/OperationsAndWorkflows/blob/main/schema/operation.json
-raw_schema = ' https://raw.githubusercontent.com/NCATSTranslator/OperationsAndWorkflows/main/schema/operation.json'
+# schema at:  https://github.com/NCATSTranslator/OperationsAndWorkflows/blob/main/schema/operation.json
+raw_schema = 'https://raw.githubusercontent.com/NCATSTranslator/OperationsAndWorkflows/main/schema/operation.json'
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAX/ARAXQuery")
 from operation_to_ARAXi import WorkflowToARAXi
@@ -28,37 +28,49 @@ with urllib.request.urlopen(raw_schema) as file:
         jsdefs[id] = {}
         jsdefs[id]['in_arax'] = id in in_arax
 
-        params = {}
+        all_props = []
         if 'properties' in schema["$defs"][operation]['properties']['parameters']:
-            for par in schema["$defs"][operation]['properties']['parameters']['properties']:
+            all_props.append(schema["$defs"][operation]['properties']['parameters']['properties'])
+        if 'oneOf' in schema["$defs"][operation]['properties']['parameters']:
+            jsdefs[id]['warning'] = 'Only one of the following sets of parameters can be used: '
+            ortxt = ''
+            for p in schema["$defs"][operation]['properties']['parameters']['oneOf']:
+                all_props.append(p['properties'])
+                jsdefs[id]['warning'] += ortxt + '['
+                comma = ''
+                for o in p['properties']:
+                    jsdefs[id]['warning'] += comma + o
+                    comma = ', '
+                jsdefs[id]['warning'] += ']'
+                ortxt = ' OR '
+
+        params = {}
+        for p in all_props:
+            for par in p:
+                if par in params:
+                    del params[par]
                 params[par] = {}
-                ref = schema["$defs"][operation]['properties']['parameters']['properties'][par]
+                ref = p[par]
                 if 'required' in schema["$defs"][operation]['properties']['parameters']:
                     params[par]['is_required'] = par in schema["$defs"][operation]['properties']['parameters']['required']
                 else:
                     params[par]['is_required'] = False;
 
-                if 'type' in ref:
-                    params[par]['type'] = ref['type']
-                if 'minLength' in ref:
-                    params[par]['minLength'] = ref['minLength']
-                if 'enum' in ref:
-                    params[par]['enum'] = ref['enum']
-                if 'default' in ref:
-                    params[par]['default'] = ref['default']
+                # rename and discard some fields
                 if 'minimum' in ref:
-                    params[par]['min'] = ref['minimum']
+                    ref['min'] = ref.pop('minimum')
                 if 'maximum' in ref:
-                    params[par]['max'] = ref['maximum']
+                    ref['max'] = ref.pop('maximum')
                 if 'example' in ref:
-                    params[par]['examples'] = ref['example']
-                if 'description' in ref:
-                    params[par]['description'] = ref['description']
+                    ref['examples'] = ref.pop('example')
+                if 'items' in ref:
+                    del ref['items']
 
-
-                for v in ['type', 'minLength', 'enum', 'default','minimum', 'maximum', 'example', 'description']:
+                # capture what we care about
+                for v in ['type', 'minLength', 'enum', 'default','min', 'max', 'examples', 'description']:
                     if v in ref:
-                        del ref[v]
+                        params[par][v] = ref.pop(v)
+
                 for a in ref:
                     print("--------------- missed: ["+par+"]: "+a)
 

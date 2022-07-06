@@ -4,6 +4,7 @@ import os
 import datetime
 import json
 import time
+import re
 
 
 class RTXConfiguration:
@@ -13,6 +14,35 @@ class RTXConfiguration:
     # ### Constructor
     def __init__(self):
         self.version = "ARAX 1.2.1"
+
+        location = os.path.dirname(os.path.abspath(__file__))
+        self.instance_name = '??'
+        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
+        if match:
+            self.instance_name = match.group(1)
+        if self.instance_name == 'production':
+            self.instance_name = 'ARAX'
+
+        try:
+            with open(location + 'config.domain') as infile:
+                for line in infile:
+                    self.domain = line.strip()
+        except:
+            self.domain = '??'
+
+        if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io", "Github actions ARAX test suite"]:
+            self.maturity = "staging"
+        elif self.domain == ["arax.test.transltr.io", "kg2.test.transltr.io"]:
+            self.maturity = "testing"
+        elif self.domain == ["arax.transltr.io", "kg2.transltr.io"]:
+            self.maturity = "production"
+        elif self.domain == "arax.ncats.io":
+            if self.instance_name in ["ARAX", "kg2"]:
+                self.maturity = "production"
+            else:
+                self.maturity = "development"
+        else:
+            self.maturity = "development"
 
         file_path = os.path.dirname(os.path.abspath(__file__)) + '/configv2.json'
         local_path = os.path.dirname(os.path.abspath(__file__)) + '/config_local.json'
@@ -128,6 +158,11 @@ class RTXConfiguration:
         self.autocomplete_username = self.config["Global"]["autocomplete"]["username"]
         self.autocomplete_path = self.config["Contextual"][self.live]["autocomplete"]["path"]
         self.autocomplete_version = self.config["Contextual"][self.live]["autocomplete"]["path"].split('/')[-1].split('_v')[-1].replace('.sqlite','')
+
+        self.explainable_dtd_db_host = self.config["Global"]["explainable_dtd_db"]["host"]
+        self.explainable_dtd_db_username = self.config["Global"]["explainable_dtd_db"]["username"]
+        self.explainable_dtd_db_path = self.config["Contextual"][self.live]["explainable_dtd_db"]["path"]
+        self.explainable_dtd_db_version = self.config["Contextual"][self.live]["explainable_dtd_db"]["path"].split('/')[-1].split('_v')[-1].replace('.db','')
 
         self.rtx_kg2_url = self.config["Contextual"][self.live]["RTX-KG2"]["url"]
 
