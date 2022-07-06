@@ -1061,5 +1061,204 @@ def test_inverted_treats_handling():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
 
 
+def test_xdtd_expand():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:ChemicalEntity"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+def test_xdtd_different_categories():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:Drug"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["MONDO:0004975"],
+                "categories": ["biolink:Disease"]
+            },
+            "chemical": {
+                "categories": ["biolink:Drug"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:treats"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["MONDO:0004975"],
+                "categories": ["biolink:DiseaseOrPhenotypicFeature"]
+            },
+            "chemical": {
+                "categories": ["biolink:ChemicalMixture"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:treats"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+def test_xdtd_multiple_categories():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+def test_xdtd_different_predicates():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["UMLS:C4023597"]
+                },
+                "chemical": {
+                    "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:ameliorates"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["UMLS:C4023597"]
+            },
+            "chemical": {
+                "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:affects"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+def test_xdtd_no_curies():
+    query = {
+            "nodes": {
+                "disease": {
+                },
+                "chemical": {
+                    "categories": ["biolink:Drug", "biolink:ChemicalMixture"],
+                    "ids": ["CHEMBL:CHEMBL1234"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:ameliorates"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
+
+
+def test_xdtd_with_other_edges():
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["UMLS:C4023597"]
+            },
+            "chemical": {
+                "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+            },
+            "gene": {
+                "categories": ["biolink:Gene", "biolink:Protein"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:affects"],
+                "knowledge_type": "inferred"
+            },
+            "non_t_edge": {
+                "object": "gene",
+                "subject": "chemical"
+            }
+        }
+    }
+    #FIXME: this test is failing since the ability to mix inferred with lookup edges is not yet implemented
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
