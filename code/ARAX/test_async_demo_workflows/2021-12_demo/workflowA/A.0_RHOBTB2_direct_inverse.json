@@ -1,0 +1,30 @@
+{
+    "message": {
+        "query_graph": {
+            "edges": {
+                "e01": {
+                    "object": "n1",
+                    "subject": "n0",
+                    "predicates": [
+                        "biolink:affects_response_to"
+                    ]
+                }
+            },
+            "nodes": {
+                "n0": {
+                    "ids": [
+                        "NCBIGene:23221"
+                    ],
+                    "categories": [
+                        "biolink:Gene"
+                    ]
+                },
+                "n1": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ]
+                }
+            }
+        }
+    }
+}

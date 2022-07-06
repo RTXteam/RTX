@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/RTXteam/RTX.svg?branch=master)](https://travis-ci.com/RTXteam/RTX)
+[![Build Status](https://github.com/RTXteam/rtx/actions/workflows/pytest.yml/badge.svg)](https://github.com/RTXteam/RTX/actions/workflows/pytest.yml)
 [![DOI](https://zenodo.org/badge/111240202.svg)](https://zenodo.org/badge/latestdoi/111240202)
 
 # Table of contents
@@ -543,7 +543,7 @@ Here is the link to access the web browser interface to RTX:
 ## ...using our web API
 
 Here is the link to documentation on the web API interface to RTX:
-[arax.rtx.ai/api/rtx/v1/ui](https://arax.rtx.ai/api/rtx/v1/ui/).
+[arax.rtx.ai/api/arax/v1.2/ui/](https://arax.rtx.ai/api/arax/v1.2/ui/).
 
 ## ...by customizing a Jupyter Notebook
 

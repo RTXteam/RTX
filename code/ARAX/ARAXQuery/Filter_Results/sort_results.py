@@ -65,6 +65,9 @@ class SortResults:
             for key, edge in self.message.knowledge_graph.edges.items():  # iterate over the edges
                 edge_relation = None
                 edge_values[key] = {'value': None, 'relation': None}
+                if 'qedge_keys' in params and params['qedge_keys'] is not None and len(params['qedge_keys']) > 0:
+                    if key not in params['qedge_keys']:
+                        continue
                 if hasattr(edge, 'attributes'):  # check if they have attributes
                     if edge.attributes:  # if there are any edge attributes
                         for attribute in edge.attributes:  # for each attribute
@@ -148,6 +151,40 @@ class SortResults:
 
         return self.response
 
+    def sort_by_score(self):
+        """
+        sort results by edge count
+        :return: response
+        """
+        self.response.debug(f"Sorting Results")
+        self.response.info(f"Sorting the results by result score")
+        params = self.parameters
+        try:
+            value_list=[0]*len(self.message.results)
+            i = 0
+            for result in self.message.results:
+                value_list[i] = result.score
+                i+=1
+            idx = sort_index(value_list, params['descending'])
+            self.message.results = [self.message.results[i] for i in idx]
+            if 'max_results' in params:
+                prune_val = self.parameters['prune_kg']
+                self.parameters['prune_kg'] = False
+                self.limit_number_of_results()
+                self.parameters['prune_kg'] = prune_val
+            if params['prune_kg']:
+                self.prune_kg()
+            self.message.n_results = len(self.message.results)
+        except:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error(f"Something went wrong sorting results")
+        else:
+            self.response.info(f"Results successfully sorted")
+
+        return self.response
+
     def sort_by_node_attribute(self):
         """
         Iterate over all the results and sort by the edge attribute provided.
@@ -161,6 +198,9 @@ class SortResults:
             # iterate over the nodes find the attribute values
             for key, node in self.message.knowledge_graph.nodes.items():  # iterate over the nodes
                 node_values[key] = {'value': None, 'category': node.categories}
+                if 'qnode_keys' in params and params['qnode_keys'] is not None and len(params['qnode_keys']) > 0:
+                    if key not in params['qnode_keys']:
+                        continue
                 if hasattr(node, 'attributes'):  # check if they have attributes
                     if node.attributes:  # if there are any node attributes
                         for attribute in node.attributes:  # for each attribute

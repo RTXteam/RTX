@@ -19,6 +19,9 @@ from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer/']))
 from node_synonymizer import NodeSynonymizer ##Note: For different version of kg2, use corresponding nodesynonymizer
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources','COHD_local','scripts']))
+from COHDIndex import COHDIndex
+cohdindex = COHDIndex()
 
 # Get the file paths for the databases
 dtd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
@@ -58,24 +61,10 @@ elif database == 'DTD':
 
 cohd_DSL_queries = [
 {"operations": {"actions": [
-        "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=paired_concept_freq, COHD_method_top_N=500)",
-        "return(message=true, store=false)"
-    ]}},
-{"operations": {"actions": [
-        "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=observed_expected_ratio, COHD_method_top_N=500)",
-        "return(message=true, store=false)"
-    ]}},
-{"operations": {"actions": [
-        "add_qnode(ids=DOID:1588, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=COHD, COHD_method=chi_square, COHD_method_top_N=500)",
+        "add_qnode(ids=MONDO:0005301, key=n00)",
+        "add_qnode(categories=biolink:SmallMolecule, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:correlated_with)",
+        "expand(edge_key=e00, kp=infores:cohd)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
@@ -83,48 +72,7 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
-        "overlay(action=overlay_clinical_info, COHD_method=paired_concept_frequency)",
-        "resultify()",
-        "return(message=true, store=false)"
-    ]}},
-{"operations": {"actions": [
-        "create_message",
-        "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
-        "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio)",
-        "resultify()",
-        "return(message=true, store=false)"
-    ]}},
-{"operations": {"actions": [
-        "create_message",
-        "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
-        "overlay(action=overlay_clinical_info, COHD_method=chi_square)",
-        "resultify()",
-        "return(message=true, store=false)"
-    ]}},
-{"operations": {"actions": [
-        "create_message",
-        "add_qnode(name=acetaminophen, key=n0)",
-        "add_qnode(name=Sotos syndrome, key=n1)",
-        "expand(kp=RTX-KG2)",
-        "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
-        "overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=C2,subject_qnode_key=n0,object_qnode_key=n1)",
-        "overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=C3,subject_qnode_key=n0,object_qnode_key=n1)",
-        "resultify()",
-        "return(message=true, store=false)"
-    ]}},
-{"operations": {"actions": [
-        "create_message",
-        "add_qnode(name=DOID:1588, key=n0)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -134,7 +82,17 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "overlay(action=overlay_clinical_info, COHD_method=paired_concept_frequency)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=DOID:1588, key=n0)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info,observed_expected_ratio=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -144,7 +102,17 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=DOID:1588, key=n0)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -154,7 +122,17 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "overlay(action=overlay_clinical_info, COHD_method=chi_square)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=DOID:1588, key=n0)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -164,7 +142,17 @@ cohd_DSL_queries = [
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=DOID:1588, key=n0)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "resultify()",
         "return(message=true, store=false)"
@@ -174,7 +162,7 @@ cohd_DSL_queries = [
         "add_qnode(name=UniProtKB:P62328, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -184,8 +172,19 @@ cohd_DSL_queries = [
         "add_qnode(name=UniProtKB:P62328, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=acetaminophen, key=n0)",
+        "add_qnode(name=Sotos syndrome, key=n1)",
+        "expand(kp=infores:rtx-kg2)",
+        "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
+        "overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=C2,subject_qnode_key=n0,object_qnode_key=n1)",
+        "overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=C3,subject_qnode_key=n0,object_qnode_key=n1)",
         "resultify()",
         "return(message=true, store=false)"
     ]}},
@@ -196,34 +195,48 @@ cohd_DSL_queries = [
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
+        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
         # overlay a bunch of clinical info
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
         "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C3)",
         # filter some stuff out for the fun of it
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=paired_concept_frequency, direction=above, threshold=0.5, remove_connected_nodes=true, qnode_key=n02)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=above, threshold=1, remove_connected_nodes=true, qnode_key=n02)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=chi_square, direction=below, threshold=0.05, remove_connected_nodes=true, qnode_key=n02)",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=paired_concept_frequency, direction=above, threshold=0.5, remove_connected_nodes=true, qnode_keys=[n02])",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=above, threshold=1, remove_connected_nodes=true, qnode_keys=[n02])",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=chi_square, direction=below, threshold=0.05, remove_connected_nodes=true, qnode_keys=[n02])",
         # return results
         "resultify(ignore_edge_direction=true)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
-       "add_qnode(name=DOID:9406, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:Protein, key=n02)",
+        "create_message",
+        "add_qnode(ids=DOID:11830, key=n00, categories=biolink:Disease)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_key=n01)",
-        "filter_kg(action=remove_orphaned_nodes, node_category=biolink:Protein)",
-        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_key=n02)",
-        "resultify(ignore_edge_direction=true, debug=true)",
+        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:biothings-explorer)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        "overlay(action=predict_drug_treats_disease)",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_keys=[n01])",
+        "overlay(action=compute_ngd)",
+        "resultify(ignore_edge_direction=true)",
+        "filter_results(action=limit_number_of_results, max_results=50)",
         "return(message=true, store=false)"
-    ]}}
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n0, categories=biolink:ChemicalEntity)",
+        "add_qnode(categories=biolink:DiseaseOrPhenotypicFeature, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand()",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
+        "overlay(action=fisher_exact_test,subject_qnode_key=n0,virtual_relation_label=F1,object_qnode_key=n1)",
+        "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
+        "overlay(action=predict_drug_treats_disease,virtual_relation_label=P1,subject_qnode_key=n0,object_qnode_key=n1,threshold=0.8,slow_mode=false)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=30)",
+        "return(message=true, store=false)"
+    ]}},
 ]
 
 ## Below queries are for DTD
@@ -232,42 +245,42 @@ dtd_DSL_queries = [
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(name=Sotos syndrome, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
+        "expand(edge_key=e0, kp=infores:arax-drug-treats-disease, DTD_threshold=0, DTD_slow_mode=True)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(categories=biolink:Disease, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
+        "expand(edge_key=e0, kp=infores:arax-drug-treats-disease, DTD_threshold=0.8, DTD_slow_mode=True)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=MONDO:0004992, key=n0, categories=biolink:Disease)",
+        "add_qnode(ids=DOID:0080909, key=n0, categories=biolink:Disease)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=MONDO:0004992, key=n0)",
+        "add_qnode(ids=DOID:0080909, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
-        "overlay(action=predict_drug_treats_disease)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "overlay(action=predict_drug_treats_disease, threshold=0.7)",
         "resultify()",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=MONDO:0004992, key=n0)",
+        "add_qnode(ids=DOID:0080909, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -277,7 +290,7 @@ dtd_DSL_queries = [
         "add_qnode(ids=UniProtKB:P62328, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=RTX-KG2)",
+        "expand(edge_key=e0, kp=infores:rtx-kg2)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)"
@@ -288,25 +301,38 @@ dtd_DSL_queries = [
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=BTE)",
-        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
+        "expand(kp=infores:biothings-explorer)",
+        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1, threshold=0.5)",
         "resultify(ignore_edge_direction=true)",
         "return(message=true, store=false)"
     ]}},
 {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:7551, key=n00)",
-        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
+        "add_qnode(ids=DOID:11830, key=n00, categories=biolink:Disease)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=RTX-KG2)",
-        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_key=n02)",
-        "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by, value=Pharos)",
-        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1, threshold=0)",
+        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:biothings-explorer)",
+        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
+        "overlay(action=predict_drug_treats_disease)",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_keys=[n01])",
+        "overlay(action=compute_ngd)",
         "resultify(ignore_edge_direction=true)",
-        "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
+        "filter_results(action=limit_number_of_results, max_results=50)",
+        "return(message=true, store=false)"
+    ]}},
+{"operations": {"actions": [
+        "create_message",
+        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n0, categories=biolink:ChemicalEntity)",
+        "add_qnode(categories=biolink:DiseaseOrPhenotypicFeature, key=n1)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "expand()",
+        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
+        "overlay(action=fisher_exact_test,subject_qnode_key=n0,virtual_relation_label=F1,object_qnode_key=n1)",
+        "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
+        "overlay(action=predict_drug_treats_disease,virtual_relation_label=P1,subject_qnode_key=n0,object_qnode_key=n1,threshold=0.8,slow_mode=false)",
+        "resultify()",
+        "filter_results(action=limit_number_of_results, max_results=30)",
         "return(message=true, store=false)"
     ]}}
 ]
@@ -315,14 +341,14 @@ dtd_DSL_queries = [
 #         "add_qnode(name=acetaminophen, key=n0)",
 #         "add_qnode(name=Sotos syndrome, key=n1)",
 #         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0, DTD_slow_mode=True)",
+#         "expand(edge_key=e0, kp=infores:arax-drug-treats-disease, DTD_threshold=0, DTD_slow_mode=True)",
 #         "return(message=true, store=false)"
 # ]}},
 # {"operations": {"actions": [
 # "add_qnode(name=acetaminophen, key=n0)",
 #         "add_qnode(category=disease, key=n1)",
 #         "add_qedge(subject=n0, object=n1, key=e0)",
-#         "expand(edge_key=e0, kp=DTD, DTD_threshold=0.8, DTD_slow_mode=True)",
+#         "expand(edge_key=e0, kp=infores:arax-drug-treats-disease, DTD_threshold=0.8, DTD_slow_mode=True)",
 #         "return(message=true, store=false)"
 # ]}},
 # {"operations": {"actions": [
@@ -352,12 +378,13 @@ synonymizer = NodeSynonymizer()
 target_curie_list = []
 check_wrong_queries = []
 for index, query in enumerate(DSL_queries):
-    # print(query)
     result = araxq.query(query)
     response = araxq.response
     if result.status != 'OK':
         # print(response.show(level=ARAXResponse.DEBUG))
         check_wrong_queries += [index + 1]
+        print(query, flush=True)
+        exit()
     else:
         message = response.envelope.message
         target_curie_list += [node_key for node_key, _ in message.knowledge_graph.nodes.items()]
@@ -475,19 +502,15 @@ elif database == 'COHD':
         # print(target_curie_list)
         if os.path.isfile(cohd_file):
             con = sqlite3.connect(cohd_file)
-            curie_to_omop_mapping = con.execute(f"select * from CURIE_TO_OMOP_MAPPING where preferred_curie in {tuple(target_curie_list)}")
-            curie_to_omop_mapping = pd.DataFrame(curie_to_omop_mapping)
-            cursor = con.execute(f"select * from CURIE_TO_OMOP_MAPPING")
-            names = list(map(lambda x: x[0], cursor.description))
-            curie_to_omop_mapping.columns = names
-
-            single_concept_counts = con.execute(f"select * from SINGLE_CONCEPT_COUNTS where concept_id in {tuple(list(curie_to_omop_mapping.concept_id))}")
+            res = cohdindex.get_concept_ids(target_curie_list)
+            omop_ids = [concept_id for curie in res if len(res[curie])!=0 for concept_id in res[curie]]
+            single_concept_counts = con.execute(f"select * from SINGLE_CONCEPT_COUNTS where concept_id in {tuple(omop_ids)}")
             single_concept_counts = pd.DataFrame(single_concept_counts)
             cursor = con.execute(f"select * from SINGLE_CONCEPT_COUNTS")
             names = list(map(lambda x: x[0], cursor.description))
             single_concept_counts.columns = names
 
-            concepts = con.execute(f"select * from CONCEPTS where concept_id in {tuple(list(curie_to_omop_mapping.concept_id))}")
+            concepts = con.execute(f"select * from CONCEPTS where concept_id in {tuple(omop_ids)}")
             concepts = pd.DataFrame(concepts)
             cursor = con.execute(f"select * from CONCEPTS")
             names = list(map(lambda x: x[0], cursor.description))
@@ -498,14 +521,14 @@ elif database == 'COHD':
             domain_concept_counts = pd.read_sql_query("SELECT * from DOMAIN_CONCEPT_COUNTS", con)
             domain_pair_concept_counts = pd.read_sql_query("SELECT * from DOMAIN_PAIR_CONCEPT_COUNTS", con)
 
-            paired_concept_counts_associations = con.execute(f"select * from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(list(curie_to_omop_mapping.concept_id))} and concept_id_2 in {tuple(list(curie_to_omop_mapping.concept_id))}")
+            paired_concept_counts_associations = con.execute(f"select * from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS where concept_id_1 in {tuple(omop_ids)} and concept_id_2 in {tuple(omop_ids)}")
             paired_concept_counts_associations = pd.DataFrame(paired_concept_counts_associations)
             cursor = con.execute(f"select * from PAIRED_CONCEPT_COUNTS_ASSOCIATIONS")
             names = list(map(lambda x: x[0], cursor.description))
             paired_concept_counts_associations.columns = names
             con.close()
-            all_tables = [curie_to_omop_mapping, single_concept_counts, concepts, patient_count, dataset, domain_concept_counts, domain_pair_concept_counts, paired_concept_counts_associations]
-            all_table_names = ['CURIE_TO_OMOP_MAPPING', 'SINGLE_CONCEPT_COUNTS', 'CONCEPTS', 'PATIENT_COUNT', 'DATASET', 'DOMAIN_CONCEPT_COUNTS', 'DOMAIN_PAIR_CONCEPT_COUNTS', 'PAIRED_CONCEPT_COUNTS_ASSOCIATIONS']
+            all_tables = [single_concept_counts, concepts, patient_count, dataset, domain_concept_counts, domain_pair_concept_counts, paired_concept_counts_associations]
+            all_table_names = ['SINGLE_CONCEPT_COUNTS', 'CONCEPTS', 'PATIENT_COUNT', 'DATASET', 'DOMAIN_CONCEPT_COUNTS', 'DOMAIN_PAIR_CONCEPT_COUNTS', 'PAIRED_CONCEPT_COUNTS_ASSOCIATIONS']
             # data = [all_tables, all_table_names]
             # with open(os.path.join(output_folder,'temp.pkl'),'wb') as outfile:
             #     pickle.dump(data, outfile)
@@ -513,8 +536,8 @@ elif database == 'COHD':
             print(f"Start building the slim version of COHDdatabase.db", flush=True)
             #con = sqlite3.connect(os.path.join(output_folder, 'COHDdatabase_slim.db'))
             con = sqlite3.connect(cohd_file.replace(".db", "_slim.db"))
-            con.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
-            con.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
+            # con.execute(f"DROP TABLE IF EXISTS CURIE_TO_OMOP_MAPPING")
+            # con.execute(f"CREATE TABLE CURIE_TO_OMOP_MAPPING( preferred_curie VARCHAR(255), concept_id INT )")
             con.execute(f"DROP TABLE IF EXISTS SINGLE_CONCEPT_COUNTS")
             con.execute(f"CREATE TABLE SINGLE_CONCEPT_COUNTS( dataset_id TINYINT, concept_id INT, concept_count INT, concept_prevalence FLOAT )")
             con.execute(f"DROP TABLE IF EXISTS CONCEPTS")
@@ -563,9 +586,9 @@ elif database == 'COHD':
                 print(f"INFO: Populating tables is completed", flush=True)
                 con.commit()
             # ################################################
-            print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING", flush=True)
-            con.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_preferred_curie ON CURIE_TO_OMOP_MAPPING(preferred_curie)")
-            con.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_concept_id ON CURIE_TO_OMOP_MAPPING(concept_id)")
+            # print(f"INFO: Creating INDEXes on CURIE_TO_OMOP_MAPPING", flush=True)
+            # con.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_preferred_curie ON CURIE_TO_OMOP_MAPPING(preferred_curie)")
+            # con.execute(f"CREATE INDEX idx_CURIE_TO_OMOP_MAPPING_concept_id ON CURIE_TO_OMOP_MAPPING(concept_id)")
 
             print(f"INFO: Creating INDEXes on SINGLE_CONCEPT_COUNTS", flush=True)
             con.execute(f"CREATE INDEX idx_SINGLE_CONCEPT_COUNTS_dataset_id ON SINGLE_CONCEPT_COUNTS(dataset_id)")

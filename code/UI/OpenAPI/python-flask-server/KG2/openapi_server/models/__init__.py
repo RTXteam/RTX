@@ -19,7 +19,6 @@ from openapi_server.models.meta_node import MetaNode
 from openapi_server.models.node import Node
 from openapi_server.models.node_binding import NodeBinding
 from openapi_server.models.operation_lookup import OperationLookup
-from openapi_server.models.operation_overlay import OperationOverlay
 from openapi_server.models.operations import Operations
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode

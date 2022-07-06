@@ -104,7 +104,7 @@ class BiolinkHelper:
         if predicate in self.biolink_lookup_map["predicates"]:
             return self.biolink_lookup_map["predicates"][predicate]["is_symmetric"]
         else:
-            raise ValueError(f"Input predicate '{predicate}' does not exist in Biolink {self.biolink_version}!")
+            return True  # Consider unrecognized predicates symmetric (rather than throw error)
 
     def replace_mixins_with_direct_mappings(self, biolink_items: Union[str, List[str], Set[str]]) -> List[str]:
         input_item_set = self._convert_to_set(biolink_items)
@@ -169,7 +169,7 @@ class BiolinkHelper:
                 biolink_lookup_map = pickle.load(biolink_map_file)
             return biolink_lookup_map
 
-    def _create_biolink_lookup_map(self) -> Dict[str, Dict[str, Dict[str, Union[str, List[str]]]]]:
+    def _create_biolink_lookup_map(self) -> Dict[str, Dict[str, Dict[str, Union[str, List[str], bool]]]]:
         print(f"INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map because one "
               f"doesn't yet exist")
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
@@ -205,15 +205,16 @@ class BiolinkHelper:
                     "direct_mappings": mixin_to_categories_map.get(category_mixin, set())
                 }
             del biolink_lookup_map["category_mixins"]["MIXIN"]  # No longer need this imaginary root node
+            predicate_mixins_in_tree = {mixin_node.identifier for mixin_node in predicate_mixin_tree.all_nodes()}
             for predicate_node in predicate_tree.all_nodes():
                 predicate = predicate_node.identifier
                 ancestors = self._get_ancestors_from_tree(predicate, predicate_tree)
                 descendants = self._get_descendants_from_tree(predicate, predicate_tree)
                 mixin_ancestors = {mixin_ancestor for ancestor in ancestors
-                                   for mixin in predicate_to_mixins_map[ancestor]
+                                   for mixin in predicate_to_mixins_map[ancestor].intersection(predicate_mixins_in_tree)  # Skip weird mixins that have non-mixin parents
                                    for mixin_ancestor in biolink_lookup_map["predicate_mixins"][mixin]["ancestors"]}
                 mixin_descendants = {mixin_descendant for descendant in descendants
-                                     for mixin in predicate_to_mixins_map[descendant]
+                                     for mixin in predicate_to_mixins_map[descendant].intersection(predicate_mixins_in_tree)  # Skip weird mixins that have non-mixin parents
                                      for mixin_descendant in biolink_lookup_map["predicate_mixins"][mixin]["descendants"]}
                 biolink_lookup_map["predicates"][predicate] = {
                     "ancestors": ancestors,

@@ -16,6 +16,9 @@ import copy
 import requests
 import requests_cache
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
+
 
 # Class that provides a simple interface to BioLink categories and their ancestors and approved conflations
 class CategoryManager:
@@ -25,6 +28,7 @@ class CategoryManager:
     def __init__(self):
         self.location = os.path.dirname(os.path.abspath(__file__))
         requests_cache.install_cache(self.location + '/category_manager.cache')
+        self.bh = BiolinkHelper()
 
         self.categories = {
             'ancestors': {},
@@ -87,7 +91,7 @@ class CategoryManager:
             return self.categories['ancestors'][category]
 
         # Build the URL and fetch the result
-        url = f"https://bl-lookup-sri.renci.org/bl/{category}/ancestors?version=2.1.0"
+        url = f"https://bl-lookup-sri.renci.org/bl/{category}/ancestors?version={self.bh.get_current_arax_biolink_version()}"
         response_content = requests.get(url, headers={'accept': 'application/json'})
         status_code = response_content.status_code
 

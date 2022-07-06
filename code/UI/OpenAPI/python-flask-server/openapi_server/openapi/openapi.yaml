@@ -9,34 +9,42 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: ARAX Translator Reasoner
-  version: 1.1.1
+  version: 1.2.8
   x-translator:
     component: ARA
     team:
     - Expander Agent
-    biolink-version: 2.1.0
+    infores: infores:arax
+    biolink-version: 2.2.11
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.2.0
+    version: 1.2.1
     asyncquery: true
     operations:
-    - filter_results_top_n
+    - lookup
+    - lookup_and_score
     - overlay_compute_ngd
     - overlay_compute_jaccard
     - overlay_fisher_exact_test
+    - overlay_connect_knodes
+    - filter_results_top_n
     - bind
     - fill
     - filter_kgraph_orphans
-    - score
-    - complete_results
     - filter_kgraph_top_n
     - filter_kgraph_std_dev
     - filter_kgraph_percentile
     - filter_kgraph_discrete_kedge_attribute
-    - filter_kgraph_continuous_attribute
+    - filter_kgraph_continuous_kedge_attribute
+    - sort_results_score
+    - sort_results_edge_attribute
+    - sort_results_node_attribute
+    - annotate_nodes
+    - score
+    - complete_results
     externalDocs:
       description: The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
@@ -45,23 +53,45 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: ARAX Translator Reasoner API
+- description: ARAX TRAPI 1.2 endpoint - production
+  url: https://arax.transltr.io/api/arax/v1.2
+  x-maturity: production
+- description: ARAX TRAPI 1.2 endpoint - production
   url: https://arax.ncats.io/api/arax/v1.2
+  x-maturity: production
+- description: ARAX TRAPI 1.2 endpoint - testing
+  url: https://arax.test.transltr.io/api/arax/v1.2
+  x-maturity: testing
+- description: ARAX TRAPI 1.2 endpoint - staging
+  url: https://arax.ci.transltr.io/api/arax/v1.2
+  x-maturity: staging
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/beta/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/test/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/devED/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/devLM/api/arax/v1.2
+  x-maturity: development
 tags:
 - description: Get supported relationships
   externalDocs:
     description: Documentation for the reasoner predicates function
-    url: http://arax.ncats.io/overview.html#predicates
+    url: https://arax.ncats.io/overview.html#predicates
   name: meta_knowledge_graph
 - description: Initiate a query and wait to receive the response
   externalDocs:
     description: Documentation for the reasoner query function
-    url: http://arax.ncats.io/overview.html#query
+    url: https://arax.ncats.io/overview.html#query
   name: query
 - description: Initiate a query with a callback to receive the response
   externalDocs:
     description: Documentation for the reasoner asynchquery function
-    url: http://arax.ncats.io/overview.html#asyncquery
+    url: https://arax.ncats.io/overview.html#asyncquery
   name: asyncquery
 - description: Required for SmartAPI validation of x-translator
   name: translator
@@ -93,12 +123,15 @@ tags:
     description: Documentation for the reasoner PubmedMeshNgd function
     url: https://arax.ncats.io/overview.html#PubmedMeshNgd
   name: PubmedMeshNgd
+- description: Return status information about the endpoint
+  name: status
 paths:
   /PubmedMeshNgd/{term1}/{term2}:
     get:
       operationId: pubmed_mesh_ngd
       parameters:
       - description: First of two terms. Order not important.
+        example: PTGS2
         explode: false
         in: path
         name: term1
@@ -107,6 +140,7 @@ paths:
           type: string
         style: simple
       - description: Second of two terms. Order not important.
+        example: acetaminophen
         explode: false
         in: path
         name: term2
@@ -130,7 +164,7 @@ paths:
       x-openapi-router-controller: openapi_server.controllers.pubmed_mesh_ngd_controller
   /asyncquery:
     post:
-      operationId: asyncquery_post
+      operationId: asyncquery
       requestBody:
         content:
           application/json:
@@ -242,6 +276,16 @@ paths:
   /meta_knowledge_graph:
     get:
       operationId: meta_knowledge_graph
+      parameters:
+      - description: Provide meta_knowledge_graph information in a format other than
+          the default. Default value is 'full'. Also permitted is 'simple'
+        explode: true
+        in: query
+        name: format
+        required: false
+        schema:
+          type: string
+        style: form
       responses:
         "200":
           content:
@@ -323,7 +367,8 @@ paths:
     get:
       operationId: get_response
       parameters:
-      - description: Integer identifier of the response to return
+      - description: Identifier of the response to return
+        example: 41651
         explode: false
         in: path
         name: response_id
@@ -344,6 +389,83 @@ paths:
       tags:
       - response
       x-openapi-router-controller: openapi_server.controllers.response_controller
+  /status:
+    get:
+      operationId: get_status
+      parameters:
+      - description: Limit results to the past N hours
+        explode: true
+        in: query
+        name: last_n_hours
+        required: false
+        schema:
+          example: 6
+          type: integer
+        style: form
+      - description: Identifier of the log entry
+        explode: true
+        in: query
+        name: id
+        required: false
+        schema:
+          example: 10
+          type: integer
+        style: form
+      - description: PID of an ongoing query to terminate
+        explode: true
+        in: query
+        name: terminate_pid
+        required: false
+        schema:
+          type: integer
+        style: form
+      - description: Authorization string required for certain calls to status
+        explode: true
+        in: query
+        name: authorization
+        required: false
+        schema:
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: successful operation
+        "404":
+          description: Entity not found
+      summary: Obtain status information about the endpoint
+      tags:
+      - status
+      x-openapi-router-controller: openapi_server.controllers.status_controller
+  /status/logs:
+    get:
+      operationId: get_logs
+      parameters:
+      - description: Specify the log sending mode
+        explode: true
+        in: query
+        name: mode
+        required: false
+        schema:
+          example: tail
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: successful operation
+        "404":
+          description: Logs not found
+      summary: Get log information from the server
+      tags:
+      - status
+      x-openapi-router-controller: openapi_server.controllers.status_controller
   /translate:
     post:
       operationId: translate
@@ -380,13 +502,10 @@ components:
         a log level could allow a user to override the default log level in order
         to receive more fine-grained log information when debugging an issue.
       example:
+        submitter: Example
         bypass_cache: false
         page_number: 1
-        operations: ""
-        workflow:
-        - ""
-        - ""
-        log_level: ""
+        log_level: DEBUG
         enforce_edge_directionality: false
         return_minimal_metadata: false
         max_results: 100
@@ -403,8 +522,6 @@ components:
               n00:
                 ids:
                 - CHEMBL.COMPOUND:CHEMBL112
-                categories:
-                - biolink:ChemicalSubstance
               n01:
                 categories:
                 - biolink:Protein
@@ -423,12 +540,15 @@ components:
             oneOf:
             - $ref: '#/components/schemas/OperationAnnotate'
             - $ref: '#/components/schemas/OperationAnnotateEdges'
+            - $ref: '#/components/schemas/OperationAnnotateNodes'
             - $ref: '#/components/schemas/OperationBind'
             - $ref: '#/components/schemas/OperationCompleteResults'
+            - $ref: '#/components/schemas/OperationEnrichResults'
             - $ref: '#/components/schemas/OperationFill'
             - $ref: '#/components/schemas/OperationFilterKgraph'
-            - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute'
             - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute'
             - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
             - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
             - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
@@ -449,6 +569,12 @@ components:
             - $ref: '#/components/schemas/OperationSortResultsScore'
           nullable: true
           type: array
+        submitter:
+          description: Any string for self-identifying the submitter of a query. The
+            purpose of this optional field is to aid in the tracking of the source
+            of queries for development and issue resolution.
+          nullable: true
+          type: string
         bypass_cache:
           default: false
           description: Set to true in order to bypass any possible cached response
@@ -527,12 +653,15 @@ components:
             oneOf:
             - $ref: '#/components/schemas/OperationAnnotate'
             - $ref: '#/components/schemas/OperationAnnotateEdges'
+            - $ref: '#/components/schemas/OperationAnnotateNodes'
             - $ref: '#/components/schemas/OperationBind'
             - $ref: '#/components/schemas/OperationCompleteResults'
+            - $ref: '#/components/schemas/OperationEnrichResults'
             - $ref: '#/components/schemas/OperationFill'
             - $ref: '#/components/schemas/OperationFilterKgraph'
-            - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute'
             - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute'
             - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
             - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
             - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
@@ -553,6 +682,12 @@ components:
             - $ref: '#/components/schemas/OperationSortResultsScore'
           nullable: true
           type: array
+        submitter:
+          description: Any string for self-identifying the submitter of a query. The
+            purpose of this optional field is to aid in the tracking of the source
+            of queries for development and issue resolution.
+          nullable: true
+          type: string
       required:
       - callback
       - message
@@ -568,6 +703,7 @@ components:
       example:
         original_question: what proteins are affected by sickle cell anemia
         validation_result: '{}'
+        submitter: submitter
         workflow:
         - ""
         - ""
@@ -588,13 +724,12 @@ components:
               n00:
                 ids:
                 - CHEMBL.COMPOUND:CHEMBL112
-                categories:
-                - biolink:ChemicalSubstance
               n01:
                 categories:
                 - biolink:Protein
         type: TranslatorAPIResponse
-        schema_version: 1.0.0
+        total_results_count: 0
+        schema_version: 1.2.0
         datetime: 2021-01-09 12:34:45
         operations: ""
         table_column_names:
@@ -603,7 +738,7 @@ components:
         tool_version: ARAX 0.8.0
         context: https://rtx.ncats.io/ns/translator.jsonld
         reasoner_id: ARAX
-        id: https://arax.ncats.io/api/rtx/v1.0/response/123
+        id: https://arax.ncats.io/api/rtx/v1.2/response/123
         logs:
         - code: code
           level: ""
@@ -614,6 +749,7 @@ components:
           message: message
           timestamp: 2020-09-03T18:13:49Z
         status: Success
+        info: info
       properties:
         message:
           $ref: '#/components/schemas/Message'
@@ -641,12 +777,15 @@ components:
             oneOf:
             - $ref: '#/components/schemas/OperationAnnotate'
             - $ref: '#/components/schemas/OperationAnnotateEdges'
+            - $ref: '#/components/schemas/OperationAnnotateNodes'
             - $ref: '#/components/schemas/OperationBind'
             - $ref: '#/components/schemas/OperationCompleteResults'
+            - $ref: '#/components/schemas/OperationEnrichResults'
             - $ref: '#/components/schemas/OperationFill'
             - $ref: '#/components/schemas/OperationFilterKgraph'
-            - $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute'
             - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute'
             - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
             - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
             - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
@@ -666,6 +805,12 @@ components:
             - $ref: '#/components/schemas/OperationSortResultsNodeAttribute'
             - $ref: '#/components/schemas/OperationSortResultsScore'
           type: array
+        submitter:
+          description: Any string for self-identifying the submitter of a query. The
+            purpose of this optional field is to aid in the tracking of the source
+            of queries for development and issue resolution.
+          nullable: true
+          type: string
         operations:
           allOf:
           - $ref: '#/components/schemas/Operations'
@@ -683,7 +828,7 @@ components:
           type: string
         schema_version:
           description: Version label of this TRAPI schema
-          example: 1.0.0
+          example: 1.2.0
           type: string
         datetime:
           description: Datetime string for the time that this response was generated
@@ -726,12 +871,21 @@ components:
           type: string
         id:
           description: URI for this response
-          example: https://arax.ncats.io/api/rtx/v1.0/response/123
+          example: https://arax.ncats.io/api/rtx/v1.2/response/123
           type: string
         validation_result:
           description: Validation results and other summary stats computed for this
             Response.
           type: object
+        total_results_count:
+          description: The total number of results that were generated prior to any
+            filtering.
+          nullable: true
+          type: integer
+        info:
+          description: A placholder for including some additional information
+          nullable: true
+          type: string
       required:
       - message
       title: Response
@@ -757,8 +911,6 @@ components:
             n00:
               ids:
               - CHEMBL.COMPOUND:CHEMBL112
-              categories:
-              - biolink:ChemicalSubstance
             n01:
               categories:
               - biolink:Protein
@@ -881,7 +1033,7 @@ components:
           type: string
         essence_category:
           description: A Translator BioLink bioentity category of the essence
-          example: biolink:ChemicalSubstance
+          example: biolink:ChemicalEntity
           nullable: true
           type: string
         row_data:
@@ -1068,29 +1220,43 @@ components:
             each n1 must be connected to at least one n2.
           type: boolean
         constraints:
+          default: []
           description: A list of contraints applied to a query node. If there are
             multiple items, they must all be true (equivalent to AND)
           items:
             $ref: '#/components/schemas/QueryConstraint'
-          nullable: true
           type: array
         option_group_id:
           description: 'Optional string acting as a label on a set of nodes and/or
             edges indicating that they belong to a group that are to be evaluated
             as a group. '
+          nullable: true
           type: string
       title: QNode
       type: object
     QEdge:
       additionalProperties: true
       description: An edge in the QueryGraph used as an filter pattern specification
-        in a query. If optional predicate or relation properties are not specified,
-        they are assumed to be wildcard matches to the target knowledge space. If
-        specified, the ontological inheritance hierarchy associated with the terms
-        provided is assumed, such that edge bindings returned may be an exact match
-        to the given QEdge predicate or relation term ('class'), or to a term which
-        is a subclass of the QEdge specified term.
+        in a query. If the optional predicate property is not specified, it is assumed
+        to be a wildcard match to the target knowledge space. If specified, the ontological
+        inheritance hierarchy associated with the term provided is assumed, such that
+        edge bindings returned may be an exact match to the given QEdge predicate
+        term, or to a term that is a descendant of the QEdge predicate term.
       properties:
+        knowledge_type:
+          description: >-
+            Indicates the type of knowledge that the client wants from the
+            server between the subject and object. If the value is
+            'lookup', then the client wants direct lookup information from
+            knowledge sources. If the value is 'inferred', then the client
+            wants the server to get creative and connect the subject and
+            object in more speculative and non-direct-lookup ways. If this
+            property is absent or null, it MUST be assumed to mean
+            'lookup'. This feature is currently experimental and may be
+            further extended in the future.
+          example: lookup
+          nullable: true
+          type: string
         predicates:
           items:
             $ref: '#/components/schemas/BiolinkPredicate'
@@ -1108,11 +1274,11 @@ components:
           example: https://www.uniprot.org/uniprot/P00738
           type: string
         constraints:
+          default: []
           description: A list of contraints applied to a query edge. If there are
             multiple items, they must all be true (equivalent to AND)
           items:
             $ref: '#/components/schemas/QueryConstraint'
-          nullable: true
           type: array
         exclude:
           description: If set to true, then all subgraphs containing this edge are
@@ -1122,6 +1288,7 @@ components:
           description: 'Optional string acting as a label on a set of nodes and/or
             edges indicating that they belong to a group that are to be evaluated
             as a group. '
+          nullable: true
           type: string
       required:
       - object
@@ -1196,6 +1363,7 @@ components:
             to form a full URI.
           externalDocs:
             url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          nullable: true
           title: CURIE
           type: string
         attribute_source:
@@ -1224,6 +1392,7 @@ components:
           description: Node attributes provided by this TRAPI web service.
           items:
             $ref: '#/components/schemas/SubAttribute'
+          nullable: true
           title: attributes
           type: array
       required:
@@ -1452,6 +1621,9 @@ components:
           minItems: 1
           title: edges
           type: array
+      required:
+      - edges
+      - nodes
       title: MetaKnowledgeGraph
       type: object
     MetaNode:
@@ -1560,6 +1732,7 @@ components:
           description: Edge attributes provided by this TRAPI web service.
           items:
             $ref: '#/components/schemas/MetaAttribute'
+          nullable: true
           title: attributes
           type: array
       required:
@@ -1590,12 +1763,15 @@ components:
         attribute_source:
           description: Source of an attribute provided by this TRAPI web service.
           example: infores:chembl
+          nullable: true
           title: attribute_source
           type: string
         original_attribute_names:
           description: Names of an the attribute as provided by the source.
           items:
             type: string
+          minItems: 1
+          nullable: true
           title: original_attribute_names
           type: array
         constraint_use:
@@ -1607,6 +1783,7 @@ components:
           description: Human-readable name or label for the constraint concept. Required
             whenever constraint_use is true.
           example: p-value
+          nullable: true
           title: constraint_name
           type: string
       required:
@@ -1626,14 +1803,12 @@ components:
             phrase here and submit the new type for consideration by the appropriate
             authority.
           example: EDAM:data_0844
-          nullable: false
           title: id
         name:
           description: Human-readable name or label for the constraint concept. If
             appropriate, it SHOULD be the term name of the CURIE used as the 'id'.
             This is redundant but required for human readability.
           example: molecular mass
-          nullable: false
           title: name
           type: string
         not:
@@ -1674,6 +1849,7 @@ components:
             The unit_id MUST be provided for (lists of) numerical values that correspond
             to a quantity that has units.
           example: UO:0000222
+          nullable: true
           title: unit_id
         unit_name:
           description: Term name that is associated with the CURIE of the units of
@@ -1682,6 +1858,7 @@ components:
             if a unit_id is provided. This is redundant but recommended for human
             readability.
           example: kilodalton
+          nullable: true
           title: unit_name
       required:
       - id
@@ -1700,7 +1877,7 @@ components:
         message_uris:
           description: List of URIs for Message or Response objects to fetch and process
           example:
-          - https://arax.ncats.io/api/arax/v1.0/response/38
+          - https://arax.ncats.io/api/arax/v1.2/response/38
           items:
             type: string
           type: array
@@ -1811,6 +1988,18 @@ components:
       required:
       - id
       type: object
+    OperationAnnotateNodes:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - annotate_nodes
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationAnnotateNodes_parameters'
+      required:
+      - id
+      type: object
     OperationBind:
       additionalProperties: false
       properties:
@@ -1830,6 +2019,18 @@ components:
           - complete_results
           type: string
         parameters: {}
+      required:
+      - id
+      type: object
+    OperationEnrichResults:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - enrich_results
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationEnrichResults_parameters'
       required:
       - id
       type: object
@@ -1853,6 +2054,11 @@ components:
                   type: string
                 minLength: 1
                 type: array
+              qedge_keys:
+                type: array
+                items:
+                  type: string
+                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their connected nodes, will be filled. If not included all edges will be filled.
             type: object
           - additionalProperties: false
             properties:
@@ -1865,6 +2071,11 @@ components:
                   type: string
                 minLength: 1
                 type: array
+              qedge_keys:
+                type: array
+                items:
+                  type: string
+                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their connected nodes, will be filled. If not included all edges will be filled.
             type: object
           type: object
       required:
@@ -1881,15 +2092,15 @@ components:
       required:
       - id
       type: object
-    OperationFilterKgraphContinuousAttribute:
+    OperationFilterKgraphContinuousKedgeAttribute:
       additionalProperties: false
       properties:
         id:
           enum:
-          - filter_kgraph_continuous_attribute
+          - filter_kgraph_continuous_kedge_attribute
           type: string
         parameters:
-          $ref: '#/components/schemas/OperationFilterKgraphContinuousAttribute_parameters'
+          $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute_parameters'
       required:
       - id
       - parameters
@@ -1903,6 +2114,19 @@ components:
           type: string
         parameters:
           $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute_parameters'
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphDiscreteKnodeAttribute:
+      additionalProperties: false
+      properties:
+        id:
+          enum:
+          - filter_kgraph_discrete_knode_attribute
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute_parameters'
       required:
       - id
       - parameters
@@ -2138,7 +2362,41 @@ components:
           type: array
       title: OperationAnnotateEdges_parameters
       type: object
-    OperationFilterKgraphContinuousAttribute_parameters:
+    OperationAnnotateNodes_parameters:
+      properties:
+        attributes:
+          description: A list of attributes to annotate the nodes with. If not included
+            then all available data will be annotated.
+          example:
+          - pmids
+          items:
+            type: string
+          title: attributes
+          type: array
+      title: OperationAnnotateNodes_parameters
+      type: object
+    OperationEnrichResults_parameters:
+      properties:
+        pvalue_threshold:
+          default: 0.0000010
+          description: The cutoff p-value for enrichment.
+          example: 1.0E-7
+          maximum: 1
+          minimum: 0
+          title: pvalue_threshold
+          type: number
+        qnode_keys:
+          description: If specified, then only knodes bound to these qnodes will be
+            examined for enrichment and combination.
+          example:
+          - n01
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+      title: OperationEnrichResults_parameters
+      type: object
+    OperationFilterKgraphContinuousKedgeAttribute_parameters:
       properties:
         edge_attribute:
           description: The name of the edge attribute to filter on.
@@ -2182,7 +2440,7 @@ components:
       - edge_attribute
       - remove_above_or_below
       - threshold
-      title: OperationFilterKgraphContinuousAttribute_parameters
+      title: OperationFilterKgraphContinuousKedgeAttribute_parameters
       type: object
     OperationFilterKgraphDiscreteKedgeAttribute_parameters:
       properties:
@@ -2221,6 +2479,33 @@ components:
       - edge_attribute
       - remove_value
       title: OperationFilterKgraphDiscreteKedgeAttribute_parameters
+      type: object
+    OperationFilterKgraphDiscreteKnodeAttribute_parameters:
+      properties:
+        node_attribute:
+          description: The name of the node attribute to filter on.
+          example: molecule_type
+          title: node_attribute
+          type: string
+        qnode_keys:
+          description: This indicates if you only want to remove nodes corresponding
+            to a specific list of qnode_keys to be removed. If not provided or empty,
+            all nodes will be considered when filtering.
+          example:
+          - n01
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+        remove_value:
+          description: The value for which all edges containing this value in the
+            specified edge_attribute should be removed.
+          example: small_molecule
+          title: remove_value
+      required:
+      - node_attribute
+      - remove_value
+      title: OperationFilterKgraphDiscreteKnodeAttribute_parameters
       type: object
     OperationFilterKgraphPercentile_parameters:
       properties:

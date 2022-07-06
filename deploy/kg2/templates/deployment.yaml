@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "kg2.fullname" . }}
+  labels: 
+    {{- include "kg2.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "kg2.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kg2.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kg2.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "kg2.serviceAccountName" . }}
+      initContainers:
+        - name: {{ .Chart.Name }}-init-container
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
+          command:
+            - "/bin/bash"
+            - "/scripts/download_database.sh"
+          volumeMounts:
+            - name: {{ include "kg2.fullname" . }}-secret-volume
+              mountPath: "/etc/ssh-key"
+            - name: {{ include "kg2.fullname" . }}-configs-volume
+              mountPath: "/configs"
+            - name: {{ include "kg2.fullname" . }}-scripts-volume
+              mountPath: "/scripts"
+            - name: {{ include "kg2.fullname" . }}-pvc
+              mountPath: /databases
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - "/bin/bash"
+            - "/scripts/start_app.sh"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - name: {{ include "kg2.fullname" . }}-pvc
+              mountPath: /mnt/data/orangeboard/databases/
+            - name: {{ include "kg2.fullname" . }}-configs-volume
+              mountPath: /configs
+            - name: {{ include "kg2.fullname" . }}-scripts-volume
+              mountPath: /scripts
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: {{ include "kg2.fullname" . }}-secret-volume
+          secret:
+            secretName: {{ include "kg2.fullname" . }}-secret
+            defaultMode: 0400
+        - name: {{ include "kg2.fullname" . }}-scripts-volume
+          configMap:
+            name: {{ include "kg2.fullname" . }}-scripts
+            defaultMode: 0755
+        - name: {{ include "kg2.fullname" . }}-configs-volume
+          configMap:
+            name: {{ include "kg2.fullname" . }}-configs
+            defaultMode: 0755
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ include "kg2.fullname" . }}-pvc
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 200Gi

@@ -1,0 +1,108 @@
+{
+  "message": {
+    "query_graph": {
+      "edges": {
+        "e0": {
+          "constraints": [],
+          "object": "n1",
+          "predicates": [
+            "biolink:related_to"
+          ],
+          "subject": "n0"
+        },
+        "e1": {
+          "constraints": [],
+          "object": "n2",
+          "predicates": [
+            "biolink:related_to"
+          ],
+          "subject": "n1"
+        },
+        "e2": {
+          "constraints": [],
+          "object": "n3",
+          "predicates": [
+            "biolink:genetically_interacts_with"
+          ],
+          "subject": "n1"
+        },
+        "e3": {
+          "constraints": [],
+          "object": "n3",
+          "predicates": [
+            "biolink:affects"
+          ],
+          "subject": "n4"
+        }
+      },
+      "nodes": {
+        "n0": {
+          "categories": [
+            "biolink:BiologicalProcess"
+          ],
+          "constraints": [],
+          "ids": [
+            "GO:0022010",
+            "UMLS:C1818586"
+          ],
+          "is_set": false,
+          "name": "central nervous system myelination"
+        },
+        "n1": {
+          "categories": [
+            "biolink:Gene",
+            "biolink:Protein"
+          ],
+          "constraints": [],
+          "is_set": true
+        },
+        "n2": {
+          "categories": [
+            "biolink:Disease"
+          ],
+          "constraints": [],
+          "ids": [
+            "MONDO:0020800",
+            "UMLS:C4076113",
+            "UMLS:C0586256",
+            "MONDO:0006692",
+            "MONDO:0005301",
+            "UMLS:C4511867",
+            "UMLS:C2921627",
+            "UMLS:C4511844",
+            "MONDO:0009835",
+            "UMLS:C1720104",
+            "UMLS:C4075966",
+            "MONDO:0020800",
+            "UMLS:C4510698",
+            "UMLS:C4511050",
+            "MONDO:0010085",
+            "UMLS:C4546140",
+            "MONDO:0011380",
+            "UMLS:C4511864",
+            "UMLS:C4511865",
+            "UMLS:C4324721",
+            "MONDO:0016430",
+            "UMLS:C0393820"
+          ],
+          "is_set": false
+        },
+        "n3": {
+          "categories": [
+            "biolink:Gene",
+            "biolink:Protein"
+          ],
+          "constraints": [],
+          "is_set": true
+        },
+        "n4": {
+          "categories": [
+            "biolink:SmallMolecule"
+          ],
+          "constraints": [],
+          "is_set": false
+        }
+      }
+    }
+  }
+}

@@ -11,6 +11,7 @@ synonymizer_dir=${code_dir}/ARAX/NodeSynonymizer
 # Build a NodeSynonymizer using the KG2 endpoint specified under the "KG2" slot in the ARAX config file
 cd ${synonymizer_dir}
 rm -f sri_node_normalizer_requests_cache.sqlite  # Cache may be stale, so we delete
+rm -f sri_node_normalizer_curie_cache.pickle
 python3 -u dump_kg2_node_data.py
 python3 -u sri_node_normalizer.py --build
 python3 -u node_synonymizer.py --build

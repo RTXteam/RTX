@@ -56,6 +56,10 @@ class ARAXDatabaseManager:
         if not os.path.exists(autocomplete_filepath):
             os.system(f"mkdir -p {autocomplete_filepath}")
 
+        explainable_dtd_db_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
+        if not os.path.exists(explainable_dtd_db_filepath):
+            os.system(f"mkdir -p {explainable_dtd_db_filepath}")
+
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
@@ -66,7 +70,8 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
             'kg2c_meta_kg': f"{kg2c_meta_kg_filepath}{os.path.sep}{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
-            'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}"
+            'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
+            'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}"
         }
         # user, host, and paths to databases on remote server
         self.remote_locations = {
@@ -79,7 +84,8 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_username}@{self.RTXConfig.kg2c_sqlite_host}:{self.RTXConfig.kg2c_sqlite_path}",
             'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_username}@{self.RTXConfig.kg2c_meta_kg_host}:{self.RTXConfig.kg2c_meta_kg_path}",
             'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_username}@{self.RTXConfig.fda_approved_drugs_host}:{self.RTXConfig.fda_approved_drugs_path}",
-            'autocomplete': f"{self.RTXConfig.autocomplete_username}@{self.RTXConfig.autocomplete_host}:{self.RTXConfig.autocomplete_path}"
+            'autocomplete': f"{self.RTXConfig.autocomplete_username}@{self.RTXConfig.autocomplete_host}:{self.RTXConfig.autocomplete_path}",
+            'explainable_dtd_db': f"{self.RTXConfig.explainable_dtd_db_username}@{self.RTXConfig.explainable_dtd_db_host}:{self.RTXConfig.explainable_dtd_db_path}"
         }
         # database locations if inside rtx1 docker container
         self.docker_paths = {
@@ -92,7 +98,8 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace('/translator/', '/mnt/')}",
             'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_path.replace('/translator/', '/mnt/')}",
             'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_path.replace('/translator/', '/mnt/')}",
-            'autocomplete': f"{self.RTXConfig.autocomplete_path.replace('/translator/', '/mnt/')}"
+            'autocomplete': f"{self.RTXConfig.autocomplete_path.replace('/translator/', '/mnt/')}",
+            'explainable_dtd_db': f"{self.RTXConfig.explainable_dtd_db_path.replace('/translator/', '/mnt/')}"
         }
 
         # database local paths + version numbers
@@ -136,6 +143,10 @@ class ARAXDatabaseManager:
             'autocomplete': {
                 'path': self.local_paths['autocomplete'],
                 'version': self.RTXConfig.autocomplete_version
+            },
+            'explainable_dtd_db': {
+                'path': self.local_paths['explainable_dtd_db'],
+                'version': self.RTXConfig.explainable_dtd_db_version
             }
         }
 
@@ -177,20 +188,14 @@ class ARAXDatabaseManager:
                 else:
                     if debug:
                         print(f"Local version of {database_name} matches the remote version, skipping...")
-            with open(versions_path,"w") as fid:
-                if debug:
-                    print("Saving new version file...")
-                json.dump(self.db_versions, fid)
+            self.write_db_versions_file()
         else: # If database manager has never been run download all databases
             if debug:
                 print("No local verson json file present. Downloading all databases...")
             if response is not None:
                 response.debug(f"No local verson json file present. Downloading all databases...")
             self.force_download_all(debug=debug)
-            with open(versions_path,"w") as fid:
-                if debug:
-                    print("Saving new version file...")
-                json.dump(self.db_versions, fid)
+            self.write_db_versions_file()
         return response
 
     def check_versions(self, debug=False):
@@ -234,7 +239,7 @@ class ARAXDatabaseManager:
             return True
 
     def download_database(self, remote_location, local_path, remote_path, debug=False):
-        if os.path.exists(remote_path): # if on the server symlink instead of downloading
+        if remote_path is not None and os.path.exists(remote_path): # if on the server symlink instead of downloading
             self.symlink_database(local_path=local_path, remote_path=remote_path)
         else:
             self.rsync_database(remote_location=remote_location, local_path=local_path, debug=debug)
@@ -248,6 +253,23 @@ class ARAXDatabaseManager:
             verbose = "vv"
         os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
 
+    def download_to_mnt(self, debug=False, skip_if_exists=False):
+        for database_name in self.remote_locations.keys():
+            database_dir = os.path.sep.join(self.docker_paths[database_name].split('/')[:-1])
+            if debug:
+                print(f"in download_to_mnt, for database {database_name}")
+            if not os.path.exists(database_dir):
+                if debug:
+                    print(f"Creating directory {database_dir}...")
+                os.system(f"mkdir -p {database_dir}")
+            local_path = self.docker_paths[database_name]
+            if not skip_if_exists or not os.path.exists(local_path):
+                remote_location = self.remote_locations[database_name]
+                print(f"Initiating download from location {remote_location}") if debug else None
+                self.download_database(remote_location=remote_location, local_path=local_path, remote_path=None, debug=debug)
+            else:
+                print(f"  Database already exists, no need to download") if debug else None
+                
     def force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
             if debug:
@@ -258,14 +280,22 @@ class ARAXDatabaseManager:
         for database_name in self.remote_locations.keys():
             if debug:
                 print(f"Downloading slim {self.remote_locations[database_name].split('/')[-1]}...")
-            if database_name in ["node_synonymizer", "curie_to_pmids", "log_model", "kg2c_sqlite", "kg2c_meta_kg", "fda_approved_drugs"]:
+            if database_name in ["curie_to_pmids", "log_model", "kg2c_meta_kg", "fda_approved_drugs", "autocomplete"]:
                 self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
-            elif database_name in ["cohd_database", "dtd_prob", "graph_database"]:
+            elif database_name in ["node_synonymizer", "kg2c_sqlite", "cohd_database", "dtd_prob", "graph_database"]:
                 self.download_database(remote_location=self.remote_locations[database_name].replace(".sqlite","_slim.sqlite").replace(".db","_slim.db"), local_path=self.local_paths[database_name], remote_path=self.docker_paths[database_name], debug=debug)
             else:
                 if debug:
                     print("Making fake database...")
                 os.system(f"touch {self.local_paths[database_name]}")
+        #FW: Somewhat hacky solution to slow meta kg downloads from the KPs
+        if debug:
+                print(f"Downloading Meta KG data...")
+        metakg_remote_location = f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:/translator/data/orangeboard/production/RTX/code/ARAX/ARAXQuery/Expand/meta_map_v2.pickle"
+        metakg_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Expand', 'meta_map_v2.pickle'])
+        metakg_docker_path = "/mnt/data/orangeboard/production/RTX/code/ARAX/ARAXQuery/Expand/meta_map_v2.pickle"
+        self.download_database(remote_location=metakg_remote_location, local_path=metakg_filepath, 
+                                remote_path=metakg_docker_path, debug=debug)
         with open(versions_path,"w") as fid:
             if debug:
                 print("Saving new version file...")
@@ -301,13 +331,21 @@ class ARAXDatabaseManager:
                     print(f"{database_name} not present or older than {max_days} days. Updating file...")
                 self.download_database(remote_location=self.remote_locations[database_name], local_path=local_path, remote_path=self.docker_paths[database_name], debug=debug)
 
+    def write_db_versions_file(self, debug=False):
+        print(f"saving new version file to {versions_path}") if debug else None
+        with open(versions_path, "w") as fid:
+            json.dump(self.db_versions, fid)
 
+        
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--check_local", action='store_true')
-    parser.add_argument("-f", "--force_download", action='store_true')
+    parser.add_argument("-f", "--force_download", action='store_true', help="Download all database without checking local versions")
+    parser.add_argument("-m", "--mnt", action='store_true', help="Download all database files to /mnt")
     parser.add_argument("-l", "--live", type=str, help="Live parameter for RTXConfiguration", default="Production", required=False)
     parser.add_argument("-s", "--slim", action='store_true')
+    parser.add_argument("-g", "--generate-versions-file", action='store_true', dest="generate_versions_file", required=False, help="just generate the db_versions.json file and do nothing else (ONLY USED IN TESTING/DEBUGGING)")
+    parser.add_argument("-e", "--skip-if-exists", action='store_true', dest='skip_if_exists', required=False, help="for -m mode only, do not download a file if it already exists under /mnt/data/orangeboard/databases/KG2.X.X")
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager(arguments.live)
     if arguments.check_local:
@@ -317,6 +355,10 @@ def main():
         DBManager.download_slim(debug=True)
     elif arguments.force_download:
         DBManager.force_download_all(debug=True)
+    elif arguments.mnt:
+        DBManager.download_to_mnt(debug=True, skip_if_exists=arguments.skip_if_exists)
+    elif arguments.generate_versions_file:
+        DBManager.write_db_versions_file(debug=True)
     else:
         DBManager.update_databases(debug=True)
 

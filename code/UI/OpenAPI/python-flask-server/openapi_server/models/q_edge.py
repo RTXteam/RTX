@@ -17,9 +17,11 @@ class QEdge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, predicates=None, subject=None, object=None, constraints=None, exclude=None, option_group_id=None):  # noqa: E501
+    def __init__(self, predicates=None, subject=None, object=None, constraints=[], exclude=None, option_group_id=None, knowledge_type=None):  # noqa: E501
         """QEdge - a model defined in OpenAPI
 
+        :param knowledge_type: The knowledge_type of this QEdge.  # noqa: E501
+        :type knowledge_type: str
         :param predicates: The predicates of this QEdge.  # noqa: E501
         :type predicates: List[str]
         :param subject: The subject of this QEdge.  # noqa: E501
@@ -34,6 +36,7 @@ class QEdge(Model):
         :type option_group_id: str
         """
         self.openapi_types = {
+            'knowledge_type': str,
             'predicates': List[str],
             'subject': str,
             'object': str,
@@ -43,6 +46,7 @@ class QEdge(Model):
         }
 
         self.attribute_map = {
+            'knowledge_type': 'knowledge_type',
             'predicates': 'predicates',
             'subject': 'subject',
             'object': 'object',
@@ -51,6 +55,7 @@ class QEdge(Model):
             'option_group_id': 'option_group_id'
         }
 
+        self._knowledge_type = knowledge_type
         self._predicates = predicates
         self._subject = subject
         self._object = object
@@ -68,6 +73,29 @@ class QEdge(Model):
         :rtype: QEdge
         """
         return util.deserialize_model(dikt, cls)
+
+    @property
+    def knowledge_type(self):
+        """Gets the knowledge_type of this QEdge.
+
+        Indicates the type of knowledge that the client wants from the server between the subject and object. If the value is 'lookup', then the client wants direct lookup information from knowledge sources. If the value is 'inferred', then the client wants the server to get creative and connect the subject and object in more speculative and non-direct-lookup ways. If this property is absent or null, it MUST be assumed to mean 'lookup'. This feature is currently experimental and may be further extended in the future.  # noqa: E501
+
+        :return: The knowledge_type of this QEdge.
+        :rtype: str
+        """
+        return self._knowledge_type
+
+    @knowledge_type.setter
+    def knowledge_type(self, knowledge_type):
+        """Sets the knowledge_type of this QEdge.
+
+        Indicates the type of knowledge that the client wants from the server between the subject and object. If the value is 'lookup', then the client wants direct lookup information from knowledge sources. If the value is 'inferred', then the client wants the server to get creative and connect the subject and object in more speculative and non-direct-lookup ways. If this property is absent or null, it MUST be assumed to mean 'lookup'. This feature is currently experimental and may be further extended in the future.  # noqa: E501
+
+        :param knowledge_type: The knowledge_type of this QEdge.
+        :type knowledge_type: str
+        """
+
+        self._knowledge_type = knowledge_type
 
     @property
     def predicates(self):

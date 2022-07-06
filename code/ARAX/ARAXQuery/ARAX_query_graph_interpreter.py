@@ -212,7 +212,7 @@ class ARAXQueryGraphInterpreter:
         response.data['araxi_commands'] = [
             'expand()',
             'resultify()',
-            'filter_results(action=limit_number_of_results, max_results=100)'
+            'filter_results(action=limit_number_of_results, max_results=500)'
         ]
 
         return response

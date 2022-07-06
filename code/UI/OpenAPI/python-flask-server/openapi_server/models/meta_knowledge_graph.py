@@ -71,6 +71,8 @@ class MetaKnowledgeGraph(Model):
         :param nodes: The nodes of this MetaKnowledgeGraph.
         :type nodes: Dict[str, MetaNode]
         """
+        if nodes is None:
+            raise ValueError("Invalid value for `nodes`, must not be `None`")  # noqa: E501
 
         self._nodes = nodes
 
@@ -94,6 +96,8 @@ class MetaKnowledgeGraph(Model):
         :param edges: The edges of this MetaKnowledgeGraph.
         :type edges: List[MetaEdge]
         """
+        if edges is None:
+            raise ValueError("Invalid value for `edges`, must not be `None`")  # noqa: E501
         if edges is not None and len(edges) < 1:
             raise ValueError("Invalid value for `edges`, number of items must be greater than or equal to `1`")  # noqa: E501
 

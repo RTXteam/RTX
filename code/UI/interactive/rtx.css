@@ -113,7 +113,7 @@ hr {
 .stitle {
     display: inline-block;
     margin: 0px;
-    width: 315px;
+    width: 430px;
     border-bottom: 2px solid black;
     text-align: center;
     margin-left: 20px;
@@ -173,8 +173,18 @@ hr {
     height: 30px;
     width: 30px;
 }
+.clwin2 {
+    display: inline-block;
+    height: 30px;
+    width: 30px;
+    position: relative;
+    top: -40px;
+    left: 100%;
+    font-weight: bold;
+    font-size: 16px;
+}
 
-#dslText, #jsonText, #responseText {
+#dslText, #wfJSON, #jsonText, #responseText {
     width: 80%;
     height: 20em;
     overflow:scroll;
@@ -385,6 +395,14 @@ hr {
     100% { transform:translateX(300%); }
 }
 
+.working {
+    animation: 1s working ease-in-out infinite alternate;
+}
+@keyframes working {
+    0%   { background-color: #fff; }
+    100% { background-color: #f80; }
+}
+
 .p9, .msgINFO    { background-color: #291; }
 .p7              { background-color: #7b4; }
 .p5              { background-color: #cc5; }
@@ -449,6 +467,7 @@ pre {
 
 .t100 {
     width: 100%;
+    border-collapse:collapse;
 }
 
 table.sumtab {
@@ -477,32 +496,29 @@ table.sumtab {
     border-bottom: 1px solid #aaa;
     padding: 4px 3px;
 }
-.DEBUG {
-    color: #999;
-}
-.INFO {
-    color: #333;
-}
-.WARNING {
-    color: #750;
-}
-.ERROR {
-    color: #c40;
-}
+.DEBUG   { color: #999; }
+.INFO    { color: #333; }
+.WARNING { color: #750; }
+.ERROR   { color: #c40; }
 
 
 td {
     vertical-align:top;
 }
-.textanswer {
-    width: 10%;
-}
 .cytograph_controls {
+    border: 1px solid black;
+    box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
     vertical-align:top;
+}
+.cytograph_controls a {
+    text-decoration: none;
+    border: 1px solid transparent;
+    padding: 3px 12px;
+    display: inline-block;
 }
 .cytograph_controls a:hover {
     text-decoration: none;
-    border: 1px solid #fff;
+    border-color: #fff;
     background-color: #c40;
     color: #fff;
     cursor: pointer;
@@ -510,7 +526,7 @@ td {
 .cytograph {
     border: 1px solid #444;
     height: 300px;
-    width: 90%;
+    width: 99%;
     background-color: #fff;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
 }
@@ -532,6 +548,19 @@ td {
 .fieldname {
     font-weight: bold;
     text-transform: capitalize;
+}
+
+.attvalue {
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.subatts {
+    border: 1px solid #444;
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
+    background: #abc;
 }
 
 .questionBox {
@@ -595,6 +624,46 @@ td {
     margin-right: -5px;
 }
 
+.wfpanel {
+    width: 41%;
+    display: inline-block;
+    vertical-align: top;
+    min-height: 300px;
+    margin-right: 10px;
+}
+#wflist {
+    padding-left: 0px;
+    list-style-position: inside;
+}
+.wflistitem {
+    background-color: #047;
+    color: #fff;
+    cursor: pointer;
+    border: 2px solid #000;
+    border-radius: 12px;
+    padding: 10px;
+    margin: 5px 10px;
+    transition: border .1s;
+}
+.wflistitemselected {
+    background-color: #9bc;
+    color: #333;
+    cursor: pointer;
+    border: 2px solid #000;
+    border-radius: 12px;
+    padding: 10px;
+    margin: 5px 10px;
+    transition: border .1s;
+    font-weight: bold;
+}
+.wflistitemselected:before {
+    content: ' \279C ';
+    float: right;
+}
+.wflistitem:hover {
+    background-color: #9bc;
+    color: #333;
+}
 
 .essence {
     font-weight: bold;
@@ -614,6 +683,37 @@ td {
 .blue {
     color: #047
 }
+
+
+.filterhead {
+    cursor: pointer;
+    position: relative;
+}
+.filtermenu {
+    display: none;
+    width: max-content;
+    min-width: 100%;
+    position: absolute;
+    left: 0px;
+    top: 18px;
+    background-color: #eee;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 5;
+}
+.filtermenu a {
+    padding: 4px 5px;
+    text-decoration: none;
+    text-transform: initial;
+    text-align: left;
+    color: initial;
+    display: block;
+}
+.filtermenu a:hover { background-color: #9bc; }
+.filterhead:hover   { background-color: #eee; }
+.filterhead:hover .filtermenu {
+    display: block;
+}
+
 
 .switch {
   position: relative;

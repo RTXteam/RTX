@@ -16,6 +16,9 @@ import threading
 import json
 import uuid
 import requests
+import gc
+import contextlib
+import connexion
 
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -27,6 +30,7 @@ from ARAX_query_graph_interpreter import ARAXQueryGraphInterpreter
 from ARAX_messenger import ARAXMessenger
 from ARAX_ranker import ARAXRanker
 from operation_to_ARAXi import WorkflowToARAXi
+from ARAX_query_tracker import ARAXQueryTracker
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
@@ -45,8 +49,6 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
-#from ParseQuestion import ParseQuestion
-#from QueryGraphReasoner import QueryGraphReasoner
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
@@ -55,6 +57,21 @@ from ARAX_database_manager import ARAXDatabaseManager
 from reasoner_validator import validate
 from jsonschema.exceptions import ValidationError
 
+ARAXResponse.output = 'STDERR'
+
+null_context_manager = contextlib.nullcontext()
+
+query_tracker_reset = ARAXQueryTracker()
+query_tracker_reset.clear_unfinished_entries()
+
+class response_locking(ARAXResponse):
+    def __init__(self, lock: threading.Lock):
+        self.lock = lock
+        super().__init__()
+
+    def __add_message(self, message, level, code=None):
+        with self.lock:
+            super()._add_message(message, level, code)
 
 class ARAXQuery:
 
@@ -63,81 +80,147 @@ class ARAXQuery:
         self.response = None
         self.message = None
         self.rtxConfig = RTXConfiguration()
-        
         self.DBManager = ARAXDatabaseManager(live = "Production")
+        self.lock = None
         if self.DBManager.check_versions():
             self.response = ARAXResponse()
             self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
             self.response = self.DBManager.update_databases(True, response=self.response)
 
 
-    def query_return_stream(self,query, mode='ARAX'):
+    def handle_memory_error(self, e):
+        with self.lock if self.lock is not None else null_context_manager:
+            self.response.envelope.message.results = []
+        gc.collect()
+        print("[asynchronous_query]: " + repr(e), file=sys.stderr)
+        with self.lock if self.lock is not None else null_context_manager:
+            self.response.error("ARAX ran out of memory during query processing; no results will be returned for this query")
+
+
+    def query_return_stream(self, query, mode='ARAX'):
 
         main_query_thread = threading.Thread(target=self.asynchronous_query, args=(query,mode,))
+        self.lock = threading.Lock()
         main_query_thread.start()
 
         if self.response is None or "DONE" not in self.response.status:
 
             # Sleep until a response object has been created
-            while self.response is None:
-                time.sleep(0.1)
+            have_response = False
+            while not have_response:
+                with self.lock:
+                    have_response = (self.response is not None)
+                if not have_response:
+                    time.sleep(0.1)
 
-            i_message = 0
-            n_messages = len(self.response.messages)
+            try:
+                i_message = 0
+                with self.lock:
+                    n_messages = len(self.response.messages)
+                query_plan_counter = 0
+                idle_ticks = 0.0
+                pid = None
 
-            while "DONE" not in self.response.status:
-                n_messages = len(self.response.messages)
-                while i_message < n_messages:
-                    yield(json.dumps(self.response.messages[i_message])+"\n")
-                    i_message += 1
-                time.sleep(0.2)
+                self.response.debug("In query_return_stream")
 
-            # #### If there are any more logging messages in the queue, send them first
+                response_status_says_done = False
+                while not response_status_says_done:
+                    with self.lock:
+                        response_status_says_done = ("DONE" in self.response.status)
+                    if response_status_says_done:
+                        break
+                    with self.lock:
+                        n_messages = len(self.response.messages)
+                    while i_message < n_messages:
+                        with self.lock:
+                            i_message_obj = self.response.messages[i_message].copy()
+                        yield(json.dumps(i_message_obj) + "\n")
+                        i_message += 1
+                        idle_ticks = 0.0
+
+                    if pid is None:
+                        pid = os.getpid()
+                        authorization = str(hash('Pickles' + str(pid)))
+                        yield(json.dumps( { "pid": pid, "authorization": authorization } )+"\n")
+
+                    #### Also emit any updates to the query_plan
+                    with self.lock:
+                        self_query_plan_counter = self.response.query_plan['counter']
+                    if query_plan_counter < self_query_plan_counter:
+                        query_plan_counter = self_query_plan_counter
+                        with self.lock:
+                            self_response_query_plan = self.response.query_plan.copy()
+                        yield(json.dumps(self_response_query_plan, sort_keys=True) + "\n")
+                        idle_ticks = 0.0
+                    time.sleep(0.2)
+                    idle_ticks += 0.2
+                    if idle_ticks > 180.0:
+                        timestamp = str(datetime.now().isoformat())
+                        yield json.dumps({ 'timestamp': timestamp, 'level': 'DEBUG', 'code': '', 'message': 'Query is still progressing...' }) + "\n"
+                        idle_ticks = 0.0
+            except MemoryError as e:
+                self.handle_memory_error(e)
+
+                # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
             while i_message < n_messages:
-                yield(json.dumps(self.response.messages[i_message])+"\n")
+                yield(json.dumps(self.response.messages[i_message]) + "\n")
                 i_message += 1
 
+            #### Also emit any updates to the query_plan
+            self_response_query_plan_counter = self.response.query_plan['counter']
+            if query_plan_counter < self_response_query_plan_counter:
+                query_plan_counter = self_response_query_plan_counter
+                yield(json.dumps(self.response.query_plan, sort_keys=True) + "\n")
+
             # Remove the little DONE flag the other thread used to signal this thread that it is done
-            self.response.status = re.sub('DONE,','',self.response.status)
+            self.response.status = re.sub('DONE,', '', self.response.status)
 
             # Stream the resulting message back to the client
-            yield(json.dumps(self.response.envelope.to_dict()))
+            yield(json.dumps(self.response.envelope.to_dict(), sort_keys=True) + "\n")
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
-        return { 'DONE': True }
+        self.track_query_finish()
+        return
 
 
     def asynchronous_query(self,query, mode='ARAX'):
 
-        #### Define a new response object if one does not yet exist
-        if self.response is None:
-            self.response = ARAXResponse()
+        try:
+            #### Define a new response object if one does not yet exist
+            with self.lock:
+                have_response = self.response is not None
+            if not have_response:
+                new_response = response_locking(self.lock)
+                with self.lock:
+                    self.response = new_response
 
-        #### Execute the query
-        self.query(query, mode=mode)
+            self.response.debug("in asynchronous_query")
 
-        #### Do we still need all this cruft?
-        #result = self.query(query)
-        #message = self.message
-        #if message is None:
-        #    message = Message()
-        #    self.message = message
-        #message.message_code = result.error_code
-        #message.code_description = result.message
-        #message.log = result.messages
+            #### Execute the query
+            self.query(query, mode=mode, origin='API')
+
+        except MemoryError as e:
+            self.handle_memory_error(e)
+
 
         # Insert a little flag into the response status to denote that this thread is done
-        self.response.status = f"DONE,{self.response.status}"
+        with self.lock:
+            self.response.status = f"DONE,{self.response.status}"
+
         return
 
 
     ########################################################################################
     def query_return_message(self, query, mode='ARAX'):
 
-        self.query(query, mode=mode)
+        self.response = ARAXResponse()
         response = self.response
+        print("in query_return_message - printing", file=sys.stderr)
+        response.debug("in query_return_message")
+
+        self.query(query, mode=mode, origin='API')
 
         #### If the query ended in an error, copy the error to the envelope
         if response.status != 'OK':
@@ -146,82 +229,162 @@ class ARAXQuery:
             if hasattr(response,'http_status'):
                 response.envelope.http_status = response.http_status
 
+        if mode == 'asynchronous':
+            attributes = {
+                'status': 'Running Async',
+                'message_id': None,
+                'message_code': 'Running',
+                'code_description': 'Query running via /asyncquery'
+            }
+            query_tracker = ARAXQueryTracker()
+            query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+        else:
+            self.track_query_finish()
+
         return response.envelope
 
 
     ########################################################################################
-    def query(self,query, mode='ARAX'):
+    def track_query_finish(self):
+
+        query_tracker = ARAXQueryTracker()
+        try:
+            response_id = self.response.response_id
+        except:
+            response_id = None
+
+        attributes = {
+            'status': 'Completed',
+            'message_id': response_id,
+            'message_code': self.response.error_code,
+            'code_description': self.response.message
+        }
+
+        query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+
+
+
+
+    ########################################################################################
+    def query(self, query, mode='ARAX', origin='local'):
 
         #### Create the skeleton of the response
-        response = ARAXResponse()
-        self.response = response
+        response = self.response
+        if response is None:  # At this point in the code, the response should only be
+                              # None in regression tests that call ARAXQuery.query() directly
+            response = ARAXResponse()
+            self.response = response
 
         #### Announce the launch of query()
         #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
-        ARAXResponse.output = 'STDERR'
         response.info(f"{mode} Query launching on incoming Query")
 
         #### Create an empty envelope
         messenger = ARAXMessenger()
         messenger.create_envelope(response)
 
-        #### Determine a plan for what to do based on the input
-        #eprint(json.dumps(query, indent=2, sort_keys=True))
-        result = self.examine_incoming_query(query, mode=mode)
-        if result.status != 'OK':
-            return response
-        query_attributes = result.data
-
-        #### Convert the message from dicts to objects
-        if 'message' in query:
-            response.debug(f"Deserializing message")
-            query['message'] = ARAXMessenger().from_dict(query['message'])
-
-        # If there is a workflow, translate it to ARAXi and append it to the operations actions list
-        if "have_workflow" in query_attributes:
-            try:
-                self.convert_workflow_to_ARAXi(query)
-            except Exception as error:
-                exception_type, exception_value, exception_traceback = sys.exc_info()
-                response.error(f"An unhandled error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UnhandledError")
-                return response
-            query_attributes["have_operations"] = True
-
-        # #### If we have a query_graph in the input query
-        if "have_query_graph" in query_attributes and "have_operations" not in query_attributes:
-
-            response.envelope.message.query_graph = query['message'].query_graph
-
-            #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
-            if mode == 'ARAX' or mode == 'asynchronous':
-                response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
-                interpreter = ARAXQueryGraphInterpreter()
-                interpreter.translate_to_araxi(response)
-                if response.status != 'OK':
-                    return response
-                query['operations'] = {}
-                query['operations']['actions'] = result.data['araxi_commands']
-
-            #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
-            else:
-                response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
-                if len(response.envelope.message.query_graph.nodes) > 2:
-                    response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
-                    return response
-                query['operations'] = {}
-                query['operations']['actions'] = [ 'expand(kp=RTX-KG2)', 'resultify()', 'return(store=false)' ]
-
-            query_attributes['have_operations'] = True
-
-
-        #### If we have operations, execute them
-        if "have_operations" in query_attributes:
-            response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
-            result = self.execute_processing_plan(query, mode=mode)
-
-        #### This used to support canned queries, but no longer does
+        #### Preserve the query_options
+        if 'query_options' in query and query['query_options'] is not None:
+            response.envelope.query_options = query['query_options']
         else:
-            response.error(f"Unable to determine ARAXi to execute. Error Q213", error_code="UnknownError")
+            response.envelope.query_options = {}
+
+        #### Need to put certain input Query parameters into query_options to later use by Expand et al.
+        if 'return_minimal_metadata' in query:
+            response.envelope.query_options['return_minimal_metadata'] = query['return_minimal_metadata']
+
+        #### If a submitter came in, reflect that back into the response
+        if "callback" in query and query['callback'] is not None and query['callback'].startswith('http://localhost:8000/ars/'):
+            response.envelope.submitter = 'ARS'
+        elif 'submitter' in query:
+            response.envelope.submitter = query['submitter']
+        else:
+            if "callback" in query and query['callback'] is not None:
+                match = re.match(r'http[s]://(.+?)/',query['callback'])
+                if match:
+                    response.envelope.submitter = match.group(1)
+                else:
+                    response.envelope.submitter = '?'
+            else:
+                response.envelope.submitter = '?'
+
+        #### Create an entry to track this query
+        tracker_id = None
+        if origin == 'API':
+            query_tracker = ARAXQueryTracker()
+            if 'remote_address' in query and query['remote_address'] is not None:
+                remote_address = query['remote_address']
+            else:
+                remote_address = '????'
+            attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
+            tracker_id = query_tracker.create_tracker_entry(attributes)
+        response.tracker_id = tracker_id
+
+        try:
+            #### Determine a plan for what to do based on the input
+            #eprint(json.dumps(query, indent=2, sort_keys=True))
+            result = self.examine_incoming_query(query, mode=mode)
+            if result.status != 'OK':
+                return response
+            query_attributes = result.data
+
+            #### Convert the message from dicts to objects
+            if 'message' in query:
+                response.debug(f"Deserializing message")
+                query['message'] = ARAXMessenger().from_dict(query['message'])
+
+            # If there is a workflow, translate it to ARAXi and append it to the operations actions list
+            if "have_workflow" in query_attributes:
+                if query['message'].query_graph is None:
+                    response.error(f"Cannot have a workflow with an null query_graph", error_code="MissingQueryGraph")
+                    return response
+
+                try:
+                    self.convert_workflow_to_ARAXi(query)
+                except Exception as error:
+                    exception_type, exception_value, exception_traceback = sys.exc_info()
+                    response.error(f"An unhandled error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UnhandledError")
+                    return response
+                query_attributes["have_operations"] = True
+
+            # #### If we have a query_graph in the input query
+            if "have_query_graph" in query_attributes and "have_operations" not in query_attributes:
+
+                response.envelope.message.query_graph = query['message'].query_graph
+
+                #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
+                if mode == 'ARAX' or mode == 'asynchronous':
+                    response.info(f"Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                    interpreter = ARAXQueryGraphInterpreter()
+                    interpreter.translate_to_araxi(response)
+                    if response.status != 'OK':
+                        return response
+                    query['operations'] = {}
+                    query['operations']['actions'] = result.data['araxi_commands']
+
+                #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
+                else:
+                    response.info(f"Found input query_graph. Querying RTX KG2 to answer it")
+                    if len(response.envelope.message.query_graph.nodes) > 2:
+                        response.error(f"Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
+                        return response
+                    query['operations'] = {}
+                    query['operations']['actions'] = [ 'expand(kp=infores:rtx-kg2)', 'resultify()', 'return(store=false)' ]
+
+                query_attributes['have_operations'] = True
+
+
+            #### If we have operations, execute them
+            if "have_operations" in query_attributes:
+                response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
+                result = self.execute_processing_plan(query, mode=mode)
+
+            #### This used to support canned queries, but no longer does
+            else:
+                response.error(f"Unable to determine ARAXi to execute. Error Q213", error_code="UnknownError")
+
+        except MemoryError as e:
+            self.handle_memory_error(e)
 
         return response
 
@@ -275,7 +438,13 @@ class ARAXQuery:
 
         # Convert the TRAPI workflow into ARAXi
         converter = WorkflowToARAXi()
-        araxi = converter.translate(query['workflow'], query['query_graph'], response)
+        araxi = converter.translate(query['workflow'], query['message'].query_graph.to_dict(), response)
+        # The translation returns a list of ARAXi commands. If this list is empty, something went wrong
+        # When convert_workflow_to_ARAXi is called, it's wrapped in a try/except, so raise an Exception to indicate
+        # that something went wrong
+        if not araxi:
+            response.error("Unable to translate workflow into ARAXi", error_code="TranslationFailed")
+            raise Exception
 
         # If there are not already operations, create empty stubs
         if 'operations' not in query:
@@ -297,7 +466,7 @@ class ARAXQuery:
 
         # Define allowed qnode and qedge attributes to check later
         allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'option_group_id': 1, 'name': 1, 'constraints': 1 }
-        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'constraints': 1 }
+        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'constraints': 1, 'knowledge_type': 1 }
 
         #### Loop through nodes checking the attributes
         for id,qnode in message['query_graph']['nodes'].items():
@@ -340,7 +509,6 @@ class ARAXQuery:
             incoming_message = input_operations_dict['message']
             if isinstance(incoming_message,dict):
                 incoming_message = Message.from_dict(incoming_message)
-            eprint(f"TESTING: incoming_test is a {type(incoming_message)}")
             messages = [ incoming_message ]
 
         #### Pull out the main processing plan
@@ -480,12 +648,16 @@ class ARAXQuery:
             from ARAX_filter_kg import ARAXFilterKG
             from ARAX_resultify import ARAXResultify
             from ARAX_filter_results import ARAXFilterResults
+            from ARAX_infer import ARAXInfer
+            from ARAX_connect import ARAXConnect
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
+            infer = ARAXInfer()
+            connect = ARAXConnect()
             self.message = message
 
             #### Create some empty stubs if they don't exist
@@ -501,11 +673,21 @@ class ARAXQuery:
                 newpid = os.fork()
                 #### The parent returns to tell the caller that work will proceed
                 if newpid > 0:
+                    response.envelope.status = 'Running'
+                    response.envelope.description = 'Asynchronous answering of query underway'
                     return response
                 #### The child continues
                 #### The child loses the MySQL connection of the parent, so need to reconnect
                 response_cache.connect()
-                
+                time.sleep(1)
+                attributes = {
+                    'pid': os.getpid(),
+                    'code_description': 'Query executing via /asyncquery'
+                }
+                query_tracker = ARAXQueryTracker()
+                query_tracker.alter_tracker_entry(self.response.tracker_id, attributes)
+
+
             #### If there is already a KG with edges, recompute the qg_keys
             if message.knowledge_graph is not None and len(message.knowledge_graph.edges) > 0:
                 resultifier.recompute_qg_keys(response)
@@ -513,6 +695,7 @@ class ARAXQuery:
             #### Process each action in order
             action_stats = { }
             actions = result.data['actions']
+            action = None
             for action in actions:
                 response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
                 nonstandard_result = False
@@ -537,6 +720,13 @@ class ARAXQuery:
                         messenger.add_qedge(response,action['parameters'])
 
                     elif action['command'] == 'expand':
+                        self.inject_int_value_into_parameters('kp_timeout', response.envelope.query_options, action['parameters'], 'UserTimeoutNotInt')
+                        self.inject_int_value_into_parameters('prune_threshold', response.envelope.query_options, action['parameters'], 'PruneThresholdNotInt')
+                        self.inject_boolean_value_into_parameters('return_minimal_metadata', response.envelope.query_options, action['parameters'], 'InternalError')
+                        if response.status == 'ERROR':
+                            if mode == 'asynchronous':
+                                self.send_to_callback(callback, response)
+                            return response
                         expander.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'filter':
@@ -545,11 +735,17 @@ class ARAXQuery:
                     elif action['command'] == 'resultify':
                         resultifier.apply(response, action['parameters'])
 
+                    elif action['command'] == 'scoreless_resultify':
+                        resultifier.apply(response, action['parameters'])
+
                     elif action['command'] == 'overlay':  # recognize the overlay command
                         overlay.apply(response, action['parameters'])
 
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         filter_kg.apply(response, action['parameters'])
+
+                    elif action['command'] == 'infer':  # recognize the infer command
+                        infer.apply(response, action['parameters'])
 
                     elif action['command'] == 'filter_results':  # recognize the filter_results command
                         response.debug(f"Before filtering, there are {len(response.envelope.message.results)} results")
@@ -561,6 +757,9 @@ class ARAXQuery:
                         message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
                         self.message = message
                         nonstandard_result = True
+
+                    elif action['command'] == 'connect':
+                        connect.apply(response, action['parameters'])
 
                     elif action['command'] == 'return':
                         action_stats['return_action'] = action
@@ -633,6 +832,13 @@ class ARAXQuery:
             response.envelope.description = response.message
             if response.envelope.operations is None:
                 response.envelope.operations = operations
+
+            #### Provide the total results count in the Response if it is available
+            try:
+                response.envelope.total_results_count = response.total_results_count
+            except:
+                pass
+
             #response.envelope.operations['actions'] = operations.actions
 
             # Update the reasoner_id to ARAX if not already present
@@ -647,7 +853,10 @@ class ARAXQuery:
             #from ARAX_attribute_parser import ARAXAttributeParser
             #attribute_parser = ARAXAttributeParser(response.envelope,response.envelope['message'])
             #response.envelope.validation_result['provenance_summary'] = attribute_parser.summarize_provenance_info()
-
+            #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
+            if response.envelope.query_options is None:
+                response.envelope.query_options = {}
+            response.envelope.query_options['query_plan'] = response.query_plan
 
             # If store=true, then put the message in the database
             response_id = None
@@ -655,7 +864,14 @@ class ARAXQuery:
                 response.debug(f"Storing resulting Message")
                 response_id = response_cache.add_new_response(response)
                 response.info(f"Result was stored with id {response_id}. It can be viewed at https://arax.ncats.io/?r={response_id}")
-                
+            response.response_id = response_id
+
+            #### Record how many results came back
+            n_results = len(message.results)
+            response.info(f"Processing is complete and resulted in {n_results} results.")
+            if response.message == 'Normal completion':
+                response.message = f"Normal completion with {n_results} results."
+
             #### If asking for the full message back
             if return_action['parameters']['response'] == 'true':
                 if mode == 'asynchronous':
@@ -667,8 +883,6 @@ class ARAXQuery:
 
             #### Else just the id is returned
             else:
-                n_results = len(message.results)
-                response.info(f"Processing is complete and resulted in {n_results} results.")
                 if response_id is None:
                     response_id = 0
                 else:
@@ -691,9 +905,38 @@ class ARAXQuery:
             post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'})
             status_code = post_response_content.status_code
             response.info(f"Response from POST to callback URL was {status_code}")
+            if status_code not in [ 200, 201 ]:
+                response.error(f"Response from POST to callback URL was {status_code}", error_code="UnreachableCallback")
+
         except:
-            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost")
-        exit(0)
+            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost", error_code="UnreachableCallback")
+        self.track_query_finish()
+        os._exit(0)
+
+
+    ############################################################################################
+    def inject_int_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
+        parameter_value = None
+        if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
+            parameter_value = query_options[parameter_name]
+            #### Try to convery the value to an integer
+            try:
+                parameter_value = int(parameter_value)
+            except:
+                self.response.error(f"Unable to convert parameter {parameter_name} = '{parameter_value}' into an integer", error_code=error_code)
+                return
+        #### Only update the value in parameters if one was not explicitly specified
+        if parameter_name not in parameters and parameter_value is not None:
+            parameters[parameter_name] = parameter_value
+
+
+    ############################################################################################
+    def inject_boolean_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
+        parameter_value = False
+        if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
+            if query_options[parameter_name] is True:
+                parameter_value = True
+        parameters[parameter_name] = parameter_value
 
 
 ##################################################################################################
@@ -801,7 +1044,7 @@ def main():
             "add_qnode(ids=DOID:12384, key=n00)",
             "add_qnode(categories=biolink:PhenotypicFeature, is_set=True, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00, type=has_phenotype)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             #"overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
@@ -1004,7 +1247,7 @@ def main():
             "add_qnode(name=UMLS:C1452002, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00, type=interacts_with)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "return(message=true, store=false)"
         ]}}  # returns response of "OK" with the info: QueryGraphReasoner found no results for this query graph
     elif params.example_number == 101:  # test of filter results code
@@ -1071,7 +1314,7 @@ def main():
             "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
             "add_qnode(key=n01, categories=biolink:Protein, is_set=true)",
             "add_qedge(key=e00, subject=n00, object=n01)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 202:  # KG2 version of demo example 2 (Parkinson's)
@@ -1083,7 +1326,7 @@ def main():
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",  # for KG2
             #"add_qedge(subject=n01, object=n02, key=e01, type=physically_interacts_with)",  # for KG1
-            "expand(edge_id=[e00,e01], kp=RTX-KG2)",  # for KG2
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2)",  # for KG2
             #"expand(edge_id=[e00,e01], kp=ARAX/KG1)",  # for KG1
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",  # seems to work just fine
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_key=n02)",
@@ -1100,7 +1343,7 @@ def main():
             "add_qnode(key=n02, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "add_qedge(key=e01, subject=n01, object=n02)",
-            "expand(edge_id=[e00,e01], kp=RTX-KG2)",
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_key=n01)",
@@ -1116,7 +1359,7 @@ def main():
             "add_qnode(key=n02, categories=biolink:Protein)",
             "add_qedge(key=e00, subject=n00, object=n01)",
             "add_qedge(key=e01, subject=n01, object=n02)",
-            "expand(edge_id=[e00,e01], kp=RTX-KG2)",
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
             #"filter_kg(action=remove_edges_by_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=0, remove_connected_nodes=t, qnode_key=n01)",
@@ -1129,7 +1372,7 @@ def main():
             "add_qnode(key=n00, ids=NCBIGene:1017)",  # CDK2
             "add_qnode(key=n01, categories=biolink:ChemicalEntity, is_set=True)",
             "add_qedge(key=e00, subject=n01, object=n00)",
-            "expand(edge_key=e00, kp=BTE)",
+            "expand(edge_key=e00, kp=infores:biothings-explorer)",
             "return(message=true, store=false)",
         ]}}
     elif params.example_number == 233:  # KG2 version of demo example 1 (acetaminophen)
@@ -1138,7 +1381,7 @@ def main():
             "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL112)",  # acetaminophen
             "add_qnode(key=n01, categories=biolink:Protein, is_set=true)",
             "add_qedge(key=e00, subject=n00, object=n01)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "filter_kg(action=remove_edges_by_property, edge_property=provided_by, property_value=https://pharos.nih.gov)",
             "return(message=true, store=false)",
         ]}}
@@ -1341,7 +1584,7 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",
-            "expand(edge_id=[e00,e01], kp=RTX-KG2)",
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2)",
             # overlay a bunch of clinical info
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
@@ -1373,7 +1616,7 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
-            "expand(kp=BTE)",
+            "expand(kp=infores:biothings-explorer)",
             "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=true)"
@@ -1383,13 +1626,13 @@ def main():
             "add_qnode(ids=DOID:11830, key=n0, type=disease)",
             "add_qnode(categories=biolink:ChemicalEntity, ids=n1)",
             "add_qedge(subject=n0, object=n1, ids=e1)",
-            "expand(edge_id=e1, kp=RTX-KG2)",
-            "expand(edge_id=e1, kp=BTE)",
+            "expand(edge_id=e1, kp=infores:rtx-kg2)",
+            "expand(edge_id=e1, kp=infores:biothings-explorer)",
             #"overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             #"overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             #"overlay(action=overlay_clinical_info, chi_square=true)",
             "overlay(action=predict_drug_treats_disease)",
-            #"overlay(action=compute_ngd)",
+            #"overlay(action=compute_ngd)",infores:biothings-explorer
             "resultify(ignore_edge_direction=true)",
             #"filter_results(action=limit_number_of_results, max_results=50)",
             "return(message=true, store=true)"
@@ -1400,8 +1643,8 @@ def main():
             "add_qnode(ids=DOID:11830, key=n0, type=disease)",
             "add_qnode(categories=biolink:ChemicalEntity, ids=n1)",
             "add_qedge(subject=n0, object=n1, ids=e1)",
-            # "expand(edge_key=e00, kp=RTX-KG2)",
-            "expand(edge_id=e1, kp=BTE)",
+            # "expand(edge_key=e00, kp=infores:rtx-kg2)",
+            "expand(edge_id=e1, kp=infores:biothings-explorer)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             "overlay(action=overlay_clinical_info, chi_square=true)",
@@ -1417,8 +1660,8 @@ def main():
             "add_qnode(name=DOID:11830, key=n00, type=disease)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=RTX-KG2)",
-            "expand(edge_key=e00, kp=BTE)",
+            "expand(edge_key=e00, kp=infores:rtx-kg2)",
+            "expand(edge_key=e00, kp=infores:biothings-explorer)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             "overlay(action=predict_drug_treats_disease)",
             "filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)",
@@ -1435,10 +1678,10 @@ def main():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, type=molecularly_interacts_with)",
-            "expand(edge_id=[e00,e01], kp=RTX-KG2, continue_if_no_results=true)",
-            #- expand(edge_id=[e00,e01], kp=BTE, continue_if_no_results=true)",
-            "expand(edge_key=e00, kp=BTE, continue_if_no_results=true)",
-            #- expand(edge_key=e00, kp=GeneticsKP, continue_if_no_results=true)",
+            "expand(edge_id=[e00,e01], kp=infores:rtx-kg2, continue_if_no_results=true)",
+            #- expand(edge_id=[e00,e01], kp=infores:biothings-explorer, continue_if_no_results=true)",
+            "expand(edge_key=e00, kp=infores:biothings-explorer, continue_if_no_results=true)",
+            #- expand(edge_key=e00, kp=infores:genetics-data-provider, continue_if_no_results=true)",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
             "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
             "overlay(action=overlay_clinical_info, chi_square=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n02)",
@@ -1466,10 +1709,29 @@ def main():
             "add_qnode(ids=MONDO:0005301, key=n0)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:related_to)",
-            "expand(kp=ClinicalRiskKP, edge_key=e0)",
+            "expand(kp=infores:biothings-multiomics-clinical-risk, edge_key=e0)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
             "resultify()",
             "return(message=true, store=true)",
+        ]}}
+    elif params.example_number == 1848:
+        query = {"operations": {"actions": ["add_qnode(key=n0, ids=[MONDO:0009061], is_set=false)",
+            "add_qnode(key=n1, is_set=false, categories=[biolink:ChemicalEntity])",
+            "add_qedge(key=e0, subject=n0, object=n1, predicates=[biolink:has_real_world_evidence_of_association_with])",
+            "expand(kp=infores:cohd)",
+            "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N1,subject_qnode_key=n0,object_qnode_key=n1)",
+            "scoreless_resultify(ignore_edge_direction=true)",
+            "rank_results()",
+            "filter_results(action=limit_number_of_results,max_results=3,prune_kg=true)",
+            "add_qnode(key=n2, is_set=false, categories=[biolink:Gene,biolink:Protein])",
+            "add_qedge(key=e1, subject=n1, object=n2, predicates=[biolink:increases_activity_of])",
+            "add_qnode(key=n3, is_set=false, categories=[biolink:ChemicalEntity])",
+            "add_qedge(key=e2, subject=n3, object=n2, predicates=[biolink:increases_activity_of])",
+            "add_qedge(key=e3, subject=n1, object=n2, predicates=[biolink:decreases_activity_of], option_group_id=decr)",
+            "add_qedge(key=e4, subject=n3, object=n2, predicates=[biolink:decreases_activity_of], option_group_id=decr)",
+            "expand(kp=infores:rtx-kg2)",
+            "scoreless_resultify(ignore_edge_direction=true)",
+            "rank_results()"
         ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
@@ -1521,4 +1783,5 @@ def main():
     # print the response id at the bottom for convenience too:
     print(f"Returned response id: {envelope.id}")
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()

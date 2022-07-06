@@ -8,11 +8,13 @@ from typing import List, Dict  # noqa: F401
 from openapi_server.models.base_model_ import Model
 from openapi_server.models.log_level import LogLevel
 from openapi_server.models.message import Message
+from openapi_server.models.any_type import AnyType
 from openapi_server.models.operations import Operations
 from openapi_server import util
 
 from openapi_server.models.log_level import LogLevel  # noqa: E501
 from openapi_server.models.message import Message  # noqa: E501
+from openapi_server.models.any_type import AnyType  # noqa: E501
 from openapi_server.models.operations import Operations  # noqa: E501
 
 class Query(Model):
@@ -21,7 +23,7 @@ class Query(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, message=None, log_level=None, workflow=None, bypass_cache=False, stream_progress=False, enforce_edge_directionality=False, return_minimal_metadata=False, max_results=100, page_size=100, page_number=1, operations=None):  # noqa: E501
+    def __init__(self, message=None, log_level=None, workflow=None, submitter=None, bypass_cache=False, stream_progress=False, enforce_edge_directionality=False, return_minimal_metadata=False, max_results=100, page_size=100, page_number=1, operations=None):  # noqa: E501
         """Query - a model defined in OpenAPI
 
         :param message: The message of this Query.  # noqa: E501
@@ -29,7 +31,9 @@ class Query(Model):
         :param log_level: The log_level of this Query.  # noqa: E501
         :type log_level: LogLevel
         :param workflow: The workflow of this Query.  # noqa: E501
-        :type workflow: List[object]
+        :type workflow: List[AnyType]
+        :param submitter: The submitter of this Query.  # noqa: E501
+        :type submitter: str
         :param bypass_cache: The bypass_cache of this Query.  # noqa: E501
         :type bypass_cache: bool
         :param stream_progress: The stream_progress of this Query.  # noqa: E501
@@ -50,7 +54,8 @@ class Query(Model):
         self.openapi_types = {
             'message': Message,
             'log_level': LogLevel,
-            'workflow': List[object],
+            'workflow': List[AnyType],
+            'submitter': str,
             'bypass_cache': bool,
             'stream_progress': bool,
             'enforce_edge_directionality': bool,
@@ -65,6 +70,7 @@ class Query(Model):
             'message': 'message',
             'log_level': 'log_level',
             'workflow': 'workflow',
+            'submitter': 'submitter',
             'bypass_cache': 'bypass_cache',
             'stream_progress': 'stream_progress',
             'enforce_edge_directionality': 'enforce_edge_directionality',
@@ -78,6 +84,7 @@ class Query(Model):
         self._message = message
         self._log_level = log_level
         self._workflow = workflow
+        self._submitter = submitter
         self._bypass_cache = bypass_cache
         self._stream_progress = stream_progress
         self._enforce_edge_directionality = enforce_edge_directionality
@@ -148,10 +155,10 @@ class Query(Model):
     def workflow(self):
         """Gets the workflow of this Query.
 
-        A list of operations to be applied  # noqa: E501
+        List of workflow steps to be executed.  # noqa: E501
 
         :return: The workflow of this Query.
-        :rtype: List[object]
+        :rtype: List[AnyType]
         """
         return self._workflow
 
@@ -159,13 +166,36 @@ class Query(Model):
     def workflow(self, workflow):
         """Sets the workflow of this Query.
 
-        A list of operations to be applied  # noqa: E501
+        List of workflow steps to be executed.  # noqa: E501
 
         :param workflow: The workflow of this Query.
-        :type workflow: List[object]
+        :type workflow: List[AnyType]
         """
 
         self._workflow = workflow
+
+    @property
+    def submitter(self):
+        """Gets the submitter of this Query.
+
+        Any string for self-identifying the submitter of a query. The purpose of this optional field is to aid in the tracking of the source of queries for development and issue resolution.  # noqa: E501
+
+        :return: The submitter of this Query.
+        :rtype: str
+        """
+        return self._submitter
+
+    @submitter.setter
+    def submitter(self, submitter):
+        """Sets the submitter of this Query.
+
+        Any string for self-identifying the submitter of a query. The purpose of this optional field is to aid in the tracking of the source of queries for development and issue resolution.  # noqa: E501
+
+        :param submitter: The submitter of this Query.
+        :type submitter: str
+        """
+
+        self._submitter = submitter
 
     @property
     def bypass_cache(self):

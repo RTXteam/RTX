@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-""" An interface to the SRI Node and Edge Normalizer https://nodenormalization-sri.renci.org/apidocs/
-    e.g.:  https://nodenormalization-sri.renci.org/get_normalized_nodes?curie=CHEMBL.COMPOUND:CHEMBL76729
+""" An interface to the SRI Node and Edge Normalizer https://nodenormalization-sri.renci.org/docs
+    e.g.:  https://nodenormalization-sri.renci.org/1.2/get_normalized_nodes?curie=CHEMBL.COMPOUND:CHEMBL76729
     Report problems here: https://github.com/TranslatorSRI/NodeNormalization/issues
 """
 
@@ -14,11 +14,12 @@ import time
 import pickle
 import re
 import platform
-import shelve
 
 import requests
 import requests_cache
 
+
+BASE_URL = 'https://nodenormalization-sri.renci.org/1.2'
 
 # Class that provides a simple interface to the SRI Node normalizer
 class SriNodeNormalizer:
@@ -28,15 +29,10 @@ class SriNodeNormalizer:
     def __init__(self):
         requests_cache.install_cache('sri_node_normalizer_requests_cache')
 
-        self.storage_mode = 'dict'      # either dict or shelve
-
         self.supported_types = None
         self.supported_prefixes = None
         self.cache = {}
         self.stats = {}
-
-        if self.storage_mode == 'shelve':
-            self.cache = shelve.open('sri_node_normalizer_curie_cache.shelve')
 
         # Translation table of different curie prefixes ARAX -> normalizer
         self.curie_prefix_tx_arax2sri = {
@@ -54,9 +50,6 @@ class SriNodeNormalizer:
     # ############################################################################################
     # Store the cache of all normalizer results
     def store_cache(self):
-        if self.storage_mode == 'shelve':
-            self.cache.sync()
-            return
         if self.cache is None:
             return
         filename = f"sri_node_normalizer_curie_cache.pickle"
@@ -68,14 +61,11 @@ class SriNodeNormalizer:
     # ############################################################################################
     # Load the cache of all normalizer results
     def load_cache(self):
-        if self.storage_mode == 'shelve':
-            return
-        filename = f"sri_node_normalizer_curie_cache.pickle"
+        filename = f"G:/local/tmp/sri_node_normalizer_curie_cache.pickle"
         if os.path.exists(filename):
             print(f"INFO: Reading SRI normalizer cache from {filename}")
             with open(filename, "rb") as infile:
                 self.cache = pickle.load(infile)
-                #self.cache = self.cache['ids']
         else:
             print(f"INFO: SRI node normalizer cache {filename} does not yet exist. Need to fill it.")
 
@@ -148,7 +138,7 @@ class SriNodeNormalizer:
                     supported_curies += 1
                     batch.append(normalizer_node_curie)
 
-                if len(batch) > 1000 or keep == 99:
+                if len(batch) > 500 or keep == 99:
                     if bytes_read + 3 > filesize:
                         print("Drain final batch")
                     results = self.get_node_normalizer_results(batch)
@@ -200,7 +190,7 @@ class SriNodeNormalizer:
             return self.supported_types
 
         # Build the URL and fetch the result
-        url = f"https://nodenormalization-sri-dev.renci.org/1.1/get_semantic_types"
+        url = f"{BASE_URL}/get_semantic_types"
         response_content = requests.get(url, headers={'accept': 'application/json'})
         status_code = response_content.status_code
 
@@ -208,7 +198,7 @@ class SriNodeNormalizer:
         if status_code != 200:
             eprint(f"ERROR returned with status {status_code} while retrieving supported types")
             eprint(response_content)
-            return
+            exit(211)
 
         # Unpack the response into a dict and return it
         response_dict = response_content.json()
@@ -242,7 +232,7 @@ class SriNodeNormalizer:
         supported_prefixes = {}
 
         # Build the URL and fetch the result
-        url = f"https://nodenormalization-sri-dev.renci.org/1.1/get_curie_prefixes"
+        url = f"{BASE_URL}/get_curie_prefixes"
         response_content = requests.get(url, headers={'accept': 'application/json'})
         status_code = response_content.status_code
 
@@ -250,7 +240,7 @@ class SriNodeNormalizer:
         if status_code != 200:
             eprint(f"ERROR returned with status {status_code} while retrieving supported types")
             eprint(response_content)
-            return
+            exit(253)
 
         # Unpack the response into a dict and return it
         response_dict = response_content.json()
@@ -283,12 +273,7 @@ class SriNodeNormalizer:
             print(f"ERROR: Call to sri_node_normalizer requested cache_only and we missed the cache with {curies}")
 
         # Build the URL and fetch the result
-        url = f"https://nodenormalization-sri-dev.renci.org/1.1/get_normalized_nodes?"
-
-        prefix = ''
-        for curie in curies:
-            url += f"{prefix}curie={curie}"
-            prefix = '&'
+        url = f"{BASE_URL}/get_normalized_nodes"
 
         #eprint(f"{len(url)},")
 
@@ -301,19 +286,21 @@ class SriNodeNormalizer:
             error_state = False
 
             try:
-                response_content = requests.get(url, headers={'accept': 'application/json'})
+                response_content = requests.post(url, json={"curies": curies}, headers={'accept': 'application/json'})
             except:
                 print("Uncaught error during web request to SRI normalizer")
                 error_state = True
-
-            status_code = response_content.status_code
+                status_code = 0
+                response_content = "uncaught error - no response content"
+            else:
+                status_code = response_content.status_code
 
             # Check for a returned error
             if status_code == 404:
                 #eprint(f"INFO: No normalization data for {curie}")
                 return
             elif status_code != 200:
-                eprint(f"ERROR returned with status {status_code} while searching with URL of length {len(url)} including {curie}")
+                eprint(f"ERROR returned with status {status_code} while searching with curie list of length {len(curies)} including {curies[0]}")
                 eprint(response_content)
                 error_state = True
 

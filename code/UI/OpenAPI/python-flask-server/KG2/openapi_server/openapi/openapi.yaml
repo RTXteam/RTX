@@ -9,18 +9,19 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2
-  version: 2.7.1
+  version: 2.7.5.0
   x-translator:
     component: KP
     team:
     - Expander Agent
-    biolink-version: 2.1.0
+    infores: infores:rtx-kg2
+    biolink-version: 2.2.11
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.2.0
+    version: 1.2.1
     asyncquery: false
     operations:
     - lookup
@@ -34,6 +35,7 @@ externalDocs:
 servers:
 - description: ARAX Translator Reasoner API
   url: https://arax.ncats.io/api/rtxkg2/v1.2
+  x-maturity: production
 tags:
 - description: Get supported relationships
   externalDocs:
@@ -59,10 +61,12 @@ tags:
     description: Documentation for the reasoner entity function
     url: https://arax.ncats.io/overview.html#entity
   name: entity
+- description: Return status information about the endpoint
+  name: status
 paths:
   /asyncquery:
     post:
-      operationId: asyncquery_post
+      operationId: asyncquery
       requestBody:
         content:
           application/json:
@@ -158,6 +162,16 @@ paths:
   /meta_knowledge_graph:
     get:
       operationId: meta_knowledge_graph
+      parameters:
+      - description: Provide meta_knowledge_graph information in a format other than
+          the default. Default value is 'full'. Also permitted is 'simple'
+        explode: true
+        in: query
+        name: format
+        required: false
+        schema:
+          type: string
+        style: form
       responses:
         "200":
           content:
@@ -212,6 +226,83 @@ paths:
       tags:
       - query
       x-openapi-router-controller: openapi_server.controllers.query_controller
+  /status:
+    get:
+      operationId: get_status
+      parameters:
+      - description: Limit results to the past N hours
+        explode: true
+        in: query
+        name: last_n_hours
+        required: false
+        schema:
+          example: 6
+          type: integer
+        style: form
+      - description: Identifier of the log entry
+        explode: true
+        in: query
+        name: id
+        required: false
+        schema:
+          example: 10
+          type: integer
+        style: form
+      - description: PID of an ongoing query to terminate
+        explode: true
+        in: query
+        name: terminate_pid
+        required: false
+        schema:
+          type: integer
+        style: form
+      - description: Authorization string required for certain calls to status
+        explode: true
+        in: query
+        name: authorization
+        required: false
+        schema:
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: successful operation
+        "404":
+          description: Entity not found
+      summary: Obtain status information about the endpoint
+      tags:
+      - status
+      x-openapi-router-controller: openapi_server.controllers.status_controller
+  /status/logs:
+    get:
+      operationId: get_logs
+      parameters:
+      - description: Specify the log sending mode
+        explode: true
+        in: query
+        name: mode
+        required: false
+        schema:
+          example: tail
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: successful operation
+        "404":
+          description: Logs not found
+      summary: Get log information from the server
+      tags:
+      - status
+      x-openapi-router-controller: openapi_server.controllers.status_controller
 components:
   schemas:
     Query:
@@ -236,6 +327,12 @@ components:
             oneOf:
             - $ref: '#/components/schemas/OperationLookup'
           type: array
+        submitter:
+          description: Any string for self-identifying the submitter of a query. The
+            purpose of this optional field is to aid in the tracking of the source
+            of queries for development and issue resolution.
+          nullable: true
+          type: string
         bypass_cache:
           default: false
           description: Set to true in order to bypass any possible cached response
@@ -313,6 +410,12 @@ components:
             oneOf:
             - $ref: '#/components/schemas/OperationLookup'
           type: array
+        submitter:
+          description: Any string for self-identifying the submitter of a query. The
+            purpose of this optional field is to aid in the tracking of the source
+            of queries for development and issue resolution.
+          nullable: true
+          type: string
       required:
       - callback
       - message
@@ -328,6 +431,7 @@ components:
       example:
         original_question: what proteins are affected by sickle cell anemia
         validation_result: '{}'
+        submitter: submitter
         workflow:
         - ""
         - ""
@@ -348,13 +452,12 @@ components:
               n00:
                 ids:
                 - CHEMBL.COMPOUND:CHEMBL112
-                categories:
-                - biolink:ChemicalSubstance
               n01:
                 categories:
                 - biolink:Protein
         type: TranslatorAPIResponse
-        schema_version: 1.0.0
+        total_results_count: 0
+        schema_version: 1.2.0
         datetime: 2021-01-09 12:34:45
         operations: ""
         table_column_names:
@@ -363,7 +466,7 @@ components:
         tool_version: ARAX 0.8.0
         context: https://rtx.ncats.io/ns/translator.jsonld
         reasoner_id: ARAX
-        id: https://arax.ncats.io/api/rtx/v1.1/response/123
+        id: https://arax.ncats.io/api/rtx/v1.2/response/123
         logs:
         - code: code
           level: ""
@@ -374,6 +477,7 @@ components:
           message: message
           timestamp: 2020-09-03T18:13:49Z
         status: Success
+        info: info
       properties:
         message:
           $ref: '#/components/schemas/Message'
@@ -401,6 +505,12 @@ components:
             oneOf:
             - $ref: '#/components/schemas/OperationLookup'
           type: array
+        submitter:
+          description: Any string for self-identifying the submitter of a query. The
+            purpose of this optional field is to aid in the tracking of the source
+            of queries for development and issue resolution.
+          nullable: true
+          type: string
         operations:
           allOf:
           - $ref: '#/components/schemas/Operations'
@@ -418,7 +528,7 @@ components:
           type: string
         schema_version:
           description: Version label of this TRAPI schema
-          example: 1.0.0
+          example: 1.2.0
           type: string
         datetime:
           description: Datetime string for the time that this response was generated
@@ -461,12 +571,21 @@ components:
           type: string
         id:
           description: URI for this response
-          example: https://arax.ncats.io/api/rtx/v1.1/response/123
+          example: https://arax.ncats.io/api/rtx/v1.2/response/123
           type: string
         validation_result:
           description: Validation results and other summary stats computed for this
             Response.
           type: object
+        total_results_count:
+          description: The total number of results that were generated prior to any
+            filtering.
+          nullable: true
+          type: integer
+        info:
+          description: A placholder for including some additional information
+          nullable: true
+          type: string
       required:
       - message
       title: Response
@@ -492,8 +611,6 @@ components:
             n00:
               ids:
               - CHEMBL.COMPOUND:CHEMBL112
-              categories:
-              - biolink:ChemicalEntity
             n01:
               categories:
               - biolink:Protein
@@ -616,7 +733,7 @@ components:
           type: string
         essence_category:
           description: A Translator BioLink bioentity category of the essence
-          example: biolink:ChemicalSubstance
+          example: biolink:ChemicalEntity
           nullable: true
           type: string
         row_data:
@@ -803,29 +920,43 @@ components:
             each n1 must be connected to at least one n2.
           type: boolean
         constraints:
+          default: []
           description: A list of contraints applied to a query node. If there are
             multiple items, they must all be true (equivalent to AND)
           items:
             $ref: '#/components/schemas/QueryConstraint'
-          nullable: true
           type: array
         option_group_id:
           description: 'Optional string acting as a label on a set of nodes and/or
             edges indicating that they belong to a group that are to be evaluated
             as a group. '
+          nullable: true
           type: string
       title: QNode
       type: object
     QEdge:
       additionalProperties: true
       description: An edge in the QueryGraph used as an filter pattern specification
-        in a query. If optional predicate or relation properties are not specified,
-        they are assumed to be wildcard matches to the target knowledge space. If
-        specified, the ontological inheritance hierarchy associated with the terms
-        provided is assumed, such that edge bindings returned may be an exact match
-        to the given QEdge predicate or relation term ('class'), or to a term which
-        is a subclass of the QEdge specified term.
+        in a query. If the optional predicate property is not specified, it is assumed
+        to be a wildcard match to the target knowledge space. If specified, the ontological
+        inheritance hierarchy associated with the term provided is assumed, such that
+        edge bindings returned may be an exact match to the given QEdge predicate
+        term, or to a term that is a descendant of the QEdge predicate term.
       properties:
+        knowledge_type:
+          description: >-
+            Indicates the type of knowledge that the client wants from the
+            server between the subject and object. If the value is
+            'lookup', then the client wants direct lookup information from
+            knowledge sources. If the value is 'inferred', then the client
+            wants the server to get creative and connect the subject and
+            object in more speculative and non-direct-lookup ways. If this
+            property is absent or null, it MUST be assumed to mean
+            'lookup'. This feature is currently experimental and may be
+            further extended in the future.
+          example: lookup
+          nullable: true
+          type: string
         predicates:
           items:
             $ref: '#/components/schemas/BiolinkPredicate'
@@ -843,11 +974,11 @@ components:
           example: https://www.uniprot.org/uniprot/P00738
           type: string
         constraints:
+          default: []
           description: A list of contraints applied to a query edge. If there are
             multiple items, they must all be true (equivalent to AND)
           items:
             $ref: '#/components/schemas/QueryConstraint'
-          nullable: true
           type: array
         exclude:
           description: If set to true, then all subgraphs containing this edge are
@@ -857,6 +988,7 @@ components:
           description: 'Optional string acting as a label on a set of nodes and/or
             edges indicating that they belong to a group that are to be evaluated
             as a group. '
+          nullable: true
           type: string
       required:
       - object
@@ -959,6 +1091,7 @@ components:
           description: Node attributes provided by this TRAPI web service.
           items:
             $ref: '#/components/schemas/SubAttribute'
+          nullable: true
           title: attributes
           type: array
       required:
@@ -1187,6 +1320,9 @@ components:
           minItems: 1
           title: edges
           type: array
+      required:
+      - edges
+      - nodes
       title: MetaKnowledgeGraph
       type: object
     MetaNode:
@@ -1295,6 +1431,7 @@ components:
           description: Edge attributes provided by this TRAPI web service.
           items:
             $ref: '#/components/schemas/MetaAttribute'
+          nullable: true
           title: attributes
           type: array
       required:
@@ -1325,12 +1462,15 @@ components:
         attribute_source:
           description: Source of an attribute provided by this TRAPI web service.
           example: infores:chembl
+          nullable: true
           title: attribute_source
           type: string
         original_attribute_names:
           description: Names of an the attribute as provided by the source.
           items:
             type: string
+          minItems: 1
+          nullable: true
           title: original_attribute_names
           type: array
         constraint_use:
@@ -1342,6 +1482,7 @@ components:
           description: Human-readable name or label for the constraint concept. Required
             whenever constraint_use is true.
           example: p-value
+          nullable: true
           title: constraint_name
           type: string
       required:
@@ -1361,14 +1502,12 @@ components:
             phrase here and submit the new type for consideration by the appropriate
             authority.
           example: EDAM:data_0844
-          nullable: false
           title: id
         name:
           description: Human-readable name or label for the constraint concept. If
             appropriate, it SHOULD be the term name of the CURIE used as the 'id'.
             This is redundant but required for human readability.
           example: molecular mass
-          nullable: false
           title: name
           type: string
         not:
@@ -1409,6 +1548,7 @@ components:
             The unit_id MUST be provided for (lists of) numerical values that correspond
             to a quantity that has units.
           example: UO:0000222
+          nullable: true
           title: unit_id
         unit_name:
           description: Term name that is associated with the CURIE of the units of
@@ -1417,6 +1557,7 @@ components:
             if a unit_id is provided. This is redundant but recommended for human
             readability.
           example: kilodalton
+          nullable: true
           title: unit_name
       required:
       - id
@@ -1435,7 +1576,7 @@ components:
         message_uris:
           description: List of URIs for Message or Response objects to fetch and process
           example:
-          - https://arax.ncats.io/api/arax/v1.1/response/38
+          - https://arax.ncats.io/api/arax/v1.2/response/38
           items:
             type: string
           type: array
@@ -1488,17 +1629,6 @@ components:
         id:
           enum:
           - lookup
-          type: string
-        parameters: {}
-      required:
-      - id
-      type: object
-    OperationOverlay:
-      additionalProperties: false
-      properties:
-        id:
-          enum:
-          - overlay
           type: string
         parameters: {}
       required:
