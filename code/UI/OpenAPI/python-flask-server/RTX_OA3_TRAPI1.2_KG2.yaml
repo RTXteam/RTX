@@ -962,6 +962,20 @@ components:
         an exact match to the given QEdge predicate term,
         or to a term that is a descendant of the QEdge predicate term.
       properties:
+        knowledge_type:
+          description: >-
+            Indicates the type of knowledge that the client wants from the
+            server between the subject and object. If the value is
+            'lookup', then the client wants direct lookup information from
+            knowledge sources. If the value is 'inferred', then the client
+            wants the server to get creative and connect the subject and
+            object in more speculative and non-direct-lookup ways. If this
+            property is absent or null, it MUST be assumed to mean
+            'lookup'. This feature is currently experimental and may be
+            further extended in the future.
+          example: lookup
+          nullable: true
+          type: string
         predicates:
           type: array
           items:

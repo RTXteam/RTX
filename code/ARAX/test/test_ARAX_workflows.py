@@ -769,6 +769,7 @@ def test_ranker_float_error_ex3():
     assert response.status == 'OK'
 
 
+@pytest.mark.external
 def test_issue_1848():
     query = {
             "workflow": [

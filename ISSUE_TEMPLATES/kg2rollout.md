@@ -9,6 +9,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
   - [ ] in [code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_ARAX.yaml](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_ARAX.yaml)
   - [ ] in [code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_KG2.yaml](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_KG2.yaml)
 - [ ] build a new KG2c on `buildkg2c.rtx.ai` from the `kg2integration` branch (how-to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#build-kg2canonicalized))
+  - [ ] make sure there is enough disk space available on `arax.ncats.io` (need at least 80G, ideally >100G). delete old KG2 database directories from `/data/orangeboard/databases` as needed (warn the team on Slack in advance).
   - [ ] make sure to choose to build a new synonymizer in `kg2c_config.json`, as described in the how-to
   - [ ] verify the build looks ok:
     - [ ] the synonymizer sqlite should be around 15-20 GB
@@ -63,7 +64,7 @@ All code changes should go in the `kg2integration` branch.
 ##### 5. Final items/clean up:
 
 - [ ] generate KGX files and upload them to the KGE Archive @acevedol
-- [ ] update the test triples that go in some NCATS repo @finnagin
+- [ ] update the KG2c test triples that go in the [NCATS Testing repo](https://github.com/NCATSTranslator/testing/tree/main/onehop/test_triples/KP/Expander_Agent) (generate with [this script](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/create_csv_of_kp_predicate_triples.py), using the new `config_local.json`) @acevedol
 - [ ] rename the `config_local.json` on arax.ncats.io to `config_local.json_FROZEN_DO-NOT-EDIT-FURTHER` (any additional edits to the config file should be made directly to the master `configv2.json` on araxconfig.rtx.ai going forward)
 - [ ] turn off the old KG2c version's neo4j instance
 - [ ] turn off the old KG2c version's plover instance
