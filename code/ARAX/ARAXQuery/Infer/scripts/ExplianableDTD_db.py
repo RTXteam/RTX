@@ -55,6 +55,7 @@ class ExplainableDTD(object):
         # Property to keep track if the database is already connected or not
         self.is_connected = False
         self.test_iter = 1
+        self.success_con = False
 
         if build:
             if path_to_score_results is None:
@@ -96,8 +97,8 @@ class ExplainableDTD(object):
                 self.outdir = outdir
         self.success_con = self.connect()
 
-    def __del__(self):
-        self.disconnect()
+    #def __del__(self):
+    #    self.disconnect()
 
     # Create and store a database connection
     def connect(self):
