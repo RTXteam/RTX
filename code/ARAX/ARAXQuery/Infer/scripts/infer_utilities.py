@@ -200,12 +200,12 @@ class InferUtilities:
             # Add the drugs to the knowledge graph
             for node_id in node_ids:
                 drug_canonical_id = node_id_to_canonical_id[node_id]
-                essence_scores[drug_canonical_id] = node_id_to_score[node_id]
                 drug_categories = [node_info[node_id]['preferred_category']]
                 drug_categories.append('biolink:NamedThing')
                 # add the node to the knowledge graph
+                drug_name = node_info[node_id]['preferred_name']
+                essence_scores[drug_name] = node_id_to_score[node_id]
                 if drug_canonical_id not in knodes:
-                    drug_name = node_info[node_id]['preferred_name']
                     knodes[drug_canonical_id] = Node(name=drug_name, categories=drug_categories)
                     knodes[drug_canonical_id].qnode_keys = [drug_qnode_key]
                 else:  # it's already in the KG, just pass
