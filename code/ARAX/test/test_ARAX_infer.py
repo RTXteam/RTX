@@ -81,7 +81,7 @@ def test_infer_alkaptonuria():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0008753)",
-            "return(message=true, store=false)"
+            "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -113,8 +113,70 @@ def test_with_qg():
         },
         "operations": {"actions": [
             "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0008753,qedge_id=t_edge)",
-            "return(message=true, store=false)"
+            "return(message=true, store=true)"
         ]}
+    }
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'ERROR'
+    #assert len(message.query_graph.edges) > 1
+    #assert len(message.results) > 0
+
+
+def test_with_qg2():
+    query = {
+        "message": {"query_graph": {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:ChemicalEntity"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+        },
+        "operations": {"actions": [
+            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0004975,qedge_id=t_edge)",
+            "return(message=true, store=true)"
+        ]}
+    }
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) > 1
+    assert len(message.results) > 0
+
+
+def test_with_only_qg():
+    query = {
+        "message": {"query_graph": {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:ChemicalEntity"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+        }
     }
     [response, message] = _do_arax_query(query)
     # return response, message

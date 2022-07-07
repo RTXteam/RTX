@@ -1260,5 +1260,26 @@ def test_xdtd_with_other_edges():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
 
 
+def test_xdtd_curie_not_in_db():
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["MONDO:0021783"]  # this curie has probabilities but no paths in the XDTDdb
+            },
+            "chemical": {
+                "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:affects"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=False)
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
