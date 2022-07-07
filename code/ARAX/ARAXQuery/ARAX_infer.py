@@ -265,7 +265,7 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         # Make sure only allowable parameters and values have been passed
         resp = self.check_params(allowable_parameters)
         # Make sure that if ARAXi node_curie is provided, that node is actually in the query graph
-        if 'node_curie' in parameters and parameters['node_curie']:
+        if 'node_curie' in parameters and parameters['node_curie'] and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and message.query_graph.nodes:
             ids_in_qg = set()
             for node in message.query_graph.nodes.values():
                 if node.ids:
