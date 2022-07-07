@@ -264,6 +264,15 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         
         # Make sure only allowable parameters and values have been passed
         resp = self.check_params(allowable_parameters)
+        # Make sure that if ARAXi node_curie is provided, that node is actually in the query graph
+        if 'node_curie' in parameters and parameters['node_curie']:
+            ids_in_qg = set()
+            for node in message.query_graph.nodes.values():
+                if node.ids:
+                    ids_in_qg.update(node.ids)
+            if parameters['node_curie'] not in ids_in_qg:
+                self.response.error(f"Supplied node_curie {parameters['node_curie']} is not in the query graph. I was given the curies: {ids_in_qg}", error_code="UnknownNode")
+                return self.response
         # return if bad parameters have been passed
         if self.response.status != 'OK' or resp == -1:
             return self.response
