@@ -396,6 +396,25 @@ class ResponseCache:
                     '13': 'TextMining'
                 }
 
+                #### Actor lookup by name
+                actor_name_lookup = {
+                    'ara-aragorn': 'Aragorn',
+                    'ara-arax': 'ARAX',
+                    'ara-bte': 'BTE',
+                    'ara-ncats': 'NCATS',
+                    'ara-robokop': 'Robokop',
+                    'ara-unsecret': 'Unsecret',
+                    'kp-genetics': 'Genetics',
+                    'kp-molecular': 'MolePro',
+                    'ara-explanatory': 'Explanatory',
+                    'ara-improving': 'ImProving',
+                    'kp-cam': 'Cam',
+                    'kp-chp': 'CHP',
+                    'kp-icees': 'ICEES',
+                    'kp-openpredict': 'OpenPredict',
+                    'kp-textmining': 'TextMining'
+                }
+
                 #Remove warning code hack
                 #if 'logs' in envelope and envelope['logs'] is not None:
                 #    for log in envelope['logs']:
@@ -454,7 +473,20 @@ class ResponseCache:
                     envelope['validation_result'] = { 'status': 'FAIL', 'version': trapi_version, 'size': content_size, 'message': 'TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description'] }
 
                 #### Try to add the reasoner_id
-                if 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
+                if 'name' in response_dict['fields'] and response_dict['fields']['name'] is not None:
+                    #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
+                    actor = str(response_dict['fields']['name'])
+                    if actor in actor_name_lookup:
+                        #eprint(f"INFO: Attempting to inject {actor_name_lookup[actor]} into results")
+                        if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:
+                            for result in envelope['message']['results']:
+                                if 'reasoner_id' in result and result['reasoner_id'] is not None:
+                                    pass
+                                else:
+                                    result['reasoner_id'] = actor_name_lookup[actor]
+
+                elif 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
+                    #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
                     actor = str(response_dict['fields']['actor'])
                     if actor in actor_lookup:
                         if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:
