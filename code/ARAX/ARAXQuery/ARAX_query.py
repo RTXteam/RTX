@@ -847,7 +847,7 @@ class ARAXQuery:
                     result.reasoner_id = 'ARAX'
 
             # Store the validation and provenance metadata
-            #trapi_version = '1.2.0'
+            #trapi_version = '1.3.0'
             #validate(response.envelope,'Response',trapi_version)
             #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
             #from ARAX_attribute_parser import ARAXAttributeParser
