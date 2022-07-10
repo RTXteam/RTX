@@ -2,14 +2,14 @@ openapi: 3.0.1
 info:
   contact:
     email: edeutsch@systemsbiology.org
-  description: TRAPI 1.2 endpoint for the NCATS Biomedical Translator KP called RTX
+  description: TRAPI 1.3 endpoint for the NCATS Biomedical Translator KP called RTX
     KG2
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2
-  version: 2.7.5.0
+  version: 2.7.5.1
   x-translator:
     component: KP
     team:
@@ -21,7 +21,7 @@ info:
         external JSON schema. See schema and examples at url
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.2.1
+    version: 1.3.0
     asyncquery: false
     operations:
     - lookup
@@ -33,24 +33,40 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: ARAX Translator Reasoner API
-  url: https://arax.ncats.io/api/rtxkg2/v1.2
+- description: RTX-KG2 TRAPI 1.3 endpoint - development
+  url: https://arax.ncats.io/beta/api/rtxkg2/v1.3
+  x-maturity: development
+- description: RTX-KG2 TRAPI 1.3 endpoint - ITRB production
+  url: https://kg2.transltr.io/api/rtxkg2/v1.3
   x-maturity: production
+- description: RTX-KG2 TRAPI 1.3 endpoint - production
+  url: https://arax.ncats.io/api/rtxkg2/v1.3
+  x-maturity: production
+- description: RTX-KG2 TRAPI 1.3 endpoint - ITRB testing
+  url: https://kg2.test.transltr.io/api/rtxkg2/v1.3
+  x-maturity: testing
+- description: RTX-KG2 TRAPI 1.3 endpoint - ITRB staging
+  url: https://kg2.ci.transltr.io/api/rtxkg2/v1.3
+  x-maturity: staging
 tags:
-- description: Get supported relationships
+- description: Retrieve the meta knowledge graph representation of this TRAPI web
+    service. KPs MUST provide all subject category - predicate - object category triplets
+    that are supported by the service, including all implied ancestor relationships.
+    ARAs SHOULD provide the union of all meta knowledge graphs of all the KPs that
+    they can consult.
   externalDocs:
     description: Documentation for the reasoner predicates function
-    url: http://arax.ncats.io/overview.html#predicates
+    url: https://arax.ncats.io/overview.html#predicates
   name: meta_knowledge_graph
 - description: Initiate a query and wait to receive the response
   externalDocs:
     description: Documentation for the reasoner query function
-    url: http://arax.ncats.io/overview.html#query
+    url: https://arax.ncats.io/overview.html#query
   name: query
 - description: Initiate a query with a callback to receive the response
   externalDocs:
     description: Documentation for the reasoner asynchquery function
-    url: http://arax.ncats.io/overview.html#asyncquery
+    url: https://arax.ncats.io/overview.html#asyncquery
   name: asyncquery
 - description: Required for SmartAPI validation of x-translator
   name: translator
@@ -90,6 +106,20 @@ paths:
           description: Bad request. The request is invalid according to this OpenAPI
             schema OR a specific identifier is believed to be invalid somehow (not
             just unrecognized).
+        "413":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Payload too large. Indicates that batch size was over the limit
+            specified in x-trapi.
+        "429":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Too many requests. Indicates that the client issued requests
+            that exceed the rate limit specified in x-trapi.
         "500":
           content:
             application/json:
@@ -210,6 +240,20 @@ paths:
           description: Bad request. The request is invalid according to this OpenAPI
             schema OR a specific identifier is believed to be invalid somehow (not
             just unrecognized).
+        "413":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Payload too large. Indicates that batch size was over the limit
+            specified in x-trapi.
+        "429":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Too many requests. Indicates that the client issued requests
+            that exceed the rate limit specified in x-trapi.
         "500":
           content:
             application/json:
@@ -260,6 +304,16 @@ paths:
         explode: true
         in: query
         name: authorization
+        required: false
+        schema:
+          type: string
+        style: form
+      - description: 'Switch to control the type of returned status information Possible
+          values are: activity: Show query activity on server [default] smartapi:
+          Summarize Translator endpoints at SmartAPI'
+        explode: true
+        in: query
+        name: mode
         required: false
         schema:
           type: string
@@ -457,7 +511,7 @@ components:
                 - biolink:Protein
         type: TranslatorAPIResponse
         total_results_count: 0
-        schema_version: 1.2.0
+        schema_version: 1.3.0
         datetime: 2021-01-09 12:34:45
         operations: ""
         table_column_names:
@@ -466,7 +520,7 @@ components:
         tool_version: ARAX 0.8.0
         context: https://rtx.ncats.io/ns/translator.jsonld
         reasoner_id: ARAX
-        id: https://arax.ncats.io/api/rtx/v1.2/response/123
+        id: https://arax.ncats.io/api/rtx/v1.3/response/123
         logs:
         - code: code
           level: ""
@@ -528,7 +582,7 @@ components:
           type: string
         schema_version:
           description: Version label of this TRAPI schema
-          example: 1.2.0
+          example: 1.3.0
           type: string
         datetime:
           description: Datetime string for the time that this response was generated
@@ -571,7 +625,7 @@ components:
           type: string
         id:
           description: URI for this response
-          example: https://arax.ncats.io/api/rtx/v1.2/response/123
+          example: https://arax.ncats.io/api/rtx/v1.3/response/123
           type: string
         validation_result:
           description: Validation results and other summary stats computed for this
@@ -616,7 +670,9 @@ components:
               - biolink:Protein
       properties:
         results:
-          description: List of all returned Result objects for the query posed
+          description: |-
+            List of all returned Result objects for the query posed. The list SHOULD NOT be assumed to be ordered. The 'score' property,
+             if present, MAY be used to infer result rankings.
           items:
             $ref: '#/components/schemas/Result'
           nullable: true
@@ -750,7 +806,9 @@ components:
           nullable: true
           type: array
         score:
-          description: Any type of score associated with this result
+          description: A numerical score associated with this result indicating the
+            relevance or confidence of this result relative to others in the returned
+            set. Higher MUST be better.
           example: 163.233
           format: float
           nullable: true
@@ -801,6 +859,10 @@ components:
       type: object
     NodeBinding:
       additionalProperties: true
+      description: An instance of NodeBinding is a single KnowledgeGraph Node mapping,
+        identified by the corresponding 'id' object key identifier of the Node within
+        the Knowledge Graph. Instances of NodeBinding may include extra annotation
+        in the form of additional properties. (such annotation is not yet fully standardized).
       properties:
         id:
           description: A Compact URI, consisting of a prefix and a reference separated
@@ -811,6 +873,23 @@ components:
             url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
           title: CURIE
           type: string
+        query_id:
+          description: A Compact URI, consisting of a prefix and a reference separated
+            by a colon, such as UniProtKB:P00738. Via an external context definition,
+            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
+            to form a full URI.
+          externalDocs:
+            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+          title: CURIE
+          type: string
+        attributes:
+          description: A list of attributes providing further information about the
+            node binding. This is not intended for capturing node attributes and should
+            only be used for properties that vary from result to result.
+          items:
+            $ref: '#/components/schemas/Attribute'
+          nullable: true
+          type: array
       required:
       - id
       title: NodeBinding
@@ -924,7 +1003,7 @@ components:
           description: A list of contraints applied to a query node. If there are
             multiple items, they must all be true (equivalent to AND)
           items:
-            $ref: '#/components/schemas/QueryConstraint'
+            $ref: '#/components/schemas/AttributeConstraint'
           type: array
         option_group_id:
           description: 'Optional string acting as a label on a set of nodes and/or
@@ -944,16 +1023,14 @@ components:
         term, or to a term that is a descendant of the QEdge predicate term.
       properties:
         knowledge_type:
-          description: >-
-            Indicates the type of knowledge that the client wants from the
-            server between the subject and object. If the value is
-            'lookup', then the client wants direct lookup information from
-            knowledge sources. If the value is 'inferred', then the client
-            wants the server to get creative and connect the subject and
-            object in more speculative and non-direct-lookup ways. If this
-            property is absent or null, it MUST be assumed to mean
-            'lookup'. This feature is currently experimental and may be
-            further extended in the future.
+          description: Indicates the type of knowledge that the client wants from
+            the server between the subject and object. If the value is 'lookup', then
+            the client wants direct lookup information from knowledge sources. If
+            the value is 'inferred', then the client wants the server to get creative
+            and connect the subject and object in more speculative and non-direct-lookup
+            ways. If this property is absent or null, it MUST be assumed to mean 'lookup'.
+            This feature is currently experimental and may be further extended in
+            the future.
           example: lookup
           nullable: true
           type: string
@@ -973,12 +1050,23 @@ components:
             node anchoring the query filter pattern for the query relationship edge.
           example: https://www.uniprot.org/uniprot/P00738
           type: string
-        constraints:
+        attribute_constraints:
           default: []
-          description: A list of contraints applied to a query edge. If there are
-            multiple items, they must all be true (equivalent to AND)
+          description: A list of attribute contraints applied to a query edge. If
+            there are multiple items, they must all be true (equivalent to AND)
           items:
-            $ref: '#/components/schemas/QueryConstraint'
+            $ref: '#/components/schemas/AttributeConstraint'
+          type: array
+        qualifier_constraints:
+          default: []
+          description: A list of QualifierConstraints that provide nuance to the QEdge.
+            If multiple QualifierConstraints are provided, there is an OR relationship
+            between them. If the QEdge has multiple predicates or if the QNodes that
+            correspond to the subject or object of this QEdge have multiple categories
+            or multiple curies, then qualifier_constraints MUST NOT be specified because
+            these complex use cases are not supported at this time.
+          items:
+            $ref: '#/components/schemas/QualifierConstraint'
           type: array
         exclude:
           description: If set to true, then all subgraphs containing this edge are
@@ -1028,81 +1116,8 @@ components:
         be used to describe the source of the statement made in a key-value pair of
         the attribute object, or describe the attribute's value itself including its
         semantic type, or a url providing additional information about it. An attribute
-        may be further qualified with a SubAttribute (for example to provide confidence
+        may be further qualified with sub-attributes (for example to provide confidence
         intervals on a value).
-      properties:
-        attribute_type_id:
-          description: A Compact URI, consisting of a prefix and a reference separated
-            by a colon, such as UniProtKB:P00738. Via an external context definition,
-            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
-            to form a full URI.
-          externalDocs:
-            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
-          title: CURIE
-          type: string
-        original_attribute_name:
-          description: The term used by the original source of an attribute to describe
-            the meaning or significance of the value it captures. This may be a column
-            name in a source tsv file, or a key in a source json document for the
-            field in the data that held the attribute's value. Capturing this information  where
-            possible lets us preserve what the original source said. Note that the
-            data type is string' but the contents of the field could also be a CURIE
-            of a third party ontology term.
-          example: p-value
-          nullable: true
-          title: original_attribute_name
-          type: string
-        value:
-          description: Value of the attribute. May be any data type, including a list.
-          example: 0.000153
-          title: value
-        value_type_id:
-          description: A Compact URI, consisting of a prefix and a reference separated
-            by a colon, such as UniProtKB:P00738. Via an external context definition,
-            the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
-            to form a full URI.
-          externalDocs:
-            url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
-          title: CURIE
-          type: string
-        attribute_source:
-          description: The source of the core assertion made by the key-value pair
-            of an attribute object. Use a CURIE or namespace designator for this resource
-            where possible.
-          example: UniProtKB
-          nullable: true
-          title: attribute_source
-          type: string
-        value_url:
-          description: Human-consumable URL linking to a web document that provides
-            additional information about an  attribute's value (not the node or the
-            edge fom which it hangs).
-          example: https://pubmed.ncbi.nlm.nih.gov/32529952
-          nullable: true
-          title: value_url
-          type: string
-        description:
-          description: Human-readable description for the attribute and its value.
-          example: Assertion Authored By Dr. Trans L. Ator
-          nullable: true
-          title: description
-          type: string
-        attributes:
-          description: Node attributes provided by this TRAPI web service.
-          items:
-            $ref: '#/components/schemas/SubAttribute'
-          nullable: true
-          title: attributes
-          type: array
-      required:
-      - attribute_type_id
-      - value
-      title: Attribute
-      type: object
-    SubAttribute:
-      additionalProperties: false
-      description: Second-level attribute that can be used to qualify information
-        contained in a primary Attribute attached to a Node or Edge.
       properties:
         attribute_type_id:
           description: A Compact URI, consisting of a prefix and a reference separated
@@ -1161,10 +1176,19 @@ components:
           nullable: true
           title: description
           type: string
+        attributes:
+          description: A list of attributes providing further information about the
+            parent attribute (for example to provide provenance information about
+            the parent attribute).
+          items:
+            $ref: '#/components/schemas/Attribute'
+          nullable: true
+          title: attributes
+          type: array
       required:
       - attribute_type_id
       - value
-      title: SubAttribute
+      title: Attribute
       type: object
     Edge:
       additionalProperties: false
@@ -1202,10 +1226,64 @@ components:
           nullable: true
           title: attributes
           type: array
+        qualifiers:
+          description: A set of Qualifiers that act together to add nuance or detail
+            to the statement expressed in an Edge.
+          items:
+            $ref: '#/components/schemas/Qualifier'
+          nullable: true
+          title: qualifiers
+          type: array
       required:
       - object
       - subject
       title: Edge
+      type: object
+    Qualifier:
+      additionalProperties: false
+      description: An additional nuance attached to an assertion
+      properties:
+        qualifier_type_id:
+          description: The category of the qualifier, drawn from a hierarchy of qualifier
+            slots in the Biolink model (e.g. subject_aspect, subject_direction, object_aspect,
+            object_direction, etc).
+          example: subject_aspect
+          nullable: false
+          title: qualifier_type_id
+          type: string
+        qualifier_value:
+          description: The value associated with the type of the qualifier, drawn
+            from a set of controlled values by the type as specified in the Biolink
+            model (e.g. 'expression' or 'abundance' for the qualifier type 'subject_aspect',
+            etc).
+          example: expression
+          nullable: false
+          title: qualifier_value
+          type: string
+      required:
+      - qualifier_type_id
+      - qualifier_value
+      title: Qualifier
+      type: object
+    QualifierConstraint:
+      additionalProperties: false
+      description: Defines a query constraint based on the qualifier_types and qualifier_values
+        of a set of Qualifiers attached to an edge. For example, it can constrain
+        a "ChemicalX - affects - ?Gene" query to return only edges where ChemicalX
+        specifically affects the 'expression' of the Gene, by constraining on the
+        qualifier_type "object_aspect" with a qualifier_value of "expression".
+      properties:
+        qualifier_set:
+          description: A set of Qualifiers that serves to add nuance to a query, by
+            constraining allowed values held by Qualifiers on queried Edges.
+          items:
+            $ref: '#/components/schemas/Qualifier'
+          nullable: false
+          title: qualifier_set
+          type: array
+      required:
+      - qualifier_set
+      title: QualifierConstraint
       type: object
     BiolinkEntity:
       description: Compact URI (CURIE) for a Biolink class, biolink:NamedThing or
@@ -1266,6 +1344,9 @@ components:
               constraint_use: false
         edges:
         - predicate: biolink:interacts_with
+          knowledge_types:
+          - knowledge_types
+          - knowledge_types
           subject: biolink:PhenotypicFeature
           attributes:
           - attribute_source: infores:chembl
@@ -1284,6 +1365,9 @@ components:
             constraint_use: false
           object: biolink:PhenotypicFeature
         - predicate: biolink:interacts_with
+          knowledge_types:
+          - knowledge_types
+          - knowledge_types
           subject: biolink:PhenotypicFeature
           attributes:
           - attribute_source: infores:chembl
@@ -1317,7 +1401,6 @@ components:
             for which the predicate is the most specific available.
           items:
             $ref: '#/components/schemas/MetaEdge'
-          minItems: 1
           title: edges
           type: array
       required:
@@ -1363,6 +1446,7 @@ components:
           description: Node attributes provided by this TRAPI web service.
           items:
             $ref: '#/components/schemas/MetaAttribute'
+          nullable: true
           title: attributes
           type: array
       required:
@@ -1375,6 +1459,9 @@ components:
         subject Biolink class and an object Biolink class.
       example:
         predicate: biolink:interacts_with
+        knowledge_types:
+        - knowledge_types
+        - knowledge_types
         subject: biolink:PhenotypicFeature
         attributes:
         - attribute_source: infores:chembl
@@ -1427,6 +1514,16 @@ components:
           pattern: ^biolink:[A-Z][a-zA-Z]*$
           title: BiolinkEntity
           type: string
+        knowledge_types:
+          description: A list of knowledge_types that are supported by the service.
+            If the knowledge_types is null, this means that only 'lookup' is supported.
+            Currently allowed values are 'lookup' or 'inferred'.
+          items:
+            type: string
+          minItems: 1
+          nullable: true
+          title: knowledge_types
+          type: array
         attributes:
           description: Edge attributes provided by this TRAPI web service.
           items:
@@ -1489,7 +1586,7 @@ components:
       - attribute_type_id
       title: MetaAttribute
       type: object
-    QueryConstraint:
+    AttributeConstraint:
       additionalProperties: false
       description: Generic query constraint for a query node or query edge
       properties:
@@ -1516,30 +1613,39 @@ components:
           type: boolean
         operator:
           description: Relationship between the database value and the constraint
-            value for the specified id. The operators ==, >, and < mean is exactly
-            equal to, is greater than, and is less than, respectively. The 'matches'
-            operator indicates that the value is a regular expression to be evaluated.
-            If value is a list type, then at least one evaluation must be true (equivalent
+            value for the specified id. The operators ==, >, and < mean is equal to,
+            is greater than, and is less than, respectively. The 'matches' operator
+            indicates that the value is a regular expression to be evaluated. If value
+            is a list type, then at least one evaluation must be true (equivalent
             to OR). This means that the == operator with a list acts like a SQL 'IN'
-            clause. The 'not' property negates the operator such that not and == means
-            'not equal to' (or 'not in' for a list), and not > means <=, and not <
-            means >=, and not matches means does not match. The '==' operator SHOULD
-            NOT be used in a manner that describes an "is a" subclass relationship
-            for the parent QNode.
+            clause. If the value of the compared attribute is a list, then comparisons
+            are performed between each of the constraint values and each of the attribute
+            values, and any one true evaluation counts as an overall true (e.g., [1,2,3]
+            == [6,7,2] is true). The == operator is therefore a broad interpretation
+            of inclusion. The '===' operator requires that the constraint value and
+            the attribute value be the same data type, length, content, and order
+            (e.g. only [1,2,3] === [1,2,3]). The 'not' property negates the operator
+            such that not and == means 'not equal to' (or 'not in' for a list), and
+            not > means <=, and not < means >=, not matches means does not match,
+            and not === means the match between the constraint and attribute values
+            are not exact. The '==' operator SHOULD NOT be used in a manner that describes
+            an "is a" subclass relationship for the parent QNode.
           enum:
           - ==
           - '>'
           - <
           - matches
+          - ===
           title: operator
           type: string
         value:
           description: Value of the attribute. May be any data type, including a list.
             If the value is a list and there are multiple items, at least one comparison
-            must be true (equivalent to OR). If 'value' is of data type 'object',
-            the keys of the object MAY be treated as a list. A 'list' data type paired
-            with the '>' or '<' operators will encode extraneous comparisons, but
-            this is permitted as it is in SQL and other languages.
+            must be true (equivalent to OR) unless the '===' operator is used. If
+            'value' is of data type 'object', the keys of the object MAY be treated
+            as a list. A 'list' data type paired with the '>' or '<' operators will
+            encode extraneous comparisons, but this is permitted as it is in SQL and
+            other languages.
           example: 57.0
           title: value
         unit_id:
@@ -1564,7 +1670,7 @@ components:
       - name
       - operator
       - value
-      title: QueryConstraint
+      title: AttributeConstraint
       type: object
     Operations:
       additionalProperties: true
@@ -1576,7 +1682,7 @@ components:
         message_uris:
           description: List of URIs for Message or Response objects to fetch and process
           example:
-          - https://arax.ncats.io/api/arax/v1.2/response/38
+          - https://arax.ncats.io/api/arax/v1.3/response/38
           items:
             type: string
           type: array
