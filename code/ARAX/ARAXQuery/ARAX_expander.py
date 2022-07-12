@@ -28,7 +28,7 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
-from openapi_server.models.query_constraint import QueryConstraint
+from openapi_server.models.attribute_constraint import AttributeConstraint
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -1159,7 +1159,7 @@ class ARAXExpander:
         return parameters
 
     @staticmethod
-    def is_supported_constraint(constraint: QueryConstraint, supported_constraints_map: Dict[str, Dict[str, Set[str]]]) -> bool:
+    def is_supported_constraint(constraint: AttributeConstraint, supported_constraints_map: Dict[str, Dict[str, Set[str]]]) -> bool:
         if constraint.id not in supported_constraints_map:
             return False
         elif constraint.value not in supported_constraints_map[constraint.id]:
