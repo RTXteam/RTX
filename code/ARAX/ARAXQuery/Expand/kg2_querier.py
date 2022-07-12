@@ -216,7 +216,8 @@ class KG2Querier:
 
     @staticmethod
     def _convert_kg2c_plover_node_to_trapi_node(node_tuple: list) -> Node:
-        node = Node(name=node_tuple[0], categories=eu.convert_to_list(node_tuple[1]))
+        node = Node(name=node_tuple[0], categories=eu.convert_to_list(node_tuple[1]), query_id=node_tuple[2])
+
         return node
 
     def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list) -> Edge:
