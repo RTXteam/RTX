@@ -142,8 +142,8 @@ class ARAXExpander:
                                   f"Don't know how to handle! Supported qnode constraints are: "
                                   f"{self.supported_qnode_constraints}", error_code="UnsupportedConstraint")
         for qedge_key, qedge in query_graph.edges.items():
-            if qedge.constraints:
-                for constraint in qedge.constraints:
+            if qedge.attribute_constraints:
+                for constraint in qedge.attribute_constraints:
                     if not self.is_supported_constraint(constraint, self.supported_qedge_constraints):
                         log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
                                   f"Don't know how to handle! Supported qedge constraints are: "
