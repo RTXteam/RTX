@@ -160,11 +160,13 @@ def convert_string_to_snake_case(input_string: str) -> str:
         return input_string.lower()
 
 
-def convert_to_list(string_or_list: Union[str, List[str], None]) -> List[str]:
-    if isinstance(string_or_list, str):
-        return [string_or_list]
-    elif isinstance(string_or_list, list):
-        return string_or_list
+def convert_to_list(item: Union[str, set, list, None]) -> List[str]:
+    if isinstance(item, str):
+        return [item]
+    elif isinstance(item, set):
+        return list(item)
+    elif isinstance(item, list):
+        return item
     else:
         return []
 

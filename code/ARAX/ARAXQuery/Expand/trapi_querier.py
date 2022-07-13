@@ -5,10 +5,11 @@ import json
 import sys
 import os
 import time
+from collections import defaultdict
 
 import aiohttp
 import requests
-from typing import List, Dict, Set, Union, Optional
+from typing import List, Dict, Set, Union, Optional, Tuple
 
 import requests_cache
 
@@ -149,27 +150,25 @@ class TRAPIQuerier:
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
 
     @staticmethod
-    def _get_kg_to_qg_mappings_from_results(results: List[Result]) -> Dict[str, Dict[str, Set[str]]]:
+    def _get_kg_to_qg_mappings_from_results(results: List[Result]) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Set[str]]]:
         """
         This function returns a dictionary in which one can lookup which qnode_keys/qedge_keys a given node/edge
         fulfills. Like: {"nodes": {"PR:11": {"n00"}, "MESH:22": {"n00", "n01"} ... }, "edges": { ... }}
         """
-        qnode_key_mappings = dict()
-        qedge_key_mappings = dict()
+        qnode_key_mappings = defaultdict(set)
+        query_curie_mappings = defaultdict(set)
+        qedge_key_mappings = defaultdict(set)
         for result in results:
             for qnode_key, node_bindings in result.node_bindings.items():
-                kg_ids = {node_binding.id for node_binding in node_bindings}
-                for kg_id in kg_ids:
-                    if kg_id not in qnode_key_mappings:
-                        qnode_key_mappings[kg_id] = set()
+                for node_binding in node_bindings:
+                    kg_id = node_binding.id
                     qnode_key_mappings[kg_id].add(qnode_key)
+                    query_curie_mappings[kg_id].add(node_binding.query_id)
             for qedge_key, edge_bindings in result.edge_bindings.items():
-                kg_ids = {edge_binding.id for edge_binding in edge_bindings}
-                for kg_id in kg_ids:
-                    if kg_id not in qedge_key_mappings:
-                        qedge_key_mappings[kg_id] = set()
+                for edge_binding in edge_bindings:
+                    kg_id = edge_binding.id
                     qedge_key_mappings[kg_id].add(qedge_key)
-        return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}
+        return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}, query_curie_mappings
 
     async def _answer_query_using_kp_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         request_body = self._get_prepped_request_body(query_graph)
@@ -298,7 +297,7 @@ class TRAPIQuerier:
             kp_message = ARAXMessenger().from_dict(json_response["message"])
 
         # Build a map that indicates which qnodes/qedges a given node/edge fulfills
-        kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
+        kg_to_qg_mappings, query_curie_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
 
         # Populate our final KG with the returned nodes and edges
         returned_edge_keys_missing_qg_bindings = set()
@@ -341,6 +340,11 @@ class TRAPIQuerier:
         if returned_node_keys_missing_qg_bindings:
             self.log.warning(f"{self.kp_name}: {len(returned_node_keys_missing_qg_bindings)} nodes in the KP's answer "
                              f"KG have no bindings to the QG: {returned_node_keys_missing_qg_bindings}")
+
+        # Fill out our unofficial node.query_ids property
+        for nodes in answer_kg.nodes_by_qg_id.values():
+            for node_key, node in nodes.items():
+                node.query_ids = eu.convert_to_list(query_curie_mappings.get(node_key))
 
         return answer_kg
 
