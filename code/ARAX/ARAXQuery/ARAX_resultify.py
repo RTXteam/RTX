@@ -667,7 +667,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     for result_graph in final_result_graphs:
         node_bindings = dict()
         for qnode_key, node_keys in result_graph['nodes'].items():
-            node_bindings[qnode_key] = [NodeBinding(id=node_key) for node_key in node_keys]
+            node_bindings[qnode_key] = [NodeBinding(id=node_key, query_id=_get_query_id(kg.nodes[node_key]))
+                                        for node_key in node_keys]
         edge_bindings = dict()
         for qedge_key, edge_keys in result_graph['edges'].items():
             edge_bindings[qedge_key] = [EdgeBinding(id=edge_key) for edge_key in edge_keys]
@@ -801,6 +802,14 @@ def _get_parallel_qedge_keys(input_qedge: QEdge, query_graph: QueryGraph) -> Set
     input_qedge_node_keys = {input_qedge.subject, input_qedge.object}
     parallel_qedge_keys = {qedge_key for qedge_key, qedge in query_graph.edges.items() if {qedge.subject, qedge.object} == input_qedge_node_keys}
     return parallel_qedge_keys
+
+
+def _get_query_id(node: Node) -> Optional[str]:
+    # TODO: How should multiple query_ids be handled?? Separate results? Brought up in #1871
+    if hasattr(node, "query_ids") and node.query_ids:
+        return node.query_ids[0]
+    else:
+        return None
 
 
 def _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key: Dict[str, Set[str]], knowledge_graph: KnowledgeGraph, query_graph: QueryGraph) -> Dict[str, Dict[str, Dict[str, Set[str]]]]:

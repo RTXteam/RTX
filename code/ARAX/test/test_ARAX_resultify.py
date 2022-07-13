@@ -1434,5 +1434,29 @@ def test_issue_1848():
     assert qedge_bindings_in_kg == {"e0"}
 
 
+def test_node_binding_query_id():
+    diabetes_curie = "MONDO:0005015"
+    type_1_diabetes_curie = "MONDO:0005147"
+    actions = [
+        f"add_qnode(ids={diabetes_curie}, key=n00)",
+        "expand(node_key=n00, kp=infores:rtx-kg2)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) > 1
+    kg = response.envelope.message.knowledge_graph
+    assert diabetes_curie in kg.nodes
+    assert type_1_diabetes_curie in kg.nodes
+    for result in message.results:
+        for qnode_key, node_bindings_list in result.node_bindings.items():
+            for node_binding in node_bindings_list:
+                if node_binding.id == diabetes_curie:
+                    assert node_binding.query_id is None
+                else:
+                    assert node_binding.query_id == diabetes_curie
+
+
 if __name__ == '__main__':
     pytest.main(['-v', 'test_ARAX_resultify.py'])
