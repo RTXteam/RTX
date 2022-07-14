@@ -148,6 +148,9 @@ class ARAXExpander:
                         log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
                                   f"Don't know how to handle! Supported qedge constraints are: "
                                   f"{self.supported_qedge_constraints}", error_code="UnsupportedConstraint")
+            if qedge.qualifier_constraints:
+                log.warning(f"Qualifier constraints are not yet supported! Will answer the query anyway, but "
+                            f"qualifier constraints will not be respected.")
 
         if response.status != 'OK':
             return response
