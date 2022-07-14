@@ -850,8 +850,8 @@ def test_constraint_validation():
           "object": "n01",
           "predicates": ["biolink:physically_interacts_with"],
           "subject": "n00",
-          "constraints": [{"id": "test_edge_constraint_1", "name": "test name edge", "operator": "<", "value": 1.0},
-                          {"id": "test_edge_constraint_2", "name": "test name edge", "operator": ">", "value": 0.5}]
+          "attribute_constraints": [{"id": "test_edge_constraint_1", "name": "test name edge", "operator": "<", "value": 1.0},
+                                    {"id": "test_edge_constraint_2", "name": "test name edge", "operator": ">", "value": 0.5}]
         }
       },
       "nodes": {
@@ -861,7 +861,7 @@ def test_constraint_validation():
         },
         "n01": {
           "categories": ["biolink:Protein"],
-          "constraints": [{"id": "test_node_constraint", "name": "test name node", "operator": "<", "value": 1.0}]
+          "attribute_constraints": [{"id": "test_node_constraint", "name": "test name node", "operator": "<", "value": 1.0}]
         }
       }
     }
