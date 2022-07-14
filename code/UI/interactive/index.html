@@ -48,6 +48,7 @@
 <div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
 <br><br>
 <div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
+<div id="kpinfoMenu" onclick="openSection('kpinfo');" class="menuleftitem">SmartAPI Info</div>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
 <hr>
 <div title="ARAX UI version" class="tiny" id="uiversionstring">version...</div>
@@ -452,6 +453,14 @@
     <span style="margin-left:50px;" id="qfilter"></span>
     <div id="recent_queries_timeline_container"></div>
     <div id="recent_queries_container"><br>Click on the button above to view most recent ARAX services activity<br><br></div>
+  </div>
+</div>
+
+<div class="pagesection" style="overflow:visible;" id="kpinfoDiv">
+  <div class="statushead">SmartAPI Information</div>
+  <div class="status">
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveKPInfo();"/>
+    <div id="kpinfo_container"><br>Click on the button above to view SmartAPI info table<br><br></div>
   </div>
 </div>
 
