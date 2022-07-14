@@ -861,7 +861,7 @@ def test_constraint_validation():
         },
         "n01": {
           "categories": ["biolink:Protein"],
-          "attribute_constraints": [{"id": "test_node_constraint", "name": "test name node", "operator": "<", "value": 1.0}]
+          "constraints": [{"id": "test_node_constraint", "name": "test name node", "operator": "<", "value": 1.0}]
         }
       }
     }
