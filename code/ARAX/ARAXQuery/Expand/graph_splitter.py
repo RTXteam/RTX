@@ -60,7 +60,7 @@ class GraphSplitter:
         return connected_nodes
 
 
-    def _find_nearest_pinned_node(self, graph, source_node):
+    def _find_paired_node(self, graph, source_node):
         """Given the graph and a source_node which is pinned, returns the pinned node with the shortest path to the source_node that includes at least one non-pinned node. For instance, this will not return a pinned node that is directly adjacent to the source_node or that has a path of only pinned nodes. Returns None if there are no nodes that fit these criteria"""
         if not graph.nodes[source_node].ids:
             raise TypeError("Was given an unpinned node")
@@ -168,7 +168,7 @@ class GraphSplitter:
         """Takes a graph, splits it and returns two graph fragments such that each fragment contains at least one unique pinned node and such that they share at least one unpinned node. If the graph has only one contiguous group of pinned nodes, it cannot be split with these criteria, and the graph is returned unsplit."""
         # find the node to split on by finding another pinned node, called 'paired_node', and then picking a node about halfway between start_node and paired_node
         start_node = self._get_first_node(graph)
-        node_info = self._find_nearest_pinned_node(graph, start_node)
+        node_info = self._find_paired_node(graph, start_node)
         if node_info == None:
             # if no nearest node was found, graph cannot be split
             return graph
