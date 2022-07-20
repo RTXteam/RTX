@@ -88,6 +88,7 @@ function main() {
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
     var rec = getQueryVariable("recent") || null;
+    var sai = getQueryVariable("smartapi") || getQueryVariable("smartAPI") || null;
 
     var response_id = getQueryVariable("r") || getQueryVariable("id") || null;
     if (response_id) {
@@ -114,6 +115,10 @@ function main() {
     else if (rec) {
         tab = "recentqs";
 	retrieveRecentQs();
+    }
+    else if (sai) {
+	tab = "kpinfo";
+	retrieveKPInfo();
     }
     openSection(tab);
     dragElement(document.getElementById('nodeeditor'));
@@ -5044,7 +5049,6 @@ function filter_querytable(field, value) {
     }
 }
 
-
 function filter_queries(tab, span, type) {
     var disp = 'none';
     if (span.classList.contains('hide')) {
@@ -5060,6 +5064,224 @@ function filter_queries(tab, span, type) {
 	    tr.style.display = disp;
 	}
     }
+}
+
+
+function retrieveKPInfo() {
+    var kpinfo_node = document.getElementById("kpinfo_container");
+    kpinfo_node.innerHTML = '';
+    kpinfo_node.className = '';
+
+    fetch(providers["ARAX"].url + "/status?authorization=smartapi")
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Something went wrong with /status?authorization=smartapi');
+	})
+        .then(data => {
+	    var components = {};
+	    for (let item of data) {
+		if (item['component'])
+		    components[item['component']] = true;
+		else
+		    console.log("Found empty component: "+item['component']);
+	    }
+
+	    if (Object.keys(components).length < 1) {
+		kpinfo_node.className = "error";
+		kpinfo_node.innerHTML =  "<br>No <b>components</b> found in API response!<br><br>";
+		return;
+	    }
+
+	    var table = document.createElement("table");
+	    table.className = 'sumtab';
+
+            for (let component of Object.keys(components)) {
+		var tr = document.createElement("tr");
+		var td = document.createElement("td");
+
+		td.colSpan = "5";
+		td.style.background = '#fff';
+		td.style.border = '0';
+		td.appendChild(document.createElement("br"));
+		td.appendChild(document.createElement("br"));
+		tr.appendChild(td);
+		table.appendChild(tr);
+
+		tr = document.createElement("tr");
+                td = document.createElement("th")
+		td.style.background = '#fff';
+		td.style.fontSize = 'x-large';
+		td.appendChild(document.createTextNode(component+" Info"));
+		tr.appendChild(td);
+		for (var head of ["Status","Maturity","Description","URL"] ) {
+		    td = document.createElement("th")
+                    td.style.background = '#fff';
+		    td.appendChild(document.createTextNode(head));
+		    tr.appendChild(td);
+		}
+		table.appendChild(tr);
+
+		var was_seen = [];
+		for (let item of data.sort(function(a, b) { return a.title.toUpperCase() > b.title.toUpperCase() ? 1 : -1; })) {
+		    //console.log("item.comp:"+item['component']);
+		    if (item['component'] == component) {
+			tr = document.createElement("tr");
+			td = document.createElement("td");
+			td.rowSpan = item["servers"].length;
+			td.style.backgroundColor = "white";
+			td.style.borderRight = "1px solid #aaa";
+			td.style.padding = "0px 20px";
+
+			var text = document.createElement("h3");
+			text.style.float = "right";
+			text.style.marginLeft = "10px";
+			if (item["version"].startsWith("1.3"))
+			    text.className = "qprob p9";
+			else if (item["version"].startsWith("1.2"))
+			    text.className = "qprob srtx";
+			else
+			    text.className = "qprob p1";
+                        text.appendChild(document.createTextNode(item["version"]));
+			text.title = "TRAPI version";
+			td.appendChild(text);
+
+	                text = document.createElement("h3");
+			text.style.display = "inline-block";
+			text.appendChild(document.createTextNode(item["title"]));
+			td.appendChild(text);
+			td.appendChild(document.createElement("br"));
+                        td.appendChild(document.createTextNode(item["infores_name"]));
+
+			tr.appendChild(td);
+
+			var main_td = td;
+			var is_first = true;
+			for (var mature of ["production","staging","testing","development"] ) {
+			    var status_nodes = [];
+			    var had_transltr_io = (item["infores_name"].startsWith("infores:automat") || component == "Utility");
+			    var was_mature = false;
+			    for (var server of item["servers"]) {
+				if (server["maturity"] == mature) {
+				    was_mature = true;
+				    if (!is_first)
+					tr = document.createElement("tr");
+				    td = document.createElement("td");
+                                    var span = document.createElement("span");
+
+				    var stritem = item["infores_name"]+server["maturity"]+server["url"];
+				    if (was_seen.includes(stritem)) {
+                                        //tr.className = "error";
+                                        span.className = "explevel p0";
+					span.innerHTML = '&cross;';
+					span.title = "This is a DUPLICATE entry";
+				    }
+				    else if (server["url"].includes("transltr.io")) {
+					had_transltr_io = true;
+					span.className = "explevel p9";
+					span.innerHTML = '&check;';
+					span.title = "This entry is hosted at transltr.io";
+					was_seen.push(stritem);
+				    }
+				    else {
+					status_nodes.push(span);
+					span.appendChild(document.createTextNode('\u00A0'));
+					span.appendChild(document.createTextNode('\u00A0'));
+					was_seen.push(stritem);
+				    }
+				    td.appendChild(span);
+				    tr.appendChild(td);
+				    for (var what of ["maturity","description","url"] ) {
+					td = document.createElement("td");
+					if (server[what])
+					    td.appendChild(document.createTextNode(server[what]));
+					else {
+					    td.className = "error";
+					    td.appendChild(document.createTextNode("-- null --"));
+					}
+					tr.appendChild(td);
+				    }
+				    table.appendChild(tr);
+				    is_first = false;
+				    server["__done"] = true;
+				}
+				for (var sn of status_nodes) {
+				    if (had_transltr_io || mature == "development")
+					sn.className = "explevel p7";
+				    else
+					sn.className = "explevel p5";
+				}
+			    }
+
+			    if (!was_mature && !had_transltr_io) {
+				main_td.rowSpan++;
+				if (!is_first)
+				    tr = document.createElement("tr");
+				td = document.createElement("td");
+				var span = document.createElement("span");
+				span.className = "explevel p3";
+				span.appendChild(document.createTextNode('\u00A0'));
+				span.appendChild(document.createTextNode('\u00A0'));
+				td.appendChild(span);
+				tr.appendChild(td);
+
+				td = document.createElement("td");
+				td.className = "error";
+				td.appendChild(document.createTextNode(mature));
+				tr.appendChild(td);
+
+                                td = document.createElement("td");
+				td.className = "error";
+				td.appendChild(document.createTextNode("-- missing maturity --"));
+                                tr.appendChild(td);
+
+                                td = document.createElement("td");
+				tr.appendChild(td);
+
+				table.appendChild(tr);
+				is_first = false;
+
+			    }
+			}
+			for (var server of item["servers"]) {
+			    if (!server["__done"]) {
+                                if (!is_first)
+				    tr = document.createElement("tr");
+				td = document.createElement("td");
+				var span = document.createElement("span");
+				span.className = "explevel p1";
+				span.appendChild(document.createTextNode('\u00A0'));
+				span.appendChild(document.createTextNode('\u00A0'));
+				td.appendChild(span);
+				tr.appendChild(td);
+				for (var what of ["maturity","description","url"] ) {
+				    td = document.createElement("td");
+				    td.className = "error";
+				    if (server[what])
+					td.appendChild(document.createTextNode(server[what]));
+				    else {
+					td.appendChild(document.createTextNode("-- null --"));
+				    }
+				    tr.appendChild(td);
+				}
+				table.appendChild(tr);
+				is_first = false;
+			    }
+			}
+		    }
+		}
+	    }
+
+	    kpinfo_node.appendChild(table);
+            kpinfo_node.appendChild(document.createElement("br"));
+            kpinfo_node.appendChild(document.createElement("br"));
+
+	})
+        .catch(error => {
+	    kpinfo_node.className = "error";
+	    kpinfo_node.innerHTML =  "<br>" + error + "<br><br>";
+	    console.error(error);
+	});
+
 }
 
 

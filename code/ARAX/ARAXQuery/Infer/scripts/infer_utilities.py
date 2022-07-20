@@ -37,6 +37,7 @@ from node_synonymizer import NodeSynonymizer
 
 
 
+
 class InferUtilities:
 
     #### Constructor
@@ -55,6 +56,22 @@ class InferUtilities:
             return 0
         else: 
             return val
+
+    def resultify_and_sort(self, essence_scores):
+        message = self.response.envelope.message
+        resultifier = ARAXResultify()
+        resultify_params = {
+            "ignore_edge_direction": "true"
+        }
+        self.response = resultifier.apply(self.response, resultify_params)
+        for result in message.results:
+            if result.essence in essence_scores:
+                result.score = essence_scores[result.essence]
+            else:
+                result.score = None
+                self.response.warning(
+                    f"Error retrieving score for result essence {result.essence}. Setting result score to None.")
+        message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
 
     def genrete_treat_subgraphs(self, response: ARAXResponse, top_drugs: pd.DataFrame, top_paths: dict, qedge_id=None, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
         """
@@ -94,11 +111,22 @@ class InferUtilities:
         node_names = set([y for paths in top_paths.values() for x in paths for y in x[0].split("->")[::2] if y != ''])
         node_info = synonymizer.get_canonical_curies(names=list(node_names))
         node_name_to_id = {k: v['preferred_curie'] for k, v in node_info.items() if v is not None}
+        # If there are no paths, then just quit
+        # FIXME: A more intelligent thing to do would be to then fall back on the traditional DTD database
+        #if not top_paths.values():
+        #    self.response.error("No paths found in the explainable DTD model", error_code="NoPathsFound")
+        #    return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
         path_lengths = set([math.floor(len(x[0].split("->"))/2.) for paths in top_paths.values() for x in paths])
-        max_path_len = max(path_lengths)
-        disease = list(top_paths.keys())[0][1]
-        disease_curie = disease
-        disease_name = list(top_paths.values())[0][0][0].split("->")[-1]
+        try:
+            max_path_len = max(path_lengths)
+        except ValueError:
+            max_path_len = 0
+        # replace this with the value of top_drugs['drug_name'].tolist()[0]
+        #disease = list(top_paths.keys())[0][1]
+        #disease_curie = disease
+        disease_curie = top_drugs['disease_id'].tolist()[0]
+        #disease_name = list(top_paths.values())[0][0][0].split("->")[-1]
+        disease_name = top_drugs['disease_name'].tolist()[0]
         if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):  # if the knowledge graph is empty, create it
             message.knowledge_graph = KnowledgeGraph()
             message.knowledge_graph.nodes = {}
@@ -119,9 +147,9 @@ class InferUtilities:
                 'name': disease_curie,
             }
             self.response = messenger.add_qnode(self.response, add_qnode_params)
-            knowledge_graph.nodes[disease] = Node(name=disease_name, categories=['biolink:DiseaseOrPhenotypicFeature'])
-            knowledge_graph.nodes[disease].qnode_keys = ['disease']
-            node_name_to_id[disease_name] = disease
+            knowledge_graph.nodes[disease_curie] = Node(name=disease_name, categories=['biolink:DiseaseOrPhenotypicFeature'])
+            knowledge_graph.nodes[disease_curie].qnode_keys = ['disease']
+            node_name_to_id[disease_name] = disease_curie
             add_qnode_params = {
                 'key': "drug",
                 'categories': ['biolink:Drug']
@@ -146,10 +174,10 @@ class InferUtilities:
             categories_to_add.update(self.bh.get_ancestors('biolink:Disease'))
             categories_to_add.update(list(synonymizer.get_normalizer_results(disease_curie)[disease_curie]['categories'].keys()))
             categories_to_add = list(categories_to_add)
-            knowledge_graph.nodes[disease] = Node(name=disease_name, categories=categories_to_add)
+            knowledge_graph.nodes[disease_curie] = Node(name=disease_name, categories=categories_to_add)
             drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
             disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
-            knowledge_graph.nodes[disease].qnode_keys = [disease_qnode_key]
+            knowledge_graph.nodes[disease_curie].qnode_keys = [disease_qnode_key]
             # Don't add a new edge in for the probably_treats as there is already an edge there with the knowledge type inferred
             # But do say that this edge has been filled
             message.query_graph.edges[qedge_id].filled = True
@@ -162,6 +190,51 @@ class InferUtilities:
         qnodes = query_graph.nodes
         qedges = query_graph.edges
 
+        # If the max path len is 0, that means there are no paths found, so just insert the drugs with the probability_treats on them
+        if max_path_len == 0:
+            essence_scores = {}
+            node_ids = set(top_drugs['drug_id'])
+            node_info = synonymizer.get_canonical_curies(curies=list(node_ids))
+            node_id_to_canonical_id = {k: v['preferred_curie'] for k, v in node_info.items() if v is not None}
+            node_id_to_score = dict(zip(node_ids, top_drugs['tp_score']))
+            # Add the drugs to the knowledge graph
+            for node_id in node_ids:
+                drug_canonical_id = node_id_to_canonical_id[node_id]
+                drug_categories = [node_info[node_id]['preferred_category']]
+                drug_categories.append('biolink:NamedThing')
+                # add the node to the knowledge graph
+                drug_name = node_info[node_id]['preferred_name']
+                essence_scores[drug_name] = node_id_to_score[node_id]
+                if drug_canonical_id not in knodes:
+                    knodes[drug_canonical_id] = Node(name=drug_name, categories=drug_categories)
+                    knodes[drug_canonical_id].qnode_keys = [drug_qnode_key]
+                else:  # it's already in the KG, just pass
+                    pass
+                # add the edge to the knowledge graph
+                if drug_canonical_id not in kedges:
+                    treat_score = node_id_to_score[node_id]
+                    edge_attribute_list = [
+                        EdgeAttribute(original_attribute_name="provided_by", value="infores:arax",
+                                      attribute_type_id="biolink:aggregator_knowledge_source",
+                                      attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        EdgeAttribute(original_attribute_name=None, value=True,
+                                      attribute_type_id="biolink:computed_value",
+                                      attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean",
+                                      value_url=None,
+                                      description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                        EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats",
+                                      value=str(treat_score))
+                    ]
+                    new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:probably_treats', attributes=edge_attribute_list)
+                    new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=kp)
+                    kedges[new_edge_key] = new_edge
+                    kedges[new_edge_key].filled = True
+                    kedges[new_edge_key].qedge_keys = [qedge_id]
+            self.resultify_and_sort(essence_scores)
+            return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+
+
+        # Otherwise we do have paths and we need to handle them
         path_keys = [{} for i in range(max_path_len)]
         for i in range(max_path_len+1):
             if (i+1) in path_lengths:
@@ -273,18 +346,7 @@ class InferUtilities:
 
         #FIXME: this might cause a problem since it doesn't add optional groups for 1 and 2 hops
         # This might also cause issues when infer is on an intermediate edge
-        resultifier = ARAXResultify()
-        resultify_params = {
-            "ignore_edge_direction": "true"
-        }
-        self.response = resultifier.apply(self.response, resultify_params)
-        for result in message.results:
-            if result.essence in essence_scores:
-                result.score = essence_scores[result.essence]
-            else:
-                result.score = None
-                self.response.warning(f"Error retrieving score for result essence {result.essence}. Setting result score to None.")
-        message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
+        self.resultify_and_sort(essence_scores)
         
 
         return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
