@@ -327,6 +327,7 @@ class ResponseCache:
             ars_hosts = [ 'ars.transltr.io', 'ars-prod.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
+                    #eprint(f"Trying {ars_host}...")
                     try:
                         response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
                     except Exception as e:
@@ -334,9 +335,11 @@ class ResponseCache:
                 status_code = response_content.status_code
                 #eprint(f"--- Fetch of {response_id} from {ars_host} yielded {status_code}")
                 if status_code == 200:
+                    #eprint(f"Got 200 from {ars_host}...")
                     break
 
             if status_code != 200:
+                #eprint("Cannot fetch from ARS a response corresponding to response_id="+str(response_id))
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
             content_size = len(response_content.content)
@@ -355,8 +358,19 @@ class ResponseCache:
             except:
                 return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
-            if 'fields' in response_dict and 'actor' in response_dict['fields'] and ( str(response_dict['fields']['actor']) == '9' or str(response_dict['fields']['actor']) == '19' ):
+            #### Debugging
+            #response_dict['fields']['data'] = '...'
+            #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
+
+            is_parent_pk = False
+            if 'fields' in response_dict:
+                if 'name' in response_dict['fields'] and response_dict['fields']['name'] == 'ars-default-agent':
+                    is_parent_pk = True
+                elif 'actor' in response_dict['fields'] and str(response_dict['fields']['actor']) == '9':
+                    is_parent_pk = True
+            if is_parent_pk == True:
                 with requests_cache.disabled():
+                    #eprint(f"INFO: This is a parent UUID. Fetching trace=y for {response_id}")
                     response_content = requests.get(f"https://{ars_host}/ars/api/messages/" + response_id + '?trace=y', headers={'accept': 'application/json'})
                 status_code = response_content.status_code
 
@@ -371,8 +385,9 @@ class ResponseCache:
 
                 return response_dict
 
-            if 'fields' in response_dict and 'data' in response_dict['fields']:
+            if not is_parent_pk and 'fields' in response_dict and 'data' in response_dict['fields']:
                 envelope = response_dict['fields']['data']
+                #eprint(f"INFO: This is an ordinary child UUID. Reading and validating it...")
                 if envelope is None:
                     envelope = {}
                     return envelope
@@ -394,6 +409,25 @@ class ResponseCache:
                     '11': 'ImProving',
                     '12': 'Cam',
                     '13': 'TextMining'
+                }
+
+                #### Actor lookup by name
+                actor_name_lookup = {
+                    'ara-aragorn': 'Aragorn',
+                    'ara-arax': 'ARAX',
+                    'ara-bte': 'BTE',
+                    'ara-ncats': 'NCATS',
+                    'ara-robokop': 'Robokop',
+                    'ara-unsecret': 'Unsecret',
+                    'kp-genetics': 'Genetics',
+                    'kp-molecular': 'MolePro',
+                    'ara-explanatory': 'Explanatory',
+                    'ara-improving': 'ImProving',
+                    'kp-cam': 'Cam',
+                    'kp-chp': 'CHP',
+                    'kp-icees': 'ICEES',
+                    'kp-openpredict': 'OpenPredict',
+                    'kp-textmining': 'TextMining'
                 }
 
                 #Remove warning code hack
@@ -454,7 +488,20 @@ class ResponseCache:
                     envelope['validation_result'] = { 'status': 'FAIL', 'version': trapi_version, 'size': content_size, 'message': 'TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description'] }
 
                 #### Try to add the reasoner_id
-                if 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
+                if 'name' in response_dict['fields'] and response_dict['fields']['name'] is not None:
+                    #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
+                    actor = str(response_dict['fields']['name'])
+                    if actor in actor_name_lookup:
+                        #eprint(f"INFO: Attempting to inject {actor_name_lookup[actor]} into results")
+                        if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:
+                            for result in envelope['message']['results']:
+                                if 'reasoner_id' in result and result['reasoner_id'] is not None:
+                                    pass
+                                else:
+                                    result['reasoner_id'] = actor_name_lookup[actor]
+
+                elif 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
+                    #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
                     actor = str(response_dict['fields']['actor'])
                     if actor in actor_lookup:
                         if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:

@@ -228,6 +228,39 @@ class ARAXExpander:
                     # Default to related_to if no predicate was specified
                     qedge.predicates = [self.bh.get_root_predicate()]
 
+        # Send ARAXInfer any one-hop, "inferred", "treats" queries (temporary way of making creative mode work)
+        inferred_qedge_keys = [qedge_key for qedge_key, qedge in query_graph.edges.items() if qedge.knowledge_type == "inferred"]
+        if inferred_qedge_keys:
+            if len(query_graph.edges) == 1:
+                inferred_qedge_key = inferred_qedge_keys[0]
+                qedge = query_graph.edges[inferred_qedge_key]
+                # Figure out if this is a "treats" query
+                treats_ancestors = self.bh.get_ancestors("biolink:treats")
+                if set(treats_ancestors).intersection(set(qedge.predicates)):
+                    # Call XDTD and simply return whatever it returns
+                    # Get the subject of this edge
+                    subject_qnode = query_graph.nodes[qedge.subject]  # drug
+                    object_qnode = query_graph.nodes[qedge.object]  # disease
+                    if object_qnode.ids and len(object_qnode.ids) >= 1:
+                        object_curie = object_qnode.ids[0]  #FIXME: will need a way to handle multiple IDs
+                    else:
+                        log.error(f"No CURIEs found for {object_qnode.name}", error_code="NoCURIEs")
+                        #raise Exception(f"No CURIEs found for {object_qnode.name}")
+                        return
+                    log.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
+                    from ARAX_infer import ARAXInfer
+                    infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': object_curie, 'qedge_id': inferred_qedge_key}
+                    inferer = ARAXInfer()
+                    infer_response = inferer.apply(response, infer_input_parameters)
+                    return infer_response
+                else:
+                    log.info(f"Qedge {inferred_qedge_key} has knowledge_type == inferred, but the query is not "
+                             f"DTD-related. Will answer using the normal 'fill' strategy (not creative mode).")
+            else:
+                log.warning(f"Expand does not yet know how to answer multi-qedge query graphs when one or more of "
+                            f"the qedges has knowledge_type == inferred. Will answer using the normal 'fill' strategy "
+                            f"(not creative mode).")
+
         # Expand any specified edges
         if input_qedge_keys:
             query_sub_graph = self._extract_query_subgraph(input_qedge_keys, query_graph, log)
