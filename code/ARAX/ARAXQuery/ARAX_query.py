@@ -466,7 +466,7 @@ class ARAXQuery:
 
         # Define allowed qnode and qedge attributes to check later
         allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'option_group_id': 1, 'name': 1, 'constraints': 1 }
-        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'constraints': 1 }
+        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'constraints': 1, 'knowledge_type': 1 }
 
         #### Loop through nodes checking the attributes
         for id,qnode in message['query_graph']['nodes'].items():
@@ -648,6 +648,7 @@ class ARAXQuery:
             from ARAX_filter_kg import ARAXFilterKG
             from ARAX_resultify import ARAXResultify
             from ARAX_filter_results import ARAXFilterResults
+            from ARAX_infer import ARAXInfer
             from ARAX_connect import ARAXConnect
             expander = ARAXExpander()
             filter = ARAXFilter()
@@ -655,6 +656,7 @@ class ARAXQuery:
             filter_kg = ARAXFilterKG()
             resultifier = ARAXResultify()
             filter_results = ARAXFilterResults()
+            infer = ARAXInfer()
             connect = ARAXConnect()
             self.message = message
 
@@ -741,6 +743,9 @@ class ARAXQuery:
 
                     elif action['command'] == 'filter_kg':  # recognize the filter_kg command
                         filter_kg.apply(response, action['parameters'])
+
+                    elif action['command'] == 'infer':  # recognize the infer command
+                        infer.apply(response, action['parameters'])
 
                     elif action['command'] == 'filter_results':  # recognize the filter_results command
                         response.debug(f"Before filtering, there are {len(response.envelope.message.results)} results")
