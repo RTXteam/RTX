@@ -183,3 +183,5 @@ def test_with_only_qg():
     assert response.status == 'OK'
     assert len(message.query_graph.edges) > 1
     assert len(message.results) > 0
+
+
