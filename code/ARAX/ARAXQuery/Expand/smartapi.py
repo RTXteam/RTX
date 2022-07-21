@@ -55,7 +55,7 @@ class SmartAPI:
         """Find all endpoints that match a query for TRAPI."""
         with requests_cache.disabled():
             response_content = requests.get(
-                self.base_url + "/query?limit=1000&q=TRAPI",
+                self.base_url + "/query?limit=1000&q=TRAPI&raw=1",
                 headers={"accept": "application/json"},
             )
 
@@ -119,13 +119,19 @@ class SmartAPI:
                 if not match:
                     continue
 
+            try:
+                smartapi_url = "https://smart-api.info/ui/" + hit["_id"]
+            except:
+                smartapi_url = None
+
             endpoints.append({
                 "servers": servers,
                 "operations": operations,
                 "version": url_version,
                 "component": component,
                 "infores_name": infores_name,
-                "title": title
+                "title": title,
+                "smartapi_url": smartapi_url
             })
 
         if whitelist:
