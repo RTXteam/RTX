@@ -264,6 +264,15 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         
         # Make sure only allowable parameters and values have been passed
         resp = self.check_params(allowable_parameters)
+        # Make sure that if ARAXi node_curie is provided, that node is actually in the query graph
+        if 'node_curie' in parameters and parameters['node_curie'] and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and message.query_graph.nodes:
+            ids_in_qg = set()
+            for node in message.query_graph.nodes.values():
+                if node.ids:
+                    ids_in_qg.update(node.ids)
+            if parameters['node_curie'] not in ids_in_qg:
+                self.response.error(f"Supplied node_curie {parameters['node_curie']} is not in the query graph. I was given the curies: {ids_in_qg}", error_code="UnknownNode")
+                return self.response
         # return if bad parameters have been passed
         if self.response.status != 'OK' or resp == -1:
             return self.response
@@ -301,8 +310,16 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         # dtd.set_query_disease(self.parameters['node_curie'])
         # top_drugs = dtd.predict_top_N_drugs(self.parameters['n_drugs'])
         # top_paths = dtd.predict_top_M_paths(self.parameters['n_paths'])
-        top_drugs = self.EDTD.get_top_drugs_for_disease(disease_ids=self.parameters['node_curie'])
-        top_paths = self.EDTD.get_top_paths_for_disease(disease_ids=self.parameters['node_curie'])
+        try:
+            top_drugs = self.EDTD.get_top_drugs_for_disease(disease_ids=self.parameters['node_curie'])
+            top_paths = self.EDTD.get_top_paths_for_disease(disease_ids=self.parameters['node_curie'])
+        except:
+            self.response.error(f"Could not get top drugs and paths for disease {self.parameters['node_curie']}", error_code="ValueError")
+            return self.response
+
+        if len(top_drugs) == 0:
+            self.response.error(f"Could not get predicted drugs for disease {self.parameters['node_curie']}. Likely the model was not trained with this disease.", error_code="ValueError")
+            return self.response
 
         # FW: temp fix to use the pickle fil for dev work rather than recomputing
         # Comment out the following 3 lines and uncomment the above for prod deploy
