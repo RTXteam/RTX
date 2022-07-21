@@ -33,7 +33,7 @@ if (!araxQuery)
 var providers = {
     "ARAX" : { "url" : baseAPI },
     "ARAXQ": { "url" : araxQuery },
-    "ARS"  : { "url" : "https://ars.transltr.io/ars/api/submit" },
+    "ARS"  : { "url" : "https://ars-prod.transltr.io/ars/api/submit" },
     "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.3" }
 };
 
@@ -939,6 +939,7 @@ function getIdStats(id) {
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
 	document.getElementById("nsources_"+id).innerHTML = '';
+	document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
@@ -985,6 +986,11 @@ function sendId(is_ars_refresh) {
 	reset_vars();
 	if (cyobj[99999]) {cyobj[99999].elements().remove();}
 	input_qg = { "edges": {}, "nodes": {} };
+
+	for (var item of document.querySelectorAll('[id^="resparrow_"]'))
+	    item.className = '';
+	if (document.getElementById("resparrow_"+id))
+	    document.getElementById("resparrow_"+id).className = 'p7';
     }
 
     if (document.getElementById("numresults_"+id)) {
@@ -992,6 +998,7 @@ function sendId(is_ars_refresh) {
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
         document.getElementById("nsources_"+id).innerHTML = '';
+        document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
@@ -1055,7 +1062,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.3?","N_Results","Nodes / Edges","Sources"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.3?","N_Results","Nodes / Edges","Sources","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -1075,6 +1082,8 @@ function process_ars_message(ars_msg, level) {
     tr = document.createElement("tr");
     tr.className = 'hoverable';
     td = document.createElement("td");
+    if (level)
+	td.id = "resparrow_"+ars_msg.message;
     td.appendChild(document.createTextNode('\u25BA'.repeat(level)));
     tr.appendChild(td);
     td = document.createElement("td");
@@ -1130,6 +1139,11 @@ function process_ars_message(ars_msg, level) {
     td = document.createElement("td");
     td.id = "nsources_"+ars_msg.message;
     td.style.textAlign = "center";
+    tr.appendChild(td);
+
+    td = document.createElement("td");
+    td.id = "cachelink_"+ars_msg.message;
+    td.style.textAlign = "right";
     tr.appendChild(td);
 
     table.appendChild(tr);
@@ -1416,6 +1430,7 @@ function update_response_stats_on_error(rid,msg,clearall) {
 	document.getElementById("nodedges_"+rid).innerHTML = '';
 	document.getElementById("nsources_"+rid).innerHTML = '';
 	document.getElementById("istrapi_"+rid).innerHTML = '';
+	document.getElementById("cachelink_"+rid).innerHTML = '';
     }
 }
 
@@ -5145,9 +5160,16 @@ function retrieveKPInfo() {
 			text.title = "TRAPI version";
 			td.appendChild(text);
 
-	                text = document.createElement("h3");
+	                text = document.createElement("a");
 			text.style.display = "inline-block";
-			text.appendChild(document.createTextNode(item["title"]));
+			text.style.color = "#000";
+			text.style.fontWeight = 'bold';
+			text.style.fontSize = 'initial';
+			text.style.padding = '15px 0px';
+			text.href = item["smartapi_url"];
+			text.target = 'smartapi_reg';
+			text.title = 'View SmartAPI registration for this '+component;
+			text.innerHTML = item["title"];
 			td.appendChild(text);
 			td.appendChild(document.createElement("br"));
                         td.appendChild(document.createTextNode(item["infores_name"]));
@@ -5158,7 +5180,7 @@ function retrieveKPInfo() {
 			var is_first = true;
 			for (var mature of ["production","staging","testing","development"] ) {
 			    var status_nodes = [];
-			    var had_transltr_io = (item["infores_name"].startsWith("infores:automat") || component == "Utility");
+			    var had_transltr_io = false; //(item["infores_name"].startsWith("infores:automat") || component == "Utility");
 			    var was_mature = false;
 			    for (var server of item["servers"]) {
 				if (server["maturity"] == mature) {
@@ -5196,6 +5218,7 @@ function retrieveKPInfo() {
 					    td.appendChild(document.createTextNode(server[what]));
 					else {
 					    td.className = "error";
+					    td.title = "No data!";
 					    td.appendChild(document.createTextNode("-- null --"));
 					}
 					tr.appendChild(td);
@@ -5219,6 +5242,7 @@ function retrieveKPInfo() {
 				td = document.createElement("td");
 				var span = document.createElement("span");
 				span.className = "explevel p3";
+				span.title = "No servers found at this maturity level";
 				span.appendChild(document.createTextNode('\u00A0'));
 				span.appendChild(document.createTextNode('\u00A0'));
 				td.appendChild(span);
@@ -5249,6 +5273,7 @@ function retrieveKPInfo() {
 				td = document.createElement("td");
 				var span = document.createElement("span");
 				span.className = "explevel p1";
+				span.title = "Maturity does not match expected list [production, staging, testing, development]";
 				span.appendChild(document.createTextNode('\u00A0'));
 				span.appendChild(document.createTextNode('\u00A0'));
 				td.appendChild(span);
@@ -5259,6 +5284,7 @@ function retrieveKPInfo() {
 				    if (server[what])
 					td.appendChild(document.createTextNode(server[what]));
 				    else {
+					td.title = "No data!";
 					td.appendChild(document.createTextNode("-- null --"));
 				    }
 				    tr.appendChild(td);
@@ -5816,6 +5842,8 @@ function display_cache() {
     for (var pid in response_cache) {
         numitems++;
         listhtml += "<tr><td>"+numitems+".</td><td>"+pid+"</td><td><a href='javascript:remove_from_cache(\"" + pid +"\");'/>Remove</a></td></tr>";
+	if (document.getElementById("cachelink_"+pid))
+	    document.getElementById("cachelink_"+pid).innerHTML = "<a href='javascript:remove_from_cache(\"" + pid +"\");'/>Clear</a>";
     }
 
     if (numitems == 0) {
@@ -5833,6 +5861,8 @@ function display_cache() {
 
 function remove_from_cache(item) {
     delete response_cache[item];
+    if (document.getElementById("cachelink_"+item))
+	document.getElementById("cachelink_"+item).innerHTML = '';
     display_cache();
 }
 function delete_cache(item) {
