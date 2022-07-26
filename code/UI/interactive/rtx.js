@@ -64,6 +64,7 @@ function main() {
     UIstate["timeout"] = '30';
     UIstate["pruning"] = '50';
     UIstate["pid"] = null;
+    UIstate["viewing"] = null;
     UIstate["version"] = checkUIversion(false);
     UIstate["maxresults"] = 1000;
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
@@ -989,8 +990,10 @@ function sendId(is_ars_refresh) {
 
 	for (var item of document.querySelectorAll('[id^="resparrow_"]'))
 	    item.className = '';
-	if (document.getElementById("resparrow_"+id))
+	if (document.getElementById("resparrow_"+id)) {
 	    document.getElementById("resparrow_"+id).className = 'p7';
+	    UIstate["viewing"] = id;
+	}
     }
 
     if (document.getElementById("numresults_"+id)) {
@@ -1082,8 +1085,11 @@ function process_ars_message(ars_msg, level) {
     tr = document.createElement("tr");
     tr.className = 'hoverable';
     td = document.createElement("td");
-    if (level)
+    if (level) {
 	td.id = "resparrow_"+ars_msg.message;
+	if (UIstate["viewing"] == ars_msg.message)
+	    td.className = 'p7';
+    }
     td.appendChild(document.createTextNode('\u25BA'.repeat(level)));
     tr.appendChild(td);
     td = document.createElement("td");
@@ -2491,7 +2497,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		kmne.parentdivnum = num;
 		kmne.trapiversion = trapi;
 		kmne.id = node.id;
-		//console.log("=================== kmne:"+kmne.id);
+		if (node.attributes)
+		    kmne.node_binding_attributes = node.attributes;
 		var tmpdata = { "data" : kmne };
 		cytodata[num].push(tmpdata);
 	    }
@@ -2507,7 +2514,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		kmne.target = kmne.object;
 		if (kmne.predicate)
 		    kmne.type = kmne.predicate;
-		//console.log("=================== kmne:"+kmne.id);
+		if (edge.attributes)
+		    kmne.edge_binding_attributes = edge.attributes;
 		var tmpdata = { "data" : kmne };
 		cytodata[num].push(tmpdata);
 	    }
@@ -2713,7 +2721,11 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'),null);
+        if (this.data('node_binding_attributes')) {
+	    div.appendChild(document.createElement("br"));
+	    show_attributes(div, this.data('node_binding_attributes'),"Node Binding Attributes:");
+	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2772,7 +2784,11 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'),null);
+	if (this.data('edge_binding_attributes')) {
+            div.appendChild(document.createElement("br"));
+            show_attributes(div, this.data('edge_binding_attributes'),"Edge Binding Attributes:");
+	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2781,7 +2797,7 @@ function add_cyto(i) {
 
 
 
-function show_attributes(html_div, atts) {
+function show_attributes(html_div, atts, title) {
     if (atts == null)  { return; }
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
@@ -2790,6 +2806,16 @@ function show_attributes(html_div, atts) {
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
 
     var atts_table = document.createElement("table");
+    if (title) {
+	atts_table.className = 'numold explevel';
+	var row = document.createElement("tr");
+	var cell = document.createElement("td");
+        cell.className = 'attvalue';
+	cell.colSpan = '2';
+	cell.appendChild(document.createTextNode(title));
+	row.appendChild(cell);
+	atts_table.appendChild(row);
+    }
 
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
 	display_attribute(atts_table, att, semmeddb_sentences);
