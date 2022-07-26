@@ -661,6 +661,18 @@ def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:
     return new_dict
 
 
+def get_knowledge_source_constraints(edge,log):
+    for constraint in edge.attribute_constraints:
+        if constraint.id == "biolink:knowledge_source" or constraint.id == "biolink:aggregator_knowledge_source":
+            if constraint.operator != "==":
+                raise Exception("Given incompatible operator in edge knowledge_source constraint")
+            kps = constraint.value
+            # used because "constraint.not" is invalid syntax
+            negated = getattr(constraint,"_not",False)
+            return kps, negated
+    return None
+
+
 def get_standard_parameters() -> dict:
     standard_parameters = {
         "edge_key": {
