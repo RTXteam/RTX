@@ -1437,9 +1437,12 @@ def test_issue_1848():
 def test_node_binding_query_id():
     diabetes_curie = "MONDO:0005015"
     type_1_diabetes_curie = "MONDO:0005147"
+    parent_query_ids = {diabetes_curie, type_1_diabetes_curie}
     actions = [
-        f"add_qnode(ids={diabetes_curie}, key=n00)",
-        "expand(node_key=n00, kp=infores:rtx-kg2)",
+        f"add_qnode(ids=[{','.join(parent_query_ids)}], key=n00)",
+        f"add_qnode(categories=biolink:Drug, key=n01)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1447,15 +1450,22 @@ def test_node_binding_query_id():
     assert response.status == 'OK'
     assert len(message.results) > 1
     kg = response.envelope.message.knowledge_graph
+    # Make sure both input curies appear somewhere in the results
     assert diabetes_curie in kg.nodes
     assert type_1_diabetes_curie in kg.nodes
+    # Make sure node bindings do/don't have 'query_id' filled out as appropriate
     for result in message.results:
-        for qnode_key, node_bindings_list in result.node_bindings.items():
-            for node_binding in node_bindings_list:
-                if node_binding.id == diabetes_curie:
-                    assert node_binding.query_id is None
-                else:
-                    assert node_binding.query_id == diabetes_curie
+        for node_binding in result.node_bindings["n00"]:
+            if node_binding.id in parent_query_ids:
+                assert node_binding.query_id is None
+            else:
+                assert node_binding.query_id in parent_query_ids
+        for node_binding in result.node_bindings["n01"]:
+            assert node_binding.query_id is None
+    # Make sure we have some results with subclass self-edges (Expand assigns such qedges keys like 'subclass:n00-n00')
+    assert any(qedge_key.startswith("subclass")
+               for result in message.results
+               for qedge_key in result.edge_bindings)
 
 
 if __name__ == '__main__':
