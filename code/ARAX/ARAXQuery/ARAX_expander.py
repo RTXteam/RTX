@@ -323,16 +323,12 @@ class ARAXExpander:
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
                     kp_selector = KPSelector(log)
-                    kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
-                    edge = list(one_hop_qg.edges.values())[0]
-                    ks_constraints = eu.get_knowledge_source_constraints(edge,log)
-                    if ks_constraints:
-                        constrained_kps, negated = ks_constraints
-                        log.debug(constrained_kps)
-                        if negated:
-                            kps_to_query = [kp for kp in kps_to_query if kp not in constrained_kps]
-                        else:
-                            kps_to_query = constrained_kps
+                    kps_to_query = set(kp_selector.get_kps_for_single_hop_qg(one_hop_qg))
+                    # remove kps if this edge has kp constraints
+                    allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
+                    if allowlist:
+                        kps_to_query = {kp for kp in kps_to_query if kp in allowlist}
+                    kps_to_query -= denylist
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
                     kps_to_query = {parameters["kp"]}
