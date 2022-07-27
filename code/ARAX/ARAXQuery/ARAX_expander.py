@@ -889,7 +889,7 @@ class ARAXExpander:
                 if qedge_key.startswith("subclass:") and "--" in qedge_key:  # TODO: change to more specific regex?
                     self_loop_qnode_key = qedge_key.split(":")[-1].split("--")[0]
                     subclass_qedge = QEdge(subject=self_loop_qnode_key, object=self_loop_qnode_key,
-                                                            predicates=["biolink:subclass_of"])
+                                           predicates=["biolink:subclass_of"])
                     log.debug(f"Adding subclass_of qedge {qedge_key} to the QG since KP(s) returned child nodes "
                               f"for this qnode")
                     overarching_qg.edges[qedge_key] = subclass_qedge
@@ -1250,6 +1250,7 @@ class ARAXExpander:
             input_curie_names_map = eu.get_curie_names(list(canonical_to_input_curie_map.values()), log)
             for canonical_curie, input_curie in canonical_to_input_curie_map.items():
                 if canonical_curie in kg.nodes:  # Curies may have already been remapped on a prior expand() call
+                    # Remap the node to use the input curie instead of canonical
                     node = kg.nodes[canonical_curie]
                     node.name = input_curie_names_map.get(input_curie, node.name)
                     kg.nodes[input_curie] = node
@@ -1263,6 +1264,10 @@ class ARAXExpander:
                             edge.subject = input_curie
                         if edge.object == canonical_curie:
                             edge.object = input_curie
+            # Remap all KG ID to query ID mappings as needed
+            for node in kg.nodes.values():
+                node.query_ids = list({canonical_to_input_curie_map.get(query_id, query_id) for query_id in node.query_ids})
+
         else:
             log.debug(f"No KG nodes found that use a different curie than was asked for in the QG")
 
