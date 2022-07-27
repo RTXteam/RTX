@@ -663,11 +663,15 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     # Convert the final result graphs into actual Swagger object model results
     log.debug(f"Loading final result graphs into TRAPI object model")
+    qnodes_with_multiple_ids = {qnode_key for qnode_key, qnode in qg.nodes.items()
+                                if qnode.ids and len(qnode.ids) > 1}
     results = []
     for result_graph in final_result_graphs:
         node_bindings = dict()
         for qnode_key, node_keys in result_graph['nodes'].items():
-            node_bindings[qnode_key] = [NodeBinding(id=node_key, query_id=_get_query_id(kg.nodes[node_key]))
+            node_bindings[qnode_key] = [NodeBinding(id=node_key,
+                                                    query_id=_get_query_id(node_key, kg.nodes[node_key],
+                                                                           qnode_key, qnodes_with_multiple_ids))
                                         for node_key in node_keys]
         edge_bindings = dict()
         for qedge_key, edge_keys in result_graph['edges'].items():
@@ -729,12 +733,16 @@ def _merge_two_result_graphs(optional_result_graph: Dict[str, Dict[str, Set[str]
                              required_result_graph: Dict[str, Dict[str, Set[str]]]) -> Dict[str, Dict[str, Set[str]]]:
     # Start with the required result graph and then add in any nodes/edges from the optional graph as appropriate
     merged_result_graph = _copy_result_graph(required_result_graph)
-    for qnode_key, kg_node_keys in optional_result_graph["nodes"].items():
-        if qnode_key not in required_result_graph["nodes"]:
-            merged_result_graph["nodes"][qnode_key] = kg_node_keys
-    for qedge_key, kg_edge_keys in optional_result_graph["edges"].items():
-        if qedge_key not in required_result_graph["edges"]:
-            merged_result_graph["edges"][qedge_key] = kg_edge_keys
+    for qnode_key, optional_kg_node_keys in optional_result_graph["nodes"].items():
+        if qnode_key in required_result_graph["nodes"]:
+            merged_result_graph["nodes"][qnode_key] = required_result_graph["nodes"][qnode_key].union(optional_kg_node_keys)
+        else:
+            merged_result_graph["nodes"][qnode_key] = optional_kg_node_keys
+    for qedge_key, optional_kg_edge_keys in optional_result_graph["edges"].items():
+        if qedge_key in required_result_graph["edges"]:
+            merged_result_graph["edges"][qedge_key] = required_result_graph["edges"][qedge_key].union(optional_kg_edge_keys)
+        else:
+            merged_result_graph["edges"][qedge_key] = optional_kg_edge_keys
     return merged_result_graph
 
 
@@ -778,9 +786,13 @@ def _get_kg_edge_keys_by_qg_key(knowledge_graph: KnowledgeGraph) -> Dict[str, Se
 def _get_connected_qnode_keys(qnode_key: str, query_graph: QueryGraph) -> Set[str]:
     qnode_keys_used_on_same_qedges = set()
     for qedge in query_graph.edges.values():
-        qnode_keys_used_on_same_qedges.add(qedge.subject)
-        qnode_keys_used_on_same_qedges.add(qedge.object)
-    return qnode_keys_used_on_same_qedges.difference({qnode_key})
+        # This qnode is a neighbor of itself if there's a self-qedge
+        if qedge.subject == qedge.object:
+            qnode_keys_used_on_same_qedges.add(qedge.subject)
+        else:
+            other_qnode_key = qedge.subject if qedge.subject != qnode_key else qedge.object
+            qnode_keys_used_on_same_qedges.add(other_qnode_key)
+    return qnode_keys_used_on_same_qedges
 
 
 def _create_new_empty_result_graph() -> Dict[str, Dict[str, Set[str]]]:
@@ -804,10 +816,13 @@ def _get_parallel_qedge_keys(input_qedge: QEdge, query_graph: QueryGraph) -> Set
     return parallel_qedge_keys
 
 
-def _get_query_id(node: Node) -> Optional[str]:
-    # TODO: How should multiple query_ids be handled?? Separate results? Brought up in #1871
-    if hasattr(node, "query_ids") and node.query_ids:
-        return node.query_ids[0]
+def _get_query_id(node_key: str, node: Node, qnode_key: str, qnode_keys_with_multiple_ids: Set[str]) -> Optional[str]:
+    if qnode_key in qnode_keys_with_multiple_ids:
+        if hasattr(node, "query_ids") and node.query_ids:
+            query_id = node.query_ids[0]  # TODO: How should multiple query_ids be handled?? Separate results? Brought up in #1871
+            return query_id if query_id != node_key else None
+        else:
+            return None
     else:
         return None
 
@@ -871,10 +886,11 @@ def _get_all_adjacent_nodes(kg_node_keys: Set[str], start_qnode_key: str, target
     return {node_key for node_key_set in connections for node_key in node_key_set}
 
 
-def _find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_keys_to_choose_from: Set[str], qg: QueryGraph) -> Tuple[str, Set[str]]:
+def _find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_keys_to_choose_from: Set[str],
+                                    qg: QueryGraph) -> Tuple[str, Set[str]]:
     """
     This function selects a qnode ID from the qnode_keys_to_choose_from that connects to one or more of the qnode IDs
-    in the qnode_keys_to_connect_to (which itself could be considered a sub-graph of the QG). It also returns the IDs
+    in the qnode_keys_to_connect_to (which is generally a sub-graph of the QG). It also returns the IDs
     of the connection points (all qnode ID(s) in qnode_keys_to_connect_to that the chosen node connects to).
     """
     for qnode_key_option in qnode_keys_to_choose_from:
@@ -959,15 +975,18 @@ def _create_result_graphs(kg: KnowledgeGraph,
 
     # Iteratively construct "result graphs" (initially containing only nodes, not edges) by walking through all qnodes
     log.debug(f"Constructing result graphs qnode by qnode")
+    self_loop_qnodes_remaining = {qedge.subject for qedge in qg.edges.values() if qedge.subject == qedge.object}
+    log.debug(f"Self-loop qnodes remaining are: {self_loop_qnodes_remaining}")
     if base_result_graphs:
-        # We'll build off of the 'base' result graphs rather than start anew
+        # We'll build off of the 'base' result graphs rather than start anew (saves time for option group processing)
         result_graphs = base_result_graphs
         qnode_keys_already_handled = set(result_graphs[0]["nodes"])
-        qnode_keys_remaining = set(qg.nodes).difference(qnode_keys_already_handled)
+        qnode_keys_remaining = set(qg.nodes).difference(qnode_keys_already_handled).union(self_loop_qnodes_remaining)
     else:
         result_graphs = []
         qnode_keys_already_handled = set()
         qnode_keys_remaining = set(qg.nodes)
+    log.debug(f"Qnode keys already handled are: {qnode_keys_already_handled}")
     while qnode_keys_remaining:
         # Start with a random qnode if this is our first iteration
         if not qnode_keys_already_handled:
@@ -976,6 +995,11 @@ def _create_result_graphs(kg: KnowledgeGraph,
         # Otherwise find a yet unhandled qnode ID that connects somehow to the part of the QG we've already handled
         else:
             current_qnode_key, prior_qnode_connections = _find_qnode_connected_to_sub_qg(qnode_keys_already_handled, qnode_keys_remaining, qg)
+            log.debug(f"Next qnode chosen is: {current_qnode_key}")
+            if current_qnode_key in qnode_keys_already_handled:
+                # This means we've used up this qnode's self-loop, so we need to prevent using it again
+                self_loop_qnodes_remaining.remove(current_qnode_key)
+                log.debug(f"Removed qnode {current_qnode_key} from self loop qnodes remaining since we used up its self-qedge")
         current_qnode = qg.nodes[current_qnode_key]
 
         # Initialize our result graphs if this is our first iteration
@@ -1007,7 +1031,16 @@ def _create_result_graphs(kg: KnowledgeGraph,
                 # Only keep connections that have links to KG nodes in ALL prior connected qnode roles
                 final_connected_kg_nodes = set.intersection(*current_kg_node_possibilities)
                 if final_connected_kg_nodes:
-                    if current_qnode.is_set:
+                    if current_qnode_key in qnode_keys_already_handled:  # Means we're on a self-loop qnode
+                        # Update this result graph's already existing qnode entries with more based on self-loop
+                        new_result_graph = _copy_result_graph(result_graph)
+                        existing_qnode_entries = set(new_result_graph["nodes"][current_qnode_key])
+                        new_result_graph["nodes"][current_qnode_key] = existing_qnode_entries.union(final_connected_kg_nodes)
+                        pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
+                                                                  sub_qg_adj_map=sub_qg_adj_map,
+                                                                  kg_node_adj_map_by_qg_key=kg_node_adj_map_by_qg_key)
+                        new_result_graphs.append(pruned_result_graph)
+                    elif current_qnode.is_set:
                         # Replace this result graph with a new one with all valid connections listed under this qnode
                         new_result_graph = _copy_result_graph(result_graph)
                         new_result_graph["nodes"][current_qnode_key] = final_connected_kg_nodes
