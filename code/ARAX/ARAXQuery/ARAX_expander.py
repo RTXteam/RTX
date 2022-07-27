@@ -890,6 +890,8 @@ class ARAXExpander:
                     self_loop_qnode_key = qedge_key.split(":")[-1].split("--")[0]
                     subclass_qedge = QEdge(subject=self_loop_qnode_key, object=self_loop_qnode_key,
                                            predicates=["biolink:subclass_of"])
+                    subclass_qedge.filled = True
+                    subclass_qedge.option_group_id = f"option_group-{qedge_key}"
                     log.debug(f"Adding subclass_of qedge {qedge_key} to the QG since KP(s) returned child nodes "
                               f"for this qnode")
                     overarching_qg.edges[qedge_key] = subclass_qedge
