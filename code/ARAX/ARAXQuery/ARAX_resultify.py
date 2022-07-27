@@ -782,9 +782,13 @@ def _get_kg_edge_keys_by_qg_key(knowledge_graph: KnowledgeGraph) -> Dict[str, Se
 def _get_connected_qnode_keys(qnode_key: str, query_graph: QueryGraph) -> Set[str]:
     qnode_keys_used_on_same_qedges = set()
     for qedge in query_graph.edges.values():
-        qnode_keys_used_on_same_qedges.add(qedge.subject)
-        qnode_keys_used_on_same_qedges.add(qedge.object)
-    return qnode_keys_used_on_same_qedges.difference({qnode_key})
+        # This qnode is a neighbor of itself if there's a self-qedge
+        if qedge.subject == qedge.object:
+            qnode_keys_used_on_same_qedges.add(qedge.subject)
+        else:
+            other_qnode_key = qedge.subject if qedge.subject != qnode_key else qedge.object
+            qnode_keys_used_on_same_qedges.add(other_qnode_key)
+    return qnode_keys_used_on_same_qedges
 
 
 def _create_new_empty_result_graph() -> Dict[str, Dict[str, Set[str]]]:
