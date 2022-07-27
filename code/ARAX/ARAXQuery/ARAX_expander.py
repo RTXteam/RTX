@@ -59,8 +59,8 @@ class ARAXExpander:
         self.kp_command_definitions = eu.get_kp_command_definitions()
         self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
-        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
-        self.supported_qedge_constraints = dict()
+        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"=="}}
+        self.supported_qedge_constraints = {"biolink:knowledge_source": {"=="}}
 
     def describe_me(self):
         """
@@ -335,7 +335,12 @@ class ARAXExpander:
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
                     kp_selector = KPSelector(log)
-                    kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
+                    kps_to_query = set(kp_selector.get_kps_for_single_hop_qg(one_hop_qg))
+                    # remove kps if this edge has kp constraints
+                    allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
+                    if allowlist:
+                        kps_to_query = {kp for kp in kps_to_query if kp in allowlist}
+                    kps_to_query -= denylist
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
                     kps_to_query = {parameters["kp"]}
@@ -1196,9 +1201,9 @@ class ARAXExpander:
     def is_supported_constraint(constraint: AttributeConstraint, supported_constraints_map: Dict[str, Dict[str, Set[str]]]) -> bool:
         if constraint.id not in supported_constraints_map:
             return False
-        elif constraint.value not in supported_constraints_map[constraint.id]:
-            return False
-        elif constraint.operator not in supported_constraints_map[constraint.id][constraint.value]:
+        # elif constraint.value not in supported_constraints_map[constraint.id]:
+        #     return False
+        elif constraint.operator not in supported_constraints_map[constraint.id]:
             return False
         else:
             return True
