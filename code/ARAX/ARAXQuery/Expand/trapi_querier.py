@@ -28,6 +28,7 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
+from openapi_server.models.attribute import Attribute
 
 
 class TRAPIQuerier:
@@ -414,7 +415,16 @@ class TRAPIQuerier:
                 for parent_query_id in parent_query_ids:
                     if parent_query_id is not None and parent_query_id != node_key:
                         subclass_edge = Edge(subject=node_key, object=parent_query_id, predicate="biolink:subclass_of")
-                        # TODO: Add provenance info in an attribute (or two)
+                        # Add provenance info to this edge so it's clear where the assertion came from
+                        kp_source_attribute = Attribute(attribute_type_id="biolink:knowledge_source",
+                                                        value=self.kp_name,
+                                                        value_type_id="biolink:InformationResource",
+                                                        attribute_source="infores:arax",
+                                                        description=f"ARAX created this edge to represent the fact "
+                                                                    f"that {self.kp_name} fulfilled {subclass_edge.object}"
+                                                                    f" (for {qnode_key}) with {subclass_edge.subject}.")
+                        arax_source_attribute = eu.get_arax_source_attribute()
+                        subclass_edge.attributes = [kp_source_attribute, arax_source_attribute]
                         subclass_edges.append(subclass_edge)
                 if subclass_edges:
                     for edge in subclass_edges:
