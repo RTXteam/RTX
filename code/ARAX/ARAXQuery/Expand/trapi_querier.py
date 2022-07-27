@@ -41,7 +41,6 @@ class TRAPIQuerier:
         self.force_local = force_local
         self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.kp_selector = kp_selector
-        self.qnodes_with_multiple_ids = set()  # This is set during the processing of each query
         self.qnodes_with_single_id = dict()  # This is set during the processing of each query
 
     async def answer_one_hop_query_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -55,12 +54,8 @@ class TRAPIQuerier:
         final_kg = QGOrganizedKnowledgeGraph()
         qg_copy = copy.deepcopy(query_graph)  # Create a copy so we don't modify the original
         qedge_key = next(qedge_key for qedge_key in qg_copy.edges)
-        self.qnodes_with_multiple_ids = {qnode_key for qnode_key, qnode in query_graph.nodes.items()
-                                         if qnode.ids and len(qnode.ids) > 1}
         self.qnodes_with_single_id = {qnode_key: qnode.ids[0] for qnode_key, qnode in query_graph.nodes.items()
                                       if qnode.ids and len(qnode.ids) == 1}
-        if self.qnodes_with_multiple_ids:
-            self.log.debug(f"{self.kp_name}: Qnodes that will require parent query ID mappings are: {self.qnodes_with_multiple_ids}")
         if self.qnodes_with_single_id:
             self.log.debug(f"{self.kp_name}: Qnodes with an implied parent query ID are: {self.qnodes_with_single_id}")
 
@@ -174,12 +169,13 @@ class TRAPIQuerier:
                     kg_id = node_binding.id
                     qnode_key_mappings[kg_id].add(qnode_key)
                     # Record mappings from the returned node to the parent curie listed in the QG that it is fulfilling
-                    if node_binding.query_id and qnode_key in self.qnodes_with_multiple_ids and kg_id != node_binding.query_id:
-                        kg_id_to_parent_query_id_map[kg_id].add(node_binding.query_id)
-                    elif qnode_key in self.qnodes_with_single_id:
-                        implied_parent_query_id = self.qnodes_with_single_id[qnode_key]
-                        if kg_id != implied_parent_query_id:
-                            kg_id_to_parent_query_id_map[kg_id].add(implied_parent_query_id)
+                    if kg_id != node_binding.query_id:
+                        if node_binding.query_id:
+                            kg_id_to_parent_query_id_map[kg_id].add(node_binding.query_id)
+                        elif qnode_key in self.qnodes_with_single_id:
+                            implied_parent_query_id = self.qnodes_with_single_id[qnode_key]
+                            if kg_id != implied_parent_query_id:
+                                kg_id_to_parent_query_id_map[kg_id].add(implied_parent_query_id)
             for qedge_key, edge_bindings in result.edge_bindings.items():
                 for edge_binding in edge_bindings:
                     kg_id = edge_binding.id
@@ -401,7 +397,7 @@ class TRAPIQuerier:
             return 120
 
     def _add_subclass_of_edges(self, answer_kg: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
-        for qnode_key in self.qnodes_with_multiple_ids:
+        for qnode_key in answer_kg.nodes_by_qg_id:
             nodes_with_non_empty_parent_query_ids = {node_key for node_key, node in answer_kg.nodes_by_qg_id[qnode_key].items()
                                                      if hasattr(node, "query_ids") and node.query_ids}
             initial_edge_count = sum([len(edges) for edges in answer_kg.edges_by_qg_id.values()])
