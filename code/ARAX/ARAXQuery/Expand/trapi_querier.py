@@ -312,6 +312,10 @@ class TRAPIQuerier:
             self.log.debug(f"{self.kp_name}: Got results from {self.kp_name}.")
             kp_message = ARAXMessenger().from_dict(json_response["message"])
 
+        # Work around genetics provider's curie whitespace bug for now  TODO: remove once they've fixed it
+        if self.kp_name == "infores:genetics-data-provider":
+            self._remove_whitespace_from_curies(kp_message)
+
         # Build a map that indicates which qnodes/qedges a given node/edge fulfills
         kg_to_qg_mappings, query_curie_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
 
@@ -426,3 +430,20 @@ class TRAPIQuerier:
                 self.log.debug(f"{self.kp_name}: Added {num_edges_added} subclass_of edges to the KG based on "
                                f"query ID mappings {self.kp_name} returned")
         return answer_kg
+
+    @staticmethod
+    def _remove_whitespace_from_curies(kp_message):
+        kg = kp_message.knowledge_graph
+        for node_key in set(kg.nodes):
+            node = kg.nodes[node_key]
+            del kg.nodes[node_key]
+            kg.nodes[node_key.strip()] = node
+        for edge in kg.edges.values():
+            edge.subject = edge.subject.strip()
+            edge.object = edge.object.strip()
+        for result in kp_message.results:
+            for qnode_key, node_bindings in result.node_bindings.items():
+                for node_binding in node_bindings:
+                    node_binding.id = node_binding.id.strip()
+                    if node_binding.query_id:
+                        node_binding.query_id = node_binding.query_id.strip()
