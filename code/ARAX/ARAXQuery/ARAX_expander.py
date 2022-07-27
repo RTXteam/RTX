@@ -97,6 +97,21 @@ class ARAXExpander:
                 qedge.option_group_id = None
                 qedge.exclude = None
 
+        # We'll use a copy of the QG because we modify it for internal use within Expand
+        query_graph = copy.deepcopy(message.query_graph)
+
+        # Check for any self-qedges; ignore those that are 'subclass_of'
+        for qedge_key in set(query_graph.edges):
+            qedge = query_graph.edges[qedge_key]
+            if qedge.subject == qedge.object:
+                if qedge.predicates == ["biolink:subclass_of"]:
+                    log.warning(f"Expand will ignore the 'subclass_of' self-qedge in your QG because KPs "
+                                f"automatically take care of subclass reasoning")
+                    del query_graph.edges[qedge_key]
+                else:
+                    log.error(f"ARAX does not support queries with self-qedges (qedges whose subject == object)",
+                              error_code="InvalidQG")
+
         # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
         required_portion_of_qg = eu.get_required_portion_of_qg(message.query_graph)
         if required_portion_of_qg.edges and eu.qg_is_disconnected(required_portion_of_qg):
@@ -129,9 +144,6 @@ class ARAXExpander:
             kp_timeout = parameters["kp_timeout"]
         else:
             kp_timeout = None
-
-        # We'll use a copy of the QG because we modify it for internal use within Expand
-        query_graph = copy.deepcopy(message.query_graph)
 
         # Verify we understand all constraints
         for qnode_key, qnode in query_graph.nodes.items():
@@ -410,7 +422,7 @@ class ARAXExpander:
                                                          message.encountered_kryptonite_edges_info, response)
                     # Otherwise just merge the answer into the overarching KG
                     else:
-                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, mode, response)
+                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, mode, response)
                     if response.status != 'OK':
                         return response
                 log.debug(f"After merging KPs' answers, total KG counts are: {eu.get_printable_counts_by_qg_id(overarching_kg)}")
@@ -460,7 +472,7 @@ class ARAXExpander:
                                               force_local, log)
                 if log.status != 'OK':
                     return response
-                self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, mode, log)
+                self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, mode, log)
                 if log.status != 'OK':
                     return response
 
@@ -845,7 +857,7 @@ class ARAXExpander:
 
     @staticmethod
     def _merge_answer_into_message_kg(answer_kg: QGOrganizedKnowledgeGraph, overarching_kg: QGOrganizedKnowledgeGraph,
-                                      overarching_qg: QueryGraph, mode: str, log: ARAXResponse):
+                                      overarching_qg: QueryGraph, expands_qg: QueryGraph, mode: str, log: ARAXResponse):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
         pinned_curies_map = defaultdict(set)
@@ -856,6 +868,7 @@ class ARAXExpander:
                 for curie in curies:
                     pinned_curies_map[curie].add(qnode_key)
 
+        # Merge nodes
         for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
             for node_key, node in nodes.items():
                 # Exclude nodes that correspond to a 'pinned' curie in the QG but are fulfilling a different qnode
@@ -867,7 +880,25 @@ class ARAXExpander:
                                   f"for {pinned_curies_map[node_key]}")
                 else:
                     overarching_kg.add_node(node_key, node, qnode_key)
+
+        # Merge edges
         for qedge_key, edges_dict in answer_kg.edges_by_qg_id.items():
+            # Add this qedge to the QG if it's a subclass_of edge that TRAPIQuerier added to the QG
+            if qedge_key not in overarching_qg.edges:
+                # Make sure the key conforms to the format TRAPIQuerier assigns to subclass_of self-qedges
+                if qedge_key.startswith("subclass:") and "--" in qedge_key:  # TODO: change to more specific regex?
+                    self_loop_qnode_key = qedge_key.split(":")[-1].split("--")[0]
+                    subclass_qedge = QEdge(subject=self_loop_qnode_key, object=self_loop_qnode_key,
+                                           predicates=["biolink:subclass_of"])
+                    subclass_qedge.filled = True
+                    subclass_qedge.option_group_id = f"option_group-{qedge_key}"
+                    log.debug(f"Adding subclass_of qedge {qedge_key} to the QG since KP(s) returned child nodes "
+                              f"for this qnode")
+                    overarching_qg.edges[qedge_key] = subclass_qedge
+                    expands_qg.edges[qedge_key] = subclass_qedge
+                else:
+                    log.error(f"An unknown QEdge has been added to the QG since Expand began processing!",
+                              error_code="InvalidQG")
             num_orphan_edges_removed = 0
             qedge = overarching_qg.edges[qedge_key]
             for edge_key, edge in edges_dict.items():
@@ -999,13 +1030,13 @@ class ARAXExpander:
         return kg
 
     @staticmethod
-    def _remove_dead_end_paths(full_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+    def _remove_dead_end_paths(expands_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         """
         This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         found in the last expansion will connect to edges in the next one)
         """
         log.debug(f"Pruning any paths that are now dead ends (with help of Resultify)")
-        qg_expanded_thus_far = eu.get_qg_expanded_thus_far(full_qg, kg)
+        qg_expanded_thus_far = eu.get_qg_expanded_thus_far(expands_qg, kg)
         for qnode in qg_expanded_thus_far.nodes.values():
             qnode.is_set = True  # This makes resultify run faster and doesn't hurt in this case
         resultify_response = eu.create_results(qg_expanded_thus_far, kg, log)
@@ -1221,6 +1252,7 @@ class ARAXExpander:
             input_curie_names_map = eu.get_curie_names(list(canonical_to_input_curie_map.values()), log)
             for canonical_curie, input_curie in canonical_to_input_curie_map.items():
                 if canonical_curie in kg.nodes:  # Curies may have already been remapped on a prior expand() call
+                    # Remap the node to use the input curie instead of canonical
                     node = kg.nodes[canonical_curie]
                     node.name = input_curie_names_map.get(input_curie, node.name)
                     kg.nodes[input_curie] = node
@@ -1234,6 +1266,10 @@ class ARAXExpander:
                             edge.subject = input_curie
                         if edge.object == canonical_curie:
                             edge.object = input_curie
+            # Remap all KG ID to query ID mappings as needed
+            for node in kg.nodes.values():
+                node.query_ids = list({canonical_to_input_curie_map.get(query_id, query_id) for query_id in node.query_ids})
+
         else:
             log.debug(f"No KG nodes found that use a different curie than was asked for in the QG")
 

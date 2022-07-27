@@ -74,7 +74,8 @@ def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
 def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
-            print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}")
+            print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}, "
+                  f"{node.query_ids if hasattr(node, 'query_ids') else ''}")
 
 
 def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -1280,6 +1281,31 @@ def test_xdtd_curie_not_in_db():
         }
     }
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=False)
+
+
+@pytest.mark.slow
+def test_query_ids_mappings():
+    query_curies = ["CHEMBL.COMPOUND:CHEMBL112", "DOID:14330"]
+    actions_list = [
+        f"add_qnode(ids=[{','.join(query_curies)}], key=n00)",
+        "add_qnode(categories=biolink:Protein, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, timeout=10)
+    # Make sure we actually got some subclass child nodes from KPs
+    assert len(nodes_by_qg_id["n00"]) > 2
+    for node_key, node in nodes_by_qg_id["n00"].items():
+        # Make sure pinned nodes have query_ids filled out
+        assert node.query_ids or node_key in query_curies
+        # Make sure subclass self-edges were added as appropriate
+        for parent_query_id in node.query_ids:
+            assert parent_query_id in nodes_by_qg_id["n00"]
+    # Make sure unpinned nodes do not have query_ids specified
+    for node_key, node in nodes_by_qg_id["n01"].items():
+        assert not node.query_ids
+
 
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
