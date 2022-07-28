@@ -508,7 +508,6 @@ class ARAXExpander:
                                  kp_selector: KPSelector, log: ARAXResponse, multiple_kps: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
-        qedge = edge_qg.edges[qedge_key]
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
 
@@ -582,14 +581,13 @@ class ARAXExpander:
         if kp_to_use != 'infores:rtx-kg2':  # KG2c is already deduplicated and uses canonical predicates
             answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
             answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
-        if eu.qg_is_fulfilled(edge_qg, answer_kg):
-            answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
+        if any(edges for edges in answer_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
+            answer_kg = self._remove_self_edges(answer_kg, kp_to_use, log)
 
         return answer_kg, log
 
     def _expand_edge_kg2_local(self, one_hop_qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         qedge_key = next(qedge_key for qedge_key in one_hop_qg.edges)
-        qedge = one_hop_qg.edges[qedge_key]
         log.debug(f"Expanding {qedge_key} by querying Plover directly")
         answer_kg = QGOrganizedKnowledgeGraph()
 
@@ -606,8 +604,8 @@ class ARAXExpander:
         if log.status != 'OK':
             return answer_kg, log
 
-        if eu.qg_is_fulfilled(one_hop_qg, answer_kg):
-            answer_kg = self._remove_self_edges(answer_kg, "RTX-KG2", qedge_key, qedge, log)
+        if any(edges for edges in answer_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
+            answer_kg = self._remove_self_edges(answer_kg, "infores:rtx-kg2", log)
 
         return answer_kg, log
 
@@ -619,7 +617,6 @@ class ARAXExpander:
             self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Entered child process {multiprocessing.current_process()}")
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
-        qedge = edge_qg.edges[qedge_key]
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
 
@@ -681,8 +678,8 @@ class ARAXExpander:
         if kp_to_use != 'infores:rtx-kg2':  # KG2c is already deduplicated and uses canonical predicates
             answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
             answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
-        if eu.qg_is_fulfilled(edge_qg, answer_kg):
-            answer_kg = self._remove_self_edges(answer_kg, kp_to_use, qedge_key, qedge, log)
+        if any(edges for edges in answer_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
+            answer_kg = self._remove_self_edges(answer_kg, kp_to_use, log)
 
         if multiprocessed:
             self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Exiting child process {multiprocessing.current_process()}")
@@ -1143,25 +1140,34 @@ class ARAXExpander:
             return False
 
     @staticmethod
-    def _remove_self_edges(kg: QGOrganizedKnowledgeGraph, kp_name: str, qedge_key: str, qedge: QEdge, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+    def _remove_self_edges(kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         log.debug(f"{kp_name}: Removing any self-edges from the answer KG")
-        # Remove any self-edges (subject is same as object)
-        edges_to_remove = []
-        for edge_key, edge in kg.edges_by_qg_id[qedge_key].items():
-            if edge.subject == edge.object:
-                edges_to_remove.append(edge_key)
-        for edge_key in edges_to_remove:
-            del kg.edges_by_qg_id[qedge_key][edge_key]
+        # Remove any self-edges in the KG (subject is same as object)
+        num_edges_before = sum([len(edges) for edges in kg.edges_by_qg_id.values()])
+        for qedge_key, edges in kg.edges_by_qg_id.items():
+            edges_to_remove = []
+            for edge_key, edge in edges.items():
+                if edge.subject == edge.object:
+                    edges_to_remove.append(edge_key)
+            for edge_key in edges_to_remove:
+                del kg.edges_by_qg_id[qedge_key][edge_key]
+        num_edges_after = sum([len(edges) for edges in kg.edges_by_qg_id.values()])
 
         # Remove any nodes that may have been orphaned as a result of removing self-edges
-        if edges_to_remove:
-            node_keys_used_by_remaining_edges = {node_key for edge in kg.edges_by_qg_id[qedge_key].values()
+        # Note: This approach to removing nodes could leave some nodes listed as fulfilling qnode keys they no
+        #   longer do (i.e. if they fulfill at least one other qnode key), but such dead ends will be removed in further
+        #   steps before Expand moves onto the next qedge in the query
+        if num_edges_after < num_edges_before:
+            node_keys_used_by_remaining_edges = {node_key for qedge_key, edges in kg.edges_by_qg_id.items()
+                                                 for edge in edges.values()
                                                  for node_key in {edge.subject, edge.object}}
-            all_node_keys = set(kg.nodes_by_qg_id[qedge.subject]).union(set(kg.nodes_by_qg_id[qedge.object]))
+            all_node_keys = {node_key for qnode_key, nodes in kg.nodes_by_qg_id.items()
+                             for node_key in nodes}
             orphaned_node_keys = all_node_keys.difference(node_keys_used_by_remaining_edges)
             for node_key in orphaned_node_keys:
-                kg.nodes_by_qg_id[qedge.subject].pop(node_key, None)
-                kg.nodes_by_qg_id[qedge.object].pop(node_key, None)
+                for qnode_key, nodes in kg.nodes_by_qg_id.items():  # Could be fulfilling multiple qnodes
+                    if node_key in nodes:
+                        kg.nodes_by_qg_id[qnode_key].pop(node_key, None)
 
         log.debug(f"{kp_name}: After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
