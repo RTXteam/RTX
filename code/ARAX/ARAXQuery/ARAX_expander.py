@@ -884,7 +884,8 @@ class ARAXExpander:
                     overarching_kg.add_node(node_key, node, qnode_key)
 
         # Merge edges
-        for qedge_key, edges_dict in answer_kg.edges_by_qg_id.items():
+        qedge_keys_with_answers = {qedge_key for qedge_key, edges in answer_kg.edges_by_qg_id.items() if edges}
+        for qedge_key in qedge_keys_with_answers:
             # Add this qedge to the QG if it's a subclass_of edge that TRAPIQuerier added to the QG
             if qedge_key not in overarching_qg.edges:
                 # Make sure the key conforms to the format TRAPIQuerier assigns to subclass_of self-qedges
@@ -903,7 +904,7 @@ class ARAXExpander:
                               error_code="InvalidQG")
             num_orphan_edges_removed = 0
             qedge = overarching_qg.edges[qedge_key]
-            for edge_key, edge in edges_dict.items():
+            for edge_key, edge in answer_kg.edges_by_qg_id[qedge_key].items():
                 if (edge.subject in overarching_kg.nodes_by_qg_id[qedge.subject] and
                     edge.object in overarching_kg.nodes_by_qg_id[qedge.object]) or \
                         (edge.subject in overarching_kg.nodes_by_qg_id[qedge.object] and
