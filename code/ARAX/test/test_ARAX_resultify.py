@@ -1431,7 +1431,8 @@ def test_issue_1848():
     assert kg.edges
     assert message.results
     qedge_bindings_in_kg = {qedge_key for edge in kg.edges.values() for qedge_key in edge.qedge_keys}
-    assert qedge_bindings_in_kg == {"e0"}
+    non_subclass_qedge_bindings_in_kg = {qedge_key for qedge_key in qedge_bindings_in_kg if not qedge_key.startswith("subclass:")}
+    assert non_subclass_qedge_bindings_in_kg == {"e0"}
 
 
 def test_node_binding_query_id_one_hop_single_input_curie():
@@ -1463,6 +1464,8 @@ def test_node_binding_query_id_one_hop_single_input_curie():
     assert any(qedge_key.startswith("subclass")
                for result in message.results
                for qedge_key in result.edge_bindings)
+    insulin_results = [result for result in message.results if result.essence == "Insulin"]
+    assert len(insulin_results) == 1
 
 
 def test_node_binding_query_id_one_hop_multiple_input_curies():
@@ -1483,7 +1486,9 @@ def test_node_binding_query_id_one_hop_multiple_input_curies():
     kg = response.envelope.message.knowledge_graph
     # Make sure both input curies appear somewhere in the results
     assert diabetes_curie in kg.nodes
-    assert type_1_diabetes_curie in kg.nodes
+    # TODO: Do the below check after we've figured out the multiple query IDs problem (nodes could fulfill either
+    #  diabetes or type 1 diabetes), but can only have 1 n00 parent specified
+    # assert type_1_diabetes_curie in kg.nodes
     # Make sure node bindings do/don't have 'query_id' filled out as appropriate
     for result in message.results:
         for node_binding in result.node_bindings["n00"]:
@@ -1497,6 +1502,8 @@ def test_node_binding_query_id_one_hop_multiple_input_curies():
     assert any(qedge_key.startswith("subclass")
                for result in message.results
                for qedge_key in result.edge_bindings)
+    insulin_results = [result for result in message.results if result.essence == "Insulin"]
+    assert len(insulin_results) in range(1, 3)
 
 
 @pytest.mark.slow
@@ -1538,6 +1545,14 @@ def test_node_binding_query_id_two_hop_double_pinned():
         if len(subclass_qedges_present) > 1:
             num_results_with_both_subclass_qedges += 1
     assert num_results_with_both_subclass_qedges > 1
+    # Make sure there's one result for Dabigatran and its structure is as expected
+    dabigatran_results = [result for result in message.results if result.essence == "DABIGATRAN"]
+    assert len(dabigatran_results) == 1
+    dabigatran_result = dabigatran_results[0]
+    edge_keys_that_should_be_filled = {"e00", "e01", "subclass:n00--n00", "subclass:n01--n01"}
+    assert set(dabigatran_result.edge_bindings) == edge_keys_that_should_be_filled
+    for edge_key in edge_keys_that_should_be_filled:
+        assert len(dabigatran_result.edge_bindings[edge_key])
 
 
 if __name__ == '__main__':

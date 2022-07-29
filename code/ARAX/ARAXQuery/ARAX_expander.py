@@ -481,6 +481,13 @@ class ARAXExpander:
                 if log.status != 'OK':
                     return response
 
+        # Get rid of any lingering expand-added subclass self-qedges that are no longer relevant (edges pruned)
+        all_qedge_keys = set(message.query_graph.edges)
+        for qedge_key in all_qedge_keys:
+            if not overarching_kg.edges_by_qg_id.get(qedge_key) and eu.is_expand_created_subclass_qedge_key(qedge_key, message.query_graph):
+                log.debug(f"Deleting {qedge_key} from the QG because no edges fulfill it anymore")
+                del message.query_graph.edges[qedge_key]
+
         # Convert message knowledge graph back to standard TRAPI
         message.knowledge_graph = eu.convert_qg_organized_kg_to_standard_kg(overarching_kg)
 
@@ -889,7 +896,7 @@ class ARAXExpander:
             # Add this qedge to the QG if it's a subclass_of edge that TRAPIQuerier added to the QG
             if qedge_key not in overarching_qg.edges:
                 # Make sure the key conforms to the format TRAPIQuerier assigns to subclass_of self-qedges
-                if qedge_key.startswith("subclass:") and "--" in qedge_key:  # TODO: change to more specific regex?
+                if eu.is_expand_created_subclass_qedge_key(qedge_key, overarching_qg):
                     self_loop_qnode_key = qedge_key.split(":")[-1].split("--")[0]
                     subclass_qedge = QEdge(subject=self_loop_qnode_key, object=self_loop_qnode_key,
                                            predicates=["biolink:subclass_of"])
@@ -913,6 +920,15 @@ class ARAXExpander:
                 else:
                     num_orphan_edges_removed += 1
             log.debug(f"Removed {num_orphan_edges_removed} edges fulfilling {qedge_key} from the KG because they were orphaned")
+
+            # Make sure we get rid of any added subclass qedges if all their edges were orphaned above
+            if num_orphan_edges_removed:
+                if not overarching_kg.edges_by_qg_id.get(qedge_key) \
+                        and qedge_key in overarching_qg.edges and \
+                        eu.is_expand_created_subclass_qedge_key(qedge_key, overarching_qg):
+                    log.debug(f"Deleting {qedge_key} from the QG because no edges fulfill it anymore")
+                    del overarching_qg.edges[qedge_key]
+                    del expands_qg.edges[qedge_key]
 
     @staticmethod
     def _store_kryptonite_edge_info(kryptonite_kg: QGOrganizedKnowledgeGraph, kryptonite_qedge_key: str, qg: QueryGraph,

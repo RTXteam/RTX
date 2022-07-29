@@ -583,6 +583,22 @@ def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
             del kg.edges[edge_key]
 
 
+def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool:
+    """
+    When Expand adds subclass_of self-qedges to the QG, it assigns them keys in this kind of format:
+    "subclass:n00--n00", where n00 in this case is the subject/object of the self-qedge. It's hacky to identify
+    such qedges this way, but it works well for Expand's purposes and seems unlikely a user would happen to
+    assign a qedge_key in this format.
+    """
+    basic_format_met = qedge_key.startswith("subclass:") and "--" in qedge_key
+    qnode_is_valid = False
+    if basic_format_met:
+        relevant_qnode_keys = qedge_key.split(":")[-1].split("--")
+        qnode_keys_are_equal = relevant_qnode_keys[0] == relevant_qnode_keys[1]
+        qnode_is_valid = qnode_keys_are_equal and relevant_qnode_keys[0] in qg.nodes
+    return basic_format_met and qnode_is_valid
+
+
 def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False,
                    rank_results: bool = False, qnode_key_to_prune: Optional[str] = None,) -> Response:
     regular_format_kg = convert_qg_organized_kg_to_standard_kg(kg)
