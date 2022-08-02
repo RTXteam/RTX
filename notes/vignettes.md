@@ -33,7 +33,7 @@ filter_results(action=limit_number_of_results, max_results=30)
 Please use your web browser to navigate to: 
 [arax.rtx.ai/?r=32764](https://arax.rtx.ai/?r=32764)
 
-## COVID-19 disease
+## COVID-19
 
 ### ARAXi description of this query workflow:
 ```
