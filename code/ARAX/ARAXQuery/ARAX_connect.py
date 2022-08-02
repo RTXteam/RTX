@@ -257,7 +257,10 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         
         if 'max_path_length' not in self.parameters:
             self.parameters['max_path_length'] = 2
-        
+        # convert path length to int if it isn't already
+        if type(self.parameters['max_path_length']) != int:
+            self.parameters['max_path_length'] = int(self.parameters['max_path_length'])
+
         if self.parameters['max_path_length'] < 1 or self.parameters['max_path_length'] > 5:
             self.response.error(
                 f"Maximum path length must be betwen 1 and 5 inclusive.",

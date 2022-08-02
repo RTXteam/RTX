@@ -373,7 +373,7 @@ class ResponseCache:
             is_parent_pk = False
             if 'fields' in response_dict:
                 if 'name' in response_dict['fields'] and response_dict['fields']['name'] != '':
-                    if response_dict['fields']['name'] == 'ars-default-agent':
+                    if response_dict['fields']['name'] == 'ars-default-agent' or response_dict['fields']['name'] == 'ars-workflow-agent':
                         is_parent_pk = True
                     else:
                         is_parent_pk = False
