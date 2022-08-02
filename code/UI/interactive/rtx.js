@@ -5113,12 +5113,20 @@ function retrieveKPInfo() {
     kpinfo_node.innerHTML = '';
     kpinfo_node.className = '';
 
+    var wspan = document.getElementById("kpinfo_wait");
+    wspan.innerHTML = '';
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    wspan.appendChild(wait);
+    wspan.appendChild(document.createTextNode('Loading...'));
+
     fetch(providers["ARAX"].url + "/status?authorization=smartapi")
         .then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong with /status?authorization=smartapi');
 	})
         .then(data => {
+	    wspan.innerHTML = '';
 	    var components = {};
 	    for (let item of data) {
 		if (item['component'])
@@ -5223,18 +5231,26 @@ function retrieveKPInfo() {
 					span.innerHTML = '&cross;';
 					span.title = "This is a DUPLICATE entry";
 				    }
+                                    else if (was_seen.includes(server["url"])) {
+					span.className = "explevel p0";
+                                        span.appendChild(document.createTextNode('\u00A0'));
+					span.appendChild(document.createTextNode('\u00A0'));
+					span.title = "This is a duplicate SERVER entry";
+				    }
 				    else if (server["url"].includes("transltr.io")) {
 					had_transltr_io = true;
 					span.className = "explevel p9";
 					span.innerHTML = '&check;';
 					span.title = "This entry is hosted at transltr.io";
 					was_seen.push(stritem);
+					was_seen.push(server["url"]);
 				    }
 				    else {
 					status_nodes.push(span);
 					span.appendChild(document.createTextNode('\u00A0'));
 					span.appendChild(document.createTextNode('\u00A0'));
 					was_seen.push(stritem);
+					was_seen.push(server["url"]);
 				    }
 				    td.appendChild(span);
 				    tr.appendChild(td);
