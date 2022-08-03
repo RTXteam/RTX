@@ -84,7 +84,7 @@ def test_connect_nodes_1_hop():
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "connect(action=connect_nodes)",
             "resultify(ignore_edge_direction=true, debug=true)",
-            "return(message=true, store=fale)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
@@ -100,7 +100,7 @@ def test_connect_nodes_2_hop():
             "add_qnode(name=MESH:D004781, key=n01)",
             "connect(action=connect_nodes)",
             "resultify(ignore_edge_direction=true, debug=true)",
-            "return(message=true, store=fale)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
@@ -117,7 +117,7 @@ def test_connect_nodes_subgraph_2_hop():
             "add_qnode(name=MESH:D004781,key=n01)",
             "connect(action=connect_nodes,qnode_keys=[n00,n01])",
             "resultify(ignore_edge_direction=true, debug=true)",
-            "return(message=true, store=fale)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
@@ -133,11 +133,43 @@ def test_connect_nodes_3_disconnected_nodes():
             "add_qnode(name=MESH:D004781,key=n01)",
             "connect(action=connect_nodes)",
             "resultify(ignore_edge_direction=true, debug=true)",
-            "return(message=true, store=fale)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert len(message.query_graph.edges) >= 3
+    assert len(message.results) > 0
+
+@pytest.mark.slow
+def test_1881():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=glucose, key=n0)",
+            "add_qnode(name=diabetes, key=n1)",
+            "connect(action=connect_nodes, max_path_length=3, shortest_path=false)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=30)",
+            "return(message=true, store=true)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) >= 3
+    assert len(message.results) > 0
+
+@pytest.mark.slow
+def test_none_object():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=glucose, key=n0)",
+            "add_qnode(name=diabetes, key=n1)",
+            "connect(action=connect_nodes, shortest_path=false)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=30)",
+            "return(message=true, store=true)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) >= 1
     assert len(message.results) > 0
 
 
