@@ -45,11 +45,8 @@ servers:
 - description: RTX-KG2 TRAPI 1.2 endpoint - ITRB staging
   url: https://kg2.ci.transltr.io/api/rtxkg2/v1.2
   x-maturity: staging
-- description: RTX-KG2 TRAPI 1.2 endpoint - development - beta
+- description: RTX-KG2 TRAPI 1.2 endpoint - development
   url: https://arax.ncats.io/beta/api/rtxkg2/v1.2
-  x-maturity: development
-- description: RTX-KG2 TRAPI 1.2 endpoint - development - test
-  url: https://arax.ncats.io/test/api/rtxkg2/v1.2
   x-maturity: development
 tags:
 - description: Get supported relationships
