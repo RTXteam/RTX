@@ -33,11 +33,23 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: ARAX Translator Reasoner API
+- description: RTX-KG2 TRAPI 1.2 endpoint - production
   url: https://arax.ncats.io/api/rtxkg2/v1.2
   x-maturity: production
-- description: ARAX Translator Reasoner API
+- description: RTX-KG2 TRAPI 1.2 endpoint - ITRB production
+  url: https://kg2.transltr.io/api/rtxkg2/v1.2
+  x-maturity: production
+- description: RTX-KG2 TRAPI 1.2 endpoint - ITRB testing
+  url: https://kg2.test.transltr.io/api/rtxkg2/v1.2
+  x-maturity: testing
+- description: RTX-KG2 TRAPI 1.2 endpoint - ITRB staging
+  url: https://kg2.ci.transltr.io/api/rtxkg2/v1.2
+  x-maturity: staging
+- description: RTX-KG2 TRAPI 1.2 endpoint - development - beta
   url: https://arax.ncats.io/beta/api/rtxkg2/v1.2
+  x-maturity: development
+- description: RTX-KG2 TRAPI 1.2 endpoint - development - test
+  url: https://arax.ncats.io/test/api/rtxkg2/v1.2
   x-maturity: development
 tags:
 - description: Get supported relationships
