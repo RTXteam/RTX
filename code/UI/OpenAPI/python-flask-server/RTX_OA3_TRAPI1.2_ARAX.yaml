@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   description: TRAPI 1.2 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
-  version: 1.2.8
+  version: 1.2.9
   title: ARAX Translator Reasoner
   contact:
     email: edeutsch@systemsbiology.org

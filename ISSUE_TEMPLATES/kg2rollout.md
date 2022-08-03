@@ -48,7 +48,12 @@ All code changes should go in the `kg2integration` branch.
 - [ ] update any other modules as needed
 - [ ] test everything together (entire ARAX pytest suite should pass when using the new `config_local.json` - must locally set `force_local = True` in `ARAX_expander.py` to avoid using the old KG2 API)
 - [ ] update the KG2 and ARAX version numbers in the appropriate places (`openapi.yaml`, etc.) @edeutsch
+  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` in line 12 (`version:`); the major and minor release numbers are kept synchronous with the TRAPI version; just bump the patch release version (least significant digit)
+  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` in line 12 (`version:`); the first three digits are kept synchronous with the KG2 release version
+  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_ARAX.yaml` on line 4 (`version:`); same as for the ARAX `openapi.yaml` file
+  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_KG2.yaml` on line 4 (`version:`); same as for the KG2 `openapi.yaml` file
 
+  
 ##### 4. Do the rollout:
 
 - [ ] merge `master` into `kg2integration`
