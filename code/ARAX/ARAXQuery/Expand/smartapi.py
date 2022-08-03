@@ -181,10 +181,11 @@ class SmartAPI:
             print("No results")
             return
 
-        # find longest infores_name to determine column width
-        l = max(len(row[0]) for row in rows)+1
+        # find longest elements in columns to determine column width
+        l1 = max(len(row[0]) for row in rows)+1
+        l2 = max(len(row[2]) for row in rows)+1
         # pretty print rows
-        format_str = "{:<"+str(l)+"}{:<10}{:<40}{:<4}"
+        format_str = "{:<"+str(l1)+"}{:<10}{:<"+str(l2)+"}{:<4}"
         print(format_str.format("infores name","component","maturities","n_entries"))
         for row in rows:
             print(format_str.format(*row))
