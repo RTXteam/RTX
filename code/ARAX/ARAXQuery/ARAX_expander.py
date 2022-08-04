@@ -58,10 +58,9 @@ class ARAXExpander:
         self.logger.addHandler(handler)
         self.kp_command_definitions = eu.get_kp_command_definitions()
         self.bh = BiolinkHelper()
-        # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
-        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"=="}}
-        self.supported_qedge_constraints = {"biolink:knowledge_source": {"=="}}
-
+        # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
+        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
+        self.supported_qedge_constraints = {"biolink:knowledge_source": {"==": "*"}}
     def describe_me(self):
         """
         Little helper function for internal use that describes the actions and what they can do
@@ -456,6 +455,30 @@ class ARAXExpander:
                                 log.debug(f"Removing {len(nodes_to_remove)} nodes fulfilling {qnode_key} for FDA "
                                           f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
                                 overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
+
+                # Handle knowledge source constraints for this qedge
+                # Removing kedges that have any sources that are constrained
+                allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
+                if qedge_key in overarching_kg.edges_by_qg_id:
+                    for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
+                        for attribute in kedge.attributes:
+                            # check if source(s) of knowledge_source attribute are constrained
+                            if attribute.attribute_type_id in ["biolink:aggregator_knowledge_source","biolink:knowledge_source"]:
+                                sources = attribute.value
+                                # handle cases where source is string or list
+                                if type(sources) == str:
+                                    sources = [sources]
+                                if any(source in denylist for source in sources):
+                                    kedges_to_remove.append(kedge_key)
+                                    break
+                                elif allowlist and any(source not in allowlist for source in sources):
+                                    kedges_to_remove.append(kedge_key)
+                                    break
+
+                    # remove kedges which have been determined to be constrained
+                    for kedge_key in kedges_to_remove:
+                        if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
+                            del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
 
                 if mode != "RTXKG2":
                     # Apply any kryptonite ("not") qedges
@@ -1205,10 +1228,11 @@ class ARAXExpander:
     @staticmethod
     def is_supported_constraint(constraint: AttributeConstraint, supported_constraints_map: Dict[str, Dict[str, Set[str]]]) -> bool:
         if constraint.id not in supported_constraints_map:
+             return False
+        if constraint.operator not in supported_constraints_map[constraint.id]:
             return False
-        # elif constraint.value not in supported_constraints_map[constraint.id]:
-        #     return False
-        elif constraint.operator not in supported_constraints_map[constraint.id]:
+        # '*' means value can be anything
+        if supported_constraints_map[constraint.id][constraint.operator] != "*" and constraint.value not in supported_constraints_map[constraint.id][constraint.operator]:
             return False
         else:
             return True
