@@ -465,6 +465,9 @@ class ARAXExpander:
                             # check if source(s) of knowledge_source attribute are constrained
                             if attribute.attribute_type_id in ["biolink:aggregator_knowledge_source","biolink:knowledge_source"]:
                                 sources = attribute.value
+                                # always accept arax as a source
+                                if source == "infores:arax" or source == ["infores:arax"]:
+                                    continue
                                 # handle cases where source is string or list
                                 if type(sources) == str:
                                     sources = [sources]
