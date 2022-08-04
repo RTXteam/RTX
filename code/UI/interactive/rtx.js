@@ -33,7 +33,7 @@ if (!araxQuery)
 var providers = {
     "ARAX" : { "url" : baseAPI },
     "ARAXQ": { "url" : araxQuery },
-    "ARS"  : { "url" : "https://ars.transltr.io/ars/api/submit" },
+    "ARS"  : { "url" : "https://ars-prod.transltr.io/ars/api/submit" },
     "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.2" }
 };
 
@@ -64,6 +64,7 @@ function main() {
     UIstate["timeout"] = '30';
     UIstate["pruning"] = '50';
     UIstate["pid"] = null;
+    UIstate["viewing"] = null;
     UIstate["version"] = checkUIversion(false);
     UIstate["maxresults"] = 1000;
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
@@ -939,6 +940,7 @@ function getIdStats(id) {
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
 	document.getElementById("nsources_"+id).innerHTML = '';
+	document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
@@ -985,6 +987,13 @@ function sendId(is_ars_refresh) {
 	reset_vars();
 	if (cyobj[99999]) {cyobj[99999].elements().remove();}
 	input_qg = { "edges": {}, "nodes": {} };
+
+	for (var item of document.querySelectorAll('[id^="resparrow_"]'))
+	    item.className = '';
+	if (document.getElementById("resparrow_"+id)) {
+	    document.getElementById("resparrow_"+id).className = 'p7';
+	    UIstate["viewing"] = id;
+	}
     }
 
     if (document.getElementById("numresults_"+id)) {
@@ -992,6 +1001,7 @@ function sendId(is_ars_refresh) {
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
         document.getElementById("nsources_"+id).innerHTML = '';
+        document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
@@ -1055,7 +1065,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.2?","N_Results","Nodes / Edges","Sources"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.2?","N_Results","Nodes / Edges","Sources","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -1075,6 +1085,11 @@ function process_ars_message(ars_msg, level) {
     tr = document.createElement("tr");
     tr.className = 'hoverable';
     td = document.createElement("td");
+    if (level) {
+	td.id = "resparrow_"+ars_msg.message;
+	if (UIstate["viewing"] == ars_msg.message)
+	    td.className = 'p7';
+    }
     td.appendChild(document.createTextNode('\u25BA'.repeat(level)));
     tr.appendChild(td);
     td = document.createElement("td");
@@ -1130,6 +1145,11 @@ function process_ars_message(ars_msg, level) {
     td = document.createElement("td");
     td.id = "nsources_"+ars_msg.message;
     td.style.textAlign = "center";
+    tr.appendChild(td);
+
+    td = document.createElement("td");
+    td.id = "cachelink_"+ars_msg.message;
+    td.style.textAlign = "right";
     tr.appendChild(td);
 
     table.appendChild(tr);
@@ -1416,6 +1436,7 @@ function update_response_stats_on_error(rid,msg,clearall) {
 	document.getElementById("nodedges_"+rid).innerHTML = '';
 	document.getElementById("nsources_"+rid).innerHTML = '';
 	document.getElementById("istrapi_"+rid).innerHTML = '';
+	document.getElementById("cachelink_"+rid).innerHTML = '';
     }
 }
 
@@ -2476,7 +2497,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		kmne.parentdivnum = num;
 		kmne.trapiversion = trapi;
 		kmne.id = node.id;
-		//console.log("=================== kmne:"+kmne.id);
+		if (node.attributes)
+		    kmne.node_binding_attributes = node.attributes;
 		var tmpdata = { "data" : kmne };
 		cytodata[num].push(tmpdata);
 	    }
@@ -2492,7 +2514,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		kmne.target = kmne.object;
 		if (kmne.predicate)
 		    kmne.type = kmne.predicate;
-		//console.log("=================== kmne:"+kmne.id);
+		if (edge.attributes)
+		    kmne.edge_binding_attributes = edge.attributes;
 		var tmpdata = { "data" : kmne };
 		cytodata[num].push(tmpdata);
 	    }
@@ -2698,7 +2721,11 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'),null);
+        if (this.data('node_binding_attributes')) {
+	    div.appendChild(document.createElement("br"));
+	    show_attributes(div, this.data('node_binding_attributes'),"Node Binding Attributes:");
+	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2757,7 +2784,11 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'),null);
+	if (this.data('edge_binding_attributes')) {
+            div.appendChild(document.createElement("br"));
+            show_attributes(div, this.data('edge_binding_attributes'),"Edge Binding Attributes:");
+	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2766,7 +2797,7 @@ function add_cyto(i) {
 
 
 
-function show_attributes(html_div, atts) {
+function show_attributes(html_div, atts, title) {
     if (atts == null)  { return; }
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
@@ -2775,6 +2806,16 @@ function show_attributes(html_div, atts) {
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
 
     var atts_table = document.createElement("table");
+    if (title) {
+	atts_table.className = 'numold explevel';
+	var row = document.createElement("tr");
+	var cell = document.createElement("td");
+        cell.className = 'attvalue';
+	cell.colSpan = '2';
+	cell.appendChild(document.createTextNode(title));
+	row.appendChild(cell);
+	atts_table.appendChild(row);
+    }
 
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
 	display_attribute(atts_table, att, semmeddb_sentences);
@@ -5072,12 +5113,20 @@ function retrieveKPInfo() {
     kpinfo_node.innerHTML = '';
     kpinfo_node.className = '';
 
+    var wspan = document.getElementById("kpinfo_wait");
+    wspan.innerHTML = '';
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    wspan.appendChild(wait);
+    wspan.appendChild(document.createTextNode('Loading...'));
+
     fetch(providers["ARAX"].url + "/status?authorization=smartapi")
         .then(response => {
 	    if (response.ok) return response.json();
 	    else throw new Error('Something went wrong with /status?authorization=smartapi');
 	})
         .then(data => {
+	    wspan.innerHTML = '';
 	    var components = {};
 	    for (let item of data) {
 		if (item['component'])
@@ -5145,9 +5194,16 @@ function retrieveKPInfo() {
 			text.title = "TRAPI version";
 			td.appendChild(text);
 
-	                text = document.createElement("h3");
+	                text = document.createElement("a");
 			text.style.display = "inline-block";
-			text.appendChild(document.createTextNode(item["title"]));
+			text.style.color = "#000";
+			text.style.fontWeight = 'bold';
+			text.style.fontSize = 'initial';
+			text.style.padding = '15px 0px';
+			text.href = item["smartapi_url"];
+			text.target = 'smartapi_reg';
+			text.title = 'View SmartAPI registration for this '+component;
+			text.innerHTML = item["title"];
 			td.appendChild(text);
 			td.appendChild(document.createElement("br"));
                         td.appendChild(document.createTextNode(item["infores_name"]));
@@ -5158,7 +5214,7 @@ function retrieveKPInfo() {
 			var is_first = true;
 			for (var mature of ["production","staging","testing","development"] ) {
 			    var status_nodes = [];
-			    var had_transltr_io = (item["infores_name"].startsWith("infores:automat") || component == "Utility");
+			    var had_transltr_io = false; //(item["infores_name"].startsWith("infores:automat") || component == "Utility");
 			    var was_mature = false;
 			    for (var server of item["servers"]) {
 				if (server["maturity"] == mature) {
@@ -5175,18 +5231,26 @@ function retrieveKPInfo() {
 					span.innerHTML = '&cross;';
 					span.title = "This is a DUPLICATE entry";
 				    }
+                                    else if (was_seen.includes(server["url"])) {
+					span.className = "explevel p0";
+                                        span.appendChild(document.createTextNode('\u00A0'));
+					span.appendChild(document.createTextNode('\u00A0'));
+					span.title = "This is a duplicate SERVER entry";
+				    }
 				    else if (server["url"].includes("transltr.io")) {
 					had_transltr_io = true;
 					span.className = "explevel p9";
 					span.innerHTML = '&check;';
 					span.title = "This entry is hosted at transltr.io";
 					was_seen.push(stritem);
+					was_seen.push(server["url"]);
 				    }
 				    else {
 					status_nodes.push(span);
 					span.appendChild(document.createTextNode('\u00A0'));
 					span.appendChild(document.createTextNode('\u00A0'));
 					was_seen.push(stritem);
+					was_seen.push(server["url"]);
 				    }
 				    td.appendChild(span);
 				    tr.appendChild(td);
@@ -5196,6 +5260,7 @@ function retrieveKPInfo() {
 					    td.appendChild(document.createTextNode(server[what]));
 					else {
 					    td.className = "error";
+					    td.title = "No data!";
 					    td.appendChild(document.createTextNode("-- null --"));
 					}
 					tr.appendChild(td);
@@ -5219,6 +5284,7 @@ function retrieveKPInfo() {
 				td = document.createElement("td");
 				var span = document.createElement("span");
 				span.className = "explevel p3";
+				span.title = "No servers found at this maturity level";
 				span.appendChild(document.createTextNode('\u00A0'));
 				span.appendChild(document.createTextNode('\u00A0'));
 				td.appendChild(span);
@@ -5249,6 +5315,7 @@ function retrieveKPInfo() {
 				td = document.createElement("td");
 				var span = document.createElement("span");
 				span.className = "explevel p1";
+				span.title = "Maturity does not match expected list [production, staging, testing, development]";
 				span.appendChild(document.createTextNode('\u00A0'));
 				span.appendChild(document.createTextNode('\u00A0'));
 				td.appendChild(span);
@@ -5259,6 +5326,7 @@ function retrieveKPInfo() {
 				    if (server[what])
 					td.appendChild(document.createTextNode(server[what]));
 				    else {
+					td.title = "No data!";
 					td.appendChild(document.createTextNode("-- null --"));
 				    }
 				    tr.appendChild(td);
@@ -5816,6 +5884,8 @@ function display_cache() {
     for (var pid in response_cache) {
         numitems++;
         listhtml += "<tr><td>"+numitems+".</td><td>"+pid+"</td><td><a href='javascript:remove_from_cache(\"" + pid +"\");'/>Remove</a></td></tr>";
+	if (document.getElementById("cachelink_"+pid))
+	    document.getElementById("cachelink_"+pid).innerHTML = "<a href='javascript:remove_from_cache(\"" + pid +"\");'/>Clear</a>";
     }
 
     if (numitems == 0) {
@@ -5833,6 +5903,8 @@ function display_cache() {
 
 function remove_from_cache(item) {
     delete response_cache[item];
+    if (document.getElementById("cachelink_"+item))
+	document.getElementById("cachelink_"+item).innerHTML = '';
     display_cache();
 }
 function delete_cache(item) {
