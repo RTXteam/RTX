@@ -76,8 +76,13 @@ All code changes should **go in the `kg2integration` branch**!
   - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_ARAX.yaml` on line 4 (`version:`); same as for the ARAX `openapi.yaml` file
   - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_KG2.yaml` on line 4 (`version:`); same as for the KG2 `openapi.yaml` file
 
+
+##### 5. Prep for ITRB rollout:
+
+TODO
+
   
-##### 5. Do the rollout:
+##### 6. Do the rollout:
 
 - [ ] merge `master` into `kg2integration`
 - [ ] merge `kg2integration` into `master`
@@ -90,9 +95,14 @@ All code changes should **go in the `kg2integration` branch**!
 - [ ] update the CI/CD instance:
   - [ ] replace the `configv2.json` file on `cicd.rtx.ai` with the new one
   - [ ] download the new database files to `cicd.rtx.ai`
+  - the above two steps can be done with the following commands:
+    - `scp ubuntu@cicd.rtx.ai`
+    - `scp araxconfig@araxconfig.rtx.ai:/home/araxconfig/configv2.json /mnt/config`
+    - `cd /mnt/data/orangeboard/databases/KG2.X.Y`
+    - `scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.X.Y/* .`
 
 
-##### 6. Final items/clean up:
+##### 7. Final items/clean up:
 
 - [ ] generate KGX files and upload them to the KGE Archive @acevedol
 - [ ] rename the `config_local.json` on arax.ncats.io to `config_local.json_FROZEN_DO-NOT-EDIT-FURTHER` (any additional edits to the config file should be made directly to the master `configv2.json` on araxconfig.rtx.ai going forward)
