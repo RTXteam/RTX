@@ -1,0 +1,18 @@
+{
+    "url": "https://arax.ncats.io/api/arax/v1.2",
+    "KPs": [
+        "infores:biothings-explorer",
+        "infores:genetics-data-provider",
+        "infores:molepro",
+        "infores:rtx-kg2",
+        "infores:biothings-multiomics-clinical-risk",
+        "infores:biothings-multiomics-wellness",
+        "infores:spoke",
+        "infores:biothings-multiomics-biggim-drug-response",
+        "infores:biothings-tcga-mut-freq",
+        "infores:connections-hypothesis",
+        "infores:cohd",
+        "infores:icees-dili",
+        "infores:icees-asthma"
+    ]
+}
