@@ -81,6 +81,8 @@ All code changes should **go in the `kg2integration` branch**!
 - [ ] roll `master` out to the various `arax.ncats.io` endpoints and delete their `configv2.json`s
 - [ ] run the database manager
 - [ ] run the pytest suite on the various endpoints
+- [ ] verify each endpoint is running the new KG2 version by running the following JSON query and inspecting the returned node:
+  - `{"nodes": {"n00": {"ids": ["RTX:KG2c"]}}, "edges": {}}`
 - [ ] update the CI/CD instance:
   - [ ] replace the `configv2.json` file on `cicd.rtx.ai` with the new one
   - [ ] download the new database files to `cicd.rtx.ai`
