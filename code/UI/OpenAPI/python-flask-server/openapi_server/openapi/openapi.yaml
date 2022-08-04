@@ -23,6 +23,7 @@ info:
   x-trapi:
     version: 1.2.1
     asyncquery: true
+    test_data_location: https://raw.githubusercontent.com/RTXteam/RTX/master/code/ARAX/Documentation/arax_kps.json
     operations:
     - lookup
     - lookup_and_score
