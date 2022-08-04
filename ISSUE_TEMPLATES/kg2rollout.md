@@ -57,7 +57,11 @@ The following databases should be rebuilt and copies of them should be put in `/
 
 All code changes should **go in the `kg2integration` branch**!
 
-- [ ] regenerate the new test triples file and push it to `RTX/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json` @acevedol
+- [ ] regenerate the KG2c test triples file @acevedol
+  - [ ] ensure the new KG2c neo4j is currently running
+  - [ ] copy the new `config_local.json` to `RTX/code` on the instance the test triples will be built on
+  - [ ] run [this script](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/create_csv_of_kp_predicate_triples.py)
+  - [ ] push the regenerated file to `RTX/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json` (in the `kg2integration` branch)
 - [ ] update Expand code as needed
 - [ ] update any other modules as needed
 - [ ] test everything together:
@@ -91,7 +95,6 @@ All code changes should **go in the `kg2integration` branch**!
 ##### 6. Final items/clean up:
 
 - [ ] generate KGX files and upload them to the KGE Archive @acevedol
-- [ ] update the KG2c test triples that go in the [NCATS Testing repo](https://github.com/NCATSTranslator/testing/tree/main/onehop/test_triples/KP/Expander_Agent) (generate with [this script](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/create_csv_of_kp_predicate_triples.py), using the new `config_local.json`) @acevedol
 - [ ] rename the `config_local.json` on arax.ncats.io to `config_local.json_FROZEN_DO-NOT-EDIT-FURTHER` (any additional edits to the config file should be made directly to the master `configv2.json` on araxconfig.rtx.ai going forward)
 - [ ] turn off the old KG2c version's neo4j instance
 - [ ] turn off the old KG2c version's plover instance
