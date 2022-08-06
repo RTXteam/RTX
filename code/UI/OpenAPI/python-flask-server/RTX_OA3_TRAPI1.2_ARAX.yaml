@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   description: TRAPI 1.2 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
-  version: 1.2.7
+  version: 1.2.9
   title: ARAX Translator Reasoner
   contact:
     email: edeutsch@systemsbiology.org
@@ -14,7 +14,7 @@ info:
     team:
       - Expander Agent
     infores: infores:arax
-    biolink-version: 2.2.6
+    biolink-version: 2.2.11
     externalDocs:
       description: >-
         The values for component and team are restricted according to this
@@ -55,25 +55,46 @@ externalDocs:
     Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-  - url: https://arax.ncats.io/api/arax/v1.2
-    description: ARAX Translator Reasoner API
-    x-maturity: production
+- description: ARAX TRAPI 1.2 endpoint - production
+  url: https://arax.transltr.io/api/arax/v1.2
+  x-maturity: production
+- description: ARAX TRAPI 1.2 endpoint - production
+  url: https://arax.ncats.io/api/arax/v1.2
+  x-maturity: production
+- description: ARAX TRAPI 1.2 endpoint - testing
+  url: https://arax.test.transltr.io/api/arax/v1.2
+  x-maturity: testing
+- description: ARAX TRAPI 1.2 endpoint - staging
+  url: https://arax.ci.transltr.io/api/arax/v1.2
+  x-maturity: staging
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/beta/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/test/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/devED/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/devLM/api/arax/v1.2
+  x-maturity: development
 tags:
   - name: meta_knowledge_graph
     description: Get supported relationships
     externalDocs:
       description: Documentation for the reasoner predicates function
-      url: http://arax.ncats.io/overview.html#predicates
+      url: https://arax.ncats.io/overview.html#predicates
   - name: query
     description: Initiate a query and wait to receive the response
     externalDocs:
       description: Documentation for the reasoner query function
-      url: http://arax.ncats.io/overview.html#query
+      url: https://arax.ncats.io/overview.html#query
   - name: asyncquery
     description: Initiate a query with a callback to receive the response
     externalDocs:
       description: Documentation for the reasoner asynchquery function
-      url: http://arax.ncats.io/overview.html#asyncquery
+      url: https://arax.ncats.io/overview.html#asyncquery
   - name: translator
     description: Required for SmartAPI validation of x-translator
   - name: trapi
@@ -233,6 +254,7 @@ paths:
         - in: path
           name: response_id
           description: Identifier of the response to return
+          example: 41651
           required: true
           schema:
             type: string
@@ -375,12 +397,14 @@ paths:
           required: true
           schema:
             type: string
+          example: PTGS2
         - in: path
           name: term2
           description: Second of two terms. Order not important.
           required: true
           schema:
             type: string
+          example: acetaminophen
       responses:
         '200':
           description: successful operation
@@ -1204,6 +1228,20 @@ components:
         an exact match to the given QEdge predicate term,
         or to a term that is a descendant of the QEdge predicate term.
       properties:
+        knowledge_type:
+          description: >-
+            Indicates the type of knowledge that the client wants from the
+            server between the subject and object. If the value is
+            'lookup', then the client wants direct lookup information from
+            knowledge sources. If the value is 'inferred', then the client
+            wants the server to get creative and connect the subject and
+            object in more speculative and non-direct-lookup ways. If this
+            property is absent or null, it MUST be assumed to mean
+            'lookup'. This feature is currently experimental and may be
+            further extended in the future.
+          example: lookup
+          nullable: true
+          type: string
         predicates:
           type: array
           items:
@@ -1902,6 +1940,14 @@ components:
                   type: string
                 minLength: 1
                 type: array
+              qedge_keys:
+                type: array
+                items:
+                  type: string
+                description: A list of qedge keys. If included only edges
+                  corresponding to the given qedge keys, as well as their
+                  connected nodes, will be filled. If not included all edges
+                  will be filled.
           - additionalProperties: false
             properties:
               denylist:
@@ -1913,6 +1959,14 @@ components:
                   type: string
                 minLength: 1
                 type: array
+              qedge_keys:
+                type: array
+                items:
+                  type: string
+                description: A list of qedge keys. If included only edges
+                  corresponding to the given qedge keys, as well as their
+                  connected nodes, will be filled. If not included all edges
+                  will be filled.
           type: object
       required:
       - id

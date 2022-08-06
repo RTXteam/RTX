@@ -1,6 +1,6 @@
 {
   "kg2pre_version": "2.7.5",
-  "kg2pre_neo4j_endpoint": "kg2-7-5.rtx.ai",
+  "kg2pre_neo4j_endpoint": "kg2endpoint-kg2-7-5.rtx.ai",
   "biolink_version": "2.2.11",
   "upload_to_arax.ncats.io": true,
   "upload_directory": "/data/orangeboard/databases/KG2.X.Y",

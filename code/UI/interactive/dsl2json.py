@@ -7,13 +7,15 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAX/ARAXQuery")
 modules = {
-    "ARAX_messenger"      : {"class": "ARAXMessenger"     , "command": "create_message()"},
+    "ARAX_messenger"      : {"class": "ARAXMessenger"     , "command": "create_envelope()"}, #"create_message()"},
     "ARAX_expander"       : {"class": "ARAXExpander"      , "command": "expand()"},
     "ARAX_overlay"        : {"class": "ARAXOverlay"       , "command": "overlay()"},
     "ARAX_filter_kg"      : {"class": "ARAXFilterKG"      , "command": "filter_kg()"},
     "ARAX_filter_results" : {"class": "ARAXFilterResults" , "command": "filter_results()"},
     "ARAX_resultify"      : {"class": "ARAXResultify"     , "command": "resultify()"},
-    "ARAX_ranker"         : {"class": "ARAXRanker"        , "command": "rank_results()"}
+    "ARAX_ranker"         : {"class": "ARAXRanker"        , "command": "rank_results()"},
+    "ARAX_connect"        : {"class": "ARAXConnect"       , "command": "connect()"},
+    "ARAX_infer"          : {"class": "ARAXInfer"         , "command": "infer()"}
 }
 
 araxi_json = {}

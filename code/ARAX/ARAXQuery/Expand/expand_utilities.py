@@ -688,8 +688,14 @@ def get_standard_parameters() -> dict:
             "examples": [30, 120],
             "description": "The number of seconds Expand will wait for a response from a KP before "
                            "cutting the query off and proceeding without results from that KP."
+        },
+        "return_minimal_metadata": {
+            "is_required": False,
+            "examples": ["true", "false"],
+            "type": "boolean",
+            "description": "Whether to omit supporting data on nodes/edges in the results (e.g., publications, "
+                           "description, etc.)."
         }
-
     }
     return standard_parameters
 

@@ -352,6 +352,7 @@ class OverlayClinicalInfo:
             q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
             q_edge.relation = relation
+            q_edge.filled = True
             self.message.query_graph.edges[relation]=q_edge
 
     def add_all_edges(self, name="", default=0.):
