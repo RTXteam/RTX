@@ -114,20 +114,22 @@ class RTXConfiguration:
         self.mysql_feedback_username = self.config_secrets["mysql_feedback"]["username"]
         self.mysql_feedback_password = self.config_secrets["mysql_feedback"]["password"]
 
+        # Determine the current branch we're in
+        from pygit2 import Repository
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+        rtx_repo_dir = f"{file_dir}/../"
+        repo = Repository(rtx_repo_dir)
+        self.current_branch_name = repo.head.name.split("/")[-1]
+
         # Set up correct Plover URL (since it's not registered in SmartAPI)
-        if self.maturity in {"production", "prod"}:
+        if self.maturity in {"production", "prod"} or self.current_branch_name == "production":
             self.plover_url = self.config_dbs["plover"]["prod"]
-        elif self.maturity in {"testing", "test"}:
+        elif self.maturity in {"testing", "test"} or self.current_branch_name == "itrb-test":
             self.plover_url = self.config_dbs["plover"]["test"]
         else:  # Includes staging, development, CI
             self.plover_url = self.config_dbs["plover"]["dev"]
 
         # TEMPORARILY set KG2 url here until pulled from SmartAPI; TODO: remove this when #1466 is done
-        from pygit2 import Repository
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        rtx_repo_dir = f"{file_dir}/../"
-        repo = Repository(rtx_repo_dir)
-        current_branch_name = repo.head.name.split("/")[-1]
         if self.is_itrb_instance:
             if self.maturity in {"production", "prod"}:
                 self.rtx_kg2_url = "https://kg2.transltr.io"
@@ -136,9 +138,9 @@ class RTXConfiguration:
             else:
                 self.rtx_kg2_url = "https://kg2.ci.transltr.io"
         else:
-            if "NewFmt" in self.instance_name or current_branch_name == "NewFmt":
+            if "NewFmt" in self.instance_name or self.current_branch_name == "NewFmt":
                 self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.3"
-            elif self.maturity in {"production", "prod"} or current_branch_name == "production":
+            elif self.maturity in {"production", "prod"} or self.current_branch_name == "production":
                 self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.2"
             else:
                 self.rtx_kg2_url = "https://arax.ncats.io/beta/api/rtxkg2/v1.2"
