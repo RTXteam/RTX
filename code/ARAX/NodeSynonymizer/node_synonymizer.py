@@ -32,7 +32,7 @@ from RTXConfiguration import RTXConfiguration
 class NodeSynonymizer:
 
     # Constructor
-    def __init__(self, live="Production"):
+    def __init__(self):
 
         self.databaseLocation = os.path.dirname(os.path.abspath(__file__))
         #self.databaseLocation = "G:/local/tmp"
@@ -52,7 +52,6 @@ class NodeSynonymizer:
         }
 
         self.RTXConfig = RTXConfiguration()
-        self.RTXConfig.live = live
 
         #self.databaseName = "node_synonymizer.sqlite"
         self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
@@ -2603,8 +2602,6 @@ def main():
                         help="If set perform the test query and return", default=None)
     parser.add_argument('-g', '--get', action="store",
                         help="Get nodes for the specified list in the specified kg_name", default=None)
-    parser.add_argument('-c', '--live', action="store",
-                        help="Get the config.json field for the filename", default="Production")
     parser.add_argument('-u', '--update', action="store_true",
                         help="If set, update the NodeSynonmizer with improved category information")
     args = parser.parse_args()
@@ -2613,7 +2610,7 @@ def main():
         parser.print_help()
         exit()
 
-    synonymizer = NodeSynonymizer(live = args.live)
+    synonymizer = NodeSynonymizer()
     
     # FW: If building use "node_synonymizer.sqlite" for the database name and reconnect
     if args.build or args.recollate:

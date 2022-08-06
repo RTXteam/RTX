@@ -15,7 +15,10 @@
 **/.web_cache
 
 # config.json
-**/config*.json
+**/config.json
+**/configv*.json
+**/config_secrets.json
+**/config*local.json
 
 code/UI/OpenAPI/python-flask-server/openapi_server/flask_config.json
 

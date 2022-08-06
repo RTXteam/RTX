@@ -201,8 +201,8 @@ class ResponseCache:
 
         #### New system to store the responses in an S3 bucket
         rtx_config = RTXConfiguration()
-        KEY_ID = rtx_config.config["Global"]['s3']['access']
-        ACCESS_KEY = rtx_config.config["Global"]['s3']['secret']
+        KEY_ID = rtx_config.config_dbs["Global"]['s3']['access']
+        ACCESS_KEY = rtx_config.config_dbs["Global"]['s3']['secret']
         succeeded_to_s3 = False
 
         try:
@@ -277,8 +277,8 @@ class ResponseCache:
                 #### If the file wasn't local, try it in S3
                 if not found_response_locally:
                     rtx_config = RTXConfiguration()
-                    KEY_ID = rtx_config.config["Global"]['s3']['access']
-                    ACCESS_KEY = rtx_config.config["Global"]['s3']['secret']
+                    KEY_ID = rtx_config.config_dbs["Global"]['s3']['access']
+                    ACCESS_KEY = rtx_config.config_dbs["Global"]['s3']['secret']
 
                     try:
                         s3 = boto3.resource(

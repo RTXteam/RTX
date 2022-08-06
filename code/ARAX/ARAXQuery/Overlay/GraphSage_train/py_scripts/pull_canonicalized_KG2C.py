@@ -15,7 +15,7 @@ output_path = args.OutFolder
 
 ## Connect to neo4j database
 rtxc = RTXConfiguration()
-rtxc.live = 'KG2c'
+rtxc.neo4j_kg2 = "KG2c"
 driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 session = driver.session()
 

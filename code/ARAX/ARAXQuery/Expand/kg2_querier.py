@@ -169,7 +169,6 @@ class KG2Querier:
     @staticmethod
     def _answer_query_using_plover(qg: QueryGraph, log: ARAXResponse) -> Tuple[Dict[str, Dict[str, Union[set, dict]]], int]:
         rtxc = RTXConfiguration()
-        rtxc.live = "Production"
         # First prep the query graph (requires some minor additions for Plover)
         dict_qg = qg.to_dict()
         dict_qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)

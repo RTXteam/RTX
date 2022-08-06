@@ -14,7 +14,7 @@ from RTXConfiguration import RTXConfiguration
 class KGTestCase(unittest.TestCase):
 
     rtxConfig = RTXConfiguration()
-    rtxConfig.live = 'KG2'
+    rtxConfig.neo4j_kg2 = 'KG2pre'
 
     def test_anatomical_entity_nodes(self):
 

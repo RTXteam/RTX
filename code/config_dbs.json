@@ -1,0 +1,24 @@
+{
+   "cohd_database": "/translator/data/orangeboard/databases/KG2.7.6/COHDdatabase_v1.0_KG2.7.6.db",
+   "graph_database": "/translator/data/orangeboard/databases/KG2.7.5/GRAPH_v1.0_KG2.7.5_refreshed.sqlite",
+   "log_model": "/translator/data/orangeboard/databases/KG2.7.4/LogModel_v1.0_KG2.7.4.pkl",
+   "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.7.6/curie_to_pmids_v1.0_KG2.7.6.sqlite",
+   "node_synonymizer": "/translator/data/orangeboard/databases/KG2.7.6/node_synonymizer_v1.0_KG2.7.6.sqlite",
+   "rel_max": "/translator/data/orangeboard/databases/KG2.7.4/rel_max_v1.0_KG2.7.4.emb.gz",
+   "map_txt": "/translator/data/orangeboard/databases/KG2.7.4/map_v1.0_KG2.7.4.txt",
+   "dtd_prob": "/translator/data/orangeboard/databases/KG2.7.5/DTD_probability_database_v1.0_KG2.7.5_refreshed.db",
+   "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.7.6/kg2c_v1.0_KG2.7.6.sqlite",
+   "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.7.6/meta_kg_v1.0_KG2.7.6c.json",
+   "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.7.6/fda_approved_drugs_v1.0_KG2.7.6c.pickle",
+   "autocomplete": "/translator/data/orangeboard/databases/KG2.7.6/autocomplete_v1.0_KG2.7.6.sqlite",
+   "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.7.6/ExplainableDTD.db",
+   "plover": {
+      "dev": "https://kg2cploverdb.ci.transltr.io",
+      "test": "https://kg2cploverdb.test.transltr.io",
+      "prod": "https://kg2cploverdb.transltr.io"
+   },
+   "neo4j": {
+      "KG2pre": "kg2endpoint-kg2-7-6.rtx.ai",
+      "KG2c": "kg2-7-6c.rtx.ai"
+   }
+}
