@@ -3,6 +3,7 @@
 import os
 import datetime
 import json
+import pathlib
 import time
 import re
 
@@ -31,19 +32,32 @@ class RTXConfiguration:
         except:
             self.domain = '??'
 
-        if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io", "Github actions ARAX test suite"]:
-            self.maturity = "staging"
-        elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"]:
-            self.maturity = "testing"
-        elif self.domain in ["arax.transltr.io", "kg2.transltr.io"]:
-            self.maturity = "production"
-        elif self.domain == "arax.ncats.io":
-            if self.instance_name in ["ARAX", "kg2"]:
+        # Determine our maturity
+        maturity_override_file_path = f"{location}/maturity_override.txt"
+        if pathlib.Path(maturity_override_file_path).exists():
+            # Since a maturity_override.txt file is provided, we'll use the maturity specified in that
+            with open(maturity_override_file_path, 'r') as maturity_override_file:
+                lines = maturity_override_file.readlines()
+                if not lines or not lines[0]:
+                    raise ValueError(f"{maturity_override_file_path} exists but does not contain anything! "
+                                     f"It should be a single-line file containing the maturity string.")
+                else:
+                    self.maturity = lines[0].strip()
+        else:
+            # Otherwise we'll dynamically determine what maturity we are based on instance/domain name and/or branch
+            if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io", "Github actions ARAX test suite"]:
+                self.maturity = "staging"
+            elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"]:
+                self.maturity = "testing"
+            elif self.domain in ["arax.transltr.io", "kg2.transltr.io"]:
                 self.maturity = "production"
+            elif self.domain == "arax.ncats.io":
+                if self.instance_name in ["ARAX", "kg2"]:
+                    self.maturity = "production"
+                else:
+                    self.maturity = "development"
             else:
                 self.maturity = "development"
-        else:
-            self.maturity = "development"
 
         config_secrets_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_secrets.json'
         config_dbs_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_dbs.json'
