@@ -179,6 +179,7 @@ class KG2Querier:
                 if "allow_subclasses" not in qnode or qnode["allow_subclasses"] is None:
                     qnode["allow_subclasses"] = True
         # Then send the actual query
+        log.debug(f"Sending query to {rtxc.plover_url}")
         response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, timeout=60,
                                  headers={'accept': 'application/json'})
         if response.status_code == 200:
