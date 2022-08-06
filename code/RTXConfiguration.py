@@ -122,6 +122,9 @@ class RTXConfiguration:
         else:  # Includes staging, development, CI
             self.plover_url = self.config_dbs["plover"]["dev"]
 
+        # TEMPORARILY set KG2 url here until pulled from SmartAPI; TODO: remove this when #1466 is done
+        self.rtx_kg2_url = "https://arax.ncats.io/beta/api/rtxkg2/v1.2"
+
         # Default to KG2c neo4j
         self.neo4j_kg2 = "KG2c"
 
