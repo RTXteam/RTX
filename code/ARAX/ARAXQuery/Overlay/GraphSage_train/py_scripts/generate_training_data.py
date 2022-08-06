@@ -142,16 +142,19 @@ class QueryMyChem:
         results = QueryMyChem._access_api(chem_id)
         if results is not None:
             json_dict = json.loads(results)
-            if "drugcentral" in json_dict.keys():
-                drugcentral = json_dict['drugcentral']
-                if isinstance(drugcentral, list):
-                    drugcentral = drugcentral[0]
-                if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
-                    drug_uses = drugcentral['drug_use']
-                    if QueryMyChem._has_dirty_cache(drug_uses):
-                        indications, contraindications = QueryMyChem._handle_dirty_cache(drug_uses)
-                    else:
-                        indications, contraindications = QueryMyChem._handle_clean_cache(drug_uses)
+            try:
+                if "drugcentral" in json_dict.keys():
+                    drugcentral = json_dict['drugcentral']
+                    if isinstance(drugcentral, list):
+                        drugcentral = drugcentral[0]
+                    if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
+                        drug_uses = drugcentral['drug_use']
+                        if QueryMyChem._has_dirty_cache(drug_uses):
+                            indications, contraindications = QueryMyChem._handle_dirty_cache(drug_uses)
+                        else:
+                            indications, contraindications = QueryMyChem._handle_clean_cache(drug_uses)
+            except:
+                pass
         return {'indications': indications, "contraindications": contraindications}
 
 class DataGeneration:
