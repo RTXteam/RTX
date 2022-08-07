@@ -32,6 +32,13 @@ class RTXConfiguration:
         except:
             self.domain = '??'
 
+        # Determine the branch we're running in
+        from pygit2 import Repository
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+        rtx_repo_dir = f"{file_dir}/../"
+        repo = Repository(rtx_repo_dir)
+        self.current_branch_name = repo.head.name.split("/")[-1]
+
         # Determine our maturity
         maturity_override_file_path = f"{location}/maturity_override.txt"
         if pathlib.Path(maturity_override_file_path).exists():
@@ -47,12 +54,12 @@ class RTXConfiguration:
             # Otherwise we'll dynamically determine what maturity we are based on instance/domain name and/or branch
             if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io", "Github actions ARAX test suite"]:
                 self.maturity = "staging"
-            elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"]:
+            elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"] or self.current_branch_name == "itrb-test":
                 self.maturity = "testing"
-            elif self.domain in ["arax.transltr.io", "kg2.transltr.io"]:
+            elif self.domain in ["arax.transltr.io", "kg2.transltr.io"] or self.current_branch_name == "production":
                 self.maturity = "production"
             elif self.domain == "arax.ncats.io":
-                if self.instance_name in ["ARAX", "kg2"]:
+                if self.instance_name in ["ARAX", "kg2"] or self.current_branch_name == "production":
                     self.maturity = "production"
                 else:
                     self.maturity = "development"
@@ -124,33 +131,26 @@ class RTXConfiguration:
         self.mysql_feedback_username = self.config_secrets["mysql_feedback"]["username"]
         self.mysql_feedback_password = self.config_secrets["mysql_feedback"]["password"]
 
-        # Determine the current branch we're in
-        from pygit2 import Repository
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        rtx_repo_dir = f"{file_dir}/../"
-        repo = Repository(rtx_repo_dir)
-        self.current_branch_name = repo.head.name.split("/")[-1]
-
         # Set up correct Plover URL (since it's not registered in SmartAPI)
         if self.maturity in {"production", "prod"} or self.current_branch_name == "production":
             self.plover_url = self.config_dbs["plover"]["prod"]
         elif self.maturity in {"testing", "test"} or self.current_branch_name == "itrb-test":
             self.plover_url = self.config_dbs["plover"]["test"]
-        else:  # Includes staging, development, CI
+        else:  # Includes staging, development
             self.plover_url = self.config_dbs["plover"]["dev"]
 
         # TEMPORARILY set KG2 url here until pulled from SmartAPI; TODO: remove this when #1466 is done
         if self.is_itrb_instance:
             if self.maturity in {"production", "prod"}:
-                self.rtx_kg2_url = "https://kg2.transltr.io"
+                self.rtx_kg2_url = "https://kg2.transltr.io/api/rtxkg2/v1.2"
             elif self.maturity in {"testing", "test"}:
-                self.rtx_kg2_url = "https://kg2.test.transltr.io"
+                self.rtx_kg2_url = "https://kg2.test.transltr.io/api/rtxkg2/v1.2"
             else:
-                self.rtx_kg2_url = "https://kg2.ci.transltr.io"
+                self.rtx_kg2_url = "https://kg2.ci.transltr.io/api/rtxkg2/v1.2"
         else:
             if "NewFmt" in self.instance_name or self.current_branch_name == "NewFmt":
                 self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.3"
-            elif self.maturity in {"production", "prod"} or self.current_branch_name == "production":
+            elif self.maturity in {"production", "prod"}:
                 self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.2"
             else:
                 self.rtx_kg2_url = "https://arax.ncats.io/beta/api/rtxkg2/v1.2"
