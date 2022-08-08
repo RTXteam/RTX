@@ -23,15 +23,24 @@ def map_to_graph(row):
         drug, disease = row
         res = nodesynonymizer.get_canonical_curies(drug)[drug]
         preferred_drug_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Drug' or res['preferred_category']=='biolink:SmallMolecule') else None
-        res = nodesynonymizer.get_canonical_curies(disease)[disease]
-        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Disease' or res['preferred_category']=='biolink:PhenotypicFeature' or res['preferred_category']=='biolink:DiseaseOrPhenotypicFeature') else None
+        try:
+            res = nodesynonymizer.get_canonical_curies(disease)[disease]
+        except:
+            res = None
+        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Disease' or res['preferred_category']=='biolink:PhenotypicFeature' or res['preferred_category']=='biolink:DiseaseOrPhenotypicFeature' or res['preferred_category']=='biolink:ClinicalFinding' or res['preferred_category']=='biolink:BehavioralFeature') else None
         return [preferred_drug_curie, preferred_disease_curie]
     elif len(row) == 3:
         count, drug, disease = row
-        res = nodesynonymizer.get_canonical_curies(drug)[drug]
+        try:
+            res = nodesynonymizer.get_canonical_curies(drug)[drug]
+        except:
+            res = None
         preferred_drug_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Drug' or res['preferred_category']=='biolink:SmallMolecule') else None
-        res = nodesynonymizer.get_canonical_curies(disease)[disease]
-        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Disease' or res['preferred_category']=='biolink:PhenotypicFeature' or res['preferred_category']=='biolink:DiseaseOrPhenotypicFeature') else None
+        try:
+            res = nodesynonymizer.get_canonical_curies(disease)[disease]
+        except:
+            res = None
+        preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Disease' or res['preferred_category']=='biolink:PhenotypicFeature' or res['preferred_category']=='biolink:DiseaseOrPhenotypicFeature' or res['preferred_category']=='biolink:ClinicalFinding' or res['preferred_category']=='biolink:BehavioralFeature') else None
         return [count, preferred_drug_curie, preferred_disease_curie]
 
 

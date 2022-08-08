@@ -244,19 +244,17 @@ class ComputeFTEST:
             self.response.error(f"No object node found in message KG for Fisher's Exact Test")
             return self.response
 
-        ## check if subject node has more than one type. If so, throw an error
+        ## check if the subject node type is None, if so, automatically set it to biolink:NamedThing
         if subject_node_category is None:
-            self.response.error(f"Subject node with qnode key {subject_qnode_key} was set to None in Query Graph. Please specify the node type")
-            return self.response
+            self.response.warning(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph. We will automatically set it to 'biolink:NamedThing', otherwise please specify its node type.")
+            subject_node_category = ['biolink:NamedThing']
 
-        ## check if object node has more than one type. If so, throw an error
+        ## check if the object node type is None, if so, automatically set it to biolink:NamedThing
         if object_node_category is None:
-            self.response.error(f"Object node with qnode key {object_qnode_key} was set to None in Query Graph. Please specify the node type")
-            return self.response
-        else:
-            pass
+            self.response.warning(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically set it to 'biolink:NamedThing', otherwise please specify its node type.")
+            object_node_category = ['biolink:NamedThing']
 
-        ##check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both subject nodes and object nodes was used
+        ## check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both subject nodes and object nodes was used
         if len(collections.Counter(edge_expand_kp))==1:
             kp = edge_expand_kp[0]
         else:
@@ -289,7 +287,6 @@ class ComputeFTEST:
             self.response.debug(f"{len(object_node_dict)} object node with qnode key {object_qnode_key} and node type {object_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
         else:
             self.response.debug(f"{len(object_node_dict)} object nodes with qnode key {object_qnode_key} and node type {object_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
-
 
         # find all nodes with the same type of 'subject_qnode_key' nodes in specified KP ('ARAX/KG1','infores:rtx-kg2') that are adjacent to target nodes
         # if rel_edge_key is not None, query adjacent node from database otherwise query adjacent node with DSL command by providing a list of query nodes to add_qnode()
