@@ -57,6 +57,6 @@ filter_results(action=limit_number_of_results, max_results=300)
 
 ### Results
 Please use your web browser to navigate to: 
-[[arax.rtx.ai/?r=32790](https://arax.ncats.io/?r=55712)](https://arax.ncats.io/?r=55712)
+[arax.rtx.ai/?r=55712](https://arax.ncats.io/?r=55712)
 
 
