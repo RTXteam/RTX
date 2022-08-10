@@ -111,6 +111,8 @@ class SmartAPI:
                 except KeyError:
                     maturity = None
                 servers.append({"description": description, "url": url, "maturity": maturity})
+            if len(servers) == 0:
+                continue
 
             if version is not None:
                 if url_version is None:
@@ -173,7 +175,9 @@ class SmartAPI:
         for name in entries:
             row = [name] + entries[name]
             # convert maturity set to more readable string format
-            row[2] = self._stringify_list(list(row[2]))
+            row[2] = list(row[2])
+            row[2].sort()
+            row[2] = self._stringify_list(row[2])
             rows.append(row)
         rows.sort(key=lambda x:x[0])
 

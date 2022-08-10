@@ -27,10 +27,17 @@ class KPSelector:
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
-        self.all_kps = eu.get_all_kps()
+        self.kp_urls = eu.get_all_kps()
+        self.all_kps = set(self.kp_urls.keys())
         self.timeout_record = self._load_timeout_record()
         self.meta_map = self._load_meta_map()
         self.biolink_helper = BiolinkHelper()
+
+    def get_kp_endpoint_url(self,kp_name):
+        if kp_name in self.kp_urls:
+            return self.kp_urls[kp_name]
+        else:
+            return None
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
         """
@@ -52,6 +59,7 @@ class KPSelector:
         symmetrical_predicates = set(filter(self.biolink_helper.is_symmetric, predicates))
 
         # use metamap to check kp for predicate triple
+        self.log.debug(f"selecting from {len(self.all_kps)} kps")
         accepting_kps = set()
         for kp in self.meta_map:
             if self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories):
@@ -226,7 +234,7 @@ class KPSelector:
                            f"within the last 10 minutes")
         functioning_kps_to_update = set(kps_to_update).difference(set(non_functioning_kps))
         for kp in functioning_kps_to_update:
-            kp_endpoint = eu.get_kp_endpoint_url(kp)
+            kp_endpoint = self.get_kp_endpoint_url(kp)
             if kp_endpoint:
                 try:
                     self.log.debug(f"Getting meta info from {kp}")

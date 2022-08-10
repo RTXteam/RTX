@@ -4,6 +4,7 @@ import copy
 import sys
 import os
 import traceback
+import yaml
 from typing import List, Dict, Union, Set, Tuple, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
@@ -21,6 +22,8 @@ from ARAX_response import ARAXResponse
 from ARAX_resultify import ARAXResultify
 from ARAX_overlay import ARAXOverlay
 from ARAX_ranker import ARAXRanker
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from smartapi import SmartAPI
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
@@ -649,8 +652,24 @@ def get_qg_expanded_thus_far(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph) -> Q
     return qg_expanded_thus_far
 
 
+def get_trapi_version():
+    code_dir = f"{os.path.dirname(os.path.abspath(__file__))}/../../.."
+    openapi_yaml_path = f"{code_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml"
+    with open(openapi_yaml_path) as api_file:
+        openapi_yaml = yaml.safe_load(api_file)
+        trapi_version = openapi_yaml["info"]["x-trapi"]["version"]
+        return trapi_version
+
+
 def get_all_kps() -> Set[str]:
-    return set(get_kp_command_definitions().keys())
+    version = get_trapi_version()
+    # remove patch number because version is used for string matching to evaluate compatbility
+    minor_version = ".".join( version.split(".")[:2] )
+    smartapi = SmartAPI()
+    kp_info = smartapi.get_kps(version=minor_version,req_maturity="production")
+    kp_urls = {kp["infores_name"] : kp["servers"][0]["url"] for kp in kp_info}
+    kp_urls |= {"infores:arax-drug-treats-disease":None, "infores:arax-normalized-google-distance":None}
+    return kp_urls
 
 
 def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:

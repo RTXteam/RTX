@@ -318,8 +318,8 @@ class ARAXExpander:
                     return response
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
+                kp_selector = KPSelector(log)
                 if not user_specified_kp:
-                    kp_selector = KPSelector(log)
                     kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
@@ -337,7 +337,6 @@ class ARAXExpander:
                     kp_answers = [self._expand_edge_kg2_local(one_hop_qg, log)]
                 # Otherwise concurrently send this query to each KP selected to answer it
                 elif kps_to_query:
-                    kp_selector = KPSelector(log)
                     if use_asyncio:
                         kps_to_query = eu.sort_kps_for_asyncio(kps_to_query, log)
                         log.debug(f"Will use asyncio to run KP queries concurrently")
