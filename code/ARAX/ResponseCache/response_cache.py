@@ -18,6 +18,7 @@ import json
 import requests
 import requests_cache
 from flask import Flask,redirect
+import copy
 
 import boto3
 import timeit
@@ -324,22 +325,27 @@ class ResponseCache:
 
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
+            debug = False
             ars_hosts = [ 'ars.transltr.io', 'ars-prod.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
-                    #eprint(f"Trying {ars_host}...")
+                    if debug:
+                        eprint(f"Trying {ars_host}...")
                     try:
                         response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
                     except Exception as e:
                         return( { "status": 404, "title": f"Remote host {ars_host} unavailable", "detail": f"Connection attempts to {ars_host} triggered an exception: {e}", "type": "about:blank" }, 404)
                 status_code = response_content.status_code
-                #eprint(f"--- Fetch of {response_id} from {ars_host} yielded {status_code}")
+                if debug:
+                    eprint(f"--- Fetch of {response_id} from {ars_host} yielded {status_code}")
                 if status_code == 200:
-                    #eprint(f"Got 200 from {ars_host}...")
+                    if debug:
+                        eprint(f"Got 200 from {ars_host}...")
                     break
 
             if status_code != 200:
-                #eprint("Cannot fetch from ARS a response corresponding to response_id="+str(response_id))
+                if debug:
+                    eprint("Cannot fetch from ARS a response corresponding to response_id="+str(response_id))
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
             content_size = len(response_content.content)
@@ -359,18 +365,24 @@ class ResponseCache:
                 return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
             #### Debugging
-            #response_dict['fields']['data'] = '...'
-            #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
+            if debug:
+                temp = copy.deepcopy(response_dict)
+                temp['fields']['data'] = '...'
+                eprint(json.dumps(temp,indent=2,sort_keys=True))
 
             is_parent_pk = False
             if 'fields' in response_dict:
-                if 'name' in response_dict['fields'] and response_dict['fields']['name'] == 'ars-default-agent':
-                    is_parent_pk = True
-                elif 'actor' in response_dict['fields'] and str(response_dict['fields']['actor']) == '9':
+                if 'name' in response_dict['fields'] and response_dict['fields']['name'] != '':
+                    if response_dict['fields']['name'] == 'ars-default-agent' or response_dict['fields']['name'] == 'ars-workflow-agent':
+                        is_parent_pk = True
+                    else:
+                        is_parent_pk = False
+                elif 'actor' in response_dict['fields'] and ( str(response_dict['fields']['actor']) == '9' or str(response_dict['fields']['actor']) == '19' ):
                     is_parent_pk = True
             if is_parent_pk == True:
                 with requests_cache.disabled():
-                    #eprint(f"INFO: This is a parent UUID. Fetching trace=y for {response_id}")
+                    if debug:
+                        eprint(f"INFO: This is a parent UUID. Fetching trace=y for {response_id}")
                     response_content = requests.get(f"https://{ars_host}/ars/api/messages/" + response_id + '?trace=y', headers={'accept': 'application/json'})
                 status_code = response_content.status_code
 
@@ -387,7 +399,8 @@ class ResponseCache:
 
             if not is_parent_pk and 'fields' in response_dict and 'data' in response_dict['fields']:
                 envelope = response_dict['fields']['data']
-                #eprint(f"INFO: This is an ordinary child UUID. Reading and validating it...")
+                if debug:
+                    eprint(f"INFO: This is an ordinary child UUID. Reading and validating it...")
                 if envelope is None:
                     envelope = {}
                     return envelope
