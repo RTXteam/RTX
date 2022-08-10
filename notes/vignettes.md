@@ -38,8 +38,8 @@ Please use your web browser to navigate to:
 ### ARAXi description of this query workflow:
 ```
 add_qnode(name=REMDESIVIR, categories=biolink:SmallMolecule, key=n0)
-add_qnode(name=RNA-directed RNA polymerase, key=n1, categories=biolink:Protein)
-add_qnode(key=n2, categories=[biolink:Protein,biolink:PhysiologicalProcess])
+add_qnode(name=RNA-directed RNA polymerase, categories=biolink:Protein, key=n1)
+add_qnode(categories=[biolink:Protein, biolink:PhysiologicalProcess], key=n2)
 add_qnode(name=COVID-19, categories=biolink:Disease, key=n3)
 add_qedge(subject=n0, object=n1, key=e0)
 add_qedge(subject=n1, object=n2, key=e1)
@@ -48,15 +48,14 @@ expand(prune_threshold=500, kp_timeout=120)
 overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)
 overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)
 overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n2, object_qnode_key=n3)
-overlay(action=fisher_exact_test,subject_qnode_key=n1,virtual_relation_label=F1,object_qnode_key=n2)
-overlay(action=fisher_exact_test,subject_qnode_key=n3,virtual_relation_label=F2,object_qnode_key=n2)
+overlay(action=fisher_exact_test, virtual_relation_label=F1, subject_qnode_key=n1, object_qnode_key=n2)
+overlay(action=fisher_exact_test, virtual_relation_label=F2, subject_qnode_key=n3, object_qnode_key=n2)
 resultify()
 filter_results(action=limit_number_of_results, max_results=300)
-
 ```
 
 ### Results
 Please use your web browser to navigate to: 
-[arax.rtx.ai/?r=55718](https://arax.ncats.io/?r=55718)
+[arax.rtx.ai/?r=55721](https://arax.rtx.ai/?r=55721)
 
 
