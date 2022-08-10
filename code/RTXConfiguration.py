@@ -7,6 +7,8 @@ import pathlib
 import time
 import re
 
+from pygit2 import Repository
+
 
 class RTXConfiguration:
 
@@ -16,7 +18,7 @@ class RTXConfiguration:
     def __init__(self):
         self.version = "ARAX 1.2.1"  # TODO: This probably shouldn't be hardcoded? What is it used for?
 
-        # Determine what maturity level we're running TODO: Does this handle all our endpoints? What about NewFmt?
+        # Determine what maturity level we're running
         location = os.path.dirname(os.path.abspath(__file__))
         self.instance_name = '??'
         match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
@@ -33,7 +35,6 @@ class RTXConfiguration:
             self.domain = '??'
 
         # Determine the branch we're running in
-        from pygit2 import Repository
         file_dir = os.path.dirname(os.path.abspath(__file__))
         rtx_repo_dir = f"{file_dir}/../"
         repo = Repository(rtx_repo_dir)
@@ -132,9 +133,9 @@ class RTXConfiguration:
         self.mysql_feedback_password = self.config_secrets["mysql_feedback"]["password"]
 
         # Set up correct Plover URL (since it's not registered in SmartAPI)
-        if self.maturity in {"production", "prod"} or self.current_branch_name == "production":
+        if self.maturity in {"production", "prod"}:
             self.plover_url = self.config_dbs["plover"]["prod"]
-        elif self.maturity in {"testing", "test"} or self.current_branch_name == "itrb-test":
+        elif self.maturity in {"testing", "test"}:
             self.plover_url = self.config_dbs["plover"]["test"]
         else:  # Includes staging, development
             self.plover_url = self.config_dbs["plover"]["dev"]
@@ -154,9 +155,13 @@ class RTXConfiguration:
                 self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.2"
             else:
                 self.rtx_kg2_url = "https://arax.ncats.io/beta/api/rtxkg2/v1.2"
+        # TODO: add special exception for CICD (needs to point to localhost KG2)
 
         # Default to KG2c neo4j
         self.neo4j_kg2 = "KG2c"
+
+        print(f"RTXConfig: Maturity is {self.maturity}, current branch is {self.current_branch_name}, is_itrb_instance "
+              f"is {self.is_itrb_instance}, plover URL is {self.plover_url}, KG2 URL is {self.rtx_kg2_url}")
 
     # ### Define attribute version
     @property
