@@ -56,7 +56,7 @@ class ARAXExpander:
         if self.logger.hasHandlers():
             self.logger.handlers.clear()
         self.logger.addHandler(handler)
-        self.kp_command_definitions = eu.get_kp_command_definitions()
+        self.kp_command_definitions = set()  # TODO: Rename this variable to 'all_kps' and call proper method?
         self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
         self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
@@ -64,21 +64,102 @@ class ARAXExpander:
 
     def describe_me(self):
         """
-        Little helper function for internal use that describes the actions and what they can do
+        Little helper function for internal use that describes the actions and what they can do. (Also used for
+        auto-documentation.)
         :return:
         """
-        considered_kps = sorted(list(set(self.kp_command_definitions)))
-        kp_less = {
-                "dsl_command": "expand()",
-                "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
-                               f"fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: "
-                               f"{', '.join(considered_kps)}. It selects KPs based on the meta information provided by "
-                               f"their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick "
-                               f"but useful answers. For each QEdge, it queries the selected KPs in parallel; it will "
-                               f"timeout for a particular KP if it decides it's taking too long to respond.",
-                "parameters": eu.get_standard_parameters()
+        current_kps = eu.get_all_kps()
+        command_definition = {
+            "dsl_command": "expand()",
+            "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
+                           f"fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: "
+                           f"{', '.join(current_kps)}. It selects KPs based on the meta information provided by "
+                           f"their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick "
+                           f"but useful answers. For each QEdge, it queries the selected KPs in parallel; it will "
+                           f"timeout for a particular KP if it decides it's taking too long to respond. You may also "
+                           f"optionally specify a particular KP to use via the 'kp' parameter (described below).\n"
+                           f"**Notes specific to usage of ARAX's internal KPs:**\n "
+                           f"1. NGD: The 'infores:arax-normalized-google-distance' KP uses ARAX's in-house normalized "
+                           f"google distance (NGD) database to expand "
+                           "a query graph; it returns edges between nodes with an NGD value below a certain "
+                           "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
+                           "configurable/smarter in the future.\n"
+                           "2. DTD: The 'infores:arax-drug-treats-disease' KP uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
+                           "a query graph; it returns edges between nodes with a DTD probability above a certain "
+                           "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
+                           "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
+                           "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
+                           "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
+                           "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true "
+                           "to call DTD model to do a real-time calculation.",
+            "parameters": {
+                "kp": {
+                    "is_required": False,
+                    "examples": ["infores:rtx-kg2, infores:spoke, infores:genetics-data-provider, infores:molepro"],
+                    "type": "string",
+                    "description": "The KP to ask for answers to the given query. KPs must be referred to by their"
+                                   " 'infores' curies."
+                },
+                "edge_key": {
+                    "is_required": False,
+                    "examples": ["e00", "[e00, e01]"],
+                    "type": "string",
+                    "description": "A query graph edge ID or list of such IDs to expand (default is to expand "
+                                   "entire query graph)."
+                },
+                "node_key": {
+                    "is_required": False,
+                    "examples": ["n00", "[n00, n01]"],
+                    "type": "string",
+                    "description": "A query graph node ID or list of such IDs to expand (default is to expand "
+                                   "entire query graph)."
+                },
+                "prune_threshold": {
+                    "is_required": False,
+                    "type": "integer",
+                    "default": None,
+                    "examples": [500, 2000],
+                    "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in "
+                                   "excess of this threshold will be pruned, using Fisher Exact Test to rank answers."
+                },
+                "kp_timeout": {
+                    "is_required": False,
+                    "type": "integer",
+                    "default": None,
+                    "examples": [30, 120],
+                    "description": "The number of seconds Expand will wait for a response from a KP before "
+                                   "cutting the query off and proceeding without results from that KP."
+                },
+                "return_minimal_metadata": {
+                    "is_required": False,
+                    "examples": ["true", "false"],
+                    "type": "boolean",
+                    "description": "Whether to omit supporting data on nodes/edges in the results (e.g., publications, "
+                                   "description, etc.)."
+                },
+                "DTD_threshold": {
+                    "is_required": False,
+                    "examples": [0.8, 0.5],
+                    "min": 0,
+                    "max": 1,
+                    "default": 0.8,
+                    "type": "float",
+                    "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
+                                   "Defines what cut-off/threshold to use for expanding the DTD virtual edges."
+                },
+                "DTD_slow_mode": {
+                    "is_required": False,
+                    "examples": ["true", "false"],
+                    "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+                    "default": "false",
+                    "type": "boolean",
+                    "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
+                                   "Specifies whether to call DTD model rather than DTD database to do a real-time "
+                                   "calculation for DTD probability."
+                }
             }
-        return [kp_less] + list(self.kp_command_definitions.values())
+        }
+        return [command_definition]
 
     def apply(self, response, input_parameters, mode: str = "ARAX"):
         force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
