@@ -67,6 +67,10 @@ class RTXConfiguration:
             else:
                 self.maturity = "development"
 
+        # Determine if this is an ITRB instance or our CICD instance
+        self.is_itrb_instance = "transltr.io" in self.domain  # Hacky, but works
+        self.is_cicd_instance = "ARAX test suite" in self.domain  # Hacky, but works
+
         config_secrets_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_secrets.json'
         config_dbs_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_dbs.json'
         config_secrets_local_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_secrets_local.json'
@@ -96,9 +100,6 @@ class RTXConfiguration:
         if ( ( 'HOSTNAME' in os.environ and os.environ['HOSTNAME'] == '6d6766e08a31' ) or
             ( 'PWD' in os.environ and 'mnt/data/orangeboard' in os.environ['PWD'] ) ):
             self.is_production_server = True
-
-        # Determine whether this is an ITRB instance
-        self.is_itrb_instance = "transltr.io" in self.domain  # Hacky, but works
 
         # Set database file paths
         self.db_host = "arax.ncats.io"
@@ -148,6 +149,8 @@ class RTXConfiguration:
                 self.rtx_kg2_url = "https://kg2.test.transltr.io/api/rtxkg2/v1.2"
             else:
                 self.rtx_kg2_url = "https://kg2.ci.transltr.io/api/rtxkg2/v1.2"
+        elif self.is_cicd_instance:
+            self.rtx_kg2_url = "http://localhost:5008/api/rtxkg2/v1.2"
         else:
             if "NewFmt" in self.instance_name or self.current_branch_name == "NewFmt":
                 self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.3"
@@ -160,8 +163,9 @@ class RTXConfiguration:
         # Default to KG2c neo4j
         self.neo4j_kg2 = "KG2c"
 
-        print(f"RTXConfig: Maturity is {self.maturity}, current branch is {self.current_branch_name}, is_itrb_instance "
-              f"is {self.is_itrb_instance}, plover URL is {self.plover_url}, KG2 URL is {self.rtx_kg2_url}")
+        print(f"RTXConfig: Maturity is {self.maturity}, current branch is {self.current_branch_name}, is_itrb_instance="
+              f"{self.is_itrb_instance}, is_cicd_instance={self.is_cicd_instance}, plover URL is "
+              f"{self.plover_url}, KG2 URL is {self.rtx_kg2_url}")
 
     # ### Define attribute version
     @property
@@ -274,10 +278,15 @@ def main():
     print("neo4j username: %s" % rtxConfig.neo4j_username)
     print("neo4j password: %s" % rtxConfig.neo4j_password)
     print("plover url: %s" % rtxConfig.plover_url)
+    print("rtx-kg2 url: %s" % rtxConfig.rtx_kg2_url)
     print("mysql feedback host: %s" % rtxConfig.mysql_feedback_host)
     print("mysql feedback port: %s" % rtxConfig.mysql_feedback_port)
     print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)
     print("mysql feedback password: %s" % rtxConfig.mysql_feedback_password)
+    print(f"maturity: {rtxConfig.maturity}")
+    print(f"current branch: {rtxConfig.current_branch_name}")
+    print(f"is_itrb_instance: {rtxConfig.is_itrb_instance}")
+    print(f"is_cicd_instance: {rtxConfig.is_cicd_instance}")
 
 
 if __name__ == "__main__":
