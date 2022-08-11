@@ -3,9 +3,9 @@
 import os
 import datetime
 import json
-import pathlib
 import time
 import re
+from typing import Optional
 
 from pygit2 import Repository
 
@@ -18,7 +18,7 @@ class RTXConfiguration:
     def __init__(self):
         self.version = "ARAX 1.2.1"  # TODO: This probably shouldn't be hardcoded? What is it used for?
 
-        # Determine what maturity level we're running
+        # Grab instance/domain name info, if available
         location = os.path.dirname(os.path.abspath(__file__))
         self.instance_name = '??'
         match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
@@ -41,18 +41,11 @@ class RTXConfiguration:
         self.current_branch_name = repo.head.name.split("/")[-1]
 
         # Determine our maturity
-        maturity_override_file_path = f"{location}/maturity_override.txt"
-        if pathlib.Path(maturity_override_file_path).exists():
-            # Since a maturity_override.txt file is provided, we'll use the maturity specified in that
-            with open(maturity_override_file_path, 'r') as maturity_override_file:
-                lines = maturity_override_file.readlines()
-                if not lines or not lines[0]:
-                    raise ValueError(f"{maturity_override_file_path} exists but does not contain anything! "
-                                     f"It should be a single-line file containing the maturity string.")
-                else:
-                    self.maturity = lines[0].strip()
+        maturity_override_value = self._read_override_file(f"{file_dir}/maturity_override.txt")
+        if maturity_override_value:
+            self.maturity = maturity_override_value
         else:
-            # Otherwise we'll dynamically determine what maturity we are based on instance/domain name and/or branch
+            # Otherwise we'll dynamically determine our maturity based on instance/domain name and/or branch
             if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io", "Github actions ARAX test suite"]:
                 self.maturity = "staging"
             elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"] or self.current_branch_name == "itrb-test":
@@ -69,7 +62,6 @@ class RTXConfiguration:
 
         # Determine if this is an ITRB instance or our CICD instance
         self.is_itrb_instance = "transltr.io" in self.domain  # Hacky, but works
-        self.is_cicd_instance = "ARAX test suite" in self.domain  # Hacky, but works
 
         config_secrets_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_secrets.json'
         config_dbs_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_dbs.json'
@@ -142,15 +134,16 @@ class RTXConfiguration:
             self.plover_url = self.config_dbs["plover"]["dev"]
 
         # TEMPORARILY set KG2 url here until pulled from SmartAPI; TODO: remove this when #1466 is done
-        if self.is_itrb_instance:
+        kg2_url_override_value = self._read_override_file(f"{file_dir}/kg2_url_override.txt")
+        if kg2_url_override_value:
+            self.rtx_kg2_url = kg2_url_override_value
+        elif self.is_itrb_instance:
             if self.maturity in {"production", "prod"}:
                 self.rtx_kg2_url = "https://kg2.transltr.io/api/rtxkg2/v1.2"
             elif self.maturity in {"testing", "test"}:
                 self.rtx_kg2_url = "https://kg2.test.transltr.io/api/rtxkg2/v1.2"
             else:
                 self.rtx_kg2_url = "https://kg2.ci.transltr.io/api/rtxkg2/v1.2"
-        elif self.is_cicd_instance:
-            self.rtx_kg2_url = "http://localhost:5008/api/rtxkg2/v1.2"
         else:
             if "NewFmt" in self.instance_name or self.current_branch_name == "NewFmt":
                 self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.3"
@@ -164,8 +157,20 @@ class RTXConfiguration:
         self.neo4j_kg2 = "KG2c"
 
         print(f"RTXConfig: Maturity is {self.maturity}, current branch is {self.current_branch_name}, is_itrb_instance="
-              f"{self.is_itrb_instance}, is_cicd_instance={self.is_cicd_instance}, plover URL is "
-              f"{self.plover_url}, KG2 URL is {self.rtx_kg2_url}")
+              f"{self.is_itrb_instance}, plover URL is {self.plover_url}, KG2 URL is {self.rtx_kg2_url}")
+
+    @staticmethod
+    def _read_override_file(file_path: str) -> Optional[str]:
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as override_file:
+                lines = override_file.readlines()
+                if not lines or not lines[0]:
+                    raise ValueError(f"{file_path} exists but does not contain anything! "
+                                     f"It should be a single-line file containing the override value.")
+                else:
+                    return lines[0].strip()
+        else:
+            return None
 
     # ### Define attribute version
     @property
@@ -286,7 +291,6 @@ def main():
     print(f"maturity: {rtxConfig.maturity}")
     print(f"current branch: {rtxConfig.current_branch_name}")
     print(f"is_itrb_instance: {rtxConfig.is_itrb_instance}")
-    print(f"is_cicd_instance: {rtxConfig.is_cicd_instance}")
 
 
 if __name__ == "__main__":
