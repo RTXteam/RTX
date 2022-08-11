@@ -668,7 +668,8 @@ def get_all_kps() -> Set[str]:
     smartapi = SmartAPI()
     kp_info = smartapi.get_kps(version=minor_version,req_maturity="production")
     kp_urls = {kp["infores_name"] : kp["servers"][0]["url"] for kp in kp_info}
-    kp_urls |= {"infores:arax-drug-treats-disease":None, "infores:arax-normalized-google-distance":None}
+    kp_urls["infores:arax-drug-treats-disease"] = None
+    kp_urls["infores:arax-normalized-google-distance"] = None
     return kp_urls
 
 

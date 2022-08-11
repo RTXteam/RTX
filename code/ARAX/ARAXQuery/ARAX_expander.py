@@ -56,19 +56,18 @@ class ARAXExpander:
         if self.logger.hasHandlers():
             self.logger.handlers.clear()
         self.logger.addHandler(handler)
-        self.kp_command_definitions = set()  # TODO: Rename this variable to 'all_kps' and call proper method?
         self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
         self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
         self.supported_qedge_constraints = dict()
 
-    def describe_me(self):
+    def describe_me(self, all_kps):
         """
         Little helper function for internal use that describes the actions and what they can do. (Also used for
         auto-documentation.)
         :return:
         """
-        current_kps = eu.get_all_kps()
+        current_kps = set(all_kps)
         command_definition = {
             "dsl_command": "expand()",
             "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
@@ -168,6 +167,8 @@ class ARAXExpander:
         if message.knowledge_graph is None:
             message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
         log = response
+        kp_selector = KPSelector(log)
+        self.kp_command_definitions = self.describe_me(kp_selector.all_kps)[0]
 
         # If this is a query for the KG2 API, ignore all option_group_id and exclude properties (only does one-hop)
         if mode == "RTXKG2":
@@ -195,8 +196,8 @@ class ARAXExpander:
 
         # Define a complete set of allowed parameters and their defaults (if the user specified a particular KP to use)
         kp = input_parameters.get("kp")
-        if kp and kp not in self.kp_command_definitions:
-            log.error(f"Invalid KP. Options are: {set(self.kp_command_definitions)}", error_code="InvalidKP")
+        if kp and kp not in kp_selector.all_kps:
+            log.error(f"Invalid KP. Options are: {kp_selector.all_kps}", error_code="InvalidKP")
             return response
         parameters = self._set_and_validate_parameters(kp, input_parameters, log)
 
@@ -352,7 +353,6 @@ class ARAXExpander:
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
 
             # Pre-populate the query plan with an entry for each qedge that will be expanded in this Expand() call
-            all_kps = set(self.kp_command_definitions)
             for qedge_key in ordered_qedge_keys_to_expand:
                 qedge = query_sub_graph.edges[qedge_key]
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Waiting')
@@ -366,7 +366,7 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'subject', subject_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
-                for kp in all_kps:
+                for kp in kp_selector.all_kps:
                     response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for previous expansion step')
 
             # Expand the query graph edge-by-edge
@@ -399,14 +399,12 @@ class ARAXExpander:
                     return response
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
-                kp_selector = KPSelector(log)
                 if not user_specified_kp:
                     kps_to_query = kp_selector.get_kps_for_single_hop_qg(one_hop_qg)
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
                     kps_to_query = {parameters["kp"]}
-                    all_kps = set(self.kp_command_definitions)
-                    for kp in all_kps.difference(kps_to_query):
+                    for kp in kp_selector.all_kps.difference(kps_to_query):
                         skipped_message = f"Expand was told to use {', '.join(kps_to_query)}"
                         response.update_query_plan(qedge_key, kp, "Skipped", skipped_message)
                 kps_to_query = list(kps_to_query)
@@ -581,7 +579,7 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
         # Make sure the specified KP is a valid option
-        allowable_kps = set(self.kp_command_definitions.keys())
+        allowable_kps = kp_selector.all_kps
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
@@ -692,7 +690,7 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
         # Make sure the specified KP is a valid option
-        allowable_kps = set(self.kp_command_definitions.keys())
+        allowable_kps = kp_selector.all_kps
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
@@ -1213,22 +1211,19 @@ class ARAXExpander:
             kp = "infores:rtx-kg2"  # We'll use a standard set of parameters (like for KG2)
 
         # First set parameters to their defaults
-        for kp_parameter_name, info_dict in self.kp_command_definitions[kp]["parameters"].items():
+        for kp_parameter_name, info_dict in self.kp_command_definitions["parameters"].items():
             if info_dict["type"] == "boolean":
                 parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
             else:
                 parameters[kp_parameter_name] = info_dict.get("default", None)
 
         # Then override default values for any parameters passed in
-        parameter_names_for_all_kps = {param for kp_documentation in self.kp_command_definitions.values() for param in
-                                       kp_documentation["parameters"]}
         for param_name, value in input_parameters.items():
             if param_name and param_name not in parameters:
-                kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
-                log.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}",
+                log.error(f"Supplied parameter {param_name} is not permitted for Expand",
                           error_code="InvalidParameter")
-            elif param_name in self.kp_command_definitions[kp]["parameters"]:
-                param_info_dict = self.kp_command_definitions[kp]["parameters"][param_name]
+            elif param_name in self.kp_command_definitions["parameters"]:
+                param_info_dict = self.kp_command_definitions["parameters"][param_name]
                 if param_info_dict.get("type") == "boolean":
                     parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
                 elif param_info_dict.get("type") == "integer":
