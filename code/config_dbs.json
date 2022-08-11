@@ -1,5 +1,5 @@
 {
-   "cohd_database": "/translator/data/orangeboard/databases/KG2.7.6/COHDdatabase_v1.0_KG2.7.6.db",
+   "cohd_database": "/translator/data/orangeboard/databases/KG2.7.5/COHDdatabase_v1.0_KG2.7.5.db",
    "graph_database": "/translator/data/orangeboard/databases/KG2.7.5/GRAPH_v1.0_KG2.7.5_refreshed.sqlite",
    "log_model": "/translator/data/orangeboard/databases/KG2.7.4/LogModel_v1.0_KG2.7.4.pkl",
    "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.7.6/curie_to_pmids_v1.0_KG2.7.6.sqlite",
