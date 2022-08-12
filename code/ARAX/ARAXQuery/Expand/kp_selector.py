@@ -250,7 +250,7 @@ class KPSelector:
                     if kp_response.status_code == 200:
                         kp_meta_kg = kp_response.json()
                         if type(kp_meta_kg) != dict:
-                            self.log.warning(f"Ran into a problem getting {kp}'s meta_info")
+                            self.log.warning(f"Skipping {kp} because they returned an invalid meta knowledge graph")
                         else:
                             meta_map[kp] = {"predicates": self._convert_to_meta_map(kp_meta_kg),
                                             "prefixes": {category: meta_node["id_prefixes"]
