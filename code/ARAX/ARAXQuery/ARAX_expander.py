@@ -61,18 +61,22 @@ class ARAXExpander:
         self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"regular approval": {"=="}}}
         self.supported_qedge_constraints = dict()
 
-    def describe_me(self, all_kps):
+    def describe_me(self):
+        return self.get_command_definition()
+
+    def get_command_definition(self, all_kps=None):
         """
         Little helper function for internal use that describes the actions and what they can do. (Also used for
         auto-documentation.)
         :return:
         """
-        current_kps = set(all_kps)
+        if not all_kps:
+            all_kps = set(eu.get_all_kps())
         command_definition = {
             "dsl_command": "expand()",
             "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
                            f"fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: "
-                           f"{', '.join(current_kps)}. It selects KPs based on the meta information provided by "
+                           f"{', '.join(all_kps)}. (Note that this list of KPs may change unexpectedly based on the SmartAPI registry.) It selects KPs based on the meta information provided by "
                            f"their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick "
                            f"but useful answers. For each QEdge, it queries the selected KPs in parallel; it will "
                            f"timeout for a particular KP if it decides it's taking too long to respond. You may also "
@@ -167,8 +171,8 @@ class ARAXExpander:
         if message.knowledge_graph is None:
             message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
         log = response
+        # this fetches the list of all registered kps with compatible versions
         kp_selector = KPSelector(log)
-        self.kp_command_definitions = self.describe_me(kp_selector.all_kps)[0]
 
         # If this is a query for the KG2 API, ignore all option_group_id and exclude properties (only does one-hop)
         if mode == "RTXKG2":
@@ -199,7 +203,7 @@ class ARAXExpander:
         if kp and kp not in kp_selector.all_kps:
             log.error(f"Invalid KP. Options are: {kp_selector.all_kps}", error_code="InvalidKP")
             return response
-        parameters = self._set_and_validate_parameters(kp, input_parameters, log)
+        parameters = self._set_and_validate_parameters(kp, input_parameters, kp_selector, log)
 
         # Default to expanding the entire query graph if the user didn't specify what to expand
         if not parameters['edge_key'] and not parameters['node_key']:
@@ -571,7 +575,7 @@ class ARAXExpander:
         answer_kg = QGOrganizedKnowledgeGraph()
 
         # Make sure we have all default parameters set specific to the KP we'll be using
-        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
+        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, kp_selector, log)
 
         # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
@@ -682,7 +686,7 @@ class ARAXExpander:
         answer_kg = QGOrganizedKnowledgeGraph()
 
         # Make sure we have all default parameters set specific to the KP we'll be using
-        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
+        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, kp_selector, log)
 
         # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
@@ -1205,13 +1209,14 @@ class ARAXExpander:
         log.debug(f"{kp_name}: After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
 
-    def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], log: ARAXResponse) -> Dict[str, any]:
+    def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], kp_selector: KPSelector, log: ARAXResponse) -> Dict[str, any]:
         parameters = {"kp": kp}
         if not kp:
             kp = "infores:rtx-kg2"  # We'll use a standard set of parameters (like for KG2)
+        kp_command_definitions = self.get_command_definition(kp_selector.all_kps)[0]
 
         # First set parameters to their defaults
-        for kp_parameter_name, info_dict in self.kp_command_definitions["parameters"].items():
+        for kp_parameter_name, info_dict in kp_command_definitions["parameters"].items():
             if info_dict["type"] == "boolean":
                 parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
             else:
@@ -1222,8 +1227,8 @@ class ARAXExpander:
             if param_name and param_name not in parameters:
                 log.error(f"Supplied parameter {param_name} is not permitted for Expand",
                           error_code="InvalidParameter")
-            elif param_name in self.kp_command_definitions["parameters"]:
-                param_info_dict = self.kp_command_definitions["parameters"][param_name]
+            elif param_name in kp_command_definitions["parameters"]:
+                param_info_dict = kp_command_definitions["parameters"][param_name]
                 if param_info_dict.get("type") == "boolean":
                     parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
                 elif param_info_dict.get("type") == "integer":

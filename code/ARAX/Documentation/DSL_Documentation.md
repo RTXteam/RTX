@@ -8,29 +8,14 @@
     - [add_qedge()](#add_qedge)
   - [ARAX_expander](#arax_expander)
     - [expand()](#expand)
-    - [expand(kp=infores:rtx-kg2)](#expandkpinforesrtx-kg2)
-    - [expand(kp=infores:biothings-explorer)](#expandkpinforesbiothings-explorer)
-    - [expand(kp=infores:cohd)](#expandkpinforescohd)
-    - [expand(kp=infores:genetics-data-provider)](#expandkpinforesgenetics-data-provider)
-    - [expand(kp=infores:molepro)](#expandkpinforesmolepro)
-    - [expand(kp=infores:biothings-multiomics-clinical-risk)](#expandkpinforesbiothings-multiomics-clinical-risk)
-    - [expand(kp=infores:biothings-multiomics-wellness)](#expandkpinforesbiothings-multiomics-wellness)
-    - [expand(kp=infores:spoke)](#expandkpinforesspoke)
-    - [expand(kp=infores:biothings-multiomics-biggim-drug-response)](#expandkpinforesbiothings-multiomics-biggim-drug-response)
-    - [expand(kp=infores:biothings-tcga-mut-freq)](#expandkpinforesbiothings-tcga-mut-freq)
-    - [expand(kp=infores:arax-normalized-google-distance)](#expandkpinforesarax-normalized-google-distance)
-    - [expand(kp=infores:icees-dili)](#expandkpinforesicees-dili)
-    - [expand(kp=infores:icees-asthma)](#expandkpinforesicees-asthma)
-    - [expand(kp=infores:connections-hypothesis)](#expandkpinforesconnections-hypothesis)
-    - [expand(kp=infores:arax-drug-treats-disease)](#expandkpinforesarax-drug-treats-disease)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
     - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
-    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
+    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
+    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -230,894 +215,22 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 
 ## ARAX_expander
 ### expand()
-This command will expand (aka, answer/fill) your query graph in an edge-by-edge fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: infores:arax-drug-treats-disease, infores:arax-normalized-google-distance, infores:biothings-explorer, infores:biothings-multiomics-biggim-drug-response, infores:biothings-multiomics-clinical-risk, infores:biothings-multiomics-wellness, infores:biothings-tcga-mut-freq, infores:cohd, infores:connections-hypothesis, infores:genetics-data-provider, infores:icees-asthma, infores:icees-dili, infores:molepro, infores:rtx-kg2, infores:spoke. It selects KPs based on the meta information provided by their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick but useful answers. For each QEdge, it queries the selected KPs in parallel; it will timeout for a particular KP if it decides it's taking too long to respond.
+This command will expand (aka, answer/fill) your query graph in an edge-by-edge fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: infores:automat-mole-pro-fda, infores:cam-kp, infores:genetics-data-provider, infores:automat-gtex, infores:automat-panther, infores:icees-pcd, infores:automat-hmdb, infores:automat-viral-proteome, infores:automat-drug-central, infores:icees-dili, infores:sri-ontology, infores:automat-foodb, infores:automat-hgnc, infores:automat-gwas-catalog, infores:icees-asthma, infores:monarchinitiative, infores:automat-pharos, infores:molepro, infores:spoke, infores:automat-uberongraph, infores:connections-hypothesis, infores:automat-mychem-info, infores:automat-human-goa, infores:automat-chem-norm, infores:arax-drug-treats-disease, infores:cohd, infores:automat-hetio, infores:automat-robokop, infores:automat-intact, infores:automat-covidkop, infores:automat-cord19, infores:automat-biolink, infores:service-provider-trapi, infores:rtx-kg2, infores:automat-ctd, infores:automat-ontology-hierarchy, infores:knowledge-collaboratory, infores:arax-normalized-google-distance, infores:automat-covid-phenotypes, infores:automat-gtopdb, infores:automat-icees-kg, infores:openpredict, infores:automat-text-mining-provider. (Note that this list of KPs may change unexpectedly based on the SmartAPI registry.) It selects KPs based on the meta information provided by their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick but useful answers. For each QEdge, it queries the selected KPs in parallel; it will timeout for a particular KP if it decides it's taking too long to respond. You may also optionally specify a particular KP to use via the 'kp' parameter (described below).
+**Notes specific to usage of ARAX's internal KPs:**
+ 1. NGD: The 'infores:arax-normalized-google-distance' KP uses ARAX's in-house normalized google distance (NGD) database to expand a query graph; it returns edges between nodes with an NGD value below a certain threshold. This threshold is currently hardcoded as 0.5, though this will be made configurable/smarter in the future.
+2. DTD: The 'infores:arax-drug-treats-disease' KP uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand a query graph; it returns edges between nodes with a DTD probability above a certain threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to call DTD model to do a real-time calculation.
 
 #### parameters: 
 
-* ##### edge_key
+* ##### kp
 
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+    - The KP to ask for answers to the given query. KPs must be referred to by their 'infores' curies.
 
     - Acceptable input types: string.
 
     - This is not a required parameter and may be omitted.
 
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:rtx-kg2)
-This command reaches out to the RTX-KG2 API to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:biothings-explorer)
-This command uses BioThings Explorer (from the Service Provider) to find all bioentity subpaths that satisfy the query graph. Of note, all query nodes must have a type specified for BTE queries. In addition, bi-directional queries are only partially supported (the ARAX system knows how to ignore edge direction when deciding which query node for a query edge will be the 'input' qnode, but BTE itself returns only answers matching the input edge direction).
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:cohd)
-This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:genetics-data-provider)
-This command reaches out to the Genetics Provider to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:molepro)
-This command reaches out to MolePro (the Molecular Provider) to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:biothings-multiomics-clinical-risk)
-This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:biothings-multiomics-wellness)
-This command reaches out to the Multiomics Wellness KP to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:spoke)
-This command reaches out to the SPOKE KP to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:biothings-multiomics-biggim-drug-response)
-This command reaches out to the Multiomics Big GIM II Drug Response KP to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:biothings-tcga-mut-freq)
-This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:arax-normalized-google-distance)
-This command uses ARAX's in-house normalized google distance (NGD) database to expand a query graph; it returns edges between nodes with an NGD value below a certain threshold. This threshold is currently hardcoded as 0.5, though this will be made configurable/smarter in the future.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:icees-dili)
-This command reaches out to the ICEES knowledge provider's DILI instance to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:icees-asthma)
-This command reaches out to the ICEES knowledge provider's Asthma instance to find all bioentity subpaths that satisfy the query graph.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:connections-hypothesis)
-This command reaches out to CHP (the Connections Hypothesis Provider) to query the probability of the form P(Outcome | Gene Mutations, Disease, Therapeutics, ...). It currently can answer a question like 'Given a gene or a batch of genes, what is the probability that the survival time (day) >= a given threshold for this gene paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.
-
-#### parameters: 
-
-* ##### edge_key
-
-    - A query graph edge ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `[e00, e01]` are examples of valid inputs.
-
-* ##### node_key
-
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `[n00, n01]` are examples of valid inputs.
-
-* ##### prune_threshold
-
-    - The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of this threshold will be pruned, using Fisher Exact Test to rank answers.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `500` and `2000` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### kp_timeout
-
-    - The number of seconds Expand will wait for a response from a KP before cutting the query off and proceeding without results from that KP.
-
-    - Acceptable input types: integer.
-
-    - This is not a required parameter and may be omitted.
-
-    - `30` and `120` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### return_minimal_metadata
-
-    - Whether to omit supporting data on nodes/edges in the results (e.g., publications, description, etc.).
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `true` and `false` are examples of valid inputs.
-
-### expand(kp=infores:arax-drug-treats-disease)
-This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand a query graph; it returns edges between nodes with an DTD probability above a certain threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to to call DTD model to do a real-time calculation.
-
-#### parameters: 
+    - `infores:rtx-kg2, infores:spoke, infores:genetics-data-provider, infores:molepro` are examples of valid inputs.
 
 * ##### edge_key
 
@@ -1175,7 +288,7 @@ This command uses ARAX's in-house drug-treats-disease (DTD) database (built from
 
 * ##### DTD_threshold
 
-    - What cut-off/threshold to use for expanding the DTD virtual edges.
+    - Applicable only when the 'infores:arax-drug-treats-disease' KP is used. Defines what cut-off/threshold to use for expanding the DTD virtual edges.
 
     - Acceptable input types: float.
 
@@ -1189,7 +302,7 @@ This command uses ARAX's in-house drug-treats-disease (DTD) database (built from
 
 * ##### DTD_slow_mode
 
-    - Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability.
+    - Applicable only when the 'infores:arax-drug-treats-disease' KP is used. Specifies whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability.
 
     - Acceptable input types: boolean.
 
@@ -1202,63 +315,28 @@ This command uses ARAX's in-house drug-treats-disease (DTD) database (built from
     - If not specified the default input will be false. 
 
 ## ARAX_overlay
-### overlay(action=compute_ngd)
+### overlay(action=add_node_pmids)
 
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
 #### parameters: 
 
-* ##### default_value
+* ##### max_num
 
-    - The default value of the normalized Google distance (if its value cannot be determined)
+    - The maximum number of values to return. Enter 'all' to return everything
 
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0` and `inf` are examples of valid inputs.
-
-    - If not specified the default input will be inf. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
+    - Acceptable input types: int or string.
 
     - This is not a required parameter and may be omitted.
 
-    - `N1` and `J2` are examples of valid inputs.
+    - `all`, `5`, and `50` are examples of valid inputs.
 
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
+    - If not specified the default input will be 100. 
 
 ### overlay(action=overlay_clinical_info)
 
@@ -1382,6 +460,179 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `N1`, `J2`, and `FET` are examples of valid inputs.
 
+### overlay(action=overlay_exposures_data)
+
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+                    
+
+#### parameters: 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=predict_drug_treats_disease)
+
+`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
+Use cases include:
+
+* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
+* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### threshold
+
+    - What cut-off/threshold to use for DTD probability (optional, the default is 0.8)
+
+    - Acceptable input types: int or float or None.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0.8`, `0.95`, and `0.5` are examples of valid inputs.
+
+    - If not specified the default input will be 0.8. 
+
+* ##### slow_mode
+
+    - Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `True` and `False` are examples of valid inputs.
+
+    - `T`, `t`, `True`, `F`, `f`, and `False` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
 ### overlay(action=fisher_exact_test)
 
 `fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
@@ -1482,144 +733,6 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
     - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
-
-### overlay(action=predict_drug_treats_disease)
-
-`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
-For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-Use cases include:
-
-* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
-* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### threshold
-
-    - What cut-off/threshold to use for DTD probability (optional, the default is 0.8)
-
-    - Acceptable input types: int or float or None.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0.8`, `0.95`, and `0.5` are examples of valid inputs.
-
-    - If not specified the default input will be 0.8. 
-
-* ##### slow_mode
-
-    - Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `True` and `False` are examples of valid inputs.
-
-    - `T`, `t`, `True`, `F`, `f`, and `False` are all possible valid inputs.
-
-    - If not specified the default input will be false. 
-
-### overlay(action=overlay_exposures_data)
-
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
-
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
 
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_predicate)
@@ -2682,6 +1795,16 @@ This can be applied to an arbitrary nide curie though will not return sensible r
     - This is a required parameter and must be included.
 
     - `DOID:9352`, `MONDO:0005306`, and `HP:0001945` are examples of valid inputs.
+
+* ##### qedge_id
+
+    - The id of the qedge you wish to perform the drug treatment inference expansion.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `qedge_id_1`, `qedge_id_2`, and `qedge_id_3` are examples of valid inputs.
 
 * ##### n_drugs
 
