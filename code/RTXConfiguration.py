@@ -126,7 +126,10 @@ class RTXConfiguration:
         self.mysql_feedback_password = self.config_secrets["mysql_feedback"]["password"]
 
         # Set up correct Plover URL (since it's not registered in SmartAPI)
-        if self.maturity in {"production", "prod"}:
+        plover_url_override_value = self._read_override_file(f"{file_dir}/plover_url_override.txt")
+        if plover_url_override_value:
+            self.plover_url = plover_url_override_value
+        elif self.maturity in {"production", "prod"}:
             self.plover_url = self.config_dbs["plover"]["prod"]
         elif self.maturity in {"testing", "test"}:
             self.plover_url = self.config_dbs["plover"]["test"]
