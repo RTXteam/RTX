@@ -249,9 +249,12 @@ class KPSelector:
                 else:
                     if kp_response.status_code == 200:
                         kp_meta_kg = kp_response.json()
-                        meta_map[kp] = {"predicates": self._convert_to_meta_map(kp_meta_kg),
-                                        "prefixes": {category: meta_node["id_prefixes"]
-                                                     for category, meta_node in kp_meta_kg["nodes"].items()}}
+                        if type(kp_meta_kg) != dict:
+                            self.log.warning(f"Ran into a problem getting {kp}'s meta_info")
+                        else:
+                            meta_map[kp] = {"predicates": self._convert_to_meta_map(kp_meta_kg),
+                                            "prefixes": {category: meta_node["id_prefixes"]
+                                                         for category, meta_node in kp_meta_kg["nodes"].items()}}
                     else:
                         self.log.warning(f"Unable to access {kp}'s /meta_knowledge_graph endpoint (returned status of "
                                          f"{kp_response.status_code})")
