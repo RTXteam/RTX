@@ -670,6 +670,8 @@ def get_all_kps() -> Set[str]:
     kp_urls = {kp["infores_name"] : kp["servers"][0]["url"] for kp in kp_info}
     kp_urls["infores:arax-drug-treats-disease"] = None
     kp_urls["infores:arax-normalized-google-distance"] = None
+    # remove this after config updates have been made
+    kp_urls["infores:rtx-kg2"] = RTXConfig.rtx_kg2_url
     return kp_urls
 
 
