@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     # create the RTXConfiguration object
     rtxConfig = RTXConfiguration()
-    rtxConfig.live = args.live
+    rtxConfig.neo4j_kg2 = "KG2c"
 
     pg = PullGraph(rtxConfig.neo4j_username, rtxConfig.neo4j_password, rtxConfig.neo4j_bolt)
     df = pg.pull_graph()

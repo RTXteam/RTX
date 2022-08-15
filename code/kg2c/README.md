@@ -72,7 +72,7 @@ If the machine you'll be using has never previously built a KG2c, you need to do
         1. And configure it: `aws configure`
         1. You will need read and write permission for the `rtx-kg2` S3 bucket
 1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
-    1. Create a copy of `configv2.json` that contains the proper secrets for your own KG2pre Neo4j endpoint
+    1. Create a copy of `config_secrets.json` that contains the proper secrets for your own KG2pre Neo4j endpoint
 
 To run the build:
 

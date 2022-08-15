@@ -16,8 +16,8 @@ from RTXConfiguration import RTXConfiguration
 def main():
 
     rtx_config = RTXConfiguration()
-    KEY_ID = rtx_config.config["Global"]['s3']['access']
-    ACCESS_KEY = rtx_config.config["Global"]['s3']['secret']
+    KEY_ID = rtx_config.config_secrets['s3']['access']
+    ACCESS_KEY = rtx_config.config_secrets['s3']['secret']
 
     query_graph = {
         "edges": {
