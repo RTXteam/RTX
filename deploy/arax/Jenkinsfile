@@ -46,17 +46,19 @@ pipeline {
           }
       }
       stage('Build and Push Docker Image') {
-         when { expression { return env.BUILD == 'true' }}
+          when { expression { return env.BUILD == 'true' }}
+          environment { 
+              ENV_BUILD_BRANCH= sh (returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+          }
           steps {
-                script {
-                    sh "export ENV_BUILD_BRANCH=`git rev-parse --abbrev-ref HEAD`"
-                    docker.build(env.DOCKER_REPO_NAME, "--build-arg BUILD_BRANCH=$ENV_BUILD_BRANCH --no-cache ./DockerBuild/")
-                    docker.withRegistry('https://853771734544.dkr.ecr.us-east-1.amazonaws.com', 'ecr:us-east-1:aws-ifx-deploy') {
-                        docker.image(env.DOCKER_REPO_NAME).push("${BUILD_VERSION}")
-                    }
-                }
-            }
-        }
+              script {
+                  docker.build(env.DOCKER_REPO_NAME, "--build-arg BUILD_BRANCH=$ENV_BUILD_BRANCH --no-cache ./DockerBuild/")
+                  docker.withRegistry('https://853771734544.dkr.ecr.us-east-1.amazonaws.com', 'ecr:us-east-1:aws-ifx-deploy') {
+                      docker.image(env.DOCKER_REPO_NAME).push("${BUILD_VERSION}")
+                  }
+              }
+          }
+      }
       stage('Deploy to AWS EKS Blue') {
           steps {
               configFileProvider([
