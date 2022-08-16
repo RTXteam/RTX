@@ -35,16 +35,17 @@ echo "
 # build db_arr which includes all needed db files in config_secrets.json
 echo "Reading ${confgi_file} and building new db_arr specified in ${config_file}....."
 printf "\n"
-for db in $(jq -r '.Contextual.Production | keys | .[]' ${config_file})
+for db in $(jq -r '.database_downloads | keys[]' ${config_file})
 do
-  # NOTE: if there's no .path value, the result will be a string "null"
-  db_path=$(jq -r '.Contextual.Production.'${db}' | .path' ${config_file})
+  db_path=$(jq -r '.database_downloads.'${db} ${config_file})
+  echo $db_path
   if [ ${db_path} != "null" ]
   then
     db_path_pvc="${db_path/'/translator/data/orangeboard'}"
-    # echo $db_path_pvc
+    echo $db_path_pvc
     db_arr[${db_path_pvc}]=1
     new_db_MD5="${db_path/'/translator/data/orangeboard/databases'/${md5_sums_new}}.md5"
+    echo $new_db_MD5
     new_db_MD5_arr[${new_db_MD5}]=1
   fi
 done
