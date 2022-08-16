@@ -57,7 +57,7 @@ done
 # clean up current db first
 # check if there's db file not listed in config_dbs.json and rm 
 # this is useful when a new db (or a new version of existing db) rolls out
-# and we only want to keep what is specificed in config_secretes.json file
+# and we only want to keep what is specificed in config_dbs.json file
 echo "Removing outdated db files......"
 for existing_db in $(find $db_folder -type f)
 do 
