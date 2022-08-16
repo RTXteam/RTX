@@ -333,7 +333,7 @@ class ResponseCache:
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
             debug = False
-            ars_hosts = [ 'ars.transltr.io', 'ars-prod.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
+            ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
                     if debug:
