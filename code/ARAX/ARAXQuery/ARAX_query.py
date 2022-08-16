@@ -80,7 +80,7 @@ class ARAXQuery:
         self.response = None
         self.message = None
         self.rtxConfig = RTXConfiguration()
-        self.DBManager = ARAXDatabaseManager(live = "Production")
+        self.DBManager = ARAXDatabaseManager()
         self.lock = None
         if self.DBManager.check_versions():
             self.response = ARAXResponse()

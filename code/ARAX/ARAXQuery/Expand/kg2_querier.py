@@ -169,7 +169,6 @@ class KG2Querier:
     @staticmethod
     def _answer_query_using_plover(qg: QueryGraph, log: ARAXResponse) -> Tuple[Dict[str, Dict[str, Union[set, dict]]], int]:
         rtxc = RTXConfiguration()
-        rtxc.live = "Production"
         # First prep the query graph (requires some minor additions for Plover)
         dict_qg = qg.to_dict()
         dict_qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)
@@ -180,6 +179,7 @@ class KG2Querier:
                 if "allow_subclasses" not in qnode or qnode["allow_subclasses"] is None:
                     qnode["allow_subclasses"] = True
         # Then send the actual query
+        log.debug(f"Sending query to {rtxc.plover_url}")
         response = requests.post(f"{rtxc.plover_url}/query", json=dict_qg, timeout=60,
                                  headers={'accept': 'application/json'})
         if response.status_code == 200:

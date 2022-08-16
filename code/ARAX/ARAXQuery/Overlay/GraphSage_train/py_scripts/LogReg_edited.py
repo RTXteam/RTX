@@ -9,7 +9,6 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'reasoning
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "Production"
 map_default_name = RTXConfig.map_txt_path.split('/')[-1]
 pred_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
 map_default_location = f"{pred_filepath}{os.path.sep}{map_default_name}"

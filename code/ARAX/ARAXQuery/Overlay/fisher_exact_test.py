@@ -14,7 +14,6 @@ from neo4j import GraphDatabase, basic_auth
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "Production"
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")
 from ARAX_query import ARAXQuery
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -75,7 +74,7 @@ class ComputeFTEST:
         if os.path.exists(sqlite_file_path):
             pass
         else:
-            os.system(f"scp {RTXConfig.kg2c_sqlite_username}@{RTXConfig.kg2c_sqlite_host}:{RTXConfig.kg2c_sqlite_path} {sqlite_file_path}")
+            os.system(f"scp {RTXConfig.db_username}@{RTXConfig.db_host}:{RTXConfig.kg2c_sqlite_path} {sqlite_file_path}")
         self.sqlite_file_path = sqlite_file_path
 
         if rel_edge_key is not None:

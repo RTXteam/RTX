@@ -41,14 +41,11 @@ ssh -q -oStrictHostKeyChecking=no rtxconfig@arax.ncats.io exit
 # do a test login to araxconfig.rtx.ai, to make sure the scp won't hang up later
 ssh -q -oStrictHostKeyChecking=no araxconfig@araxconfig.rtx.ai exit
 
-# copy the config file into the RTX/code directory
-scp araxconfig@araxconfig.rtx.ai:configv2.json RTX/code
+# copy the config secrets file into the RTX/code directory
+scp araxconfig@araxconfig.rtx.ai:config_secrets.json RTX/code
 
-
-# create config_local.json that points to the local RTX-KG2 API
-cat RTX/code/configv2.json | \
-    sed 's|https://arax.ncats.io/beta/api/rtxkg2/v1.2|http://localhost:5008/api/rtxkg2/v1.2|g' > \
-	RTX/code/config_local.json
+# create an override to point to the local RTX-KG2 API
+echo "http://localhost:5008/api/rtxkg2/v1.2" > RTX/code/kg2_url_override.txt
 
 # download the database files (this step takes a long time)
 python3.7 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
