@@ -308,6 +308,7 @@ class ResponseCache:
                     validate(envelope,'Response',trapi_version)
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = 'reasoner-validator: PASS'
+                    envelope['validation_result'] = { 'status': 'PASS', 'version': trapi_version, 'message': '' }
 
                 except ValidationError as error:
                     timestamp = str(datetime.now().isoformat())
@@ -318,6 +319,12 @@ class ResponseCache:
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = ''
                     envelope['description'] = 'ERROR: TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description']
+                    envelope['validation_result'] = { 'status': 'FAIL', 'version': trapi_version, 'message': 'TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description'] }
+
+                #### Count provenance information
+                attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
+                envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
+
                 return envelope
 
             else:

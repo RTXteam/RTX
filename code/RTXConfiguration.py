@@ -7,7 +7,7 @@ import time
 import re
 from typing import Optional
 
-from pygit2 import Repository
+from pygit2 import Repository, discover_repository
 
 
 class RTXConfiguration:
@@ -36,9 +36,14 @@ class RTXConfiguration:
 
         # Determine the branch we're running in
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        rtx_repo_dir = f"{file_dir}/../"
-        repo = Repository(rtx_repo_dir)
-        self.current_branch_name = repo.head.name.split("/")[-1]
+        repo_path = discover_repository(file_dir)
+        try:
+            repo = Repository(repo_path)
+            self.current_branch_name = repo.head.name.split("/")[-1]
+        except Exception:
+            # TODO: Figure out why Docker container doesn't like this Git branch determination method
+            # Ok to skip branch name here for now since domain name can be used instead in such cases
+            self.current_branch_name = None
 
         # Determine our maturity
         maturity_override_value = self._read_override_file(f"{file_dir}/maturity_override.txt")
