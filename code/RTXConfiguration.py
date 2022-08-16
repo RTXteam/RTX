@@ -19,23 +19,22 @@ class RTXConfiguration:
         self.version = "ARAX 1.2.1"  # TODO: This probably shouldn't be hardcoded? What is it used for?
 
         # Grab instance/domain name info, if available
-        location = os.path.dirname(os.path.abspath(__file__))
+        file_dir = os.path.dirname(os.path.abspath(__file__))
         self.instance_name = '??'
-        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
+        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', file_dir)
         if match:
             self.instance_name = match.group(1)
         if self.instance_name == 'production':
             self.instance_name = 'ARAX'
 
         try:
-            with open(location + 'config.domain') as infile:
+            with open(f"{file_dir}/config.domain") as infile:
                 for line in infile:
                     self.domain = line.strip()
         except:
             self.domain = '??'
 
         # Determine the branch we're running in
-        file_dir = os.path.dirname(os.path.abspath(__file__))
         repo_path = discover_repository(file_dir)
         try:
             repo = Repository(repo_path)
