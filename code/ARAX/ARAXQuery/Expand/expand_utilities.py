@@ -661,17 +661,51 @@ def get_trapi_version():
         return trapi_version
 
 
+def get_kg2_url(kp_info):
+    # return override config url if there is one
+    if RTXConfig.rtx_kg2_url:
+        return RTXConfig.rtx_kg2_url
+
+    kg2_urls = []
+    for entry in kp_info:
+        if entry["infores_name"] == "infores:rtx-kg2":
+            for server in entry["servers"]:
+                kg2_urls.append(server["url"])
+
+    if len(kg2_urls) == 0:
+        return None
+    kg2_url = kg2_urls[0]
+
+    # choose a url based on whether or not this is an itrb_instance
+    # defaulting to a non-preferred value if we can't find a preferred one
+    if RTXConfig.is_itrb_instance:
+        itrb_urls = [url for url in kg2_urls if "transltr.io" in url]
+        if len(itrb_urls) > 0:
+            kg2_url = itrb_urls[0]
+    else:
+        non_itrb_urls = [url for url in kg2_urls if "transltr.io" not in url]
+        if len(non_itrb_urls) > 0:
+            kg2_url = non_itrb_urls[0]
+
+    return kg2_url
+
+
 def get_all_kps() -> Set[str]:
     version = get_trapi_version()
-    # remove patch number because version is used for string matching to evaluate compatbility
+    # remove patch number because we just need to check compatbility
     minor_version = ".".join( version.split(".")[:2] )
+    maturity = RTXConfig.maturity
     smartapi = SmartAPI()
-    kp_info = smartapi.get_kps(version=minor_version,req_maturity="production")
+    kp_info = smartapi.get_kps(version=minor_version,req_maturity=maturity)
+
     kp_urls = {kp["infores_name"] : kp["servers"][0]["url"] for kp in kp_info}
     kp_urls["infores:arax-drug-treats-disease"] = None
     kp_urls["infores:arax-normalized-google-distance"] = None
-    # remove this after config updates have been made
-    kp_urls["infores:rtx-kg2"] = RTXConfig.rtx_kg2_url
+
+    # use special logic to choose from kg2 server urls based on config
+    kg2_url = get_kg2_url(kp_info)
+    if kg2_url:
+        kp_urls["infores:rtx-kg2"] = kg2_url
     return kp_urls
 
 
