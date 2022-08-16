@@ -34,6 +34,7 @@ class ComputeFTEST:
         self.response = response
         self.message = message
         self.parameters = parameters
+        self.nodesynonymizer = NodeSynonymizer()
 
     def fisher_exact_test(self):
         """
@@ -92,6 +93,8 @@ class ComputeFTEST:
         rel_edge_type = set()
         subject_node_category = None
         object_node_category = None
+        subject_node_ids = None
+        object_node_ids = None
 
         ## Check if subject_qnode_key and object_qnode_key are in the Query Graph
         try:
@@ -100,9 +103,11 @@ class ComputeFTEST:
                     if node_key == subject_qnode_key:
                         subject_node_exist = True
                         subject_node_category = self.message.query_graph.nodes[node_key].categories
+                        subject_node_ids = self.message.query_graph.nodes[node_key].ids
                     elif node_key == object_qnode_key:
                         object_node_exist = True
                         object_node_category = self.message.query_graph.nodes[node_key].categories
+                        object_node_ids = self.message.query_graph.nodes[node_key].ids
                     else:
                         pass
             else:
@@ -244,19 +249,34 @@ class ComputeFTEST:
             self.response.error(f"No object node found in message KG for Fisher's Exact Test")
             return self.response
 
-        ## check if subject node has more than one type. If so, throw an error
+        ## check if the subject node type is None, if so, automatically set it to biolink:NamedThing
         if subject_node_category is None:
-            self.response.error(f"Subject node with qnode key {subject_qnode_key} was set to None in Query Graph. Please specify the node type")
-            return self.response
+            if subject_node_ids is None:
+                self.response.error(f"The subject node with qnode key {subject_qnode_key} in Query Graph has no assigned cateogry and ids.")
+            else:
+                normalized_subject_node = self.nodesynonymizer.get_canonical_curies(subject_node_ids[0])[subject_node_ids[0]]
+                if normalized_subject_node is None:
+                    self.response.warning(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
+                    subject_node_category = ['biolink:NamedThing']
+                else:
+                    subject_node_category = normalized_subject_node['preferred_category']
+                    self.response.warning(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph. We will automatically assign {subject_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
-        ## check if object node has more than one type. If so, throw an error
+        ## check if the object node type is None, if so, automatically set it to biolink:NamedThing
         if object_node_category is None:
-            self.response.error(f"Object node with qnode key {object_qnode_key} was set to None in Query Graph. Please specify the node type")
-            return self.response
-        else:
-            pass
+            if object_node_ids is None:
+                self.response.error(f"The object node with qnode key {object_node_ids} in Query Graph has no assigned cateogry and ids.")
+            else:
+                normalized_object_node = self.nodesynonymizer.get_canonical_curies(object_node_ids[0])[object_node_ids[0]]
+                if normalized_object_node is None:
+                    self.response.warning(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
+                    object_node_category = ['biolink:NamedThing']
+                else:
+                    object_node_category = normalized_object_node['preferred_category']
+                    self.response.warning(f"No cateogry is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
-        ##check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both subject nodes and object nodes was used
+
+        ## check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both subject nodes and object nodes was used
         if len(collections.Counter(edge_expand_kp))==1:
             kp = edge_expand_kp[0]
         else:
@@ -289,7 +309,6 @@ class ComputeFTEST:
             self.response.debug(f"{len(object_node_dict)} object node with qnode key {object_qnode_key} and node type {object_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
         else:
             self.response.debug(f"{len(object_node_dict)} object nodes with qnode key {object_qnode_key} and node type {object_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
-
 
         # find all nodes with the same type of 'subject_qnode_key' nodes in specified KP ('ARAX/KG1','infores:rtx-kg2') that are adjacent to target nodes
         # if rel_edge_key is not None, query adjacent node from database otherwise query adjacent node with DSL command by providing a list of query nodes to add_qnode()
@@ -448,8 +467,7 @@ class ComputeFTEST:
         adjacent_type = ComputeFTEST.convert_string_biolinkformat(adjacent_type)
 
         if rel_type is None:
-            nodesynonymizer = NodeSynonymizer()
-            normalized_nodes = nodesynonymizer.get_canonical_curies(node_curie)
+            normalized_nodes = self.nodesynonymizer.get_canonical_curies(node_curie)
             failure_nodes = list()
             mapping = {node:normalized_nodes[node]['preferred_curie'] for node in normalized_nodes if normalized_nodes[node] is not None}
             failure_nodes += list(normalized_nodes.keys() - mapping.keys())
