@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# This script builds an ARAX NodeSynonymizer off of the KG2 version pointed to in your configv2.json file.
+# This script builds an ARAX NodeSynonymizer off of the KG2 Neo4j pointed to in your config_dbs.json file.
 # Usage: bash -x build-synonymizer.sh
 
 set -e
