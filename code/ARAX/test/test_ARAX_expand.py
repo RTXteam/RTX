@@ -874,7 +874,7 @@ def test_edge_constraints():
     query = {
             "nodes": {
                 "n00": {
-                    "ids": ["CHEMBL.COMPOUND:CHEMBL945"]
+                    "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
                 },
                 "n01": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -888,9 +888,9 @@ def test_edge_constraints():
                         {
                             "id": "biolink:knowledge_source",
                             "name": "knowledge source",
-                            "value": ["infores:rtx-kg2"],
+                            "value": ["infores:rtx-kg2","infores:arax","infores:drugbank"],
                             "operator": "==",
-                            "not": True
+                            "not": False
                         }
                     ]
                 }
