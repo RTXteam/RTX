@@ -32,7 +32,7 @@ echo "
       #                                                                              #
       ################################################################################"
 
-# build db_arr which includes all needed db files in config_secrets.json
+# build db_arr which includes all needed db files in config_dbs.json
 echo "Reading ${confgi_file} and building new db_arr specified in ${config_file}....."
 printf "\n"
 for db in $(jq -r '.database_downloads | keys[]' ${config_file})
@@ -55,7 +55,7 @@ done
 
 
 # clean up current db first
-# check if there's db file not listed in config_secrets.json and rm 
+# check if there's db file not listed in config_dbs.json and rm 
 # this is useful when a new db (or a new version of existing db) rolls out
 # and we only want to keep what is specificed in config_secretes.json file
 echo "Removing outdated db files......"
@@ -82,7 +82,7 @@ sftp -i $sftp_key -o StrictHostKeyChecking=no -pr ${sftp_url}/md5_sums/ $md5_sum
 printf '\n'
 
 # this is tricky, we download all MD5 info, some are needed, some are not
-# we need to loop through all downloaded MD5s, remove others but only keep the needed ones, which is from the config_secrets.json
+# we need to loop through all downloaded MD5s, remove others but only keep the needed ones, which is from the config_dbs.json
 for MD5 in $(find $md5_sums_new -type f)
 do
   if [[ ! ${new_db_MD5_arr[${MD5}]} ]]
