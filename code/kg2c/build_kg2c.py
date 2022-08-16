@@ -41,7 +41,7 @@ def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
         rtx_config_dbs_dict = json.load(config_dbs_file)
     # Point to the 'right' KG2 Neo4j (the one specified in the KG2c config) and synonymizer (we always use simple name)
     rtx_config_dbs_dict["neo4j"]["KG2pre"] = kg2pre_neo4j_endpoint
-    rtx_config_dbs_dict["node_synonymizer"] = f"/something/{synonymizer_name}"  # Only need name, not full path
+    rtx_config_dbs_dict["database_downloads"]["node_synonymizer"] = f"/something/{synonymizer_name}"  # Only need name, not full path
 
     # Save our new config_dbs.json file
     with open(config_dbs_file_path, "w+") as revised_config_dbs_file:
