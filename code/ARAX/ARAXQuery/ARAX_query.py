@@ -875,7 +875,7 @@ class ARAXQuery:
             #### If asking for the full message back
             if return_action['parameters']['response'] == 'true':
                 if mode == 'asynchronous':
-                    response.info(f"Processing is complete. Attempting to the result to the callback URL.")
+                    response.info(f"Processing is complete. Attempting to send the result to the callback URL.")
                     self.send_to_callback(callback, response)
                 else:
                     response.info(f"Processing is complete. Transmitting resulting Message back to client.")
