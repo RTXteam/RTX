@@ -72,18 +72,17 @@ If the machine you'll be using has never previously built a KG2c, you need to do
         1. And configure it: `aws configure`
         1. You will need read and write permission for the `rtx-kg2` S3 bucket
 1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
-    1. Create a copy of `configv2.json` that contains the proper secrets for your own KG2pre Neo4j endpoint
+    1. Create a copy of `config_secrets.json` that contains the proper secrets for your own KG2pre Neo4j endpoint
 
 To run the build:
 
 1. Make sure you have the **latest code** from whatever branch you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
 1. Locally modify the KG2c build **config file** (`RTX/code/kg2c/kg2c_config.json`) for your particular needs:
     - `kg2pre_version`: Specify the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
-    - `kg2pre_neo4j_endpoint`: Should point to the Neo4j endpoint for your specified KG2pre version (e.g., `kg2endpoint-kg2-6-7.rtx.ai`)
+    - `kg2pre_neo4j_endpoint`: Should point to the Neo4j endpoint for your specified KG2pre version (e.g., `kg2endpoint-kg2-6-7.rtx.ai`); used only for the synonymizer build process
     - `biolink_version`: Should match the Biolink version used by the KG2pre you specified (e.g., 1.8.1)
     - `upload_to_arax.ncats.io`: Specify whether build artifacts should be uploaded to arax.ncats.io (generally should be `true` unless you're doing a debugging build)
     - `upload_directory`: The path to the directory on arax.ncats.io where artifacts should be uploaded (e.g., `/translator/data/orangeboard/databases/KG2.6.7`)
-        - NOTE: You must manually create this directory on `arax.ncats.io` before kicking off the build (if it doesn't already exist)
         - **WARNING**: If this is pointing to the wrong directory on arax.ncats.io, data may be overwritten! Be careful.
     - Under the `synonymizer` slot:
         - `build`: Set this to true if you want to build a **new** synonymizer (from your specified KG2pre version), false otherwise

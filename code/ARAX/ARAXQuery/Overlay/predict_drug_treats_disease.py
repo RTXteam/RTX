@@ -25,7 +25,6 @@ from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "Production"
 
 class PredictDrugTreatsDisease:
 
@@ -336,6 +335,7 @@ class PredictDrugTreatsDisease:
                         option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, self.message.query_graph, self.response)
                         q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
                         q_edge.relation = relation
+                        q_edge.filled = True
                         self.message.query_graph.edges[relation] = q_edge
                     return self.response
         elif 'virtual_relation_label' in parameters:
@@ -495,6 +495,7 @@ class PredictDrugTreatsDisease:
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, self.message.query_graph, self.response)
                 q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
                 q_edge.relation = relation
+                q_edge.filled = True
                 self.message.query_graph.edges[relation] = q_edge
             return self.response
 

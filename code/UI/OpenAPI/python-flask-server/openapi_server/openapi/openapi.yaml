@@ -9,13 +9,13 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: ARAX Translator Reasoner
-  version: 1.2.7
+  version: 1.2.9
   x-translator:
     component: ARA
     team:
     - Expander Agent
     infores: infores:arax
-    biolink-version: 2.2.6
+    biolink-version: 2.2.11
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
@@ -53,24 +53,45 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: ARAX Translator Reasoner API
+- description: ARAX TRAPI 1.2 endpoint - production
+  url: https://arax.transltr.io/api/arax/v1.2
+  x-maturity: production
+- description: ARAX TRAPI 1.2 endpoint - production
   url: https://arax.ncats.io/api/arax/v1.2
   x-maturity: production
+- description: ARAX TRAPI 1.2 endpoint - testing
+  url: https://arax.test.transltr.io/api/arax/v1.2
+  x-maturity: testing
+- description: ARAX TRAPI 1.2 endpoint - staging
+  url: https://arax.ci.transltr.io/api/arax/v1.2
+  x-maturity: staging
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/beta/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/test/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/devED/api/arax/v1.2
+  x-maturity: development
+- description: ARAX TRAPI 1.2 endpoint - development
+  url: https://arax.ncats.io/devLM/api/arax/v1.2
+  x-maturity: development
 tags:
 - description: Get supported relationships
   externalDocs:
     description: Documentation for the reasoner predicates function
-    url: http://arax.ncats.io/overview.html#predicates
+    url: https://arax.ncats.io/overview.html#predicates
   name: meta_knowledge_graph
 - description: Initiate a query and wait to receive the response
   externalDocs:
     description: Documentation for the reasoner query function
-    url: http://arax.ncats.io/overview.html#query
+    url: https://arax.ncats.io/overview.html#query
   name: query
 - description: Initiate a query with a callback to receive the response
   externalDocs:
     description: Documentation for the reasoner asynchquery function
-    url: http://arax.ncats.io/overview.html#asyncquery
+    url: https://arax.ncats.io/overview.html#asyncquery
   name: asyncquery
 - description: Required for SmartAPI validation of x-translator
   name: translator
@@ -110,6 +131,7 @@ paths:
       operationId: pubmed_mesh_ngd
       parameters:
       - description: First of two terms. Order not important.
+        example: PTGS2
         explode: false
         in: path
         name: term1
@@ -118,6 +140,7 @@ paths:
           type: string
         style: simple
       - description: Second of two terms. Order not important.
+        example: acetaminophen
         explode: false
         in: path
         name: term2
@@ -345,6 +368,7 @@ paths:
       operationId: get_response
       parameters:
       - description: Identifier of the response to return
+        example: 41651
         explode: false
         in: path
         name: response_id
@@ -478,14 +502,10 @@ components:
         a log level could allow a user to override the default log level in order
         to receive more fine-grained log information when debugging an issue.
       example:
-        submitter: submitter
+        submitter: Example
         bypass_cache: false
         page_number: 1
-        operations: ""
-        workflow:
-        - ""
-        - ""
-        log_level: ""
+        log_level: DEBUG
         enforce_edge_directionality: false
         return_minimal_metadata: false
         max_results: 100
@@ -1223,6 +1243,20 @@ components:
         edge bindings returned may be an exact match to the given QEdge predicate
         term, or to a term that is a descendant of the QEdge predicate term.
       properties:
+        knowledge_type:
+          description: >-
+            Indicates the type of knowledge that the client wants from the
+            server between the subject and object. If the value is
+            'lookup', then the client wants direct lookup information from
+            knowledge sources. If the value is 'inferred', then the client
+            wants the server to get creative and connect the subject and
+            object in more speculative and non-direct-lookup ways. If this
+            property is absent or null, it MUST be assumed to mean
+            'lookup'. This feature is currently experimental and may be
+            further extended in the future.
+          example: lookup
+          nullable: true
+          type: string
         predicates:
           items:
             $ref: '#/components/schemas/BiolinkPredicate'
@@ -2020,6 +2054,11 @@ components:
                   type: string
                 minLength: 1
                 type: array
+              qedge_keys:
+                type: array
+                items:
+                  type: string
+                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their connected nodes, will be filled. If not included all edges will be filled.
             type: object
           - additionalProperties: false
             properties:
@@ -2032,6 +2071,11 @@ components:
                   type: string
                 minLength: 1
                 type: array
+              qedge_keys:
+                type: array
+                items:
+                  type: string
+                description: A list of qedge keys. If included only edges corresponding to the given qedge keys, as well as their connected nodes, will be filled. If not included all edges will be filled.
             type: object
           type: object
       required:

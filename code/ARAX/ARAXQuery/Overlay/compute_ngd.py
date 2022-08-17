@@ -33,7 +33,6 @@ RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "Production"
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from ARAX_database_manager import ARAXDatabaseManager
@@ -190,6 +189,7 @@ class ComputeNGD:
                         q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key,
                                    object=object_qnode_key, option_group_id=option_group_id)
                         q_edge.relation = relation
+                        q_edge.filled = True
                         #### end FIXME
 
                         self.message.query_graph.edges[relation]=q_edge
@@ -293,6 +293,7 @@ class ComputeNGD:
                 q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
                 q_edge.relation = relation
+                q_edge.filled = True
                 #### end FIXME
 
                 self.message.query_graph.edges[relation]=q_edge

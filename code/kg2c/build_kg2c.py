@@ -24,30 +24,28 @@ KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
 CODE_DIR = f"{KG2C_DIR}/.."
 
 
-def _setup_rtx_config_local(kg2_endpoint: str, synonymizer_name: str):
+def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
     """
-    This function creates a config_local.json file based off of configv2.json, but modified for our needs.
+    This function locally modifies config_dbs.json to point to the right KG2pre Neo4j and synonymizer.
     """
-    logging.info("Creating a config_local.json file pointed to the right KG2 Neo4j and synonymizer..")
+    logging.info("Creating a config_dbs.json file pointed to the right synonymizer and KG2pre Neo4j..")
+    config_dbs_file_path = f"{CODE_DIR}/config_dbs.json"
 
-    # First remove any existing configv2.json or config_local.json
-    subprocess.call(["rm", "-f", f"{CODE_DIR}/configv2.json"])
-    # Save a copy of any pre-existing config_local.json so we don't overwrite it
-    original_config_local_file = pathlib.Path(f"{CODE_DIR}/config_local.json")
-    if original_config_local_file.exists():
-        subprocess.check_call(["mv", f"{CODE_DIR}/config_local.json", f"{CODE_DIR}/config_local.json_KG2CBUILDTEMP"])
+    # Save a copy of any pre-existing config_dbs.json so we don't overwrite it
+    original_config_dbs_file = pathlib.Path(config_dbs_file_path)
+    if original_config_dbs_file.exists():
+        subprocess.check_call(["mv", config_dbs_file_path, f"{config_dbs_file_path}_KG2CBUILDTEMP"])
 
-    RTXConfiguration()  # Regenerates configv2.json with the latest version
-    with open(f"{CODE_DIR}/configv2.json") as configv2_file:
-        rtx_config_dict = json.load(configv2_file)
-    # Point to the 'right' KG2 (the one specified in the KG2c config) and synonymizer (we always use simple name)
-    rtx_config_dict["Contextual"]["KG2"]["neo4j"]["bolt"] = f"bolt://{kg2_endpoint}:7687"
-    for mode, path_info in rtx_config_dict["Contextual"].items():
-        path_info["node_synonymizer"]["path"] = f"/something/{synonymizer_name}"  # Only need name, not full path
+    RTXConfiguration()  # Regenerates config_secrets.json with the latest version
+    with open(config_dbs_file_path) as config_dbs_file:
+        rtx_config_dbs_dict = json.load(config_dbs_file)
+    # Point to the 'right' KG2 Neo4j (the one specified in the KG2c config) and synonymizer (we always use simple name)
+    rtx_config_dbs_dict["neo4j"]["KG2pre"] = kg2pre_neo4j_endpoint
+    rtx_config_dbs_dict["database_downloads"]["node_synonymizer"] = f"/something/{synonymizer_name}"  # Only need name, not full path
 
-    # Save our new config_local.json file
-    with open(f"{CODE_DIR}/config_local.json", "w+") as config_local_file:
-        json.dump(rtx_config_dict, config_local_file)
+    # Save our new config_dbs.json file
+    with open(config_dbs_file_path, "w+") as revised_config_dbs_file:
+        json.dump(rtx_config_dbs_dict, revised_config_dbs_file)
 
 
 def _upload_output_files_to_s3():
@@ -65,18 +63,18 @@ def main():
                         format='%(asctime)s %(levelname)s: %(message)s',
                         handlers=[logging.FileHandler("build.log"),
                                   logging.StreamHandler()])
-    logging.info("STARTING KG2c BUILD")
     start = time.time()
     # Grab any parameters passed to this script
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--test", dest="test", action='store_true', default=False)
     args = arg_parser.parse_args()
+    logging.info(f"STARTING {'TEST ' if args.test else ''}KG2c BUILD")
 
     # Load the KG2c config file
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
     kg2_version = kg2c_config_info["kg2pre_version"]
-    kg2_endpoint = kg2c_config_info["kg2pre_neo4j_endpoint"]
+    kg2pre_endpoint = kg2c_config_info["kg2pre_neo4j_endpoint"]
     biolink_version = kg2c_config_info["biolink_version"]
     build_kg2c = kg2c_config_info["kg2c"]["build"]
     upload_to_s3 = kg2c_config_info["kg2c"]["upload_to_s3"]
@@ -84,7 +82,8 @@ def main():
     synonymizer_name = kg2c_config_info["synonymizer"]["name"]
     upload_to_arax_ncats_io = kg2c_config_info["upload_to_arax.ncats.io"]
     upload_directory = kg2c_config_info["upload_directory"]
-    logging.info(f"KG2 version to use is {kg2_version}")
+    logging.info(f"KG2pre version to use is {kg2_version}")
+    logging.info(f"KG2pre neo4j endpoint to use is {kg2pre_endpoint}")
     logging.info(f"Biolink model version to use is {biolink_version}")
     logging.info(f"Synonymizer to use is {synonymizer_name}")
     synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
@@ -109,7 +108,7 @@ def main():
                              f"must put a copy of it there or use a different synonymizer.")
 
     # Set up an RTX config_local.json file that points to the right KG2 and synonymizer
-    _setup_rtx_config_local(kg2_endpoint, synonymizer_name)
+    _setup_config_dbs_file(kg2pre_endpoint, synonymizer_name)
 
     # Build a new node synonymizer, if we're supposed to
     if build_synonymizer and not args.test:
@@ -133,13 +132,14 @@ def main():
                 logging.info(f"Uploading KG2c artifacts to arax.ncats.io:{upload_directory}")
                 subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", upload_directory])
 
-        logging.info(f"DONE WITH KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours")
+        logging.info(f"DONE WITH {'TEST ' if args.test else ''}KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours")
 
-    # Remove the config_local file we created and put original config_local back in place (if there was one)
-    subprocess.call(["rm", "-f", f"{CODE_DIR}/config_local.json"])
-    original_config_local_file = pathlib.Path(f"{CODE_DIR}/config_local.json_KG2CBUILDTEMP")
-    if original_config_local_file.exists():
-        subprocess.check_call(["mv", f"{CODE_DIR}/config_local.json_KG2CBUILDTEMP", f"{CODE_DIR}/config_local.json"])
+    # Undo the revisions we made to config_dbs.json
+    config_dbs_file_path = f"{CODE_DIR}/config_dbs.json"
+    temp_config_dbs_file_path = f"{config_dbs_file_path}_KG2CBUILDTEMP"
+    temp_config_dbs_path = pathlib.Path(temp_config_dbs_file_path)
+    if temp_config_dbs_path.exists():
+        subprocess.check_call(["mv", temp_config_dbs_file_path, config_dbs_file_path])
 
 
 if __name__ == "__main__":
