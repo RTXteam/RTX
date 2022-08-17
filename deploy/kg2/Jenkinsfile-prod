@@ -49,7 +49,7 @@ pipeline {
          when { expression { return env.BUILD == 'true' }}
          environment { 
             ENV_BUILD_BRANCH= sh (returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
-          }
+         }
           steps {
                 script {
                     docker.build(env.DOCKER_REPO_NAME, "--build-arg BUILD_BRANCH=$ENV_BUILD_BRANCH --no-cache -f ./DockerBuild/KG2-Dockerfile ./DockerBuild/")
