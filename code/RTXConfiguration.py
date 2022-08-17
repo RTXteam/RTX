@@ -172,9 +172,6 @@ class RTXConfiguration:
         # Default to KG2c neo4j
         self.neo4j_kg2 = "KG2c"
 
-        print(f"RTXConfig: Maturity is {self.maturity}, current branch is {self.current_branch_name}, is_itrb_instance="
-              f"{self.is_itrb_instance}, plover URL is {self.plover_url}, KG2 URL is {self.rtx_kg2_url}")
-
     @staticmethod
     def _read_override_file(file_path: str) -> Optional[str]:
         if os.path.exists(file_path):
