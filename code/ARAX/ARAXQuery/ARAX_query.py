@@ -278,6 +278,11 @@ class ARAXQuery:
         #### Announce the launch of query()
         #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
         response.info(f"{mode} Query launching on incoming Query")
+        response.debug(f"RTXConfiguration says maturity={self.rtxConfig.maturity}, "
+                       f"current_branch={self.rtxConfig.current_branch_name}, "
+                       f"is_itrb_instance={self.rtxConfig.is_itrb_instance}, "
+                       f"arax_version={self.rtxConfig.arax_version}, "
+                       f"trapi_version={self.rtxConfig.trapi_version}")
 
         #### Create an empty envelope
         messenger = ARAXMessenger()

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# This script builds an ARAX NodeSynonymizer off of the KG2 Neo4j pointed to in your config_dbs.json file.
+# This script builds an ARAX NodeSynonymizer off of the KG2pre Neo4j pointed to in your config_dbs.json file.
 # Usage: bash -x build-synonymizer.sh
 
 set -e
@@ -8,7 +8,7 @@ script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"  # T
 code_dir=${script_dir}/..
 synonymizer_dir=${code_dir}/ARAX/NodeSynonymizer
 
-# Build a NodeSynonymizer using the KG2 endpoint specified under the "KG2" slot in the ARAX config file
+# Build a NodeSynonymizer using the KG2pre Neo4j endpoint specified in the ARAX config_dbs.json file
 cd ${synonymizer_dir}
 rm -f sri_node_normalizer_requests_cache.sqlite  # Cache may be stale, so we delete
 rm -f sri_node_normalizer_curie_cache.pickle
