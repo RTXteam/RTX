@@ -5,7 +5,7 @@ pipeline {
         disableConcurrentBuilds()
     }
     agent {
-        node { label 'transltr-ci-build-node-03' }
+        node { label 'aws && build && translator && rtx' }
     }
     parameters {
         string(name: 'BUILD_VERSION', defaultValue: '', description: 'The build version to deploy (optional)')
@@ -20,7 +20,9 @@ pipeline {
         KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-prod-green-cluster"
         NAMESPACE = "rtx"
         SECRET_NAME = "sftp-ssh-key"
-        CONFIG_JSON_CONFIGMAP = "configv2"
+        CFGFILE2DL = "team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/config_secrets.json"
+        CFGFILE2DL_LOCALPATH = "deploy/kg2/configs/config_secrets.json"
+        sftp_key = "deploy/kg2/secrets/team-expander-ops-sshkey-secret"
     }
     stages {
       stage('Build Version'){
@@ -45,23 +47,21 @@ pipeline {
       }
       stage('Build and Push Docker Image') {
          when { expression { return env.BUILD == 'true' }}
+         environment { 
+            ENV_BUILD_BRANCH= sh (returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+          }
           steps {
-            configFileProvider([
-                configFile(fileId: 'configv2.json', targetLocation: 'DockerBuild/configv2.json')
-            ]){
                 script {
-                    docker.build(env.DOCKER_REPO_NAME, "--no-cache -f ./DockerBuild/KG2-Dockerfile ./DockerBuild/")
+                    docker.build(env.DOCKER_REPO_NAME, "--build-arg BUILD_BRANCH=$ENV_BUILD_BRANCH --no-cache -f ./DockerBuild/KG2-Dockerfile ./DockerBuild/")
                     docker.withRegistry('https://853771734544.dkr.ecr.us-east-1.amazonaws.com', 'ecr:us-east-1:aws-ifx-deploy') {
                         docker.image(env.DOCKER_REPO_NAME).push("${BUILD_VERSION}")
                     }
                 }
             }
-          }
-      }
+        }
       stage('Deploy to AWS EKS Blue') {
           steps {
               configFileProvider([
-                  configFile(fileId: 'configv2.json', targetLocation: 'deploy/kg2/configs/configv2.json'),
                   configFile(fileId: 'kg2.values.ncats.yaml', targetLocation: 'deploy/kg2/kg2.values.ncats.yaml')
               ]){
                   withCredentials([
@@ -74,6 +74,8 @@ pipeline {
                         sh '''
                         # Need to save the credential to a file with base64 encoded under deploy/kg2/secret
                         cat $SECRET_FILE >> deploy/kg2/secrets/team-expander-ops-sshkey-secret
+                        sftp -i $SECRET_FILE -o StrictHostKeyChecking=no -p $CFGFILE2DL $CFGFILE2DL_LOCALPATH
+                        cp code/config_dbs.json deploy/kg2/configs                        
                         aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
                         cd deploy/kg2 && /bin/bash deploy.sh
                         # aws --region ${AWS_REGION} sts get-caller-identity

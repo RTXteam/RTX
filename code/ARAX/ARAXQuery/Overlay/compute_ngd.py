@@ -33,7 +33,6 @@ RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "Production"
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from ARAX_database_manager import ARAXDatabaseManager

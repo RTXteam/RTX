@@ -144,7 +144,6 @@ class UpdateIndex():
 if __name__ == '__main__':
     # create the RTXConfiguration object
     rtxConfig = RTXConfiguration()
-    rtxConfig.live = args.live
 
     ui = UpdateIndex(rtxConfig.neo4j_username, rtxConfig.neo4j_password, rtxConfig.neo4j_bolt)
     ui.replace()
