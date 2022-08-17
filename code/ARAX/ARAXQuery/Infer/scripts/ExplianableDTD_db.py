@@ -18,7 +18,6 @@ RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "Production"
 from ARAX_database_manager import ARAXDatabaseManager
 
 
@@ -119,7 +118,7 @@ class ExplainableDTD(object):
                     self.response.debug(
                         f"Downloading databases because mismatch in local versions and remote versions was found... (will take a few minutes)")
                     self.response = DBmanager.update_databases(response=self.response)
-                #os.system(f"scp {RTXConfig.explainable_dtd_db_username}@{RTXConfig.explainable_dtd_db_host}:{RTXConfig.explainable_dtd_db_path} {database}")
+                #os.system(f"scp {RTXConfig.db_username}@{RTXConfig.db_host}:{RTXConfig.explainable_dtd_db_path} {database}")
                 self.connection = sqlite3.connect(database)
                 print("INFO: Connecting to database", flush=True)
                 self.is_connected = True

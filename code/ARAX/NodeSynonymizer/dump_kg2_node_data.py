@@ -67,7 +67,7 @@ def dump_kg2_node_info(file_name: str, write_mode: str, is_test: bool):
 def _run_cypher_query(cypher_query: str) -> List[Dict[str, any]]:
 	# This function sends a cypher query to the KG2 neo4j and returns results
 	rtxc = RTXConfiguration()
-	rtxc.live = "KG2"
+	rtxc.neo4j_kg2 = "KG2pre"
 	try:
 		driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 		with driver.session() as session:
