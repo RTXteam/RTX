@@ -31,7 +31,8 @@ RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "Production"
+
+
 
 class QGOrganizedKnowledgeGraph:
     def __init__(self, nodes: Dict[str, Dict[str, Node]] = None, edges: Dict[str, Dict[str, Edge]] = None):
@@ -44,9 +45,10 @@ class QGOrganizedKnowledgeGraph:
     def add_node(self, node_key: str, node: Node, qnode_key: str):
         if qnode_key not in self.nodes_by_qg_id:
             self.nodes_by_qg_id[qnode_key] = dict()
-        # Merge attributes if this node already exists
+        # Merge appropriate properties if this node already exists
         if node_key in self.nodes_by_qg_id[qnode_key]:
             existing_node = self.nodes_by_qg_id[qnode_key][node_key]
+            # Merge attributes
             new_node_attributes = node.attributes if node.attributes else []
             if existing_node.attributes:
                 existing_attribute_triples = {get_attribute_triple(attribute) for attribute in existing_node.attributes}
@@ -55,6 +57,10 @@ class QGOrganizedKnowledgeGraph:
                 existing_node.attributes += new_attributes_unique
             else:
                 existing_node.attributes = new_node_attributes
+            # Merge query IDs (which map KG nodes to query curies they fulfill)
+            if hasattr(node, "query_ids") and node.query_ids:
+                existing_query_ids = set(existing_node.query_ids) if hasattr(existing_node, "query_ids") and existing_node.query_ids else set()
+                existing_node.query_ids = list(existing_query_ids.union(set(node.query_ids)))
         else:
             self.nodes_by_qg_id[qnode_key][node_key] = node
 
@@ -160,11 +166,13 @@ def convert_string_to_snake_case(input_string: str) -> str:
         return input_string.lower()
 
 
-def convert_to_list(string_or_list: Union[str, List[str], None]) -> List[str]:
-    if isinstance(string_or_list, str):
-        return [string_or_list]
-    elif isinstance(string_or_list, list):
-        return string_or_list
+def convert_to_list(item: Union[str, set, list, None]) -> List[str]:
+    if isinstance(item, str):
+        return [item]
+    elif isinstance(item, set):
+        return list(item)
+    elif isinstance(item, list):
+        return item
     else:
         return []
 
@@ -524,19 +532,19 @@ def get_computed_value_attribute() -> Attribute:
 
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
-        "infores:biothings-explorer": "https://api.bte.ncats.io/v1",  # TODO: Enter 1.2 endpoint once available..
-        "infores:genetics-data-provider": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.2",
-        "infores:molepro": "https://translator.broadinstitute.org/molepro/trapi/v1.2",
+        "infores:biothings-explorer": "https://api.bte.ncats.io/v1",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:genetics-data-provider": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.3",
+        "infores:molepro": "https://translator.broadinstitute.org/molepro/trapi/v1.3",
         "infores:rtx-kg2": RTXConfig.rtx_kg2_url,
-        "infores:biothings-multiomics-clinical-risk": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
-        "infores:biothings-multiomics-wellness": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
-        "infores:spoke": "https://spokekp.healthdatascience.cloud/api/v1.2/",
-        "infores:biothings-multiomics-biggim-drug-response": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
-        "infores:biothings-tcga-mut-freq": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
-        "infores:connections-hypothesis": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)
-        "infores:cohd": "https://cohd.io/api",
-        "infores:icees-dili": "https://icees-dili.renci.org",
-        "infores:icees-asthma": "https://icees-asthma.renci.org"
+        "infores:biothings-multiomics-clinical-risk": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:biothings-multiomics-wellness": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:spoke": "https://spokekp.healthdatascience.cloud/api/v1.3",
+        "infores:biothings-multiomics-biggim-drug-response": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:biothings-tcga-mut-freq": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:connections-hypothesis": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)   # TODO: Update to 1.3 once registered in SmartAPI?
+        "infores:cohd": "https://cohd.io/api",   # This should be using latest TRAPI
+        "infores:icees-dili": "https://icees-dili.renci.org",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:icees-asthma": "https://icees-asthma.renci.org"  # TODO: Update to 1.3 once registered in SmartAPI
     }
     return endpoint_map.get(kp_name)
 
@@ -573,6 +581,22 @@ def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
         edge = kg.edges[edge_key]
         if qedge_key in edge.qedge_keys:
             del kg.edges[edge_key]
+
+
+def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool:
+    """
+    When Expand adds subclass_of self-qedges to the QG, it assigns them keys in this kind of format:
+    "subclass:n00--n00", where n00 in this case is the subject/object of the self-qedge. It's hacky to identify
+    such qedges this way, but it works well for Expand's purposes and seems unlikely a user would happen to
+    assign a qedge_key in this format.
+    """
+    basic_format_met = qedge_key.startswith("subclass:") and "--" in qedge_key
+    qnode_is_valid = False
+    if basic_format_met:
+        relevant_qnode_keys = qedge_key.split(":")[-1].split("--")
+        qnode_keys_are_equal = relevant_qnode_keys[0] == relevant_qnode_keys[1]
+        qnode_is_valid = qnode_keys_are_equal and relevant_qnode_keys[0] in qg.nodes
+    return basic_format_met and qnode_is_valid
 
 
 def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False,
@@ -657,6 +681,25 @@ def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:
     new_dict = copy.deepcopy(dict_a)
     new_dict.update(dict_b)
     return new_dict
+
+
+def get_knowledge_source_constraints(edge):
+    allowlist = None
+    denylist = set()
+    for constraint in edge.attribute_constraints:
+        if constraint.id == "biolink:knowledge_source" or constraint.id == "biolink:aggregator_knowledge_source":
+            if constraint.operator != "==":
+                raise Exception("Given incompatible operator in edge knowledge_source constraint")
+            knowledge_sources = set(constraint.value)
+            # used because "constraint.not" is invalid syntax
+            negated = getattr(constraint,"_not",False)
+            if negated:
+                denylist |= knowledge_sources
+            else:
+                if allowlist == None:
+                    allowlist = set()
+                allowlist |= knowledge_sources
+    return allowlist, denylist
 
 
 def get_standard_parameters() -> dict:
