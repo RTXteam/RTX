@@ -852,13 +852,32 @@ class ARAXQuery:
                     result.reasoner_id = 'ARAX'
 
             # Store the validation and provenance metadata
-            #trapi_version = '1.3.0'
-            #validate(response.envelope,'Response',trapi_version)
+            trapi_version = '1.2.0'
+            try:
+                validate(response.envelope,'Response',trapi_version)
+                if 'description' not in response.envelope or response.envelope['description'] is None:
+                    response.envelope['description'] = 'reasoner-validator: PASS'
+                response.envelope['validation_result'] = { 'status': 'PASS', 'version': trapi_version, 'message': '' }
+
+            except ValidationError as error:
+                timestamp = str(datetime.now().isoformat())
+                if 'logs' not in response.envelope or response.envelope['logs'] is None:
+                    response.envelope['logs'] = []
+                response.envelope['logs'].append( { "code": 'InvalidTRAPI', "level": "ERROR", "message": "TRAPI validator reported an error: " + str(error),
+                                                    "timestamp": timestamp } )
+                if 'description' not in reponse.envelope or response.envelope['description'] is None:
+                    response.envelope['description'] = ''
+                response.envelope['description'] = 'ERROR: TRAPI validator reported an error: ' + str(error) + ' --- ' + response.envelope['description']
+                response.envelope['validation_result'] = { 'status': 'FAIL', 'version': trapi_version, 'message': 'TRAPI validator reported an error: ' + str(error) + ' --- ' + response.envelope['description'] }
+
+
+            from ARAX_attribute_parser import ARAXAttributeParser
+            attribute_parser = ARAXAttributeParser(response.envelope,response.envelope['message'])
+            response.envelope.validation_result['provenance_summary'] = attribute_parser.summarize_provenance_info()
+            #
             #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
-            #from ARAX_attribute_parser import ARAXAttributeParser
-            #attribute_parser = ARAXAttributeParser(response.envelope,response.envelope['message'])
-            #response.envelope.validation_result['provenance_summary'] = attribute_parser.summarize_provenance_info()
-            #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
+            #
+
             if response.envelope.query_options is None:
                 response.envelope.query_options = {}
             response.envelope.query_options['query_plan'] = response.query_plan
