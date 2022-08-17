@@ -460,13 +460,14 @@ class ARAXExpander:
                 # Removing kedges that have any sources that are constrained
                 allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
                 if qedge_key in overarching_kg.edges_by_qg_id:
+                    kedges_to_remove = []
                     for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
                         for attribute in kedge.attributes:
                             # check if source(s) of knowledge_source attribute are constrained
                             if attribute.attribute_type_id in ["biolink:aggregator_knowledge_source","biolink:knowledge_source"]:
                                 sources = attribute.value
                                 # always accept arax as a source
-                                if source == "infores:arax" or source == ["infores:arax"]:
+                                if sources == "infores:arax" or sources == ["infores:arax"]:
                                     continue
                                 # handle cases where source is string or list
                                 if type(sources) == str:
