@@ -7,6 +7,7 @@ import time
 import re
 from typing import Optional
 
+import yaml
 from pygit2 import Repository, discover_repository
 
 
@@ -16,10 +17,18 @@ class RTXConfiguration:
 
     # ### Constructor
     def __init__(self):
-        self.version = "ARAX 1.2.1"  # TODO: This probably shouldn't be hardcoded? What is it used for?
+        # Determine current ARAX and TRAPI versions
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+        openapi_yaml_path = f"{file_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml"
+        with open(openapi_yaml_path) as api_file:
+            openapi_yaml = yaml.safe_load(api_file)
+        self.arax_version = openapi_yaml["info"]["version"]
+        self.trapi_version = openapi_yaml["info"]["x-trapi"]["version"]
+        first_two_trapi_version_nums = self.trapi_version.split(".")[:2]
+        self.trapi_major_version = ".".join(first_two_trapi_version_nums)
+        self.version = f"ARAX {self.arax_version}"  # Not sure exactly what this is used for; legacy?
 
         # Grab instance/domain name info, if available
-        file_dir = os.path.dirname(os.path.abspath(__file__))
         self.instance_name = '??'
         match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', file_dir)
         if match:
@@ -147,19 +156,18 @@ class RTXConfiguration:
             self.rtx_kg2_url = kg2_url_override_value
         elif self.is_itrb_instance:
             if self.maturity in {"production", "prod"}:
-                self.rtx_kg2_url = "https://kg2.transltr.io/api/rtxkg2/v1.2"
+                self.rtx_kg2_url = f"https://kg2.transltr.io/api/rtxkg2/v{self.trapi_major_version}"
             elif self.maturity in {"testing", "test"}:
-                self.rtx_kg2_url = "https://kg2.test.transltr.io/api/rtxkg2/v1.2"
+                self.rtx_kg2_url = f"https://kg2.test.transltr.io/api/rtxkg2/v{self.trapi_major_version}"
             else:
-                self.rtx_kg2_url = "https://kg2.ci.transltr.io/api/rtxkg2/v1.2"
+                self.rtx_kg2_url = f"https://kg2.ci.transltr.io/api/rtxkg2/v{self.trapi_major_version}"
         else:
             if "NewFmt" in self.instance_name or self.current_branch_name == "NewFmt":
-                self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.3"
+                self.rtx_kg2_url = f"https://arax.ncats.io/api/rtxkg2/v{self.trapi_major_version}"
             elif self.maturity in {"production", "prod"}:
-                self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.2"
+                self.rtx_kg2_url = f"https://arax.ncats.io/api/rtxkg2/v{self.trapi_major_version}"
             else:
-                self.rtx_kg2_url = "https://arax.ncats.io/beta/api/rtxkg2/v1.2"
-        # TODO: add special exception for CICD (needs to point to localhost KG2)
+                self.rtx_kg2_url = f"https://arax.ncats.io/beta/api/rtxkg2/v{self.trapi_major_version}"
 
         # Default to KG2c neo4j
         self.neo4j_kg2 = "KG2c"
