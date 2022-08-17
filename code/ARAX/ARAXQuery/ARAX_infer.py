@@ -84,6 +84,7 @@ class ARAXInfer:
             "description": "The number of paths connecting to each returned drug node. If not provided defaults to 20."
         }
         self.EDTD = ExplainableDTD()
+        self.synonymizer = NodeSynonymizer()
 
         #command descriptions
         self.command_definitions = {
@@ -310,15 +311,22 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         # dtd.set_query_disease(self.parameters['node_curie'])
         # top_drugs = dtd.predict_top_N_drugs(self.parameters['n_drugs'])
         # top_paths = dtd.predict_top_M_paths(self.parameters['n_paths'])
+        normalized_curie = self.synonymizer.get_canonical_curies(self.parameters['node_curie'])[self.parameters['node_curie']]
+        if normalized_curie:
+            preferred_curie = normalized_curie['preferred_curie']
+            self.response.debug(f"Get a preferred sysnonym {preferred_curie} from Node Synonymizer for {self.parameters['node_curie']}")
+        else:
+            self.response.warning(f"Could not get a preferred sysnonym for disease {self.parameters['node_curie']}")
+
         try:
-            top_drugs = self.EDTD.get_top_drugs_for_disease(disease_ids=self.parameters['node_curie'])
-            top_paths = self.EDTD.get_top_paths_for_disease(disease_ids=self.parameters['node_curie'])
+            top_drugs = self.EDTD.get_top_drugs_for_disease(disease_ids=preferred_curie)
+            top_paths = self.EDTD.get_top_paths_for_disease(disease_ids=preferred_curie)
         except:
-            self.response.error(f"Could not get top drugs and paths for disease {self.parameters['node_curie']}", error_code="ValueError")
+            self.response.error(f"Could not get top drugs and paths for disease {preferred_curie}", error_code="ValueError")
             return self.response
 
         if len(top_drugs) == 0:
-            self.response.error(f"Could not get predicted drugs for disease {self.parameters['node_curie']}. Likely the model was not trained with this disease.", error_code="ValueError")
+            self.response.error(f"Could not get predicted drugs for disease {preferred_curie}. Likely the model was not trained with this disease.", error_code="ValueError")
             return self.response
 
         # FW: temp fix to use the pickle fil for dev work rather than recomputing
