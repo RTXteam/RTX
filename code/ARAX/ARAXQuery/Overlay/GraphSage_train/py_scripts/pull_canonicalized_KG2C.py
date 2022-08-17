@@ -15,7 +15,7 @@ output_path = args.OutFolder
 
 ## Connect to neo4j database
 rtxc = RTXConfiguration()
-rtxc.live = 'KG2c'
+rtxc.neo4j_kg2 = "KG2c"
 driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 session = driver.session()
 
@@ -28,8 +28,8 @@ session = driver.session()
 ## Pull a dataframe of all of the graph edges excluding:
 # the edges with one end node with all_categories including 'drug' and another end node with all_categories including 'disease'
 # 'drug' here represents all nodes with cateory that is either 'biolink:Drug' or 'biolink:SmallMolecule'
-# 'disease' here represents all nodes with cateory that is either 'biolink:Disease'. 'biolink:PhenotypicFeature' or 'biolink:DiseaseOrPhenotypicFeature'
-query = "match (disease) where (disease.category='biolink:Disease' or disease.category='biolink:PhenotypicFeature' or disease.category='biolink:DiseaseOrPhenotypicFeature') with collect(distinct disease.id) as disease_ids match (drug) where (drug.category='biolink:Drug' or drug.category='biolink:SmallMolecule') with collect(distinct drug.id) as drug_ids, disease_ids as disease_ids match (m1)-[]-(m2) where m1<>m2 and not (m1.id in drug_ids and m2.id in disease_ids) and not (m1.id in disease_ids and m2.id in drug_ids) with distinct m1 as node1, m2 as node2 return node1.id as source, node2.id as target"
+# 'disease' here represents all nodes with cateory that is either 'biolink:Disease'. 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature', 'biolink:ClinicalFinding' or 'biolink:BehavioralFeature'
+query = "match (disease) where (disease.category='biolink:Disease' or disease.category='biolink:PhenotypicFeature' or disease.category='biolink:DiseaseOrPhenotypicFeature' or disease.category='biolink:ClinicalFinding' or disease.category='biolink:BehavioralFeature') with collect(distinct disease.id) as disease_ids match (drug) where (drug.category='biolink:Drug' or drug.category='biolink:SmallMolecule') with collect(distinct drug.id) as drug_ids, disease_ids as disease_ids match (m1)-[]-(m2) where m1<>m2 and not (m1.id in drug_ids and m2.id in disease_ids) and not (m1.id in disease_ids and m2.id in drug_ids) with distinct m1 as node1, m2 as node2 return node1.id as source, node2.id as target"
 res = session.run(query)
 KG2_alledges = pd.DataFrame(res.data())
 KG2_alledges.to_csv(output_path + '/graph_edges.txt', sep='\t', index=None)
@@ -48,7 +48,7 @@ drugs = pd.DataFrame(res.data())
 drugs.to_csv(output_path + '/drugs.txt', sep='\t', index=None)
 
 ## Pulls a dataframe of all of the graph disease and phenotype nodes
-query = "match (n) where (n.category='biolink:PhenotypicFeature') or (n.category='biolink:Disease') or (n.category='biolink:DiseaseOrPhenotypicFeature') with distinct n.id as id, n.name as name return id, name"
+query = "match (n) where (n.category='biolink:PhenotypicFeature') or (n.category='biolink:Disease') or (n.category='biolink:DiseaseOrPhenotypicFeature') or (n.category='biolink:ClinicalFinding') or (n.category='biolink:BehavioralFeature') with distinct n.id as id, n.name as name return id, name"
 res = session.run(query)
 diseases = pd.DataFrame(res.data())
 diseases.to_csv(output_path + '/diseases.txt', sep='\t', index=None)

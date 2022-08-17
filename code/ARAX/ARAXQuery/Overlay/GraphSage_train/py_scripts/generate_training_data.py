@@ -142,16 +142,19 @@ class QueryMyChem:
         results = QueryMyChem._access_api(chem_id)
         if results is not None:
             json_dict = json.loads(results)
-            if "drugcentral" in json_dict.keys():
-                drugcentral = json_dict['drugcentral']
-                if isinstance(drugcentral, list):
-                    drugcentral = drugcentral[0]
-                if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
-                    drug_uses = drugcentral['drug_use']
-                    if QueryMyChem._has_dirty_cache(drug_uses):
-                        indications, contraindications = QueryMyChem._handle_dirty_cache(drug_uses)
-                    else:
-                        indications, contraindications = QueryMyChem._handle_clean_cache(drug_uses)
+            try:
+                if "drugcentral" in json_dict.keys():
+                    drugcentral = json_dict['drugcentral']
+                    if isinstance(drugcentral, list):
+                        drugcentral = drugcentral[0]
+                    if isinstance(drugcentral, dict) and "drug_use" in drugcentral.keys():
+                        drug_uses = drugcentral['drug_use']
+                        if QueryMyChem._has_dirty_cache(drug_uses):
+                            indications, contraindications = QueryMyChem._handle_dirty_cache(drug_uses)
+                        else:
+                            indications, contraindications = QueryMyChem._handle_clean_cache(drug_uses)
+            except:
+                pass
         return {'indications': indications, "contraindications": contraindications}
 
 class DataGeneration:
@@ -160,7 +163,7 @@ class DataGeneration:
     def __init__(self):
         ## Connect to neo4j database
         rtxc = RTXConfiguration()
-        rtxc.live = 'KG2c'
+        rtxc.neo4j_kg2 = 'KG2c'
         print(f"You're using '{rtxc.neo4j_bolt}'", flush=True)
         self.driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 
@@ -502,8 +505,8 @@ class DataGeneration:
 if __name__ == "__main__":
     dataGenerator = DataGeneration()
     drugs = dataGenerator.get_drug_curies_from_graph()
-    drugs.to_csv('/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_5/raw_training_data/drugs.txt',sep='\t',index=False)
-    dataGenerator.generate_MyChemData(drugs=drugs, output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_5/raw_training_data',dist=2, batchsize=50)
+    drugs.to_csv('/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_6/raw_training_data/drugs.txt',sep='\t',index=False)
+    dataGenerator.generate_MyChemData(drugs=drugs, output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_7_6/raw_training_data',dist=2, batchsize=50)
 #     For semmedVER43_2020_R_PREDICATION.sql.gz, you might dowload from /data/orangeboard/databases/KG2.3.4/semmedVER43_2020_R_PREDICATION.sql.gz on arax.ncats.io server or directly download the latest one from semmedb website
 #     dataGenerator.generate_SemmedData(mysqldump_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/semmedVER43_2020_R_PREDICATION.sql.gz', output_path='/home/cqm5886/work/RTX/code/reasoningtool/MLDrugRepurposing/Test_graphsage/kg2_5_1/raw_training_data/')
     

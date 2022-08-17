@@ -10,7 +10,7 @@
 # sftp -i /etc/ssh-key/ssh-key-SECRET_FILE -o StrictHostKeyChecking=no -pr team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/databases/ /
 
 # variables
-config_file="/configs/configv2.json"
+config_file="/configs/config_dbs.json"
 # associative array serves as dict
 # here we build db_arr with db_path_pvc as its key and 1 as its value, which equivilent to "set"
 # db_arr:     most updated db file path on PVC (in this case, /databases)
@@ -32,19 +32,20 @@ echo "
       #                                                                              #
       ################################################################################"
 
-# build db_arr which includes all needed db files in configv2.json
+# build db_arr which includes all needed db files in config_dbs.json
 echo "Reading ${confgi_file} and building new db_arr specified in ${config_file}....."
 printf "\n"
-for db in $(jq -r '.Contextual.Production | keys | .[]' ${config_file})
+for db in $(jq -r '.database_downloads | keys[]' ${config_file})
 do
-  # NOTE: if there's no .path value, the result will be a string "null"
-  db_path=$(jq -r '.Contextual.Production.'${db}' | .path' ${config_file})
+  db_path=$(jq -r '.database_downloads.'${db} ${config_file})
+  echo $db_path
   if [ ${db_path} != "null" ]
   then
     db_path_pvc="${db_path/'/translator/data/orangeboard'}"
-    # echo $db_path_pvc
+    echo $db_path_pvc
     db_arr[${db_path_pvc}]=1
     new_db_MD5="${db_path/'/translator/data/orangeboard/databases'/${md5_sums_new}}.md5"
+    echo $new_db_MD5
     new_db_MD5_arr[${new_db_MD5}]=1
   fi
 done
@@ -54,9 +55,9 @@ done
 
 
 # clean up current db first
-# check if there's db file not listed in configv2.json and rm 
+# check if there's db file not listed in config_dbs.json and rm 
 # this is useful when a new db (or a new version of existing db) rolls out
-# and we only want to keep what is specificed in configv2.json file
+# and we only want to keep what is specificed in config_dbs.json file
 echo "Removing outdated db files......"
 for existing_db in $(find $db_folder -type f)
 do 
@@ -81,7 +82,7 @@ sftp -i $sftp_key -o StrictHostKeyChecking=no -pr ${sftp_url}/md5_sums/ $md5_sum
 printf '\n'
 
 # this is tricky, we download all MD5 info, some are needed, some are not
-# we need to loop through all downloaded MD5s, remove others but only keep the needed ones, which is from the configv2.json
+# we need to loop through all downloaded MD5s, remove others but only keep the needed ones, which is from the config_dbs.json
 for MD5 in $(find $md5_sums_new -type f)
 do
   if [[ ! ${new_db_MD5_arr[${MD5}]} ]]

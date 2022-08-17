@@ -20,6 +20,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
     - [ ] the entire build process (synonymizer + KG2c) shouldn't have taken more than ~24 hours
     - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax.ncats.io` (`/data/orangeboard/databases/KG2.X.Y`)
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
+  - [ ] verify the correct KG2 version was uploaded by running this query: `match (n {id:"RTX:KG2c"}) return n`
   - [ ] copy the auto-generated KG2c dump from the Neo4j-hosting instance to `arax.ncats.io` like so:
     - `scp /home/ubuntu/kg2-build/kg2c.dump rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.X.Y/extra_files`
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
@@ -109,10 +110,11 @@ TODO
 - [ ] turn off the old KG2c version's neo4j instance
 - [ ] turn off the old KG2c version's plover instance
 - [ ] turn off the new KG2pre version's neo4j instance
-- [ ] upgrade the NCATS-hosted Plover endpoint (https://kg2cploverdb.ci.transltr.io) to this KG2 version and make the KG2 API start using it (instead of our self-hosted endpoint): 
+- [ ] upgrade the ITRB Plover endpoint (https://kg2cploverdb.ci.transltr.io) to this KG2 version and make the KG2 API start using it (instead of our self-hosted endpoint): 
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
     - [ ] wait about 45 minutes for the endpoint to rebuild and then run Plover tests to verify it's working
     - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in: use a `config_local.json` that points to it and locally set `force_local = True` in Expand
-    - [ ] if all tests pass, update the master `configv2.json` on araxconfig.rtx.ai to point to this Plover endpoint
-    - [ ] delete the arax.ncats.io `kg2` endpoint's `configv2.json` to force it to download the new copy and then verify it's working correctly by running a query
+    - [ ] if all tests pass, update the master `configv2.json` on `araxconfig.rtx.ai` to point to this Plover endpoint
+    - [ ] delete the arax.ncats.io `kg2beta` endpoint's `configv2.json` to force it to download the new copy and then verify it's working correctly by running a query (at https://arax.ncats.io/kg2beta/)
+    - [ ] delete the arax.ncats.io `kg2NewFmt` endpoint's `configv2.json` to force it to download the new copy and then verify it's working correctly by running a query (at https://arax.ncats.io/kg2NewFmt/)
     - [ ] turn off our plover endpoint and verify once more that ARAX is still working ok

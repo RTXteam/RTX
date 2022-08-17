@@ -153,7 +153,6 @@ if __name__ == '__main__':
 
     # create the RTXConfiguration object
     rtxConfig = RTXConfiguration()
-    rtxConfig.live = args.live
 
     # create an Orangeboard object
     ob = Orangeboard(debug=True)
