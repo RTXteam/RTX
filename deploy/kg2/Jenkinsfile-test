@@ -16,8 +16,8 @@ pipeline {
     }
     environment {
         DOCKER_REPO_NAME = "translator-rtx-kg2"
-        KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-ci-blue-cluster"
-        KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
+        KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-test-blue-cluster"
+        KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-test-green-cluster"
         NAMESPACE = "rtx"
         SECRET_NAME = "sftp-ssh-key"
         CFGFILE2DL = "team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/config_secrets.json"
@@ -30,7 +30,7 @@ pipeline {
           steps{
               script {
                   BUILD_VERSION_GENERATED = VersionNumber(
-                      versionNumberString: 'v${BUILD_YEAR, XX}.${BUILD_MONTH, XX}${BUILD_DAY, XX}.${BUILDS_TODAY}',
+                      versionNumberString: 'v${BUILD_YEAR, XX}.${BUILD_MONTH, XX}${BUILD_DAY, XX}.${BUILDS_TODAY}-test',
                       projectStartDate:    '1970-01-01',
                       skipFailedBuilds:    true)
                   currentBuild.displayName = BUILD_VERSION_GENERATED
