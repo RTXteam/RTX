@@ -25,4 +25,24 @@ code/UI/OpenAPI/python-flask-server/openapi_server/flask_config.json
 
 code/config.domain
 
+*.db
+*.sqlite
+*.bash_profile
+*.cache
+
+code/UI/interactive/config.js
+data/respons*
+
 code/ARAX/KnowledgeSources/db_versions.json
+code/ARAX/KnowledgeSources/*.pickle
+code/ARAX/KnowledgeSources/meta_kg*.json
+code/ARAX/KnowledgeSources/Prediction/*.pkl
+code/ARAX/KnowledgeSources/Prediction/*.txt
+code/ARAX/KnowledgeSources/Prediction/*.gz
+
+code/ARAX/NodeSynonymizer/*.tsv
+code/ARAX/NodeSynonymizer/*.pickle
+code/ARAX/NodeSynonymizer/kg2_synonyms.json
+
+code/kg2c/**/*.tsv
+code/kg2c/*.pickle
