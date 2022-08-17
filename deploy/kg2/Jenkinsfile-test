@@ -69,7 +69,7 @@ pipeline {
                       credentialsId: 'team-expander-ops-sshkey',
                       keyFileVariable: 'SECRET_FILE')
                   ]){
-                    withAWS(credentials:'aws-ifx-deploy') 
+                    withAWS(credentials:'eks-test-access') 
                     {
                         sh '''
                         # Need to save the credential to a file with base64 encoded under deploy/kg2/secret
