@@ -58,7 +58,7 @@ pipeline {
                     }
                 }
             }
-          }
+        }
       stage('Deploy to AWS EKS Blue') {
           steps {
               configFileProvider([
