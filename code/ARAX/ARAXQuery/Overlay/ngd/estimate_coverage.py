@@ -28,8 +28,7 @@ RTXindex = pathlist.index("RTX")
 
 def _run_cypher_query(cypher_query: str, kg='KG2') -> List[Dict[str, any]]:
     rtxc = RTXConfiguration()
-    if kg == 'KG2':
-        rtxc.live = "KG2"
+    rtxc.neo4j_kg2 = "KG2pre"
     try:
         driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
         with driver.session() as session:
@@ -124,8 +123,7 @@ def estimate_percent_nodes_covered_by_backup_method(kg: str):
 def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
     print(f"Estimating the percent of {kg} nodes covered by the local NGD system..")
     rtxc = RTXConfiguration()
-    if kg == 'KG2':
-        rtxc.live = "KG2"
+    rtxc.neo4j_kg2 = "KG2pre"
     #curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
     curie_to_pmids_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
     curie_to_pmid_db = SqliteDict(f"{curie_to_pmids_path}{os.path.sep}{rtxc.curie_to_pmids_path.sep('/')[-1]}")
@@ -174,8 +172,7 @@ def report_on_curies_missed_by_local_ngd(kg: str):
     synonymizer = NodeSynonymizer()
     #curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
     rtxc = RTXConfiguration()
-    if kg == 'KG2':
-        rtxc.live = "KG2"
+    rtxc.neo4j_kg2 = "KG2pre"
     curie_to_pmids_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
     curie_to_pmid_db = SqliteDict(f"{curie_to_pmids_path}{os.path.sep}{rtxc.curie_to_pmids_path.sep('/')[-1]}")
     batch_size = 50

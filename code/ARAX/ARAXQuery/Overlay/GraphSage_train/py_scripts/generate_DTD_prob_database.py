@@ -19,7 +19,6 @@ parser.add_argument("-l", "--live", type=str, help="Live parameter for RTXConfig
 
 args = parser.parse_args()
 
-RTXConfig.live = args.live
 
 file_list = os.listdir(args.inputfolder)
 databasefile = pd.concat([pd.read_csv(os.path.join(args.inputfolder, file_name), sep='\t', header=None) for file_name in file_list]).rename(columns={0:'disease', 1:'drug', 2:'prob'})

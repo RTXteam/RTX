@@ -52,21 +52,21 @@ class DTDQuerier:
         if os.path.exists(self.pkl_file):
             pass
         else:
-            os.system(f"scp {self.RTXConfig.log_model_username}@{self.RTXConfig.log_model_host}:{self.RTXConfig.log_model_path} " + self.pkl_file)
+            os.system(f"scp {self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.log_model_path} " + self.pkl_file)
 
         ## check if there is GRAPH.sqlite
         self.db_file = f"{filepath}/{self.RTXConfig.graph_database_path.split('/')[-1]}"
         if os.path.exists(self.db_file):
             pass
         else:
-            os.system(f"scp {self.RTXConfig.graph_database_username}@{self.RTXConfig.graph_database_host}:{self.RTXConfig.graph_database_path} " + self.db_file)
+            os.system(f"scp {self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.graph_database_path} " + self.db_file)
 
         ## check if there is DTD_probability_database.db
         self.DTD_prob_db_file = f"{filepath}/{self.RTXConfig.dtd_prob_path.split('/')[-1]}"
         if os.path.exists(self.DTD_prob_db_file):
             pass
         else:
-            os.system(f"scp {self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path} " + self.DTD_prob_db_file)
+            os.system(f"scp {self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.dtd_prob_path} " + self.DTD_prob_db_file)
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -924,8 +924,7 @@ class DTDQuerier:
     @staticmethod
     def _run_cypher_query(cypher_query: str, kg_name: str, log: ARAXResponse) -> List[Dict[str, any]]:
         rtxc = RTXConfiguration()
-        if "KG2" in kg_name:  # Flip into KG2 mode if that's our KP (rtx config is set to KG1 info by default)
-            rtxc.live = kg_name
+        rtxc.neo4j_kg2 = "KG2c"
         try:
             driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
             with driver.session() as session:

@@ -93,8 +93,7 @@ def update_node_pairs_dict(node_pairs_dict, subject_type, object_type, predicate
 
 def run_neo4j_query(cypher, kg_name):
     rtx_config = RTXConfiguration()
-    if kg_name == "KG2":  # Flip into KG2 mode if this is a KG2 query (otherwise we're already set to use KG1)
-        rtx_config.live = "KG2"
+    rtx_config.neo4j_kg2 = "KG2pre"
     driver = GraphDatabase.driver(rtx_config.neo4j_bolt, auth=(rtx_config.neo4j_username, rtx_config.neo4j_password))
     with driver.session() as session:
         start = time.time()

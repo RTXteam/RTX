@@ -3,6 +3,9 @@ FROM ubuntu:20.04
 # suppress debconf error messages:
 ARG DEBIAN_FRONTEND=noninteractive
 
+# build based on branch
+ARG BUILD_BRANCH=master
+
 # add user "rt" and give sudo privilege:
 RUN useradd rt -m -s /bin/bash
 
@@ -29,7 +32,8 @@ RUN chmod -R 700 /home/rt/.ssh
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt.rt /mnt/data/orangeboard/production
 RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && git checkout itrb-test
+# 08/12/2022 NCATS change
+RUN su rt && cd /mnt/data/orangeboard/production/RTX && git checkout ${BUILD_BRANCH}
 RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
