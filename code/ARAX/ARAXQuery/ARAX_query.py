@@ -278,6 +278,11 @@ class ARAXQuery:
         #### Announce the launch of query()
         #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
         response.info(f"{mode} Query launching on incoming Query")
+        response.debug(f"RTXConfiguration says maturity={self.rtxConfig.maturity}, "
+                       f"current_branch={self.rtxConfig.current_branch_name}, "
+                       f"is_itrb_instance={self.rtxConfig.is_itrb_instance}, "
+                       f"arax_version={self.rtxConfig.arax_version}, "
+                       f"trapi_version={self.rtxConfig.trapi_version}")
 
         #### Create an empty envelope
         messenger = ARAXMessenger()
@@ -466,7 +471,7 @@ class ARAXQuery:
 
         # Define allowed qnode and qedge attributes to check later
         allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'option_group_id': 1, 'name': 1, 'constraints': 1 }
-        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'constraints': 1, 'knowledge_type': 1 }
+        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'attribute_constraints': 1, 'qualifier_constraints': 1, 'knowledge_type': 1 }
 
         #### Loop through nodes checking the attributes
         for id,qnode in message['query_graph']['nodes'].items():
@@ -848,12 +853,31 @@ class ARAXQuery:
 
             # Store the validation and provenance metadata
             #trapi_version = '1.2.0'
-            #validate(response.envelope,'Response',trapi_version)
-            #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
+            #try:
+            #    validate(response.envelope,'Response',trapi_version)
+            #    if 'description' not in response.envelope or response.envelope['description'] is None:
+            #        response.envelope['description'] = 'reasoner-validator: PASS'
+            #    response.envelope['validation_result'] = { 'status': 'PASS', 'version': trapi_version, 'message': '' }
+
+            #except ValidationError as error:
+            #    timestamp = str(datetime.now().isoformat())
+            #    if 'logs' not in response.envelope or response.envelope['logs'] is None:
+            #        response.envelope['logs'] = []
+            #    response.envelope['logs'].append( { "code": 'InvalidTRAPI', "level": "ERROR", "message": "TRAPI validator reported an error: " + str(error),
+            #                                        "timestamp": timestamp } )
+            #    if 'description' not in reponse.envelope or response.envelope['description'] is None:
+            #        response.envelope['description'] = ''
+            #    response.envelope['description'] = 'ERROR: TRAPI validator reported an error: ' + str(error) + ' --- ' + response.envelope['description']
+            #    response.envelope['validation_result'] = { 'status': 'FAIL', 'version': trapi_version, 'message': 'TRAPI validator reported an error: ' + str(error) + ' --- ' + response.envelope['description'] }
+
+
             #from ARAX_attribute_parser import ARAXAttributeParser
             #attribute_parser = ARAXAttributeParser(response.envelope,response.envelope['message'])
             #response.envelope.validation_result['provenance_summary'] = attribute_parser.summarize_provenance_info()
+            #
             #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
+            #
+
             if response.envelope.query_options is None:
                 response.envelope.query_options = {}
             response.envelope.query_options['query_plan'] = response.query_plan
@@ -875,7 +899,7 @@ class ARAXQuery:
             #### If asking for the full message back
             if return_action['parameters']['response'] == 'true':
                 if mode == 'asynchronous':
-                    response.info(f"Processing is complete. Attempting to the result to the callback URL.")
+                    response.info(f"Processing is complete. Attempting to send the result to the callback URL.")
                     self.send_to_callback(callback, response)
                 else:
                     response.info(f"Processing is complete. Transmitting resulting Message back to client.")

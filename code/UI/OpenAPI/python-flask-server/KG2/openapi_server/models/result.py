@@ -282,7 +282,7 @@ class Result(Model):
     def score(self):
         """Gets the score of this Result.
 
-        Any type of score associated with this result  # noqa: E501
+        A numerical score associated with this result indicating the relevance or confidence of this result relative to others in the returned set. Higher MUST be better.  # noqa: E501
 
         :return: The score of this Result.
         :rtype: float
@@ -293,7 +293,7 @@ class Result(Model):
     def score(self, score):
         """Sets the score of this Result.
 
-        Any type of score associated with this result  # noqa: E501
+        A numerical score associated with this result indicating the relevance or confidence of this result relative to others in the returned set. Higher MUST be better.  # noqa: E501
 
         :param score: The score of this Result.
         :type score: float

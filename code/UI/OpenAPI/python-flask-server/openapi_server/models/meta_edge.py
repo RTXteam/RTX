@@ -19,7 +19,7 @@ class MetaEdge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, subject=None, predicate=None, object=None, attributes=None):  # noqa: E501
+    def __init__(self, subject=None, predicate=None, object=None, knowledge_types=None, attributes=None):  # noqa: E501
         """MetaEdge - a model defined in OpenAPI
 
         :param subject: The subject of this MetaEdge.  # noqa: E501
@@ -28,6 +28,8 @@ class MetaEdge(Model):
         :type predicate: str
         :param object: The object of this MetaEdge.  # noqa: E501
         :type object: str
+        :param knowledge_types: The knowledge_types of this MetaEdge.  # noqa: E501
+        :type knowledge_types: List[str]
         :param attributes: The attributes of this MetaEdge.  # noqa: E501
         :type attributes: List[MetaAttribute]
         """
@@ -35,6 +37,7 @@ class MetaEdge(Model):
             'subject': str,
             'predicate': str,
             'object': str,
+            'knowledge_types': List[str],
             'attributes': List[MetaAttribute]
         }
 
@@ -42,12 +45,14 @@ class MetaEdge(Model):
             'subject': 'subject',
             'predicate': 'predicate',
             'object': 'object',
+            'knowledge_types': 'knowledge_types',
             'attributes': 'attributes'
         }
 
         self._subject = subject
         self._predicate = predicate
         self._object = object
+        self._knowledge_types = knowledge_types
         self._attributes = attributes
 
     @classmethod
@@ -141,6 +146,31 @@ class MetaEdge(Model):
             raise ValueError("Invalid value for `object`, must be a follow pattern or equal to `/^biolink:[A-Z][a-zA-Z]*$/`")  # noqa: E501
 
         self._object = object
+
+    @property
+    def knowledge_types(self):
+        """Gets the knowledge_types of this MetaEdge.
+
+        A list of knowledge_types that are supported by the service. If the knowledge_types is null, this means that only 'lookup' is supported. Currently allowed values are 'lookup' or 'inferred'.  # noqa: E501
+
+        :return: The knowledge_types of this MetaEdge.
+        :rtype: List[str]
+        """
+        return self._knowledge_types
+
+    @knowledge_types.setter
+    def knowledge_types(self, knowledge_types):
+        """Sets the knowledge_types of this MetaEdge.
+
+        A list of knowledge_types that are supported by the service. If the knowledge_types is null, this means that only 'lookup' is supported. Currently allowed values are 'lookup' or 'inferred'.  # noqa: E501
+
+        :param knowledge_types: The knowledge_types of this MetaEdge.
+        :type knowledge_types: List[str]
+        """
+        if knowledge_types is not None and len(knowledge_types) < 1:
+            raise ValueError("Invalid value for `knowledge_types`, number of items must be greater than or equal to `1`")  # noqa: E501
+
+        self._knowledge_types = knowledge_types
 
     @property
     def attributes(self):

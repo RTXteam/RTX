@@ -7,7 +7,8 @@ import time
 import re
 from typing import Optional
 
-from pygit2 import Repository
+import yaml
+from pygit2 import Repository, discover_repository
 
 
 class RTXConfiguration:
@@ -16,29 +17,41 @@ class RTXConfiguration:
 
     # ### Constructor
     def __init__(self):
-        self.version = "ARAX 1.2.1"  # TODO: This probably shouldn't be hardcoded? What is it used for?
+        # Determine current ARAX and TRAPI versions
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+        openapi_yaml_path = f"{file_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml"
+        with open(openapi_yaml_path) as api_file:
+            openapi_yaml = yaml.safe_load(api_file)
+        self.arax_version = openapi_yaml["info"]["version"]
+        self.trapi_version = openapi_yaml["info"]["x-trapi"]["version"]
+        first_two_trapi_version_nums = self.trapi_version.split(".")[:2]
+        self.trapi_major_version = ".".join(first_two_trapi_version_nums)
+        self.version = f"ARAX {self.arax_version}"  # Not sure exactly what this is used for; legacy?
 
         # Grab instance/domain name info, if available
-        location = os.path.dirname(os.path.abspath(__file__))
         self.instance_name = '??'
-        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', location)
+        match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', file_dir)
         if match:
             self.instance_name = match.group(1)
         if self.instance_name == 'production':
             self.instance_name = 'ARAX'
 
         try:
-            with open(location + 'config.domain') as infile:
+            with open(f"{file_dir}/config.domain") as infile:
                 for line in infile:
                     self.domain = line.strip()
         except:
             self.domain = '??'
 
         # Determine the branch we're running in
-        file_dir = os.path.dirname(os.path.abspath(__file__))
-        rtx_repo_dir = f"{file_dir}/../"
-        repo = Repository(rtx_repo_dir)
-        self.current_branch_name = repo.head.name.split("/")[-1]
+        repo_path = discover_repository(file_dir)
+        try:
+            repo = Repository(repo_path)
+            self.current_branch_name = repo.head.name.split("/")[-1]
+        except Exception:
+            # TODO: Figure out why Docker container doesn't like this Git branch determination method
+            # Ok to skip branch name here for now since domain name can be used instead in such cases
+            self.current_branch_name = None
 
         # Determine our maturity
         maturity_override_value = self._read_override_file(f"{file_dir}/maturity_override.txt")
@@ -96,27 +109,28 @@ class RTXConfiguration:
         # Set database file paths
         self.db_host = "arax.ncats.io"
         self.db_username = "rtxconfig"
-        self.cohd_database_path = self.config_dbs["cohd_database"]
+        database_downloads = self.config_dbs["database_downloads"]
+        self.cohd_database_path = database_downloads["cohd_database"]
         self.cohd_database_version = self.cohd_database_path.split('/')[-1].split('_v')[-1].replace('.db', '')
-        self.graph_database_path = self.config_dbs["graph_database"]
+        self.graph_database_path = database_downloads["graph_database"]
         self.graph_database_version = self.graph_database_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.log_model_path = self.config_dbs["log_model"]
+        self.log_model_path = database_downloads["log_model"]
         self.log_model_version = self.log_model_path.split('/')[-1].split('_v')[-1].replace('.pkl', '')
-        self.curie_to_pmids_path = self.config_dbs["curie_to_pmids"]
-        self.curie_to_pmids_version = self.config_dbs["curie_to_pmids"].split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.node_synonymizer_path = self.config_dbs["node_synonymizer"]
+        self.curie_to_pmids_path = database_downloads["curie_to_pmids"]
+        self.curie_to_pmids_version = self.curie_to_pmids_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
+        self.node_synonymizer_path = database_downloads["node_synonymizer"]
         self.node_synonymizer_version = self.node_synonymizer_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.dtd_prob_path = self.config_dbs["dtd_prob"]
+        self.dtd_prob_path = database_downloads["dtd_prob"]
         self.dtd_prob_version = self.dtd_prob_path.split('/')[-1].split('_v')[-1].replace('.db', '')
-        self.kg2c_sqlite_path = self.config_dbs["kg2c_sqlite"]
+        self.kg2c_sqlite_path = database_downloads["kg2c_sqlite"]
         self.kg2c_sqlite_version = self.kg2c_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.kg2c_meta_kg_path = self.config_dbs["kg2c_meta_kg"]
+        self.kg2c_meta_kg_path = database_downloads["kg2c_meta_kg"]
         self.kg2c_meta_kg_version = self.kg2c_meta_kg_path.split('/')[-1].split('_v')[-1].replace('.json', '')
-        self.fda_approved_drugs_path = self.config_dbs["fda_approved_drugs"]
+        self.fda_approved_drugs_path = database_downloads["fda_approved_drugs"]
         self.fda_approved_drugs_version = self.fda_approved_drugs_path.split('/')[-1].split('_v')[-1].replace('.pickle', '')
-        self.autocomplete_path = self.config_dbs["autocomplete"]
+        self.autocomplete_path = database_downloads["autocomplete"]
         self.autocomplete_version = self.autocomplete_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.explainable_dtd_db_path = self.config_dbs["explainable_dtd_db"]
+        self.explainable_dtd_db_path = database_downloads["explainable_dtd_db"]
         self.explainable_dtd_db_version = self.explainable_dtd_db_path.split('/')[-1].split('_v')[-1].replace('.db', '')
 
         # Set up mysql feedback
@@ -145,9 +159,6 @@ class RTXConfiguration:
 
         # Default to KG2c neo4j
         self.neo4j_kg2 = "KG2c"
-
-        print(f"RTXConfig: Maturity is {self.maturity}, current branch is {self.current_branch_name}, is_itrb_instance="
-              f"{self.is_itrb_instance}, plover URL is {self.plover_url}, KG2 URL is {self.rtx_kg2_url}")
 
     @staticmethod
     def _read_override_file(file_path: str) -> Optional[str]:

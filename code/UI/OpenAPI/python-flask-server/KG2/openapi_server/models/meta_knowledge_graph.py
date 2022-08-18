@@ -98,7 +98,5 @@ class MetaKnowledgeGraph(Model):
         """
         if edges is None:
             raise ValueError("Invalid value for `edges`, must not be `None`")  # noqa: E501
-        if edges is not None and len(edges) < 1:
-            raise ValueError("Invalid value for `edges`, number of items must be greater than or equal to `1`")  # noqa: E501
 
         self._edges = edges

@@ -36,6 +36,7 @@ from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 
 
+
 class QGOrganizedKnowledgeGraph:
     def __init__(self, nodes: Dict[str, Dict[str, Node]] = None, edges: Dict[str, Dict[str, Edge]] = None):
         self.nodes_by_qg_id = nodes if nodes else dict()
@@ -47,9 +48,10 @@ class QGOrganizedKnowledgeGraph:
     def add_node(self, node_key: str, node: Node, qnode_key: str):
         if qnode_key not in self.nodes_by_qg_id:
             self.nodes_by_qg_id[qnode_key] = dict()
-        # Merge attributes if this node already exists
+        # Merge appropriate properties if this node already exists
         if node_key in self.nodes_by_qg_id[qnode_key]:
             existing_node = self.nodes_by_qg_id[qnode_key][node_key]
+            # Merge attributes
             new_node_attributes = node.attributes if node.attributes else []
             if existing_node.attributes:
                 existing_attribute_triples = {get_attribute_triple(attribute) for attribute in existing_node.attributes}
@@ -58,6 +60,10 @@ class QGOrganizedKnowledgeGraph:
                 existing_node.attributes += new_attributes_unique
             else:
                 existing_node.attributes = new_node_attributes
+            # Merge query IDs (which map KG nodes to query curies they fulfill)
+            if hasattr(node, "query_ids") and node.query_ids:
+                existing_query_ids = set(existing_node.query_ids) if hasattr(existing_node, "query_ids") and existing_node.query_ids else set()
+                existing_node.query_ids = list(existing_query_ids.union(set(node.query_ids)))
         else:
             self.nodes_by_qg_id[qnode_key][node_key] = node
 
@@ -163,11 +169,13 @@ def convert_string_to_snake_case(input_string: str) -> str:
         return input_string.lower()
 
 
-def convert_to_list(string_or_list: Union[str, List[str], None]) -> List[str]:
-    if isinstance(string_or_list, str):
-        return [string_or_list]
-    elif isinstance(string_or_list, list):
-        return string_or_list
+def convert_to_list(item: Union[str, set, list, None]) -> List[str]:
+    if isinstance(item, str):
+        return [item]
+    elif isinstance(item, set):
+        return list(item)
+    elif isinstance(item, list):
+        return item
     else:
         return []
 
@@ -527,19 +535,19 @@ def get_computed_value_attribute() -> Attribute:
 
 def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
     endpoint_map = {
-        "infores:biothings-explorer": "https://api.bte.ncats.io/v1",  # TODO: Enter 1.2 endpoint once available..
-        "infores:genetics-data-provider": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.2",
-        "infores:molepro": "https://translator.broadinstitute.org/molepro/trapi/v1.2",
+        "infores:biothings-explorer": "https://api.bte.ncats.io/v1",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:genetics-data-provider": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.3",
+        "infores:molepro": "https://translator.broadinstitute.org/molepro/trapi/v1.3",
         "infores:rtx-kg2": RTXConfig.rtx_kg2_url,
-        "infores:biothings-multiomics-clinical-risk": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",
-        "infores:biothings-multiomics-wellness": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",
-        "infores:spoke": "https://spokekp.healthdatascience.cloud/api/v1.2/",
-        "infores:biothings-multiomics-biggim-drug-response": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",
-        "infores:biothings-tcga-mut-freq": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",
-        "infores:connections-hypothesis": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)
-        "infores:cohd": "https://cohd.io/api",
-        "infores:icees-dili": "https://icees-dili.renci.org",
-        "infores:icees-asthma": "https://icees-asthma.renci.org"
+        "infores:biothings-multiomics-clinical-risk": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:biothings-multiomics-wellness": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:spoke": "https://spokekp.healthdatascience.cloud/api/v1.3",
+        "infores:biothings-multiomics-biggim-drug-response": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:biothings-tcga-mut-freq": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:connections-hypothesis": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)   # TODO: Update to 1.3 once registered in SmartAPI?
+        "infores:cohd": "https://cohd.io/api",   # This should be using latest TRAPI
+        "infores:icees-dili": "https://icees-dili.renci.org",  # TODO: Update to 1.3 once registered in SmartAPI
+        "infores:icees-asthma": "https://icees-asthma.renci.org"  # TODO: Update to 1.3 once registered in SmartAPI
     }
     return endpoint_map.get(kp_name)
 
@@ -576,6 +584,22 @@ def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
         edge = kg.edges[edge_key]
         if qedge_key in edge.qedge_keys:
             del kg.edges[edge_key]
+
+
+def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool:
+    """
+    When Expand adds subclass_of self-qedges to the QG, it assigns them keys in this kind of format:
+    "subclass:n00--n00", where n00 in this case is the subject/object of the self-qedge. It's hacky to identify
+    such qedges this way, but it works well for Expand's purposes and seems unlikely a user would happen to
+    assign a qedge_key in this format.
+    """
+    basic_format_met = qedge_key.startswith("subclass:") and "--" in qedge_key
+    qnode_is_valid = False
+    if basic_format_met:
+        relevant_qnode_keys = qedge_key.split(":")[-1].split("--")
+        qnode_keys_are_equal = relevant_qnode_keys[0] == relevant_qnode_keys[1]
+        qnode_is_valid = qnode_keys_are_equal and relevant_qnode_keys[0] in qg.nodes
+    return basic_format_met and qnode_is_valid
 
 
 def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False,
@@ -713,3 +737,193 @@ def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:
     new_dict = copy.deepcopy(dict_a)
     new_dict.update(dict_b)
     return new_dict
+
+
+def get_knowledge_source_constraints(edge):
+    allowlist = None
+    denylist = set()
+    for constraint in edge.attribute_constraints:
+        if constraint.id == "biolink:knowledge_source" or constraint.id == "biolink:aggregator_knowledge_source":
+            if constraint.operator != "==":
+                raise Exception("Given incompatible operator in edge knowledge_source constraint")
+            knowledge_sources = set(constraint.value)
+            # used because "constraint.not" is invalid syntax
+            negated = getattr(constraint,"_not",False)
+            if negated:
+                denylist |= knowledge_sources
+            else:
+                if allowlist == None:
+                    allowlist = set()
+                allowlist |= knowledge_sources
+    return allowlist, denylist
+
+
+def get_standard_parameters() -> dict:
+    standard_parameters = {
+        "edge_key": {
+            "is_required": False,
+            "examples": ["e00", "[e00, e01]"],
+            "type": "string",
+            "description": "A query graph edge ID or list of such IDs to expand (default is to expand entire query graph)."
+        },
+        "node_key": {
+            "is_required": False,
+            "examples": ["n00", "[n00, n01]"],
+            "type": "string",
+            "description": "A query graph node ID or list of such IDs to expand (default is to expand entire query graph)."
+        },
+        "prune_threshold": {
+            "is_required": False,
+            "type": "integer",
+            "default": None,
+            "examples": [500, 2000],
+            "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in excess of "
+                           "this threshold will be pruned, using Fisher Exact Test to rank answers."
+        },
+        "kp_timeout": {
+            "is_required": False,
+            "type": "integer",
+            "default": None,
+            "examples": [30, 120],
+            "description": "The number of seconds Expand will wait for a response from a KP before "
+                           "cutting the query off and proceeding without results from that KP."
+        },
+        "return_minimal_metadata": {
+            "is_required": False,
+            "examples": ["true", "false"],
+            "type": "boolean",
+            "description": "Whether to omit supporting data on nodes/edges in the results (e.g., publications, "
+                           "description, etc.)."
+        }
+    }
+    return standard_parameters
+
+
+def get_kp_command_definitions() -> dict:
+    standard_parameters = get_standard_parameters()
+    return {
+        "infores:rtx-kg2": {
+            "dsl_command": "expand(kp=infores:rtx-kg2)",
+            "description": "This command reaches out to the RTX-KG2 API to find all bioentity subpaths "
+                           "that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:biothings-explorer": {
+            "dsl_command": "expand(kp=infores:biothings-explorer)",
+            "description": "This command uses BioThings Explorer (from the Service Provider) to find all bioentity "
+                           "subpaths that satisfy the query graph. Of note, all query nodes must have a type "
+                           "specified for BTE queries. In addition, bi-directional queries are only partially "
+                           "supported (the ARAX system knows how to ignore edge direction when deciding which "
+                           "query node for a query edge will be the 'input' qnode, but BTE itself returns only "
+                           "answers matching the input edge direction).",
+            "parameters": standard_parameters
+        },
+        "infores:cohd": {
+            "dsl_command": "expand(kp=infores:cohd)",
+            "description": "This command uses the Clinical Data Provider (COHD) to find all bioentity subpaths that"
+                           " satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:genetics-data-provider": {
+            "dsl_command": "expand(kp=infores:genetics-data-provider)",
+            "description": "This command reaches out to the Genetics Provider to find all bioentity subpaths that "
+                           "satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:molepro": {
+            "dsl_command": "expand(kp=infores:molepro)",
+            "description": "This command reaches out to MolePro (the Molecular Provider) to find all bioentity "
+                           "subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:biothings-multiomics-clinical-risk": {
+            "dsl_command": "expand(kp=infores:biothings-multiomics-clinical-risk)",
+            "description": "This command reaches out to the Multiomics Clinical EHR Risk KP to find all bioentity "
+                           "subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:biothings-multiomics-wellness": {
+            "dsl_command": "expand(kp=infores:biothings-multiomics-wellness)",
+            "description": "This command reaches out to the Multiomics Wellness KP to find all bioentity "
+                           "subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:spoke": {
+            "dsl_command": "expand(kp=infores:spoke)",
+            "description": "This command reaches out to the SPOKE KP to find all bioentity "
+                           "subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:biothings-multiomics-biggim-drug-response": {
+            "dsl_command": "expand(kp=infores:biothings-multiomics-biggim-drug-response)",
+            "description": "This command reaches out to the Multiomics Big GIM II Drug Response KP to find all "
+                           "bioentity subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:biothings-tcga-mut-freq": {
+            "dsl_command": "expand(kp=infores:biothings-tcga-mut-freq)",
+            "description": "This command reaches out to the Multiomics Big GIM II Tumor Gene Mutation KP to find "
+                           "all bioentity subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:arax-normalized-google-distance": {
+            "dsl_command": "expand(kp=infores:arax-normalized-google-distance)",
+            "description": "This command uses ARAX's in-house normalized google distance (NGD) database to expand "
+                           "a query graph; it returns edges between nodes with an NGD value below a certain "
+                           "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
+                           "configurable/smarter in the future.",
+            "parameters": standard_parameters
+        },
+        "infores:icees-dili": {
+            "dsl_command": "expand(kp=infores:icees-dili)",
+            "description": "This command reaches out to the ICEES knowledge provider's DILI instance to find "
+                           "all bioentity subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:icees-asthma": {
+            "dsl_command": "expand(kp=infores:icees-asthma)",
+            "description": "This command reaches out to the ICEES knowledge provider's Asthma instance to find "
+                           "all bioentity subpaths that satisfy the query graph.",
+            "parameters": standard_parameters
+        },
+        "infores:connections-hypothesis": {
+            "dsl_command": "expand(kp=infores:connections-hypothesis)",
+            "description": "This command reaches out to CHP (the Connections Hypothesis Provider) to query the probability "
+                           "of the form P(Outcome | Gene Mutations, Disease, Therapeutics, ...). It currently can answer a question like "
+                           "'Given a gene or a batch of genes, what is the probability that the survival time (day) >= a given threshold for this gene "
+                           "paired with a drug to treat breast cancer' Or 'Given a drug or a batch of drugs, what is the probability that the "
+                           "survival time (day) >= a given threshold for this drug paired with a gene to treast breast cancer'. Currently, the allowable genes "
+                           "and drugs are limited. Please refer to https://github.com/di2ag/chp_client to check what are allowable.",
+            "parameters": standard_parameters
+        },
+        "infores:arax-drug-treats-disease": {
+            "dsl_command": "expand(kp=infores:arax-drug-treats-disease)",
+            "description": "This command uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
+                           "a query graph; it returns edges between nodes with an DTD probability above a certain "
+                           "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
+                           "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
+                           "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
+                           "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
+                           "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true to "
+                           "to call DTD model to do a real-time calculation.",
+            "parameters": merge_two_dicts(standard_parameters, {
+                "DTD_threshold": {
+                    "is_required": False,
+                    "examples": [0.8, 0.5],
+                    "min": 0,
+                    "max": 1,
+                    "default": 0.8,
+                    "type": "float",
+                    "description": "What cut-off/threshold to use for expanding the DTD virtual edges."
+                },
+                "DTD_slow_mode": {
+                    "is_required": False,
+                    "examples": ["true", "false"],
+                    "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+                    "default": "false",
+                    "type": "boolean",
+                    "description": "Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability."
+                }
+            })
+        }
+    }
