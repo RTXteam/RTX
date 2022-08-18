@@ -42,6 +42,7 @@ class TRAPIQuerier:
         self.force_local = force_local
         self.kp_selector = kp_selector
         self.kp_endpoint = f"{kp_selector.get_kp_endpoint_url(kp_name)}"
+        self.qnodes_with_single_id = dict()  # This is set during the processing of each query
 
     async def answer_one_hop_query_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
