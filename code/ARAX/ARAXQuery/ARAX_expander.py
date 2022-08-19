@@ -430,9 +430,7 @@ class ARAXExpander:
                     return response
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
-                if mode == "RTXKG2":  # If this is the KG2 API, it should only use KG2; no other KPs
-                    kps_to_query = {"infores:rtx-kg2"}
-                elif not user_specified_kp:
+                if not user_specified_kp:
                     kps_to_query = set(kp_selector.get_kps_for_single_hop_qg(one_hop_qg))
                     # remove kps if this edge has kp constraints
                     allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
