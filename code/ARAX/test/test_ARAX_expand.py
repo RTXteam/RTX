@@ -314,7 +314,7 @@ def test_847_dont_expand_curie_less_edge():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True,
-                                                                        error_code="InvalidQuery")
+                                                                        error_code="QueryGraphNoIds")
 
 
 @pytest.mark.slow

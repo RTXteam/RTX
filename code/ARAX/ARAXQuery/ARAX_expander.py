@@ -221,6 +221,11 @@ class ARAXExpander:
             return response
         parameters = self._set_and_validate_parameters(kp, input_parameters, kp_selector, log)
 
+        # Check if at least one query node has a non-empty ids property
+        all_ids = [node.ids for node in message.query_graph.nodes.values()]
+        if not any(all_ids):
+            log.error("QueryGraph has no nodes with ids. At least one node must have a specified 'ids'", error_code="QueryGraphNoIds")
+
         # Default to expanding the entire query graph if the user didn't specify what to expand
         if not parameters['edge_key'] and not parameters['node_key']:
             parameters['edge_key'] = list(message.query_graph.edges)
