@@ -59,7 +59,7 @@ class RTXConfiguration:
             self.maturity = maturity_override_value
         else:
             # Otherwise we'll dynamically determine our maturity based on instance/domain name and/or branch
-            if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io", "Github actions ARAX test suite"]:
+            if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io"]:
                 self.maturity = "staging"
             elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"] or self.current_branch_name == "itrb-test":
                 self.maturity = "testing"
