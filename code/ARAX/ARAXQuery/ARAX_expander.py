@@ -56,29 +56,114 @@ class ARAXExpander:
         if self.logger.hasHandlers():
             self.logger.handlers.clear()
         self.logger.addHandler(handler)
-        self.kp_command_definitions = eu.get_kp_command_definitions()
         self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {value: {operators}}})
         self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"=="}}
         self.supported_qedge_constraints = {"biolink:knowledge_source": {"=="}}
 
     def describe_me(self):
+        kp_selector = KPSelector()
+        return self.get_command_definition(kp_selector.valid_kps)
+
+    def get_command_definition(self, all_kps=None):
         """
-        Little helper function for internal use that describes the actions and what they can do
+        Little helper function for internal use that describes the actions and what they can do. (Also used for
+        auto-documentation.)
         :return:
         """
-        considered_kps = sorted(list(set(self.kp_command_definitions)))
-        kp_less = {
-                "dsl_command": "expand()",
-                "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
-                               f"fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: "
-                               f"{', '.join(considered_kps)}. It selects KPs based on the meta information provided by "
-                               f"their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick "
-                               f"but useful answers. For each QEdge, it queries the selected KPs in parallel; it will "
-                               f"timeout for a particular KP if it decides it's taking too long to respond.",
-                "parameters": eu.get_standard_parameters()
+        if not all_kps:
+            all_kps = set(eu.get_all_kps())
+        command_definition = {
+            "dsl_command": "expand()",
+            "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
+                           f"fashion, intelligently selecting which KPs to use for each edge. Candidate KPs are: "
+                           f"{', '.join(all_kps)}. (Note that this list of KPs may change unexpectedly based on the SmartAPI registry.) It selects KPs based on the meta information provided by "
+                           f"their TRAPI APIs (when available) as well as a few heuristics aimed to ensure quick "
+                           f"but useful answers. For each QEdge, it queries the selected KPs in parallel; it will "
+                           f"timeout for a particular KP if it decides it's taking too long to respond. You may also "
+                           f"optionally specify a particular KP to use via the 'kp' parameter (described below).\n"
+                           f"**Notes specific to usage of ARAX's internal KPs:**\n "
+                           f"1. NGD: The 'infores:arax-normalized-google-distance' KP uses ARAX's in-house normalized "
+                           f"google distance (NGD) database to expand "
+                           "a query graph; it returns edges between nodes with an NGD value below a certain "
+                           "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
+                           "configurable/smarter in the future.\n"
+                           "2. DTD: The 'infores:arax-drug-treats-disease' KP uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
+                           "a query graph; it returns edges between nodes with a DTD probability above a certain "
+                           "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
+                           "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
+                           "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
+                           "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
+                           "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true "
+                           "to call DTD model to do a real-time calculation.",
+            "parameters": {
+                "kp": {
+                    "is_required": False,
+                    "examples": ["infores:rtx-kg2, infores:spoke, infores:genetics-data-provider, infores:molepro"],
+                    "type": "string",
+                    "description": "The KP to ask for answers to the given query. KPs must be referred to by their"
+                                   " 'infores' curies."
+                },
+                "edge_key": {
+                    "is_required": False,
+                    "examples": ["e00", "[e00, e01]"],
+                    "type": "string",
+                    "description": "A query graph edge ID or list of such IDs to expand (default is to expand "
+                                   "entire query graph)."
+                },
+                "node_key": {
+                    "is_required": False,
+                    "examples": ["n00", "[n00, n01]"],
+                    "type": "string",
+                    "description": "A query graph node ID or list of such IDs to expand (default is to expand "
+                                   "entire query graph)."
+                },
+                "prune_threshold": {
+                    "is_required": False,
+                    "type": "integer",
+                    "default": None,
+                    "examples": [500, 2000],
+                    "description": "The max number of nodes allowed to fulfill any intermediate QNode. Nodes in "
+                                   "excess of this threshold will be pruned, using Fisher Exact Test to rank answers."
+                },
+                "kp_timeout": {
+                    "is_required": False,
+                    "type": "integer",
+                    "default": None,
+                    "examples": [30, 120],
+                    "description": "The number of seconds Expand will wait for a response from a KP before "
+                                   "cutting the query off and proceeding without results from that KP."
+                },
+                "return_minimal_metadata": {
+                    "is_required": False,
+                    "examples": ["true", "false"],
+                    "type": "boolean",
+                    "description": "Whether to omit supporting data on nodes/edges in the results (e.g., publications, "
+                                   "description, etc.)."
+                },
+                "DTD_threshold": {
+                    "is_required": False,
+                    "examples": [0.8, 0.5],
+                    "min": 0,
+                    "max": 1,
+                    "default": 0.8,
+                    "type": "float",
+                    "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
+                                   "Defines what cut-off/threshold to use for expanding the DTD virtual edges."
+                },
+                "DTD_slow_mode": {
+                    "is_required": False,
+                    "examples": ["true", "false"],
+                    "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+                    "default": "false",
+                    "type": "boolean",
+                    "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
+                                   "Specifies whether to call DTD model rather than DTD database to do a real-time "
+                                   "calculation for DTD probability."
+                }
             }
-        return [kp_less] + list(self.kp_command_definitions.values())
+        }
+        return [command_definition]
 
     def apply(self, response, input_parameters, mode: str = "ARAX"):
         force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
@@ -87,6 +172,8 @@ class ARAXExpander:
         if message.knowledge_graph is None:
             message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
         log = response
+        # this fetches the list of all registered kps with compatible versions
+        kp_selector = KPSelector(log)
 
         # If this is a query for the KG2 API, ignore all option_group_id and exclude properties (only does one-hop)
         if mode == "RTXKG2":
@@ -129,10 +216,10 @@ class ARAXExpander:
 
         # Define a complete set of allowed parameters and their defaults (if the user specified a particular KP to use)
         kp = input_parameters.get("kp")
-        if kp and kp not in self.kp_command_definitions:
-            log.error(f"Invalid KP. Options are: {set(self.kp_command_definitions)}", error_code="InvalidKP")
+        if kp and kp not in kp_selector.valid_kps:
+            log.error(f"Invalid KP. Options are: {kp_selector.valid_kps}", error_code="InvalidKP")
             return response
-        parameters = self._set_and_validate_parameters(kp, input_parameters, log)
+        parameters = self._set_and_validate_parameters(kp, input_parameters, kp_selector, log)
 
         # Check if at least one query node has a non-empty ids property
         all_ids = [node.ids for node in message.query_graph.nodes.values()]
@@ -291,7 +378,6 @@ class ARAXExpander:
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
 
             # Pre-populate the query plan with an entry for each qedge that will be expanded in this Expand() call
-            all_kps = set(self.kp_command_definitions)
             for qedge_key in ordered_qedge_keys_to_expand:
                 qedge = query_sub_graph.edges[qedge_key]
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Waiting')
@@ -305,7 +391,7 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'subject', subject_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
-                for kp in all_kps:
+                for kp in kp_selector.valid_kps:
                     response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for previous expansion step')
 
             # Expand the query graph edge-by-edge
@@ -349,8 +435,7 @@ class ARAXExpander:
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
                     kps_to_query = {parameters["kp"]}
-                    all_kps = set(self.kp_command_definitions)
-                    for kp in all_kps.difference(kps_to_query):
+                    for kp in kp_selector.valid_kps.difference(kps_to_query):
                         skipped_message = f"Expand was told to use {', '.join(kps_to_query)}"
                         response.update_query_plan(qedge_key, kp, "Skipped", skipped_message)
                 kps_to_query = list(kps_to_query)
@@ -362,7 +447,6 @@ class ARAXExpander:
                     kp_answers = [self._expand_edge_kg2_local(one_hop_qg, log)]
                 # Otherwise concurrently send this query to each KP selected to answer it
                 elif kps_to_query:
-                    kp_selector = KPSelector(log)
                     if use_asyncio:
                         kps_to_query = eu.sort_kps_for_asyncio(kps_to_query, log)
                         log.debug(f"Will use asyncio to run KP queries concurrently")
@@ -524,7 +608,7 @@ class ARAXExpander:
         answer_kg = QGOrganizedKnowledgeGraph()
 
         # Make sure we have all default parameters set specific to the KP we'll be using
-        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
+        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, kp_selector, log)
 
         # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
@@ -532,7 +616,7 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
         # Make sure the specified KP is a valid option
-        allowable_kps = set(self.kp_command_definitions.keys())
+        allowable_kps = kp_selector.valid_kps
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
@@ -633,7 +717,7 @@ class ARAXExpander:
         answer_kg = QGOrganizedKnowledgeGraph()
 
         # Make sure we have all default parameters set specific to the KP we'll be using
-        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
+        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, kp_selector, log)
 
         # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
@@ -641,7 +725,7 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
         # Make sure the specified KP is a valid option
-        allowable_kps = set(self.kp_command_definitions.keys())
+        allowable_kps = kp_selector.valid_kps
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
@@ -1194,28 +1278,26 @@ class ARAXExpander:
         log.debug(f"{kp_name}: After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
 
-    def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], log: ARAXResponse) -> Dict[str, any]:
+    def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], kp_selector: KPSelector, log: ARAXResponse) -> Dict[str, any]:
         parameters = {"kp": kp}
         if not kp:
             kp = "infores:rtx-kg2"  # We'll use a standard set of parameters (like for KG2)
+        kp_command_definitions = self.get_command_definition(kp_selector.valid_kps)[0]
 
         # First set parameters to their defaults
-        for kp_parameter_name, info_dict in self.kp_command_definitions[kp]["parameters"].items():
+        for kp_parameter_name, info_dict in kp_command_definitions["parameters"].items():
             if info_dict["type"] == "boolean":
                 parameters[kp_parameter_name] = self._convert_bool_string_to_bool(info_dict.get("default", ""))
             else:
                 parameters[kp_parameter_name] = info_dict.get("default", None)
 
         # Then override default values for any parameters passed in
-        parameter_names_for_all_kps = {param for kp_documentation in self.kp_command_definitions.values() for param in
-                                       kp_documentation["parameters"]}
         for param_name, value in input_parameters.items():
             if param_name and param_name not in parameters:
-                kp_specific_message = f"when kp={kp}" if param_name in parameter_names_for_all_kps else "for Expand"
-                log.error(f"Supplied parameter {param_name} is not permitted {kp_specific_message}",
+                log.error(f"Supplied parameter {param_name} is not permitted for Expand",
                           error_code="InvalidParameter")
-            elif param_name in self.kp_command_definitions[kp]["parameters"]:
-                param_info_dict = self.kp_command_definitions[kp]["parameters"][param_name]
+            elif param_name in kp_command_definitions["parameters"]:
+                param_info_dict = kp_command_definitions["parameters"][param_name]
                 if param_info_dict.get("type") == "boolean":
                     parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
                 elif param_info_dict.get("type") == "integer":

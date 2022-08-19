@@ -19,6 +19,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper
 from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
+from RTXConfiguration import RTXConfiguration
+RTXConfig = RTXConfiguration()
+from smartapi import SmartAPI
 
 
 class KPSelector:
@@ -27,10 +30,34 @@ class KPSelector:
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
-        self.all_kps = eu.get_all_kps()
+        self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self.get_all_kps()
+        self.valid_kps = set(self.kp_urls.keys())
         self.timeout_record = self._load_timeout_record()
         self.meta_map = self._load_meta_map()
         self.biolink_helper = BiolinkHelper()
+
+    def get_kp_endpoint_url(self,kp_name):
+        if kp_name in self.kp_urls:
+            return self.kp_urls[kp_name]
+        else:
+            return None
+
+    def get_all_kps(self) -> Set[str]:
+        smartapi = SmartAPI()
+        minor_version = RTXConfig.trapi_major_version
+        maturity = RTXConfig.maturity
+        kp_info = smartapi.get_kps(version=minor_version,req_maturity=maturity)
+
+        allowed_kp_urls = {kp["infores_name"] : kp["servers"][0]["url"] for kp in kp_info}
+        allowed_kp_urls["infores:arax-drug-treats-disease"] = None
+        allowed_kp_urls["infores:arax-normalized-google-distance"] = None
+
+        # use special logic to choose from kg2 server urls based on config
+        kg2_url = self.get_kg2_url(kp_info)
+        if kg2_url:
+            allowed_kp_urls["infores:rtx-kg2"] = kg2_url
+
+        return allowed_kp_urls, smartapi.kps_excluded_by_version, smartapi.kps_excluded_by_maturity
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
         """
@@ -52,6 +79,7 @@ class KPSelector:
         symmetrical_predicates = set(filter(self.biolink_helper.is_symmetric, predicates))
 
         # use metamap to check kp for predicate triple
+        self.log.debug(f"selecting from {len(self.valid_kps)} kps")
         accepting_kps = set()
         for kp in self.meta_map:
             if self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories):
@@ -61,9 +89,16 @@ class KPSelector:
                 accepting_kps.add(kp)
             else:
                 self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
-        kps_missing_meta_info = self.all_kps.difference(set(self.meta_map))
+        kps_missing_meta_info = self.valid_kps.difference(set(self.meta_map))
         for missing_kp in kps_missing_meta_info:
             self.log.update_query_plan(qedge_key, missing_kp, "Skipped", "No MetaKG info available")
+
+        version = RTXConfig.trapi_major_version
+        for kp in self.kps_excluded_by_version:
+            self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a TRAPI {version} endpoint")
+        maturity = RTXConfig.maturity
+        for kp in self.kps_excluded_by_maturity:
+            self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a '{maturity}' TRAPI {version} endpoint")
 
         return accepting_kps
 
@@ -137,8 +172,8 @@ class KPSelector:
     def _triple_is_in_meta_map(self, kp: str, subject_categories: Set[str], predicates: Set[str], object_categories: Set[str]) -> bool:
         kp_meta_map = self.meta_map.get(kp)
         if not kp_meta_map:
-            if kp not in self.all_kps:
-                self.log.error(f"{kp} does not seem to be a valid KP for ARAX. Valid KPs are: {self.all_kps}", error_code="InvalidKP")
+            if kp not in self.valid_kps:
+                self.log.error(f"{kp} does not seem to be a valid KP for ARAX. Valid KPs are: {self.valid_kps}", error_code="InvalidKP")
             else:
                 self.log.warning(f"Somehow missing meta info for {kp}.")
             return False
@@ -188,13 +223,13 @@ class KPSelector:
             with open(self.meta_map_path, "rb") as map_file:
                 meta_map = pickle.load(map_file)
             # Check for any missing KPs
-            missing_kps = self.all_kps.difference(set(meta_map))
+            missing_kps = self.valid_kps.difference(set(meta_map))
             if missing_kps:
                 self.log.debug(f"Missing meta info for {missing_kps}")
                 meta_map = self._refresh_meta_map(missing_kps, meta_map)
 
         # Make sure the map doesn't contain any 'stale' KPs
-        stale_kps = set(meta_map).difference(self.all_kps)
+        stale_kps = set(meta_map).difference(self.valid_kps)
         if stale_kps:
             for stale_kp in stale_kps:
                 self.log.debug(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
@@ -206,7 +241,7 @@ class KPSelector:
 
     def _refresh_meta_map(self, kps: Optional[Set[str]] = None, meta_map: Optional[Dict[str, dict]] = None):
         # Create an up to date version of the meta map
-        kps_to_update = kps if kps else self.all_kps
+        kps_to_update = kps if kps else self.valid_kps
 
         if not meta_map:
             # Load whatever pre-existing meta-map we might already have (could use this info in case an API fails)
@@ -226,7 +261,7 @@ class KPSelector:
                            f"within the last 10 minutes")
         functioning_kps_to_update = set(kps_to_update).difference(set(non_functioning_kps))
         for kp in functioning_kps_to_update:
-            kp_endpoint = eu.get_kp_endpoint_url(kp)
+            kp_endpoint = self.get_kp_endpoint_url(kp)
             if kp_endpoint:
                 try:
                     self.log.debug(f"Getting meta info from {kp}")
@@ -241,9 +276,12 @@ class KPSelector:
                 else:
                     if kp_response.status_code == 200:
                         kp_meta_kg = kp_response.json()
-                        meta_map[kp] = {"predicates": self._convert_to_meta_map(kp_meta_kg),
-                                        "prefixes": {category: meta_node["id_prefixes"]
-                                                     for category, meta_node in kp_meta_kg["nodes"].items()}}
+                        if type(kp_meta_kg) != dict:
+                            self.log.warning(f"Skipping {kp} because they returned an invalid meta knowledge graph")
+                        else:
+                            meta_map[kp] = {"predicates": self._convert_to_meta_map(kp_meta_kg),
+                                            "prefixes": {category: meta_node["id_prefixes"]
+                                                         for category, meta_node in kp_meta_kg["nodes"].items()}}
                     else:
                         self.log.warning(f"Unable to access {kp}'s /meta_knowledge_graph endpoint (returned status of "
                                          f"{kp_response.status_code})")
@@ -342,3 +380,31 @@ class KPSelector:
         supported_prefixes = {prefix.upper() for category in categories_with_descendants
                               for prefix in self.meta_map[kp]["prefixes"].get(category, set())}
         return supported_prefixes
+
+    def get_kg2_url(self,kp_info):
+        # return override config url if there is one
+        if RTXConfig.rtx_kg2_url:
+            return RTXConfig.rtx_kg2_url
+
+        kg2_urls = []
+        for entry in kp_info:
+            if entry["infores_name"] == "infores:rtx-kg2":
+                for server in entry["servers"]:
+                    kg2_urls.append(server["url"])
+
+        if len(kg2_urls) == 0:
+            return None
+        kg2_url = kg2_urls[0]
+
+        # choose a url based on whether or not this is an itrb_instance
+        # defaulting to a non-preferred value if we can't find a preferred one
+        if RTXConfig.is_itrb_instance:
+            itrb_urls = [url for url in kg2_urls if "transltr.io" in url]
+            if len(itrb_urls) > 0:
+                kg2_url = itrb_urls[0]
+        else:
+            non_itrb_urls = [url for url in kg2_urls if "transltr.io" not in url]
+            if len(non_itrb_urls) > 0:
+                kg2_url = non_itrb_urls[0]
+
+        return kg2_url

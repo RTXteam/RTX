@@ -4,6 +4,7 @@ import copy
 import sys
 import os
 import traceback
+import yaml
 from typing import List, Dict, Union, Set, Tuple, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
@@ -21,6 +22,7 @@ from ARAX_response import ARAXResponse
 from ARAX_resultify import ARAXResultify
 from ARAX_overlay import ARAXOverlay
 from ARAX_ranker import ARAXRanker
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
@@ -671,10 +673,6 @@ def get_qg_expanded_thus_far(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph) -> Q
     qg_expanded_thus_far = QueryGraph(nodes={qnode_key: copy.deepcopy(qg.nodes[qnode_key]) for qnode_key in expanded_qnodes},
                                       edges={qedge_key: copy.deepcopy(qg.edges[qedge_key]) for qedge_key in expanded_qedges})
     return qg_expanded_thus_far
-
-
-def get_all_kps() -> Set[str]:
-    return set(get_kp_command_definitions().keys())
 
 
 def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:

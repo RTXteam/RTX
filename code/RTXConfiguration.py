@@ -150,24 +150,12 @@ class RTXConfiguration:
         else:  # Includes staging, development
             self.plover_url = self.config_dbs["plover"]["dev"]
 
-        # TEMPORARILY set KG2 url here until pulled from SmartAPI; TODO: remove this when #1466 is done
+        # Set KG2 url if an override was provided
         kg2_url_override_value = self._read_override_file(f"{file_dir}/kg2_url_override.txt")
         if kg2_url_override_value:
             self.rtx_kg2_url = kg2_url_override_value
-        elif self.is_itrb_instance:
-            if self.maturity in {"production", "prod"}:
-                self.rtx_kg2_url = f"https://kg2.transltr.io/api/rtxkg2/v{self.trapi_major_version}"
-            elif self.maturity in {"testing", "test"}:
-                self.rtx_kg2_url = f"https://kg2.test.transltr.io/api/rtxkg2/v{self.trapi_major_version}"
-            else:
-                self.rtx_kg2_url = f"https://kg2.ci.transltr.io/api/rtxkg2/v{self.trapi_major_version}"
         else:
-            if "NewFmt" in self.instance_name or self.current_branch_name == "NewFmt":
-                self.rtx_kg2_url = f"https://arax.ncats.io/api/rtxkg2/v{self.trapi_major_version}"
-            elif self.maturity in {"production", "prod"}:
-                self.rtx_kg2_url = f"https://arax.ncats.io/api/rtxkg2/v{self.trapi_major_version}"
-            else:
-                self.rtx_kg2_url = f"https://arax.ncats.io/beta/api/rtxkg2/v{self.trapi_major_version}"
+            self.rtx_kg2_url = None
 
         # Default to KG2c neo4j
         self.neo4j_kg2 = "KG2c"

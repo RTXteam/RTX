@@ -12,6 +12,8 @@ class SmartAPI:
     def __init__(self):
         """Initialize."""
         self.base_url = "http://smart-api.info/api"
+        self.kps_excluded_by_version = set()
+        self.kps_excluded_by_maturity = set()
 
 
     @lru_cache(maxsize=None)
@@ -53,6 +55,9 @@ class SmartAPI:
     # @lru_cache(maxsize=None)
     def get_trapi_endpoints(self, version=None, whitelist=None, blacklist=None):
         """Find all endpoints that match a query for TRAPI."""
+        self.kps_excluded_by_version = set()
+        self.kps_excluded_by_maturity = set()
+
         with requests_cache.disabled():
             response_content = requests.get(
                 self.base_url + "/query?limit=1000&q=TRAPI&raw=1",
@@ -111,12 +116,16 @@ class SmartAPI:
                 except KeyError:
                     maturity = None
                 servers.append({"description": description, "url": url, "maturity": maturity})
+            if len(servers) == 0:
+                continue
 
             if version is not None:
                 if url_version is None:
+                    self.kps_excluded_by_version.add(infores_name)
                     continue
                 match = re.match(version, url_version)
                 if not match:
+                    self.kps_excluded_by_version.add(infores_name)
                     continue
 
             try:
@@ -173,7 +182,9 @@ class SmartAPI:
         for name in entries:
             row = [name] + entries[name]
             # convert maturity set to more readable string format
-            row[2] = self._stringify_list(list(row[2]))
+            row[2] = list(row[2])
+            row[2].sort()
+            row[2] = self._stringify_list(row[2])
             rows.append(row)
         rows.sort(key=lambda x:x[0])
 
@@ -181,10 +192,11 @@ class SmartAPI:
             print("No results")
             return
 
-        # find longest infores_name to determine column width
-        l = max(len(row[0]) for row in rows)+1
+        # find longest elements in columns to determine column width
+        l1 = max(len(row[0]) for row in rows)+1
+        l2 = max(len(row[2]) for row in rows)+1
         # pretty print rows
-        format_str = "{:<"+str(l)+"}{:<10}{:<40}{:<4}"
+        format_str = "{:<"+str(l1)+"}{:<10}{:<"+str(l2)+"}{:<4}"
         print(format_str.format("infores name","component","maturities","n_entries"))
         for row in rows:
             print(format_str.format(*row))
@@ -222,14 +234,17 @@ class SmartAPI:
         """Find all endpoints that match a query for TRAPI which are classified as KPs. If req_maturity is given and flexible is false, this will only return KPs and KP servers with maturity levels that match req_maturity. If flexible is true, the hierarchy will be used to find the preferred maturity level if no servers match req_maturity for that KP. If no hierarchy is given, the hierarchy compliant with the standard set by Translator will be used. The whitelist and blacklist should be given as sets of infores_names, which can be used to restrict the list of KPs that are returned. Note that some KPs may not have infores names."""
 
         endpoints = self.get_trapi_endpoints(version=version, whitelist=whitelist, blacklist=blacklist)
-        KPs = [ep for ep in endpoints if ep["component"] == "KP"]
+        all_KPs = [ep for ep in endpoints if ep["component"] == "KP"]
 
         if req_maturity:
             if hierarchy == None:
                 hierarchy = ["development","staging","testing","production"]
             if req_maturity not in hierarchy:
                 raise ValueError("Invalid maturity passed to get_kps")
-            KPs = self._filter_kps_by_maturity(KPs, req_maturity, flexible, hierarchy)
+            KPs = self._filter_kps_by_maturity(all_KPs, req_maturity, flexible, hierarchy)
+
+        accepted_KP_names = [kp["infores_name"] for kp in KPs]
+        self.kps_excluded_by_maturity = {kp["infores_name"] for kp in all_KPs if kp["infores_name"] not in accepted_KP_names}
 
         return KPs
 
