@@ -98,7 +98,7 @@ class KPSelector:
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a TRAPI {version} endpoint")
         maturity = RTXConfig.maturity
         for kp in self.kps_excluded_by_maturity:
-            self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a '{maturity}' TRAPI {version} endpoint")
+            self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a {maturity} TRAPI {version} endpoint")
 
         return accepting_kps
 
