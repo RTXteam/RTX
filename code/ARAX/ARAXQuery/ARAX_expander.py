@@ -62,7 +62,8 @@ class ARAXExpander:
         self.supported_qedge_constraints = {"biolink:knowledge_source": {"=="}}
 
     def describe_me(self):
-        return self.get_command_definition()
+        kp_selector = KPSelector()
+        return self.get_command_definition(kp_selector.valid_kps)
 
     def get_command_definition(self, all_kps=None):
         """
@@ -215,8 +216,8 @@ class ARAXExpander:
 
         # Define a complete set of allowed parameters and their defaults (if the user specified a particular KP to use)
         kp = input_parameters.get("kp")
-        if kp and kp not in kp_selector.all_kps:
-            log.error(f"Invalid KP. Options are: {kp_selector.all_kps}", error_code="InvalidKP")
+        if kp and kp not in kp_selector.valid_kps:
+            log.error(f"Invalid KP. Options are: {kp_selector.valid_kps}", error_code="InvalidKP")
             return response
         parameters = self._set_and_validate_parameters(kp, input_parameters, kp_selector, log)
 
@@ -385,7 +386,7 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'subject', subject_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
-                for kp in kp_selector.all_kps:
+                for kp in kp_selector.valid_kps:
                     response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for previous expansion step')
 
             # Expand the query graph edge-by-edge
@@ -429,7 +430,7 @@ class ARAXExpander:
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
                     kps_to_query = {parameters["kp"]}
-                    for kp in kp_selector.all_kps.difference(kps_to_query):
+                    for kp in kp_selector.valid_kps.difference(kps_to_query):
                         skipped_message = f"Expand was told to use {', '.join(kps_to_query)}"
                         response.update_query_plan(qedge_key, kp, "Skipped", skipped_message)
                 kps_to_query = list(kps_to_query)
@@ -610,7 +611,7 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
         # Make sure the specified KP is a valid option
-        allowable_kps = kp_selector.all_kps
+        allowable_kps = kp_selector.valid_kps
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
@@ -719,7 +720,7 @@ class ARAXExpander:
                       f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
         # Make sure the specified KP is a valid option
-        allowable_kps = kp_selector.all_kps
+        allowable_kps = kp_selector.valid_kps
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
@@ -1276,7 +1277,7 @@ class ARAXExpander:
         parameters = {"kp": kp}
         if not kp:
             kp = "infores:rtx-kg2"  # We'll use a standard set of parameters (like for KG2)
-        kp_command_definitions = self.get_command_definition(kp_selector.all_kps)[0]
+        kp_command_definitions = self.get_command_definition(kp_selector.valid_kps)[0]
 
         # First set parameters to their defaults
         for kp_parameter_name, info_dict in kp_command_definitions["parameters"].items():

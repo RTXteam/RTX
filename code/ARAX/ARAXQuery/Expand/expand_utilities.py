@@ -23,7 +23,6 @@ from ARAX_resultify import ARAXResultify
 from ARAX_overlay import ARAXOverlay
 from ARAX_ranker import ARAXRanker
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from smartapi import SmartAPI
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
@@ -674,63 +673,6 @@ def get_qg_expanded_thus_far(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph) -> Q
     qg_expanded_thus_far = QueryGraph(nodes={qnode_key: copy.deepcopy(qg.nodes[qnode_key]) for qnode_key in expanded_qnodes},
                                       edges={qedge_key: copy.deepcopy(qg.edges[qedge_key]) for qedge_key in expanded_qedges})
     return qg_expanded_thus_far
-
-
-def get_trapi_version():
-    code_dir = f"{os.path.dirname(os.path.abspath(__file__))}/../../.."
-    openapi_yaml_path = f"{code_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml"
-    with open(openapi_yaml_path) as api_file:
-        openapi_yaml = yaml.safe_load(api_file)
-        trapi_version = openapi_yaml["info"]["x-trapi"]["version"]
-        return trapi_version
-
-
-def get_kg2_url(kp_info):
-    # return override config url if there is one
-    if RTXConfig.rtx_kg2_url:
-        return RTXConfig.rtx_kg2_url
-
-    kg2_urls = []
-    for entry in kp_info:
-        if entry["infores_name"] == "infores:rtx-kg2":
-            for server in entry["servers"]:
-                kg2_urls.append(server["url"])
-
-    if len(kg2_urls) == 0:
-        return None
-    kg2_url = kg2_urls[0]
-
-    # choose a url based on whether or not this is an itrb_instance
-    # defaulting to a non-preferred value if we can't find a preferred one
-    if RTXConfig.is_itrb_instance:
-        itrb_urls = [url for url in kg2_urls if "transltr.io" in url]
-        if len(itrb_urls) > 0:
-            kg2_url = itrb_urls[0]
-    else:
-        non_itrb_urls = [url for url in kg2_urls if "transltr.io" not in url]
-        if len(non_itrb_urls) > 0:
-            kg2_url = non_itrb_urls[0]
-
-    return kg2_url
-
-
-def get_all_kps() -> Set[str]:
-    version = get_trapi_version()
-    # remove patch number because we just need to check compatbility
-    minor_version = ".".join( version.split(".")[:2] )
-    maturity = RTXConfig.maturity
-    smartapi = SmartAPI()
-    kp_info = smartapi.get_kps(version=minor_version,req_maturity=maturity)
-
-    kp_urls = {kp["infores_name"] : kp["servers"][0]["url"] for kp in kp_info}
-    kp_urls["infores:arax-drug-treats-disease"] = None
-    kp_urls["infores:arax-normalized-google-distance"] = None
-
-    # use special logic to choose from kg2 server urls based on config
-    kg2_url = get_kg2_url(kp_info)
-    if kg2_url:
-        kp_urls["infores:rtx-kg2"] = kg2_url
-    return kp_urls
 
 
 def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:
