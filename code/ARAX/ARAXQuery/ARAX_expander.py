@@ -398,12 +398,14 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
                 for kp in kp_selector.valid_kps:
-                    response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for previous expansion step')
+                    response.update_query_plan(qedge_key, kp, 'Waiting', f'Waiting for processing of {qedge_key} to begin')
 
             # Expand the query graph edge-by-edge
             for qedge_key in ordered_qedge_keys_to_expand:
                 log.debug(f"Expanding qedge {qedge_key}")
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Expanding')
+                for kp in kp_selector.valid_kps:
+                    response.update_query_plan(qedge_key, kp, 'Waiting', 'Prepping query to send to KP')
                 message.query_graph.edges[qedge_key].filled = True  # Mark as expanded in overarching QG #1848
                 qedge = query_graph.edges[qedge_key]
                 qedge.filled = True  # Also mark as expanded in local QG #1848
