@@ -1008,6 +1008,7 @@ def test_issue692b():
     assert 'no results returned; empty knowledge graph' in response.messages_list()[0]['message']
 
 
+@pytest.mark.slow
 def test_issue720_1():
     # Test when same node fulfills different qnode_keys within same result
     actions = [
@@ -1045,6 +1046,7 @@ def test_issue720_2():
     assert response.status == 'OK'
 
 
+@pytest.mark.slow
 def test_issue720_3():
     # Tests when same node fulfills different qnode_keys in different results
     actions = [
@@ -1306,6 +1308,7 @@ def test_issue1119_d():
     assert any(result for result in message.results if not {"e01", "e02"}.issubset(set(result.edge_bindings)))
 
 
+@pytest.mark.slow
 def test_issue1146_a():
     actions = [
         "add_qnode(key=n0, ids=MONDO:0008380, categories=biolink:Disease)",
