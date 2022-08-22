@@ -100,6 +100,7 @@ def test_edge_key_removal():
         edge_key_set = edge_key_set.union(edge.qedge_keys)
     assert 'e01' not in edge_key_set
 
+@pytest.mark.slow
 def test_default_std_dev():
     query = {"operations": {"actions": [
         "create_message",
@@ -136,6 +137,7 @@ def test_default_std_dev():
     assert len(vals) == comp_len
     assert np.min(vals) > comp_val
 
+@pytest.mark.slow
 def test_std_dev():
     query = {"operations": {"actions": [
         "create_message",
@@ -176,6 +178,7 @@ def test_std_dev():
     assert len([x for x in vals if x == 1]) == 0
     assert np.max(vals) < comp_val
 
+@pytest.mark.slow
 def test_default_top_n():
     query = {"operations": {"actions": [
         "create_message",
@@ -252,6 +255,7 @@ def  test_remove_attribute_known_attributes():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
 
+@pytest.mark.slow
 def test_provided_by_filter():
     query = {"operations": {"actions": [
         "create_message",
@@ -260,9 +264,6 @@ def test_provided_by_filter():
         "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:entity_negatively_regulates_entity)",
         "expand(kp=infores:rtx-kg2)",
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:knowledge_source,value=infores:semmeddb,remove_connected_nodes=false)",
-        # The below lines are now outdated ways of doing it, but including for now to prevent error until new code is rolled out to KG2 API
-        # "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:original_source,value=infores:semmeddb,remove_connected_nodes=false)",
-        # "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by,value=infores:semmeddb,remove_connected_nodes=false)",
         "resultify()",
         #"filter_results(action=limit_number_of_results, max_results=30)",
         "return(message=true, store=false)",

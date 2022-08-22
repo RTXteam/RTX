@@ -308,6 +308,7 @@ class ResponseCache:
                     validate(envelope,'Response',trapi_version)
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = 'reasoner-validator: PASS'
+                    envelope['validation_result'] = { 'status': 'PASS', 'version': trapi_version, 'message': '' }
 
                 except ValidationError as error:
                     timestamp = str(datetime.now().isoformat())
@@ -318,6 +319,12 @@ class ResponseCache:
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = ''
                     envelope['description'] = 'ERROR: TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description']
+                    envelope['validation_result'] = { 'status': 'FAIL', 'version': trapi_version, 'message': 'TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description'] }
+
+                #### Count provenance information
+                attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
+                envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
+
                 return envelope
 
             else:
@@ -326,7 +333,7 @@ class ResponseCache:
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
             debug = False
-            ars_hosts = [ 'ars.transltr.io', 'ars-prod.transltr.io', 'ars-dev.transltr.io', 'ars.ci.transltr.io' ]
+            ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
                     if debug:

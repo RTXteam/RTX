@@ -242,16 +242,14 @@ def test_query_that_expands_same_edge_twice():
 def test_771_continue_if_no_results_query():
     actions_list = [
         "add_qnode(ids=UniProtKB:P14136, key=n00)",
-        "add_qnode(categories=biolink:BiologicalProcess, key=n01)",
-        "add_qnode(ids=NOTAREALCURIE, key=n02)",
+        "add_qnode(ids=NOTAREALCURIE, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n02, object=n01, key=e01)",
-        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
+        "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
-    assert 'n02' not in nodes_by_qg_id
-    assert 'e01' not in edges_by_qg_id
+    assert 'n01' not in nodes_by_qg_id
+    assert 'e00' not in edges_by_qg_id
 
 
 @pytest.mark.slow
@@ -314,7 +312,7 @@ def test_847_dont_expand_curie_less_edge():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True,
-                                                                        error_code="InvalidQuery")
+                                                                        error_code="QueryGraphNoIds")
 
 
 @pytest.mark.slow
@@ -736,6 +734,7 @@ def test_kg2_predicate_hierarchy_reasoning():
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
 
+@pytest.mark.slow
 def test_issue_1373_pinned_curies():
     actions_list = [
         "add_qnode(ids=chembl.compound:CHEMBL2108129, key=n00)",
@@ -904,20 +903,12 @@ def test_canonical_predicates():
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL945)",
         "add_qnode(key=n01, categories=biolink:BiologicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:participates_in)",  # Not canonical
-        "add_qnode(key=n02, categories=biolink:Disease)",
-        "add_qedge(key=e01, subject=n00, object=n02, predicates=biolink:treats)",  # Canonical form
-        "add_qnode(key=n03, categories=biolink:BiologicalEntity)",
-        "add_qedge(key=e02, subject=n00, object=n03, predicates=biolink:has_participant)",  # Canonical form
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
     e00_predicates = {edge.predicate for edge in edges_by_qg_id["e00"].values()}
-    e01_predicates = {edge.predicate for edge in edges_by_qg_id["e01"].values()}
-    e02_predicates = {edge.predicate for edge in edges_by_qg_id["e02"].values()}
     assert "biolink:has_participant" in e00_predicates and "biolink:participates_in" not in e00_predicates
-    assert "biolink:treats" in e01_predicates and "biolink:treated_by" not in e01_predicates
-    assert "biolink:has_participant" in e02_predicates and "biolink:participates_in" not in e02_predicates
 
 
 @pytest.mark.slow
@@ -1113,6 +1104,7 @@ def test_xdtd_expand():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
 
 
+@pytest.mark.slow
 def test_xdtd_different_categories():
     query = {
             "nodes": {

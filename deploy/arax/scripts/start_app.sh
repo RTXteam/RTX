@@ -1,6 +1,6 @@
 #!/bin/bash
 # rename config file
-cp /configs/configv2.json /mnt/data/orangeboard/production/RTX/code/config_local.json
+cp /configs/config_secrets.json /mnt/data/orangeboard/production/RTX/code/config_secrets.json
 
 # Update database directory permission which is mounted from a PVC
 chmod -R 777 /mnt/data/orangeboard/databases/

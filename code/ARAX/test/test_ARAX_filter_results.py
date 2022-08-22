@@ -76,6 +76,7 @@ def test_no_results():
     assert 'WARNING: [] filter_results called with no results.' in response.show(level=ARAXResponse.WARNING)
     assert response.status == 'OK'
 
+@pytest.mark.slow
 def test_prune():
     query = {"operations": {"actions": [
             "create_message",
@@ -135,6 +136,7 @@ def test_warning():
     assert response.status == 'OK'
     assert len(message.results) == 20
 
+@pytest.mark.slow
 def test_sort_by_edge_attribute():
     query = {"operations": {"actions": [
             "create_message",

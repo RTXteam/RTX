@@ -27,9 +27,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
     
-    - name: Point to local RTX-KG2
+    - name: Set up config files
       run: |
-        echo "http://localhost:5008/api/rtxkg2/v1.2" > /mnt/data/orangeboard/production/RTX/code/kg2_url_override.txt
+        scp araxconfig@araxconfig.rtx.ai:config_secrets.json /mnt/config/config_secrets.json
+        echo "http://localhost:5008/api/rtxkg2/v1.3" > /mnt/config/kg2_url_override.txt
     
     - name: Stop any running containers
       continue-on-error: true
@@ -47,15 +48,16 @@ jobs:
       run: sudo docker build --no-cache=true --rm -t rtx:test DockerBuild/ -f DockerBuild/Merged-Dockerfile
     
     - name: Run docker container
-      run: sudo docker run -d -it --name rtx_test -v /mnt/data/orangeboard/databases:/mnt/data/orangeboard/databases rtx:test
+      run: sudo docker run -d -it --name rtx_test -v /mnt/data/orangeboard/databases:/mnt/data/orangeboard/databases -v /mnt/config/kg2_url_override.txt:/mnt/data/orangeboard/production/RTX/code/kg2_url_override.txt -v /mnt/config/config_secrets.json:/mnt/data/orangeboard/production/RTX/code/config_secrets.json -v /mnt/config/config_secrets.json:/mnt/data/orangeboard/kg2/RTX/code/config_secrets.json rtx:test
     
 #     - name: Add config.domain
 #       run: |
 #         sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX/code && echo \'RTXTeam/RTX Github actions test suite\' > config.domain'"
 #         sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/kg2/RTX/code && echo \'RTXTeam/RTX Github actions test suite\' > config.domain'"
 
-    - name: Create symlinks
+    - name: Update databases and create symlinks
       run: |
+        sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused'"
         sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
         sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/kg2/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
     
