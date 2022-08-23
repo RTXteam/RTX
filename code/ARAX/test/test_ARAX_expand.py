@@ -869,6 +869,35 @@ def test_constraint_validation():
                                                                         error_code="UnsupportedConstraint")
 
 
+def test_edge_constraints():
+    query = {
+            "nodes": {
+                "n00": {
+                    "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
+                },
+                "n01": {
+                    "categories": ["biolink:ChemicalEntity"]
+                }
+            },
+            "edges": {
+                "e00": {
+                    "object": "n00",
+                    "subject": "n01",
+                    "attribute_constraints": [
+                        {
+                            "id": "biolink:knowledge_source",
+                            "name": "knowledge source",
+                            "value": ["infores:rtx-kg2","infores:arax","infores:drugbank"],
+                            "operator": "==",
+                            "not": False
+                        }
+                    ]
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
 def test_canonical_predicates():
     actions = [
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL945)",
