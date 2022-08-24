@@ -511,6 +511,7 @@ def test_issue_832():
     _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
 
 
+@pytest.mark.slow
 def test_issue_832_non_drug():
     query = {"operations": {"actions": [
         "create_message",
@@ -756,6 +757,7 @@ def test_jaccard_not_above_1():
         assert edge.attributes[0].value >= 0
         assert edge.attributes[0].value <= 1
 
+@pytest.mark.slow
 def test_ngd_sqlite_syntax_error():
     query = {"message":{"query_graph":{
           "edges": {

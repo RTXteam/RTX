@@ -62,7 +62,7 @@ class Message(Model):
     def results(self):
         """Gets the results of this Message.
 
-        List of all returned Result objects for the query posed  # noqa: E501
+        List of all returned Result objects for the query posed. The list SHOULD NOT be assumed to be ordered. The 'score' property,  if present, MAY be used to infer result rankings.  # noqa: E501
 
         :return: The results of this Message.
         :rtype: List[Result]
@@ -73,7 +73,7 @@ class Message(Model):
     def results(self, results):
         """Sets the results of this Message.
 
-        List of all returned Result objects for the query posed  # noqa: E501
+        List of all returned Result objects for the query posed. The list SHOULD NOT be assumed to be ordered. The 'score' property,  if present, MAY be used to infer result rankings.  # noqa: E501
 
         :param results: The results of this Message.
         :type results: List[Result]
