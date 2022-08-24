@@ -328,6 +328,8 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
         if len(top_drugs) == 0:
             self.response.error(f"Could not get predicted drugs for disease {preferred_curie}. Likely the model was not trained with this disease.", error_code="ValueError")
             return self.response
+        if len(top_paths) == 0:
+            self.response.warning(f"Could not get any predicted paths for disease {preferred_curie}. Likely the model considers there is no reasonable path for this disease.")
 
         # FW: temp fix to use the pickle fil for dev work rather than recomputing
         # Comment out the following 3 lines and uncomment the above for prod deploy
