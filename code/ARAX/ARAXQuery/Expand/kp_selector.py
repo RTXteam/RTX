@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import os
 import pathlib
 import sys
+import json
 from typing import Set, Dict, List, Optional
 from collections import defaultdict
 from itertools import product
@@ -56,6 +57,9 @@ class KPSelector:
         kg2_url = self.get_kg2_url(kp_info)
         if kg2_url:
             allowed_kp_urls["infores:rtx-kg2"] = kg2_url
+
+        if None in allowed_kp_urls:
+            del allowed_kp_urls[None]
 
         return allowed_kp_urls, smartapi.kps_excluded_by_version, smartapi.kps_excluded_by_maturity
 
@@ -300,7 +304,93 @@ class KPSelector:
         with open(self.timeout_record_path, "wb") as timeout_file:
             pickle.dump(self.timeout_record, timeout_file)
 
+        self._create_meta_kg(self.valid_kps)
         return meta_map
+
+    def _combine_attributes(self, obj1, obj2):
+        combined_attributes = []
+        if "attributes" in obj1 and obj1["attributes"] != None:
+            combined_attributes += obj1["attributes"]
+        if "attributes" in obj2 and obj2["attributes"] != None:
+            combined_attributes += obj2["attributes"]
+        return combined_attributes
+
+    def _merge_meta_kgs(self, super_meta_kg, sub_meta_kg):
+        super_nodes = super_meta_kg["nodes"]
+        sub_nodes = sub_meta_kg["nodes"]
+        super_edges = super_meta_kg["edges"]
+        sub_edges = sub_meta_kg["edges"]
+
+        # merge prefixes and attributes of sub meta-nodes into super meta-nodes
+        for node_key in sub_nodes:
+            if node_key not in super_nodes:
+                super_nodes[node_key] = sub_nodes[node_key]
+                continue
+
+            # merge node prefixes
+            current_prefixes = super_nodes[node_key]["id_prefixes"]
+            new_prefixes = sub_nodes[node_key]["id_prefixes"]
+            prefixes_union = set(current_prefixes + new_prefixes)
+            super_nodes[node_key]["id_prefixes"] = list(prefixes_union)
+
+            # merge node attributes (if they exist)
+            combined_attributes = self._combine_attributes(super_nodes[node_key], sub_nodes[node_key])
+            if combined_attributes:
+                super_nodes[node_key]["attributes"] = combined_attributes
+
+        get_triple = lambda edge: (edge["subject"], edge["object"], edge["predicate"])
+        meta_edge_index = {get_triple(edge) : edge for edge in super_edges}
+
+        for sub_edge in sub_edges:
+            # if no matching triple exists, add this to meta edge index
+            if get_triple(sub_edge) not in meta_edge_index:
+                meta_edge_index[get_triple(sub_edge)] = sub_edge
+
+            # if triple already exists, combine attributes
+            else:
+                super_edge = meta_edge_index[get_triple(sub_edge)]
+                combined_attributes = self._combine_attributes(super_edge, sub_edge)
+                if combined_attributes:
+                    super_edge["attributes"] = combined_attributes
+
+        super_meta_kg["edges"] = list(meta_edge_index.values())
+        return super_meta_kg
+
+    def _create_meta_kg(self,kps):
+        self.log.info("Creating a Meta-KG for ARAX by merging KP's Meta-KGs")
+        # start with rtx-kg2 meta kg
+        rtx_kg2_url = self.get_kp_endpoint_url("infores:rtx-kg2")
+        arax_meta_kg = (requests.get(f"{rtx_kg2_url}/meta_knowledge_graph", timeout=10)).json()
+
+        # for each kp, merge its meta-KG into the arax meta-KG
+        for kp in kps:
+            if kp == "infores:rtx-kg2":
+                continue
+            self.log.debug(f"Getting Meta-KG info from {kp}")
+            kp_endpoint = self.get_kp_endpoint_url(kp)
+            try:
+                kp_response = requests.get(f"{kp_endpoint}/meta_knowledge_graph", timeout=10)
+            except requests.exceptions.Timeout:
+                self.log.warning(f"{kp} was skipped because the request timed out")
+                continue
+            except Exception:
+                self.log.warning(f"{kp} was skipped because there was a problem getting their Meta-KG")
+                continue
+            try:
+                kp_meta_kg = kp_response.json()
+            except:
+                self.log.warning(f"{kp} was skipped because they returned an invalid Meta-KG")
+                continue
+            if "nodes" not in kp_meta_kg or "edges" not in kp_meta_kg:
+                self.log.warning(f"{kp} was skipped because they returned an invalid Meta-KG")
+                continue
+            arax_meta_kg = self._merge_meta_kgs(arax_meta_kg, kp_meta_kg)
+            self.log.info(f"Successfully merged {kp} into our Meta-KG")
+
+        self.log.debug(f"Creating meta kg with {len(arax_meta_kg['nodes'])} nodes and {len(arax_meta_kg['edges'])} edges")
+        with open("meta_kg.json", "w") as outfile:
+            outfile.write(json.dumps(arax_meta_kg, indent=4))
+
 
     @staticmethod
     def _convert_to_meta_map(kp_meta_kg: dict) -> dict:
