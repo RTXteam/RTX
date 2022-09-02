@@ -15,7 +15,7 @@ var UIstate = {};
 
 // defaults
 var base = "";
-var baseAPI = base + "api/arax/v1.2";
+var baseAPI = base + "api/arax/v1.3";
 var araxQuery = '';
 
 // possibly imported by calling page (e.g. index.html)
@@ -33,8 +33,8 @@ if (!araxQuery)
 var providers = {
     "ARAX" : { "url" : baseAPI },
     "ARAXQ": { "url" : araxQuery },
-    "ARS"  : { "url" : "https://ars.transltr.io/ars/api/submit" },
-    "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.2" }
+    "ARS"  : { "url" : "https://ars-prod.transltr.io/ars/api/submit" },
+    "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.3" }
 };
 
 // these attributes are floats; truncate them
@@ -64,6 +64,7 @@ function main() {
     UIstate["timeout"] = '30';
     UIstate["pruning"] = '50';
     UIstate["pid"] = null;
+    UIstate["viewing"] = null;
     UIstate["version"] = checkUIversion(false);
     UIstate["maxresults"] = 1000;
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
@@ -88,6 +89,7 @@ function main() {
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
     var rec = getQueryVariable("recent") || null;
+    var sai = getQueryVariable("smartapi") || getQueryVariable("smartAPI") || null;
 
     var response_id = getQueryVariable("r") || getQueryVariable("id") || null;
     if (response_id) {
@@ -114,6 +116,10 @@ function main() {
     else if (rec) {
         tab = "recentqs";
 	retrieveRecentQs();
+    }
+    else if (sai) {
+	tab = "kpinfo";
+	retrieveKPInfo();
     }
     openSection(tab);
     dragElement(document.getElementById('nodeeditor'));
@@ -476,7 +482,7 @@ function postQuery_ARAX(qtype,queryObj) {
 		    stream: !result.done
 		});
 
-		var completeMsgs = partialMsg.split("\n");
+		var completeMsgs = partialMsg.split("}\n");
 		//console.log("================ completeMsgs::");
 		//console.log(completeMsgs);
 
@@ -490,7 +496,6 @@ function postQuery_ARAX(qtype,queryObj) {
 		for (var msg of completeMsgs) {
 		    msg = msg.trim();
 		    if (msg == null) continue;
-
 		    //console.log("================ msg::");
 		    //console.log(msg);
 
@@ -498,6 +503,8 @@ function postQuery_ARAX(qtype,queryObj) {
 			respjson += msg;
 		    }
 		    else {
+			msg += "}"; // lost in the split, above
+
 			var jsonMsg = JSON.parse(msg);
 			if (jsonMsg.logs) { // was:: (jsonMsg.description) {
 			    enqueue = true;
@@ -553,6 +560,11 @@ function postQuery_ARAX(qtype,queryObj) {
                         else if (jsonMsg.pid) {
 			    UIstate["pid"] = jsonMsg;
 			    display_kill_button();
+			}
+			else if (jsonMsg.detail) {
+			    cmddiv.appendChild(document.createElement("br"));
+                            cmddiv.appendChild(document.createTextNode("ERROR:\u00A0"+jsonMsg.detail));
+			    throw new Error(jsonMsg.detail);
 			}
 			else {
 			    console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
@@ -621,10 +633,10 @@ function postQuery_ARAX(qtype,queryObj) {
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+err+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with parsing QUERY:<br>"+err;
 	    sesame('openmax',statusdiv);
-	    if (err.log) {
+	    if (err.log)
 		process_log(err.log);
-	    }
 	    console.log(err.message);
+
             there_was_an_error();
 	});
 }
@@ -928,6 +940,7 @@ function getIdStats(id) {
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
 	document.getElementById("nsources_"+id).innerHTML = '';
+	document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
@@ -974,6 +987,13 @@ function sendId(is_ars_refresh) {
 	reset_vars();
 	if (cyobj[99999]) {cyobj[99999].elements().remove();}
 	input_qg = { "edges": {}, "nodes": {} };
+
+	for (var item of document.querySelectorAll('[id^="resparrow_"]'))
+	    item.className = '';
+	if (document.getElementById("resparrow_"+id)) {
+	    document.getElementById("resparrow_"+id).className = 'p7';
+	    UIstate["viewing"] = id;
+	}
     }
 
     if (document.getElementById("numresults_"+id)) {
@@ -981,6 +1001,7 @@ function sendId(is_ars_refresh) {
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
         document.getElementById("nsources_"+id).innerHTML = '';
+        document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
@@ -1044,7 +1065,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.2?","N_Results","Nodes / Edges","Sources"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.3?","N_Results","Nodes / Edges","Sources","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -1064,6 +1085,11 @@ function process_ars_message(ars_msg, level) {
     tr = document.createElement("tr");
     tr.className = 'hoverable';
     td = document.createElement("td");
+    if (level) {
+	td.id = "resparrow_"+ars_msg.message;
+	if (UIstate["viewing"] == ars_msg.message)
+	    td.className = 'p7';
+    }
     td.appendChild(document.createTextNode('\u25BA'.repeat(level)));
     tr.appendChild(td);
     td = document.createElement("td");
@@ -1121,6 +1147,11 @@ function process_ars_message(ars_msg, level) {
     td.style.textAlign = "center";
     tr.appendChild(td);
 
+    td = document.createElement("td");
+    td.id = "cachelink_"+ars_msg.message;
+    td.style.textAlign = "right";
+    tr.appendChild(td);
+
     table.appendChild(tr);
 
     if (go)
@@ -1173,7 +1204,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.2 validation';
+	    nr.title = 'Failed TRAPI 1.3 validation';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all")
@@ -1185,7 +1216,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.2 validation';
+	    nr.title = 'Passed TRAPI 1.3 validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -1405,13 +1436,14 @@ function update_response_stats_on_error(rid,msg,clearall) {
 	document.getElementById("nodedges_"+rid).innerHTML = '';
 	document.getElementById("nsources_"+rid).innerHTML = '';
 	document.getElementById("istrapi_"+rid).innerHTML = '';
+	document.getElementById("cachelink_"+rid).innerHTML = '';
     }
 }
 
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     if (!respObj["schema_version"])
-	respObj["schema_version"] = "1.2 (presumed)";
+	respObj["schema_version"] = "1.3 (presumed)";
     statusdiv.appendChild(document.createTextNode("Rendering TRAPI "+respObj["schema_version"]+" message..."));
 
     sesame('openmax',statusdiv);
@@ -1625,29 +1657,38 @@ function render_response(respObj,dispjson) {
 	td.colSpan = "2";
 	tr.appendChild(td);
 	table.appendChild(tr);
+
+        var semmeddb_counts = {};
+
 	var previous0 = 'RandomTextToPurposelyTriggerThickTopBorderForFirstRowAndRepeatedDisplayOfPredicate';
 	var previous1 = 'RandomTextToOmitRepatedDisplayOfPredicateProviderType';
 	for (var prov in respObj.validation_result.provenance_summary.provenance_counts) {
+	    var provdata = respObj.validation_result.provenance_summary.provenance_counts[prov].slice();  // creates a copy (instead of a reference)
 	    var changed0 = false;
 	    var changed1 = false;
-	    if (previous0 != respObj.validation_result.provenance_summary.provenance_counts[prov][0]) {
+	    if (previous0 != provdata[0]) {
 		changed0 = true;
 		changed1 = true;
 	    }
-	    else if (previous1 != respObj.validation_result.provenance_summary.provenance_counts[prov][1])
+	    else if (previous1 != provdata[1])
 		changed1 = true;
 
-	    previous0 = respObj.validation_result.provenance_summary.provenance_counts[prov][0];
-            previous1 = respObj.validation_result.provenance_summary.provenance_counts[prov][1];
+	    previous0 = provdata[0];
+            previous1 = provdata[1];
 
 	    if (!changed0)
-		respObj.validation_result.provenance_summary.provenance_counts[prov][0] = '';
+		provdata[0] = '';
+	    else
+		semmeddb_counts[previous0] = 0;
+	    if (provdata[2] == 'infores:semmeddb')
+		semmeddb_counts[previous0] += provdata[3];
+
 	    if (!changed1)
-		respObj.validation_result.provenance_summary.provenance_counts[prov][1] = '';
+		provdata[1] = '';
 
 	    tr = document.createElement("tr");
             tr.className = 'hoverable';
-	    for (var pc of respObj.validation_result.provenance_summary.provenance_counts[prov]) {
+	    for (var pc of provdata) {
 		td = document.createElement("td");
 		if (changed0)
 		    td.style.borderTop = "2px solid #444";
@@ -1662,12 +1703,12 @@ function render_response(respObj,dispjson) {
 		td.style.borderTop = "2px solid #444";
 	    var span = document.createElement("span");
 	    span.className = "bar";
-	    var barw = 0.5*Number(respObj.validation_result.provenance_summary.provenance_counts[prov][3]);
+	    var barw = 0.5*Number(provdata[3]);
 	    if (barw > 500) {
 		barw = 501;
 		span.style.background = "#3d6d98";
 	    }
-	    if (respObj.validation_result.provenance_summary.provenance_counts[prov][2] == 'no provenance')
+	    if (provdata[2] == 'no provenance')
 		span.style.background = "#b00";
 	    span.style.width = barw + "px";
 	    span.style.height = "8px";
@@ -1698,11 +1739,20 @@ function render_response(respObj,dispjson) {
 	td.style.background = '#fff';
 	td.colSpan = "3";
 	tr.appendChild(td);
+
+	td = document.createElement("th");
+	td.style.background = '#fff';
+	td.appendChild(document.createTextNode("SEMMEDDB Sub-Counts"));
+	td.colSpan = "3";
+	td.style.textAlign = "left";
+	tr.appendChild(td);
+
+
 	table.appendChild(tr);
         for (var pred in respObj.validation_result.provenance_summary.predicate_counts) {
 	    tr = document.createElement("tr");
 	    tr.className = 'hoverable';
-	    td = document.createElement("td")
+	    td = document.createElement("td");
 	    td.colSpan = "3";
 	    td.appendChild(document.createTextNode(pred));
 	    tr.appendChild(td);
@@ -1724,6 +1774,32 @@ function render_response(respObj,dispjson) {
 	    td.appendChild(span);
 	    tr.appendChild(td);
 
+
+	    td = document.createElement("td");
+	    td.style.textAlign = "right";
+	    td.appendChild(document.createTextNode(semmeddb_counts[pred]));
+	    tr.appendChild(td);
+            // fancy bar bar
+	    td = document.createElement("td");
+	    var span = document.createElement("span");
+	    span.className = "bar";
+	    var barw = Math.round(100*Number(semmeddb_counts[pred]/respObj.validation_result.provenance_summary.predicate_counts[pred]));
+	    if (barw > 100) {
+		barw = 101;
+		span.style.background = "#3d6d98";
+	    }
+	    else
+		span.style.background = "#f80";
+	    span.style.width = barw + "px";
+	    span.style.height = "8px";
+	    td.appendChild(span);
+	    tr.appendChild(td);
+
+	    td = document.createElement("td");
+	    td.style.textAlign = "right";
+	    td.appendChild(document.createTextNode(" "+barw+"%"));
+
+	    tr.appendChild(td);
 	    table.appendChild(tr);
 	}
 	div.appendChild(table);
@@ -2421,7 +2497,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		kmne.parentdivnum = num;
 		kmne.trapiversion = trapi;
 		kmne.id = node.id;
-		//console.log("=================== kmne:"+kmne.id);
+		if (node.attributes)
+		    kmne.node_binding_attributes = node.attributes;
 		var tmpdata = { "data" : kmne };
 		cytodata[num].push(tmpdata);
 	    }
@@ -2437,7 +2514,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		kmne.target = kmne.object;
 		if (kmne.predicate)
 		    kmne.type = kmne.predicate;
-		//console.log("=================== kmne:"+kmne.id);
+		if (edge.attributes)
+		    kmne.edge_binding_attributes = edge.attributes;
 		var tmpdata = { "data" : kmne };
 		cytodata[num].push(tmpdata);
 	    }
@@ -2643,7 +2721,11 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'),null);
+        if (this.data('node_binding_attributes')) {
+	    div.appendChild(document.createElement("br"));
+	    show_attributes(div, this.data('node_binding_attributes'),"Node Binding Attributes:");
+	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2702,7 +2784,11 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'));
+	show_attributes(div, this.data('attributes'),null);
+	if (this.data('edge_binding_attributes')) {
+            div.appendChild(document.createElement("br"));
+            show_attributes(div, this.data('edge_binding_attributes'),"Edge Binding Attributes:");
+	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
@@ -2711,7 +2797,7 @@ function add_cyto(i) {
 
 
 
-function show_attributes(html_div, atts) {
+function show_attributes(html_div, atts, title) {
     if (atts == null)  { return; }
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
@@ -2720,6 +2806,16 @@ function show_attributes(html_div, atts) {
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
 
     var atts_table = document.createElement("table");
+    if (title) {
+	atts_table.className = 'numold explevel';
+	var row = document.createElement("tr");
+	var cell = document.createElement("td");
+        cell.className = 'attvalue';
+	cell.colSpan = '2';
+	cell.appendChild(document.createTextNode(title));
+	row.appendChild(cell);
+	atts_table.appendChild(row);
+    }
 
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
 	display_attribute(atts_table, att, semmeddb_sentences);
@@ -2846,7 +2942,10 @@ function display_attribute(tab, att, semmeddb) {
 	}
         else if (attributes_to_truncate.includes(att.original_attribute_name)) {
             cell.className = 'attvalue';
-	    cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
+            if (isNaN(att.value))
+		cell.appendChild(document.createTextNode(att.value));
+	    else
+		cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
 	}
 	else if (value.toString().startsWith("http")) {
 	    cell.className = 'attvalue';
@@ -4261,8 +4360,6 @@ function show_wf_operation_options(operation, index) {
     var h2 = document.createElement('h2');
     h2.style.marginBottom = 0;
     h2.innerHTML = operation;
-    if (!wf_operations[operation]['in_arax'])
-	h2.innerHTML += " *";
     com_node.appendChild(h2);
 
     if (!wf_operations[operation]) {
@@ -4273,10 +4370,17 @@ function show_wf_operation_options(operation, index) {
 	com_node.appendChild(span);
 	span.appendChild(document.createElement('br'));
         com_node.appendChild(get_remove_wf_operation_button(index));
+
+	var link = document.createElement("a");
+	link.style.marginLeft = "20px";
+	link.href = 'javascript:abort_wf();';
+	link.appendChild(document.createTextNode("Cancel"));
+	com_node.appendChild(link);
 	return;
     }
 
     if (!wf_operations[operation]['in_arax']) {
+        h2.innerHTML += " *";
 	com_node.appendChild(document.createTextNode('* Please note that this workflow operation is not supported in ARAX, though it may be in other actors'));
         com_node.appendChild(document.createElement('br'));
     }
@@ -4367,6 +4471,13 @@ function show_wf_operation_options(operation, index) {
 	}
     }
 
+    if (wf_operations[operation].warning) {
+	com_node.appendChild(document.createElement('br'));
+        var span = document.createElement('span');
+	span.className = 'essence';
+	span.appendChild(document.createTextNode(wf_operations[operation].warning));
+	com_node.appendChild(span);
+    }
     com_node.appendChild(document.createElement('br'));
 
     var button = document.createElement("input");
@@ -4390,7 +4501,7 @@ function show_wf_operation_options(operation, index) {
     var link = document.createElement("a");
     link.style.marginLeft = "20px";
     link.href = 'javascript:abort_wf();';
-    link.appendChild(document.createTextNode(" Cancel "));
+    link.appendChild(document.createTextNode("Cancel"));
     com_node.appendChild(link);
 }
 
@@ -4982,7 +5093,6 @@ function filter_querytable(field, value) {
     }
 }
 
-
 function filter_queries(tab, span, type) {
     var disp = 'none';
     if (span.classList.contains('hide')) {
@@ -4998,6 +5108,251 @@ function filter_queries(tab, span, type) {
 	    tr.style.display = disp;
 	}
     }
+}
+
+
+function retrieveKPInfo() {
+    var kpinfo_node = document.getElementById("kpinfo_container");
+    kpinfo_node.innerHTML = '';
+    kpinfo_node.className = '';
+
+    var wspan = document.getElementById("kpinfo_wait");
+    wspan.innerHTML = '';
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    wspan.appendChild(wait);
+    wspan.appendChild(document.createTextNode('Loading...'));
+
+    fetch(providers["ARAX"].url + "/status?authorization=smartapi")
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Something went wrong with /status?authorization=smartapi');
+	})
+        .then(data => {
+	    wspan.innerHTML = '';
+	    var components = {};
+	    for (let item of data) {
+		if (item['component'])
+		    components[item['component']] = true;
+		else
+		    console.log("Found empty component: "+item['component']);
+	    }
+
+	    if (Object.keys(components).length < 1) {
+		kpinfo_node.className = "error";
+		kpinfo_node.innerHTML =  "<br>No <b>components</b> found in API response!<br><br>";
+		return;
+	    }
+
+	    var table = document.createElement("table");
+	    table.className = 'sumtab';
+
+            for (let component of Object.keys(components)) {
+		var tr = document.createElement("tr");
+		var td = document.createElement("td");
+
+		td.colSpan = "5";
+		td.style.background = '#fff';
+		td.style.border = '0';
+		td.appendChild(document.createElement("br"));
+		td.appendChild(document.createElement("br"));
+		tr.appendChild(td);
+		table.appendChild(tr);
+
+		tr = document.createElement("tr");
+                td = document.createElement("th")
+		td.style.background = '#fff';
+		td.style.fontSize = 'x-large';
+		td.appendChild(document.createTextNode(component+" Info"));
+		tr.appendChild(td);
+		for (var head of ["Status","Maturity","Description","URL"] ) {
+		    td = document.createElement("th")
+                    td.style.background = '#fff';
+		    td.appendChild(document.createTextNode(head));
+		    tr.appendChild(td);
+		}
+		table.appendChild(tr);
+
+		var was_seen = [];
+		for (let item of data.sort(function(a, b) { return a.title.toUpperCase() > b.title.toUpperCase() ? 1 : -1; })) {
+		    //console.log("item.comp:"+item['component']);
+		    if (item['component'] == component) {
+			tr = document.createElement("tr");
+			td = document.createElement("td");
+			td.rowSpan = item["servers"].length;
+			td.style.backgroundColor = "white";
+			td.style.borderRight = "1px solid #aaa";
+			td.style.padding = "0px 20px";
+
+			var text = document.createElement("h3");
+			text.style.float = "right";
+			text.style.marginLeft = "10px";
+			if (item["version"].startsWith("1.3"))
+			    text.className = "qprob p9";
+			else if (item["version"].startsWith("1.2"))
+			    text.className = "qprob srtx";
+			else
+			    text.className = "qprob p1";
+                        text.appendChild(document.createTextNode(item["version"]));
+			text.title = "TRAPI version";
+			td.appendChild(text);
+
+	                text = document.createElement("a");
+			text.style.display = "inline-block";
+			text.style.color = "#000";
+			text.style.fontWeight = 'bold';
+			text.style.fontSize = 'initial';
+			text.style.padding = '15px 0px';
+			text.href = item["smartapi_url"];
+			text.target = 'smartapi_reg';
+			text.title = 'View SmartAPI registration for this '+component;
+			text.innerHTML = item["title"];
+			td.appendChild(text);
+			td.appendChild(document.createElement("br"));
+                        td.appendChild(document.createTextNode(item["infores_name"]));
+
+			tr.appendChild(td);
+
+			var main_td = td;
+			var is_first = true;
+			for (var mature of ["production","staging","testing","development"] ) {
+			    var status_nodes = [];
+			    var had_transltr_io = false; //(item["infores_name"].startsWith("infores:automat") || component == "Utility");
+			    var was_mature = false;
+			    for (var server of item["servers"]) {
+				if (server["maturity"] == mature) {
+				    was_mature = true;
+				    if (!is_first)
+					tr = document.createElement("tr");
+				    td = document.createElement("td");
+                                    var span = document.createElement("span");
+
+				    var stritem = item["infores_name"]+server["maturity"]+server["url"];
+				    if (was_seen.includes(stritem)) {
+                                        //tr.className = "error";
+                                        span.className = "explevel p0";
+					span.innerHTML = '&cross;';
+					span.title = "This is a DUPLICATE entry";
+				    }
+                                    else if (was_seen.includes(server["url"])) {
+					span.className = "explevel p0";
+                                        span.appendChild(document.createTextNode('\u00A0'));
+					span.appendChild(document.createTextNode('\u00A0'));
+					span.title = "This is a duplicate URL entry";
+				    }
+				    else if (server["url"].includes("transltr.io")) {
+					had_transltr_io = true;
+					span.className = "explevel p9";
+					span.innerHTML = '&check;';
+					span.title = "This entry is hosted at transltr.io";
+					was_seen.push(stritem);
+					was_seen.push(server["url"]);
+				    }
+				    else {
+					status_nodes.push(span);
+					span.appendChild(document.createTextNode('\u00A0'));
+					span.appendChild(document.createTextNode('\u00A0'));
+					was_seen.push(stritem);
+					was_seen.push(server["url"]);
+				    }
+				    td.appendChild(span);
+				    tr.appendChild(td);
+				    for (var what of ["maturity","description","url"] ) {
+					td = document.createElement("td");
+					if (server[what])
+					    td.appendChild(document.createTextNode(server[what]));
+					else {
+					    td.className = "error";
+					    td.title = "No data!";
+					    td.appendChild(document.createTextNode("-- null --"));
+					}
+					tr.appendChild(td);
+				    }
+				    table.appendChild(tr);
+				    is_first = false;
+				    server["__done"] = true;
+				}
+				for (var sn of status_nodes) {
+				    if (had_transltr_io || mature == "development")
+					sn.className = "explevel p7";
+				    else
+					sn.className = "explevel p5";
+				}
+			    }
+
+			    if (!was_mature && !had_transltr_io) {
+				main_td.rowSpan++;
+				if (!is_first)
+				    tr = document.createElement("tr");
+				td = document.createElement("td");
+				var span = document.createElement("span");
+				span.className = "explevel p3";
+				span.title = "No servers found at this maturity level";
+				span.appendChild(document.createTextNode('\u00A0'));
+				span.appendChild(document.createTextNode('\u00A0'));
+				td.appendChild(span);
+				tr.appendChild(td);
+
+				td = document.createElement("td");
+				td.className = "error";
+				td.appendChild(document.createTextNode(mature));
+				tr.appendChild(td);
+
+                                td = document.createElement("td");
+				td.className = "error";
+				td.appendChild(document.createTextNode("-- missing maturity --"));
+                                tr.appendChild(td);
+
+                                td = document.createElement("td");
+				tr.appendChild(td);
+
+				table.appendChild(tr);
+				is_first = false;
+
+			    }
+			}
+			for (var server of item["servers"]) {
+			    if (!server["__done"]) {
+                                if (!is_first)
+				    tr = document.createElement("tr");
+				td = document.createElement("td");
+				var span = document.createElement("span");
+				span.className = "explevel p1";
+				span.title = "Maturity does not match expected list [production, staging, testing, development]";
+				span.appendChild(document.createTextNode('\u00A0'));
+				span.appendChild(document.createTextNode('\u00A0'));
+				td.appendChild(span);
+				tr.appendChild(td);
+				for (var what of ["maturity","description","url"] ) {
+				    td = document.createElement("td");
+				    td.className = "error";
+				    if (server[what])
+					td.appendChild(document.createTextNode(server[what]));
+				    else {
+					td.title = "No data!";
+					td.appendChild(document.createTextNode("-- null --"));
+				    }
+				    tr.appendChild(td);
+				}
+				table.appendChild(tr);
+				is_first = false;
+			    }
+			}
+		    }
+		}
+	    }
+
+	    kpinfo_node.appendChild(table);
+            kpinfo_node.appendChild(document.createElement("br"));
+            kpinfo_node.appendChild(document.createElement("br"));
+
+	})
+        .catch(error => {
+	    kpinfo_node.className = "error";
+	    kpinfo_node.innerHTML =  "<br>" + error + "<br><br>";
+	    console.error(error);
+	});
+
 }
 
 
@@ -5532,6 +5887,8 @@ function display_cache() {
     for (var pid in response_cache) {
         numitems++;
         listhtml += "<tr><td>"+numitems+".</td><td>"+pid+"</td><td><a href='javascript:remove_from_cache(\"" + pid +"\");'/>Remove</a></td></tr>";
+	if (document.getElementById("cachelink_"+pid))
+	    document.getElementById("cachelink_"+pid).innerHTML = "<a href='javascript:remove_from_cache(\"" + pid +"\");'/>Clear</a>";
     }
 
     if (numitems == 0) {
@@ -5549,6 +5906,8 @@ function display_cache() {
 
 function remove_from_cache(item) {
     delete response_cache[item];
+    if (document.getElementById("cachelink_"+item))
+	document.getElementById("cachelink_"+item).innerHTML = '';
     display_cache();
 }
 function delete_cache(item) {

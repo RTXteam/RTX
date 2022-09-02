@@ -12,7 +12,6 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "KG2"
 
 python = "python3.7"
 python2 = "python2.7"

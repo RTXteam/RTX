@@ -3,6 +3,9 @@ FROM ubuntu:20.04
 # suppress debconf error messages:
 ARG DEBIAN_FRONTEND=noninteractive
 
+# build based on branch
+ARG BUILD_BRANCH=master
+
 # add user "rt" and give sudo privilege:
 RUN useradd rt -m -s /bin/bash
 
@@ -29,6 +32,8 @@ RUN chmod -R 700 /home/rt/.ssh
 RUN mkdir -p /mnt/data/orangeboard/kg2
 RUN chown -R rt.rt /mnt/data/orangeboard/kg2
 RUN su rt && cd /mnt/data/orangeboard/kg2 && git clone https://github.com/RTXteam/RTX.git
+# 08/12/2022 NCATS change
+RUN su rt && cd /mnt/data/orangeboard/kg2/RTX && git checkout ${BUILD_BRANCH}
 RUN chown -R rt.rt /mnt/data/orangeboard/kg2/RTX
 RUN su rt && mv /mnt/data/orangeboard/kg2/RTX/code/UI/interactive/config.js.example /mnt/data/orangeboard/kg2/RTX/code/UI/interactive/config.js
 
@@ -65,5 +70,5 @@ RUN cd /mnt/data/orangeboard/kg2/RTX/code/autocomplete && sed -i 's/devED/kg2/g'
 RUN update-rc.d RTX_Complete defaults
 
 # setup config.domain
-RUN su rt && cd /mnt/data/orangeboard/kg2/RTX/code/ && echo "UNKNOWN ITRB INSTANCE" > config.domain
+RUN su rt && cd /mnt/data/orangeboard/kg2/RTX/code/ && echo "kg2.ci.transltr.io" > config.domain
 

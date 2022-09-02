@@ -300,7 +300,7 @@ class NGDDatabaseBuilder:
     @staticmethod
     def _run_cypher_query(cypher_query: str) -> List[Dict[str, any]]:
         rtxc = RTXConfiguration()
-        rtxc.live = "KG2"
+        rtxc.neo4j_kg2 = "KG2pre"
         try:
             driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
             with driver.session() as session:

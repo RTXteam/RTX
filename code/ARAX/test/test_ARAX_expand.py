@@ -74,7 +74,8 @@ def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
 def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
-            print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}")
+            print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}, "
+                  f"{node.query_ids if hasattr(node, 'query_ids') else ''}")
 
 
 def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -241,16 +242,14 @@ def test_query_that_expands_same_edge_twice():
 def test_771_continue_if_no_results_query():
     actions_list = [
         "add_qnode(ids=UniProtKB:P14136, key=n00)",
-        "add_qnode(categories=biolink:BiologicalProcess, key=n01)",
-        "add_qnode(ids=NOTAREALCURIE, key=n02)",
+        "add_qnode(ids=NOTAREALCURIE, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n02, object=n01, key=e01)",
-        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
+        "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
-    assert 'n02' not in nodes_by_qg_id
-    assert 'e01' not in edges_by_qg_id
+    assert 'n01' not in nodes_by_qg_id
+    assert 'e00' not in edges_by_qg_id
 
 
 @pytest.mark.slow
@@ -313,7 +312,7 @@ def test_847_dont_expand_curie_less_edge():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True,
-                                                                        error_code="InvalidQuery")
+                                                                        error_code="QueryGraphNoIds")
 
 
 @pytest.mark.slow
@@ -735,6 +734,7 @@ def test_kg2_predicate_hierarchy_reasoning():
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
 
+@pytest.mark.slow
 def test_issue_1373_pinned_curies():
     actions_list = [
         "add_qnode(ids=chembl.compound:CHEMBL2108129, key=n00)",
@@ -850,8 +850,8 @@ def test_constraint_validation():
           "object": "n01",
           "predicates": ["biolink:physically_interacts_with"],
           "subject": "n00",
-          "constraints": [{"id": "test_edge_constraint_1", "name": "test name edge", "operator": "<", "value": 1.0},
-                          {"id": "test_edge_constraint_2", "name": "test name edge", "operator": ">", "value": 0.5}]
+          "attribute_constraints": [{"id": "test_edge_constraint_1", "name": "test name edge", "operator": "<", "value": 1.0},
+                                    {"id": "test_edge_constraint_2", "name": "test name edge", "operator": ">", "value": 0.5}]
         }
       },
       "nodes": {
@@ -869,25 +869,46 @@ def test_constraint_validation():
                                                                         error_code="UnsupportedConstraint")
 
 
+def test_edge_constraints():
+    query = {
+            "nodes": {
+                "n00": {
+                    "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
+                },
+                "n01": {
+                    "categories": ["biolink:ChemicalEntity"]
+                }
+            },
+            "edges": {
+                "e00": {
+                    "object": "n00",
+                    "subject": "n01",
+                    "attribute_constraints": [
+                        {
+                            "id": "biolink:knowledge_source",
+                            "name": "knowledge source",
+                            "value": ["infores:rtx-kg2","infores:arax","infores:drugbank"],
+                            "operator": "==",
+                            "not": False
+                        }
+                    ]
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
 def test_canonical_predicates():
     actions = [
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL945)",
         "add_qnode(key=n01, categories=biolink:BiologicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:participates_in)",  # Not canonical
-        "add_qnode(key=n02, categories=biolink:Disease)",
-        "add_qedge(key=e01, subject=n00, object=n02, predicates=biolink:treats)",  # Canonical form
-        "add_qnode(key=n03, categories=biolink:BiologicalEntity)",
-        "add_qedge(key=e02, subject=n00, object=n03, predicates=biolink:has_participant)",  # Canonical form
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
     e00_predicates = {edge.predicate for edge in edges_by_qg_id["e00"].values()}
-    e01_predicates = {edge.predicate for edge in edges_by_qg_id["e01"].values()}
-    e02_predicates = {edge.predicate for edge in edges_by_qg_id["e02"].values()}
     assert "biolink:has_participant" in e00_predicates and "biolink:participates_in" not in e00_predicates
-    assert "biolink:treats" in e01_predicates and "biolink:treated_by" not in e01_predicates
-    assert "biolink:has_participant" in e02_predicates and "biolink:participates_in" not in e02_predicates
 
 
 @pytest.mark.slow
@@ -1059,6 +1080,252 @@ def test_inverted_treats_handling():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+
+
+def test_xdtd_expand():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:ChemicalEntity"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+@pytest.mark.slow
+def test_xdtd_different_categories():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:Drug"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["MONDO:0004975"],
+                "categories": ["biolink:Disease"]
+            },
+            "chemical": {
+                "categories": ["biolink:Drug"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:treats"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["MONDO:0004975"],
+                "categories": ["biolink:DiseaseOrPhenotypicFeature"]
+            },
+            "chemical": {
+                "categories": ["biolink:ChemicalMixture"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:treats"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+def test_xdtd_multiple_categories():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["MONDO:0004975"]
+                },
+                "chemical": {
+                    "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+def test_xdtd_different_predicates():
+    query = {
+            "nodes": {
+                "disease": {
+                    "ids": ["UMLS:C4023597"]
+                },
+                "chemical": {
+                    "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:ameliorates"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["UMLS:C4023597"]
+            },
+            "chemical": {
+                "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:affects"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+
+def test_xdtd_no_curies():
+    query = {
+            "nodes": {
+                "disease": {
+                },
+                "chemical": {
+                    "categories": ["biolink:Drug", "biolink:ChemicalMixture"],
+                    "ids": ["CHEMBL:CHEMBL1234"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:ameliorates"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
+
+
+def test_xdtd_with_other_edges():
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["UMLS:C4023597"]
+            },
+            "chemical": {
+                "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+            },
+            "gene": {
+                "categories": ["biolink:Gene", "biolink:Protein"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:affects"],
+                "knowledge_type": "inferred"
+            },
+            "non_t_edge": {
+                "object": "gene",
+                "subject": "chemical"
+            }
+        }
+    }
+    #FIXME: this test is failing since the ability to mix inferred with lookup edges is not yet implemented
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
+
+
+def test_xdtd_curie_not_in_db():
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["MONDO:0021783"]  # this curie has probabilities but no paths in the XDTDdb
+            },
+            "chemical": {
+                "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:affects"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=False)
+
+
+@pytest.mark.slow
+def test_query_ids_mappings():
+    query_curies = ["CHEMBL.COMPOUND:CHEMBL112", "DOID:14330"]
+    actions_list = [
+        f"add_qnode(ids=[{','.join(query_curies)}], key=n00)",
+        "add_qnode(categories=biolink:Protein, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
+        "expand()",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, timeout=10)
+    # Make sure we actually got some subclass child nodes from KPs
+    assert len(nodes_by_qg_id["n00"]) > 2
+    for node_key, node in nodes_by_qg_id["n00"].items():
+        # Make sure pinned nodes have query_ids filled out
+        assert node.query_ids or node_key in query_curies
+        # Make sure subclass self-edges were added as appropriate
+        for parent_query_id in node.query_ids:
+            assert parent_query_id in nodes_by_qg_id["n00"]
+    # Make sure unpinned nodes do not have query_ids specified
+    for node_key, node in nodes_by_qg_id["n01"].items():
+        assert not node.query_ids
 
 
 if __name__ == "__main__":

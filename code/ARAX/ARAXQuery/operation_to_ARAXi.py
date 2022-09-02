@@ -3,6 +3,24 @@ import json
 import itertools
 import re
 
+
+
+def _make_expand_query(KP_name, qedge_keys):
+    ARAXi = []
+    araxi_string = ""
+    if not KP_name:
+        araxi_string = "expand("
+    else:
+        araxi_string = f"expand(kp={KP_name}"
+    if not qedge_keys:
+        pass
+    else:
+        araxi_string += ","
+        araxi_string += re.sub("['\"]", "", f"edge_key={qedge_keys}")
+    araxi_string += ")"
+    print(f"ARAXi: {araxi_string}")
+    return araxi_string
+
 class WorkflowToARAXi:
     def __init__(self):
         self.implemented = {'lookup',
@@ -106,16 +124,17 @@ class WorkflowToARAXi:
         araxi_string = ""
         if 'allowlist' in parameters:
             for KP_name in parameters['allowlist']:
-                # continue if no results, don't enforce directionality, and use synonyms
-                araxi_string += f"expand(kp={KP_name}"
+                ARAXi.append(_make_expand_query(KP_name, parameters.get('qedge_keys')))
         else:
             araxi_string += "expand("
-        if "qedge_keys" in parameters:
-            if not araxi_string.endswith("("):
-                araxi_string += ","
-            araxi_string += re.sub("['\"]","",f"edge_key={parameters['qedge_keys']}")
-        araxi_string += ")"
-        ARAXi.append(araxi_string)
+            if "qedge_keys" in parameters:
+                if not araxi_string.endswith("("):
+                    araxi_string += ","
+                araxi_string += re.sub("['\"]","",f"edge_key={parameters['qedge_keys']}")
+            araxi_string += ")"
+        if araxi_string:
+            print(f"araxi_string2: {araxi_string}")
+            ARAXi.append(araxi_string)
         return ARAXi
 
 
@@ -264,6 +283,8 @@ class WorkflowToARAXi:
         for operation in workflow:
             if operation['id'] not in self.implemented:
                 response.error("This operation has not yet been implemented to the workflow to ARAXi translator", error_code="NotImplementedError")
+                # immediately return since we don't know what to do with an operation that isn't implemented
+                return
             if 'parameters' in operation:
                 ARAXi.extend(getattr(self, '_' + self.__class__.__name__ + '__translate_' + operation['id'])(operation['parameters'], query_graph, response))
             else:

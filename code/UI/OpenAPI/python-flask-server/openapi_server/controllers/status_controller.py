@@ -4,6 +4,7 @@ import sys
 
 from openapi_server import util
 from ARAX_query_tracker import ARAXQueryTracker
+from Expand.smartapi import SmartAPI
 
 
 def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=None):  # noqa: E501
@@ -23,6 +24,10 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
     :rtype: object
     """
 
+    if authorization is not None and authorization == 'smartapi':
+        smartapi = SmartAPI()
+        return smartapi.get_trapi_endpoints()
+
     query_tracker = ARAXQueryTracker()
     if terminate_pid is not None:
         status = query_tracker.terminate_job(terminate_pid, authorization)
@@ -41,9 +46,6 @@ def get_logs(mode=None):  # noqa: E501
 
     :rtype: string
     """
-
-    if mode is not None and mode == 'env':
-        return str(os.environ)
 
     query_tracker = ARAXQueryTracker()
     status = query_tracker.get_logs(mode=mode)

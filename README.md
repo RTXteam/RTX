@@ -543,7 +543,7 @@ Here is the link to access the web browser interface to RTX:
 ## ...using our web API
 
 Here is the link to documentation on the web API interface to RTX:
-[arax.rtx.ai/api/rtx/v1/ui](https://arax.rtx.ai/api/rtx/v1/ui/).
+[arax.rtx.ai/api/arax/v1.2/ui/](https://arax.rtx.ai/api/arax/v1.2/ui/).
 
 ## ...by customizing a Jupyter Notebook
 

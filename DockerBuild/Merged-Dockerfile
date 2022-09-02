@@ -65,7 +65,7 @@ RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED
 RUN update-rc.d RTX_Complete defaults
 
 # setup config.domain
-RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "UNKNOWN ITRB INSTANCE" > config.domain
+RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "Github actions ARAX test suite" > config.domain
 
 # Setup KG2
 
@@ -82,4 +82,4 @@ RUN chmod 700 /etc/init.d/RTX_OpenAPI_kg2
 RUN update-rc.d RTX_OpenAPI_kg2 defaults
 
 # setup config.domain
-RUN su rt && cd /mnt/data/orangeboard/kg2/RTX/code/ && echo "UNKNOWN ITRB INSTANCE" > config.domain
+RUN su rt && cd /mnt/data/orangeboard/kg2/RTX/code/ && echo "Github actions ARAX test suite" > config.domain

@@ -17,7 +17,6 @@ import json
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../")
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-RTXConfig.live = "Production"
 
 # import internal modules
 pathlist = os.path.realpath(__file__).split(os.path.sep)
@@ -72,7 +71,7 @@ class COHDIndex:
             #     os.remove(f"{self.databaseLocation}/{old_version_database}")
             # copy the database file to local if it doesn't exist
             # os.system(f"scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/{self.databaseName} {database}")
-            os.system(f"scp {RTXConfig.cohd_database_username}@{RTXConfig.cohd_database_host}:{RTXConfig.cohd_database_path} {database}")
+            os.system(f"scp {RTXConfig.db_username}@{RTXConfig.db_host}:{RTXConfig.cohd_database_path} {database}")
 
             self.connection = sqlite3.connect(database)
             print("INFO: Connecting to database", flush=True)

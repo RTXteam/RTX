@@ -17,9 +17,8 @@ versions_path = os.path.sep.join([knowledge_sources_filepath, 'db_versions.json'
 
 
 class ARAXDatabaseManager:
-    def __init__(self, live = "Production"):
+    def __init__(self):
         self.RTXConfig = RTXConfiguration()
-        self.RTXConfig.live = live
 
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
@@ -56,6 +55,10 @@ class ARAXDatabaseManager:
         if not os.path.exists(autocomplete_filepath):
             os.system(f"mkdir -p {autocomplete_filepath}")
 
+        explainable_dtd_db_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
+        if not os.path.exists(explainable_dtd_db_filepath):
+            os.system(f"mkdir -p {explainable_dtd_db_filepath}")
+
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
@@ -66,20 +69,22 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
             'kg2c_meta_kg': f"{kg2c_meta_kg_filepath}{os.path.sep}{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
-            'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}"
+            'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
+            'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}"
         }
         # user, host, and paths to databases on remote server
         self.remote_locations = {
-            'cohd_database': f"{self.RTXConfig.cohd_database_username}@{self.RTXConfig.cohd_database_host}:{self.RTXConfig.cohd_database_path}",
-            'graph_database': f"{self.RTXConfig.graph_database_username}@{self.RTXConfig.graph_database_host}:{self.RTXConfig.graph_database_path}",
-            'log_model': f"{self.RTXConfig.log_model_username}@{self.RTXConfig.log_model_host}:{self.RTXConfig.log_model_path}",
-            'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_username}@{self.RTXConfig.curie_to_pmids_host}:{self.RTXConfig.curie_to_pmids_path}",
-            'node_synonymizer': f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:{self.RTXConfig.node_synonymizer_path}",
-            'dtd_prob': f"{self.RTXConfig.dtd_prob_username}@{self.RTXConfig.dtd_prob_host}:{self.RTXConfig.dtd_prob_path}",
-            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_username}@{self.RTXConfig.kg2c_sqlite_host}:{self.RTXConfig.kg2c_sqlite_path}",
-            'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_username}@{self.RTXConfig.kg2c_meta_kg_host}:{self.RTXConfig.kg2c_meta_kg_path}",
-            'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_username}@{self.RTXConfig.fda_approved_drugs_host}:{self.RTXConfig.fda_approved_drugs_path}",
-            'autocomplete': f"{self.RTXConfig.autocomplete_username}@{self.RTXConfig.autocomplete_host}:{self.RTXConfig.autocomplete_path}"
+            'cohd_database': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.cohd_database_path}",
+            'graph_database': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.graph_database_path}",
+            'log_model': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.log_model_path}",
+            'curie_to_pmids': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.curie_to_pmids_path}",
+            'node_synonymizer': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.node_synonymizer_path}",
+            'dtd_prob': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.dtd_prob_path}",
+            'kg2c_sqlite': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.kg2c_sqlite_path}",
+            'kg2c_meta_kg': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.kg2c_meta_kg_path}",
+            'fda_approved_drugs': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.fda_approved_drugs_path}",
+            'autocomplete': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.autocomplete_path}",
+            'explainable_dtd_db': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.explainable_dtd_db_path}"
         }
         # database locations if inside rtx1 docker container
         self.docker_paths = {
@@ -92,7 +97,8 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace('/translator/', '/mnt/')}",
             'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_path.replace('/translator/', '/mnt/')}",
             'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_path.replace('/translator/', '/mnt/')}",
-            'autocomplete': f"{self.RTXConfig.autocomplete_path.replace('/translator/', '/mnt/')}"
+            'autocomplete': f"{self.RTXConfig.autocomplete_path.replace('/translator/', '/mnt/')}",
+            'explainable_dtd_db': f"{self.RTXConfig.explainable_dtd_db_path.replace('/translator/', '/mnt/')}"
         }
 
         # database local paths + version numbers
@@ -136,6 +142,10 @@ class ARAXDatabaseManager:
             'autocomplete': {
                 'path': self.local_paths['autocomplete'],
                 'version': self.RTXConfig.autocomplete_version
+            },
+            'explainable_dtd_db': {
+                'path': self.local_paths['explainable_dtd_db'],
+                'version': self.RTXConfig.explainable_dtd_db_version
             }
         }
 
@@ -242,7 +252,9 @@ class ARAXDatabaseManager:
             verbose = "vv"
         os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
 
-    def download_to_mnt(self, debug=False, skip_if_exists=False):
+    def download_to_mnt(self, debug=False, skip_if_exists=False, remove_unused=False):
+        if remove_unused:  # Do this first to ensure we don't run out of space on the server
+            self.remove_unused_mnt_dbs()
         for database_name in self.remote_locations.keys():
             database_dir = os.path.sep.join(self.docker_paths[database_name].split('/')[:-1])
             if debug:
@@ -280,7 +292,7 @@ class ARAXDatabaseManager:
         #FW: Somewhat hacky solution to slow meta kg downloads from the KPs
         if debug:
                 print(f"Downloading Meta KG data...")
-        metakg_remote_location = f"{self.RTXConfig.node_synonymizer_username}@{self.RTXConfig.node_synonymizer_host}:/translator/data/orangeboard/production/RTX/code/ARAX/ARAXQuery/Expand/meta_map_v2.pickle"
+        metakg_remote_location = f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:/translator/data/orangeboard/production/RTX/code/ARAX/ARAXQuery/Expand/meta_map_v2.pickle"
         metakg_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Expand', 'meta_map_v2.pickle'])
         metakg_docker_path = "/mnt/data/orangeboard/production/RTX/code/ARAX/ARAXQuery/Expand/meta_map_v2.pickle"
         self.download_database(remote_location=metakg_remote_location, local_path=metakg_filepath, 
@@ -325,18 +337,35 @@ class ARAXDatabaseManager:
         with open(versions_path, "w") as fid:
             json.dump(self.db_versions, fid)
 
+    def remove_unused_mnt_dbs(self):
+        # Grab our current database names (used in config_dbs.json)
+        db_names = {db_info["path"].split("/")[-1] for db_info in self.db_versions.values()}
+        # Loop through all dbs within the /mnt/data/orangeboard/databases directory and delete any not in db_names
+        databases_dir_path_list = self.RTXConfig.node_synonymizer_path.replace('/translator/', '/mnt/').split("/")[:-2]
+        databases_dir_path = "/".join(databases_dir_path_list)
+        if os.path.exists(databases_dir_path):
+            kg2_dir_names = [dir_name for dir_name in os.listdir(databases_dir_path)
+                             if dir_name.upper().startswith("KG2") and os.path.isdir(f"{databases_dir_path}/{dir_name}")]
+            for kg2_dir_name in kg2_dir_names:
+                kg2_dir_path = f"{databases_dir_path}/{kg2_dir_name}"
+                for db_file_name in os.listdir(kg2_dir_path):
+                    db_file_path = f"{kg2_dir_path}/{db_file_name}"
+                    if os.path.isfile(db_file_path) and db_file_name not in db_names:
+                        os.system(f"rm -f {db_file_path}")
+
         
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--check_local", action='store_true')
     parser.add_argument("-f", "--force_download", action='store_true', help="Download all database without checking local versions")
     parser.add_argument("-m", "--mnt", action='store_true', help="Download all database files to /mnt")
-    parser.add_argument("-l", "--live", type=str, help="Live parameter for RTXConfiguration", default="Production", required=False)
     parser.add_argument("-s", "--slim", action='store_true')
     parser.add_argument("-g", "--generate-versions-file", action='store_true', dest="generate_versions_file", required=False, help="just generate the db_versions.json file and do nothing else (ONLY USED IN TESTING/DEBUGGING)")
     parser.add_argument("-e", "--skip-if-exists", action='store_true', dest='skip_if_exists', required=False, help="for -m mode only, do not download a file if it already exists under /mnt/data/orangeboard/databases/KG2.X.X")
+    parser.add_argument("-r", "--remove_unused", action='store_true', dest='remove_unused', required=False, help="for -m mode only, remove database files under /mnt/data/orangeboard/databases/* that are NOT used in config_dbs.json")
+
     arguments = parser.parse_args()
-    DBManager = ARAXDatabaseManager(arguments.live)
+    DBManager = ARAXDatabaseManager()
     if arguments.check_local:
         if not DBManager.check_versions(debug=True):
             print("All local versions are up to date")
@@ -345,11 +374,12 @@ def main():
     elif arguments.force_download:
         DBManager.force_download_all(debug=True)
     elif arguments.mnt:
-        DBManager.download_to_mnt(debug=True, skip_if_exists=arguments.skip_if_exists)
+        DBManager.download_to_mnt(debug=True, skip_if_exists=arguments.skip_if_exists, remove_unused=arguments.remove_unused)
     elif arguments.generate_versions_file:
         DBManager.write_db_versions_file(debug=True)
     else:
         DBManager.update_databases(debug=True)
+
 
 if __name__ == "__main__":
     main()

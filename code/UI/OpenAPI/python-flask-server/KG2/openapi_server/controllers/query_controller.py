@@ -73,7 +73,7 @@ def _run_query_and_return_json_generator_stream(query_dict: dict) -> Iterable[st
 
 
 def query(request_body):  # noqa: E501
-    """Query reasoner via one of several inputs
+    """Initiate a query and wait to receive a Response
 
      # noqa: E501
 
