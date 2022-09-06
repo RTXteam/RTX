@@ -34,8 +34,8 @@ class KPSelector:
         self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self.get_all_kps()
         self.valid_kps = set(self.kp_urls.keys())
         self.timeout_record = self._load_timeout_record()
-        self.meta_map = self._load_meta_map()
         self.biolink_helper = BiolinkHelper()
+        self.meta_map = self._load_meta_map()
 
     def get_kp_endpoint_url(self,kp_name):
         if kp_name in self.kp_urls:
@@ -315,6 +315,18 @@ class KPSelector:
             combined_attributes += obj2["attributes"]
         return combined_attributes
 
+    def _is_inferred_triple(self, meta_edge):
+        # bh = BiolinkHelper()
+        if meta_edge["subject"] in set(self.biolink_helper.get_descendants("biolink:ChemicalMixture")):
+            if meta_edge["object"] in set(self.biolink_helper.get_descendants("biolink:DiseaseOrPhenotypicFeature")):
+                if meta_edge["predicate"] in set(self.biolink_helper.get_descendants("biolink:ameliorates")):
+                    return True
+        if meta_edge["object"] in set(self.biolink_helper.get_descendants("biolink:ChemicalMixture")):
+            if meta_edge["subject"] in set(self.biolink_helper.get_descendants("biolink:DiseaseOrPhenotypicFeature")):
+                if meta_edge["predicate"] in set(self.biolink_helper.get_descendants("biolink:is_ameliorated_by")):
+                    return True
+        return False
+
     def _merge_meta_kgs(self, super_meta_kg, sub_meta_kg):
         super_nodes = super_meta_kg["nodes"]
         sub_nodes = sub_meta_kg["nodes"]
@@ -353,14 +365,29 @@ class KPSelector:
                 if combined_attributes:
                     super_edge["attributes"] = combined_attributes
 
+        # convert meta-edge index into meta-KG edges dict
         super_meta_kg["edges"] = list(meta_edge_index.values())
+
+        # for all edges in meta KG, set knowledge_types attribute appropriately
+        for meta_edge in super_meta_kg["edges"]:
+            # knowledge_types includes 'inferred' if triple is of valid form
+            if "knowledge_types" in meta_edge:
+                del meta_edge["knowledge_types"]
+            if self._is_inferred_triple(meta_edge):
+                meta_edge["knowledge_types"] = ["lookup","inferred"]
+
         return super_meta_kg
 
     def _create_meta_kg(self,kps):
         self.log.info("Creating a Meta-KG for ARAX by merging KP's Meta-KGs")
+        arax_meta_kg = None
         # start with rtx-kg2 meta kg
         rtx_kg2_url = self.get_kp_endpoint_url("infores:rtx-kg2")
-        arax_meta_kg = (requests.get(f"{rtx_kg2_url}/meta_knowledge_graph", timeout=10)).json()
+        with requests_cache.disabled():
+            self.log.debug(f"Getting Meta-KG info from infores:rtx-kg2")
+            arax_meta_kg = (requests.get(f"{rtx_kg2_url}/meta_knowledge_graph", timeout=10)).json()
+        if not arax_meta_kg:
+            self.log.error("There was a problem getting the Meta-KG for RTX-KG2")
 
         # for each kp, merge its meta-KG into the arax meta-KG
         for kp in kps:
@@ -369,7 +396,8 @@ class KPSelector:
             self.log.debug(f"Getting Meta-KG info from {kp}")
             kp_endpoint = self.get_kp_endpoint_url(kp)
             try:
-                kp_response = requests.get(f"{kp_endpoint}/meta_knowledge_graph", timeout=10)
+                with requests_cache.disabled():
+                    kp_response = requests.get(f"{kp_endpoint}/meta_knowledge_graph", timeout=10)
             except requests.exceptions.Timeout:
                 self.log.warning(f"{kp} was skipped because the request timed out")
                 continue
@@ -385,9 +413,8 @@ class KPSelector:
                 self.log.warning(f"{kp} was skipped because they returned an invalid Meta-KG")
                 continue
             arax_meta_kg = self._merge_meta_kgs(arax_meta_kg, kp_meta_kg)
-            self.log.info(f"Successfully merged {kp} into our Meta-KG")
 
-        self.log.debug(f"Creating meta kg with {len(arax_meta_kg['nodes'])} nodes and {len(arax_meta_kg['edges'])} edges")
+        self.log.debug(f"Created Meta-KG with {len(arax_meta_kg['nodes'])} nodes and {len(arax_meta_kg['edges'])} edges")
         with open("meta_kg.json", "w") as outfile:
             outfile.write(json.dumps(arax_meta_kg, indent=4))
 
