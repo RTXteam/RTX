@@ -96,9 +96,11 @@ class KPSelector:
         version = RTXConfig.trapi_major_version
         for kp in set(filter(None, self.kps_excluded_by_version)):  # TODO: Look into why sometimes infores is None?
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a TRAPI {version} endpoint")
+            self.log.debug(f"Skipped {kp}: KP does not have a TRAPI {version} endpoint")
         maturity = RTXConfig.maturity
         for kp in set(filter(None, self.kps_excluded_by_maturity)):
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a {maturity} TRAPI {version} endpoint")
+            self.log.debug(f"Skipped {kp}: KP does not have a {maturity} TRAPI {version} endpoint")
 
         return accepting_kps
 

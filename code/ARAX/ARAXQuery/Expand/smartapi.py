@@ -14,6 +14,7 @@ class SmartAPI:
         self.base_url = "http://smart-api.info/api"
         self.kps_excluded_by_version = set()
         self.kps_excluded_by_maturity = set()
+        self.kps_accepted = set()
 
 
     @lru_cache(maxsize=None)
@@ -57,6 +58,7 @@ class SmartAPI:
         """Find all endpoints that match a query for TRAPI."""
         self.kps_excluded_by_version = set()
         self.kps_excluded_by_maturity = set()
+        self.accepted_kps = set()
 
         with requests_cache.disabled():
             response_content = requests.get(
@@ -120,12 +122,7 @@ class SmartAPI:
                 continue
 
             if version is not None:
-                if url_version is None:
-                    if component == "KP":
-                        self.kps_excluded_by_version.add(infores_name)
-                    continue
-                match = re.match(version, url_version)
-                if not match:
+                if url_version is None or not re.match(version, url_version):
                     if component == "KP":
                         self.kps_excluded_by_version.add(infores_name)
                     continue
@@ -247,8 +244,9 @@ class SmartAPI:
         else:
             KPs = all_KPs
 
-        accepted_KP_names = [kp["infores_name"] for kp in KPs]
-        self.kps_excluded_by_maturity = {kp["infores_name"] for kp in all_KPs if kp["infores_name"] not in accepted_KP_names}
+        self.kps_accepted = [kp["infores_name"] for kp in KPs]
+        self.kps_excluded_by_maturity = {kp["infores_name"] for kp in all_KPs if kp["infores_name"] not in self.kps_accepted}
+        self.kps_excluded_by_version = {kp for kp in self.kps_excluded_by_version if kp not in self.kps_accepted}
 
         return KPs
 
