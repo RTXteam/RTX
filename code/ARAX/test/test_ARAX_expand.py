@@ -1328,5 +1328,54 @@ def test_query_ids_mappings():
         assert not node.query_ids
 
 
+@pytest.mark.external
+def test_no_query_ids_issue():
+    query = {
+        "nodes": {
+            "n1": {
+                "categories": [
+                    "biolink:GrossAnatomicalStructure"
+                ],
+                "ids": [
+                    "UBERON:0009912",
+                    "UBERON:0002535",
+                    "UBERON:0000019",
+                    "UBERON:0002365",
+                    "UBERON:0000017",
+                    "UBERON:0000970",
+                    "UBERON:0001831",
+                    "UBERON:0016410",
+                    "UBERON:0001737",
+                    "UBERON:0000945"
+                ]
+            },
+            "n2": {
+                "categories": [
+                    "biolink:Gene"
+                ]
+            }
+        },
+        "edges": {
+            "e1": {
+                "subject": "n1",
+                "object": "n2",
+                "predicates": [
+                    "biolink:expresses"
+                ],
+                "attribute_constraints": [
+                    {
+                        "id": "biolink:knowledge_source",
+                        "name": "knowledge source",
+                        "value": ["infores:connections-hypothesis"],
+                        "operator": "==",
+                        "not": False
+                    }
+                ]
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, timeout=45)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

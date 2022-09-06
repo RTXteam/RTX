@@ -284,7 +284,7 @@ class KPSelector:
                                                          for category, meta_node in kp_meta_kg["nodes"].items()}}
                     else:
                         self.log.warning(f"Unable to access {kp}'s /meta_knowledge_graph endpoint (returned status of "
-                                         f"{kp_response.status_code})")
+                                         f"{kp_response.status_code} for URL {kp_endpoint})")
             elif kp == "infores:arax-drug-treats-disease":
                 meta_map[kp] = {"predicates": self._get_dtd_meta_map(),
                                 "prefixes": dict()}
