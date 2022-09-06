@@ -36,9 +36,10 @@ class KPSelector:
         self.meta_map = self._load_meta_map()
         self.biolink_helper = BiolinkHelper()
 
-    def get_kp_endpoint_url(self,kp_name):
+    def get_kp_endpoint_url(self, kp_name):
         if kp_name in self.kp_urls:
-            return self.kp_urls[kp_name]
+            kp_url = self.kp_urls[kp_name]
+            return kp_url.strip("/") if isinstance(kp_url, str) else kp_url  # Strip any trailing slash
         else:
             return None
 
