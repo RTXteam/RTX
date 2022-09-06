@@ -436,7 +436,7 @@ class TRAPIQuerier:
                                                    categories=[parent_info_dict.get("preferred_category")])
                             else:
                                 parent_node = Node()
-                            parent_node.query_ids = None   # Does not need a mapping since it appears in the QG
+                            parent_node.query_ids = []   # Does not need a mapping since it appears in the QG
                             answer_kg.add_node(edge.object, parent_node, qnode_key)
                         edge_key = f"{self.kp_name}:{edge.subject}--{edge.predicate}--{edge.object}"
                         qedge_key = f"subclass:{qnode_key}--{qnode_key}"  # Technically someone could have used this key in their query, but seems highly unlikely..
