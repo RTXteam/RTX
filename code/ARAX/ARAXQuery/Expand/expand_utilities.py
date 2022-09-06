@@ -35,7 +35,6 @@ from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 
 
-
 class QGOrganizedKnowledgeGraph:
     def __init__(self, nodes: Dict[str, Dict[str, Node]] = None, edges: Dict[str, Dict[str, Edge]] = None):
         self.nodes_by_qg_id = nodes if nodes else dict()
