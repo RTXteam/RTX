@@ -9,7 +9,7 @@ from ARAX_query import ARAXQuery
 
 
 def asyncquery(request_body):  # noqa: E501
-    """Query reasoner via one of several inputs
+    """Initiate a query with a callback to receive the response
 
      # noqa: E501
 
