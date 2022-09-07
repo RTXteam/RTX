@@ -219,7 +219,6 @@ class KPSelector:
         if not meta_map_file.exists():
             self.log.debug(f"Creating local copy of meta map for all KPs")
             meta_map = self._refresh_meta_map()
-            self._create_meta_kg(self.valid_kps)
         elif datetime.fromtimestamp(meta_map_file.stat().st_mtime) < one_day_ago:
             self.log.debug(f"Doing a refresh of local meta map for all KPs")
             meta_map = self._refresh_meta_map()
@@ -233,7 +232,6 @@ class KPSelector:
             if missing_kps:
                 self.log.debug(f"Missing meta info for {missing_kps}")
                 meta_map = self._refresh_meta_map(missing_kps, meta_map)
-                self._create_meta_kg(self.valid_kps)
             elif not pathlib.Path("meta_kg.json").exists():
                 self.log.debug("Missing ARAX Meta-KG; Creating new one.")
                 self._create_meta_kg(self.valid_kps)
