@@ -1159,11 +1159,11 @@ def _create_result_graphs(kg: KnowledgeGraph,
     subclass_qnode_keys = set(qg.nodes).intersection(set(subclass_clusters))
     for subclass_qnode_key in subclass_qnode_keys:
         subclass_qnode = qg.nodes[subclass_qnode_key]
-        qnode_query_ids = set(subclass_qnode.ids) if subclass_qnode.ids else set()
+        all_nodes_filling_qnode = kg_node_keys_by_qg_key[subclass_qnode_key]
         for result_graph in result_graphs:
             kg_nodes_present = result_graph["nodes"][subclass_qnode_key]
             parents_present = {parent_id for kg_node_id in kg_nodes_present
-                               for parent_id in child_to_parents_map.get(kg_node_id, {kg_node_id})}.intersection(qnode_query_ids)
+                               for parent_id in child_to_parents_map.get(kg_node_id, {kg_node_id})}.intersection(all_nodes_filling_qnode)
             if subclass_qnode.is_set:
                 # Simply ensure all parents are included
                 result_graph["nodes"][subclass_qnode_key] = kg_nodes_present.union(parents_present)
@@ -1172,8 +1172,6 @@ def _create_result_graphs(kg: KnowledgeGraph,
                     parent_id = list(sorted(list(parents_present)))[0]  # Just use the first; not set up for multiple query ids yet
                     result_graph["nodes"][subclass_qnode_key].add(parent_id)
                     result_graph["parents"][subclass_qnode_key] = parent_id
-                elif not kg_nodes_present.issubset(qnode_query_ids):
-                    log.error(f"A result has no identifiable parents for a qnode with a subclass self-qedge: {result_graph}", error_code="MissingParent")
 
     log.debug(f"Collapsing results with same parents (for is_set=False qnodes)")
     result_graphs_by_key = dict()
