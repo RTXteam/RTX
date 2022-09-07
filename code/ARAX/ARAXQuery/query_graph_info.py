@@ -260,6 +260,7 @@ class QueryGraphInfo:
         edges = current_node['edges']
         debug = False
         loop_counter = 0
+        visited_nodes = { current_node['key']: True }
 
         #### Starting with the start node, loop until we run out of nodes to create node_order
         while 1:
@@ -290,6 +291,13 @@ class QueryGraphInfo:
             else:
                 response.error("Help, edge error A584. Don't know what to do", error_code="InteralErrorA584")
                 return response
+
+            #### If we've already been there, then this is a circular graph and just end here
+            if current_node['key'] in visited_nodes:
+                response.warning("Fell into a loop in the QueryGraph. Picking an end node somewhat arbitrarily.")
+                break
+            visited_nodes[current_node['key']] = True
+
             node_order.append(current_node)
 
             #tmp = { 'astate': '2', 'current_node': current_node, 'node_order': node_order, 'edge_order': edge_order, 'edges': edges }
