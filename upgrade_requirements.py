@@ -6,7 +6,7 @@ def get_package_name(package_with_version: str) -> str:
 
 with open(f"requirements.txt") as old_requirements_file:
     old_requirements = tuple(old_requirements_file)
-with open(f"freeze-new.txt") as new_freeze_file:
+with open(f"requirements-newfreeze.txt") as new_freeze_file:
     new_requirements = tuple(new_freeze_file)
 packages_dict = dict()
 
@@ -23,7 +23,7 @@ for new_requirement in new_requirements:
         version_str = new_requirement.replace(package, "")
         packages_dict[package] = version_str
 
-with open(f"requirements.txt", "w+") as requirements_file:
+with open(f"requirements_new.txt", "w+") as requirements_file:
     requirements_file.write(index_line)
     for package, version_str in packages_dict.items():
         requirements_file.write(f"{package}{version_str}")
