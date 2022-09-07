@@ -1433,5 +1433,15 @@ def test_subclass_answers_for_non_pinned_qnodes():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, timeout=75)
 
 
+def test_unbound_rtx_kg2_query():
+    actions_list = [
+        "add_qnode(categories=biolink:Protein, key=n00)",
+        "add_qnode(categories=biolink:Cell, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(kp=infores:rtx-kg2)",
+        "return(message=true, store=false)",
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
