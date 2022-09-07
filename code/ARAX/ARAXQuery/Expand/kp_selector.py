@@ -37,9 +37,10 @@ class KPSelector:
         self.biolink_helper = BiolinkHelper()
         self.meta_map = self._load_meta_map()
 
-    def get_kp_endpoint_url(self,kp_name):
+    def get_kp_endpoint_url(self, kp_name):
         if kp_name in self.kp_urls:
-            return self.kp_urls[kp_name]
+            kp_url = self.kp_urls[kp_name]
+            return kp_url.strip("/") if isinstance(kp_url, str) else kp_url  # Strip any trailing slash
         else:
             return None
 
@@ -100,9 +101,11 @@ class KPSelector:
         version = RTXConfig.trapi_major_version
         for kp in set(filter(None, self.kps_excluded_by_version)):  # TODO: Look into why sometimes infores is None?
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a TRAPI {version} endpoint")
+            self.log.debug(f"Skipped {kp}: KP does not have a TRAPI {version} endpoint")
         maturity = RTXConfig.maturity
         for kp in set(filter(None, self.kps_excluded_by_maturity)):
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a {maturity} TRAPI {version} endpoint")
+            self.log.debug(f"Skipped {kp}: KP does not have a {maturity} TRAPI {version} endpoint")
 
         return accepting_kps
 
@@ -292,7 +295,7 @@ class KPSelector:
                                                          for category, meta_node in kp_meta_kg["nodes"].items()}}
                     else:
                         self.log.warning(f"Unable to access {kp}'s /meta_knowledge_graph endpoint (returned status of "
-                                         f"{kp_response.status_code})")
+                                         f"{kp_response.status_code} for URL {kp_endpoint})")
             elif kp == "infores:arax-drug-treats-disease":
                 meta_map[kp] = {"predicates": self._get_dtd_meta_map(),
                                 "prefixes": dict()}
