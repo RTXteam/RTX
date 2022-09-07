@@ -1159,7 +1159,7 @@ def _create_result_graphs(kg: KnowledgeGraph,
     subclass_qnode_keys = set(qg.nodes).intersection(set(subclass_clusters))
     for subclass_qnode_key in subclass_qnode_keys:
         subclass_qnode = qg.nodes[subclass_qnode_key]
-        qnode_query_ids = set(subclass_qnode.ids)
+        qnode_query_ids = set(subclass_qnode.ids) if subclass_qnode.ids else set()
         for result_graph in result_graphs:
             kg_nodes_present = result_graph["nodes"][subclass_qnode_key]
             parents_present = {parent_id for kg_node_id in kg_nodes_present
