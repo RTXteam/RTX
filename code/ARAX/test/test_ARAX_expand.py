@@ -1377,5 +1377,61 @@ def test_no_query_ids_issue():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, timeout=45)
 
 
+@pytest.mark.slow
+def test_subclass_answers_for_non_pinned_qnodes():
+    query = {
+            "nodes": {
+                "n0": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "ids": [
+                        "MONDO:0009061"
+                    ]
+                },
+                "n1": {
+                    "categories": [
+                        "biolink:GrossAnatomicalStructure"
+                    ]
+                },
+                "n2": {
+                    "categories": [
+                        "biolink:Gene"
+                    ]
+                },
+                "n3": {
+                    "categories": [
+                        "biolink:Drug",
+                        "biolink:SmallMolecule"
+                    ]
+                }
+            },
+            "edges": {
+                "e0": {
+                    "subject": "n0",
+                    "object": "n1",
+                    "predicates": [
+                        "biolink:located_in"
+                    ]
+                },
+                "e1": {
+                    "subject": "n1",
+                    "object": "n2",
+                    "predicates": [
+                        "biolink:expresses"
+                    ]
+                },
+                "e2": {
+                    "subject": "n3",
+                    "object": "n2",
+                    "predicates": [
+                        "biolink:affects"
+                    ]
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, timeout=75)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
