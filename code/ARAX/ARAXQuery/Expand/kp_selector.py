@@ -219,9 +219,11 @@ class KPSelector:
         if not meta_map_file.exists():
             self.log.debug(f"Creating local copy of meta map for all KPs")
             meta_map = self._refresh_meta_map()
+            self._create_meta_kg(self.valid_kps)
         elif datetime.fromtimestamp(meta_map_file.stat().st_mtime) < one_day_ago:
             self.log.debug(f"Doing a refresh of local meta map for all KPs")
             meta_map = self._refresh_meta_map()
+            self._create_meta_kg(self.valid_kps)
         else:
             self.log.debug(f"Loading meta map (already exists and isn't due for a refresh)")
             with open(self.meta_map_path, "rb") as map_file:
@@ -231,6 +233,10 @@ class KPSelector:
             if missing_kps:
                 self.log.debug(f"Missing meta info for {missing_kps}")
                 meta_map = self._refresh_meta_map(missing_kps, meta_map)
+                self._create_meta_kg(self.valid_kps)
+            elif not pathlib.Path("meta_kg.json").exists():
+                self.log.debug("Missing ARAX Meta-KG; Creating new one.")
+                self._create_meta_kg(self.valid_kps)
 
         # Make sure the map doesn't contain any 'stale' KPs
         stale_kps = set(meta_map).difference(self.valid_kps)
@@ -304,7 +310,6 @@ class KPSelector:
         with open(self.timeout_record_path, "wb") as timeout_file:
             pickle.dump(self.timeout_record, timeout_file)
 
-        self._create_meta_kg(self.valid_kps)
         return meta_map
 
     def _combine_attributes(self, obj1, obj2):
@@ -316,7 +321,6 @@ class KPSelector:
         return combined_attributes
 
     def _is_inferred_triple(self, meta_edge):
-        # bh = BiolinkHelper()
         if meta_edge["subject"] in set(self.biolink_helper.get_descendants("biolink:ChemicalMixture")):
             if meta_edge["object"] in set(self.biolink_helper.get_descendants("biolink:DiseaseOrPhenotypicFeature")):
                 if meta_edge["predicate"] in set(self.biolink_helper.get_descendants("biolink:ameliorates")):
@@ -332,6 +336,8 @@ class KPSelector:
         sub_nodes = sub_meta_kg["nodes"]
         super_edges = super_meta_kg["edges"]
         sub_edges = sub_meta_kg["edges"]
+
+        ### Merge Meta-Nodes ###
 
         # merge prefixes and attributes of sub meta-nodes into super meta-nodes
         for node_key in sub_nodes:
@@ -350,6 +356,9 @@ class KPSelector:
             if combined_attributes:
                 super_nodes[node_key]["attributes"] = combined_attributes
 
+        ### Merge Meta-Edges ###
+
+        # create a dict of meta-edges where edge triples are the keys
         get_triple = lambda edge: (edge["subject"], edge["object"], edge["predicate"])
         meta_edge_index = {get_triple(edge) : edge for edge in super_edges}
 
@@ -365,18 +374,32 @@ class KPSelector:
                 if combined_attributes:
                     super_edge["attributes"] = combined_attributes
 
-        # convert meta-edge index into meta-KG edges dict
+        # convert meta-edge index dict into meta-KG edges list
         super_meta_kg["edges"] = list(meta_edge_index.values())
 
+        return super_meta_kg
+
+    # to be used after building meta-kg from merging many meta-kgs
+    def _post_process_meta_kg(self,meta_kg):
         # for all edges in meta KG, set knowledge_types attribute appropriately
-        for meta_edge in super_meta_kg["edges"]:
+        for meta_edge in meta_kg["edges"]:
             # knowledge_types includes 'inferred' if triple is of valid form
             if "knowledge_types" in meta_edge:
                 del meta_edge["knowledge_types"]
             if self._is_inferred_triple(meta_edge):
                 meta_edge["knowledge_types"] = ["lookup","inferred"]
 
-        return super_meta_kg
+        # to keep things clean, remove 'null' attribute properties of meta_nodes
+        for meta_node in meta_kg["nodes"].values():
+                if "attributes" in meta_node and (meta_node["attributes"] == None or meta_node["attributes"] == []):
+                    del meta_node["attributes"]
+
+        # to keep things clean, remove 'null' attribute properties of meta_edges
+        for meta_edge in meta_kg["edges"]:
+            if "attributes" in meta_edge and (meta_edge["attributes"] == None or meta_edge["attributes"] == []):
+                del meta_edge["attributes"]
+
+        return meta_kg
 
     def _create_meta_kg(self,kps):
         self.log.info("Creating a Meta-KG for ARAX by merging KP's Meta-KGs")
@@ -389,7 +412,7 @@ class KPSelector:
         if not arax_meta_kg:
             self.log.error("There was a problem getting the Meta-KG for RTX-KG2")
 
-        # for each kp, merge its meta-KG into the arax meta-KG
+        # for each kp, merge its meta-KG into the ARAX meta-KG
         for kp in kps:
             if kp == "infores:rtx-kg2":
                 continue
@@ -414,7 +437,10 @@ class KPSelector:
                 continue
             arax_meta_kg = self._merge_meta_kgs(arax_meta_kg, kp_meta_kg)
 
-        self.log.debug(f"Created Meta-KG with {len(arax_meta_kg['nodes'])} nodes and {len(arax_meta_kg['edges'])} edges")
+        # remove 'null' values, set 'knowledge_types' meta-edge values
+        arax_meta_kg = self._post_process_meta_kg(arax_meta_kg)
+
+        self.log.debug(f"Created Meta-KG with {len(arax_meta_kg['nodes'])} meta-nodes and {len(arax_meta_kg['edges'])} meta-edges")
         with open("meta_kg.json", "w") as outfile:
             outfile.write(json.dumps(arax_meta_kg, indent=4))
 
