@@ -133,7 +133,7 @@ class GraphSplitter:
 
 
     def _find_split(self, graph, path):
-        """Given a graph and a path between two pinned nodes that contains at least one unpinned node, this function finds an edge on which to split the graph. Specifically, the edge to split on will be halfway between two pinned nodes in the path that is closest to the middle of the path. Returns the the two nodes that belong to this edge."""
+        """Given a graph and a path between two pinned nodes that contains at least one unpinned node, this function finds an edge on which to split the graph. Specifically, the edge to split on will be close to halfway between two pinned nodes in the path. Returns the the two nodes that belong to this edge."""
         # ensure we are given a valid path
         if len(path) <= 2:
             raise Exception("Path is too short")
@@ -166,22 +166,23 @@ class GraphSplitter:
 
     def _split_into_two(self, graph):
         """Takes a graph, splits it and returns two graph fragments such that each fragment contains at least one unique pinned node and such that they share at least one unpinned node. If the graph has only one contiguous group of pinned nodes, it cannot be split with these criteria, and the graph is returned unsplit."""
-        # find the node to split on by finding another pinned node, called 'paired_node', and then picking a node about halfway between start_node and paired_node
+        # find a pinned 'start node' and a complementary 'paired node' which is the nearest pinned node to start_node that is separated by at least one unpinned node. These nodes are the definitive nodes belonging to fragment 1 and fragment 2 respectively.
         start_node = self._get_first_node(graph)
-        node_info = self._find_paired_node(graph, start_node)
-        if node_info == None:
+        paired_node_info = self._find_paired_node(graph, start_node)
+        if paired_node_info == None:
             # if no nearest node was found, graph cannot be split
             return graph
-        paired_node, path = node_info
+        # we also need to know the shortest path between start_node and paired_node so we know where to split
+        paired_node, path = paired_node_info
 
         edges_removed = {}
         shared_nodes = set()
         # while start_node and paired_node are still conneted, remove edges
         while True:
-            # split_node and adj_node are identified in order to yield an edge approximately halfway between start_node and paired_node. This edge will be removed in hopes that it will disconnect split_node and paired_node
+            # split_node and adj_node are identified in order to yield an edge approximately halfway between start_node and paired_node. This edge will be removed in hopes that it will disconnect start_node and paired_node
             split_node, adj_node = self._find_split(graph, path)
 
-            # split_node and the removed edge will be readded to frag2 later. split_node will be a shared node between frag1 and frag2
+            # split_node and the removed edge will be readded to frag2 later. split_node will be a node that exists in both frag1 and frag2
             edge_to_remove = self._get_edge(graph, split_node, adj_node)
             edges_removed[edge_to_remove] = graph.edges[edge_to_remove]
             shared_nodes.add(split_node)
