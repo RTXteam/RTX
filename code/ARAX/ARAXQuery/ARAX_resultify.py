@@ -564,7 +564,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     results: List[Result] = []
 
-    subclass_clusters, child_to_parents_map = _get_subclass_clusters(kg_edge_keys_by_qg_key, kg, qg)
+    subclass_clusters, child_to_parent_map = _get_subclass_clusters(kg_edge_keys_by_qg_key, kg, qg)
     subclass_self_qedges = {qedge_key: qedge for qedge_key, qedge in qg.edges.items() if _is_subclass_self_qedge(qedge)}
     subclass_qnodes = set(subclass_clusters)
     log.debug(f"Subclass self-qedges are {set(subclass_self_qedges)}; qnodes with a subclass self-qedge are: {subclass_qnodes}")
@@ -617,7 +617,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         result_graphs_required = _create_result_graphs(kg, required_qg, kg_node_keys_by_qg_key,
                                                        edge_keys_by_subject, edge_keys_by_object,
                                                        edge_keys_by_node_pair,
-                                                       child_to_parents_map, subclass_clusters,
+                                                       child_to_parent_map, subclass_clusters,
                                                        subclass_self_qedges,
                                                        ignore_edge_direction, log)
         log.debug(f"Created {len(result_graphs_required)} required result graphs")
@@ -647,7 +647,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             result_graphs_for_option_group = _create_result_graphs(kg, option_group_qg, kg_node_keys_by_qg_key,
                                                                    edge_keys_by_subject, edge_keys_by_object,
                                                                    edge_keys_by_node_pair,
-                                                                   child_to_parents_map, subclass_clusters,
+                                                                   child_to_parent_map, subclass_clusters,
                                                                    subclass_self_qedges, ignore_edge_direction, log,
                                                                    base_result_graphs=copy.deepcopy(result_graphs_required))
             log.debug(f"Created {len(result_graphs_for_option_group)} option group {option_group_id} result graphs")
@@ -658,14 +658,14 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         log.debug(f"Required non-set qnodes are: {required_non_set_qnode_keys}")
         result_graphs_by_key = dict()
         for result_graph in result_graphs_required:
-            result_key = _get_result_graph_key(result_graph, required_non_set_qnode_keys, subclass_qnodes, log)
+            result_key = _get_result_graph_key(result_graph, required_non_set_qnode_keys, subclass_qnodes, child_to_parent_map, log)
             result_graphs_by_key[result_key] = result_graph
         # Then merge our results for each option group ID into the appropriate "required" results
         if option_groups_in_qg:
             log.info(f"Merging option group result graphs into required result graphs with matching non-set qnodes")
         for option_group_id in option_groups_in_qg:
             for option_group_result_graph in option_group_results_dict[option_group_id]:
-                result_key = _get_result_graph_key(option_group_result_graph, required_non_set_qnode_keys, subclass_qnodes, log)
+                result_key = _get_result_graph_key(option_group_result_graph, required_non_set_qnode_keys, subclass_qnodes, child_to_parent_map, log)
                 corresponding_result_graph = result_graphs_by_key[result_key]
                 # Merge this optional result's contents into its corresponding "required" result
                 result_graphs_by_key[result_key] = _merge_optional_into_required_result_graph(option_group_result_graph, corresponding_result_graph)
@@ -765,7 +765,7 @@ def _merge_optional_into_required_result_graph(optional_result_graph: Dict[str, 
 
 
 def _get_result_graph_key(result_graph: Dict[str, Dict[str, Set[str]]], qnodes_to_merge_on: List[str],
-                          subclass_qnodes: Set[str], log: ARAXResponse) -> str:
+                          subclass_qnodes: Set[str], child_to_parent_map: Dict[str, Dict[str, str]], log: ARAXResponse) -> str:
     """
     Result graph keys are defined such that result graphs with the same key should be merged. The overall result graph
     key is a concatenation of one 'merge key' per each qnode to merge on (which generally should be each is_set=False,
@@ -777,19 +777,23 @@ def _get_result_graph_key(result_graph: Dict[str, Dict[str, Set[str]]], qnodes_t
     merge_keys = []
     for qnode_key in qnodes_to_merge_on:
         result_nodes = list(result_graph["nodes"][qnode_key])
-        recorded_parent_id = result_graph["parents"].get(qnode_key)
         if qnode_key in subclass_qnodes:
-            if recorded_parent_id:
-                # Use the parent ID for the cluster in this result as the "merge key" for this qnode (value to merge on)
-                merge_key = recorded_parent_id
-            elif len(result_nodes) == 1:
-                merge_key = result_nodes[0]
-            else:
-                log.error(f"A node with a subclass self-qedge has no parent specified; don't know what merge key to use", error_code="MissingParent")
+            # Use the parent ID for the cluster in this result as the "merge key" for this qnode (value to merge on)
+            parent_ids = {child_to_parent_map[qnode_key].get(node_key, node_key) for node_key in result_nodes}
+            if len(parent_ids) > 1:
+                log.error(f"A result has nodes with different parents fulfilling a non-set qnode "
+                          f"({qnode_key}): {result_graph}", error_code="InvalidResultGraph")
                 merge_key = "?"
+            else:
+                merge_key = list(parent_ids)[0]
+        elif len(result_nodes) > 1:
+            log.error(f"Do not know what merge key to use when more than one node is fulfilling a non-subclass, non-set"
+                      f" qnode. Nodes {result_nodes} are fulfilling {qnode_key} in a single result. "
+                      f"Result graph is {result_graph}", error_code="MergeKeyError")
+            merge_key = "?"
         else:
-            # There should only be one node fulfilling this qnode, so use that node's ID as the "merge key"
-            merge_key = list(result_graph["nodes"][qnode_key])[0]
+            # There must only be one node fulfilling this qnode
+            merge_key = result_nodes[0]
         merge_keys.append(merge_key)
     result_graph_key = "--".join(merge_keys)
     return result_graph_key
@@ -978,7 +982,7 @@ def _extract_sub_qg_adj_map(qg_adj_map: Dict[str, Set[str]], allowed_qnode_keys:
             for qnode_key, neighbor_qnode_keys in qg_adj_map.items() if qnode_key in allowed_qnode_keys}
 
 
-def _get_subclass_clusters(kg_edge_keys_by_qg_key: any, kg: KnowledgeGraph, qg: QueryGraph) -> Tuple[Dict[str, Dict[str, Set[str]]], DefaultDict[str, Set[str]]]:
+def _get_subclass_clusters(kg_edge_keys_by_qg_key: any, kg: KnowledgeGraph, qg: QueryGraph) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Dict[str, str]]]:
     """
     Create two helper maps: one that maps parent IDs to their set of child IDs, and another that maps child IDs to
     their parent IDs. Parent-child relationships are determined based on the edges in the KG fulfilling any subclass
@@ -988,7 +992,7 @@ def _get_subclass_clusters(kg_edge_keys_by_qg_key: any, kg: KnowledgeGraph, qg: 
                             if _is_subclass_self_qedge(qedge)}
     subclass_self_qnodes = {qg.edges[qedge_key].subject for qedge_key in subclass_self_qedges}
     subclass_clusters = {subclass_qnode_key: dict() for subclass_qnode_key in subclass_self_qnodes}
-    child_to_parents_map = collections.defaultdict(set)
+    child_to_parents_map = {subclass_qnode_key: collections.defaultdict(set) for subclass_qnode_key in subclass_self_qnodes}
     for subclass_qedge_key in subclass_self_qedges:
         subclass_qnode_key = qg.edges[subclass_qedge_key].subject
         for edge_key in kg_edge_keys_by_qg_key.get(subclass_qedge_key, set()):
@@ -998,29 +1002,66 @@ def _get_subclass_clusters(kg_edge_keys_by_qg_key: any, kg: KnowledgeGraph, qg: 
             if parent_id not in subclass_clusters[subclass_qnode_key]:
                 subclass_clusters[subclass_qnode_key][parent_id] = {parent_id}
             subclass_clusters[subclass_qnode_key][parent_id].add(child_id)
-            child_to_parents_map[child_id].add(parent_id)
-            child_to_parents_map[parent_id].add(parent_id)  # It's handy to list parents as parent of themselves
-    return subclass_clusters, child_to_parents_map
+            child_to_parents_map[subclass_qnode_key][child_id].add(parent_id)
+            child_to_parents_map[subclass_qnode_key][parent_id].add(parent_id)  # It's handy to list parents as parent of themselves
+
+    # Keep only one parent per child per qnode key; system/TRAPI isn't set up to handle multiple TODO: change this?
+    child_to_parent_map = {subclass_qnode_key: dict() for subclass_qnode_key in subclass_self_qnodes}
+    for qnode_key, mappings in child_to_parents_map.items():
+        for child_id, parent_ids in mappings.items():
+            parent_id = list(sorted(list(parent_ids)))[0]
+            child_to_parent_map[qnode_key][child_id] = parent_id
+
+    return subclass_clusters, child_to_parent_map
 
 
 def _get_qnodes_node_has_result_neighbors_for(kg_node_adj_map_by_qg_key: Dict[str, Dict[str, Dict[str, Set[str]]]],
                                               qnode_key: str, neighbor_qnode_keys: Set[str], node_key: str,
-                                              result_graph: Dict[str, Dict[str, Set[str]]],
+                                              result_graph: Dict[str, Dict[str, Set[str]]], subclass_qnode_keys: Set[str],
+                                              child_to_parent_map: Dict[str, Dict[str, str]], subclass_clusters: Dict[str, Dict[str, Set[str]]],
                                               log: ARAXResponse) -> Set[str]:
-    # Look for at least one node in the result graph in this neighbor spot that this node is linked to
+    # Look for at least one node in the result graph in this neighbor spot that this node (or equivalent) is linked to
     qnodes_node_has_result_neighbors_for = set()
 
+    nodes_considered_self = {node_key}
+    # We'll consider parent's neighbors/children's neighbors as own for subclass qnodes
+    if qnode_key in subclass_qnode_keys:
+        parent_id = child_to_parent_map[qnode_key].get(node_key, node_key)
+        is_parent = node_key == parent_id
+        if is_parent:
+            result_nodes = result_graph["nodes"][qnode_key]
+            children_in_result = subclass_clusters[qnode_key].get(node_key, {node_key}).intersection(result_nodes)
+            nodes_considered_self = nodes_considered_self.union(children_in_result)
+        else:
+            nodes_considered_self.add(parent_id)
+    nodes_considered_self = list(nodes_considered_self)
+
+    # Make sure all qnode neighbors are fulfilled in the result (with special subclass exceptions)
     for neighbor_qnode_key in neighbor_qnode_keys:
-        neighbors_in_kg = kg_node_adj_map_by_qg_key[qnode_key][node_key][neighbor_qnode_key]
-        neighbors_in_result = neighbors_in_kg.intersection(result_graph["nodes"][neighbor_qnode_key])
-        if neighbors_in_result:
-            qnodes_node_has_result_neighbors_for.add(neighbor_qnode_key)
+        for node_id in nodes_considered_self:
+            has_qnode_neighbors_in_result = _has_neighbors_in_result_for_specific_qnode(node_id, qnode_key, neighbor_qnode_key,
+                                                                                        result_graph, kg_node_adj_map_by_qg_key)
+            if has_qnode_neighbors_in_result:
+                qnodes_node_has_result_neighbors_for.add(neighbor_qnode_key)
+                break  # No need to check the other 'self' nodes since we found one with this qnode neighbor
+
     return qnodes_node_has_result_neighbors_for
+
+
+def _has_neighbors_in_result_for_specific_qnode(node_key: str, qnode_key: str, neighbor_qnode_key: str,
+                                                result_graph: Dict[str, Dict[str, Set[str]]],
+                                                kg_node_adj_map_by_qg_key: Dict[str, Dict[str, Dict[str, Set[str]]]]) -> bool:
+    neighbors_in_kg = kg_node_adj_map_by_qg_key[qnode_key][node_key][neighbor_qnode_key]
+    neighbors_in_result = neighbors_in_kg.intersection(result_graph["nodes"][neighbor_qnode_key])
+    return True if neighbors_in_result else False
 
 
 def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
                         sub_qg_adj_map: Dict[str, Set[str]],
                         kg_node_adj_map_by_qg_key: Dict[str, Dict[str, Dict[str, Set[str]]]],
+                        subclass_qnode_keys: Set[str],
+                        child_to_parent_map: Dict[str, Dict[str, str]],
+                        subclass_clusters: Dict[str, Dict[str, Set[str]]],
                         log: ARAXResponse) -> Dict[str, Dict[str, Set[str]]]:
     """
     This function iteratively removes "dead ends" from a result graph until no more dead ends can be found. Dead ends
@@ -1043,7 +1084,9 @@ def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
                 # Look for at least one node in the result graph in this neighbor spot that this node is linked to
                 qnodes_node_has_result_neighbors_for = _get_qnodes_node_has_result_neighbors_for(kg_node_adj_map_by_qg_key,
                                                                                                  qnode_key, required_neighbor_qnode_keys,
-                                                                                                 corresponding_node_key, result_graph, log)
+                                                                                                 corresponding_node_key, result_graph,
+                                                                                                 subclass_qnode_keys, child_to_parent_map,
+                                                                                                 subclass_clusters, log)
                 fulfills_connections = qnodes_node_has_result_neighbors_for == required_neighbor_qnode_keys
                 if not fulfills_connections:
                     # Mark this node for removal from this result since it's lacking at least one required connection
@@ -1063,7 +1106,7 @@ def _create_result_graphs(kg: KnowledgeGraph,
                           edge_keys_by_subject: DefaultDict[str, DefaultDict[str, set]],
                           edge_keys_by_object: DefaultDict[str, DefaultDict[str, set]],
                           edge_keys_by_node_pair: DefaultDict[str, DefaultDict[str, set]],
-                          child_to_parents_map: DefaultDict[str, Set[str]],
+                          child_to_parent_map: Dict[str, Dict[str, str]],
                           subclass_clusters: Dict[str, Dict[str, Set[str]]],
                           subclass_self_qedges: Dict[str, QEdge],
                           ignore_edge_direction: bool = True,
@@ -1071,6 +1114,7 @@ def _create_result_graphs(kg: KnowledgeGraph,
                           base_result_graphs: Optional[List[dict]] = None) -> List[dict]:
     kg_node_adj_map_by_qg_key = _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key, kg, qg)
     qg_adj_map = _get_qg_adj_map_undirected(qg)
+    subclass_qnode_keys = {qedge.subject for qedge in subclass_self_qedges.values()}
 
     # Iteratively construct "result graphs" (initially containing only nodes, not edges) by walking through all qnodes
     log.debug(f"Constructing result graphs qnode by qnode")
@@ -1103,7 +1147,7 @@ def _create_result_graphs(kg: KnowledgeGraph,
             if current_qnode.is_set:
                 log.debug(f"Starting with one result graph because is_set=True for {current_qnode_key}")
                 new_result_graph = _create_new_empty_result_graph()
-                new_result_graph["nodes"][current_qnode_key] = all_node_keys_in_kg_for_this_qnode_key
+                new_result_graph["nodes"][current_qnode_key] = all_node_keys_in_kg_for_this_qnode_key  # Parents included already
                 result_graphs.append(new_result_graph)
             # Otherwise, we'll start with a result graph for EACH corresponding node in the KG
             else:
@@ -1111,6 +1155,10 @@ def _create_result_graphs(kg: KnowledgeGraph,
                 for node_key in all_node_keys_in_kg_for_this_qnode_key:
                     new_result_graph = _create_new_empty_result_graph()
                     new_result_graph["nodes"][current_qnode_key] = {node_key}
+                    # Also include the node's parent if this is a subclass qnode
+                    if current_qnode_key in subclass_qnode_keys:
+                        parent_id = child_to_parent_map[current_qnode_key].get(node_key, node_key)
+                        new_result_graph["nodes"][current_qnode_key].add(parent_id)
                     result_graphs.append(new_result_graph)
         # Otherwise fan out our existing result graphs, filling out this qnode spot in them based on prior contents
         else:
@@ -1131,9 +1179,17 @@ def _create_result_graphs(kg: KnowledgeGraph,
                         # Replace this result graph with a new one with all valid connections listed under this qnode
                         new_result_graph = _copy_result_graph(result_graph)
                         new_result_graph["nodes"][current_qnode_key] = final_connected_kg_nodes
+                        # Also include all the nodes' parents if this is a subclass qnode
+                        if current_qnode_key in subclass_qnode_keys:
+                            parent_ids = {child_to_parent_map[current_qnode_key].get(node_key, node_key)
+                                          for node_key in final_connected_kg_nodes}
+                            new_result_graph["nodes"][current_qnode_key] = new_result_graph["nodes"][current_qnode_key].union(parent_ids)
                         pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
                                                                   sub_qg_adj_map=sub_qg_adj_map,
                                                                   kg_node_adj_map_by_qg_key=kg_node_adj_map_by_qg_key,
+                                                                  subclass_qnode_keys=subclass_qnode_keys,
+                                                                  child_to_parent_map=child_to_parent_map,
+                                                                  subclass_clusters=subclass_clusters,
                                                                   log=log)
                         new_result_graphs.append(pruned_result_graph)
                     else:
@@ -1141,9 +1197,16 @@ def _create_result_graphs(kg: KnowledgeGraph,
                         for node_key in final_connected_kg_nodes:
                             new_result_graph = _copy_result_graph(result_graph)
                             new_result_graph["nodes"][current_qnode_key] = {node_key}
+                            # Also include the node's parent if this is a subclass qnode
+                            if current_qnode_key in subclass_qnode_keys:
+                                parent_id = child_to_parent_map[current_qnode_key].get(node_key, node_key)
+                                new_result_graph["nodes"][current_qnode_key].add(parent_id)
                             pruned_result_graph = _clean_up_dead_ends(result_graph=new_result_graph,
                                                                       sub_qg_adj_map=sub_qg_adj_map,
                                                                       kg_node_adj_map_by_qg_key=kg_node_adj_map_by_qg_key,
+                                                                      subclass_qnode_keys=subclass_qnode_keys,
+                                                                      child_to_parent_map=child_to_parent_map,
+                                                                      subclass_clusters=subclass_clusters,
                                                                       log=log)
                             new_result_graphs.append(pruned_result_graph)
 
@@ -1155,29 +1218,11 @@ def _create_result_graphs(kg: KnowledgeGraph,
         qnode_keys_already_handled.add(current_qnode_key)
     log.debug(f"Done assigning nodes to result graphs.")
 
-    log.debug(f"Adding parents to results")
-    subclass_qnode_keys = set(qg.nodes).intersection(set(subclass_clusters))
-    for subclass_qnode_key in subclass_qnode_keys:
-        subclass_qnode = qg.nodes[subclass_qnode_key]
-        all_nodes_filling_qnode = kg_node_keys_by_qg_key[subclass_qnode_key]
-        for result_graph in result_graphs:
-            kg_nodes_present = result_graph["nodes"][subclass_qnode_key]
-            parents_present = {parent_id for kg_node_id in kg_nodes_present
-                               for parent_id in child_to_parents_map.get(kg_node_id, {kg_node_id})}.intersection(all_nodes_filling_qnode)
-            if subclass_qnode.is_set:
-                # Simply ensure all parents are included
-                result_graph["nodes"][subclass_qnode_key] = kg_nodes_present.union(parents_present)
-            else:
-                if parents_present:
-                    parent_id = list(sorted(list(parents_present)))[0]  # Just use the first; not set up for multiple query ids yet
-                    result_graph["nodes"][subclass_qnode_key].add(parent_id)
-                    result_graph["parents"][subclass_qnode_key] = parent_id
-
     log.debug(f"Collapsing results with same parents (for is_set=False qnodes)")
     result_graphs_by_key = dict()
     non_set_qnode_keys = [qnode_key for qnode_key, qnode in qg.nodes.items() if not qnode.is_set]
     for result_graph in result_graphs:
-        result_key = _get_result_graph_key(result_graph, non_set_qnode_keys, subclass_qnode_keys, log)
+        result_key = _get_result_graph_key(result_graph, non_set_qnode_keys, subclass_qnode_keys, child_to_parent_map, log)
         existing_result_graph = result_graphs_by_key.get(result_key)
         if existing_result_graph:
             if set(existing_result_graph) != set(result_graph):
