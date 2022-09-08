@@ -26,11 +26,11 @@ from openapi_server.models.query_graph import QueryGraph
 
 class KG2Querier:
 
-    def __init__(self, response_object: ARAXResponse):
+    def __init__(self, response_object: ARAXResponse, max_edges=None):
         self.response = response_object
         self.biolink_helper = BiolinkHelper()
         self.kg2_infores_curie = "infores:rtx-kg2"
-        self.max_allowed_edges = 1000000
+        self.max_allowed_edges = max_edges if max_edges else 1000000
         self.max_edges_per_input_curie = 1000
         self.curie_batch_size = 100
 
@@ -67,6 +67,7 @@ class KG2Querier:
         qedge_key = next(qedge_key for qedge_key in query_graph.edges)
         input_qnode_key = self._get_input_qnode_key(query_graph)
         input_curies = query_graph.nodes[input_qnode_key].ids
+        input_curies = input_curies if input_curies else []
         input_curie_set = set(input_curies)
         curie_batches = [input_curies[i:i+self.curie_batch_size] for i in range(0, len(input_curies), self.curie_batch_size)]
         log.debug(f"Split {len(input_curies)} input curies into {len(curie_batches)} batches to send to Plover")
