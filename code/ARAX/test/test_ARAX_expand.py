@@ -1436,7 +1436,7 @@ def test_subclass_answers_for_non_pinned_qnodes():
 def test_unbound_rtx_kg2_query():
     actions_list = [
         "add_qnode(categories=biolink:Protein, key=n00)",
-        "add_qnode(categories=biolink:Cell, key=n01)",
+        "add_qnode(categories=biolink:SmallMolecule, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)",
