@@ -119,13 +119,6 @@ class QueryGraphInfo:
                     category = qnode.categories[0]                # FIXME this is a hack prior to proper list handling
                 self.node_category_map[category] = key
 
-
-        #### If we don't even have one id, then we don't support this
-        if not have_at_least_one_id:
-            response.error("QueryGraph has no nodes with ids. At least one node must have a specified 'ids'", error_code="QueryGraphNoIds")
-            return response
-
-
         #### Ignore special informationational edges for now.
         virtual_edge_predicates = {
             'biolink:has_normalized_google_distance_with': 1,
@@ -517,7 +510,7 @@ def main():
     #### Create an ActionsParser object
     from actions_parser import ActionsParser
     actions_parser = ActionsParser()
- 
+
     #### Set a simple list of actions
     actions_list = [
         "filter(start_node=1, maximum_results=10, minimum_confidence=0.5)",
@@ -550,7 +543,7 @@ def main():
     if result.status != 'OK':
         print(response.show(level=ARAXResponse.DEBUG))
         return response
-    
+
     query_graph_info_dict = {
         'n_nodes': query_graph_info.n_nodes,
         'n_edges': query_graph_info.n_edges,
