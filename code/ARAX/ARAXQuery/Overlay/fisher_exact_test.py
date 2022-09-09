@@ -82,7 +82,7 @@ class ComputeFTEST:
 
         # initialize some variables
         nodes_info = {}
-        edge_expand_kp = []
+        # edge_expand_kp = []
         subject_node_list = []
         object_node_dict = {}
         size_of_object = {}
@@ -184,18 +184,18 @@ class ComputeFTEST:
                 edge_attribute_list = [x.value for x in self.message.knowledge_graph.edges[edge_key].attributes if x.original_attribute_name == 'is_defined_by']
                 if len(edge_attribute_list) == 0:
 
-                    ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
-                    temp_kp = []
-                    for x in self.message.knowledge_graph.edges[edge_key].attributes:
-                        if x.attribute_type_id == 'biolink:aggregator_knowledge_source' or x.attribute_type_id == 'biolink:knowledge_source':
-                            temp_kp += self._change_kp_name(x.value)
-                    if 'arax' in temp_kp:
-                        temp_kp.remove('arax')
+                    # ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
+                    # temp_kp = []
+                    # for x in self.message.knowledge_graph.edges[edge_key].attributes:
+                    #     if x.attribute_type_id == 'biolink:aggregator_knowledge_source' or x.attribute_type_id == 'biolink:knowledge_source':
+                    #         temp_kp += self._change_kp_name(x.value)
+                    # if 'arax' in temp_kp:
+                    #     temp_kp.remove('arax')
 
                     if rel_edge_key:
                         if rel_edge_key in edge.qedge_keys:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
-                                edge_expand_kp.extend(temp_kp)
+                                # edge_expand_kp.extend(temp_kp)
                                 rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
                                 if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
@@ -203,7 +203,7 @@ class ComputeFTEST:
                                 else:
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
                             else:
-                                edge_expand_kp.extend(temp_kp)
+                                # edge_expand_kp.extend(temp_kp)
                                 rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
@@ -213,7 +213,7 @@ class ComputeFTEST:
                     else:
                         if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                edge_expand_kp.extend(temp_kp)
+                                # edge_expand_kp.extend(temp_kp)
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
                                 if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].object] = {self.message.knowledge_graph.edges[edge_key].subject}
@@ -222,7 +222,7 @@ class ComputeFTEST:
 
                         elif object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
                             if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
-                                edge_expand_kp.extend(temp_kp)
+                                # edge_expand_kp.extend(temp_kp)
                                 subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
                                 if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
                                     object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
@@ -275,29 +275,32 @@ class ComputeFTEST:
                     self.response.warning(f"No cateogry is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
 
-        ## check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both subject nodes and object nodes was used
-        if len(collections.Counter(edge_expand_kp))==1:
-            kp = edge_expand_kp[0]
-        else:
-            occurrences = collections.Counter(edge_expand_kp)
-            max_index = max([(value, index) for index, value in enumerate(occurrences.values())])[1] # if there are more than one kp having the maximum number of edges, then the last one based on alphabetical order will be chosen.
-            kp = list(occurrences.keys())[max_index]
-            self.response.debug(f"{occurrences}")
-            self.response.warning(f"More than one knowledge provider were detected to be used for expanding the edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
-            self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
+        # ## check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both subject nodes and object nodes was used
+        # if len(collections.Counter(edge_expand_kp))==1:
+        #     kp = edge_expand_kp[0]
+        # else:
+        #     occurrences = collections.Counter(edge_expand_kp)
+        #     max_index = max([(value, index) for index, value in enumerate(occurrences.values())])[1] # if there are more than one kp having the maximum number of edges, then the last one based on alphabetical order will be chosen.
+        #     kp = list(occurrences.keys())[max_index]
+        #     self.response.debug(f"{occurrences}")
+        #     self.response.warning(f"More than one knowledge provider were detected to be used for expanding the edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
+        #     self.response.warning(f"The knowledge provider {kp} was used to calculate Fisher's exact test because it has the maximum number of edges connected to both subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key}")
 
-        ## check if kp is "ARAX/KG1" or "infores:rtx-kg2", if not, report error
-        if kp == "rtx_kg1_kp":
-            kp = 'ARAX/KG1'
-        elif kp == "rtx-kg2":
-            kp = 'infores:rtx-kg2'
-        else:
-            kp = 'infores:rtx-kg2'
-            self.response.warning(f"There is more than one knowledge source for the edges between the subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key} and most of them are from {kp}. The infores:rtx-kg2 is still used to calculate Fisher's exact test.")
+        ## always set 'infores:rtx-kg2' to kp because we only have statistics for kg2 to calcualte fisher exact test
+        kp = 'infores:rtx-kg2'
 
-        if kp == 'ARAX/KG1':
-            ## This warning can be removed once KG1 is deprecated
-            self.response.warning(f"Since KG1 will be deprecated soon and the total count of nodes is based on kg2c, currently querying with 'expand(kp=ARAX/KG1)' might cause little discrepancy for FET probability.")
+        # ## check if kp is "ARAX/KG1" or "infores:rtx-kg2", if not, report error
+        # if kp == "rtx_kg1_kp":
+        #     kp = 'ARAX/KG1'
+        # elif kp == "rtx-kg2":
+        #     kp = 'infores:rtx-kg2'
+        # else:
+        #     kp = 'infores:rtx-kg2'
+        #     self.response.warning(f"There is more than one knowledge source for the edges between the subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key} and most of them are from {kp}. The infores:rtx-kg2 is still used to calculate Fisher's exact test.")
+
+        # if kp == 'ARAX/KG1':
+        #     ## This warning can be removed once KG1 is deprecated
+        #     self.response.warning(f"Since KG1 will be deprecated soon and the total count of nodes is based on kg2c, currently querying with 'expand(kp=ARAX/KG1)' might cause little discrepancy for FET probability.")
 
         ## Print out some information used to calculate FET
         if len(subject_node_list) == 1:
@@ -344,12 +347,12 @@ class ComputeFTEST:
 
         if len(object_node_dict) != 0:
             ## Based on KP detected in message KG, find the total count of node with the same type of source node
-            ## Note: Regardless of whether kg='KG1' or kg='KG2' is specified in self.size_of_given_type_in_KP, it will always query total count based on kg2c
-            if kp=='ARAX/KG1' or kp=='infores:rtx-kg2':
+            ## Note: Regardless of what kp is specified in self.size_of_given_type_in_KP, it will always query total count based on kg2c
+            if kp=='infores:rtx-kg2':
                 size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0])
                 self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in KG2c based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
             else:
-                self.response.error(f"Only KG1 or KG2 is allowable to calculate the Fisher's exact test temporally")
+                self.response.error(f"Only KG2 is allowable to calculate the Fisher's exact test temporally")
                 return self.response
 
             size_of_query_sample = len(subject_node_list)
@@ -500,8 +503,8 @@ class ComputeFTEST:
                 return (res_dict, [])
 
         else:
-            if kp == 'ARAX/KG1':
-                self.response.warning(f"Since the edge type '{rel_type}' is from KG1, we still use the DSL expand(kg=ARAX/KG1) to query neighbor count. However, the total node count is based on KG2c from 'nodesynonymizer.get_total_entity_count'. So the FET result might not be accurate.")
+            # if kp == 'ARAX/KG1':
+            #     self.response.warning(f"Since the edge type '{rel_type}' is from KG1, we still use the DSL expand(kg=ARAX/KG1) to query neighbor count. However, the total node count is based on KG2c from 'nodesynonymizer.get_total_entity_count'. So the FET result might not be accurate.")
 
             # construct the instance of ARAXQuery class
             araxq = ARAXQuery()
