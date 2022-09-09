@@ -252,7 +252,9 @@ class ARAXDatabaseManager:
             verbose = "vv"
         os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
 
-    def download_to_mnt(self, debug=False, skip_if_exists=False):
+    def download_to_mnt(self, debug=False, skip_if_exists=False, remove_unused=False):
+        if remove_unused:  # Do this first to ensure we don't run out of space on the server
+            self.remove_unused_mnt_dbs()
         for database_name in self.remote_locations.keys():
             database_dir = os.path.sep.join(self.docker_paths[database_name].split('/')[:-1])
             if debug:
@@ -335,6 +337,23 @@ class ARAXDatabaseManager:
         with open(versions_path, "w") as fid:
             json.dump(self.db_versions, fid)
 
+    def remove_unused_mnt_dbs(self):
+        # Grab our current database names (used in config_dbs.json)
+        db_names = {db_info["path"].split("/")[-1] for db_info in self.db_versions.values()}
+        # Loop through all dbs within the /mnt/data/orangeboard/databases directory and delete any not in db_names
+        databases_dir_path_list = self.RTXConfig.node_synonymizer_path.replace('/translator/', '/mnt/').split("/")[:-2]
+        databases_dir_path = "/".join(databases_dir_path_list)
+        if os.path.exists(databases_dir_path):
+            kg2_dir_names = [dir_name for dir_name in os.listdir(databases_dir_path)
+                             if dir_name.upper().startswith("KG2") and os.path.isdir(f"{databases_dir_path}/{dir_name}")]
+            for kg2_dir_name in kg2_dir_names:
+                kg2_dir_path = f"{databases_dir_path}/{kg2_dir_name}"
+                for db_file_name in os.listdir(kg2_dir_path):
+                    db_file_path = f"{kg2_dir_path}/{db_file_name}"
+                    if os.path.isfile(db_file_path) and db_file_name not in db_names:
+                        print(f"Removing unused db file {db_file_path}")
+                        os.system(f"rm -f {db_file_path}")
+
         
 def main():
     parser = argparse.ArgumentParser()
@@ -344,6 +363,8 @@ def main():
     parser.add_argument("-s", "--slim", action='store_true')
     parser.add_argument("-g", "--generate-versions-file", action='store_true', dest="generate_versions_file", required=False, help="just generate the db_versions.json file and do nothing else (ONLY USED IN TESTING/DEBUGGING)")
     parser.add_argument("-e", "--skip-if-exists", action='store_true', dest='skip_if_exists', required=False, help="for -m mode only, do not download a file if it already exists under /mnt/data/orangeboard/databases/KG2.X.X")
+    parser.add_argument("-r", "--remove_unused", action='store_true', dest='remove_unused', required=False, help="for -m mode only, remove database files under /mnt/data/orangeboard/databases/* that are NOT used in config_dbs.json")
+
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager()
     if arguments.check_local:
@@ -354,11 +375,12 @@ def main():
     elif arguments.force_download:
         DBManager.force_download_all(debug=True)
     elif arguments.mnt:
-        DBManager.download_to_mnt(debug=True, skip_if_exists=arguments.skip_if_exists)
+        DBManager.download_to_mnt(debug=True, skip_if_exists=arguments.skip_if_exists, remove_unused=arguments.remove_unused)
     elif arguments.generate_versions_file:
         DBManager.write_db_versions_file(debug=True)
     else:
         DBManager.update_databases(debug=True)
+
 
 if __name__ == "__main__":
     main()
