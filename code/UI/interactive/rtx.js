@@ -2942,7 +2942,10 @@ function display_attribute(tab, att, semmeddb) {
 	}
         else if (attributes_to_truncate.includes(att.original_attribute_name)) {
             cell.className = 'attvalue';
-	    cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
+            if (isNaN(att.value))
+		cell.appendChild(document.createTextNode(att.value));
+	    else
+		cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
 	}
 	else if (value.toString().startsWith("http")) {
 	    cell.className = 'attvalue';
@@ -5235,7 +5238,7 @@ function retrieveKPInfo() {
 					span.className = "explevel p0";
                                         span.appendChild(document.createTextNode('\u00A0'));
 					span.appendChild(document.createTextNode('\u00A0'));
-					span.title = "This is a duplicate SERVER entry";
+					span.title = "This is a duplicate URL entry";
 				    }
 				    else if (server["url"].includes("transltr.io")) {
 					had_transltr_io = true;

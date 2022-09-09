@@ -242,16 +242,14 @@ def test_query_that_expands_same_edge_twice():
 def test_771_continue_if_no_results_query():
     actions_list = [
         "add_qnode(ids=UniProtKB:P14136, key=n00)",
-        "add_qnode(categories=biolink:BiologicalProcess, key=n01)",
-        "add_qnode(ids=NOTAREALCURIE, key=n02)",
+        "add_qnode(ids=NOTAREALCURIE, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n02, object=n01, key=e01)",
-        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
+        "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
-    assert 'n02' not in nodes_by_qg_id
-    assert 'e01' not in edges_by_qg_id
+    assert 'n01' not in nodes_by_qg_id
+    assert 'e00' not in edges_by_qg_id
 
 
 @pytest.mark.slow
@@ -314,7 +312,7 @@ def test_847_dont_expand_curie_less_edge():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True,
-                                                                        error_code="InvalidQuery")
+                                                                        error_code="QueryGraphNoIds")
 
 
 @pytest.mark.slow
@@ -736,6 +734,7 @@ def test_kg2_predicate_hierarchy_reasoning():
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
 
+@pytest.mark.slow
 def test_issue_1373_pinned_curies():
     actions_list = [
         "add_qnode(ids=chembl.compound:CHEMBL2108129, key=n00)",
@@ -874,7 +873,7 @@ def test_edge_constraints():
     query = {
             "nodes": {
                 "n00": {
-                    "ids": ["CHEMBL.COMPOUND:CHEMBL945"]
+                    "ids": ["CHEMBL.COMPOUND:CHEMBL112"]
                 },
                 "n01": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -888,9 +887,9 @@ def test_edge_constraints():
                         {
                             "id": "biolink:knowledge_source",
                             "name": "knowledge source",
-                            "value": ["infores:rtx-kg2"],
+                            "value": ["infores:rtx-kg2","infores:arax","infores:drugbank"],
                             "operator": "==",
-                            "not": True
+                            "not": False
                         }
                     ]
                 }
@@ -904,20 +903,12 @@ def test_canonical_predicates():
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL945)",
         "add_qnode(key=n01, categories=biolink:BiologicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:participates_in)",  # Not canonical
-        "add_qnode(key=n02, categories=biolink:Disease)",
-        "add_qedge(key=e01, subject=n00, object=n02, predicates=biolink:treats)",  # Canonical form
-        "add_qnode(key=n03, categories=biolink:BiologicalEntity)",
-        "add_qedge(key=e02, subject=n00, object=n03, predicates=biolink:has_participant)",  # Canonical form
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
     e00_predicates = {edge.predicate for edge in edges_by_qg_id["e00"].values()}
-    e01_predicates = {edge.predicate for edge in edges_by_qg_id["e01"].values()}
-    e02_predicates = {edge.predicate for edge in edges_by_qg_id["e02"].values()}
     assert "biolink:has_participant" in e00_predicates and "biolink:participates_in" not in e00_predicates
-    assert "biolink:treats" in e01_predicates and "biolink:treated_by" not in e01_predicates
-    assert "biolink:has_participant" in e02_predicates and "biolink:participates_in" not in e02_predicates
 
 
 @pytest.mark.slow
@@ -1113,6 +1104,7 @@ def test_xdtd_expand():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
 
 
+@pytest.mark.slow
 def test_xdtd_different_categories():
     query = {
             "nodes": {
@@ -1334,6 +1326,111 @@ def test_query_ids_mappings():
     # Make sure unpinned nodes do not have query_ids specified
     for node_key, node in nodes_by_qg_id["n01"].items():
         assert not node.query_ids
+
+
+@pytest.mark.external
+def test_no_query_ids_issue():
+    query = {
+        "nodes": {
+            "n1": {
+                "categories": [
+                    "biolink:GrossAnatomicalStructure"
+                ],
+                "ids": [
+                    "UBERON:0009912",
+                    "UBERON:0002535",
+                    "UBERON:0000019",
+                    "UBERON:0002365",
+                    "UBERON:0000017",
+                    "UBERON:0000970",
+                    "UBERON:0001831",
+                    "UBERON:0016410",
+                    "UBERON:0001737",
+                    "UBERON:0000945"
+                ]
+            },
+            "n2": {
+                "categories": [
+                    "biolink:Gene"
+                ]
+            }
+        },
+        "edges": {
+            "e1": {
+                "subject": "n1",
+                "object": "n2",
+                "predicates": [
+                    "biolink:expresses"
+                ],
+                "attribute_constraints": [
+                    {
+                        "id": "biolink:knowledge_source",
+                        "name": "knowledge source",
+                        "value": ["infores:connections-hypothesis"],
+                        "operator": "==",
+                        "not": False
+                    }
+                ]
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, timeout=45)
+
+
+@pytest.mark.slow
+def test_subclass_answers_for_non_pinned_qnodes():
+    query = {
+            "nodes": {
+                "n0": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "ids": [
+                        "MONDO:0009061"
+                    ]
+                },
+                "n1": {
+                    "categories": [
+                        "biolink:GrossAnatomicalStructure"
+                    ]
+                },
+                "n2": {
+                    "categories": [
+                        "biolink:Gene"
+                    ]
+                },
+                "n3": {
+                    "categories": [
+                        "biolink:Drug",
+                        "biolink:SmallMolecule"
+                    ]
+                }
+            },
+            "edges": {
+                "e0": {
+                    "subject": "n0",
+                    "object": "n1",
+                    "predicates": [
+                        "biolink:located_in"
+                    ]
+                },
+                "e1": {
+                    "subject": "n1",
+                    "object": "n2",
+                    "predicates": [
+                        "biolink:expresses"
+                    ]
+                },
+                "e2": {
+                    "subject": "n3",
+                    "object": "n2",
+                    "predicates": [
+                        "biolink:affects"
+                    ]
+                }
+            }
+        }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, timeout=75)
 
 
 if __name__ == "__main__":

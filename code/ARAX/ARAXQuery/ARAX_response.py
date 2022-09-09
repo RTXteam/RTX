@@ -105,7 +105,7 @@ class ARAXResponse:
         """
 
         # Some backwards compatibility
-        if error_code is not None and code is 'UnknownError':
+        if error_code is not None and code == 'UnknownError':
             code = error_code
 
         self._add_message( message, self.ERROR, code=code )
