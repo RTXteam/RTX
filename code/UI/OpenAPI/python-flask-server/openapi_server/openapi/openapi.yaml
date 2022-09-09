@@ -8,7 +8,7 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
-  title: ARAX Translator Reasoner
+  title: ARAX Translator Reasoner - TRAPI 1.3.0
   version: 1.3.0
   x-translator:
     component: ARA
@@ -55,10 +55,10 @@ externalDocs:
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
 - description: ARAX TRAPI 1.3 endpoint - production
-  url: https://arax.ncats.io/api/arax/v1.3
+  url: https://arax.transltr.io/api/arax/v1.3
   x-maturity: production
 - description: ARAX TRAPI 1.3 endpoint - production
-  url: https://arax.transltr.io/api/arax/v1.3
+  url: https://arax.ncats.io/api/arax/v1.3
   x-maturity: production
 - description: ARAX TRAPI 1.3 endpoint - testing
   url: https://arax.test.transltr.io/api/arax/v1.3
