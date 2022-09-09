@@ -60,6 +60,7 @@ class ARAXExpander:
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
         self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
         self.supported_qedge_constraints = {"biolink:knowledge_source": {"==": "*"}}
+
     def describe_me(self):
         """
         Little helper function for internal use that describes the actions and what they can do. (Also used for
@@ -192,17 +193,12 @@ class ARAXExpander:
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = copy.deepcopy(message.query_graph)
 
-        # Check for any self-qedges; ignore those that are 'subclass_of'
+        # Check for any self-qedges; we will ignore those that are 'subclass_of'
         for qedge_key in set(query_graph.edges):
             qedge = query_graph.edges[qedge_key]
-            if qedge.subject == qedge.object:
-                if qedge.predicates == ["biolink:subclass_of"]:
-                    log.warning(f"Expand will ignore the 'subclass_of' self-qedge in your QG because KPs "
-                                f"automatically take care of subclass reasoning")
-                    del query_graph.edges[qedge_key]
-                else:
-                    log.error(f"ARAX does not support queries with self-qedges (qedges whose subject == object)",
-                              error_code="InvalidQG")
+            if qedge.subject == qedge.object and not qedge.predicates == ["biolink:subclass_of"]:
+                log.error(f"ARAX does not support queries with self-qedges (qedges whose subject == object)",
+                          error_code="InvalidQG")
 
         # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
         required_portion_of_qg = eu.get_required_portion_of_qg(message.query_graph)
@@ -231,9 +227,14 @@ class ARAXExpander:
         if not any(all_ids):
             log.error("QueryGraph has no nodes with ids. At least one node must have a specified 'ids'", error_code="QueryGraphNoIds")
 
-        # Default to expanding the entire query graph if the user didn't specify what to expand
+        # Default to expanding the entire QG (except subclass self-qedges) if the user didn't specify what to expand
         if not parameters['edge_key'] and not parameters['node_key']:
-            parameters['edge_key'] = list(message.query_graph.edges)
+            subclass_qedge_keys = {qedge_key for qedge_key in message.query_graph.edges
+                                   if eu.is_expand_created_subclass_qedge_key(qedge_key, message.query_graph)}
+            if subclass_qedge_keys:
+                log.warning(f"Expand will ignore subclass self-qedges in your QG ({', '.join(subclass_qedge_keys)}) "
+                            f"because KPs take care of subclass reasoning by default")
+            parameters['edge_key'] = list(set(message.query_graph.edges).difference(subclass_qedge_keys))
             parameters['node_key'] = self._get_orphan_qnode_keys(message.query_graph)
 
         # set timeout based on input parameters, it'll be used later
@@ -268,8 +269,13 @@ class ARAXExpander:
 
         # Do the actual expansion
         log.debug(f"Applying Expand to Message with parameters {parameters}")
-        input_qedge_keys = eu.convert_to_list(parameters['edge_key'])
-        input_qnode_keys = eu.convert_to_list(parameters['node_key'])
+        qedge_keys_to_expand = eu.convert_to_list(parameters['edge_key'])
+        if any(qedge_key for qedge_key in qedge_keys_to_expand
+               if eu.is_expand_created_subclass_qedge_key(qedge_key, message.query_graph)):
+            log.error(f"Cannot expand subclass self-qedges. KPs take care of this reasoning automatically.",
+                      error_code="InvalidQG")
+            return response
+        qnode_keys_to_expand = eu.convert_to_list(parameters['node_key'])
         user_specified_kp = True if parameters['kp'] else False
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
@@ -374,8 +380,8 @@ class ARAXExpander:
                             f"(not creative mode).")
 
         # Expand any specified edges
-        if input_qedge_keys:
-            query_sub_graph = self._extract_query_subgraph(input_qedge_keys, query_graph, log)
+        if qedge_keys_to_expand:
+            query_sub_graph = self._extract_query_subgraph(qedge_keys_to_expand, query_graph, log)
             if log.status != 'OK':
                 return response
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
@@ -598,9 +604,9 @@ class ARAXExpander:
                     return response
 
         # Expand any specified nodes
-        if input_qnode_keys:
+        if qnode_keys_to_expand:
             kp_to_use = parameters["kp"] if user_specified_kp else "infores:rtx-kg2"  # Only KG2 does single-node queries
-            for qnode_key in input_qnode_keys:
+            for qnode_key in qnode_keys_to_expand:
                 answer_kg = self._expand_node(qnode_key, kp_to_use, query_graph, mode, user_specified_kp, kp_timeout,
                                               force_local, log)
                 if log.status != 'OK':
@@ -1420,9 +1426,12 @@ class ARAXExpander:
                         if edge.object == canonical_curie:
                             edge.object = input_curie
             # Remap all KG ID to query ID mappings as needed
-            for node in kg.nodes.values():
-                node.query_ids = list({canonical_to_input_curie_map.get(query_id, query_id) for query_id in node.query_ids})
-
+            for node_key, node in kg.nodes.items():
+                if hasattr(node, "query_ids"):
+                    node.query_ids = list({canonical_to_input_curie_map.get(query_id, query_id) for query_id in node.query_ids})
+                else:
+                    # Answers from in-house KPs may not have query_ids filled out (they don't do subclass reasoning)
+                    node.query_ids = []
         else:
             log.debug(f"No KG nodes found that use a different curie than was asked for in the QG")
 
