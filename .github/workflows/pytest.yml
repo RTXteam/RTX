@@ -27,11 +27,16 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
     
-    - name: Set up config and database files
+    - name: Set up config files
       run: |
         scp araxconfig@araxconfig.rtx.ai:config_secrets.json /mnt/config/config_secrets.json
         echo "http://localhost:5008/api/rtxkg2/v1.3" > /mnt/config/kg2_url_override.txt
-#        cd code && python3 ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused  # Gives error importing RTXConfiguration
+
+    - name: Append code dir to GITHUB_PATH
+      run: echo "$HOME/code" >> $GITHUB_PATH
+
+    - name: Download databases as needed
+      run: python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
 
     - name: Stop any running containers
       continue-on-error: true
