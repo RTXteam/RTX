@@ -625,14 +625,14 @@ class ARAXExpander:
         # Convert message knowledge graph back to standard TRAPI
         message.knowledge_graph = eu.convert_qg_organized_kg_to_standard_kg(overarching_kg)
 
-        # Override node types so that they match what was asked for in the query graph (where applicable) #987
-        self._override_node_categories(message.knowledge_graph, message.query_graph)
-
         # Decorate all nodes with additional attributes info from KG2c if requested (iri, description, etc.)
         if mode != "RTXKG2" or not parameters.get("return_minimal_metadata"):
             decorator = ARAXDecorator()
             decorator.decorate_nodes(response)
             decorator.decorate_edges(response, kind="RTX-KG2")
+
+        # Override node types to only include descendants of what was asked for in the QG (where applicable) #1360
+        self._override_node_categories(message.knowledge_graph, message.query_graph, log)
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
@@ -1376,14 +1376,30 @@ class ARAXExpander:
             fda_approved_drug_ids = pickle.load(fda_pickle)
         return fda_approved_drug_ids
 
-    @staticmethod
-    def _override_node_categories(kg: KnowledgeGraph, qg: QueryGraph):
-        # This method overrides KG nodes' types to match those requested in the QG, where possible (issue #987)
-        for node in kg.nodes.values():
-            corresponding_qnode_categories = {category for qnode_key in node.qnode_keys for category in
-                                              eu.convert_to_list(qg.nodes[qnode_key].categories)}
-            if corresponding_qnode_categories:
-                node.categories = list(corresponding_qnode_categories)
+    def _override_node_categories(self, kg: KnowledgeGraph, qg: QueryGraph, log: ARAXResponse):
+        # Clean up what we list as the TRAPI node.categories; list descendants of what was asked for in the QG
+        log.debug(f"Overriding node categories to better align with what's in the QG")
+        qnode_descendant_categories_map = {qnode_key: set(self.bh.get_descendants(qnode.categories))
+                                           for qnode_key, qnode in qg.nodes.items() if qnode.categories}
+        for node_key, node in kg.nodes.items():
+            final_categories = set()
+            for qnode_key in node.qnode_keys:
+                # If qnode has categories specified, use node's all_categories that are descendants of qnode categories
+                if qnode_key in qnode_descendant_categories_map:
+                    all_categories_attributes = [attribute for attribute in eu.convert_to_list(node.attributes)
+                                                 if attribute.attribute_type_id == "biolink:category"]
+                    node_categories = all_categories_attributes[0].value if all_categories_attributes else node.categories
+                    relevant_categories = set(node_categories).intersection(qnode_descendant_categories_map[qnode_key])
+                # Otherwise just use what's already in the node's categories (for KG2 this is the 'preferred' category)
+                else:
+                    relevant_categories = set(node.categories)
+                final_categories = final_categories.union(relevant_categories)
+            if final_categories:
+                node.categories = list(final_categories)
+            else:
+                # Leave categories as they are but issue a warning
+                log.warning(f"None of the categories KPs gave node {node_key} ({node.categories}) are descendants of "
+                            f"those asked for in the QG (for qnode {node.qnode_keys})")
 
     @staticmethod
     def _map_back_to_input_curies(kg: KnowledgeGraph, qg: QueryGraph, log: ARAXResponse):

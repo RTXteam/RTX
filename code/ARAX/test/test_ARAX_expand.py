@@ -20,6 +20,8 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.attribute import Attribute
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
+from biolink_helper import BiolinkHelper
 
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
@@ -46,21 +48,21 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
 
     # Optionally print more detail
     if debug:
-        _print_nodes(nodes_by_qg_id)
-        _print_edges(edges_by_qg_id)
-        _print_counts_by_qgid(nodes_by_qg_id, edges_by_qg_id)
+        print_nodes(nodes_by_qg_id)
+        print_edges(edges_by_qg_id)
+        print_counts_by_qgid(nodes_by_qg_id, edges_by_qg_id)
         print(response.show(level=ARAXResponse.DEBUG))
 
     # Run standard testing (applies to every test case)
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
-    _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
-    _check_property_format(nodes_by_qg_id, edges_by_qg_id)
-    _check_node_categories(message.knowledge_graph.nodes, message.query_graph)
+    check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
+    check_property_format(nodes_by_qg_id, edges_by_qg_id)
+    check_node_categories(message.knowledge_graph.nodes, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
 
 
-def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     print(f"KG counts:")
     if nodes_by_qg_id or edges_by_qg_id:
         for qnode_key, corresponding_nodes in sorted(nodes_by_qg_id.items()):
@@ -71,32 +73,20 @@ def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
         print("  KG is empty")
 
 
-def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
+def print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
             print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}, "
                   f"{node.query_ids if hasattr(node, 'query_ids') else ''}")
 
 
-def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     for qedge_key, edges in sorted(edges_by_qg_id.items()):
         for edge_key, edge in sorted(edges.items()):
             print(f"{qedge_key}: {edge_key}, {edge.subject}--{edge.predicate}->{edge.object}, {edge.qedge_keys}")
 
 
-def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
-    node_counts_by_prefix = dict()
-    for qnode_key, nodes in nodes_by_qg_id.items():
-        for node_key, node in nodes.items():
-            prefix = node_key.split(':')[0]
-            if prefix in node_counts_by_prefix.keys():
-                node_counts_by_prefix[prefix] += 1
-            else:
-                node_counts_by_prefix[prefix] = 1
-    print(node_counts_by_prefix)
-
-
-def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     node_keys = set()
     node_keys_used_by_edges = set()
     for qnode_key, nodes in nodes_by_qg_id.items():
@@ -109,7 +99,7 @@ def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_i
     assert node_keys == node_keys_used_by_edges or len(node_keys_used_by_edges) == 0
 
 
-def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             assert node_key and isinstance(node_key, str)
@@ -143,12 +133,16 @@ def _check_attribute(attribute: Attribute):
     assert isinstance(attribute.description, str) or attribute.description is None
 
 
-def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
+def check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
+    bh = BiolinkHelper()
+    qnode_descendant_categories_map = {qnode_key: set(bh.get_descendants(qnode.categories))
+                                       for qnode_key, qnode in query_graph.nodes.items() if qnode.categories}
     for node in nodes.values():
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
             if qnode.categories:
-                assert set(qnode.categories).issubset(set(node.categories))  # Could have additional categories if it has multiple qnode keys
+                # A node's categories should be only descendants of what was asked for in the QG
+                assert set(node.categories).issubset(qnode_descendant_categories_map[qnode_key])
 
 
 @pytest.mark.slow
