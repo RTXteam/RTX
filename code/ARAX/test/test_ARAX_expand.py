@@ -1246,6 +1246,7 @@ def test_xdtd_no_curies():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
 
 
+@pytest.mark.skip
 def test_xdtd_with_other_edges():
     query = {
         "nodes": {
