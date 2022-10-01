@@ -140,7 +140,7 @@ def check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
     for node in nodes.values():
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
-            if qnode.categories:
+            if qnode.categories and not qnode.ids:
                 # A node's categories should be only descendants of what was asked for in the QG
                 assert set(node.categories).issubset(qnode_descendant_categories_map[qnode_key])
 
