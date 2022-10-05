@@ -4,4 +4,4 @@
 
 set -o nounset -o pipefail -o errexit
 
-sudo bash -c "cd /home/ubuntu/actions-runner && ./svc.sh status | grep runsvc.sh | grep python > /var/www/html/cicd.txt"
+sudo bash -c "cd /home/ubuntu/actions-runner && ./svc.sh status | grep runsvc.sh | grep python >> /var/www/html/cicd.txt"
