@@ -27,12 +27,12 @@ from smartapi import SmartAPI
 
 class KPSelector:
 
-    def __init__(self, log: ARAXResponse = ARAXResponse()):
+    def __init__(self, valid_kps_override: Optional[Set[str]] = None, log: ARAXResponse = ARAXResponse()):
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
         self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self.get_all_kps()
-        self.valid_kps = set(self.kp_urls.keys())
+        self.valid_kps = valid_kps_override if valid_kps_override else set(self.kp_urls.keys())
         self.timeout_record = self._load_timeout_record()
         self.biolink_helper = BiolinkHelper()
         self.meta_map = self._load_meta_map()

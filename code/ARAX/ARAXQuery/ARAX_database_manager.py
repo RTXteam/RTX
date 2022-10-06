@@ -351,6 +351,7 @@ class ARAXDatabaseManager:
                 for db_file_name in os.listdir(kg2_dir_path):
                     db_file_path = f"{kg2_dir_path}/{db_file_name}"
                     if os.path.isfile(db_file_path) and db_file_name not in db_names:
+                        print(f"Removing unused db file {db_file_path}")
                         os.system(f"rm -f {db_file_path}")
 
         
