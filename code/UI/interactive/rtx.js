@@ -2557,7 +2557,7 @@ function add_cyto(i) {
 		'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
 		'target-arrow-shape': 'triangle',
 		'opacity': 0.8,
-		'content': function(ele) { if ((ele.data().parentdivnum > 0) && ele.data().type) { return ele.data().type; } return '';}
+		'content': function(ele) { if ((ele.data().parentdivnum > 0) && ele.data().type) { return ele.data().type + (ele.data().qualifiers ? ' **':''); } return '';}
 	    })
 	    .selector(':selected')
 	    .css({
@@ -2654,9 +2654,14 @@ function add_cyto(i) {
                     var link = document.createElement("a");
 		    link.style.cursor = "pointer";
 		    link.dataset.ee = nodedges[e].id();
-		    link.title = 'View edge details';
 		    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
 		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+		    if (nodedges[e].data('qualifiers')) {
+			link.appendChild(document.createTextNode(' **'));
+			link.title = 'View QUALIFIED edge details';
+		    }
+		    else
+			link.title = 'View edge details';
 		    td.appendChild(link);
 		    td.appendChild(document.createTextNode(" \u{1F87A} "))
 		    tr.appendChild(td);
@@ -2676,9 +2681,14 @@ function add_cyto(i) {
                     var link = document.createElement("a");
 		    link.style.cursor = "pointer";
 		    link.dataset.ee = nodedges[e].id();
-		    link.title = 'View edge details';
                     link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
 		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+                    if (nodedges[e].data('qualifiers')) {
+			link.appendChild(document.createTextNode(' **'));
+			link.title = 'View QUALIFIED edge details';
+		    }
+		    else
+			link.title = 'View edge details';
 		    td.appendChild(link);
 		    tr.appendChild(td);
 		    td = document.createElement("td");
@@ -2784,6 +2794,15 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
+	show_qualifiers(div,
+			this.data('qualifiers'),
+			this.data('source'),
+			cyobj[i].nodes("[id='"+this.data('source')+"']").data('name'),
+			this.data('predicate'),
+			this.data('target'),
+			cyobj[i].nodes("[id='"+this.data('target')+"']").data('name')
+		       );
+
 	show_attributes(div, this.data('attributes'),null);
 	if (this.data('edge_binding_attributes')) {
             div.appendChild(document.createElement("br"));
@@ -2795,6 +2814,131 @@ function add_cyto(i) {
     cytodata[i] = null;
 }
 
+
+function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
+    if (quals == null)
+	return;
+
+    var qtable = document.createElement("table");
+    qtable.className = 'numold explevel';
+    var row = document.createElement("tr");
+    var cell = document.createElement("td");
+    cell.className = 'attvalue';
+    cell.colSpan = '2';
+    cell.appendChild(document.createTextNode("Qualified Statement"));
+    row.appendChild(cell);
+    qtable.appendChild(row);
+
+    var qsentence = document.createElement("span");
+    qsentence.className = 'explevel attvalue p9';
+
+    var orderedquals = [
+	'subject_direction_qualifier',
+	'subject_aspect_qualifier',
+	'subject',
+	'subject_context_qualifier',
+	'qualified_predicate',
+	'predicate',
+	'mechanism_qualifier',
+	'object_direction_qualifier',
+	'object_aspect_qualifier',
+	'object',
+	'object_context_qualifier',
+	'pathway_context_qualifier'
+    ];
+
+    var hadsubjq = false;
+    var hadqpred = false;
+    for (var oq of orderedquals) {
+	var hasdup = false;
+	var qual = quals.filter(a => a.qualifier_type_id == "biolink:"+oq);
+	if (oq != 'subject' && oq != 'object' && oq != 'predicate' && qual[0] == null) {
+	    //console.log("nothing found for: "+oq);
+	    continue;
+	}
+	if (qual.length > 1) {
+            console.error("duplicate value found for: "+oq);
+	    hasdup = true;
+	}
+
+	var pretext = '';
+	var postext = '';
+	var celltext = '';
+	var frag = document.createElement("span");
+	frag.title = oq;
+        if (oq == 'subject') {
+	    frag.innerHTML = (hadsubjq ? 'of ' : '') + sname + " ";
+	    celltext = subj;
+	}
+        else if (oq == 'object') {
+	    frag.innerHTML = "of " + oname + " ";
+	    celltext = obj;
+	}
+        else if (oq == 'predicate') {
+	    if (hadqpred) continue;
+	    frag.innerHTML = pred + " ";
+	    celltext = pred;
+	}
+	else {
+	    if (oq == 'subject_direction_qualifier' || oq == 'subject_aspect_qualifier')
+		hadsubjq = true;
+	    if (oq == 'qualified_predicate')
+		hadqpred = true;
+	    if (oq == 'mechanism_qualifier') {
+		pretext = "(";
+		postext = ")";
+	    }
+	    if (oq.includes('context_qualifier'))
+		pretext = "in ";
+
+	    frag.innerHTML = pretext + qual[0]['qualifier_value'] + postext + " ";
+	    celltext = qual[0]['qualifier_value'];
+	    if (hasdup)
+		celltext += " ** has duplicate values!";
+	}
+	qsentence.appendChild(frag);
+
+	var row = document.createElement("tr");
+	var cell = document.createElement("td");
+        cell.style.fontWeight = "bold";
+	cell.appendChild(document.createTextNode(oq+":"));
+	row.appendChild(cell);
+	cell = document.createElement("td");
+        cell.appendChild(document.createTextNode(celltext));
+	row.appendChild(cell);
+	qtable.appendChild(row);
+    }
+
+    var addbar = true;
+    for (var oqual of quals) {
+	var qtid = oqual['qualifier_type_id'].replace("biolink:","");
+	if (orderedquals.includes(qtid))
+	    continue;
+
+        var row = document.createElement("tr");
+	var cell = document.createElement("td");
+	cell.style.fontWeight = "bold";
+	if (addbar) {
+	    cell.colSpan = '2';
+	    cell.appendChild(document.createElement("hr"));
+	    row.appendChild(cell);
+	    qtable.appendChild(row);
+	    addbar = false;
+	    row = document.createElement("tr");
+	    cell = document.createElement("td");
+	    cell.style.fontWeight = "bold";
+	}
+        cell.appendChild(document.createTextNode(oqual['qualifier_type_id']+":"));
+	row.appendChild(cell);
+	cell = document.createElement("td");
+	cell.appendChild(document.createTextNode(oqual['qualifier_value']));
+	row.appendChild(cell);
+	qtable.appendChild(row);
+    }
+
+    html_div.appendChild(qsentence);
+    html_div.appendChild(qtable);
+}
 
 
 function show_attributes(html_div, atts, title) {
@@ -3074,6 +3218,11 @@ function mapEdgeLineStyle(ele) {
 }
 
 function mapEdgeColor(ele) {
+    if (ele.data().qualifiers)
+	return '#291';
+    return "#aaf";
+
+    // old:
     var etype = ele.data().predicate ? ele.data().predicate : ele.data().predicates ? ele.data().predicates[0] : "NA";
     if (etype == "biolink:contraindicated_for")       { return "red";}
     if (etype == "biolink:indicated_for")             { return "green";}
@@ -5348,6 +5497,7 @@ function retrieveKPInfo() {
 
 	})
         .catch(error => {
+	    wspan.innerHTML = '';
 	    kpinfo_node.className = "error";
 	    kpinfo_node.innerHTML =  "<br>" + error + "<br><br>";
 	    console.error(error);
