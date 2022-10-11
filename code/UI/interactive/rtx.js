@@ -2273,7 +2273,8 @@ function process_graph(gne,gid,trapi) {
 			    "predicates" : gedge.predicates ? gedge.predicates : [],
 			    "exclude"    : gedge.exclude ? gedge.exclude : false,
 			    "option_group_id" : gedge.option_group_id ? gedge.option_group_id : null,
-			    "constraints": gedge.constraints ? gedge.constraints : []
+			    "constraints": gedge.constraints ? gedge.constraints : [],
+			    "qualifier_constraints": gedge.qualifier_constraints ? gedge.qualifier_constraints : []
 			  };
 	    input_qg.edges[id] = tmpdata;
 	}
@@ -3395,11 +3396,7 @@ function qg_node(id,render) {
 
     qg_update_qnode_list();
     qg_display_edge_predicates(false);
-
-    if (document.getElementById("showQGjson").checked) {
-	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
-	sesame('openmax',statusdiv);
-    }
+    show_qgjson();
 }
 
 function qg_remove_qnode() {
@@ -3669,6 +3666,7 @@ function qg_edge(id) {
 	var newqedge = {};
 	newqedge.predicates = [];
 	newqedge.constraints = [];
+	newqedge.qualifier_constraints = [];
         newqedge.exclude = false;
 	newqedge.option_group_id = null;
 	// join last two nodes if not specified otherwise [ToDo: specify]
@@ -3753,6 +3751,45 @@ function qg_edge(id) {
 	}
     }
 
+    htmlnode = document.getElementById('edgeeditor_quals');
+    htmlnode.innerHTML = '';
+    var showhr = false;
+    var prevqb = '';
+    if (input_qg.edges[id].qualifier_constraints) {
+	for (qset of input_qg.edges[id].qualifier_constraints) {
+	    if (showhr) {
+		htmlnode.appendChild(document.createElement("hr"));
+		htmlnode.appendChild(document.createElement("hr"));
+		htmlnode.appendChild(document.createElement("hr"));
+		prevqb = '';
+	    }
+	    showhr = true;
+            for (qualifier of qset.qualifier_set) {
+		currqb = qualifier['qualifier_type_id'].split("_")[0];
+		var span0 = document.createElement("span");
+		var span1 = document.createElement("span");
+		var span2 = document.createElement("span");
+		if (prevqb && prevqb != currqb) {
+		    span0.style.borderTop = '1px solid #ccc';
+		    span1.style.borderTop = '1px solid #ccc';
+		    span2.style.borderTop = '1px solid #ccc';
+		}
+		prevqb = currqb;
+		span0.style.color = "#aaa";
+		span0.appendChild(document.createTextNode(qualifier['qualifier_type_id'].split(":")[0]+":"));
+		htmlnode.appendChild(span0);
+		span1.appendChild(document.createTextNode(qualifier['qualifier_type_id'].split(":")[1]));
+		htmlnode.appendChild(span1);
+
+		span2.style.fontWeight = "bold";
+		span2.style.paddingLeft = "10px";
+		span2.appendChild(document.createTextNode(qualifier.qualifier_value));
+		htmlnode.appendChild(span2);
+	    }
+	}
+    }
+
+
     document.getElementById('edgeeditor_xcl').checked = input_qg.edges[id].exclude;
 
     htmlnode = document.getElementById('edgeeditor_optgpid');
@@ -3770,11 +3807,7 @@ function qg_edge(id) {
     else
 	input_qg.edges[id].option_group_id = null;
 
-
-    if (document.getElementById("showQGjson").checked) {
-	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
-	sesame('openmax',statusdiv);
-    }
+    show_qgjson();
 }
 
 function qg_update_qnode_list() {
@@ -3916,6 +3949,14 @@ function qg_edit(msg) {
     document.getElementById("devdiv").innerHTML +=  "Copied query_graph to edit window<br>";
 }
 
+function show_qgjson() {
+    if (document.getElementById("showQGjson").checked) {
+	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
+	sesame('openmax',statusdiv);
+    }
+}
+
+
 // unused at the moment
 function qg_display_items() {
     if (!document.getElementById("qg_items"))
@@ -4024,7 +4065,7 @@ function qg_display_edge_predicates(all) {
     var preds = [];
     if (all)
 	preds = all_predicates.sort();
-    else if (input_qg.nodes[obj]['categories'][0] in predicates[input_qg.nodes[subj]['categories'][0]])
+    else if (predicates[input_qg.nodes[subj]['categories'][0]] && input_qg.nodes[obj]['categories'][0] in predicates[input_qg.nodes[subj]['categories'][0]])
 	preds = predicates[input_qg.nodes[subj]['categories'][0]][input_qg.nodes[obj]['categories'][0]].sort();
 
     preds_node.innerHTML = '';
@@ -4105,6 +4146,8 @@ function qg_clean_up(xfer) {
 	    delete gedge.predicates;
 	if (gedge.constraints && gedge.constraints[0] == null)
 	    delete gedge.constraints;
+	if (gedge.qualifier_constraints && gedge.qualifier_constraints[0] == null)
+	    delete gedge.qualifier_constraints;
         if (gedge.option_group_id == null)
 	    delete gedge.option_group_id;
         if (!gedge.exclude)
