@@ -175,10 +175,9 @@ class BiolinkHelper:
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
                               "predicate_mixins": dict(), "category_mixins": dict()}
         # Grab the relevant Biolink yaml file
-        try:
-            response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{self.biolink_version}/biolink-model.yaml",
-                                    timeout=10)
-        except Exception:
+        response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{self.biolink_version}/biolink-model.yaml",
+                                timeout=10)
+        if response.status_code != 200:  # Sometimes Biolink's tags start with 'v', so try that
             response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/v{self.biolink_version}/biolink-model.yaml",
                                     timeout=10)
 
