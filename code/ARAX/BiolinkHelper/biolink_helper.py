@@ -175,8 +175,13 @@ class BiolinkHelper:
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
                               "predicate_mixins": dict(), "category_mixins": dict()}
         # Grab the relevant Biolink yaml file
-        response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{self.biolink_version}/biolink-model.yaml",
-                                timeout=10)
+        try:
+            response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{self.biolink_version}/biolink-model.yaml",
+                                    timeout=10)
+        except Exception:
+            response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/v{self.biolink_version}/biolink-model.yaml",
+                                    timeout=10)
+
         if response.status_code == 200:
             # Build predicate, category, and mixin trees from the Biolink yaml
             biolink_model = yaml.safe_load(response.text)
