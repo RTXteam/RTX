@@ -1,5 +1,4 @@
 #!/bin/env python3
-import concurrent
 import copy
 import json
 import sys
@@ -8,6 +7,7 @@ import time
 from collections import defaultdict
 
 import aiohttp
+import asyncio
 import requests
 from typing import List, Dict, Set, Union, Optional, Tuple
 
@@ -223,7 +223,7 @@ class TRAPIQuerier:
                             self.log.warning(f"{self.kp_name}: {http_error_message}. Query sent to KP was: {request_body}")
                             self.log.update_query_plan(qedge_key, self.kp_name, "Error", http_error_message)
                             return QGOrganizedKnowledgeGraph()
-                except concurrent.futures._base.TimeoutError:
+                except asyncio.exceptions.TimeoutError:
                     timeout_message = f"Query timed out after {query_timeout} seconds"
                     self.log.warning(f"{self.kp_name}: {timeout_message}")
                     self.log.update_query_plan(qedge_key, self.kp_name, "Timed out", timeout_message)
