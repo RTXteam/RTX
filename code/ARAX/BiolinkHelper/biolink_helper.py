@@ -1,4 +1,9 @@
 #!/bin/env python3
+"""
+Usage:  python biolink_helper.py [biolink version number, e.g. 3.0.3]
+"""
+
+import argparse
 import json
 import os
 import pathlib
@@ -286,15 +291,13 @@ class BiolinkHelper:
             if info.get("symmetric"):
                 symmetric_predicates.add(slot_name)
             # Record the canonical form of this predicate
-            if info.get("inverse"):
-                inverse_predicate_english = info["inverse"]
-                inverse_info = biolink_model["slots"][inverse_predicate_english]
-                if inverse_info.get("annotations"):
-                    # Hack around a bug in the biolink yaml file (blank line causing parse issues)
-                    annotations = inverse_info["annotations"][0] if isinstance(inverse_info["annotations"], list) else inverse_info["annotations"]
-                    if annotations.get("tag") == "biolink:canonical_predicate" and annotations.get("value"):
-                        canonical_predicate = self._convert_english_predicate_to_trapi_format(inverse_predicate_english)
-                        canonical_predicate_map[slot_name] = canonical_predicate
+            inverse_predicate_english = info.get("inverse")
+            is_canonical_predicate = info.get("annotations", dict()).get("canonical_predicate")
+            # A couple 'inverse' pairs of predicates in Biolink 3.0.3 seem to be missing a 'canonical_predicate' label,
+            # so we work around that below (see https://github.com/biolink/biolink-model/issues/1112)
+            canonical_predicate_english = slot_name_english if is_canonical_predicate or not inverse_predicate_english else inverse_predicate_english
+            canonical_predicate = self._convert_english_predicate_to_trapi_format(canonical_predicate_english)
+            canonical_predicate_map[slot_name] = canonical_predicate
 
         # Recursively build the predicates trees starting with the root
         predicate_tree = Tree()
@@ -388,7 +391,11 @@ class BiolinkHelper:
 
 
 def main():
-    bh = BiolinkHelper()
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('version', nargs='?', help="The Biolink Model version number to use")
+    args = arg_parser.parse_args()
+
+    bh = BiolinkHelper(biolink_version=args.version)
 
     # Test descendants
     chemical_entity_descendants = bh.get_descendants("biolink:ChemicalEntity", include_mixins=True)
