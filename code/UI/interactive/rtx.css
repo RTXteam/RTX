@@ -8,6 +8,7 @@ body {
 }
 hr {
     border: 1px dashed #444;
+    width: 100%;
 }
 
 .banner {

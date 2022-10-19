@@ -35,6 +35,7 @@ def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
     original_config_dbs_file = pathlib.Path(config_dbs_file_path)
     if original_config_dbs_file.exists():
         subprocess.check_call(["mv", config_dbs_file_path, f"{config_dbs_file_path}_KG2CBUILDTEMP"])
+        subprocess.check_call(["cp", f"{config_dbs_file_path}_KG2CBUILDTEMP", config_dbs_file_path])
 
     RTXConfiguration()  # Regenerates config_secrets.json with the latest version
     with open(config_dbs_file_path) as config_dbs_file:

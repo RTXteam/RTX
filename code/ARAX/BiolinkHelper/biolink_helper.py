@@ -177,6 +177,10 @@ class BiolinkHelper:
         # Grab the relevant Biolink yaml file
         response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{self.biolink_version}/biolink-model.yaml",
                                 timeout=10)
+        if response.status_code != 200:  # Sometimes Biolink's tags start with 'v', so try that
+            response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/v{self.biolink_version}/biolink-model.yaml",
+                                    timeout=10)
+
         if response.status_code == 200:
             # Build predicate, category, and mixin trees from the Biolink yaml
             biolink_model = yaml.safe_load(response.text)
