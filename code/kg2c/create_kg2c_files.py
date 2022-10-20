@@ -52,19 +52,19 @@ PROPERTIES_LOOKUP = {
         "id": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "subject": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "object": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "negated": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "negated": {"type": bool, "in_kg2pre": True, "in_kg2c_lite": True},
+        "predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "knowledge_source": {"type": list, "in_kg2pre": True, "in_kg2c_lite": True},
+        "publications": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
+        "kg2_ids": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
+        "publications_info": {"type": dict, "in_kg2pre": True, "in_kg2c_lite": False},
         "source_predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "relation_label": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "update_date": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "predicate_label": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_aspect" : {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "knowledge_source": {"type": list, "in_kg2pre": True, "in_kg2c_lite": True},
-        "publications": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
-        "kg2_ids": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
-        "publications_info": {"type": dict, "in_kg2pre": True, "in_kg2c_lite": False}
+        "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True}
     }
 }
 
@@ -282,7 +282,8 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
 
 
 def _create_edge(subject: str, object: str, predicate: str, knowledge_source: List[str], publications: List[str],
-                 publications_info: Dict[str, any], kg2_ids: List[str]) -> Dict[str, any]:
+                 publications_info: Dict[str, any], kg2_ids: List[str], negated, source_predicate, relation_label, update_date, 
+                 qualified_predicate, predicate_label, qualified_object_aspect, qualified_object_direction) -> Dict[str, any]:
     edge_properties_lookup = PROPERTIES_LOOKUP["edges"]
     assert isinstance(subject, edge_properties_lookup["subject"]["type"])
     assert isinstance(object, edge_properties_lookup["object"]["type"])
@@ -291,6 +292,16 @@ def _create_edge(subject: str, object: str, predicate: str, knowledge_source: Li
     assert isinstance(publications, edge_properties_lookup["publications"]["type"])
     assert isinstance(publications_info, edge_properties_lookup["publications_info"]["type"])
     assert isinstance(kg2_ids, edge_properties_lookup["kg2_ids"]["type"])
+    assert isinstance(negated, edge_properties_lookup["negated"]["type"])
+    assert isinstance(source_predicate, edge_properties_lookup["source_predicate"]["type"])
+    assert isinstance(relation_label, edge_properties_lookup["relation_label"]["type"])
+    assert isinstance(update_date, edge_properties_lookup["update_date"]["type"])
+    assert isinstance(qualified_predicate, edge_properties_lookup["qualified_predicate"]["type"])
+    assert isinstance(predicate_label, edge_properties_lookup["predicate_label"]["type"])
+    assert isinstance(qualified_object_aspect, edge_properties_lookup["qualified_object_aspect"]["type"])
+    assert isinstance(qualified_object_direction, edge_properties_lookup["qualified_object_direction"]["type"])
+
+    
     return {
         "subject": subject,
         "object": object,
@@ -298,7 +309,14 @@ def _create_edge(subject: str, object: str, predicate: str, knowledge_source: Li
         "knowledge_source": knowledge_source,
         "publications": publications,
         "publications_info": publications_info,
-        "kg2_ids": kg2_ids
+        "kg2_ids": kg2_ids,
+        "source_predicate": source_predicate, 
+        "relation_label": relation_label, 
+        "update_date": update_date, 
+        "qualified_predicate": qualified_predicate, 
+        "predicate_label": predicate_label,
+        "qualified_object_aspect": qualified_object_aspect,
+        "qualified_object_direction": qualified_object_direction
     }
 
 
@@ -520,6 +538,14 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         canonicalized_object = curie_map.get(original_object, original_object)
         edge_publications = kg2pre_edge['publications'] if kg2pre_edge.get('publications') else []
         edge_knowledge_source = kg2pre_edge['knowledge_source'] if kg2pre_edge.get('knowledge_source') else []
+        edge_negated = kg2pre_edge['negated'] if kg2pre_edge.get('negated') else []
+        edge_source_predicate = kg2pre_edge['source_predicate'] if kg2pre_edge.get('source_predicate') else []
+        edge_relation_label = kg2pre_edge['relation_label'] if kg2pre_edge.get('relation_label') else []
+        edge_update_date = kg2pre_edge['update_date'] if kg2pre_edge.get('update_date') else []
+        edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if kg2pre_edge.get('qualified_predicate') else []
+        edge_predicate_label = kg2pre_edge['predicate_label'] if kg2pre_edge.get('predicate_label') else []
+        edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if kg2pre_edge.get('qualified_object_aspect') else []
+        edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else []
         edge_publications_info = _load_publications_info(kg2pre_edge['publications_info'], kg2_edge_id) if kg2pre_edge.get('publications_info') else dict()
         if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
             canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, kg2pre_edge['predicate'])
@@ -536,7 +562,16 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
                                                       knowledge_source=edge_knowledge_source,
                                                       publications=edge_publications,
                                                       publications_info=edge_publications_info,
-                                                      kg2_ids=[kg2_edge_id])
+                                                      kg2_ids=[kg2_edge_id],
+                                                      negated= edge_negated,
+                                                      source_predicate=edge_source_predicate,
+                                                      relation_label=edge_relation_label,
+                                                      update_date=edge_update_date,
+                                                      qualified_predicate=edge_qualified_predicate,
+                                                      predicate_label= edge_predicate_label,
+                                                      qualified_object_aspect=edge_qualified_object_aspect,
+                                                      qualified_object_direction= edge_qualified_object_direction
+                                                      )
                 canonicalized_edges[canonicalized_edge_key] = new_canonicalized_edge
     logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges)} "
                  f"({round((len(canonicalized_edges) / len(kg2pre_edges)) * 100)}%)")
@@ -695,6 +730,7 @@ def create_kg2c_files(is_test=False):
 
         # Canonicalize edges
         kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges", is_test)
+        print(kg2pre_edges)
         canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
         del kg2pre_edges
         gc.collect()
