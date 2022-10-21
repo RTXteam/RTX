@@ -531,7 +531,7 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else []
         edge_publications_info = _load_publications_info(kg2pre_edge['publications_info'], kg2_edge_id) if kg2pre_edge.get('publications_info') else dict()
         if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
-            canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, kg2pre_edge['predicate'], edge_qualified_predicate, edge_qualified_object_aspect)
+            canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, kg2pre_edge['predicate'], edge_qualified_predicate, edge_qualified_object_aspect, edge_qualified_object_direction)
             if canonicalized_edge_key in canonicalized_edges:
                 canonicalized_edge = canonicalized_edges[canonicalized_edge_key]
                 canonicalized_edge['knowledge_source'] = _merge_two_lists(canonicalized_edge['knowledge_source'])
