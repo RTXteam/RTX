@@ -1117,18 +1117,13 @@ def _get_subclass_clusters(kg_edge_keys_by_qg_key: Dict[str, Set[str]], kg_node_
             child_to_parents_map[subclass_qnode_key][parent_id].add(parent_id)  # It's handy to list parents as parent of themselves
     # Also list any parents that may not have subclass self-edges as parents of themselves
     for subclass_qnode_key in subclass_self_qnodes:
-        subclass_qnode = qg.nodes[subclass_qnode_key]
-        qnode_query_ids = set(subclass_qnode.ids) if subclass_qnode.ids else set()
         node_keys_for_qnode = kg_node_keys_by_qg_key[subclass_qnode_key]
         node_keys_with_subclass_edge = set(child_to_parents_map[subclass_qnode_key])
         node_keys_with_no_subclass_edge = node_keys_for_qnode.difference(node_keys_with_subclass_edge)
         for node_key in node_keys_with_no_subclass_edge:
-            if node_key not in qnode_query_ids:
-                log.error(f"Node {node_key} (fulfilling {subclass_qnode_key}) has no subclass edges and it is not one "
-                          f"of the curies listed in qnode {subclass_qnode_key}'s ids", error_code="SubclassProblem")
-            else:
-                # Otherwise we'll record this node as its own parent
-                child_to_parents_map[subclass_qnode_key][node_key] = {node_key}
+            # Otherwise we'll record this node as its own parent
+            # Note: Such nodes won't always appear in the QG because they can be returned for unpinned nodes
+            child_to_parents_map[subclass_qnode_key][node_key] = {node_key}
 
     # Keep only one parent per child per qnode key; system/TRAPI isn't set up to handle multiple yet
     child_to_parent_map = {subclass_qnode_key: dict() for subclass_qnode_key in subclass_self_qnodes}
