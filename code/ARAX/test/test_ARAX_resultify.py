@@ -1560,6 +1560,7 @@ def test_node_binding_query_id_two_hop_double_pinned():
 
 @pytest.mark.external
 def test_missing_chp_results():
+    # Note: for this test to pass, need to use a maturity that CHP has an endpoint for (they don't have dev currently)
     uberon_curies = ["UBERON:0009912", "UBERON:0002535", "UBERON:0000019", "UBERON:0002365", "UBERON:0000017",
                      "UBERON:0000970", "UBERON:0001831", "UBERON:0016410", "UBERON:0001737", "UBERON:0000945"]
     actions = [
@@ -1571,8 +1572,51 @@ def test_missing_chp_results():
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
     assert len(message.results) > 20
     assert any(result for result in message.results if "subclass:n1--n1" in result.edge_bindings)
+
+
+@pytest.mark.slow
+@pytest.mark.external
+def test_too_few_results():
+    # Note: for this test to pass, need to use a maturity that CHP has an endpoint for (they don't have dev currently)
+    actions = [
+        "add_qnode(key=n0, ids=MONDO:0009061, categories=biolink:Disease)",
+        "add_qnode(key=n1, categories=biolink:GrossAnatomicalStructure)",
+        "add_qnode(key=n2, categories=biolink:Gene)",
+        "add_qnode(key=n3, categories=[biolink:Drug, biolink:SmallMolecule])",
+        "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:located_in)",
+        "add_qedge(key=e1, subject=n1, object=n2, predicates=biolink:expresses)",
+        "add_qedge(key=e2, subject=n3, object=n2, predicates=biolink:affects)",
+        "expand(edge_key=e0, prune_threshold=1000, kp_timeout=75)",
+        "expand(edge_key=e1, kp=infores:connections-hypothesis, prune_threshold=1000, kp_timeout=75)",
+        "expand(edge_key=e2, prune_threshold=1000, kp_timeout=75)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) > 200
+
+
+@pytest.mark.slow
+@pytest.mark.external
+def test_issue1923_multiple_essence_candidates_subclass():
+    actions = [
+        "add_qnode(name=ATP1A3, key=n0)",
+        "add_qnode(categories=biolink:PhenotypicFeature, key=n1)",
+        "add_qnode(categories=biolink:Protein, key=n2)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n3)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "add_qedge(subject=n1, object=n2, key=e1)",
+        "add_qedge(subject=n2, object=n3, key=e2)",
+        "expand(prune_threshold=50, kp_timeout=30)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
 
 
 if __name__ == '__main__':
