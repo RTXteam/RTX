@@ -753,8 +753,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         node_bindings = dict()
         for qnode_key, node_keys in result_graph['nodes'].items():
             node_bindings[qnode_key] = [NodeBinding(id=node_key,
-                                                    query_id=_get_query_id(node_key, qnode_key, child_to_parent_map,
-                                                                           qnodes_with_multiple_ids, qg, log))
+                                                    query_id=_get_query_id(node_key, kg.nodes[node_key], qnode_key,
+                                                                           qnodes_with_multiple_ids))
                                         for node_key in node_keys]
         edge_bindings = dict()
         for qedge_key, edge_keys in result_graph['edges'].items():
@@ -961,21 +961,14 @@ def _get_parallel_qedge_keys(input_qedge: QEdge, query_graph: QueryGraph) -> Set
     return parallel_qedge_keys
 
 
-def _get_query_id(node_key: str, qnode_key: str, child_to_parent_map: Dict[str, Dict[str, str]],
-                  qnode_keys_with_multiple_ids: Set[str], qg: QueryGraph, log: ARAXResponse) -> Optional[str]:
-    if qnode_key in qnode_keys_with_multiple_ids:  # We only need to fill out query_id when >1 QNode.ids are given
-        qnode_query_ids = set(qg.nodes[qnode_key].ids)
-        # We don't need to fill out query_id when the node curie appears in the QG
-        if node_key in qnode_query_ids:
-            return None
+def _get_query_id(node_key: str, node: Node, qnode_key: str, qnode_keys_with_multiple_ids: Set[str]) -> Optional[str]:
+    # TODO: Should this really be looking at child to parent map, instead of node's query_ids?
+    if qnode_key in qnode_keys_with_multiple_ids:
+        if hasattr(node, "query_ids") and node.query_ids:
+            query_id = _get_best_parent_id(node.query_ids)  # TODO: How should multiple query_ids be handled?? Separate results? Brought up in #1871
+            return query_id if query_id != node_key else None
         else:
-            if qnode_key in child_to_parent_map:  # Means we're on a subclass qnode
-                parent_key = child_to_parent_map[qnode_key][node_key]
-                return parent_key if parent_key != node_key else None
-            else:  # Means this is NOT a subclass qnode (but it has multiple qnode ids)
-                log.error(f"Node {node_key} fulfilling {qnode_key} has no parent info available, but {qnode_key} has "
-                          f"multiple IDs. Don't know what to use for query_id.", error_code="QueryIDError")
-                return None
+            return None
     else:
         return None
 
