@@ -1560,6 +1560,7 @@ def test_node_binding_query_id_two_hop_double_pinned():
 
 @pytest.mark.external
 def test_missing_chp_results():
+    # Note: for this test to pass, need to use a maturity that CHP has an endpoint for (they don't have dev currently)
     uberon_curies = ["UBERON:0009912", "UBERON:0002535", "UBERON:0000019", "UBERON:0002365", "UBERON:0000017",
                      "UBERON:0000970", "UBERON:0001831", "UBERON:0016410", "UBERON:0001737", "UBERON:0000945"]
     actions = [
@@ -1573,6 +1574,27 @@ def test_missing_chp_results():
     response, message = _do_arax_query(actions)
     assert len(message.results) > 20
     assert any(result for result in message.results if "subclass:n1--n1" in result.edge_bindings)
+
+
+@pytest.mark.slow
+@pytest.mark.external
+def test_too_few_results():
+    # Note: for this test to pass, need to use a maturity that CHP has an endpoint for (they don't have dev currently)
+    actions = [
+        "add_qnode(key=n0, ids=MONDO:0009061, categories=biolink:Disease)",
+        "add_qnode(key=n1, categories=biolink:GrossAnatomicalStructure)",
+        "add_qnode(key=n2, categories=biolink:Gene)",
+        "add_qnode(key=n3, categories=[biolink:Drug, biolink:SmallMolecule])",
+        "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:located_in)",
+        "add_qedge(key=e1, subject=n1, object=n2, predicates=biolink:expresses)",
+        "add_qedge(key=e2, subject=n3, object=n2, predicates=biolink:affects)",
+        "expand(edge_key=e0, prune_threshold=1000, kp_timeout=75)",
+        "expand(edge_key=e1, kp=infores:connections-hypothesis, prune_threshold=1000, kp_timeout=75)",
+        "expand(edge_key=e2, prune_threshold=1000, kp_timeout=75)",
+        "resultify()"
+    ]
+    response, message = _do_arax_query(actions)
+    assert len(message.results) > 200
 
 
 if __name__ == '__main__':
