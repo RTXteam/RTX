@@ -218,7 +218,7 @@ class ARAXExpander:
         # Define a complete set of allowed parameters and their defaults (if the user specified a particular KP to use)
         kp = input_parameters.get("kp")
         if kp and kp not in kp_selector.valid_kps:
-            log.error(f"Invalid KP. Options are: {kp_selector.valid_kps}", error_code="InvalidKP")
+            log.error(f"Invalid KP: {kp}. Options are: {kp_selector.valid_kps}", error_code="InvalidKP")
             return response
         parameters = self._set_and_validate_parameters(kp, input_parameters, log)
 
@@ -600,8 +600,10 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Done')
 
                 # Make sure we found at least SOME answers for this edge
+                # TODO: Should this really just return response here? What about returning partial KG?
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
-                    log.warning(f"No paths were found in {kps_to_query} satisfying qedge {qedge_key}")
+                    log.warning(f"No paths were found in any KPs satisfying qedge {qedge_key}. KPs used were: "
+                                f"{kps_to_query}")
                     return response
 
         # Expand any specified nodes
@@ -1020,6 +1022,7 @@ class ARAXExpander:
                     if qnode_key in pinned_curies_map[node_key]:
                         overarching_kg.add_node(node_key, node, qnode_key)
                     else:
+                        # TODO: Should subclass concepts be allowed to be returned for other qnodes? Don't we want their parents there?
                         log.debug(f"Not letting node {node_key} fulfill qnode {qnode_key} because it's a pinned curie "
                                   f"for {pinned_curies_map[node_key]}")
                 else:
