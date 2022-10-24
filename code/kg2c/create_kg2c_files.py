@@ -59,8 +59,8 @@ PROPERTIES_LOOKUP = {
         "kg2_ids": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
         "publications_info": {"type": dict, "in_kg2pre": True, "in_kg2c_lite": False},
         "qualified_predicate": {"type": list, "in_kg2pre": True, "in_kg2c_lite": True},
-        "qualified_object_aspect" : {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True}
+        "qualified_object_aspect" : {"type": list, "in_kg2pre": True, "in_kg2c_lite": True},
+        "qualified_object_direction": {"type": list, "in_kg2pre": True, "in_kg2c_lite": True}
     }
 }
 
@@ -534,7 +534,7 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
             canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, kg2pre_edge['predicate'], edge_qualified_predicate, edge_qualified_object_aspect, edge_qualified_object_direction)
             if canonicalized_edge_key in canonicalized_edges:
                 canonicalized_edge = canonicalized_edges[canonicalized_edge_key]
-                canonicalized_edge['knowledge_source'] = _merge_two_lists(canonicalized_edge['knowledge_source'])
+                canonicalized_edge['knowledge_source'] = _merge_two_lists(canonicalized_edge['knowledge_source'], edge_knowledge_source)
                 canonicalized_edge['publications'] = _merge_two_lists(canonicalized_edge['publications'], edge_publications)
                 canonicalized_edge['publications_info'].update(edge_publications_info)
                 canonicalized_edge['kg2_ids'].append(kg2_edge_id)
