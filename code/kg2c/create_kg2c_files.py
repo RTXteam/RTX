@@ -288,6 +288,7 @@ def _create_edge(subject: str, object: str, predicate: str, knowledge_source: Li
     assert isinstance(publications, edge_properties_lookup["publications"]["type"])
     assert isinstance(publications_info, edge_properties_lookup["publications_info"]["type"])
     assert isinstance(kg2_ids, edge_properties_lookup["kg2_ids"]["type"])
+    print(type(qualified_predicate))
     assert isinstance(qualified_predicate, edge_properties_lookup["qualified_predicate"]["type"])
     assert isinstance(qualified_object_aspect, edge_properties_lookup["qualified_object_aspect"]["type"])
     assert isinstance(qualified_object_direction, edge_properties_lookup["qualified_object_direction"]["type"])
