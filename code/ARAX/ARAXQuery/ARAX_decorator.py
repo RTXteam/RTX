@@ -120,7 +120,7 @@ class ARAXDecorator:
                                                                 for attribute in edge.attributes)}
         else:
             edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
-                                     if edge.predicate == "biolink:has_normalized_google_distance_with"}
+                                     if edge.predicate == "biolink:occurs_together_in_literature_with"}
         if not edge_keys_to_decorate:
             response.debug(f"Could not identify any {kind} edges to decorate")
         else:

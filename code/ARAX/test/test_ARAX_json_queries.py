@@ -104,7 +104,7 @@ def test_ngd_added():
     nodes_by_qg_id, edges_by_qg_id, response = _run_query_and_do_standard_testing(json_query=query)
     qg = response.envelope.message.query_graph
     assert 'N1' in qg.edges
-    assert 'biolink:has_normalized_google_distance_with' in qg.edges['N1'].predicates
+    assert 'biolink:occurs_together_in_literature_with' in qg.edges['N1'].predicates
 
 
 def test_drug_disease_query():
@@ -128,7 +128,7 @@ def test_drug_disease_query():
     nodes_by_qg_id, edges_by_qg_id, response = _run_query_and_do_standard_testing(json_query=query)
     qg = response.envelope.message.query_graph
     assert 'N1' in qg.edges
-    assert 'biolink:has_normalized_google_distance_with' in qg.edges['N1'].predicates
+    assert 'biolink:occurs_together_in_literature_with' in qg.edges['N1'].predicates
 
 
 def test_workflow1():
