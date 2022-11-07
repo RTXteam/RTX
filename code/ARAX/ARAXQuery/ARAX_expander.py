@@ -105,22 +105,23 @@ class ARAXExpander:
         parameter_info_dict = {
             "kp": {
                 "is_required": False,
-                "examples": ["infores:rtx-kg2, infores:spoke, infores:genetics-data-provider, infores:molepro"],
-                "type": "string",
-                "description": "The KP to ask for answers to the given query. KPs must be referred to by their"
-                               " 'infores' curies."
+                "examples": ["infores:rtx-kg2, infores:spoke, [infores:rtx-kg2, infores:molepro]"],
+                "type": "string",  # TODO: A string OR list is allowed... way to specify that?
+                "default": None,
+                "description": "The KP(s) to ask for answers to the given query. KPs must be referred to by their"
+                               " 'infores' curies. Either a single infores curie or list of infores curies is valid."
             },
             "edge_key": {
                 "is_required": False,
                 "examples": ["e00", "[e00, e01]"],
-                "type": "string",
+                "type": "string",  # TODO: A string OR list is allowed... way to specify that?
                 "description": "A query graph edge ID or list of such IDs to expand (default is to expand "
                                "entire query graph)."
             },
             "node_key": {
                 "is_required": False,
                 "examples": ["n00", "[n00, n01]"],
-                "type": "string",
+                "type": "string",  # TODO: A string OR list is allowed... way to specify that?
                 "description": "A query graph node ID or list of such IDs to expand (default is to expand "
                                "entire query graph)."
             },
@@ -215,12 +216,10 @@ class ARAXExpander:
             log.error("Provided parameters is not a dict", error_code="ParametersNotDict")
             return response
 
-        # Define a complete set of allowed parameters and their defaults (if the user specified a particular KP to use)
-        kp = input_parameters.get("kp")
-        if kp and kp not in kp_selector.valid_kps:
-            log.error(f"Invalid KP. Options are: {kp_selector.valid_kps}", error_code="InvalidKP")
+        # Define a complete set of allowed parameters and their defaults
+        parameters = self._set_and_validate_parameters(input_parameters, kp_selector, log)
+        if response.status != 'OK':
             return response
-        parameters = self._set_and_validate_parameters(kp, input_parameters, log)
 
         # Check if at least one query node has a non-empty ids property
         all_ids = [node.ids for node in message.query_graph.nodes.values()]
@@ -452,7 +451,7 @@ class ARAXExpander:
 
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
-                    kps_to_query = {parameters["kp"]}
+                    kps_to_query = set(eu.convert_to_list(parameters["kp"]))
                     for kp in kp_selector.valid_kps.difference(kps_to_query):
                         skipped_message = f"Expand was told to use {', '.join(kps_to_query)}"
                         response.update_query_plan(qedge_key, kp, "Skipped", skipped_message)
@@ -600,15 +599,17 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Done')
 
                 # Make sure we found at least SOME answers for this edge
+                # TODO: Should this really just return response here? What about returning partial KG?
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
-                    log.warning(f"No paths were found in {kps_to_query} satisfying qedge {qedge_key}")
+                    log.warning(f"No paths were found in any KPs satisfying qedge {qedge_key}. KPs used were: "
+                                f"{kps_to_query}")
                     return response
 
         # Expand any specified nodes
         if qnode_keys_to_expand:
-            kp_to_use = parameters["kp"] if user_specified_kp else "infores:rtx-kg2"  # Only KG2 does single-node queries
+            kps_to_use = eu.convert_to_list(parameters["kp"]) if user_specified_kp else ["infores:rtx-kg2"]  # Only KG2 does single-node queries
             for qnode_key in qnode_keys_to_expand:
-                answer_kg = self._expand_node(qnode_key, kp_to_use, query_graph, mode, user_specified_kp, kp_timeout,
+                answer_kg = self._expand_node(qnode_key, kps_to_use, query_graph, mode, user_specified_kp, kp_timeout,
                                               force_local, log)
                 if log.status != 'OK':
                     return response
@@ -652,9 +653,6 @@ class ARAXExpander:
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
-
-        # Make sure we have all default parameters set specific to the KP we'll be using
-        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
 
         # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
@@ -762,9 +760,6 @@ class ARAXExpander:
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
         answer_kg = QGOrganizedKnowledgeGraph()
 
-        # Make sure we have all default parameters set specific to the KP we'll be using
-        log.data["parameters"] = self._set_and_validate_parameters(kp_to_use, input_parameters, log)
-
         # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
             log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
@@ -827,10 +822,11 @@ class ARAXExpander:
             self.logger.info(f"PID {os.getpid()}: {kp_to_use}: Exiting child process {multiprocessing.current_process()}")
         return answer_kg, log
 
-    def _expand_node(self, qnode_key: str, kp_to_use: str, query_graph: QueryGraph, mode: str,
+    @staticmethod
+    def _expand_node(qnode_key: str, kps_to_use: List[str], query_graph: QueryGraph, mode: str,
                      user_specified_kp: bool, kp_timeout: Optional[int], force_local: bool, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        # This function expands a single node using the specified knowledge provider
-        log.debug(f"Expanding node {qnode_key} using {kp_to_use}")
+        # This function expands a single node using the specified knowledge provider (for now only KG2 is supported)
+        log.debug(f"Expanding node {qnode_key} using {kps_to_use}")
         qnode = query_graph.nodes[qnode_key]
         single_node_qg = QueryGraph(nodes={qnode_key: qnode}, edges=dict())
         answer_kg = QGOrganizedKnowledgeGraph()
@@ -840,29 +836,23 @@ class ARAXExpander:
             log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
 
-        # Answer the query using the proper KP (only our own KP answers single-node queries)
-        valid_kps_for_single_node_queries = ["infores:rtx-kg2"]
-        if kp_to_use in valid_kps_for_single_node_queries:
-            if kp_to_use == 'infores:rtx-kg2' and mode == 'RTXKG2':
+        # Answer the query using the proper KP (only our own KP answers single-node queries for now)
+        if kps_to_use == ["infores:rtx-kg2"]:
+            if mode == 'RTXKG2':
                 from Expand.kg2_querier import KG2Querier
                 kp_querier = KG2Querier(log)
             else:
                 from Expand.trapi_querier import TRAPIQuerier
                 kp_querier = TRAPIQuerier(response_object=log,
-                                          kp_name=kp_to_use,
+                                          kp_name=kps_to_use[0],
                                           user_specified_kp=user_specified_kp,
                                           kp_timeout=kp_timeout,
                                           force_local=force_local)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
-
-            if kp_to_use != 'infores:rtx-kg2':  # KG2c is already deduplicated
-                answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
-
             return answer_kg
         else:
-            log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options for single-node queries are "
-                      f"{', '.join(valid_kps_for_single_node_queries)}", error_code="InvalidKP")
+            log.error(f"Only infores:rtx-kg2 can answer single-node queries currently", error_code="InvalidKP")
             return answer_kg
 
     def _get_query_graph_for_edge(self, qedge_key: str, full_qg: QueryGraph, overarching_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
@@ -1020,6 +1010,7 @@ class ARAXExpander:
                     if qnode_key in pinned_curies_map[node_key]:
                         overarching_kg.add_node(node_key, node, qnode_key)
                     else:
+                        # TODO: Should subclass concepts be allowed to be returned for other qnodes? Don't we want their parents there?
                         log.debug(f"Not letting node {node_key} fulfill qnode {qnode_key} because it's a pinned curie "
                                   f"for {pinned_curies_map[node_key]}")
                 else:
@@ -1324,8 +1315,9 @@ class ARAXExpander:
         log.debug(f"{kp_name}: After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
 
-    def _set_and_validate_parameters(self, kp: Optional[str], input_parameters: Dict[str, any], log: ARAXResponse) -> Dict[str, any]:
-        parameters = {"kp": kp}
+    def _set_and_validate_parameters(self, input_parameters: Dict[str, any], kp_selector: KPSelector,
+                                     log: ARAXResponse) -> Dict[str, any]:
+        parameters = dict()
         parameter_info_dict = self.get_parameter_info_dict()
 
         # First set parameters to their defaults
@@ -1342,7 +1334,15 @@ class ARAXExpander:
                           error_code="InvalidParameter")
             elif param_name in parameter_info_dict:
                 param_info_dict = parameter_info_dict[param_name]
-                if param_info_dict.get("type") == "boolean":
+                if param_name == "kp":
+                    user_specified_kps = set(eu.convert_to_list(value))
+                    invalid_user_specified_kps = user_specified_kps.difference(kp_selector.valid_kps)
+                    if invalid_user_specified_kps:
+                        log.error(f"Invalid user-specified KP(s): {invalid_user_specified_kps}. Valid options are: "
+                                  f"{kp_selector.valid_kps}", error_code="InvalidKP")
+                    else:
+                        parameters[param_name] = list(user_specified_kps)
+                elif param_info_dict.get("type") == "boolean":
                     parameters[param_name] = self._convert_bool_string_to_bool(value) if isinstance(value, str) else value
                 elif param_info_dict.get("type") == "integer":
                     parameters[param_name] = int(value)
