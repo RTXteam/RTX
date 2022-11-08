@@ -553,14 +553,11 @@ def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
 
 
 def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXResponse) -> List[str]:
-    # Order KPs such that those with longer requests will tend to be kicked off earlier
+    # Our in-house KPs block the multi-threading, because there's no request to wait for; so we process them first
     kp_names = set(kp_names)
-    asyncio_start_order = ["infores:connections-hypothesis", "infores:biothings-explorer", "infores:biothings-multiomics-biggim-drug-response", "infores:biothings-multiomics-clinical-risk", "infores:biothings-multiomics-wellness", "infores:spoke", "infores:biothings-tcga-mut-freq",
-                           "infores:icees-dili", "infores:icees-asthma", "infores:cohd", "infores:molepro", "infores:rtx-kg2", "infores:genetics-data-provider", "infores:arax-normalized-google-distance", "infores:arax-drug-treats-disease"]
-    unordered_kps = kp_names.difference(set(asyncio_start_order))
-    if unordered_kps:
-        log.warning(f"Selected KP(s) don't have asyncio start ordering specified: {unordered_kps}")
-        asyncio_start_order = list(unordered_kps) + asyncio_start_order
+    to_call_first = ["infores:arax-drug-treats-disease", "infores:arax-normalized-google-distance"]
+    unordered_kps = kp_names.difference(set(to_call_first))
+    asyncio_start_order = to_call_first + list(unordered_kps)
     ordered_kps = [kp for kp in asyncio_start_order if kp in kp_names]
     return ordered_kps
 
