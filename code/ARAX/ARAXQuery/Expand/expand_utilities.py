@@ -533,25 +533,6 @@ def get_computed_value_attribute() -> Attribute:
                                  "directly attachable to other edges.")
 
 
-def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
-    endpoint_map = {
-        "infores:biothings-explorer": "https://api.bte.ncats.io/v1",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:genetics-data-provider": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.3",
-        "infores:molepro": "https://translator.broadinstitute.org/molepro/trapi/v1.3",
-        "infores:rtx-kg2": RTXConfig.rtx_kg2_url,
-        "infores:biothings-multiomics-clinical-risk": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:biothings-multiomics-wellness": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:spoke": "https://spokekp.healthdatascience.cloud/api/v1.3",
-        "infores:biothings-multiomics-biggim-drug-response": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:biothings-tcga-mut-freq": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:connections-hypothesis": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)   # TODO: Update to 1.3 once registered in SmartAPI?
-        "infores:cohd": "https://cohd.io/api",   # This should be using latest TRAPI
-        "infores:icees-dili": "https://icees-dili.renci.org",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:icees-asthma": "https://icees-asthma.renci.org"  # TODO: Update to 1.3 once registered in SmartAPI
-    }
-    return endpoint_map.get(kp_name)
-
-
 def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXResponse) -> List[str]:
     # Our in-house KPs block the multi-threading, because there's no request to wait for; so we process them first
     kp_names = set(kp_names)
