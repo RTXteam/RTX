@@ -52,15 +52,14 @@ PROPERTIES_LOOKUP = {
         "id": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "subject": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "object": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        # "negated": {"type": bool, "in_kg2pre": True, "in_kg2c_lite": True},
         "predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "knowledge_source": {"type": list, "in_kg2pre": True, "in_kg2c_lite": True},
         "publications": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
         "kg2_ids": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
         "publications_info": {"type": dict, "in_kg2pre": True, "in_kg2c_lite": False},
-        "qualified_predicate": {"type": list, "in_kg2pre": True, "in_kg2c_lite": True},
-        "qualified_object_aspect" : {"type": list, "in_kg2pre": True, "in_kg2c_lite": True},
-        "qualified_object_direction": {"type": list, "in_kg2pre": True, "in_kg2c_lite": True}
+        "qualified_predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "qualified_object_aspect" : {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True}
     }
 }
 
@@ -95,10 +94,7 @@ def _merge_two_lists(list_a: List[any], list_b: List[any]) -> List[any]:
     return [item for item in unique_items if item]
 
 
-def _get_edge_key(subject: str, object: str, predicate: str, qualified_predicate = None, qualified_object_aspect = None, qualified_object_direction = None, kg2c_sqlite = False) -> str:
-    if(kg2c_sqlite):
-        return f"{subject}--{predicate}--{object}"
-    else:
+def _get_edge_key(subject: str, object: str, predicate: str, qualified_predicate = None, qualified_object_aspect = None, qualified_object_direction = None) -> str:
         return f"{subject}--{predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{object}"
 
 
@@ -423,7 +419,7 @@ def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     question_marks_string = ", ".join(["?" for _ in range(len(sqlite_edge_properties))])
     cols_string = ", ".join(sqlite_edge_properties)
     connection.execute(f"CREATE TABLE edges (triple TEXT, node_pair TEXT, {cols_with_types_string})")
-    edge_rows = [[_get_edge_key(edge['subject'], edge['object'], edge['predicate'], kg2c_sqlite = True),
+    edge_rows = [[_get_edge_key(edge['subject'], edge['object'], edge['predicate']),
                   f"{edge['subject']}--{edge['object']}"] + [_prep_for_sqlite(edge[property_name]) for property_name in sqlite_edge_properties]
 
                  for edge in canonicalized_edges_dict.values()]
@@ -528,9 +524,9 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         canonicalized_object = curie_map.get(original_object, original_object)
         edge_publications = kg2pre_edge['publications'] if kg2pre_edge.get('publications') else []
         edge_knowledge_source = kg2pre_edge['knowledge_source'] if kg2pre_edge.get('knowledge_source') else []
-        edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if kg2pre_edge.get('qualified_predicate') else []
-        edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if kg2pre_edge.get('qualified_object_aspect') else []
-        edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else []
+        edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if kg2pre_edge.get('qualified_predicate') else ""
+        edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if kg2pre_edge.get('qualified_object_aspect') else ""
+        edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else ""
         edge_publications_info = _load_publications_info(kg2pre_edge['publications_info'], kg2_edge_id) if kg2pre_edge.get('publications_info') else dict()
         if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
             canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, kg2pre_edge['predicate'], edge_qualified_predicate, edge_qualified_object_aspect, edge_qualified_object_direction)
