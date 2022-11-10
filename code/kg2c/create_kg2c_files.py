@@ -94,7 +94,7 @@ def _merge_two_lists(list_a: List[any], list_b: List[any]) -> List[any]:
     return [item for item in unique_items if item]
 
 
-def _get_edge_key(subject: str, object: str, predicate: str, qualified_predicate = None, qualified_object_aspect = None, qualified_object_direction = None) -> str:
+def _get_edge_key(subject: str, object: str, predicate: str, qualified_predicate: str, qualified_object_aspect: str, qualified_object_direction) -> str:
         return f"{subject}--{predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{object}"
 
 
@@ -419,7 +419,7 @@ def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     question_marks_string = ", ".join(["?" for _ in range(len(sqlite_edge_properties))])
     cols_string = ", ".join(sqlite_edge_properties)
     connection.execute(f"CREATE TABLE edges (triple TEXT, node_pair TEXT, {cols_with_types_string})")
-    edge_rows = [[_get_edge_key(edge['subject'], edge['object'], edge['predicate']),
+    edge_rows = [[_get_edge_key(edge['subject'], edge['object'], edge['predicate'], edge['qualified_predicate'], edge['qualified_object_aspect'], edge['qualified_object_direction']),
                   f"{edge['subject']}--{edge['object']}"] + [_prep_for_sqlite(edge[property_name]) for property_name in sqlite_edge_properties]
 
                  for edge in canonicalized_edges_dict.values()]
