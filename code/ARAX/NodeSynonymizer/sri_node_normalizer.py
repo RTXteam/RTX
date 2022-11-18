@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """ An interface to the SRI Node and Edge Normalizer https://nodenormalization-sri.renci.org/docs
-    e.g.:  https://nodenormalization-sri.renci.org/1.2/get_normalized_nodes?curie=CHEMBL.COMPOUND:CHEMBL76729
+    e.g.:  https://nodenormalization-sri.renci.org/1.3/get_normalized_nodes?curie=CHEMBL.COMPOUND:CHEMBL76729
     Report problems here: https://github.com/TranslatorSRI/NodeNormalization/issues
 """
 
@@ -61,7 +61,7 @@ class SriNodeNormalizer:
     # ############################################################################################
     # Load the cache of all normalizer results
     def load_cache(self):
-        filename = f"G:/local/tmp/sri_node_normalizer_curie_cache.pickle"
+        filename = f"sri_node_normalizer_curie_cache.pickle"
         if os.path.exists(filename):
             print(f"INFO: Reading SRI normalizer cache from {filename}")
             with open(filename, "rb") as infile:
