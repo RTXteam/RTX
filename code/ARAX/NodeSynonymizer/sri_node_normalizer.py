@@ -19,7 +19,7 @@ import requests
 import requests_cache
 
 
-BASE_URL = 'https://nodenormalization-sri.renci.org/1.2'
+BASE_URL = 'https://nodenormalization-sri.renci.org/1.3'
 
 # Class that provides a simple interface to the SRI Node normalizer
 class SriNodeNormalizer:
