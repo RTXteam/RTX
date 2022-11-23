@@ -180,7 +180,7 @@ class SriNodeNormalizer:
         # Store or sync the results
         self.store_cache()
 
-    def load_cache_from_sqlite():
+    def load_cache_from_sqlite(self):
         dbfile = "sri_node_normalizer_requests_cache.sqlite"
         conn = sqlite3.connect(dbfile)
         cur = conn.cursor()
@@ -199,7 +199,7 @@ class SriNodeNormalizer:
 
         # Build the URL and fetch the result
         url = f"{BASE_URL}/get_semantic_types"
-        response_content = load_cache_from_sqlite()#requests.get(url, headers={'accept': 'application/json'})
+        response_content = self.load_cache_from_sqlite()#requests.get(url, headers={'accept': 'application/json'})
         #status_code = response_content.status_code
 
         # Check for a returned error
