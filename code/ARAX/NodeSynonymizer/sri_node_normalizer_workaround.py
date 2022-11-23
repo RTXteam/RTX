@@ -193,7 +193,7 @@ class SriNodeNormalizer:
         url = f"{BASE_URL}/get_semantic_types"
 
         with open("semantic_types.json", "r") as f:
-         response_content = json.load(f)
+            response_content = json.load(f)
         
         # response_content = requests.get(url, headers={'accept': 'application/json'})
         # status_code = response_content.status_code
@@ -235,7 +235,7 @@ class SriNodeNormalizer:
         if self.supported_prefixes is not None:
             return self.supported_prefixes
         supported_prefixes = {}
-        with open("curie_prefix.json", "r"):
+        with open("curie_prefix.json", "r") as f:
             response_content = json.load(f)
 
         # Build the URL and fetch the result
