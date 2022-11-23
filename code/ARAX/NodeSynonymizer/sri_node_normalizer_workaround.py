@@ -191,26 +191,31 @@ class SriNodeNormalizer:
 
         # Build the URL and fetch the result
         url = f"{BASE_URL}/get_semantic_types"
-        response_content = requests.get(url, headers={'accept': 'application/json'})
-        status_code = response_content.status_code
 
-        # Check for a returned error
-        if status_code != 200:
-            eprint(f"ERROR returned with status {status_code} while retrieving supported types")
-            eprint(response_content)
-            exit(211)
+        with open("semantic_types.json", "r") as f:
+         response_content = json.load(f)
+        
+        # response_content = requests.get(url, headers={'accept': 'application/json'})
+        # status_code = response_content.status_code
 
-        # Unpack the response into a dict and return it
-        response_dict = response_content.json()
-        if 'semantic_types' not in response_dict:
+        # # Check for a returned error
+        # if status_code != 200:
+        #     eprint(f"ERROR returned with status {status_code} while retrieving supported types")
+        #     eprint(response_content)
+        #     exit(211)
+
+        # # Unpack the response into a dict and return it
+        # response_dict = response_content.json()
+
+        if 'semantic_types' not in response_content:
             eprint(f"ERROR Did not find expected 'semantic_types'")
             return
-        if 'types' not in response_dict['semantic_types']:
+        if 'types' not in response_content['semantic_types']:
             eprint(f"ERROR Did not find expected 'types' list")
             return
 
         node_types = {}
-        for node_type in response_dict['semantic_types']['types']:
+        for node_type in response_content['semantic_types']['types']:
             node_types[node_type] = 1
 
         if len(node_types) == 0:
@@ -230,21 +235,23 @@ class SriNodeNormalizer:
         if self.supported_prefixes is not None:
             return self.supported_prefixes
         supported_prefixes = {}
+        with open("curie_prefix.json", "r"):
+            response_content = json.load(f)
 
         # Build the URL and fetch the result
-        url = f"{BASE_URL}/get_curie_prefixes"
-        response_content = requests.get(url, headers={'accept': 'application/json'})
-        status_code = response_content.status_code
+        # url = f"{BASE_URL}/get_curie_prefixes"
+        # response_content = requests.get(url, headers={'accept': 'application/json'})
+        # status_code = response_content.status_code
 
-        # Check for a returned error
-        if status_code != 200:
-            eprint(f"ERROR returned with status {status_code} while retrieving supported types")
-            eprint(response_content)
-            exit(253)
+        # # Check for a returned error
+        # if status_code != 200:
+        #     eprint(f"ERROR returned with status {status_code} while retrieving supported types")
+        #     eprint(response_content)
+        #     exit(253)
 
-        # Unpack the response into a dict and return it
-        response_dict = response_content.json()
-        for entity_name,entity in response_dict.items():
+        # # Unpack the response into a dict and return it
+        # response_dict = response_content.json()
+        for entity_name,entity in response_content.items():
             if 'curie_prefix' not in entity:
                 eprint(f"ERROR Did not find expected 'curie_prefix'")
                 return
