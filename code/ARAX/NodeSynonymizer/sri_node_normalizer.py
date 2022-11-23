@@ -14,7 +14,7 @@ import time
 import pickle
 import re
 import platform
-
+impoer sqlite3
 import requests
 import requests_cache
 
@@ -180,6 +180,14 @@ class SriNodeNormalizer:
         # Store or sync the results
         self.store_cache()
 
+    def load_cache_from_sqlite():
+        dbfile = "sri_node_normalizer_requests_cache.sqlite"
+        conn = sqlite3.connect(dbfile)
+        cur = conn.cursor()
+        response = cur.execute('''SELECT * from responses''')
+        print("Responses")
+        print(response.fetchall())
+        
 
     # ############################################################################################
     # Retrieve the dict of supported BioLink types
@@ -191,14 +199,14 @@ class SriNodeNormalizer:
 
         # Build the URL and fetch the result
         url = f"{BASE_URL}/get_semantic_types"
-        response_content = requests.get(url, headers={'accept': 'application/json'})
-        status_code = response_content.status_code
+        response_content = load_cache_from_sqlite()#requests.get(url, headers={'accept': 'application/json'})
+        #status_code = response_content.status_code
 
         # Check for a returned error
-        if status_code != 200:
-            eprint(f"ERROR returned with status {status_code} while retrieving supported types")
-            eprint(response_content)
-            exit(211)
+        # if status_code != 200:
+        #     eprint(f"ERROR returned with status {status_code} while retrieving supported types")
+        #     eprint(response_content)
+        #     exit(211)
 
         # Unpack the response into a dict and return it
         response_dict = response_content.json()
