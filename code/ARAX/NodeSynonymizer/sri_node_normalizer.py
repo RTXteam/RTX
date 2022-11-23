@@ -14,7 +14,7 @@ import time
 import pickle
 import re
 import platform
-impoer sqlite3
+import sqlite3
 import requests
 import requests_cache
 
