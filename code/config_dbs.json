@@ -20,7 +20,7 @@
       "prod": "https://kg2cploverdb.transltr.io"
    },
    "neo4j": {
-      "KG2pre": "kg2endpoint-kg2-7-6.rtx.ai",
-      "KG2c": "kg2-7-6c.rtx.ai"
+      "KG2pre": "kg2endpoint-kg2-8-0.rtx.ai",
+      "KG2c": "kg2-8-0c.rtx.ai"
    }
 }
