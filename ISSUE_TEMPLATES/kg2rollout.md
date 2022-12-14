@@ -39,7 +39,7 @@ The following databases should be rebuilt and copies of them should be put in `/
 - [ ] DTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
 - [ ] XDTD database
 
-**NOTE**: As databases are rebuilt, `RTX/code/config_dbs.json` will need to be updated to point to their new paths! Push these changes to the `kg2integration` branch, unless the rollout of this KG2 version has already occurred, in which case you should push to `master`. 
+**NOTE**: As databases are rebuilt, `RTX/code/config_dbs.json` will need to be updated to point to their new paths! Push these changes to the `kg2integration` branch, unless the rollout of this KG2 version has already occurred, in which case you should push to `master` (but first follow the steps described [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#config_dbsjson)). 
 
 
 ##### 3. Update the ARAX codebase:
