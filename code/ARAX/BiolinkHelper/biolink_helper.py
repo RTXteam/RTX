@@ -319,8 +319,10 @@ class BiolinkHelper:
             class_name = self._convert_english_category_to_trapi_format(class_name_english)
             # Record this node underneath its parent
             parent_name_english = info.get("is_a")
-            ignore_is_a_slot = class_name == "biolink:ExposureEvent"  # See https://github.com/biolink/biolink-model/issues/1111; for now we'll consider ExposureEvent a mixin, and NOT is_a NamedThing
-            if parent_name_english and not ignore_is_a_slot:
+            # Temp patch: override parent for ExposureEvent (see https://github.com/biolink/biolink-model/issues/1111)
+            if self.biolink_version.startswith("3.0") and class_name == "biolink:ExposureEvent":
+                parent_name_english = "ontology class"
+            if parent_name_english:
                 parent_name = self._convert_english_category_to_trapi_format(parent_name_english)
                 parent_to_child_dict[parent_name].add(class_name)
             # Or if it's a top-level mixin, force it to have the (made-up) root mixin as parent
