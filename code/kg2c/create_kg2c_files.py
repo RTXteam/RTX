@@ -527,6 +527,14 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if (kg2pre_edge.get('qualified_predicate') and kg2pre_edge.get('qualified_predicate') != "None") else ""
         edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if (kg2pre_edge.get('qualified_object_aspect') and kg2pre_edge.get('qualified_object_aspect') != "None") else ""
         edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if (kg2pre_edge.get('qualified_object_direction') and kg2pre_edge.get('qualified_object_direction') != "None") else ""
+
+        '''Patch for lack of qualified_predicate when qualified_object_direction is present'''
+        predicate = kg2pre_edge['predicate']
+        if(predicate == "biolink:regulates" and edge_qualified_predicate == "" and edge_qualified_object_direction != ""):
+            qualified_predicate = "biolink:causes"
+            qualified_object_aspect = "activity_or_abundance"
+
+
         edge_publications_info = _load_publications_info(kg2pre_edge['publications_info'], kg2_edge_id) if kg2pre_edge.get('publications_info') else dict()
         if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
             canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, kg2pre_edge['predicate'], edge_qualified_predicate, edge_qualified_object_aspect, edge_qualified_object_direction)
