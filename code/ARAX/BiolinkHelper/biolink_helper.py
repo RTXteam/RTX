@@ -50,6 +50,7 @@ class BiolinkHelper:
         category_mixins = input_item_set.intersection(set(self.biolink_lookup_map["category_mixins"]))
         predicate_mixins = input_item_set.intersection(set(self.biolink_lookup_map["predicate_mixins"]))
         aspects = input_item_set.intersection(set(self.biolink_lookup_map["aspects"]))
+        directions = input_item_set.intersection(set(self.biolink_lookup_map["directions"]))
         ancestors = input_item_set.copy()
         ancestor_property = "ancestors_with_mixins" if include_mixins else "ancestors"
         if include_conflations:
@@ -64,6 +65,8 @@ class BiolinkHelper:
             ancestors.update(self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["ancestors"])
         for aspect in aspects:
             ancestors.update(self.biolink_lookup_map["aspects"][aspect]["ancestors"])
+        for direction in directions:
+            ancestors.update(self.biolink_lookup_map["directions"][direction]["ancestors"])
         return list(ancestors)
 
     def get_descendants(self, biolink_items: Union[str, List[str], Set[str]], include_mixins: bool = True, include_conflations: bool = True) -> List[str]:
@@ -80,6 +83,7 @@ class BiolinkHelper:
         category_mixins = input_item_set.intersection(set(self.biolink_lookup_map["category_mixins"]))
         predicate_mixins = input_item_set.intersection(set(self.biolink_lookup_map["predicate_mixins"]))
         aspects = input_item_set.intersection(set(self.biolink_lookup_map["aspects"]))
+        directions = input_item_set.intersection(set(self.biolink_lookup_map["directions"]))
         descendants = input_item_set.copy()
         descendant_property = "descendants_with_mixins" if include_mixins else "descendants"
         if include_conflations:
@@ -94,6 +98,8 @@ class BiolinkHelper:
             descendants.update(self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["descendants"])
         for aspect in aspects:
             descendants.update(self.biolink_lookup_map["aspects"][aspect]["descendants"])
+        for direction in directions:
+            descendants.update(self.biolink_lookup_map["directions"][direction]["descendants"])
         return list(descendants)
 
     def get_canonical_predicates(self, predicates: Union[str, List[str], Set[str]]) -> List[str]:
@@ -203,6 +209,7 @@ class BiolinkHelper:
             category_tree, category_to_mixins_map, category_mixin_tree = self._build_category_trees(biolink_model)
             mixin_to_categories_map = self._reverse_map(category_to_mixins_map)
             aspect_tree = self._build_aspect_tree(biolink_model)
+            direction_tree = self._build_direction_tree(biolink_model)
 
             # Then flatmap all info we need (for mixins, predicates, and categories) for easy access
             for predicate_mixin_node in predicate_mixin_tree.all_nodes():
@@ -265,10 +272,19 @@ class BiolinkHelper:
                 ancestors = self._get_ancestors_from_tree(aspect, aspect_tree)
                 descendants = self._get_descendants_from_tree(aspect, aspect_tree)
                 biolink_lookup_map["aspects"][aspect] = {
-                    "ancestors": ancestors.difference({self.root_imaginary}),  # Our made-up root doesn't count as an ancestor,
+                    "ancestors": ancestors.difference({self.root_imaginary}),  # Our made-up root doesn't count as an ancestor
                     "descendants": descendants
                 }
             del biolink_lookup_map["aspects"][self.root_imaginary]  # No longer need this imaginary root node
+            for direction_node in direction_tree.all_nodes():
+                direction = direction_node.identifier
+                ancestors = self._get_ancestors_from_tree(direction, direction_tree)
+                descendants = self._get_descendants_from_tree(direction, direction_tree)
+                biolink_lookup_map["directions"][direction] = {
+                    "ancestors": ancestors.difference({self.root_imaginary}),  # Our made-up root doesn't count as an ancestor
+                    "descendants": descendants
+                }
+            del biolink_lookup_map["directions"][self.root_imaginary]  # No longer need this imaginary root node
 
             # And cache it (never needs to be refreshed for the given Biolink version)
             with open(self.biolink_lookup_map_path, "wb") as output_file:
@@ -376,6 +392,22 @@ class BiolinkHelper:
         aspect_tree.create_node(self.root_imaginary, self.root_imaginary)
         self._create_tree_recursive(self.root_imaginary, parent_to_child_dict, aspect_tree)
         return aspect_tree
+
+    def _build_direction_tree(self, biolink_model: dict) -> Tree:
+        # Build helper map of parents to children
+        direction_enum_field_name = "direction_qualifier_enum" if self.biolink_version.startswith("3.0") else "DirectionQualifierEnum"
+        parent_to_child_dict = defaultdict(set)
+        for direction_name_english, info in biolink_model["enums"][direction_enum_field_name]["permissible_values"].items():
+            direction_name_trapi = self._convert_english_snakecase_to_trapi_format(direction_name_english)
+            parent_name_english = info.get("is_a", self.root_imaginary) if info else self.root_imaginary
+            parent_name_trapi = self._convert_english_snakecase_to_trapi_format(parent_name_english)
+            parent_to_child_dict[parent_name_trapi].add(direction_name_trapi)
+
+        # Recursively build the tree starting with the root
+        direction_tree = Tree()
+        direction_tree.create_node(self.root_imaginary, self.root_imaginary)
+        self._create_tree_recursive(self.root_imaginary, parent_to_child_dict, direction_tree)
+        return direction_tree
 
     def _create_tree_recursive(self, root_id: str, parent_to_child_map: defaultdict, tree: Tree):
         for child_id in parent_to_child_map.get(root_id, []):
@@ -503,6 +535,10 @@ def main():
     # Test aspects
     assert "biolink:molecular_modification" in bh.get_ancestors("biolink:ribosylation")
     assert "biolink:activity" in bh.get_descendants("biolink:activity_or_abundance")
+
+    # Test directions
+    assert "biolink:increased" in bh.get_ancestors("biolink:upregulated")
+    assert "biolink:downregulated" in bh.get_descendants("biolink:decreased")
 
     print("All BiolinkHelper tests passed!")
 
