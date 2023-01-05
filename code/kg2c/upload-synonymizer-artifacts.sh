@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # This script uploads artifacts from the NodeSynonymizer build to arax-databases.rtx.ai at the specified path.
-# Usage: bash -x upload-synonymizer-artifacts.sh <destination_path_on_arax_ncats_io> <name_of_synonymizer_sqlite>
+# Usage: bash -x upload-synonymizer-artifacts.sh <destination_path_on_arax_databases_rtx_ai> <name_of_synonymizer_sqlite>
 
 set -e
 

@@ -2,8 +2,8 @@
   "kg2pre_version": "2.8.0",
   "kg2pre_neo4j_endpoint": "kg2endpoint-kg2-8-0.rtx.ai",
   "biolink_version": "3.0.3",
-  "upload_to_arax.ncats.io": true,
-  "upload_directory": "KG2.X.Y",
+  "upload_to_arax_databases.rtx.ai": true,
+  "upload_directory": "/home/rtxconfig/KG2.X.Y",
   "synonymizer": {
     "build": true,
     "name": "node_synonymizer_v1.0_KG2.8.0.sqlite"
