@@ -1428,5 +1428,16 @@ def test_subclass_answers_for_non_pinned_qnodes():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, timeout=75)
 
 
+def test_kp_list():
+    actions = [
+        "add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)",
+        "add_qnode(key=qg1, categories=biolink:Protein)",
+        "add_qedge(subject=qg1, object=qg0, key=qe0)",
+        "expand(edge_key=qe0, kp=[infores:rtx-kg2, infores:molepro])",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions, timeout=75)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])

@@ -2558,7 +2558,7 @@ function add_cyto(i) {
 		'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
 		'target-arrow-shape': 'triangle',
 		'opacity': 0.8,
-		'content': function(ele) { if ((ele.data().parentdivnum > 0) && ele.data().type) { return ele.data().type + (ele.data().qualifiers ? ' **':''); } return '';}
+		'content': function(ele) { if ((ele.data().parentdivnum > 0) && ele.data().type) { return ele.data().type + (ele.data().qualifiers ? ' [q]':''); } return '';}
 	    })
 	    .selector(':selected')
 	    .css({
@@ -2658,7 +2658,7 @@ function add_cyto(i) {
 		    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
 		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
 		    if (nodedges[e].data('qualifiers')) {
-			link.appendChild(document.createTextNode(' **'));
+			link.appendChild(document.createTextNode(' [q]'));
 			link.title = 'View QUALIFIED edge details';
 		    }
 		    else
@@ -2685,7 +2685,7 @@ function add_cyto(i) {
                     link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
 		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
                     if (nodedges[e].data('qualifiers')) {
-			link.appendChild(document.createTextNode(' **'));
+			link.appendChild(document.createTextNode(' [q]'));
 			link.title = 'View QUALIFIED edge details';
 		    }
 		    else
@@ -5379,10 +5379,14 @@ function retrieveKPInfo() {
 			var text = document.createElement("h3");
 			text.style.float = "right";
 			text.style.marginLeft = "10px";
-			if (item["version"].startsWith("1.3"))
+			if (!item["version"]) {
+			    item["version"] = '--NULL--';
+			    text.className = "qprob p0";
+			}
+			else if (item["version"].startsWith("1.3"))
 			    text.className = "qprob p9";
-			else if (item["version"].startsWith("1.2"))
-			    text.className = "qprob srtx";
+			//else if (item["version"].startsWith("1.2"))
+			//text.className = "qprob srtx";
 			else
 			    text.className = "qprob p1";
                         text.appendChild(document.createTextNode(item["version"]));

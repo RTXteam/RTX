@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# This script uploads artifacts from the KG2c build to arax.ncats.io at the specified path.
+# This script uploads artifacts from the KG2c build to the databases server at the specified path.
 # Usage: bash -x upload-kg2c-artifacts.sh <destination_path_on_arax_databases_rtx_ai>
 
 set -e

@@ -178,9 +178,9 @@ class TRAPIQuerier:
                         if node_binding.query_id in query_node_ids:
                             kg_id_to_parent_query_id_map[kg_id].add(node_binding.query_id)
                         else:
-                            self.log.error(f"{self.kp_name} returned a NodeBinding.query_id ({node_binding.query_id}) "
-                                           f"for {qnode_key} that is not in {qnode_key}'s ids",
-                                           error_code="InvalidTRAPI")
+                            self.log.warning(f"{self.kp_name} returned a NodeBinding.query_id ({node_binding.query_id})"
+                                             f" for {qnode_key} that is not in {qnode_key}'s ids in the QG sent "
+                                             f"to {self.kp_name}. This is invalid TRAPI. Skipping this binding.")
                     # Handle case where KP does NOT return a query_id (may or may not be valid TRAPI)
                     else:
                         if qnode_key in qnodes_with_single_id:
@@ -191,9 +191,10 @@ class TRAPIQuerier:
                                 implied_parent_id = kg_id
                                 kg_id_to_parent_query_id_map[kg_id].add(implied_parent_id)
                             else:
-                                self.log.error(f"{self.kp_name} returned a node binding for {qnode_key} that does not "
-                                               f"include a query_id, and {qnode_key} has multiple ids, none of which "
-                                               f"are the KG ID ({kg_id})", error_code="InvalidTRAPI")
+                                self.log.warning(f"{self.kp_name} returned a node binding for {qnode_key} that does "
+                                                 f"not include a query_id, and {qnode_key} has multiple ids in the "
+                                                 f"query sent to {self.kp_name}, none of which are the KG ID ({kg_id})."
+                                                 f" This is invalid TRAPI. Skipping this binding.")
 
             for qedge_key, edge_bindings in result.edge_bindings.items():
                 for edge_binding in edge_bindings:
