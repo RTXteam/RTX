@@ -10,7 +10,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
   - [ ] in [code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_KG2.yaml](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.2_KG2.yaml)
 - [ ] build a new KG2c on `buildkg2c.rtx.ai` from the `kg2integration` branch (how-to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#build-kg2canonicalized))
   - [ ] before starting the build:
-    - [ ] make sure there is enough disk space available on `arax.ncats.io` (need at least 80G, ideally >100G). delete old KG2 database directories from `/data/orangeboard/databases` as needed (warn the team on Slack in advance).
+    - [ ] make sure there is enough disk space available on `arax-databases.rtx.ai` (need at least 100G, ideally >120G). delete old KG2 database directories as needed (warn the team on Slack in advance).
     - [ ] make sure to choose to build a new synonymizer in `kg2c_config.json`, as described in the how-to
   - [ ] after the build is done, verify it looks ok:
     - [ ] the 'build node' (node with ID `RTX:KG2c`) has the expected version number (KG2.X.Y)
@@ -18,11 +18,11 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
     - [ ] make sure `node_synonymizer.sqlite`'s last modified date is today (or whatever day the build was run)
     - [ ] make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
     - [ ] the entire build runtime (synonymizer + KG2c) shouldn't have been more than 24 hours
-    - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax.ncats.io` (`/data/orangeboard/databases/KG2.X.Y`)
+    - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`)
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
   - [ ] verify the correct KG2 version was uploaded by running this query: `match (n {id:"RTX:KG2c"}) return n`
-  - [ ] copy the auto-generated KG2c dump from the Neo4j-hosting instance to `arax.ncats.io` like so:
-    - `scp /home/ubuntu/kg2-build/kg2c.dump rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.X.Y/extra_files`
+  - [ ] copy the auto-generated KG2c dump from the Neo4j-hosting instance to the database server like so:
+    - `scp /home/ubuntu/kg2-build/kg2c.dump rtxconfig@arax-databases.rtx.ai:/home/rtxconfig/KG2.X.Y/extra_files`
   - [ ] update the KG2pre and KG2c Neo4j endpoints in `RTX/code/config_dbs.json` (push to `kg2integration` branch)
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] load the new KG2c into Plover (available at http://kg2-X-Ycplover.rtx.ai:9990)
@@ -31,7 +31,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
 
 ##### 2. Rebuild downstream databases:
 
-The following databases should be rebuilt and copies of them should be put in `/data/orangeboard/databases/KG2.X.Y` on `arax.ncats.io`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
+The following databases should be rebuilt and copies of them should be put in `/home/rtxconfig/KG2.X.Y` on `arax-databases.rtx.ai`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
 
 - [ ] NGD database
 - [ ] refreshed DTD @chunyuma
