@@ -131,7 +131,7 @@ def main():
                 _upload_output_files_to_s3()
             if upload_to_arax_ncats_io:
                 logging.info(f"Uploading KG2c artifacts to arax.ncats.io:{upload_directory}")
-                subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", upload_directory])
+                subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTXConfiguration().db_host, upload_directory])
 
         logging.info(f"DONE WITH {'TEST ' if args.test else ''}KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours")
 
