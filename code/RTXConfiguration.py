@@ -107,7 +107,7 @@ class RTXConfiguration:
             self.is_production_server = True
 
         # Set database file paths
-        self.db_host = "arax.ncats.io"
+        self.db_host = "arax-databases.rtx.ai"
         self.db_username = "rtxconfig"
         database_downloads = self.config_dbs["database_downloads"]
         self.cohd_database_path = database_downloads["cohd_database"]
