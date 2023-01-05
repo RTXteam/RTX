@@ -89,7 +89,7 @@ All code changes should **go in the `kg2integration` branch**!
 - [ ] turn off the old KG2c version's neo4j instance
 - [ ] turn off the old KG2c version's plover instance
 - [ ] turn off the new KG2pre version's neo4j instance
-- [ ] upgrade the ITRB Plover endpoint (https://kg2cploverdb.ci.transltr.io) to this KG2 version and make the KG2 API starts using it (instead of our self-hosted endpoint): 
+- [ ] upgrade the ITRB Plover endpoint (https://kg2cploverdb.ci.transltr.io) to this KG2 version and make the KG2 API start using it (instead of our self-hosted endpoint): 
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
     - [ ] wait about 45 minutes for the endpoint to rebuild and then run Plover tests to verify it's working
     - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally change the URL in `config_dbs.json` and set `force_local = True` in Expand)
