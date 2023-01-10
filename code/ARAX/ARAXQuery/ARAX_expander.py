@@ -180,7 +180,7 @@ class ARAXExpander:
         log = response
         # this fetches the list of all registered kps with compatible versions
         # Make sure the KG2 API doesn't fetch meta info for other KPs
-        kp_selector = KPSelector(valid_kps_override={"infores:rtx-kg2"}, log=log) if mode == "RTXKG2" else KPSelector(log=log)
+        kp_selector = KPSelector(kg2_mode=True, log=log) if mode == "RTXKG2" else KPSelector(log=log)
 
         # If this is a query for the KG2 API, ignore all option_group_id and exclude properties (only does one-hop)
         if mode == "RTXKG2":
