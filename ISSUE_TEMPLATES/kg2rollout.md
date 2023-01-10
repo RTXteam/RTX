@@ -25,7 +25,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
     - `scp /home/ubuntu/kg2-build/kg2c.dump rtxconfig@arax-databases.rtx.ai:/home/rtxconfig/KG2.X.Y/extra_files`
   - [ ] update the KG2pre and KG2c Neo4j endpoints in `RTX/code/config_dbs.json` (push to `kg2integration` branch)
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
-- [ ] load the new KG2c into Plover (available at http://kg2-X-Ycplover.rtx.ai:9990)
+- [ ] load the new KG2c into Plover (available at http://kg2cplover.rtx.ai:9990)
   - [ ] update `config_dbs.json` to point to this new Plover (all maturity levels should point to it for now)
   
 
