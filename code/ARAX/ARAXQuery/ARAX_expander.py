@@ -560,27 +560,28 @@ class ARAXExpander:
 
                 # Handle knowledge source constraints for this qedge
                 # Removing kedges that have any sources that are constrained
+                log.debug(f"Handling any knowledge source constraints")
                 allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
+                log.debug(f"KP allowlist is {allowlist}, denylist is {denylist}")
+                knowledge_source_type_ids = {"biolink:aggregator_knowledge_source", "biolink:knowledge_source"}
                 if qedge_key in overarching_kg.edges_by_qg_id:
                     kedges_to_remove = []
                     for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
-                        for attribute in kedge.attributes:
-                            # check if source(s) of knowledge_source attribute are constrained
-                            if attribute.attribute_type_id in ["biolink:aggregator_knowledge_source","biolink:knowledge_source"]:
-                                sources = attribute.value
-                                # always accept arax as a source
-                                if sources == "infores:arax" or sources == ["infores:arax"]:
-                                    continue
-                                # handle cases where source is string or list
-                                if type(sources) == str:
-                                    sources = [sources]
-                                if any(source in denylist for source in sources):
-                                    kedges_to_remove.append(kedge_key)
-                                    break
-                                elif allowlist and any(source not in allowlist for source in sources):
-                                    kedges_to_remove.append(kedge_key)
-                                    break
-
+                        edge_sources = {knowledge_source for attribute in kedge.attributes
+                                        if attribute.attribute_type_id in knowledge_source_type_ids
+                                        for knowledge_source in eu.convert_to_set(attribute.value)}
+                        # always accept arax as a source
+                        if edge_sources == {"infores:arax"}:
+                            continue
+                        # Don't keep edges that ONLY come from excluded sources
+                        if edge_sources.issubset(denylist):
+                            kedges_to_remove.append(kedge_key)
+                            break
+                        # Only keep edges that come from at least ONE allowed source
+                        elif allowlist and not edge_sources.intersection(allowlist):
+                            kedges_to_remove.append(kedge_key)
+                            break
+                    log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge_source constraint")
                     # remove kedges which have been determined to be constrained
                     for kedge_key in kedges_to_remove:
                         if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
