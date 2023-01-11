@@ -159,7 +159,7 @@ class ARAXDatabaseManager:
             # Download databases to a persistent central location if this is a docker host server (like arax.ncats.io, or cicd.rtx.ai)
             if os.path.exists(self.docker_host_databases_dir_path):
                 print(f"Downloading any missing databases from arax-databases.rtx.ai to {self.docker_host_databases_dir_path}")
-                self.download_to_mnt(debug=debug, skip_if_exists=True, remove_unused=True)
+                self.download_to_mnt(debug=debug, skip_if_exists=True, remove_unused=False)
 
             # Check that each database exists locally (or a symlink to it does, in the case of a docker host machine)
             for database_name, local_path in self.local_paths.items(): # iterate through all databases
