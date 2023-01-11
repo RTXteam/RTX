@@ -724,7 +724,7 @@ def test_kg2_predicate_hierarchy_reasoning():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:affects")
-    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:entity_positively_regulates_entity")
+    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:regulates")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
 
@@ -802,15 +802,43 @@ def test_many_kp_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, timeout=10)
 
 
-def test_entity_to_entity_query():
-    actions_list = [
-        "add_qnode(ids=NCBIGene:375, categories=biolink:Gene, key=n0)",
-        "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:entity_negatively_regulates_entity)",
-        "expand(kp=infores:rtx-kg2)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+def test_qualified_regulates_query():
+    query = {
+        "nodes": {
+            "n0": {
+                "ids": ["NCBIGene:375"]
+            },
+            "n1": {
+                "categories": ["biolink:Gene"]
+            }
+        },
+        "edges": {
+            "e0": {
+                "subject": "n0",
+                "object": "n1",
+                "qualifier_constraints": [
+                    {"qualifier_set": [
+                        {"qualifier_type_id": "biolink:qualified_predicate",
+                         "qualifier_value": "biolink:causes"},
+                        {"qualifier_type_id": "biolink:object_direction_qualifier",
+                         "qualifier_value": "decreased"},
+                        {"qualifier_type_id": "biolink:object_aspect_qualifier",
+                         "qualifier_value": "activity_or_abundance"}
+                    ]}
+                ],
+                "attribute_constraints": [
+                    {
+                        "id": "biolink:knowledge_source",
+                        "name": "knowledge source",
+                        "value": ["infores:rtx-kg2"],
+                        "operator": "==",
+                        "not": False
+                    }
+                ]
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
 
 
 def test_1516_single_quotes_in_ids():
