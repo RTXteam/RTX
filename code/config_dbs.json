@@ -12,7 +12,7 @@
       "kg2c_meta_kg": "/home/rtxconfig/KG2.8.0/meta_kg_v1.0_KG2.8.0c.json",
       "fda_approved_drugs": "/home/rtxconfig/KG2.8.0/fda_approved_drugs_v1.0_KG2.8.0c.pickle",
       "autocomplete": "/home/rtxconfig/KG2.8.0/autocomplete_v1.0_KG2.8.0.sqlite",
-      "explainable_dtd_db": "/home/rtxconfig/KG2.7.6/ExplainableDTD.db"
+      "explainable_dtd_db": "/home/rtxconfig/KG2.8.0/ExplainableDTD_v1.0_KG2.8.0.db"
    },
    "plover": {
       "dev": "http://kg2cplover.rtx.ai:9990",
