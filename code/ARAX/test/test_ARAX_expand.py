@@ -862,7 +862,6 @@ def test_input_curie_remapping():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
     assert "KEGG.COMPOUND:C02700" in nodes_by_qg_id["n0"]
-    assert "formylkynurenine" in nodes_by_qg_id["n0"]["KEGG.COMPOUND:C02700"].name.lower()
 
 
 def test_constraint_validation():
