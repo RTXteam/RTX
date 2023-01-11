@@ -3,7 +3,7 @@
       "cohd_database": "/home/rtxconfig/KG2.7.6/COHDdatabase_v1.0_KG2.7.6.db",
       "graph_database": "/home/rtxconfig/KG2.7.6/GRAPH_v1.0_KG2.7.6.sqlite",
       "log_model": "/home/rtxconfig/KG2.7.6/LogModel_v1.0_KG2.7.6.pkl",
-      "curie_to_pmids": "/home/rtxconfig/KG2.7.6/curie_to_pmids_v1.0_KG2.7.6.sqlite",
+      "curie_to_pmids": "/home/rtxconfig/KG2.8.0/curie_to_pmids_v1.0_KG2.8.0.sqlite",
       "node_synonymizer": "/home/rtxconfig/KG2.8.0/node_synonymizer_v1.0_KG2.8.0.sqlite",
       "rel_max": "/home/rtxconfig/KG2.7.6/rel_max_v1.0_KG2.7.6.emb.gz",
       "map_txt": "/home/rtxconfig/KG2.7.6/map_v1.0_KG2.7.6.txt",
