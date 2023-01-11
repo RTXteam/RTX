@@ -1,6 +1,6 @@
 {
    "database_downloads": {
-      "cohd_database": "/home/rtxconfig/KG2.7.6/COHDdatabase_v1.0_KG2.7.6.db",
+      "cohd_database": "/home/rtxconfig/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
       "graph_database": "/home/rtxconfig/KG2.7.6/GRAPH_v1.0_KG2.7.6.sqlite",
       "log_model": "/home/rtxconfig/KG2.7.6/LogModel_v1.0_KG2.7.6.pkl",
       "curie_to_pmids": "/home/rtxconfig/KG2.8.0/curie_to_pmids_v1.0_KG2.8.0.sqlite",
