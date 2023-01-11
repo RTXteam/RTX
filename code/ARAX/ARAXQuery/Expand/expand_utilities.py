@@ -180,6 +180,11 @@ def convert_to_list(item: Union[str, set, list, None]) -> List[str]:
         return []
 
 
+def convert_to_set(item: Union[str, set, list, None]) -> Set[str]:
+    item_list = convert_to_list(item)
+    return set(item_list)
+
+
 def get_node_keys_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
     return {node_key for edge in edges_dict.values() for node_key in [edge.subject, edge.object]}
 
