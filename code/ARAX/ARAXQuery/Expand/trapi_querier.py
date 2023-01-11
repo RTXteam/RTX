@@ -353,8 +353,6 @@ class TRAPIQuerier:
             arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
             if not returned_edge.attributes:
                 returned_edge.attributes = []
-            if not returned_edge.qualifiers:
-                returned_edge.qualifiers = []
             # Put in a placeholder for missing required attribute fields to try to keep our answer TRAPI-compliant
             for attribute in returned_edge.attributes:
                 if not attribute.attribute_type_id:
@@ -409,7 +407,7 @@ class TRAPIQuerier:
         return stripped_dict
 
     def _get_arax_edge_key(self, edge: Edge) -> str:
-        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers}
+        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
         qualified_predicate = qualifiers_dict.get("qualified_predicate")
         qualified_object_direction = qualifiers_dict.get("object_direction_qualifier")
         qualified_object_aspect = qualifiers_dict.get("object_aspect_qualifier")
