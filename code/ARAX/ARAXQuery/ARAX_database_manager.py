@@ -87,18 +87,20 @@ class ARAXDatabaseManager:
             'explainable_dtd_db': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.explainable_dtd_db_path}"
         }
         # database locations if inside rtx1 docker container
+        self.docker_host_databases_dir_path = '/mnt/data/orangeboard/databases/'
+        self.databases_server_dir_path = '/home/rtxconfig/'
         self.docker_host_paths = {
-            'cohd_database': f"{self.RTXConfig.cohd_database_path.replace('/home/rtxconfig/','/mnt/databases/')}",
-            'graph_database': f"{self.RTXConfig.graph_database_path.replace('/home/rtxconfig/','/mnt/databases/')}",
-            'log_model': f"{self.RTXConfig.log_model_path.replace('/home/rtxconfig/','/mnt/databases/')}",
-            'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_path.replace('/home/rtxconfig/','/mnt/databases/')}",
-            'node_synonymizer': f"{self.RTXConfig.node_synonymizer_path.replace('/home/rtxconfig/','/mnt/databases/')}",
-            'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace('/home/rtxconfig/','/mnt/databases/')}",
-            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace('/home/rtxconfig/', '/mnt/databases/')}",
-            'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_path.replace('/home/rtxconfig/', '/mnt/databases/')}",
-            'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_path.replace('/home/rtxconfig/', '/mnt/databases/')}",
-            'autocomplete': f"{self.RTXConfig.autocomplete_path.replace('/home/rtxconfig/', '/mnt/databases/')}",
-            'explainable_dtd_db': f"{self.RTXConfig.explainable_dtd_db_path.replace('/home/rtxconfig/', '/mnt/databases/')}"
+            'cohd_database': f"{self.RTXConfig.cohd_database_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'graph_database': f"{self.RTXConfig.graph_database_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'log_model': f"{self.RTXConfig.log_model_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'node_synonymizer': f"{self.RTXConfig.node_synonymizer_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'autocomplete': f"{self.RTXConfig.autocomplete_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
+            'explainable_dtd_db': f"{self.RTXConfig.explainable_dtd_db_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}"
         }
 
         # database local paths + version numbers
@@ -155,8 +157,8 @@ class ARAXDatabaseManager:
                 local_versions = json.load(fid)
 
             # Download databases to a persistent central location if this is a docker host server (like arax.ncats.io, or cicd.rtx.ai)
-            if os.path.exists("/mnt/databases/"):
-                print(f"Downloading any missing databases from arax-databases.rtx.ai to /mnt/databases/")
+            if os.path.exists(self.docker_host_databases_dir_path):
+                print(f"Downloading any missing databases from arax-databases.rtx.ai to {self.docker_host_databases_dir_path}")
                 self.download_to_mnt(debug=debug, skip_if_exists=True, remove_unused=True)
 
             # Check that each database exists locally (or a symlink to it does, in the case of a docker host machine)
@@ -260,7 +262,7 @@ class ARAXDatabaseManager:
 
     def download_to_mnt(self, debug=False, skip_if_exists=False, remove_unused=False):
         """
-        This method downloads databases to the docker host machine (in /mnt/databases/).
+        This method downloads databases to the docker host machine in a central location.
         """
         if remove_unused:  # Do this first to ensure we don't run out of space on the server
             self.remove_unused_mnt_dbs()
@@ -325,8 +327,7 @@ class ARAXDatabaseManager:
         # Grab our current database names (used in config_dbs.json)
         db_names = {db_info["path"].split("/")[-1] for db_info in self.db_versions.values()}
         # Loop through all dbs within the /mnt/ databases directory and delete any not in db_names
-        databases_dir_path_list = self.RTXConfig.node_synonymizer_path.replace('/home/rtxconfig/', '/mnt/').split("/")[:-2]
-        databases_dir_path = "/".join(databases_dir_path_list)
+        databases_dir_path = self.docker_host_databases_dir_path
         if os.path.exists(databases_dir_path):
             kg2_dir_names = [dir_name for dir_name in os.listdir(databases_dir_path)
                              if dir_name.upper().startswith("KG2") and os.path.isdir(f"{databases_dir_path}/{dir_name}")]
@@ -343,10 +344,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--check_local", action='store_true')
     parser.add_argument("-f", "--force_download", action='store_true', help="Download all database without checking local versions")
-    parser.add_argument("-m", "--mnt", action='store_true', help="Download all database files to /mnt/databases/")
+    parser.add_argument("-m", "--mnt", action='store_true', help="Download all database files to /mnt databases directory")
     parser.add_argument("-g", "--generate-versions-file", action='store_true', dest="generate_versions_file", required=False, help="just generate the db_versions.json file and do nothing else (ONLY USED IN TESTING/DEBUGGING)")
-    parser.add_argument("-e", "--skip-if-exists", action='store_true', dest='skip_if_exists', required=False, help="for -m mode only, do not download a file if it already exists under /mnt/databases/KG2.X.X")
-    parser.add_argument("-r", "--remove_unused", action='store_true', dest='remove_unused', required=False, help="for -m mode only, remove database files under /mnt/databases/* that are NOT used in config_dbs.json")
+    parser.add_argument("-e", "--skip-if-exists", action='store_true', dest='skip_if_exists', required=False, help="for -m mode only, do not download a file if it already exists under /mnt databases directory")
+    parser.add_argument("-r", "--remove_unused", action='store_true', dest='remove_unused', required=False, help="for -m mode only, remove database files under /mnt databases directory that are NOT used in config_dbs.json")
 
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager()

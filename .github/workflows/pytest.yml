@@ -54,7 +54,7 @@ jobs:
       run: sudo docker build --no-cache=true --rm -t rtx:test DockerBuild/ -f DockerBuild/Merged-Dockerfile
     
     - name: Run docker container
-      run: sudo docker run -d -it --name rtx_test -v /mnt/databases:/mnt/databases/ -v /mnt/config/kg2_url_override.txt:/mnt/data/orangeboard/production/RTX/code/kg2_url_override.txt -v /mnt/config/config_secrets.json:/mnt/data/orangeboard/production/RTX/code/config_secrets.json -v /mnt/config/config_secrets.json:/mnt/data/orangeboard/kg2/RTX/code/config_secrets.json rtx:test
+      run: sudo docker run -d -it --name rtx_test -v /mnt/data/orangeboard/databases/:/mnt/data/orangeboard/databases/ -v /mnt/config/kg2_url_override.txt:/mnt/data/orangeboard/production/RTX/code/kg2_url_override.txt -v /mnt/config/config_secrets.json:/mnt/data/orangeboard/production/RTX/code/config_secrets.json -v /mnt/config/config_secrets.json:/mnt/data/orangeboard/kg2/RTX/code/config_secrets.json rtx:test
     
 #     - name: Add config.domain
 #       run: |
