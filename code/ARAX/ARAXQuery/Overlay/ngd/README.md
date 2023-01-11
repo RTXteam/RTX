@@ -6,7 +6,7 @@ _Note to ARAX team: We typically do this build on the `ngdbuild.rtx.ai` instance
 
 You need to make your environment point to the particular KG2pre version and synonymizer you want to use.
 
-1. **Put your `config_local.json` into place**: This config file should point to the KG2 you want to use (i.e., its neo4j endpoint) and the synonymizer you want to use (i.e., the one made from the KG2 you'll be using). Put it into `RTX/code/`.
+1. **Point to the right KG2 version**: Make sure that `RTX/code/config_dbs.json` is pointing to the KG2pre Neo4j endpoint you want to use and the synonymizer you want to use (i.e., the one made from the KG2 version you'll be using).
 2. **Put your synonymizer into place**: Put a copy of the synonymizer you want to use (e.g., `node_synonymizer_v1.0_KG2.6.7.sqlite`) into `RTX/code/ARAX/NodeSynonymizer/`.
 3. **Fetch the latest code**: Do `git pull origin [your-branch]` or the like to make sure you're running the latest code in whatever branch you're using.
 4. **Activate virtual env**: Make sure to use a Python version [compatible with ARAX](https://github.com/RTXteam/RTX/wiki/Dev-info#setting-up-for-local-dev-work-on-arax) and run `pip install -r requirements.txt` as needed.   
