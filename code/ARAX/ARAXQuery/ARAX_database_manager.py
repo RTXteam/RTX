@@ -87,20 +87,20 @@ class ARAXDatabaseManager:
             'explainable_dtd_db': f"{self.RTXConfig.db_username}@{self.RTXConfig.db_host}:{self.RTXConfig.explainable_dtd_db_path}"
         }
         # database locations if inside rtx1 docker container
-        self.docker_host_databases_dir_path = '/mnt/data/orangeboard/databases/'
+        self.docker_databases_dir_path = '/mnt/data/orangeboard/databases/'
         self.databases_server_dir_path = '/home/rtxconfig/'
-        self.docker_host_paths = {
-            'cohd_database': f"{self.RTXConfig.cohd_database_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'graph_database': f"{self.RTXConfig.graph_database_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'log_model': f"{self.RTXConfig.log_model_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'node_synonymizer': f"{self.RTXConfig.node_synonymizer_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'autocomplete': f"{self.RTXConfig.autocomplete_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}",
-            'explainable_dtd_db': f"{self.RTXConfig.explainable_dtd_db_path.replace(self.databases_server_dir_path, self.docker_host_databases_dir_path)}"
+        self.docker_databases_dir_paths = {
+            'cohd_database': f"{self.RTXConfig.cohd_database_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'graph_database': f"{self.RTXConfig.graph_database_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'log_model': f"{self.RTXConfig.log_model_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'curie_to_pmids': f"{self.RTXConfig.curie_to_pmids_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'node_synonymizer': f"{self.RTXConfig.node_synonymizer_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'dtd_prob': f"{self.RTXConfig.dtd_prob_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'kg2c_sqlite': f"{self.RTXConfig.kg2c_sqlite_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'kg2c_meta_kg': f"{self.RTXConfig.kg2c_meta_kg_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'fda_approved_drugs': f"{self.RTXConfig.fda_approved_drugs_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'autocomplete': f"{self.RTXConfig.autocomplete_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}",
+            'explainable_dtd_db': f"{self.RTXConfig.explainable_dtd_db_path.replace(self.databases_server_dir_path, self.docker_databases_dir_path)}"
         }
 
         # database local paths + version numbers
@@ -152,13 +152,18 @@ class ARAXDatabaseManager:
         }
 
     def update_databases(self, debug = False, response = None):
-        if os.path.exists(versions_path): # check if the versions file exists
-            with open(versions_path,"r") as fid:
+        # First ensure we have a db versions file if we're in a docker container (since host has dbs predownloaded)
+        if os.path.exists(self.docker_databases_dir_path) and not os.path.exists(versions_path):
+            self.write_db_versions_file(debug=True)
+
+        # Then ensure each database/symlink is up to date
+        if os.path.exists(versions_path):
+            with open(versions_path, "r") as fid:
                 local_versions = json.load(fid)
 
-            # Download databases to a persistent central location if this is a docker host server (like arax.ncats.io, or cicd.rtx.ai)
-            if os.path.exists(self.docker_host_databases_dir_path):
-                print(f"Downloading any missing databases from arax-databases.rtx.ai to {self.docker_host_databases_dir_path}")
+            # Download databases to a persistent central location if this is a docker instance (like arax.ncats.io)
+            if os.path.exists(self.docker_databases_dir_path):
+                print(f"Downloading any missing databases from arax-databases.rtx.ai to {self.docker_databases_dir_path}")
                 self.download_to_mnt(debug=debug, skip_if_exists=True, remove_unused=False)
 
             # Check that each database exists locally (or a symlink to it does, in the case of a docker host machine)
@@ -168,14 +173,20 @@ class ARAXDatabaseManager:
                         print(f"{database_name} not present locally, downloading now...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
-                    self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], docker_host_path=self.docker_host_paths[database_name], debug=debug)
+                    self.download_database(remote_location=self.remote_locations[database_name],
+                                           local_destination_path=self.local_paths[database_name],
+                                           local_symlink_target_path=self.docker_databases_dir_paths[database_name],
+                                           debug=debug)
                 elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']: # If database is present but wrong version
                     if debug:
                         print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
                         print("downloading remote version...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
-                    self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], docker_host_path=self.docker_host_paths[database_name], debug=debug)
+                    self.download_database(remote_location=self.remote_locations[database_name],
+                                           local_destination_path=self.local_paths[database_name],
+                                           local_symlink_target_path=self.docker_databases_dir_paths[database_name],
+                                           debug=debug)
                     if os.path.exists(self.local_paths[database_name]): # check that download worked if so remove old version
                         if debug:
                             print("Download successful. Removing local version...")
@@ -192,7 +203,7 @@ class ARAXDatabaseManager:
                         print(f"{database_name} not present locally, downloading now...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
-                    self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], docker_host_path=self.docker_host_paths[database_name], debug=debug)
+                    self.download_database(remote_location=self.remote_locations[database_name], local_destination_path=self.local_paths[database_name], local_symlink_target_path=self.docker_databases_dir_paths[database_name], debug=debug)
                 else:
                     if debug:
                         print(f"Local version of {database_name} matches the remote version, skipping...")
@@ -245,14 +256,14 @@ class ARAXDatabaseManager:
         else:
             return True
 
-    def download_database(self, remote_location, local_path, docker_host_path, debug=False):
-        if docker_host_path is not None and os.path.exists(docker_host_path): # if on the server symlink instead of downloading
-            self.symlink_database(local_path=local_path, docker_host_path=docker_host_path)
+    def download_database(self, remote_location, local_destination_path, local_symlink_target_path, debug=False):
+        if local_symlink_target_path is not None and os.path.exists(local_symlink_target_path): # if on the server symlink instead of downloading
+            self.symlink_database(symlink_path=local_destination_path, target_path=local_symlink_target_path)
         else:
-            self.rsync_database(remote_location=remote_location, local_path=local_path, debug=debug)
+            self.rsync_database(remote_location=remote_location, local_path=local_destination_path, debug=debug)
 
-    def symlink_database(self, local_path, docker_host_path):
-        os.system(f"ln -s {docker_host_path} {local_path}")
+    def symlink_database(self, symlink_path, target_path):
+        os.system(f"ln -s {target_path} {symlink_path}")
 
     def rsync_database(self, remote_location, local_path, debug=False):
         verbose = ""
@@ -267,18 +278,23 @@ class ARAXDatabaseManager:
         if remove_unused:  # Do this first to ensure we don't run out of space on the server
             self.remove_unused_mnt_dbs()
         for database_name in self.remote_locations.keys():
-            database_dir = os.path.sep.join(self.docker_host_paths[database_name].split('/')[:-1])
+            database_dir = os.path.sep.join(self.docker_databases_dir_paths[database_name].split('/')[:-1])
             if debug:
-                print(f"in download_to_mnt, for database {database_name}")
+                print(f"On database {database_name} in download_to_mnt()")
             if not os.path.exists(database_dir):
                 if debug:
                     print(f"Creating directory {database_dir}...")
                 os.system(f"mkdir -p {database_dir}")
-            local_path = self.docker_host_paths[database_name]
-            if not skip_if_exists or not os.path.exists(local_path):
+            docker_host_local_path = self.docker_databases_dir_paths[database_name]
+            if not skip_if_exists or not os.path.exists(docker_host_local_path):
                 remote_location = self.remote_locations[database_name]
-                print(f"Initiating download from location {remote_location}; saving to {local_path}") if debug else None
-                self.download_database(remote_location=remote_location, local_path=local_path, docker_host_path=None, debug=debug)
+                if debug:
+                    print(f"Initiating download from location {remote_location}; "
+                          f"saving to {docker_host_local_path}")
+                self.download_database(remote_location=remote_location,
+                                       local_destination_path=docker_host_local_path,
+                                       local_symlink_target_path=None,
+                                       debug=debug)
             else:
                 print(f"  Database already exists, no need to download") if debug else None
                 
@@ -286,7 +302,7 @@ class ARAXDatabaseManager:
         for database_name in self.remote_locations.keys():
             if debug:
                 print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
-            self.download_database(remote_location=self.remote_locations[database_name], local_path=self.local_paths[database_name], docker_host_path=self.docker_host_paths[database_name], debug=debug)
+            self.download_database(remote_location=self.remote_locations[database_name], local_destination_path=self.local_paths[database_name], local_symlink_target_path=self.docker_databases_dir_paths[database_name], debug=debug)
 
     def check_all(self, max_days=31, debug=False):
         update_flag = False
@@ -316,7 +332,7 @@ class ARAXDatabaseManager:
             if self.check_date(local_path, max_days=max_days):
                 if debug:
                     print(f"{database_name} not present or older than {max_days} days. Updating file...")
-                self.download_database(remote_location=self.remote_locations[database_name], local_path=local_path, docker_host_path=self.docker_host_paths[database_name], debug=debug)
+                self.download_database(remote_location=self.remote_locations[database_name], local_destination_path=local_path, local_symlink_target_path=self.docker_databases_dir_paths[database_name], debug=debug)
 
     def write_db_versions_file(self, debug=False):
         print(f"saving new version file to {versions_path}") if debug else None
@@ -327,7 +343,7 @@ class ARAXDatabaseManager:
         # Grab our current database names (used in config_dbs.json)
         db_names = {db_info["path"].split("/")[-1] for db_info in self.db_versions.values()}
         # Loop through all dbs within the /mnt/ databases directory and delete any not in db_names
-        databases_dir_path = self.docker_host_databases_dir_path
+        databases_dir_path = self.docker_databases_dir_path
         if os.path.exists(databases_dir_path):
             kg2_dir_names = [dir_name for dir_name in os.listdir(databases_dir_path)
                              if dir_name.upper().startswith("KG2") and os.path.isdir(f"{databases_dir_path}/{dir_name}")]
