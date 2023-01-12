@@ -277,7 +277,7 @@ class ARAXDatabaseManager:
             local_path = self.docker_host_paths[database_name]
             if not skip_if_exists or not os.path.exists(local_path):
                 remote_location = self.remote_locations[database_name]
-                print(f"Initiating download from location {remote_location}") if debug else None
+                print(f"Initiating download from location {remote_location}; saving to {local_path}") if debug else None
                 self.download_database(remote_location=remote_location, local_path=local_path, docker_host_path=None, debug=debug)
             else:
                 print(f"  Database already exists, no need to download") if debug else None
