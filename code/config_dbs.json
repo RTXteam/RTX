@@ -1,13 +1,13 @@
 {
    "database_downloads": {
       "cohd_database": "/home/rtxconfig/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
-      "graph_database": "/home/rtxconfig/KG2.7.6/GRAPH_v1.0_KG2.7.6.sqlite",
+      "graph_database": "/home/rtxconfig/KG2.7.6/GRAPH_v1.0_KG2.8.0_refreshed.sqlite",
       "log_model": "/home/rtxconfig/KG2.7.6/LogModel_v1.0_KG2.7.6.pkl",
       "curie_to_pmids": "/home/rtxconfig/KG2.8.0/curie_to_pmids_v1.0_KG2.8.0.sqlite",
       "node_synonymizer": "/home/rtxconfig/KG2.8.0/node_synonymizer_v1.0_KG2.8.0.sqlite",
       "rel_max": "/home/rtxconfig/KG2.7.6/rel_max_v1.0_KG2.7.6.emb.gz",
       "map_txt": "/home/rtxconfig/KG2.7.6/map_v1.0_KG2.7.6.txt",
-      "dtd_prob": "/home/rtxconfig/KG2.7.6/DTD_probability_database_v1.0_KG2.7.6.db",
+      "dtd_prob": "/home/rtxconfig/KG2.7.6/DTD_probability_database_v1.0_KG2.8.0_refreshed.db",
       "kg2c_sqlite": "/home/rtxconfig/KG2.8.0/kg2c_v1.0_KG2.8.0.sqlite",
       "kg2c_meta_kg": "/home/rtxconfig/KG2.8.0/meta_kg_v1.0_KG2.8.0c.json",
       "fda_approved_drugs": "/home/rtxconfig/KG2.8.0/fda_approved_drugs_v1.0_KG2.8.0c.pickle",
