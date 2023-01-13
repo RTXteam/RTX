@@ -408,10 +408,11 @@ class TRAPIQuerier:
 
     def _get_arax_edge_key(self, edge: Edge) -> str:
         qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
-        qualified_predicate = qualifiers_dict.get("qualified_predicate")
-        qualified_object_direction = qualifiers_dict.get("object_direction_qualifier")
-        qualified_object_aspect = qualifiers_dict.get("object_aspect_qualifier")
-        return f"{self.kp_name}:{edge.subject}-{edge.predicate}-{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}--{edge.object}"
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
+        edge_key = f"{self.kp_name}:{edge.subject}-{edge.predicate}--{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}--{edge.object}"
+        return edge_key
 
     def _get_query_timeout_length(self) -> int:
         # Returns the number of seconds we should wait for a response
