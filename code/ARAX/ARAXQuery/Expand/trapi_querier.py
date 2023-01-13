@@ -411,7 +411,7 @@ class TRAPIQuerier:
         qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
         qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
         qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
-        edge_key = f"{self.kp_name}:{edge.subject}-{edge.predicate}--{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}--{edge.object}"
+        edge_key = f"{self.kp_name}:{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}--{edge.object}"
         return edge_key
 
     def _get_query_timeout_length(self) -> int:
