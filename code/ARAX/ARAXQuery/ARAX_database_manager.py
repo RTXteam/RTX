@@ -170,7 +170,7 @@ class ARAXDatabaseManager:
             for database_name, local_path in self.local_paths.items(): # iterate through all databases
                 if database_name not in local_versions: # if database is not present locally
                     if debug:
-                        print(f"{database_name} not present locally, downloading now...")
+                        print(f"{database_name} not present locally, downloading or symlinking now...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.download_database(remote_location=self.remote_locations[database_name],
@@ -200,7 +200,7 @@ class ARAXDatabaseManager:
                         self.db_versions[database_name] = local_versions[database_name]
                 elif not os.path.exists(self.local_paths[database_name]): # If database file is missing
                     if debug:
-                        print(f"{database_name} not present locally, downloading now...")
+                        print(f"{database_name} not present locally, downloading or symlinking now......")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.download_database(remote_location=self.remote_locations[database_name], local_destination_path=self.local_paths[database_name], local_symlink_target_path=self.docker_databases_dir_paths[database_name], debug=debug)
