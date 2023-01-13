@@ -8,7 +8,8 @@ script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"  # T
 arax_dir=${script_dir}/../ARAX
 db_host=$1
 remote_database_dir=$2
-synonymizer_name=$3
+synonymizer_db_version=$3
+kg2_version=$4
 remote_database_subdir="${remote_database_dir}/extra_files"
 
 # Make sure the necessary directories exist on arax-databases.rtx.ai (will not hurt if these directories already exist)
@@ -16,7 +17,7 @@ ssh rtxconfig@${db_host} "mkdir -p ${remote_database_dir}"
 ssh rtxconfig@${db_host} "mkdir -p ${remote_database_subdir}"
 
 cd ${arax_dir}/NodeSynonymizer
-scp ${synonymizer_name} rtxconfig@${db_host}:${remote_database_dir}
+scp node_synonymizer_${synonymizer_db_version}_KG${kg2_version}.sqlite rtxconfig@${db_host}:${remote_database_dir}
 scp kg2_node_info.tsv rtxconfig@${db_host}:${remote_database_subdir}
 scp kg2_equivalencies.tsv rtxconfig@${db_host}:${remote_database_subdir}
 scp kg2_synonyms.json rtxconfig@${db_host}:${remote_database_subdir}
@@ -24,4 +25,4 @@ scp Problems.tsv rtxconfig@${db_host}:${remote_database_subdir}
 scp Exceptions.txt rtxconfig@${db_host}:${remote_database_subdir}
 scp sri_node_normalizer_curie_cache.pickle rtxconfig@${db_host}:${remote_database_subdir}
 scp sri_node_normalizer_requests_cache.sqlite rtxconfig@${db_host}:${remote_database_subdir}
-scp autocomplete.sqlite rtxconfig@${db_host}:${remote_database_dir}
+scp autocomplete_${synonymizer_db_version}_KG${kg2_version}.sqlite rtxconfig@${db_host}:${remote_database_dir}

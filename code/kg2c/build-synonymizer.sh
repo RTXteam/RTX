@@ -7,6 +7,8 @@ set -e
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"  # Thanks https://stackoverflow.com/a/246128
 code_dir=${script_dir}/..
 synonymizer_dir=${code_dir}/ARAX/NodeSynonymizer
+kg2c_db_version=$1
+kg2_version=$2
 
 # Build a NodeSynonymizer using the KG2pre Neo4j endpoint specified in the ARAX config_dbs.json file
 cd ${synonymizer_dir}
@@ -18,4 +20,4 @@ python3 -u node_synonymizer.py --build
 
 # Build the autocomplete database
 cd ${code_dir}/autocomplete
-python3 -u create_load_db.py --input ${synonymizer_dir}/kg2_node_info.tsv --output ${synonymizer_dir}/autocomplete.sqlite
+python3 -u create_load_db.py --input ${synonymizer_dir}/kg2_node_info.tsv --output ${synonymizer_dir}/autocomplete_${kg2c_db_version}_KG${kg2_version}.sqlite

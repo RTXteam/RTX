@@ -322,18 +322,18 @@ def _write_list_to_neo4j_ready_tsv(input_list: List[Dict[str, any]], file_name_r
 
 def create_kg2c_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                           canonicalized_edges_dict: Dict[str, Dict[str, any]],
-                          meta_info_dict: Dict[str, str], is_test: bool):
+                          meta_info_dict: Dict[str, str], kg2c_db_version: str, kg2pre_version: str, is_test: bool):
     logging.info(f" Creating KG2c JSON file..")
     kgx_format_json = {"nodes": list(canonicalized_nodes_dict.values()),
                        "edges": list(canonicalized_edges_dict.values())}
     kgx_format_json.update(meta_info_dict)
-    with open(f"{KG2C_DIR}/kg2c{'_test' if is_test else ''}.json", "w+") as output_file:
+    with open(f"{KG2C_DIR}/kg2c_{kg2c_db_version}_KG{kg2pre_version}{'_test' if is_test else ''}.json", "w+") as output_file:
         json.dump(kgx_format_json, output_file)
 
 
 def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                                canonicalized_edges_dict: Dict[str, Dict[str, any]],
-                               meta_info_dict: Dict[str, str], is_test: bool):
+                               meta_info_dict: Dict[str, str], kg2c_db_version: str, kg2_version: str, is_test: bool):
     logging.info(f" Creating KG2c lite JSON file..")
     # Filter out all except these properties so we create a lightweight KG
     node_lite_properties = _get_lite_properties("node")
@@ -353,7 +353,7 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
 
     # Save this lite KG to a JSON file
     logging.info(f"  Saving lite json...")
-    with open(f"{KG2C_DIR}/kg2c_lite{'_test' if is_test else ''}.json", "w+") as output_file:
+    with open(f"{KG2C_DIR}/kg2c_lite_{kg2c_db_version}_KG{kg2_version}{'_test' if is_test else ''}.json", "w+") as output_file:
         json.dump(lite_kg, output_file)
 
 
@@ -386,9 +386,9 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
 
 
 def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
-                          canonicalized_edges_dict: Dict[str, Dict[str, any]], is_test: bool):
+                          canonicalized_edges_dict: Dict[str, Dict[str, any]], kg2c_db_version: str, kg2pre_version: str, is_test: bool):
     logging.info(" Creating KG2c sqlite database..")
-    db_name = f"kg2c{'_test' if is_test else ''}.sqlite"
+    db_name = f"kg2c_{kg2c_db_version}_KG{kg2pre_version}{'_test' if is_test else ''}.sqlite"
     # Remove any preexisting version of this database
     if os.path.exists(db_name):
         os.remove(db_name)
@@ -655,6 +655,7 @@ def create_kg2c_files(is_test=False):
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
     kg2_version = kg2c_config_info.get("kg2pre_version")
+    kg2c_db_version = kg2c_config_info["kg2c"].get("kg2c_db_version")
     biolink_version = kg2c_config_info.get("biolink_version")
     start_from_kg2c_json = kg2c_config_info["kg2c"].get("start_from_kg2c_json")
     use_local_kg2pre_tsvs = kg2c_config_info["kg2c"].get("use_local_kg2pre_tsvs")
@@ -727,10 +728,10 @@ def create_kg2c_files(is_test=False):
     # Actually create all of our output files (different formats for storing KG2c)
     meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
     logging.info(f"Saving KG2c in various file formats..")
-    create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
-    create_kg2c_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
+    create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, kg2c_db_version, kg2_version, is_test)
+    create_kg2c_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, kg2c_db_version, kg2_version, is_test)
     create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
-    create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
+    create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, kg2c_db_version, kg2_version, is_test)
 
 
 def main():
