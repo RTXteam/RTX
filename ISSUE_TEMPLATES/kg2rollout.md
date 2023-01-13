@@ -72,7 +72,7 @@ be done well in advance of the rollout; it doesn't hurt anything to do them earl
 
 - [ ] make sure `arax.ncats.io` has at least 100G of disk space free; delete old KG2 databases to free up space as needed (warn the team on slack first)
 - [ ] `scp` the new databases from `arax-databases.rtx.ai` to `arax.ncats.io:/data/orangeboard/databases/KG2.X.Y`
-- [ ] upload the new databases and their md5 checksums to ITRB's SFTP server using the steps detailed [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#uploading-databases-to-itrbs-sftp-server)
+- [ ] upload the new databases and their md5 checksums to ITRB's SFTP server using the steps detailed [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#steps-for-all-databases-at-once)
 
 
 
