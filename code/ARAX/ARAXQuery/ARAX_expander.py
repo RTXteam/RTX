@@ -58,8 +58,10 @@ class ARAXExpander:
         self.logger.addHandler(handler)
         self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
-        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
-        self.supported_qedge_constraints = {"biolink:knowledge_source": {"==": "*"}}
+        self.supported_qnode_attribute_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
+        self.supported_qedge_attribute_constraints = {"biolink:knowledge_source": {"==": "*"}}
+        self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
+                                                      "biolink:object_aspect_qualifier"}
 
     def describe_me(self):
         """
@@ -246,20 +248,26 @@ class ARAXExpander:
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.constraints:
                 for constraint in qnode.constraints:
-                    if not self.is_supported_constraint(constraint, self.supported_qnode_constraints):
+                    if not self.is_supported_constraint(constraint, self.supported_qnode_attribute_constraints):
                         log.error(f"Unsupported constraint(s) detected on qnode {qnode_key}: \n{constraint}\n"
                                   f"Don't know how to handle! Supported qnode constraints are: "
-                                  f"{self.supported_qnode_constraints}", error_code="UnsupportedConstraint")
+                                  f"{self.supported_qnode_attribute_constraints}", error_code="UnsupportedConstraint")
         for qedge_key, qedge in query_graph.edges.items():
             if qedge.attribute_constraints:
                 for constraint in qedge.attribute_constraints:
-                    if not self.is_supported_constraint(constraint, self.supported_qedge_constraints):
+                    if not self.is_supported_constraint(constraint, self.supported_qedge_attribute_constraints):
                         log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
                                   f"Don't know how to handle! Supported qedge constraints are: "
-                                  f"{self.supported_qedge_constraints}", error_code="UnsupportedConstraint")
-            if qedge.qualifier_constraints:
-                log.warning(f"Qualifier constraints are not yet supported! Will answer the query anyway, but "
-                            f"qualifier constraints will not be respected.")
+                                  f"{self.supported_qedge_attribute_constraints}", error_code="UnsupportedConstraint")
+            if mode == "RTXKG2":  # ARAX should pass along qualifier constraints
+                if qedge.qualifier_constraints:
+                    for constraint in qedge.qualifier_constraints:
+                        constraint_type_ids = {qualifier.qualifier_type_id for qualifier in constraint.qualifier_set}
+                        if not constraint_type_ids.issubset(self.supported_qedge_qualifier_constraints):
+                            log.warning(f"RTX-KG2 does not support {constraint.qualifier_type_id} qualifier constraints."
+                                        f" Supported qualifier constraints are: "
+                                        f"{self.supported_qedge_qualifier_constraints}")
+                            return response
 
         if response.status != 'OK':
             return response

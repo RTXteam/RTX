@@ -106,6 +106,7 @@ def test_ngd_added():
     assert 'biolink:has_normalized_google_distance_with' in qg.edges['N1'].predicates
 
 
+@pytest.mark.slow
 def test_drug_disease_query():
     query = {
         "edges": {

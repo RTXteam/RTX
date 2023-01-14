@@ -230,11 +230,12 @@ class ARAXDecorator:
     @staticmethod
     def _get_kg2c_edge_key(edge: Edge) -> str:
         qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
-        qualified_predicate = qualifiers_dict.get("qualified_predicate")
-        qualified_object_direction = qualifiers_dict.get("object_direction_qualifier")
-        qualified_object_aspect = qualifiers_dict.get("object_aspect_qualifier")
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
         # TODO: Switch order of object direction and aspect below when KG2c code is changed that way
-        return f"{edge.subject}-{edge.predicate}-{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{edge.object}"
+        edge_key = f"{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{edge.object}"
+        return edge_key
 
     @staticmethod
     def _connect_to_kg2c_sqlite() -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
