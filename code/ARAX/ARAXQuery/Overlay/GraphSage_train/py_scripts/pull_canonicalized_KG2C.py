@@ -18,6 +18,7 @@ rtxc = RTXConfiguration()
 rtxc.neo4j_kg2 = "KG2c"
 driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
 session = driver.session()
+print(f'Now using neo4j blot: {rtxc.neo4j_bolt}', flush=True)
 
 ######### Please ignore this part until Eric finds a better way to categorize these nodes with ambiguous node type ###########
 # !Note: Before running the below code, please first check this DSL query, if there is returned value > 0, report error on github.
