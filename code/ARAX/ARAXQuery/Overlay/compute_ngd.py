@@ -363,10 +363,11 @@ class ComputeNGD:
                     #self.response.debug(f"{n_pmids} publications found for edge ({subject_curie})-[]-({object_curie}) limiting to 30...")
                     self.response.debug(f"More than 30 publications found for some edges limiting to 30...")
                     self.first_ngd_log = False
-                limited_pmids = set()
-                for i, val in enumerate(itertools.islice(pubmed_id_set, 30)):
-                    limited_pmids.add(val)
-                pubmed_id_set = limited_pmids
+                # limited_pmids = set()
+                # for i, val in enumerate(itertools.islice(pubmed_id_set, 30)):
+                #     limited_pmids.add(val)
+                # pubmed_id_set = limited_pmids
+                pubmed_id_set = set([val for val in itertools.islice(pubmed_id_set, 30)])
             counts_res = self._compute_marginal_and_joint_counts(pubmed_ids_for_curies)
             return self._compute_multiway_ngd_from_counts(*counts_res), pubmed_id_set
         else:
