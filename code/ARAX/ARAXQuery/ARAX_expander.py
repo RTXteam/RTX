@@ -357,6 +357,8 @@ class ARAXExpander:
         if mode != "RTXKG2":
             inferred_qedge_keys = [qedge_key for qedge_key, qedge in query_graph.edges.items() if qedge.knowledge_type == "inferred"]
             if inferred_qedge_keys:
+                log.debug(f"knowledge_type='inferred' qedges were detected ({', '.join(inferred_qedge_keys)}); "
+                          f"will handle using ARAXInfer/XDTD")
                 if len(query_graph.edges) == 1:
                     inferred_qedge_key = inferred_qedge_keys[0]
                     qedge = query_graph.edges[inferred_qedge_key]
@@ -370,9 +372,10 @@ class ARAXExpander:
                         if object_qnode.ids and len(object_qnode.ids) >= 1:
                             object_curie = object_qnode.ids[0]  #FIXME: will need a way to handle multiple IDs
                         else:
-                            log.error(f"No CURIEs found for {object_qnode.name}", error_code="NoCURIEs")
+                            log.error(f"No CURIEs found for qnode {qedge.object}; ARAXInfer/XDTD requires that the"
+                                      f" object qnode has 'ids' specified", error_code="NoCURIEs")
                             #raise Exception(f"No CURIEs found for {object_qnode.name}")
-                            return
+                            return response
                         log.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
                         from ARAX_infer import ARAXInfer
                         infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': object_curie, 'qedge_id': inferred_qedge_key}
