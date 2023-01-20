@@ -82,6 +82,7 @@ def main():
     upload_to_s3 = kg2c_config_info["kg2c"]["upload_to_s3"]
     build_synonymizer = kg2c_config_info["synonymizer"]["build"]
     synonymizer_db_version = kg2c_config_info["synonymizer"]["synonymizer_db_version"]
+    synonymizer_name = f"node_synonymizer_{synonymizer_db_version}_KG2.8.0.sqlite"
     upload_to_arax_databases_rtx_ai = kg2c_config_info["upload_to_arax_databases.rtx.ai"]
     upload_directory = kg2c_config_info["upload_directory"]
     logging.info(f"KG2pre version to use is {kg2_version}")
