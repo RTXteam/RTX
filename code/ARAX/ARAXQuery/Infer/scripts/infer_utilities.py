@@ -219,7 +219,7 @@ class InferUtilities:
                                       attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name=None, value=True,
                                       attribute_type_id="biolink:computed_value",
-                                      attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean",
+                                      attribute_source="infores:arax", value_type_id="metatype:Boolean",
                                       value_url=None,
                                       description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                         EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats",
@@ -322,7 +322,7 @@ class InferUtilities:
                 edge_attribute_list = [
                     # EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                     EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats", value=str(treat_score))
                 ]
                 #edge_predicate = qedge_id
