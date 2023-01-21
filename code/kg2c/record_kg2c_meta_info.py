@@ -164,10 +164,10 @@ def generate_fda_approved_drugs_pickle(edges_by_id: Dict[str, Dict[str, any]], f
         pickle.dump(fda_approved_drugs, pickle_file)
 
 
-def record_meta_kg_info(kg2c_db_version, kg2_version,is_test: bool):
+def record_meta_kg_info(kg2c_db_version, kg2_version, is_test: bool):
     kg2c_lite_file_name = f"kg2c_lite_{kg2c_db_version}_KG{kg2_version}{'_test' if is_test else ''}.json"
     meta_kg_file_name = f"meta_kg_{kg2c_db_version}_KG{kg2_version}c{'_test' if is_test else ''}.json"
-    sqlite_file_name = f"kg2c_{kg2c_db_version}_KG{kg2pre_version}{'_test' if is_test else ''}.sqlite"
+    sqlite_file_name = f"kg2c_{kg2c_db_version}_KG{kg2_version}{'_test' if is_test else ''}.sqlite"
     fda_approved_file_name = f"fda_approved_drugs_{kg2c_db_version}_KG{kg2_version}c{'_test' if is_test else ''}.pickle"
     # Initiate a BiolinkHelper for the proper Biolink model version
     with open("kg2c_config.json") as config_file:
