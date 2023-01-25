@@ -80,6 +80,8 @@ class CategoryManager:
     # Retrieve the ancestors of a biolink category from SRI web service
     def get_ancestors(self, category):
 
+        verbose = True
+
         if category is None:
             return
 
@@ -90,22 +92,13 @@ class CategoryManager:
         if category in self.categories['ancestors']:
             return self.categories['ancestors'][category]
 
-        # Build the URL and fetch the result
-        url = f"https://bl-lookup-sri.renci.org/bl/{category}/ancestors?version={self.bh.get_current_arax_biolink_version()}"
-        response_content = requests.get(url, headers={'accept': 'application/json'})
-        status_code = response_content.status_code
-
-        # Check for a returned error
-        if status_code != 200:
-            eprint(f"WARNING: returned with status {status_code} while retrieving ancestors for {category}")
-            response_list = [ category ]
-            self.categories['ancestors'][category] = response_list
-            return response_list
-
-        # Unpack the response
-        response_list = response_content.json()
+        biolink_helper = BiolinkHelper()
+        response_list = biolink_helper.get_ancestors(category)
 
         self.categories['ancestors'][category] = response_list
+
+        if verbose:
+            eprint(f"  Result={response_list}")
 
         return response_list
 
