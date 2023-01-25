@@ -15,7 +15,8 @@ import pickle
 import platform
 
 from sri_node_normalizer import SriNodeNormalizer
-from category_manager import CategoryManager
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 # Testing and debugging flags
 DEBUG = True
@@ -1935,7 +1936,7 @@ class NodeSynonymizer:
         results = {}
 
         # Set up the category manager
-        category_manager = CategoryManager()
+        biolink_helper = BiolinkHelper()
 
         # Make sets of comma-separated list strings for the curies and set up the results dict with all the input values
         uc_curies = []
@@ -2044,7 +2045,11 @@ class NodeSynonymizer:
 
                     #### Also store tidy categories
                     if return_all_categories:
-                        results[entity]['expanded_categories'] = category_manager.get_expansive_categories(row[4])
+                        ancestor_list = biolink_helper.get_ancestors(row[4])
+                        ancestor_dict = {}
+                        for ancestor in ancestor_list:
+                            ancestor_dict[ancestor] = True
+                        results[entity]['expanded_categories'] = ancestor_dict
 
                 else:
                     print(f"ERROR: Unable to find entity {entity}")
@@ -2559,7 +2564,7 @@ def run_example_12():
 
 # ############################################################################################
 def run_examples():
-    run_example_7()
+    run_example_9()
     return
     run_example_1()
     run_example_2()
