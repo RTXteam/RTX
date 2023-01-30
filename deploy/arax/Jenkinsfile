@@ -53,11 +53,11 @@ pipeline {
           }
           steps {
               script {
-                  docker.build(env.DOCKER_REPO_NAME, "--build-arg BUILD_BRANCH=$ENV_BUILD_BRANCH --no-cache ./DockerBuild/")
+                  docker.build(env.IMAGE_NAME, "--build-arg BUILD_BRANCH=$ENV_BUILD_BRANCH --no-cache ./DockerBuild/")
                   sh '''
                   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin  853771734544.dkr.ecr.us-east-1.amazonaws.com
                   '''
-                  docker.image(env.DOCKER_REPO_NAME).push("${BUILD_VERSION}")
+                  docker.image(env.IMAGE_NAME).push("${BUILD_VERSION}")
               }
           }
       }
