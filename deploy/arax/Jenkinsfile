@@ -15,14 +15,15 @@ pipeline {
         pollSCM('H/5 * * * *')
     }
     environment {
+        IMAGE_NAME = "853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-rtx-arax"
         DOCKER_REPO_NAME = "translator-rtx-arax"
         KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-ci-blue-cluster"
         KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
         NAMESPACE = "rtx"
         SECRET_NAME = "sftp-ssh-key"
         CFGFILE2DL = "team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/config_secrets.json"
-        CFGFILE2DL_LOCALPATH = "deploy/arax/configs/config_secrets.json"
-        sftp_key = "deploy/arax/secrets/team-expander-ops-sshkey-secret"
+        CFGFILE2DL_LOCALPATH = "deploy/kg2/configs/config_secrets.json"
+        sftp_key = "deploy/kg2/secrets/team-expander-ops-sshkey-secret"
     }
     stages {
       stage('Build Version'){
@@ -47,44 +48,44 @@ pipeline {
       }
       stage('Build and Push Docker Image') {
           when { expression { return env.BUILD == 'true' }}
-          environment { 
-              ENV_BUILD_BRANCH= sh (returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+          environment {
+            ENV_BUILD_BRANCH= sh (returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
           }
           steps {
               script {
-                  docker.build(env.DOCKER_REPO_NAME, "--build-arg BUILD_BRANCH=$ENV_BUILD_BRANCH --no-cache ./DockerBuild/")
-                  docker.withRegistry('https://853771734544.dkr.ecr.us-east-1.amazonaws.com', 'ecr:us-east-1:aws-ifx-deploy') {
-                      docker.image(env.DOCKER_REPO_NAME).push("${BUILD_VERSION}")
-                  }
+                  docker.build(env.DOCKER_REPO_NAME, "--build-arg BUILD_BRANCH=$ENV_BUILD_BRANCH --no-cache -f ./DockerBuild/")
+                  sh '''
+                  aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin  853771734544.dkr.ecr.us-east-1.amazonaws.com
+                  '''
+                  docker.image(env.DOCKER_REPO_NAME).push("${BUILD_VERSION}")
               }
           }
       }
       stage('Deploy to AWS EKS Blue') {
+            agent {
+                label 'translator && ci && deploy'
+            }
           steps {
+              cleanWs()
+              checkout scm
               configFileProvider([
-                  configFile(fileId: 'arax.values.ncats.yaml', targetLocation: 'deploy/arax/arax.values.ncats.yaml')
+                  configFile(fileId: 'arax.values.ncats.yaml', targetLocation: 'deploy/arax/arax.values.ncats.yaml'),
+                  configFile(fileId: 'prepare.sh', targetLocation: 'prepare.sh')
               ]){
-                  withCredentials([
-                    sshUserPrivateKey(
-                      credentialsId: 'team-expander-ops-sshkey',
-                      keyFileVariable: 'SECRET_FILE')
-                  ]){
-                    withAWS(credentials:'aws-ifx-deploy') 
-                    {
-                        sh '''
-                        # Need to save the credential to a file with base64 encoded under deploy/secret
-                        cat $SECRET_FILE >> deploy/arax/secrets/team-expander-ops-sshkey-secret
-                        sftp -i $SECRET_FILE -o StrictHostKeyChecking=no -p $CFGFILE2DL $CFGFILE2DL_LOCALPATH
-                        cp code/config_dbs.json deploy/arax/configs
-                        aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-                        cd deploy/arax && /bin/bash deploy.sh
-                        # aws --region ${AWS_REGION} sts get-caller-identity
-                        '''
-                    }
-                  } 
-              }
-          }
-      }
+                  script {
+                      sh '''
+                      aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
+                      /bin/bash prepare.sh
+                      # Need to save the credential to a file with base64 encoded under deploy/secret
+                      cat $SECRET_FILE >> deploy/arax/secrets/team-expander-ops-sshkey-secret
+                      sftp -i $SECRET_FILE -o StrictHostKeyChecking=no -p $CFGFILE2DL $CFGFILE2DL_LOCALPATH
+                      cp code/config_dbs.json deploy/arax/configs
+                      cd deploy/arax && /bin/bash deploy.sh
+                      '''
+                   } 
+                }
+           }
+       }
       stage('Clean Up') {
           steps {
               cleanWs()
