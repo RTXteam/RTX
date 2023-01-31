@@ -15,15 +15,15 @@ pipeline {
         pollSCM('H/5 * * * *')
     }
     environment {
-        IMAGE_NAME = "853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-rtx-arax"
-        DOCKER_REPO_NAME = "translator-rtx-arax"
+        IMAGE_NAME = "853771734544.dkr.ecr.us-east-1.amazonaws.com/translator-rtx-kg2"
+        DOCKER_REPO_NAME = "translator-rtx-kg2"
         KUBERNETES_BLUE_CLUSTER_NAME = "translator-eks-ci-blue-cluster"
         KUBERNETES_GREEN_CLUSTER_NAME = "translator-eks-ci-green-cluster"
         NAMESPACE = "rtx"
         SECRET_NAME = "sftp-ssh-key"
         CFGFILE2DL = "team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/config_secrets.json"
-        CFGFILE2DL_LOCALPATH = "deploy/arax/configs/config_secrets.json"
-        sftp_key = "deploy/arax/secrets/team-expander-ops-sshkey-secret"
+        CFGFILE2DL_LOCALPATH = "deploy/kg2/configs/config_secrets.json"
+        sftp_key = "deploy/kg2/secrets/team-expander-ops-sshkey-secret"
     }
     stages {
       stage('Build Version'){
