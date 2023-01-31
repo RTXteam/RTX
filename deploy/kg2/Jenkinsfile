@@ -70,12 +70,12 @@ pipeline {
               checkout scm
               configFileProvider([
                   configFile(fileId: 'kg2.values.ncats.yaml', targetLocation: 'deploy/kg2/kg2.values.ncats.yaml'),
-                  configFile(fileId: 'prepare.sh', targetLocation: 'prepare.sh')
+                  configFile(fileId: 'preparekg2.sh', targetLocation: 'preparekg2.sh')
               ]){
                   script {
                       sh '''
                       aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
-                      /bin/bash prepare.sh
+                      /bin/bash preparekg2.sh
                       sftp -i SECRET_FILE -o StrictHostKeyChecking=no -p $CFGFILE2DL $CFGFILE2DL_LOCALPATH
                       cp code/config_dbs.json deploy/kg2/configs
                       cd deploy/kg2 && /bin/bash deploy.sh
