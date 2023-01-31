@@ -76,8 +76,6 @@ pipeline {
                       sh '''
                       aws --region ${AWS_REGION} eks update-kubeconfig --name ${KUBERNETES_BLUE_CLUSTER_NAME}
                       /bin/bash prepare.sh
-                      # Need to save the credential to a file with base64 encoded under deploy/secret
-                      #cat $SECRET_FILE >> deploy/arax/secrets/team-expander-ops-sshkey-secret
                       sftp -i SECRET_FILE -o StrictHostKeyChecking=no -p $CFGFILE2DL $CFGFILE2DL_LOCALPATH
                       cp code/config_dbs.json deploy/arax/configs
                       cd deploy/arax && /bin/bash deploy.sh
