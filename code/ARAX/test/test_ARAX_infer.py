@@ -185,34 +185,6 @@ def test_xdtd_with_only_qg():
     assert len(message.results) > 0
 
 
-import sys
-import os
-import pytest
-from collections import Counter
-import copy
-import json
-import ast
-from typing import List, Union
-
-import numpy as np
-
-sys.path.append(os.getcwd()+"/../../ARAXQuery")
-sys.path.append(os.getcwd()+"/../ARAXQuery")
-from ARAX_query import ARAXQuery
-from ARAX_response import ARAXResponse
-
-PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
-sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
-from openapi_server.models.message import Message
-
-def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
-    araxq = ARAXQuery()
-    response = araxq.query(query)
-    if response.status != 'OK':
-        print(response.show(level=response.DEBUG))
-    return [response, response.envelope.message]
-
-
 @pytest.mark.slow
 def test_xcrg_infer_bomeol():
     query = {"operations": {"actions": [
