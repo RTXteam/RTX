@@ -77,7 +77,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     assert len(values) >= num_different_values
 
 
-def test_infer_alkaptonuria():
+def test_xdtd_infer_alkaptonuria():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0008753)",
@@ -90,7 +90,7 @@ def test_infer_alkaptonuria():
     assert len(message.results) > 0
 
 
-def test_with_qg():
+def test_xdtd_with_qg():
     query = {
         "message": {"query_graph": {
             "nodes": {
@@ -123,7 +123,7 @@ def test_with_qg():
     #assert len(message.results) > 0
 
 
-def test_with_qg2():
+def test_xdtd_with_qg2():
     query = {
         "message": {"query_graph": {
             "nodes": {
@@ -156,7 +156,7 @@ def test_with_qg2():
     assert len(message.results) > 0
 
 
-def test_with_only_qg():
+def test_xdtd_with_only_qg():
     query = {
         "message": {"query_graph": {
             "nodes": {
@@ -184,4 +184,181 @@ def test_with_only_qg():
     assert len(message.query_graph.edges) > 1
     assert len(message.results) > 0
 
+
+import sys
+import os
+import pytest
+from collections import Counter
+import copy
+import json
+import ast
+from typing import List, Union
+
+import numpy as np
+
+sys.path.append(os.getcwd()+"/../../ARAXQuery")
+sys.path.append(os.getcwd()+"/../ARAXQuery")
+from ARAX_query import ARAXQuery
+from ARAX_response import ARAXResponse
+
+PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
+sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
+from openapi_server.models.message import Message
+
+def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
+    araxq = ARAXQuery()
+    response = araxq.query(query)
+    if response.status != 'OK':
+        print(response.show(level=response.DEBUG))
+    return [response, response.envelope.message]
+
+
+@pytest.mark.slow
+def test_xcrg_infer_bomeol():
+    query = {"operations": {"actions": [
+            "create_message",
+            "infer(action=chemical_gene_regulation_graph_expansion, subject_curie=CHEMBL.COMPOUND:CHEMBL1097205, object_curie=None, regulation_type=increase, threshold=0.6, path_len=2.0, n_result_curies=10, n_paths=10)",
+            "return(message=true, store=true)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) > 1
+    assert len(message.results) > 0
+    creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
+    if len(creative_mode_edges) != 0:
+        edge_key = creative_mode_edges[0]
+        edge_result = message.knowledge_graph.edges[edge_key]
+        assert edge_result.predicate == 'biolink:probably_regulates'
+
+@pytest.mark.slow
+def test_xcrg_with_qg():
+    query = {
+        "message": {"query_graph": {
+            "nodes": {
+                "gene": {
+                    "ids": ["CHEMBL.TARGET:CHEMBL3145"]
+                },
+                "chemical": {
+                    "categories": ['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']
+                }
+            },
+            "edges": {
+                "r_edge": {
+                    "object": "gene",
+                    "subject": "chemical",
+                    "predicates": ["biolink:regulates"],
+                    "knowledge_type": "inferred",
+                    "qualifiers": [
+                        {
+                            "qualifier_type_id": "biolink:object_direction_qualifier",
+                            "qualifier_value": "increased"
+                        }
+                    ]
+                }
+            }
+        }
+        },
+        "operations": {"actions": [
+            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=None,object_curie=CHEMBL.TARGET:CHEMBL3145,qedge_id=r_edge)",
+            "return(message=true, store=true)"
+        ]}
+    }
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) > 1
+    assert len(message.results) > 0
+    creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
+    if len(creative_mode_edges) != 0:
+        edge_key = creative_mode_edges[0]
+        edge_result = message.knowledge_graph.edges[edge_key]
+        assert edge_result.predicate == 'biolink:probably_regulates'
+
+
+@pytest.mark.slow
+def test_xcrg_with_qg2():
+    query = {
+        "message": {"query_graph": {
+            "nodes": {
+                "chemical": {
+                    "ids": ["CHEMBL.TARGET:CHEMBL3145"]
+                },
+                "gene": {
+                    "categories": ["biolink:Gene","biolink:Protein"]
+                },
+
+            },
+            "edges": {
+                "r_edge": {
+                    "object": "gene",
+                    "subject": "chemical",
+                    "predicates": ["biolink:regulates"],
+                    "knowledge_type": "inferred",
+                    "qualifiers": [
+                        {
+                            "qualifier_type_id": "biolink:object_direction_qualifier",
+                            "qualifier_value": "decreased"
+                        }
+                    ]
+                }
+            }
+        }
+        },
+        "operations": {"actions": [
+            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=CHEMBL.TARGET:CHEMBL3145,object_curie=None,qedge_id=r_edge)",
+            "return(message=true, store=true)"
+        ]}
+    }
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) > 1
+    assert len(message.results) > 0
+    creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
+    if len(creative_mode_edges) != 0:
+        edge_key = creative_mode_edges[0]
+        edge_result = message.knowledge_graph.edges[edge_key]
+        assert edge_result.predicate == 'biolink:probably_regulates'
+
+
+@pytest.mark.slow
+def test_xdtd_with_only_qg():
+    query = {
+        "message": {"query_graph": {
+            "nodes": {
+                "gene": {
+                    "ids": ["CHEMBL.TARGET:CHEMBL3145"]
+                },
+                "chemical": {
+                    "categories": ['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']
+                }
+            },
+            "edges": {
+                "r_edge": {
+                    "object": "gene",
+                    "subject": "chemical",
+                    "predicates": ["biolink:regulates"],
+                    "knowledge_type": "inferred",
+                    "qualifiers": [
+                        {
+                            "qualifier_type_id": "biolink:object_direction_qualifier",
+                            "qualifier_value": "increased"
+                        }
+                    ]
+                }
+            }
+        }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) > 1
+    assert len(message.results) > 0
+    creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
+    if len(creative_mode_edges) != 0:
+        edge_key = creative_mode_edges[0]
+        edge_result = message.knowledge_graph.edges[edge_key]
+        assert edge_result.predicate == 'biolink:probably_regulates'
 
