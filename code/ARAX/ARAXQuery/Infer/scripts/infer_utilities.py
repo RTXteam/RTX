@@ -27,10 +27,11 @@ RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
-from openapi_server.models.attribute import Attribute as EdgeAttribute
-from openapi_server.models.qualifier import Qualifier as EdgeQualifier
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
+from openapi_server.models.attribute import Attribute as EdgeAttribute
+from openapi_server.models.qualifier import Qualifier as EdgeQualifier
+from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
@@ -143,7 +144,7 @@ class InferUtilities:
 
         # Only add these in if the query graph is empty
         if not hasattr(message, 'query_graph') or len(message.query_graph.edges) == 0:
-            qedge_id = "probably_treats"
+            qedge_id = "treats"
             add_qnode_params = {
                 'key': "disease",
                 'name': disease_curie,
@@ -161,9 +162,10 @@ class InferUtilities:
                 'key': qedge_id,
                 'subject': "drug",
                 'object': "disease",
-                'predicates': [f"biolink:{qedge_id}"]
+                'predicates': ["biolink:treats"]
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
+            query_graph.edges[add_qedge_params['key']].knowledge_type = "inferred"
             message.query_graph.edges[add_qedge_params['key']].filled = True
             drug_qnode_key = 'drug'
             disease_qnode_key = 'disease'
@@ -180,7 +182,7 @@ class InferUtilities:
             drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
             disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
             knowledge_graph.nodes[disease_curie].qnode_keys = [disease_qnode_key]
-            # Don't add a new edge in for the probably_treats as there is already an edge there with the knowledge type inferred
+            # Don't add a new edge in for the treats as there is already an edge there with the knowledge type inferred
             # But do say that this edge has been filled
             message.query_graph.edges[qedge_id].filled = True
             # Nuke the drug categories since they vary depending on what the model returns
@@ -227,7 +229,7 @@ class InferUtilities:
                         EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats",
                                       value=str(treat_score))
                     ]
-                    new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:probably_treats', attributes=edge_attribute_list)
+                    new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats', attributes=edge_attribute_list)
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=kp)
                     kedges[new_edge_key] = new_edge
                     kedges[new_edge_key].filled = True
@@ -328,12 +330,12 @@ class InferUtilities:
                     EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats", value=str(treat_score))
                 ]
                 #edge_predicate = qedge_id
-                edge_predicate = "biolink:probably_treats"
+                edge_predicate = "biolink:treats"
                 if hasattr(qedges[qedge_id], 'predicates') and qedges[qedge_id].predicates:
                     edge_predicate = qedges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
                 fixed_edge = Edge(predicate=edge_predicate, subject=node_name_to_id[drug_name], object=node_name_to_id[disease_name],
                                 attributes=edge_attribute_list)
-                #fixed_edge.qedge_keys = ["probably_treats"]
+                #fixed_edge.qedge_keys = ["treats"]
                 fixed_edge.qedge_keys = [qedge_id]
                 kedges[f"creative_DTD_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1
@@ -444,13 +446,25 @@ class InferUtilities:
                 knowledge_graph.nodes[gene_curie] = Node(name=gene_name, categories=['biolink:Gene','biolink:Protein'])
                 knowledge_graph.nodes[gene_curie].qnode_keys = ['gene']
 
+            if model_type == 'increase':
+                edge_qualifier_direction = 'increased'
+            else:
+                edge_qualifier_direction = 'decreased'
+            qualifier_set = [
+                EdgeQualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
+                EdgeQualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
+            ]
             add_qedge_params = {
                 'key': qedge_id,
                 'subject': "chemical",
                 'object': "gene",
-                'predicates': ["biolink:probably_regulates"]
+                'predicates': ["biolink:regulates"]
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
+            query_graph.edges[add_qedge_params['key']].knowledge_type = "inferred"
+            query_graph.edges[add_qedge_params['key']].qualifier_constraints = [
+                QConstraint(qualifier_set=qualifier_set)
+            ]
             query_graph.edges[add_qedge_params['key']].filled = True
             chemical_qnode_key = 'chemical'
             gene_qnode_key = 'gene'
@@ -472,7 +486,7 @@ class InferUtilities:
                 chemical_qnode_key = query_graph.edges[qedge_id].subject
                 gene_qnode_key = query_graph.edges[qedge_id].object
                 knowledge_graph.nodes[chemical_curie].qnode_keys = [chemical_qnode_key]
-                # Don't add a new edge in for the probably_treats as there is already an edge there with the knowledge type inferred
+                # Don't add a new edge in for the treats as there is already an edge there with the knowledge type inferred
                 # But do say that this edge has been filled
                 query_graph.edges[qedge_id].filled = True
                 # Nuke the drug categories since they vary depending on what the model returns
@@ -490,7 +504,7 @@ class InferUtilities:
                 chemical_qnode_key = query_graph.edges[qedge_id].subject
                 gene_qnode_key = query_graph.edges[qedge_id].object
                 knowledge_graph.nodes[gene_curie].qnode_keys = [gene_qnode_key]
-                # Don't add a new edge in for the probably_treats as there is already an edge there with the knowledge type inferred
+                # Don't add a new edge in for the treats as there is already an edge there with the knowledge type inferred
                 # But do say that this edge has been filled
                 query_graph.edges[qedge_id].filled = True
                 # Nuke the drug categories since they vary depending on what the model returns
@@ -549,7 +563,7 @@ class InferUtilities:
                             EdgeQualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                             EdgeQualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                         ]
-                        new_edge = Edge(subject=chemical_curie, object=gene_canonical_id, predicate=f'biolink:probably_regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list)
+                        new_edge = Edge(subject=chemical_curie, object=gene_canonical_id, predicate=f'biolink:regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list)
                         new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp='infores:rtx-kg2')
                         kedges[new_edge_key] = new_edge
                         kedges[new_edge_key].filled = True
@@ -595,7 +609,7 @@ class InferUtilities:
                             EdgeQualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                             EdgeQualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                         ]
-                        new_edge = Edge(subject=chemical_canonical_id, object=gene_curie, predicate=f'biolink:probably_regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list)
+                        new_edge = Edge(subject=chemical_canonical_id, object=gene_curie, predicate=f'biolink:regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list)
                         new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp='infores:rtx-kg2')
                         kedges[new_edge_key] = new_edge
                         kedges[new_edge_key].filled = True
@@ -702,7 +716,7 @@ class InferUtilities:
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     EdgeAttribute(attribute_type_id="EDAM:operation_2423", original_attribute_name=f"probably_{model_type}_activity", value=str(regulate_score))
                 ]
-                edge_predicate = f'biolink:probably_regulates'
+                edge_predicate = f'biolink:regulates'
                 if hasattr(qedges[qedge_id], 'predicates') and qedges[qedge_id].predicates:
                     edge_predicate = qedges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
                 if model_type == 'increase':

@@ -332,7 +332,7 @@ class creativeCRG:
 
             assert threshold and isinstance(threshold, float) and (0 <= threshold <= 1), f"The parameter 'threshold' should be float between 0 and 1. But {threshold} is provided."
 
-            assert model_type in ['increase', 'decrase'], f"The parameter 'model_type' allows either 'increase' or 'decrease'. But {model_type} is provided."
+            assert model_type in ['increase', 'decrease'], f"The parameter 'model_type' allows either 'increase' or 'decrease'. But '{model_type}' is provided."
 
             num_interm = path_len + 1 - 2
             ## check if the number of intermediate nodes is 0

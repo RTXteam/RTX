@@ -184,12 +184,11 @@ def test_xdtd_with_only_qg():
     assert len(message.query_graph.edges) > 1
     assert len(message.results) > 0
 
-
 @pytest.mark.slow
 def test_xcrg_infer_bomeol():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=chemical_gene_regulation_graph_expansion, subject_curie=CHEMBL.COMPOUND:CHEMBL1097205, object_curie=None, regulation_type=increase, threshold=0.6, path_len=2.0, n_result_curies=10, n_paths=10)",
+            "infer(action=chemical_gene_regulation_graph_expansion, subject_curie=CHEMBL.COMPOUND:CHEMBL1097205, object_curie=None, regulation_type=increase, threshold=0.6, path_len=2.0, n_result_curies=5, n_paths=10)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -201,15 +200,15 @@ def test_xcrg_infer_bomeol():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:probably_regulates'
+        assert edge_result.predicate == 'biolink:regulates'
 
 @pytest.mark.slow
-def test_xcrg_with_qg():
+def test_xcrg_with_qg1():
     query = {
         "message": {"query_graph": {
             "nodes": {
                 "gene": {
-                    "ids": ["CHEMBL.TARGET:CHEMBL3145"]
+                    "ids": ["UniProtKB:P48736"]
                 },
                 "chemical": {
                     "categories": ['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']
@@ -221,10 +220,14 @@ def test_xcrg_with_qg():
                     "subject": "chemical",
                     "predicates": ["biolink:regulates"],
                     "knowledge_type": "inferred",
-                    "qualifiers": [
+                    "qualifier_constraints": [
                         {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "increased"
+                            "qualifier_set": [
+                                {
+                                    "qualifier_type_id": "biolink:object_direction_qualifier",
+                                    "qualifier_value": "increased"
+                                }
+                            ]
                         }
                     ]
                 }
@@ -232,7 +235,7 @@ def test_xcrg_with_qg():
         }
         },
         "operations": {"actions": [
-            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=None,object_curie=CHEMBL.TARGET:CHEMBL3145,qedge_id=r_edge)",
+            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=None,object_curie=UniProtKB:P48736,qedge_id=r_edge,n_result_curies=5)",
             "return(message=true, store=true)"
         ]}
     }
@@ -245,7 +248,7 @@ def test_xcrg_with_qg():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:probably_regulates'
+        assert edge_result.predicate == 'biolink:regulates'
 
 
 @pytest.mark.slow
@@ -254,7 +257,7 @@ def test_xcrg_with_qg2():
         "message": {"query_graph": {
             "nodes": {
                 "chemical": {
-                    "ids": ["CHEMBL.TARGET:CHEMBL3145"]
+                    "ids": ["CHEMBL.COMPOUND:CHEMBL1097205"]
                 },
                 "gene": {
                     "categories": ["biolink:Gene","biolink:Protein"]
@@ -267,10 +270,14 @@ def test_xcrg_with_qg2():
                     "subject": "chemical",
                     "predicates": ["biolink:regulates"],
                     "knowledge_type": "inferred",
-                    "qualifiers": [
+                    "qualifier_constraints": [
                         {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "decreased"
+                            "qualifier_set": [
+                                {
+                                    "qualifier_type_id": "biolink:object_direction_qualifier",
+                                    "qualifier_value": "decreased"
+                                }
+                            ]
                         }
                     ]
                 }
@@ -278,7 +285,7 @@ def test_xcrg_with_qg2():
         }
         },
         "operations": {"actions": [
-            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=CHEMBL.TARGET:CHEMBL3145,object_curie=None,qedge_id=r_edge)",
+            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=CHEMBL.COMPOUND:CHEMBL1097205,object_curie=None,qedge_id=r_edge,n_result_curies=5)",
             "return(message=true, store=true)"
         ]}
     }
@@ -291,16 +298,16 @@ def test_xcrg_with_qg2():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:probably_regulates'
+        assert edge_result.predicate == 'biolink:regulates'
 
 
 @pytest.mark.slow
-def test_xdtd_with_only_qg():
+def test_xcrg_with_only_qg():
     query = {
         "message": {"query_graph": {
             "nodes": {
                 "gene": {
-                    "ids": ["CHEMBL.TARGET:CHEMBL3145"]
+                    "ids": ["UniProtKB:P48736"]
                 },
                 "chemical": {
                     "categories": ['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']
@@ -312,10 +319,14 @@ def test_xdtd_with_only_qg():
                     "subject": "chemical",
                     "predicates": ["biolink:regulates"],
                     "knowledge_type": "inferred",
-                    "qualifiers": [
+                    "qualifier_constraints": [
                         {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "increased"
+                            "qualifier_set": [
+                                {
+                                    "qualifier_type_id": "biolink:object_direction_qualifier",
+                                    "qualifier_value": "decreased"
+                                }
+                            ]
                         }
                     ]
                 }
@@ -332,5 +343,5 @@ def test_xdtd_with_only_qg():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:probably_regulates'
+        assert edge_result.predicate == 'biolink:regulates'
 

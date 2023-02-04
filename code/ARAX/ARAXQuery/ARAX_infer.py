@@ -24,8 +24,8 @@ RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
-from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
+from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.node import Node
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
@@ -564,10 +564,12 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         if 'subject_curie' not in parameters:
             self.response.error(f"The required parameter 'subject_curie' is not given.", error_code="ValueError")
             return self.response
+        parameters['subject_curie'] = eval(parameters['subject_curie']) if parameters['subject_curie'] == 'None' else parameters['subject_curie']
         if 'object_curie' not in parameters:
             self.response.error(f"The required parameter 'object_curie' is not given.", error_code="ValueError")
             return self.response
-
+        parameters['object_curie'] = eval(parameters['object_curie']) if parameters['object_curie'] == 'None' else parameters['object_curie']
+        
         if hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and message.query_graph.nodes:
             ids_in_qg = set()
             for node in message.query_graph.nodes.values():
@@ -582,7 +584,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                     self.response.error(f"Supplied object_curie {parameters['object_curie']} is not in the query graph. I was given the curies: {ids_in_qg}", error_code="UnknownNode")
                     return self.response
        
-        if parameters['subject_curie'] and parameters['subject_curie'] != 'None': 
+        if parameters['subject_curie']: 
             ## if 'subject_curie' passes, return its normalized curie
             normalized_subject_curie = self.synonymizer.get_canonical_curies(self.parameters['subject_curie'])[self.parameters['subject_curie']]
             if normalized_subject_curie:
@@ -595,7 +597,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             preferred_subject_curie = None
 
 
-        if parameters['object_curie'] and parameters['object_curie'] != 'None': 
+        if parameters['object_curie']: 
             ## if 'object_curie' passes, return its normalized curie
             normalized_object_curie = self.synonymizer.get_canonical_curies(self.parameters['object_curie'])[self.parameters['object_curie']]
             if normalized_object_curie:
@@ -622,10 +624,10 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             except:
                 self.response.error(f"Something error occurred to get top genes or paths for chemical {preferred_subject_curie}", error_code="ValueError")
                 return self.response
-            if len(top_predictions) == 0:
-                self.response.error(f"Could not get predicted genes for chemical {preferred_subject_curie}. Likely the model was not trained with this chemical.", error_code="ValueError")
+            if top_predictions is None or len(top_predictions) == 0:
+                self.response.warning(f"Could not get predicted genes for chemical {preferred_subject_curie}. Likely the model was not trained with this chemical.")
                 return self.response
-            if len(top_paths) == 0:
+            if top_paths is None or len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for chemical {preferred_subject_curie}. Likely the model considers there is no reasonable path for this chemical.")
 
             iu = InferUtilities()
@@ -638,10 +640,10 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             except:
                 self.response.error(f"Something error occurred to get top chemicals or paths for gene {preferred_object_curie}", error_code="ValueError")
                 return self.response
-            if len(top_predictions) == 0:
-                self.response.error(f"Could not get predicted chemicals for gene {preferred_object_curie}. Likely the model was not trained with this gene.", error_code="ValueError")
+            if top_predictions is None or len(top_predictions) == 0:
+                self.response.warning(f"Could not get predicted chemicals for gene {preferred_object_curie}. Likely the model was not trained with this gene.")
                 return self.response
-            if len(top_paths) == 0:
+            if top_paths is None or len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for gene {preferred_object_curie}. Likely the model considers there is no reasonable path for this gene.")
 
             iu = InferUtilities()

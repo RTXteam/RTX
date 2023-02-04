@@ -386,7 +386,7 @@ class ARAXExpander:
                         # Get the subject and object of this edge
                         subject_qnode = query_graph.nodes[qedge.subject] # chemical
                         object_qnode = query_graph.nodes[qedge.object] # gene
-                        qualifier_direction = [qualifier.qualifier_value for qualifier in qedge.qualifiers if qualifier.qualifier_type_id == 'biolink:object_direction_qualifier'][0]
+                        qualifier_direction = [qualifier.qualifier_value for qualifier_constraint in qedge.qualifier_constraints for qualifier in qualifier_constraint.qualifier_set if qualifier.qualifier_type_id == 'biolink:object_direction_qualifier'][0]
                         if qualifier_direction == 'increased':
                             regulation_type = 'increase'
                         elif qualifier_direction == 'decreased':
