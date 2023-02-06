@@ -9,13 +9,13 @@
   - [ARAX_expander](#arax_expander)
     - [expand()](#expand)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
-    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
-    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
-    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
     - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
+    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
+    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -41,6 +41,7 @@
     - [connect(action=connect_nodes)](#connectactionconnect_nodes)
   - [ARAX_infer](#arax_infer)
     - [infer(action=drug_treatment_graph_expansion)](#inferactiondrug_treatment_graph_expansion)
+    - [infer(action=chemical_gene_regulation_graph_expansion)](#inferactionchemical_gene_regulation_graph_expansion)
 
 # Domain Specific Langauage (DSL) description
 This document describes the features and components of the DSL developed for the ARA Expander team.
@@ -218,7 +219,8 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 This command will expand (aka, answer/fill) your query graph in an edge-by-edge fashion, intelligently selecting which KPs to use for each edge. It selects KPs from the SmartAPI Registry based on the meta information provided by their TRAPI APIs (when available), whether they have an endpoint running a matching TRAPI version, and whether they have an endpoint with matching maturity. For each QEdge, it queries the selected KPs in parallel; it will timeout for a particular KP if it decides it's taking too long to respond. You may also optionally specify a particular KP to use via the 'kp' parameter (described below).
 
 Current candidate KPs include (for TRAPI 1.3, maturity 'development'): 
-infores:arax-drug-treats-disease, infores:arax-normalized-google-distance, infores:automat-biolink, infores:automat-chem-norm, infores:automat-cord19, infores:automat-covid-phenotypes, infores:automat-covidkop, infores:automat-ctd, infores:automat-drug-central, infores:automat-foodb, infores:automat-gtex, infores:automat-gtopdb, infores:automat-gwas-catalog, infores:automat-hetio, infores:automat-hgnc, infores:automat-hmdb, infores:automat-human-goa, infores:automat-icees-kg, infores:automat-intact, infores:automat-mole-pro-fda, infores:automat-mychem-info, infores:automat-ontology-hierarchy, infores:automat-panther, infores:automat-pharos, infores:automat-robokop, infores:automat-text-mining-provider, infores:automat-uberongraph, infores:automat-viral-proteome, infores:cohd, infores:genetics-data-provider, infores:molepro, infores:rtx-kg2, infores:service-provider-trapi, infores:spoke, infores:sri-reference-kg. 
+infores:arax-drug-treats-disease, infores:arax-normalized-google-distance, infores:automat-biolink, infores:automat-ctd, infores:automat-drug-central, infores:automat-gtex, infores:automat-gtopdb, infores:automat-gwas-catalog, infores:automat-hetio, infores:automat-hgnc, infores:automat-hmdb, infores:automat-human-goa, infores:automat-icees-kg, infores:automat-intact, infores:automat-mychem-info, infores:automat-ontology-hierarchy, infores:automat-panther, infores:automat-pharos, infores:automat-robokop, infores:automat-uberongraph, infores:automat-viral-proteome, infores:cam-kp, infores:cohd, infores:genetics-data-provider, infores:knowledge-collaboratory, infores:molepro, infores:openpredict, infores:rtx-kg2, infores:service-provider-trapi, infores:spoke, infores:sri-reference-kg, infores:text-mining-provider-cooccurrence. 
+
 (Note that this list of KPs may change unexpectedly based on the SmartAPI registry.)
 
 **Notes specific to usage of ARAX's internal KPs:**
@@ -229,13 +231,15 @@ infores:arax-drug-treats-disease, infores:arax-normalized-google-distance, infor
 
 * ##### kp
 
-    - The KP to ask for answers to the given query. KPs must be referred to by their 'infores' curies.
+    - The KP(s) to ask for answers to the given query. KPs must be referred to by their 'infores' curies. Either a single infores curie or list of infores curies is valid.
 
     - Acceptable input types: string.
 
     - This is not a required parameter and may be omitted.
 
-    - `infores:rtx-kg2, infores:spoke, infores:genetics-data-provider, infores:molepro` are examples of valid inputs.
+    - `infores:rtx-kg2, infores:spoke, [infores:rtx-kg2, infores:molepro]` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
 
 * ##### edge_key
 
@@ -320,28 +324,63 @@ infores:arax-drug-treats-disease, infores:arax-normalized-google-distance, infor
     - If not specified the default input will be false. 
 
 ## ARAX_overlay
-### overlay(action=add_node_pmids)
+### overlay(action=compute_ngd)
 
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
 #### parameters: 
 
-* ##### max_num
+* ##### default_value
 
-    - The maximum number of values to return. Enter 'all' to return everything
+    - The default value of the normalized Google distance (if its value cannot be determined)
 
-    - Acceptable input types: int or string.
+    - Acceptable input types: string.
 
     - This is not a required parameter and may be omitted.
 
-    - `all`, `5`, and `50` are examples of valid inputs.
+    - `0` and `inf` are examples of valid inputs.
 
-    - If not specified the default input will be 100. 
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
 
 ### overlay(action=compute_jaccard)
 
@@ -395,6 +434,29 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `N1`, `J2`, and `FET` are examples of valid inputs.
 
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be 100. 
+
 ### overlay(action=overlay_exposures_data)
 
 `overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
@@ -435,150 +497,6 @@ This can be applied to an arbitrary knowledge graph (i.e. not just those created
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=overlay_clinical_info)
-
-`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
-All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
-This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
-This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
-These virtual edges have the following types:
-
-* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
-* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
-* `chi_square` has the virtual edge type `has_chi_square_with`
-
-Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
-
-* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge subject and object nodes and adds these values as edge attributes.
-* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge subject and object nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
-* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge subject/object nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
-* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-**NOTE:** The parameters `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are mutually exclusive and thus will cause an error when more than one is included.
-
-#### parameters: 
-
-* ##### COHD_method
-
-    - Which measure from COHD should be considered.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
-
-    - If not specified the default input will be paired_concept_frequency. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=predict_drug_treats_disease)
-
-`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
-For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-Use cases include:
-
-* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
-* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### threshold
-
-    - What cut-off/threshold to use for DTD probability (optional, the default is 0.8)
-
-    - Acceptable input types: int or float or None.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0.8`, `0.95`, and `0.5` are examples of valid inputs.
-
-    - If not specified the default input will be 0.8. 
-
-* ##### slow_mode
-
-    - Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)
-
-    - Acceptable input types: boolean.
-
-    - This is not a required parameter and may be omitted.
-
-    - `True` and `False` are examples of valid inputs.
-
-    - `T`, `t`, `True`, `F`, `f`, and `False` are all possible valid inputs.
-
-    - If not specified the default input will be false. 
 
 ### overlay(action=fisher_exact_test)
 
@@ -681,33 +599,119 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - If not specified the default input will be None. 
 
-### overlay(action=compute_ngd)
+### overlay(action=predict_drug_treats_disease)
 
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
+`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
 Use cases include:
 
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
+* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
+* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
 #### parameters: 
 
-* ##### default_value
+* ##### virtual_relation_label
 
-    - The default value of the normalized Google distance (if its value cannot be determined)
+    - An optional label to help identify the virtual edge in the relation field.
 
     - Acceptable input types: string.
 
     - This is not a required parameter and may be omitted.
 
-    - `0` and `inf` are examples of valid inputs.
+    - `N1` and `J2` are examples of valid inputs.
 
-    - If not specified the default input will be inf. 
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### threshold
+
+    - What cut-off/threshold to use for DTD probability (optional, the default is 0.8)
+
+    - Acceptable input types: int or float or None.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0.8`, `0.95`, and `0.5` are examples of valid inputs.
+
+    - If not specified the default input will be 0.8. 
+
+* ##### slow_mode
+
+    - Whether to call DTD model directly rather than the precomputed DTD database to do a real-time calculation for DTD probability (default is False)
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `True` and `False` are examples of valid inputs.
+
+    - `T`, `t`, `True`, `F`, `f`, and `False` are all possible valid inputs.
+
+    - If not specified the default input will be false. 
+
+### overlay(action=overlay_clinical_info)
+
+`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+These virtual edges have the following types:
+
+* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
+* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
+* `chi_square` has the virtual edge type `has_chi_square_with`
+
+Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
+
+* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge subject and object nodes and adds these values as edge attributes.
+* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge subject and object nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
+* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge subject/object nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+**NOTE:** The parameters `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are mutually exclusive and thus will cause an error when more than one is included.
+
+#### parameters: 
+
+* ##### COHD_method
+
+    - Which measure from COHD should be considered.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
+
+    - If not specified the default input will be paired_concept_frequency. 
 
 * ##### virtual_relation_label
 
@@ -1803,7 +1807,7 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
 * ##### qedge_id
 
-    - The id of the qedge you wish to perform the drug treatment inference expansion.
+    - The id of the qedge you wish to perform the drug treatment/chemical regulation inference expansion.
 
     - Acceptable input types: string.
 
@@ -1825,7 +1829,7 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
 * ##### n_paths
 
-    - The number of paths connecting to each returned drug node. If not provided defaults to 20.
+    - The number of paths connecting to each returned node. If not provided defaults to 20.
 
     - Acceptable input types: integer.
 
@@ -1834,4 +1838,119 @@ This can be applied to an arbitrary nide curie though will not return sensible r
     - `5`, `50`, and `100` are examples of valid inputs.
 
     - If not specified the default input will be 20. 
+
+### infer(action=chemical_gene_regulation_graph_expansion)
+
+`chemical_gene_regulation_graph_expansion` predicts the regulation relationship (increase/decrease activity) between given chemicals or given genes. It return the top n results along with predicted graph explinations.  
+            
+You have the option to limit the maximum number of result nodes to return (via `n_result_curies=<n>`)
+            
+This can be applied to an arbitrary nide curie though will not return sensible results for the subject nodes without category 'chemicalentity/chemicalmixture/smallmodule' or the object nodes without category 'gene/protein".' 
+
+**Note that the 'subject_curie' and 'object_curie' cannot be given at the same time, that is, if you give a curie to either one, another one should be omitted**.
+                    
+
+#### parameters: 
+
+* ##### subject_curie
+
+    - The curie for the node you wish to predict genes which it will increase/decrease. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `UMLS:C1440117`, `MESH:D007053`, and `CHEMBL.COMPOUND:CHEMBL33884` are examples of valid inputs.
+
+* ##### object_curie
+
+    - The curie for the node you wish to predict chemical by which it will be increased/decreased. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `UniProtKB:Q96P20`, `UniProtKB:O75807`, and `NCBIGene:406983` are examples of valid inputs.
+
+* ##### qedge_id
+
+    - The id of the qedge you wish to perform the drug treatment/chemical regulation inference expansion.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `qedge_id_1`, `qedge_id_2`, and `qedge_id_3` are examples of valid inputs.
+
+* ##### threshold
+
+    - Threshold to filter the prediction probability. If not provided defaults to 0.5.
+
+    - Acceptable input types: float.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0.3`, `0.5`, and `0.8` are examples of valid inputs.
+
+    - If not specified the default input will be 0.5. 
+
+* ##### kp
+
+    - KP to use in path extraction. If not provided defaults to 'infores:rtx-kg2'.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `infores:rtx-kg2` and `None` are examples of valid inputs.
+
+    - If not specified the default input will be infores:rtx-kg2. 
+
+* ##### path_len
+
+    - The length of paths for prediction. If not provided defaults to 2.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `2`, `3`, and `4` are examples of valid inputs.
+
+    - If not specified the default input will be 3. 
+
+* ##### regulation_type
+
+    - What model (increased prediction or decreased prediction) to consult.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `increase` and `decrease` are examples of valid inputs.
+
+    - If not specified the default input will be increase. 
+
+* ##### n_result_curies
+
+    - The number of top predicted result nodes to return. If not provided defaults to 10.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `5`, `50`, and `100` are examples of valid inputs.
+
+    - If not specified the default input will be 10. 
+
+* ##### n_paths
+
+    - The number of paths connecting to each returned node. If not provided defaults to 10.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `5`, `50`, and `100` are examples of valid inputs.
+
+    - If not specified the default input will be 10. 
 
