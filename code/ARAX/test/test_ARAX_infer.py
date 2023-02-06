@@ -188,7 +188,7 @@ def test_xdtd_with_only_qg():
 def test_xcrg_infer_bomeol():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=chemical_gene_regulation_graph_expansion, subject_curie=CHEMBL.COMPOUND:CHEMBL1097205, object_curie=None, regulation_type=increase, threshold=0.6, path_len=2.0, n_result_curies=5, n_paths=10)",
+            "infer(action=chemical_gene_regulation_graph_expansion, subject_curie=CHEMBL.COMPOUND:CHEMBL1097205, regulation_type=increase, threshold=0.6, path_len=2, n_result_curies=5, n_paths=10)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -235,7 +235,7 @@ def test_xcrg_with_qg1():
         }
         },
         "operations": {"actions": [
-            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=None,object_curie=UniProtKB:P48736,qedge_id=r_edge,n_result_curies=5)",
+            "infer(action=chemical_gene_regulation_graph_expansion,object_curie=UniProtKB:P48736,qedge_id=r_edge,n_result_curies=5)",
             "return(message=true, store=true)"
         ]}
     }
@@ -285,7 +285,7 @@ def test_xcrg_with_qg2():
         }
         },
         "operations": {"actions": [
-            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=CHEMBL.COMPOUND:CHEMBL1097205,object_curie=None,qedge_id=r_edge,n_result_curies=5)",
+            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=CHEMBL.COMPOUND:CHEMBL1097205,qedge_id=r_edge,n_result_curies=5)",
             "return(message=true, store=true)"
         ]}
     }

@@ -88,13 +88,13 @@ class ARAXInfer:
             "is_required": True,
             "examples": ["UMLS:C1440117", "MESH:D007053", "CHEMBL.COMPOUND:CHEMBL33884"],
             'type': 'string',
-            'description': "The curie for the node you wish to predict genes which it will increase/decrease.",
+            'description': "The curie for the node you wish to predict genes which it will increase/decrease. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**",
         }
         self.xcrg_object_curie_info = {
             "is_required": True,
             "examples": ["UniProtKB:Q96P20", "UniProtKB:O75807", "NCBIGene:406983"],
             'type': 'string',
-            'description': "The curie for the node you wish to predict chemical by which it will be increased/decreased.",
+            'description': "The curie for the node you wish to predict chemical by which it will be increased/decreased. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**",
         }
         self.xcrg_regulation_type = {
             "is_required": False,
@@ -175,10 +175,10 @@ You have the option to limit the maximum number of result nodes to return (via `
             
 This can be applied to an arbitrary nide curie though will not return sensible results for the subject nodes without category 'chemicalentity/chemicalmixture/smallmodule' or the object nodes without category 'gene/protein".' 
 
-Note that the 'subject_curie' and 'object_curie' cannot be given at the same time, that is, if you give a curie to either one, another one should be set to None.
+**Note that the 'subject_curie' and 'object_curie' cannot be given at the same time, that is, if you give a curie to either one, another one should be omitted**.
                     """,
                 'brief_description': """
-chemical_gene_regulation_graph_expansion predicts the regulation relationship between given chemicals and/or given genes and provides along with an explination graph for each prediction.
+chemical_gene_regulation_graph_expansion predicts the regulation relationship between given chemicals and/or given genes and provides along with an explination graph for each prediction. Note that one of subject_curie (curie with category 'chemicalentity/chemicalmixture/smallmodule') or object_curie (curie with category 'gene/protein') is required as a parameter.
                     """,
                 "parameters": {
                     "subject_curie": self.xcrg_subject_curie_info,
@@ -559,53 +559,51 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         if self.response.status != 'OK':
             return self.response
 
-        # Make sure that if at least subject node or object node is provided. If it is provided, check if it also exists in the query graph
-
-        if 'subject_curie' not in parameters:
-            self.response.error(f"The required parameter 'subject_curie' is not given.", error_code="ValueError")
-            return self.response
-        parameters['subject_curie'] = eval(parameters['subject_curie']) if parameters['subject_curie'] == 'None' else parameters['subject_curie']
-        if 'object_curie' not in parameters:
-            self.response.error(f"The required parameter 'object_curie' is not given.", error_code="ValueError")
-            return self.response
-        parameters['object_curie'] = eval(parameters['object_curie']) if parameters['object_curie'] == 'None' else parameters['object_curie']
-        
+        # Make sure that if at least subject node or object node is provided. If it is provided, check if it also exists in the query graph        
         if hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and message.query_graph.nodes:
             ids_in_qg = set()
             for node in message.query_graph.nodes.values():
                 if node.ids:
                     ids_in_qg.update(node.ids)
-            if parameters['subject_curie']:
+            if 'subject_curie' in parameters and parameters['subject_curie']:
                 if parameters['subject_curie'] not in ids_in_qg:
                     self.response.error(f"Supplied subject_curie {parameters['subject_curie']} is not in the query graph. I was given the curies: {ids_in_qg}", error_code="UnknownNode")
                     return self.response
-            if parameters['object_curie']:
+            if 'object_curie' in parameters and parameters['object_curie']:
                 if parameters['object_curie'] not in ids_in_qg:
                     self.response.error(f"Supplied object_curie {parameters['object_curie']} is not in the query graph. I was given the curies: {ids_in_qg}", error_code="UnknownNode")
                     return self.response
        
-        if parameters['subject_curie']: 
-            ## if 'subject_curie' passes, return its normalized curie
-            normalized_subject_curie = self.synonymizer.get_canonical_curies(self.parameters['subject_curie'])[self.parameters['subject_curie']]
-            if normalized_subject_curie:
-                preferred_subject_curie = normalized_subject_curie['preferred_curie']
-                self.response.debug(f"Get a preferred sysnonym {preferred_subject_curie} from Node Synonymizer for subject curie {self.parameters['subject_curie']}")
+        if 'subject_curie' in parameters:
+            parameters['subject_curie'] = eval(parameters['subject_curie']) if parameters['subject_curie'] == 'None' else parameters['subject_curie']
+            if parameters['subject_curie']:
+                ## if 'subject_curie' passes, return its normalized curie
+                normalized_subject_curie = self.synonymizer.get_canonical_curies(self.parameters['subject_curie'])[self.parameters['subject_curie']]
+                if normalized_subject_curie:
+                    preferred_subject_curie = normalized_subject_curie['preferred_curie']
+                    self.response.debug(f"Get a preferred sysnonym {preferred_subject_curie} from Node Synonymizer for subject curie {self.parameters['subject_curie']}")
+                else:
+                    preferred_subject_curie = self.parameters['subject_curie']
+                    self.response.warning(f"Could not get a preferred sysnonym for the queried chemical {self.parameters['subject_curie']}")
             else:
-                preferred_subject_curie = self.parameters['subject_curie']
-                self.response.warning(f"Could not get a preferred sysnonym for the queried chemical {self.parameters['subject_curie']}")
+                preferred_subject_curie = None
         else:
             preferred_subject_curie = None
 
 
-        if parameters['object_curie']: 
-            ## if 'object_curie' passes, return its normalized curie
-            normalized_object_curie = self.synonymizer.get_canonical_curies(self.parameters['object_curie'])[self.parameters['object_curie']]
-            if normalized_object_curie:
-                preferred_object_curie = normalized_object_curie['preferred_curie']
-                self.response.debug(f"Get a preferred sysnonym {preferred_object_curie} from Node Synonymizer for object curie {self.parameters['object_curie']}")
+        if 'object_curie' in parameters:
+            parameters['object_curie'] = eval(parameters['object_curie']) if parameters['object_curie'] == 'None' else parameters['object_curie']
+            if parameters['object_curie']:
+                ## if 'object_curie' passes, return its normalized curie
+                normalized_object_curie = self.synonymizer.get_canonical_curies(self.parameters['object_curie'])[self.parameters['object_curie']]
+                if normalized_object_curie:
+                    preferred_object_curie = normalized_object_curie['preferred_curie']
+                    self.response.debug(f"Get a preferred sysnonym {preferred_object_curie} from Node Synonymizer for object curie {self.parameters['object_curie']}")
+                else:
+                    preferred_object_curie = self.parameters['object_curie']
+                    self.response.warning(f"Could not get a preferred sysnonym for the queried gene {self.parameters['object_curie']}")
             else:
-                preferred_object_curie = self.parameters['object_curie']
-                self.response.warning(f"Could not get a preferred sysnonym for the queried gene {self.parameters['object_curie']}")
+                preferred_object_curie = None
         else:
             preferred_object_curie = None
 

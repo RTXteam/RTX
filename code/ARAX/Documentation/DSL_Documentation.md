@@ -1,4 +1,3 @@
-../../../../ARAX/Documentation/DSL_Documentation.md
 # Table of contents
 
 - [Domain Specific Langauage (DSL) description](#domain-specific-langauage-dsl-description)
@@ -10,13 +9,13 @@
   - [ARAX_expander](#arax_expander)
     - [expand()](#expand)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
     - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
     - [overlay(action=predict_drug_treats_disease)](#overlayactionpredict_drug_treats_disease)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -325,6 +324,64 @@ infores:arax-drug-treats-disease, infores:arax-normalized-google-distance, infor
     - If not specified the default input will be false. 
 
 ## ARAX_overlay
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
 ### overlay(action=compute_jaccard)
 
 `compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
@@ -377,33 +434,39 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `N1`, `J2`, and `FET` are examples of valid inputs.
 
-### overlay(action=compute_ngd)
+### overlay(action=add_node_pmids)
 
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
 #### parameters: 
 
-* ##### default_value
+* ##### max_num
 
-    - The default value of the normalized Google distance (if its value cannot be determined)
+    - The maximum number of values to return. Enter 'all' to return everything
 
-    - Acceptable input types: string.
+    - Acceptable input types: int or string.
 
     - This is not a required parameter and may be omitted.
 
-    - `0` and `inf` are examples of valid inputs.
+    - `all`, `5`, and `50` are examples of valid inputs.
 
-    - If not specified the default input will be inf. 
+    - If not specified the default input will be 100. 
+
+### overlay(action=overlay_exposures_data)
+
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+                    
+
+#### parameters: 
 
 * ##### virtual_relation_label
 
@@ -535,47 +598,6 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
     - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
-
-### overlay(action=overlay_exposures_data)
-
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
-
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
-                    
-
-#### parameters: 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
 
 ### overlay(action=predict_drug_treats_disease)
 
@@ -720,29 +742,6 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
 
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_predicate)
@@ -1848,14 +1847,14 @@ You have the option to limit the maximum number of result nodes to return (via `
             
 This can be applied to an arbitrary nide curie though will not return sensible results for the subject nodes without category 'chemicalentity/chemicalmixture/smallmodule' or the object nodes without category 'gene/protein".' 
 
-Note that the 'subject_curie' and 'object_curie' cannot be given at the same time, that is, if you give a curie to either one, another one should be set to None.
+**Note that the 'subject_curie' and 'object_curie' cannot be given at the same time, that is, if you give a curie to either one, another one should be omitted**.
                     
 
 #### parameters: 
 
 * ##### subject_curie
 
-    - The curie for the node you wish to predict genes which it will increase/decrease.
+    - The curie for the node you wish to predict genes which it will increase/decrease. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**
 
     - Acceptable input types: string.
 
@@ -1865,7 +1864,7 @@ Note that the 'subject_curie' and 'object_curie' cannot be given at the same tim
 
 * ##### object_curie
 
-    - The curie for the node you wish to predict chemical by which it will be increased/decreased.
+    - The curie for the node you wish to predict chemical by which it will be increased/decreased. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**
 
     - Acceptable input types: string.
 
