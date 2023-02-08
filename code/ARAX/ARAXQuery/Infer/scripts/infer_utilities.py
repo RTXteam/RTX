@@ -490,7 +490,9 @@ class InferUtilities:
                 # But do say that this edge has been filled
                 query_graph.edges[qedge_id].filled = True
                 # Nuke the drug categories since they vary depending on what the model returns
-                query_graph.nodes[gene_qnode_key].categories = ['biolink:Gene','biolink:Protein']
+                categories_set = set(query_graph.nodes[gene_qnode_key].categories)
+                categories_set.update(set(['biolink:Gene','biolink:Protein']))
+                query_graph.nodes[gene_qnode_key].categories = list(categories_set)
             else:
 
                 gene_curie = top_predictions['gene_id'].to_list()[0]
@@ -508,7 +510,9 @@ class InferUtilities:
                 # But do say that this edge has been filled
                 query_graph.edges[qedge_id].filled = True
                 # Nuke the drug categories since they vary depending on what the model returns
-                query_graph.nodes[chemical_qnode_key].categories = ['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']
+                categories_set = set(query_graph.nodes[chemical_qnode_key].categories)
+                categories_set.update(set(['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']))
+                query_graph.nodes[chemical_qnode_key].categories = list(categories_set)
 
 
         # Just use the chemical and gene that are currently in the QG
