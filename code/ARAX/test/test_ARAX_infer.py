@@ -235,7 +235,7 @@ def test_xcrg_with_qg1():
         }
         },
         "operations": {"actions": [
-            "infer(action=chemical_gene_regulation_graph_expansion,object_curie=UniProtKB:P48736,qedge_id=r_edge,n_result_curies=5)",
+            "infer(action=chemical_gene_regulation_graph_expansion,object_qnode_id=gene,qedge_id=r_edge,n_result_curies=5)",
             "return(message=true, store=true)"
         ]}
     }
@@ -285,7 +285,7 @@ def test_xcrg_with_qg2():
         }
         },
         "operations": {"actions": [
-            "infer(action=chemical_gene_regulation_graph_expansion,subject_curie=CHEMBL.COMPOUND:CHEMBL1097205,qedge_id=r_edge,n_result_curies=5)",
+            "infer(action=chemical_gene_regulation_graph_expansion,subject_qnode_id=chemical,qedge_id=r_edge,n_result_curies=5)",
             "return(message=true, store=true)"
         ]}
     }
