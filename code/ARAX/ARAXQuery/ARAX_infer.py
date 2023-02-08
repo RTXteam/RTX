@@ -88,17 +88,29 @@ class ARAXInfer:
             "is_required": True,
             "examples": ["UMLS:C1440117", "MESH:D007053", "CHEMBL.COMPOUND:CHEMBL33884"],
             'type': 'string',
-            'description': "The curie for the node you wish to predict genes which it will increase/decrease. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**",
+            'description': "The chemical curie, a curie with category of either 'biolink:ChemicalEntity', 'biolink:ChemicalMixture', or 'biolink:SmallMolecule'. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**",
         }
         self.xcrg_object_curie_info = {
             "is_required": True,
             "examples": ["UniProtKB:Q96P20", "UniProtKB:O75807", "NCBIGene:406983"],
             'type': 'string',
-            'description': "The curie for the node you wish to predict chemical by which it will be increased/decreased. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**",
+            'description': "The gene curie, a curie with category of either 'biolink:Gene' or 'biolink:Protein'. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**",
+        }
+        self.xcrg_subject_qnode_id = {
+            "is_required": True,
+            "examples": ["n01","n02"],
+            "type": "string",
+            "description": "The query graph node ID of a chemical. **Note that although this parameter is said to be required, this parameter is valid only when a query graph is used. Additionally, exactly one of 'subject_qnode_id' or 'object_qnode_id' is required when a query graph is used.**"
+        }
+        self.xcrg_object_qnode_id = {
+            "is_required": True,
+            "examples": ["n01","n02"],
+            "type": "string",
+            "description": "The query graph node ID of a gene. **Note that although this parameter is said to be required, this parameter is valid only when a query graph is used. Additionally, exactly one of 'subject_qnode_id' or 'object_qnode_id' is required when a query graph is used.**"
         }
         self.xcrg_regulation_type = {
             "is_required": False,
-            "examples": ["increase", "decrease"],
+            "examples": ["n01","n02"],
             "default": "increase",
             "type": "string",
             "description": "What model (increased prediction or decreased prediction) to consult."
@@ -175,14 +187,16 @@ You have the option to limit the maximum number of result nodes to return (via `
             
 This can be applied to an arbitrary nide curie though will not return sensible results for the subject nodes without category 'chemicalentity/chemicalmixture/smallmodule' or the object nodes without category 'gene/protein".' 
 
-**Note that the 'subject_curie' and 'object_curie' cannot be given at the same time, that is, if you give a curie to either one, another one should be omitted**.
+**Note that the 'subject_curie' and 'object_curie' cannot be given in the same time, that is, if you give a curie to either one, another one should be omitted. However, when a query graph is used via DSL command or JSON format, the parameters 'subject_curie' and 'object_curie' can be omitted but one of 'subject_qnode_id' or 'object_qnode_id' need to be specified.**.
                     """,
                 'brief_description': """
-chemical_gene_regulation_graph_expansion predicts the regulation relationship between given chemicals and/or given genes and provides along with an explination graph for each prediction. Note that one of subject_curie (curie with category 'chemicalentity/chemicalmixture/smallmodule') or object_curie (curie with category 'gene/protein') is required as a parameter.
+chemical_gene_regulation_graph_expansion predicts the regulation relationship between given chemicals and/or given genes and provides along with an explination graph for each prediction. Note that one of subject_curie (curie with category 'chemicalentity/chemicalmixture/smallmodule') or object_curie (curie with category 'gene/protein') is required as a parameter, However, when a query graph is used via DSL command or JSON format, the parameters 'subject_curie' and 'object_curie' can be omitted but one of 'subject_qnode_id' or 'object_qnode_id' need to be specified.
                     """,
                 "parameters": {
                     "subject_curie": self.xcrg_subject_curie_info,
                     "object_curie": self.xcrg_object_curie_info,
+                    "subject_qnode_id": self.xcrg_subject_qnode_id,
+                    "object_qnode_id": self.xcrg_object_qnode_id,
                     "qedge_id": self.qedge_id_info,
                     "threshold": self.xcrg_threshold,
                     "kp": self.xcrg_kp,
@@ -268,6 +282,10 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 elif key == "subject_curie": #FIXME: same as above
                     continue
                 elif key == "object_curie": #FIXME: same as above
+                    continue
+                elif key == "subject_qnode_id": #FIXME: same as above
+                    continue
+                elif key == "object_qnode_id": #FIXME: same as above
                     continue
                 elif key == "kp": #FIXME: same as above
                     continue
@@ -457,6 +475,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             allowable_parameters = {'action': {'chemical_gene_regulation_graph_expansion'},
                                     'subject_curie': {str()},
                                     'object_curie': {str()},
+                                    'subject_qnode_id': {str()},
+                                    'object_qnode_id': {str()},
                                     'qedge_id': set([key for key in self.message.query_graph.edges.keys()]),
                                     'regulation_type': ['increase', 'decrease'],
                                     'threshold': {float()},
@@ -469,6 +489,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             allowable_parameters = {'action': {'chemical_gene_regulation_graph_expansion'},
                                     'subject_curie': {'The chemical curie used for gene regulation.'},
                                     'object_curie': {'The gene curie used to predict what chemicals can regulate it.'},
+                                    'subbject_qnode_id': {'The query graph node ID of a chemical.'},
+                                    'object_qnode_id': {'The query graph node ID of a gene.'},
                                     'qedge_id': {'The edge to place the predicted mechanism of action on. If none is provided, the query graph must be empty and a new one will be inserted.'},
                                     'regulation_type': {"What model (increased prediction or decreased prediction) to consult. Two options: 'increase', 'decrease'."},
                                     'threshold': {"Threshold to filter the prediction probability. If not provided defaults to 0.5."},
@@ -561,61 +583,104 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
 
         # Make sure that if at least subject node or object node is provided. If it is provided, check if it also exists in the query graph        
         if hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and message.query_graph.nodes:
-            ids_in_qg = set()
-            for node in message.query_graph.nodes.values():
-                if node.ids:
-                    ids_in_qg.update(node.ids)
-            if 'subject_curie' in parameters and parameters['subject_curie']:
-                if parameters['subject_curie'] not in ids_in_qg:
-                    self.response.error(f"Supplied subject_curie {parameters['subject_curie']} is not in the query graph. I was given the curies: {ids_in_qg}", error_code="UnknownNode")
-                    return self.response
-            if 'object_curie' in parameters and parameters['object_curie']:
-                if parameters['object_curie'] not in ids_in_qg:
-                    self.response.error(f"Supplied object_curie {parameters['object_curie']} is not in the query graph. I was given the curies: {ids_in_qg}", error_code="UnknownNode")
-                    return self.response
-       
-        if 'subject_curie' in parameters:
-            parameters['subject_curie'] = eval(parameters['subject_curie']) if parameters['subject_curie'] == 'None' else parameters['subject_curie']
-            if parameters['subject_curie']:
-                ## if 'subject_curie' passes, return its normalized curie
-                normalized_subject_curie = self.synonymizer.get_canonical_curies(self.parameters['subject_curie'])[self.parameters['subject_curie']]
-                if normalized_subject_curie:
-                    preferred_subject_curie = normalized_subject_curie['preferred_curie']
-                    self.response.debug(f"Get a preferred sysnonym {preferred_subject_curie} from Node Synonymizer for subject curie {self.parameters['subject_curie']}")
+            qnodes = message.query_graph.nodes
+            if 'subject_qnode_id' in parameters or 'object_qnode_id' in parameters:
+                if 'subject_qnode_id' in parameters:
+                    if parameters['subject_qnode_id'] in qnodes:
+                        if not qnodes[parameters['subject_qnode_id']].ids:
+                            self.response.error(f"The corresponding ids of subject_qnode_id '{parameters['subject_qnode_id']}' is None")
+                            return self.response
+                        subject_curie = qnodes[parameters['subject_qnode_id']].ids[0]
+                        normalized_subject_curie = self.synonymizer.get_canonical_curies(subject_curie)[subject_curie]
+                        if normalized_subject_curie:
+                            preferred_subject_curie = normalized_subject_curie['preferred_curie']
+                        else:
+                            preferred_subject_curie = subject_curie
+                    else:
+                        self.response.error(f"Could not find subject_qnode_id '{parameters['subject_qnode_id']}' in the query graph")
+                        return self.response
                 else:
-                    preferred_subject_curie = self.parameters['subject_curie']
-                    self.response.warning(f"Could not get a preferred sysnonym for the queried chemical {self.parameters['subject_curie']}")
+                    preferred_subject_curie = None
+
+                if 'object_qnode_id' in parameters:
+                    if parameters['object_qnode_id'] in qnodes:
+                        if not qnodes[parameters['object_qnode_id']].ids:
+                            self.response.error(f"The corresponding ids of object_qnode_id '{parameters['object_qnode_id']}' is None")
+                            return self.response
+                        object_curie = qnodes[parameters['object_qnode_id']].ids[0]
+                        normalized_object_curie = self.synonymizer.get_canonical_curies(object_curie)[object_curie]
+                        if normalized_object_curie:
+                            preferred_object_curie = normalized_object_curie['preferred_curie']
+                        else:
+                            preferred_object_curie = subject_curie
+                    else:
+                        self.response.error(f"Could not find object_qnode_id '{parameters['object_qnode_id']}' in the query graph")
+                        return self.response
+                else:
+                    preferred_object_curie = None
+
+                if preferred_subject_curie and preferred_object_curie:
+                    self.response.error(f"The parameters 'subject_curie' and 'object_curie' in infer action 'chemical_gene_regulation_graph_expansion' can't be specified in the same time.")
+                    return self.response
+
+                if not preferred_subject_curie and not preferred_object_curie:
+                    self.response.error(f"Both parameters 'subject_curie' and 'object_curie' are not provided. Please provide the curie for either one of them")
+                    return self.response
+
             else:
-                preferred_subject_curie = None
+                self.response.error(f"The 'query_graph' is detected. One of 'subject_qnode_id' or 'object_qnode_id' should be specified.")
+
         else:
-            preferred_subject_curie = None
+            if 'subject_curie' in parameters or 'object_curie' in parameters:
+                if 'subject_curie' in parameters:
+                    parameters['subject_curie'] = eval(parameters['subject_curie']) if parameters['subject_curie'] == 'None' else parameters['subject_curie']
+                    if parameters['subject_curie']:
+                        ## if 'subject_curie' passes, return its normalized curie
+                        normalized_subject_curie = self.synonymizer.get_canonical_curies(self.parameters['subject_curie'])[self.parameters['subject_curie']]
+                        if normalized_subject_curie:
+                            preferred_subject_curie = normalized_subject_curie['preferred_curie']
+                            self.response.debug(f"Get a preferred sysnonym {preferred_subject_curie} from Node Synonymizer for subject curie {self.parameters['subject_curie']}")
+                        else:
+                            preferred_subject_curie = self.parameters['subject_curie']
+                            self.response.warning(f"Could not get a preferred sysnonym for the queried chemical {self.parameters['subject_curie']} and thus keep it as it")
+                    else:
+                        preferred_subject_curie = None
+                else:
+                    preferred_subject_curie = None
+
+                if 'object_curie' in parameters:
+                    parameters['object_curie'] = eval(parameters['object_curie']) if parameters['object_curie'] == 'None' else parameters['object_curie']
+                    if parameters['object_curie']:
+                        ## if 'object_curie' passes, return its normalized curie
+                        normalized_object_curie = self.synonymizer.get_canonical_curies(self.parameters['object_curie'])[self.parameters['object_curie']]
+                        if normalized_object_curie:
+                            preferred_object_curie = normalized_object_curie['preferred_curie']
+                            self.response.debug(f"Get a preferred sysnonym {preferred_object_curie} from Node Synonymizer for object curie {self.parameters['object_curie']}")
+                        else:
+                            preferred_object_curie = self.parameters['object_curie']
+                            self.response.warning(f"Could not get a preferred sysnonym for the queried gene {self.parameters['object_curie']}")
+                    else:
+                        preferred_object_curie = None
+                else:
+                    preferred_object_curie = None
 
 
-        if 'object_curie' in parameters:
-            parameters['object_curie'] = eval(parameters['object_curie']) if parameters['object_curie'] == 'None' else parameters['object_curie']
-            if parameters['object_curie']:
-                ## if 'object_curie' passes, return its normalized curie
-                normalized_object_curie = self.synonymizer.get_canonical_curies(self.parameters['object_curie'])[self.parameters['object_curie']]
-                if normalized_object_curie:
-                    preferred_object_curie = normalized_object_curie['preferred_curie']
-                    self.response.debug(f"Get a preferred sysnonym {preferred_object_curie} from Node Synonymizer for object curie {self.parameters['object_curie']}")
-                else:
-                    preferred_object_curie = self.parameters['object_curie']
-                    self.response.warning(f"Could not get a preferred sysnonym for the queried gene {self.parameters['object_curie']}")
+                if preferred_subject_curie and preferred_object_curie:
+                    self.response.error(f"The parameters 'subject_curie' and 'object_curie' in infer action 'chemical_gene_regulation_graph_expansion' can't be specified in the same time.")
+                    return self.response
+
+                if not preferred_subject_curie and not preferred_object_curie:
+                    self.response.error(f"Both parameters 'subject_curie' and 'object_curie' are not provided. Please provide the curie for either one of them")
+                    return self.response
             else:
-                preferred_object_curie = None
-        else:
-            preferred_object_curie = None
+                self.response.error(f"No 'query_graph' is found and thus either 'subject_curie' or 'object_curie' should be specified.")
 
         # return if bad parameters have been passed
         if self.response.status != 'OK' or resp == -1:
             return self.response
 
-        if preferred_subject_curie and preferred_object_curie:
-            self.response.error(f"The action 'chemical_gene_regulation_graph_expansion' hasn't support the prediction for a single chemical-gene pair yet.")
-        elif not preferred_subject_curie and not preferred_object_curie:
-            self.response.warning(f"Both chemical and gene are not provided. Please provide the curie for either one of them")  
-        elif preferred_subject_curie and not preferred_object_curie:
+
+        if preferred_subject_curie and not preferred_object_curie:
             try:
                 top_predictions = XCRG.predict_top_N_genes(query_chemical=preferred_subject_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
                 top_paths = XCRG.predict_top_M_paths(query_chemical=preferred_subject_curie, query_gene=None, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)

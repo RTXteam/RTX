@@ -345,3 +345,26 @@ def test_xcrg_with_only_qg():
         edge_result = message.knowledge_graph.edges[edge_key]
         assert edge_result.predicate == 'biolink:regulates'
 
+@pytest.mark.slow
+def test_xcrg_infer_dsl():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=acetaminophen, key=n0)",
+            "add_qnode(categories=biolink:Gene, key=n1)",
+            "add_qedge(subject=n0, object=n1, key=e0)",
+            "infer(action=chemical_gene_regulation_graph_expansion, subject_qnode_id=n0, qedge_id=e0, regulation_type=increase, n_result_curies=5)",
+            "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
+            "resultify()",
+            "filter_results(action=limit_number_of_results, max_results=30)",
+            "return(message=true, store=true)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) > 1
+    assert len(message.results) > 0
+    creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
+    if len(creative_mode_edges) != 0:
+        edge_key = creative_mode_edges[0]
+        edge_result = message.knowledge_graph.edges[edge_key]
+        assert edge_result.predicate == 'biolink:regulates'
