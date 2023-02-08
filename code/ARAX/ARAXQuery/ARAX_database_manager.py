@@ -59,6 +59,19 @@ class ARAXDatabaseManager:
         if not os.path.exists(explainable_dtd_db_filepath):
             os.system(f"mkdir -p {explainable_dtd_db_filepath}")
 
+        xcrg_embeddings_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
+        if not os.path.exists(xcrg_embeddings_filepath):
+            os.system(f"mkdir -p {xcrg_embeddings_filepath}")        
+
+        xcrg_increase_model_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
+        if not os.path.exists(xcrg_increase_model_filepath):
+            os.system(f"mkdir -p {xcrg_increase_model_filepath}")       
+
+        xcrg_decrease_model_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
+        if not os.path.exists(xcrg_decrease_model_filepath):
+            os.system(f"mkdir -p {xcrg_decrease_model_filepath}")
+
+
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
@@ -70,7 +83,10 @@ class ARAXDatabaseManager:
             'kg2c_meta_kg': f"{kg2c_meta_kg_filepath}{os.path.sep}{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
             'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
-            'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}"
+            'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}",
+            'xcrg_embeddings': f"{xcrg_embeddings_filepath}{os.path.sep}{self.RTXConfig.xcrg_embeddings_path.split('/')[-1]}",
+            "xcrg_increase_model": f"{xcrg_increase_model_filepath}{os.path.sep}{self.RTXConfig.xcrg_increase_model_path.split('/')[-1]}",
+            "xcrg_decrease_model": f"{xcrg_decrease_model_filepath}{os.path.sep}{self.RTXConfig.xcrg_decrease_model_path.split('/')[-1]}"
         }
 
         # Stores the "/KG2.X.Y/some_database_v1.0_KG2.X.Y.sqlite" portion of each database's path
@@ -87,6 +103,10 @@ class ARAXDatabaseManager:
             'fda_approved_drugs': self.get_database_subpath(self.RTXConfig.fda_approved_drugs_path),
             'autocomplete': self.get_database_subpath(self.RTXConfig.autocomplete_path),
             'explainable_dtd_db': self.get_database_subpath(self.RTXConfig.explainable_dtd_db_path),
+            'xcrg_embeddings': self.get_database_subpath(self.RTXConfig.xcrg_embeddings_path),
+            "xcrg_increase_model": self.get_database_subpath(self.RTXConfig.xcrg_increase_model_path),
+            "xcrg_decrease_model": self.get_database_subpath(self.RTXConfig.xcrg_decrease_model_path)
+
         }
         # user, host, and paths to databases on remote server dbs are downloaded from (arax-databases.rtx.ai)
         self.databases_server_dir_path = '/home/rtxconfig'
@@ -102,6 +122,9 @@ class ARAXDatabaseManager:
             'fda_approved_drugs': self.get_remote_location('fda_approved_drugs'),
             'autocomplete': self.get_remote_location('autocomplete'),
             'explainable_dtd_db': self.get_remote_location('explainable_dtd_db'),
+            'xcrg_embeddings': self.get_remote_location('xcrg_embeddings'),
+            'xcrg_increase_model': self.get_remote_location('xcrg_increase_model'),
+            'xcrg_decrease_model': self.get_remote_location('xcrg_decrease_model')    
         }
         # database locations if inside rtx1 docker container
         self.docker_databases_dir_path = '/mnt/data/orangeboard/databases'
@@ -117,6 +140,9 @@ class ARAXDatabaseManager:
             'fda_approved_drugs': self.get_docker_path('fda_approved_drugs'),
             'autocomplete': self.get_docker_path('autocomplete'),
             'explainable_dtd_db': self.get_docker_path('explainable_dtd_db'),
+            'xcrg_embeddings': self.get_docker_path('xcrg_embeddings'),
+            'xcrg_increase_model': self.get_docker_path('xcrg_increase_model'),
+            'xcrg_decrease_model': self.get_docker_path('xcrg_decrease_model') 
         }
 
         # database local paths + version numbers
@@ -164,6 +190,18 @@ class ARAXDatabaseManager:
             'explainable_dtd_db': {
                 'path': self.local_paths['explainable_dtd_db'],
                 'version': self.RTXConfig.explainable_dtd_db_version
+            },
+            'xcrg_embeddings': {
+                'path': self.local_paths['xcrg_embeddings'],
+                'version': self.RTXConfig.xcrg_embeddings_version
+            },
+            'xcrg_increase_model': {
+                'path': self.local_paths['xcrg_increase_model'],
+                'version': self.RTXConfig.xcrg_increase_model_version
+            },
+            'xcrg_decrease_model': {
+                'path': self.local_paths['xcrg_decrease_model'],
+                'version': self.RTXConfig.xcrg_decrease_model_version
             }
         }
 

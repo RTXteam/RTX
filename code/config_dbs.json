@@ -12,12 +12,15 @@
       "dtd_prob": "/translator/data/orangeboard/databases/KG2.8.0/DTD_probability_database_v1.0_KG2.8.0_refreshed.db",
       "log_model": "/translator/data/orangeboard/databases/KG2.7.6/LogModel_v1.0_KG2.7.6.pkl",
       "rel_max": "/translator/data/orangeboard/databases/KG2.7.6/rel_max_v1.0_KG2.7.6.emb.gz",
-      "map_txt": "/translator/data/orangeboard/databases/KG2.7.6/map_v1.0_KG2.7.6.txt"
+      "map_txt": "/translator/data/orangeboard/databases/KG2.7.6/map_v1.0_KG2.7.6.txt",
+      "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.8.0/chemical_gene_embeddings_v1.0.KG2.8.0.npz",
+      "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.8.0/xcrg_increase_model_v1.0.KG2.8.0.pt",
+      "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.8.0/xcrg_decrease_model_v1.0.KG2.8.0.pt"
    },
    "plover": {
-      "dev": "http://kg2cplover.rtx.ai:9990",
-      "test": "http://kg2cplover.rtx.ai:9990",
-      "prod": "http://kg2cplover.rtx.ai:9990"
+      "dev": "https://kg2cploverdb.ci.transltr.io",
+      "test": "https://kg2cploverdb.test.transltr.io",
+      "prod": "https://kg2cploverdb.transltr.io"
    },
    "neo4j": {
       "KG2pre": "kg2endpoint-kg2-8-0.rtx.ai",
