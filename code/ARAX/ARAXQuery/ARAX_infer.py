@@ -139,7 +139,7 @@ class ARAXInfer:
         self.xcrg_path_len = {
             "is_required": False,
             "examples": [2,3,4],
-            "default": 3,
+            "default": 2,
             "type": "integer",
             "description": "The length of paths for prediction. If not provided defaults to 2."
         }

@@ -1936,7 +1936,7 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
     - `2`, `3`, and `4` are examples of valid inputs.
 
-    - If not specified the default input will be 3. 
+    - If not specified the default input will be 2. 
 
 * ##### regulation_type
 
