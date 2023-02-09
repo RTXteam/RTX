@@ -411,7 +411,10 @@ class ARAXExpander:
                             return response
                         log.info(f"Calling XCRG from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
                         from ARAX_infer import ARAXInfer
-                        infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion", 'subject_curie' : subject_curie, 'object_curie': object_curie, 'qedge_id': inferred_qedge_key, 'regulation_type': regulation_type}
+                        if subject_curie:
+                            infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion", 'subject_qnode_id' : qedge.subject, 'qedge_id': inferred_qedge_key, 'regulation_type': regulation_type}
+                        else:
+                            infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion", 'object_qnode_id' : qedge.object, 'object_curie': object_curie, 'qedge_id': inferred_qedge_key, 'regulation_type': regulation_type}
                         inferer = ARAXInfer()
                         infer_response = inferer.apply(response, infer_input_parameters)
                         return infer_response
