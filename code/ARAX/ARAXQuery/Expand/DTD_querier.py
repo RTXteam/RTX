@@ -344,7 +344,7 @@ class DTDQuerier:
                         res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[source_curie]['preferred_curie']])
                         if res is not None:
                             # res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0]
-                            res = self._filter_dtd_predicted_res(res, self.DTD_threshold, target_categories)
+                            res = self._filter_dtd_predicted_res(res, self.DTD_threshold, 0, target_categories)
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(source_curie, row[0], "probability_treats", row[2])
@@ -360,7 +360,7 @@ class DTDQuerier:
                         res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[source_curie]['preferred_curie']])
                         if res is not None:
                             # res = [row for row in res if row[2]>=self.DTD_threshold and len(set(target_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[1], return_all_categories=True)[row[1]]['all_categories'].keys())]))) > 0]
-                            res = self._filter_dtd_predicted_res(res, self.DTD_threshold, target_categories)
+                            res = self._filter_dtd_predicted_res(res, self.DTD_threshold, 1, target_categories)
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], source_curie, "probability_treats", row[2])
@@ -370,8 +370,6 @@ class DTDQuerier:
 
                                 # Finally add the current edge to our answer knowledge graph
                                 final_kg.add_edge(swagger_edge_key, swagger_edge, qedge_key)
-
-                from tqdm import tqdm
 
                 # Add the nodes to our answer knowledge graph
                 if len(source_dict) != 0:
@@ -412,7 +410,7 @@ class DTDQuerier:
                         res = self.pred.get_probs_from_DTD_db_based_on_drug([normalizer_result[target_curie]['preferred_curie']])
                         if res is not None:
                             # res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[0], return_all_categories=True)[row[0]]['all_categories'].keys())]))) > 0 ]
-                            res = self._filter_dtd_predicted_res(res, self.DTD_threshold, source_categories)
+                            res = self._filter_dtd_predicted_res(res, self.DTD_threshold, 0, source_categories)
 
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(target_curie, row[0], "probability_treats", row[2])
@@ -428,8 +426,8 @@ class DTDQuerier:
                         res = self.pred.get_probs_from_DTD_db_based_on_disease([normalizer_result[target_curie]['preferred_curie']])
                         if res is not None:
                             # res = [row for row in res if row[2]>=self.DTD_threshold and len(set(source_categories).intersection(set([item.replace('biolink:','').replace('_','').lower() for item in list(self.synonymizer.get_canonical_curies(row[1], return_all_categories=True)[row[1]]['all_categories'].keys())]))) > 0 ]
-                            res = self._filter_dtd_predicted_res(res, self.DTD_threshold, source_categories)
-                            
+                            res = self._filter_dtd_predicted_res(res, self.DTD_threshold, 1, source_categories)
+
                             for row in res:
                                 swagger_edge_key, swagger_edge = self._convert_to_swagger_edge(row[1], target_curie, "probability_treats", row[2])
 
@@ -969,11 +967,11 @@ class DTDQuerier:
             full_qedge_cypher += ">"
         return full_qedge_cypher
 
-    def _filter_dtd_predicted_res(self, input_res: list, DTD_threshold: float, categories: list) -> list:
+    def _filter_dtd_predicted_res(self, input_res: list, DTD_threshold: float, index: int, categories: list) -> list:
         input_res = pd.DataFrame(input_res)
         input_res = input_res.loc[input_res[2] >= DTD_threshold,:].reset_index(drop=True)
-        normalized_res_temp = self.synonymizer.get_canonical_curies(input_res[0], return_all_categories=True)
+        normalized_res_temp = self.synonymizer.get_canonical_curies(input_res[index], return_all_categories=True)
         keep_curies = [curie for curie in normalized_res_temp if len(set(categories).intersection(list(map(lambda item:item.replace('biolink:','').replace('_','').lower(), normalized_res_temp[curie]['all_categories'].keys())))) > 0]
-        output_res = input_res.loc[input_res[0].isin(keep_curies),:].values.tolist()
+        output_res = input_res.loc[input_res[index].isin(keep_curies),:].values.tolist()
 
         return output_res
