@@ -353,6 +353,7 @@ class ResponseCache:
             if status_code != 200:
                 if debug:
                     eprint("Cannot fetch from ARS a response corresponding to response_id="+str(response_id))
+                    eprint(str(response_content.content))
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
             content_size = len(response_content.content)

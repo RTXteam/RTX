@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code di
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute
+from openapi_server.models.edge import Edge
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -137,7 +138,7 @@ class ARAXDecorator:
         else:  # This is the mode used for decorating KG2 edges (or other KPs' edges)
             for edge_key in edge_keys_to_decorate:
                 edge = kg.edges[edge_key]
-                search_key = f"{edge.subject}--{edge.predicate}--{edge.object}"
+                search_key = self._get_kg2c_edge_key(edge)
                 search_key_to_edge_keys_map[search_key].add(edge_key)
             search_key_column = "triple"
 
@@ -225,6 +226,16 @@ class ARAXDecorator:
         if attribute_source:
             attribute.attribute_source = attribute_source
         return attribute
+
+    @staticmethod
+    def _get_kg2c_edge_key(edge: Edge) -> str:
+        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
+        # TODO: Switch order of object direction and aspect below when KG2c code is changed that way
+        edge_key = f"{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{edge.object}"
+        return edge_key
 
     @staticmethod
     def _connect_to_kg2c_sqlite() -> Tuple[sqlite3.Connection, sqlite3.Cursor]:

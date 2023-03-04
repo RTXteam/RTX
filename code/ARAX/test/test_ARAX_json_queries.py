@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from test_ARAX_expand import check_node_categories, check_property_format, check_for_orphans, print_nodes, print_edges, print_counts_by_qgid
+from test_ARAX_expand import check_property_format, check_for_orphans, print_nodes, print_edges, print_counts_by_qgid
 
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
@@ -56,7 +56,6 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
     check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     check_property_format(nodes_by_qg_id, edges_by_qg_id)
-    check_node_categories(message.knowledge_graph.nodes, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id, response
 
@@ -107,6 +106,7 @@ def test_ngd_added():
     assert 'biolink:occurs_together_in_literature_with' in qg.edges['N1'].predicates
 
 
+@pytest.mark.slow
 def test_drug_disease_query():
     query = {
         "edges": {

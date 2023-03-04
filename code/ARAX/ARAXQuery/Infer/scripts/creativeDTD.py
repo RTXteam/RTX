@@ -36,7 +36,7 @@ class creativeDTD:
         self.drug_curie_ids = [self.args.id2entity[index] for index, typeid in enumerate(self.args.entity2typeid) if typeid in drug_type_ids]
 
         ## load ML model
-        self.ML_model = model_utilities.load_ML_model(model_path)
+        self.ML_model = model_utilities.load_ML_DTDmodel(model_path)
 
         ## load RL model
         # self.kg = KnowledgeGraph(self.args, bandwidth=self.args.bandwidth, emb_dropout_rate=self.args.emb_dropout_rate, bucket_interval=self.args.bucket_interval, load_graph=True)
