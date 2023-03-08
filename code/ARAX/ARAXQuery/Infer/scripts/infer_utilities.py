@@ -311,11 +311,12 @@ class InferUtilities:
                     if predicate == "SELF_LOOP_RELATION":
                         self.response.warning(f"Self-loop relation detected: {subject_name} {predicate} {object_name}, replacing with placeholder 'biolink:self_loop_relation'")
                         predicate = "biolink:self_loop_relation"
-                    new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[])
-                    new_edge.attributes.append(EdgeAttribute(attribute_type_id="biolink:aggregator_knowledge_source",
-                                         value=kp,
-                                         value_type_id="biolink:InformationResource",
-                                         attribute_source=kp))
+                    ## add attributes to the path-based edgeS 
+                    edge_attribute_list = [
+                        EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
+                    ]
+                    new_edge.attributes += edge_attribute_list
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=kp)
                     kedges[new_edge_key] = new_edge
                     kedges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
@@ -699,10 +700,12 @@ class InferUtilities:
                             new_edge = Edge(subject=subject_curie, object=object_curie, predicate=temp_predicate, attributes=[])
                         else:
                             new_edge = Edge(subject=object_curie, object=subject_curie, predicate=temp_predicate, attributes=[])
-                        new_edge.attributes.append(EdgeAttribute(attribute_type_id="biolink:aggregator_knowledge_source",
-                                            value=temp_kp,
-                                            value_type_id="biolink:InformationResource",
-                                            attribute_source=temp_kp))
+                        ## add attributes to the path-based edgeS 
+                        edge_attribute_list = [
+                            EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
+                        ]
+                        new_edge.attributes += edge_attribute_list
                         new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=temp_kp)
                         kedges[new_edge_key] = new_edge
                         kedges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
@@ -715,7 +718,6 @@ class InferUtilities:
                     regulate_score = top_predictions.loc[top_predictions['chemical_id'] == chemical]["tp_prob"].iloc[0]
                     essence_scores[chemical_curie] = regulate_score
                 edge_attribute_list = [
-                    # EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                     EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     EdgeAttribute(attribute_type_id="EDAM:operation_2423", original_attribute_name=f"probably_{model_type}_activity", value=str(regulate_score))
