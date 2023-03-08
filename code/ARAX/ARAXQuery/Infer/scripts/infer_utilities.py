@@ -311,7 +311,8 @@ class InferUtilities:
                     if predicate == "SELF_LOOP_RELATION":
                         self.response.warning(f"Self-loop relation detected: {subject_name} {predicate} {object_name}, replacing with placeholder 'biolink:self_loop_relation'")
                         predicate = "biolink:self_loop_relation"
-                    ## add attributes to the path-based edgeS 
+                    new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[])
+                    ## add attributes to the path-based edge
                     edge_attribute_list = [
                         EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
