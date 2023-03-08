@@ -181,7 +181,8 @@ class ComputeFTEST:
         try:
             for edge_key, edge in self.message.knowledge_graph.edges.items():
 
-                edge_attribute_list = [x.value for x in self.message.knowledge_graph.edges[edge_key].attributes if x.original_attribute_name == 'is_defined_by']
+                ## check if this edge is a compuated edge from ARAX, if so, skip it
+                edge_attribute_list = [x.value for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'biolink:computed_value']
                 if len(edge_attribute_list) == 0:
 
                     # ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
@@ -288,19 +289,6 @@ class ComputeFTEST:
 
         ## always set 'infores:rtx-kg2' to kp because we only have statistics for kg2 to calcualte fisher exact test
         kp = 'infores:rtx-kg2'
-
-        # ## check if kp is "ARAX/KG1" or "infores:rtx-kg2", if not, report error
-        # if kp == "rtx_kg1_kp":
-        #     kp = 'ARAX/KG1'
-        # elif kp == "rtx-kg2":
-        #     kp = 'infores:rtx-kg2'
-        # else:
-        #     kp = 'infores:rtx-kg2'
-        #     self.response.warning(f"There is more than one knowledge source for the edges between the subject node with qnode key {subject_qnode_key} and object node with qnode key {object_qnode_key} and most of them are from {kp}. The infores:rtx-kg2 is still used to calculate Fisher's exact test.")
-
-        # if kp == 'ARAX/KG1':
-        #     ## This warning can be removed once KG1 is deprecated
-        #     self.response.warning(f"Since KG1 will be deprecated soon and the total count of nodes is based on kg2c, currently querying with 'expand(kp=ARAX/KG1)' might cause little discrepancy for FET probability.")
 
         ## Print out some information used to calculate FET
         if len(subject_node_list) == 1:
@@ -412,12 +400,9 @@ class ComputeFTEST:
                 edge_attribute_list =  [
                     EdgeAttribute(attribute_type_id="EDAM:data_1669", original_attribute_name="fisher_exact_test_p-value", value=str(value[1]), value_url=None),
                     EdgeAttribute(original_attribute_name="virtual_relation_label", value=value[0], attribute_type_id="biolink:Unknown"),
-                    #EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                     EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
-                    #EdgeAttribute(original_attribute_name="confidence", value=None, type="biolink:ConfidenceLevel"),
-                    #EdgeAttribute(original_attribute_name="weight", value=None, type="metatype:Float")
                 ]
                 edge_id = f"{value[0]}_{index}"
                 edge = Edge(predicate='biolink:has_fisher_exact_test_p_value_with', subject=value[2], object=value[3],
