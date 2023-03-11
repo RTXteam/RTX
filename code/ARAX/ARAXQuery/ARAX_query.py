@@ -54,8 +54,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
 
 from ARAX_database_manager import ARAXDatabaseManager
-from reasoner_validator import validate
-from jsonschema.exceptions import ValidationError
+#from reasoner_validator import validate
+#from jsonschema.exceptions import ValidationError
 
 ARAXResponse.output = 'STDERR'
 
