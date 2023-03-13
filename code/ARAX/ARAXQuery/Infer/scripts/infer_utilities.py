@@ -21,7 +21,7 @@ from collections.abc import Hashable
 from itertools import combinations
 import copy
 from typing import List, Dict, Set, Union, Optional
-import datetime
+from datetime import datetime
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")

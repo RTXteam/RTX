@@ -15,7 +15,7 @@ import yaml
 import random
 import time
 random.seed(time.time())
-import datetime
+from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
