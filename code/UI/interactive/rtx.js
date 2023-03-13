@@ -1230,6 +1230,51 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    document.getElementById("respsize_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.size;
 
+            if (jsonObj2.validation_result.validation_messages) {
+                var table, tr, td;
+                var html_node = document.getElementById("istrapi_"+jsonObj2.araxui_response);
+                html_node.className += " tooltip";
+                var tnode = document.createElement("span");
+                tnode.className = 'tooltiptext';
+                table = document.createElement("table");
+		table.title = "Click for more details";
+                table.style.width = "100%";
+                table.style.borderCollapse = "collapse";
+
+		for (var vtype of ["errors","warnings","information"] ) {
+                    if (Object.keys(jsonObj2.validation_result.validation_messages[vtype]).length > 0) {
+			tr = document.createElement("tr");
+			td = document.createElement("th");
+			td.style.background = "#3d6d98";
+			td.style.padding = "5px 0px";
+			td.appendChild(document.createTextNode("Validation "+vtype));
+			tr.appendChild(td);
+			table.appendChild(tr);
+			for (var vmsg in jsonObj2.validation_result.validation_messages[vtype]) {
+                            tr = document.createElement("tr");
+                            tr.style.background = "initial";
+                            td = document.createElement("td");
+                            td.appendChild(document.createTextNode(vmsg));
+                            tr.appendChild(td);
+                            table.appendChild(tr);
+			}
+		    }
+		}
+
+		tnode.appendChild(table);
+                html_node.appendChild(tnode);
+                html_node.onclick = function () { showKPQuery("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages); };
+	    }
+            else if (jsonObj2.validation_result.message) {
+                var tnode = document.createElement("span");
+                tnode.className = 'tooltiptext';
+		tnode.style.padding = "10px";
+		tnode.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+                var html_node = document.getElementById("istrapi_"+jsonObj2.araxui_response);
+                html_node.className += " tooltip";
+                html_node.appendChild(tnode);
+	    }
+
 	    if (jsonObj2.validation_result.n_nodes)
 		document.getElementById("nodedges_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.n_nodes+' / '+jsonObj2.validation_result.n_edges;
 
@@ -1954,7 +1999,7 @@ function render_queryplan_table(qp,node) {
                 var link = document.createElement("a");
 		link.title = 'view the posted query (JSON)';
 		link.style.cursor = "pointer";
-		link.onclick = function () { showKPQuery(kp, qp.qedge_keys[edge][kp]["query"]); };
+		link.onclick = function () { showKPQuery("Query sent to "+kp, qp.qedge_keys[edge][kp]["query"]); };
 		link.appendChild(document.createTextNode("query"));
 		td.appendChild(link);
 	    }
@@ -1967,7 +2012,8 @@ function render_queryplan_table(qp,node) {
     node.appendChild(table);
 }
 
-function showKPQuery(kp,query) {
+// Should rename this...
+function showKPQuery(wtitle,query) {
     var popup;
     if (document.getElementById("kpq"))
 	popup = document.getElementById("kpq");
@@ -1988,7 +2034,7 @@ function showKPQuery(kp,query) {
     var div = document.createElement("div");
     div.className = 'statushead';
     div.style.marginTop = "-40px";
-    div.appendChild(document.createTextNode("Query sent to "+kp));
+    div.appendChild(document.createTextNode(wtitle));
     popup.appendChild(div);
 
     div = document.createElement("div");
