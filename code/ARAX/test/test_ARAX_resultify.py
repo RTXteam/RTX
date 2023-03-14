@@ -1008,6 +1008,7 @@ def test_issue692b():
     assert 'no results returned; empty knowledge graph' in response.messages_list()[0]['message']
 
 
+@pytest.mark.slow
 def test_issue720_1():
     # Test when same node fulfills different qnode_keys within same result
     actions = [
@@ -1045,6 +1046,7 @@ def test_issue720_2():
     assert response.status == 'OK'
 
 
+@pytest.mark.slow
 def test_issue720_3():
     # Tests when same node fulfills different qnode_keys in different results
     actions = [
@@ -1306,6 +1308,7 @@ def test_issue1119_d():
     assert any(result for result in message.results if not {"e01", "e02"}.issubset(set(result.edge_bindings)))
 
 
+@pytest.mark.slow
 def test_issue1146_a():
     actions = [
         "add_qnode(key=n0, ids=MONDO:0008380, categories=biolink:Disease)",
@@ -1431,7 +1434,189 @@ def test_issue_1848():
     assert kg.edges
     assert message.results
     qedge_bindings_in_kg = {qedge_key for edge in kg.edges.values() for qedge_key in edge.qedge_keys}
-    assert qedge_bindings_in_kg == {"e0"}
+    non_subclass_qedge_bindings_in_kg = {qedge_key for qedge_key in qedge_bindings_in_kg if not qedge_key.startswith("subclass:")}
+    assert non_subclass_qedge_bindings_in_kg == {"e0"}
+
+
+def test_node_binding_query_id_one_hop_single_input_curie():
+    diabetes_curie = "MONDO:0005015"
+    type_1_diabetes_curie = "MONDO:0005147"
+    actions = [
+        f"add_qnode(ids={diabetes_curie}, key=n00)",
+        f"add_qnode(categories=biolink:Drug, key=n01)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "expand(kp=infores:rtx-kg2)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) > 1
+    kg = response.envelope.message.knowledge_graph
+    # Make the input curie and one of its children appear somewhere in the results
+    assert diabetes_curie in kg.nodes
+    assert type_1_diabetes_curie in kg.nodes
+    # Make sure node bindings do/don't have 'query_id' filled out as appropriate
+    for result in message.results:
+        for node_binding in result.node_bindings["n00"]:
+            # No nodes should have query_id filled out per TRAPI because it's obvious what they map to (diabetes)
+            assert node_binding.query_id is None
+        for node_binding in result.node_bindings["n01"]:
+            assert node_binding.query_id is None
+    # Make sure we have some results with subclass self-edges (Expand assigns such qedges keys like 'subclass:n00-n00')
+    assert any(qedge_key.startswith("subclass")
+               for result in message.results
+               for qedge_key in result.edge_bindings)
+    insulin_results = [result for result in message.results if result.essence == "Insulin"]
+    assert len(insulin_results) == 1
+
+
+def test_node_binding_query_id_one_hop_multiple_input_curies():
+    diabetes_curie = "MONDO:0005015"
+    type_1_diabetes_curie = "MONDO:0005147"
+    parent_query_ids = {diabetes_curie, type_1_diabetes_curie}
+    actions = [
+        f"add_qnode(ids=[{','.join(parent_query_ids)}], key=n00)",
+        f"add_qnode(categories=biolink:Drug, key=n01)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "expand(kp=infores:rtx-kg2)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) > 1
+    kg = response.envelope.message.knowledge_graph
+    # Make sure both input curies appear somewhere in the results
+    assert diabetes_curie in kg.nodes
+    # TODO: Do the below check after we've figured out the multiple query IDs problem (nodes could fulfill either
+    #  diabetes or type 1 diabetes), but can only have 1 n00 parent specified
+    # assert type_1_diabetes_curie in kg.nodes
+    # Make sure node bindings do/don't have 'query_id' filled out as appropriate
+    for result in message.results:
+        for node_binding in result.node_bindings["n00"]:
+            if node_binding.id in parent_query_ids:
+                assert node_binding.query_id is None
+            else:
+                assert node_binding.query_id in parent_query_ids
+        for node_binding in result.node_bindings["n01"]:
+            assert node_binding.query_id is None
+    # Make sure we have some results with subclass self-edges (Expand assigns such qedges keys like 'subclass:n00-n00')
+    assert any(qedge_key.startswith("subclass")
+               for result in message.results
+               for qedge_key in result.edge_bindings)
+    insulin_results = [result for result in message.results if result.essence == "Insulin"]
+    assert len(insulin_results) in range(1, 3)
+
+
+@pytest.mark.slow
+def test_node_binding_query_id_two_hop_double_pinned():
+    diabetes_curie = "MONDO:0005015"
+    heart_disease_curie = "MONDO:0005267"
+    actions = [
+        f"add_qnode(ids={diabetes_curie}, key=n00)",
+        f"add_qnode(ids={heart_disease_curie}, key=n01)",
+        f"add_qnode(categories=biolink:Drug, key=n02)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:related_to, key=e00)",
+        "add_qedge(subject=n01, object=n02, predicates=biolink:treats, key=e01)",
+        "expand(kp=infores:rtx-kg2)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) > 1
+    kg = response.envelope.message.knowledge_graph
+    # Make the input curie and one of its children appear somewhere in the results
+    assert diabetes_curie in kg.nodes
+    assert heart_disease_curie in kg.nodes
+    # Make sure node bindings do/don't have 'query_id' filled out as appropriate
+    for result in message.results:
+        for node_binding in result.node_bindings["n00"]:
+            assert node_binding.query_id is None  # Mapping implied because only single input curie
+        for node_binding in result.node_bindings["n01"]:
+            assert node_binding.query_id is None  # Mapping implied because only single input curie
+        for node_binding in result.node_bindings["n02"]:
+            assert node_binding.query_id is None
+    # Make sure there's one result for Dabigatran and its structure is as expected
+    dabigatran_results = [result for result in message.results if result.essence == "DABIGATRAN"]
+    assert len(dabigatran_results) == 1
+    dabigatran_result = dabigatran_results[0]
+    edge_keys_that_should_be_filled = {"e00", "e01", "subclass:n00--n00", "subclass:n01--n01"}
+    assert set(dabigatran_result.edge_bindings) == edge_keys_that_should_be_filled
+    for edge_key in edge_keys_that_should_be_filled:
+        assert len(dabigatran_result.edge_bindings[edge_key])
+    # Make sure we have some results with BOTH subclass self-edges
+    num_results_with_both_subclass_qedges = 0
+    for result in message.results:
+        subclass_qedges_present = set()
+        for qedge_key in result.edge_bindings:
+            if qedge_key.startswith("subclass"):
+                subclass_qedges_present.add(qedge_key)
+        if len(subclass_qedges_present) > 1:
+            num_results_with_both_subclass_qedges += 1
+    assert num_results_with_both_subclass_qedges > 1
+
+
+@pytest.mark.external
+def test_missing_chp_results():
+    # Note: for this test to pass, need to use a maturity that CHP has an endpoint for (they don't have dev currently)
+    uberon_curies = ["UBERON:0009912", "UBERON:0002535", "UBERON:0000019", "UBERON:0002365", "UBERON:0000017",
+                     "UBERON:0000970", "UBERON:0001831", "UBERON:0016410", "UBERON:0001737", "UBERON:0000945"]
+    actions = [
+        f"add_qnode(ids=[{','.join(uberon_curies)}], categories=biolink:GrossAnatomicalStructure, key=n1)",
+        f"add_qnode(categories=biolink:Gene, key=n2)",
+        "add_qedge(subject=n1, object=n2, predicates=biolink:expresses, key=e1)",
+        "expand(kp=infores:connections-hypothesis)",
+        "resultify(debug=true)",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) > 20
+    assert any(result for result in message.results if "subclass:n1--n1" in result.edge_bindings)
+
+
+@pytest.mark.slow
+@pytest.mark.external
+def test_too_few_results():
+    # Note: for this test to pass, need to use a maturity that CHP has an endpoint for (they don't have dev currently)
+    actions = [
+        "add_qnode(key=n0, ids=MONDO:0009061, categories=biolink:Disease)",
+        "add_qnode(key=n1, categories=biolink:GrossAnatomicalStructure)",
+        "add_qnode(key=n2, categories=biolink:Gene)",
+        "add_qnode(key=n3, categories=[biolink:Drug, biolink:SmallMolecule])",
+        "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:located_in)",
+        "add_qedge(key=e1, subject=n1, object=n2, predicates=biolink:expresses)",
+        "add_qedge(key=e2, subject=n3, object=n2, predicates=biolink:affects)",
+        "expand(edge_key=e0, prune_threshold=1000, kp_timeout=75)",
+        "expand(edge_key=e1, kp=infores:connections-hypothesis, prune_threshold=1000, kp_timeout=75)",
+        "expand(edge_key=e2, prune_threshold=1000, kp_timeout=75)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
+    assert len(message.results) > 200
+
+
+@pytest.mark.slow
+@pytest.mark.external
+def test_issue1923_multiple_essence_candidates_subclass():
+    actions = [
+        "add_qnode(name=ATP1A3, key=n0)",
+        "add_qnode(categories=biolink:PhenotypicFeature, key=n1)",
+        "add_qnode(categories=biolink:Protein, key=n2)",
+        "add_qnode(categories=biolink:ChemicalSubstance, key=n3)",
+        "add_qedge(subject=n0, object=n1, key=e0)",
+        "add_qedge(subject=n1, object=n2, key=e1)",
+        "add_qedge(subject=n2, object=n3, key=e2)",
+        "expand(prune_threshold=50, kp_timeout=30)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]
+    response, message = _do_arax_query(actions)
+    assert response.status == 'OK'
 
 
 if __name__ == '__main__':

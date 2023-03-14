@@ -77,6 +77,22 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     assert len(values) >= num_different_values
 
 
+def test_connect_acetaminophen_to_ptgs1():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n00)",
+            "add_qnode(ids=UniProtKB:P23219, key=n01)",
+            "connect(action=connect_nodes)",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) > 0
+    assert len(message.results) > 0
+
+
+@pytest.mark.slow
 def test_connect_nodes_1_hop():
     query = {"operations": {"actions": [
             "create_message",
@@ -107,6 +123,8 @@ def test_connect_nodes_2_hop():
     assert len(message.query_graph.edges) == 2
     assert len(message.results) > 0
 
+
+@pytest.mark.slow
 def test_connect_nodes_subgraph_2_hop():
     query = {"operations": {"actions": [
             "create_message",

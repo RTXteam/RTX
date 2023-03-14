@@ -97,7 +97,7 @@ class ARAXMessenger:
         envelope.type = "translator_reasoner_response"
         envelope.reasoner_id = "ARAX"
         envelope.tool_version = RTXConfiguration().version
-        envelope.schema_version = "1.2.0"
+        envelope.schema_version = "1.3.0"
         envelope.status = "OK"
         envelope.description = "Created empty template response"
         envelope.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
@@ -277,30 +277,20 @@ class ARAXMessenger:
                 response.error(f"Specified ids '{parameters['ids']}' is neither a string nor a list. This cannot to handled", error_code="IdNotListOrScalar")
                 return response
 
-            # Loop over the available ids and create the list
-            final_id_list = []
-            for id in id_list:
-                response.debug(f"Looking up id {id} in NodeSynonymizer")
-                synonymizer_results = synonymizer.get_canonical_curies(curies=[id])
+            # Check whether NodeSynonymizer recognizes all IDs on this qnode
+            response.debug(f"Looking up ids {id_list} in NodeSynonymizer")
+            synonymizer_results = synonymizer.get_canonical_curies(id_list)
+            unrecognized_ids = {synonymizer_result for synonymizer_result in synonymizer_results
+                                if not synonymizer_result}
+            if unrecognized_ids:
+                response.debug(f"NodeSynonymizer did not recognize nodes {unrecognized_ids}, but will continue with them")
+            qnode.ids = id_list
 
-                # If nothing was found, we won't bail out, but rather just issue a warning that this id is suspect
-                if synonymizer_results[id] is None:
-                    response.warning(f"A node with id {id} is not in our knowledge graph KG2, but will continue with it")
-                    final_id_list.append(id)
-
-                # And if it is found, keep the same id but report the preferred id
+            if 'categories' in parameters and parameters['categories'] is not None:
+                if isinstance(parameters['categories'], str):
+                    qnode.categories = [ parameters['categories'] ]
                 else:
-
-                    response.info(f"id {id} is found. Adding it to the qnode")
-                    final_id_list.append(id)
-
-                qnode.ids = final_id_list
-
-                if 'categories' in parameters and parameters['categories'] is not None:
-                    if isinstance(parameters['categories'], str):
-                        qnode.categories = [ parameters['categories'] ]
-                    else:
-                        qnode.categories = parameters['categories']
+                    qnode.categories = parameters['categories']
 
             message.query_graph.nodes[key] = qnode
             return response

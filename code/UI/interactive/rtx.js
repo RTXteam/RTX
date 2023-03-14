@@ -15,7 +15,7 @@ var UIstate = {};
 
 // defaults
 var base = "";
-var baseAPI = base + "api/arax/v1.2";
+var baseAPI = base + "api/arax/v1.3";
 var araxQuery = '';
 
 // possibly imported by calling page (e.g. index.html)
@@ -34,7 +34,7 @@ var providers = {
     "ARAX" : { "url" : baseAPI },
     "ARAXQ": { "url" : araxQuery },
     "ARS"  : { "url" : "https://ars-prod.transltr.io/ars/api/submit" },
-    "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.2" }
+    "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.3" }
 };
 
 // these attributes are floats; truncate them
@@ -1065,7 +1065,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.2?","N_Results","Nodes / Edges","Sources","Cache"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.3?","N_Results","Nodes / Edges","Sources","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -1204,7 +1204,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.2 validation';
+	    nr.title = 'Failed TRAPI 1.3 validation';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all")
@@ -1216,7 +1216,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.2 validation';
+	    nr.title = 'Passed TRAPI 1.3 validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -1443,7 +1443,7 @@ function update_response_stats_on_error(rid,msg,clearall) {
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     if (!respObj["schema_version"])
-	respObj["schema_version"] = "1.2 (presumed)";
+	respObj["schema_version"] = "1.3 (presumed)";
     statusdiv.appendChild(document.createTextNode("Rendering TRAPI "+respObj["schema_version"]+" message..."));
 
     sesame('openmax',statusdiv);
@@ -2273,7 +2273,8 @@ function process_graph(gne,gid,trapi) {
 			    "predicates" : gedge.predicates ? gedge.predicates : [],
 			    "exclude"    : gedge.exclude ? gedge.exclude : false,
 			    "option_group_id" : gedge.option_group_id ? gedge.option_group_id : null,
-			    "constraints": gedge.constraints ? gedge.constraints : []
+			    "constraints": gedge.constraints ? gedge.constraints : [],
+			    "qualifier_constraints": gedge.qualifier_constraints ? gedge.qualifier_constraints : []
 			  };
 	    input_qg.edges[id] = tmpdata;
 	}
@@ -2557,7 +2558,7 @@ function add_cyto(i) {
 		'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
 		'target-arrow-shape': 'triangle',
 		'opacity': 0.8,
-		'content': function(ele) { if ((ele.data().parentdivnum > 0) && ele.data().type) { return ele.data().type; } return '';}
+		'content': function(ele) { if ((ele.data().parentdivnum > 0) && ele.data().type) { return ele.data().type + (ele.data().qualifiers ? ' [q]':''); } return '';}
 	    })
 	    .selector(':selected')
 	    .css({
@@ -2654,9 +2655,14 @@ function add_cyto(i) {
                     var link = document.createElement("a");
 		    link.style.cursor = "pointer";
 		    link.dataset.ee = nodedges[e].id();
-		    link.title = 'View edge details';
 		    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
 		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+		    if (nodedges[e].data('qualifiers')) {
+			link.appendChild(document.createTextNode(' [q]'));
+			link.title = 'View QUALIFIED edge details';
+		    }
+		    else
+			link.title = 'View edge details';
 		    td.appendChild(link);
 		    td.appendChild(document.createTextNode(" \u{1F87A} "))
 		    tr.appendChild(td);
@@ -2676,9 +2682,14 @@ function add_cyto(i) {
                     var link = document.createElement("a");
 		    link.style.cursor = "pointer";
 		    link.dataset.ee = nodedges[e].id();
-		    link.title = 'View edge details';
                     link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
 		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+                    if (nodedges[e].data('qualifiers')) {
+			link.appendChild(document.createTextNode(' [q]'));
+			link.title = 'View QUALIFIED edge details';
+		    }
+		    else
+			link.title = 'View edge details';
 		    td.appendChild(link);
 		    tr.appendChild(td);
 		    td = document.createElement("td");
@@ -2784,6 +2795,15 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
+	show_qualifiers(div,
+			this.data('qualifiers'),
+			this.data('source'),
+			cyobj[i].nodes("[id='"+this.data('source')+"']").data('name'),
+			this.data('predicate'),
+			this.data('target'),
+			cyobj[i].nodes("[id='"+this.data('target')+"']").data('name')
+		       );
+
 	show_attributes(div, this.data('attributes'),null);
 	if (this.data('edge_binding_attributes')) {
             div.appendChild(document.createElement("br"));
@@ -2795,6 +2815,131 @@ function add_cyto(i) {
     cytodata[i] = null;
 }
 
+
+function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
+    if (quals == null)
+	return;
+
+    var qtable = document.createElement("table");
+    qtable.className = 'numold explevel';
+    var row = document.createElement("tr");
+    var cell = document.createElement("td");
+    cell.className = 'attvalue';
+    cell.colSpan = '2';
+    cell.appendChild(document.createTextNode("Qualified Statement"));
+    row.appendChild(cell);
+    qtable.appendChild(row);
+
+    var qsentence = document.createElement("span");
+    qsentence.className = 'explevel attvalue p9';
+
+    var orderedquals = [
+	'subject_direction_qualifier',
+	'subject_aspect_qualifier',
+	'subject',
+	'subject_context_qualifier',
+	'qualified_predicate',
+	'predicate',
+	'mechanism_qualifier',
+	'object_direction_qualifier',
+	'object_aspect_qualifier',
+	'object',
+	'object_context_qualifier',
+	'pathway_context_qualifier'
+    ];
+
+    var hadsubjq = false;
+    var hadqpred = false;
+    for (var oq of orderedquals) {
+	var hasdup = false;
+	var qual = quals.filter(a => a.qualifier_type_id == "biolink:"+oq);
+	if (oq != 'subject' && oq != 'object' && oq != 'predicate' && qual[0] == null) {
+	    //console.log("nothing found for: "+oq);
+	    continue;
+	}
+	if (qual.length > 1) {
+            console.error("duplicate value found for: "+oq);
+	    hasdup = true;
+	}
+
+	var pretext = '';
+	var postext = '';
+	var celltext = '';
+	var frag = document.createElement("span");
+	frag.title = oq;
+        if (oq == 'subject') {
+	    frag.innerHTML = (hadsubjq ? 'of ' : '') + sname + " ";
+	    celltext = subj;
+	}
+        else if (oq == 'object') {
+	    frag.innerHTML = "of " + oname + " ";
+	    celltext = obj;
+	}
+        else if (oq == 'predicate') {
+	    if (hadqpred) continue;
+	    frag.innerHTML = pred + " ";
+	    celltext = pred;
+	}
+	else {
+	    if (oq == 'subject_direction_qualifier' || oq == 'subject_aspect_qualifier')
+		hadsubjq = true;
+	    if (oq == 'qualified_predicate')
+		hadqpred = true;
+	    if (oq == 'mechanism_qualifier') {
+		pretext = "(";
+		postext = ")";
+	    }
+	    if (oq.includes('context_qualifier'))
+		pretext = "in ";
+
+	    frag.innerHTML = pretext + qual[0]['qualifier_value'] + postext + " ";
+	    celltext = qual[0]['qualifier_value'];
+	    if (hasdup)
+		celltext += " ** has duplicate values!";
+	}
+	qsentence.appendChild(frag);
+
+	var row = document.createElement("tr");
+	var cell = document.createElement("td");
+        cell.style.fontWeight = "bold";
+	cell.appendChild(document.createTextNode(oq+":"));
+	row.appendChild(cell);
+	cell = document.createElement("td");
+        cell.appendChild(document.createTextNode(celltext));
+	row.appendChild(cell);
+	qtable.appendChild(row);
+    }
+
+    var addbar = true;
+    for (var oqual of quals) {
+	var qtid = oqual['qualifier_type_id'].replace("biolink:","");
+	if (orderedquals.includes(qtid))
+	    continue;
+
+        var row = document.createElement("tr");
+	var cell = document.createElement("td");
+	cell.style.fontWeight = "bold";
+	if (addbar) {
+	    cell.colSpan = '2';
+	    cell.appendChild(document.createElement("hr"));
+	    row.appendChild(cell);
+	    qtable.appendChild(row);
+	    addbar = false;
+	    row = document.createElement("tr");
+	    cell = document.createElement("td");
+	    cell.style.fontWeight = "bold";
+	}
+        cell.appendChild(document.createTextNode(oqual['qualifier_type_id']+":"));
+	row.appendChild(cell);
+	cell = document.createElement("td");
+	cell.appendChild(document.createTextNode(oqual['qualifier_value']));
+	row.appendChild(cell);
+	qtable.appendChild(row);
+    }
+
+    html_div.appendChild(qsentence);
+    html_div.appendChild(qtable);
+}
 
 
 function show_attributes(html_div, atts, title) {
@@ -2942,7 +3087,10 @@ function display_attribute(tab, att, semmeddb) {
 	}
         else if (attributes_to_truncate.includes(att.original_attribute_name)) {
             cell.className = 'attvalue';
-	    cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
+            if (isNaN(att.value))
+		cell.appendChild(document.createTextNode(att.value));
+	    else
+		cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
 	}
 	else if (value.toString().startsWith("http")) {
 	    cell.className = 'attvalue';
@@ -3071,6 +3219,11 @@ function mapEdgeLineStyle(ele) {
 }
 
 function mapEdgeColor(ele) {
+    if (ele.data().qualifiers)
+	return '#291';
+    return "#aaf";
+
+    // old:
     var etype = ele.data().predicate ? ele.data().predicate : ele.data().predicates ? ele.data().predicates[0] : "NA";
     if (etype == "biolink:contraindicated_for")       { return "red";}
     if (etype == "biolink:indicated_for")             { return "green";}
@@ -3243,11 +3396,7 @@ function qg_node(id,render) {
 
     qg_update_qnode_list();
     qg_display_edge_predicates(false);
-
-    if (document.getElementById("showQGjson").checked) {
-	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
-	sesame('openmax',statusdiv);
-    }
+    show_qgjson();
 }
 
 function qg_remove_qnode() {
@@ -3517,6 +3666,7 @@ function qg_edge(id) {
 	var newqedge = {};
 	newqedge.predicates = [];
 	newqedge.constraints = [];
+	newqedge.qualifier_constraints = [];
         newqedge.exclude = false;
 	newqedge.option_group_id = null;
 	// join last two nodes if not specified otherwise [ToDo: specify]
@@ -3601,6 +3751,45 @@ function qg_edge(id) {
 	}
     }
 
+    htmlnode = document.getElementById('edgeeditor_quals');
+    htmlnode.innerHTML = '';
+    var showhr = false;
+    var prevqb = '';
+    if (input_qg.edges[id].qualifier_constraints) {
+	for (qset of input_qg.edges[id].qualifier_constraints) {
+	    if (showhr) {
+		htmlnode.appendChild(document.createElement("hr"));
+		htmlnode.appendChild(document.createElement("hr"));
+		htmlnode.appendChild(document.createElement("hr"));
+		prevqb = '';
+	    }
+	    showhr = true;
+            for (qualifier of qset.qualifier_set) {
+		currqb = qualifier['qualifier_type_id'].split("_")[0];
+		var span0 = document.createElement("span");
+		var span1 = document.createElement("span");
+		var span2 = document.createElement("span");
+		if (prevqb && prevqb != currqb) {
+		    span0.style.borderTop = '1px solid #ccc';
+		    span1.style.borderTop = '1px solid #ccc';
+		    span2.style.borderTop = '1px solid #ccc';
+		}
+		prevqb = currqb;
+		span0.style.color = "#aaa";
+		span0.appendChild(document.createTextNode(qualifier['qualifier_type_id'].split(":")[0]+":"));
+		htmlnode.appendChild(span0);
+		span1.appendChild(document.createTextNode(qualifier['qualifier_type_id'].split(":")[1]));
+		htmlnode.appendChild(span1);
+
+		span2.style.fontWeight = "bold";
+		span2.style.paddingLeft = "10px";
+		span2.appendChild(document.createTextNode(qualifier.qualifier_value));
+		htmlnode.appendChild(span2);
+	    }
+	}
+    }
+
+
     document.getElementById('edgeeditor_xcl').checked = input_qg.edges[id].exclude;
 
     htmlnode = document.getElementById('edgeeditor_optgpid');
@@ -3618,11 +3807,7 @@ function qg_edge(id) {
     else
 	input_qg.edges[id].option_group_id = null;
 
-
-    if (document.getElementById("showQGjson").checked) {
-	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
-	sesame('openmax',statusdiv);
-    }
+    show_qgjson();
 }
 
 function qg_update_qnode_list() {
@@ -3764,6 +3949,14 @@ function qg_edit(msg) {
     document.getElementById("devdiv").innerHTML +=  "Copied query_graph to edit window<br>";
 }
 
+function show_qgjson() {
+    if (document.getElementById("showQGjson").checked) {
+	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
+	sesame('openmax',statusdiv);
+    }
+}
+
+
 // unused at the moment
 function qg_display_items() {
     if (!document.getElementById("qg_items"))
@@ -3872,7 +4065,7 @@ function qg_display_edge_predicates(all) {
     var preds = [];
     if (all)
 	preds = all_predicates.sort();
-    else if (input_qg.nodes[obj]['categories'][0] in predicates[input_qg.nodes[subj]['categories'][0]])
+    else if (predicates[input_qg.nodes[subj]['categories'][0]] && input_qg.nodes[obj]['categories'][0] in predicates[input_qg.nodes[subj]['categories'][0]])
 	preds = predicates[input_qg.nodes[subj]['categories'][0]][input_qg.nodes[obj]['categories'][0]].sort();
 
     preds_node.innerHTML = '';
@@ -3953,6 +4146,8 @@ function qg_clean_up(xfer) {
 	    delete gedge.predicates;
 	if (gedge.constraints && gedge.constraints[0] == null)
 	    delete gedge.constraints;
+	if (gedge.qualifier_constraints && gedge.qualifier_constraints[0] == null)
+	    delete gedge.qualifier_constraints;
         if (gedge.option_group_id == null)
 	    delete gedge.option_group_id;
         if (!gedge.exclude)
@@ -5184,10 +5379,14 @@ function retrieveKPInfo() {
 			var text = document.createElement("h3");
 			text.style.float = "right";
 			text.style.marginLeft = "10px";
-			if (item["version"].startsWith("1.3"))
+			if (!item["version"]) {
+			    item["version"] = '--NULL--';
+			    text.className = "qprob p0";
+			}
+			else if (item["version"].startsWith("1.3"))
 			    text.className = "qprob p9";
-			else if (item["version"].startsWith("1.2"))
-			    text.className = "qprob srtx";
+			//else if (item["version"].startsWith("1.2"))
+			//text.className = "qprob srtx";
 			else
 			    text.className = "qprob p1";
                         text.appendChild(document.createTextNode(item["version"]));
@@ -5235,7 +5434,7 @@ function retrieveKPInfo() {
 					span.className = "explevel p0";
                                         span.appendChild(document.createTextNode('\u00A0'));
 					span.appendChild(document.createTextNode('\u00A0'));
-					span.title = "This is a duplicate SERVER entry";
+					span.title = "This is a duplicate URL entry";
 				    }
 				    else if (server["url"].includes("transltr.io")) {
 					had_transltr_io = true;
@@ -5345,6 +5544,7 @@ function retrieveKPInfo() {
 
 	})
         .catch(error => {
+	    wspan.innerHTML = '';
 	    kpinfo_node.className = "error";
 	    kpinfo_node.innerHTML =  "<br>" + error + "<br><br>";
 	    console.error(error);

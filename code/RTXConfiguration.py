@@ -7,6 +7,7 @@ import time
 import re
 from typing import Optional
 
+import yaml
 from pygit2 import Repository, discover_repository
 
 
@@ -16,10 +17,18 @@ class RTXConfiguration:
 
     # ### Constructor
     def __init__(self):
-        self.version = "ARAX 1.2.1"  # TODO: This probably shouldn't be hardcoded? What is it used for?
+        # Determine current ARAX and TRAPI versions
+        file_dir = os.path.dirname(os.path.abspath(__file__))
+        openapi_yaml_path = f"{file_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml"
+        with open(openapi_yaml_path) as api_file:
+            openapi_yaml = yaml.safe_load(api_file)
+        self.arax_version = openapi_yaml["info"]["version"]
+        self.trapi_version = openapi_yaml["info"]["x-trapi"]["version"]
+        first_two_trapi_version_nums = self.trapi_version.split(".")[:2]
+        self.trapi_major_version = ".".join(first_two_trapi_version_nums)
+        self.version = f"ARAX {self.arax_version}"  # Not sure exactly what this is used for; legacy?
 
         # Grab instance/domain name info, if available
-        file_dir = os.path.dirname(os.path.abspath(__file__))
         self.instance_name = '??'
         match = re.match(r'/mnt/data/orangeboard/(.+)/RTX/code', file_dir)
         if match:
@@ -50,7 +59,7 @@ class RTXConfiguration:
             self.maturity = maturity_override_value
         else:
             # Otherwise we'll dynamically determine our maturity based on instance/domain name and/or branch
-            if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io", "Github actions ARAX test suite"]:
+            if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io"]:
                 self.maturity = "staging"
             elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"] or self.current_branch_name == "itrb-test":
                 self.maturity = "testing"
@@ -141,31 +150,15 @@ class RTXConfiguration:
         else:  # Includes staging, development
             self.plover_url = self.config_dbs["plover"]["dev"]
 
-        # TEMPORARILY set KG2 url here until pulled from SmartAPI; TODO: remove this when #1466 is done
+        # Set KG2 url if an override was provided
         kg2_url_override_value = self._read_override_file(f"{file_dir}/kg2_url_override.txt")
         if kg2_url_override_value:
             self.rtx_kg2_url = kg2_url_override_value
-        elif self.is_itrb_instance:
-            if self.maturity in {"production", "prod"}:
-                self.rtx_kg2_url = "https://kg2.transltr.io/api/rtxkg2/v1.2"
-            elif self.maturity in {"testing", "test"}:
-                self.rtx_kg2_url = "https://kg2.test.transltr.io/api/rtxkg2/v1.2"
-            else:
-                self.rtx_kg2_url = "https://kg2.ci.transltr.io/api/rtxkg2/v1.2"
         else:
-            if "NewFmt" in self.instance_name or self.current_branch_name == "NewFmt":
-                self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.3"
-            elif self.maturity in {"production", "prod"}:
-                self.rtx_kg2_url = "https://arax.ncats.io/api/rtxkg2/v1.2"
-            else:
-                self.rtx_kg2_url = "https://arax.ncats.io/beta/api/rtxkg2/v1.2"
-        # TODO: add special exception for CICD (needs to point to localhost KG2)
+            self.rtx_kg2_url = None
 
         # Default to KG2c neo4j
         self.neo4j_kg2 = "KG2c"
-
-        print(f"RTXConfig: Maturity is {self.maturity}, current branch is {self.current_branch_name}, is_itrb_instance="
-              f"{self.is_itrb_instance}, plover URL is {self.plover_url}, KG2 URL is {self.rtx_kg2_url}")
 
     @staticmethod
     def _read_override_file(file_path: str) -> Optional[str]:

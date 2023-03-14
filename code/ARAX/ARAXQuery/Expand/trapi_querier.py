@@ -1,14 +1,15 @@
 #!/bin/env python3
-import concurrent
 import copy
 import json
 import sys
 import os
 import time
+from collections import defaultdict
 
 import aiohttp
+import asyncio
 import requests
-from typing import List, Dict, Set, Union, Optional
+from typing import List, Dict, Set, Union, Optional, Tuple
 
 import requests_cache
 
@@ -21,11 +22,13 @@ from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
 from ARAX_query import ARAXQuery
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
+from openapi_server.models.attribute import Attribute
 
 
 class TRAPIQuerier:
@@ -37,8 +40,9 @@ class TRAPIQuerier:
         self.user_specified_kp = user_specified_kp
         self.kp_timeout = kp_timeout
         self.force_local = force_local
-        self.kp_endpoint = f"{eu.get_kp_endpoint_url(kp_name)}"
         self.kp_selector = kp_selector
+        self.kp_endpoint = f"{kp_selector.get_kp_endpoint_url(kp_name)}"
+        self.qnodes_with_single_id = dict()  # This is set during the processing of each query
 
     async def answer_one_hop_query_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -51,6 +55,10 @@ class TRAPIQuerier:
         final_kg = QGOrganizedKnowledgeGraph()
         qg_copy = copy.deepcopy(query_graph)  # Create a copy so we don't modify the original
         qedge_key = next(qedge_key for qedge_key in qg_copy.edges)
+        self.qnodes_with_single_id = {qnode_key: qnode.ids[0] for qnode_key, qnode in query_graph.nodes.items()
+                                      if qnode.ids and len(qnode.ids) == 1}
+        if self.qnodes_with_single_id:
+            self.log.debug(f"{self.kp_name}: Qnodes with an implied parent query ID are: {self.qnodes_with_single_id}")
 
         self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
@@ -148,28 +156,62 @@ class TRAPIQuerier:
             self.log.error(f"answer_single_node_query() was passed a query graph that has edges: "
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
 
-    @staticmethod
-    def _get_kg_to_qg_mappings_from_results(results: List[Result]) -> Dict[str, Dict[str, Set[str]]]:
+    def _get_kg_to_qg_mappings_from_results(self, results: List[Result], qg: QueryGraph) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Set[str]]]:
         """
         This function returns a dictionary in which one can lookup which qnode_keys/qedge_keys a given node/edge
         fulfills. Like: {"nodes": {"PR:11": {"n00"}, "MESH:22": {"n00", "n01"} ... }, "edges": { ... }}
         """
-        qnode_key_mappings = dict()
-        qedge_key_mappings = dict()
+        qnodes_with_multiple_ids = {qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.ids and len(qnode.ids) > 1}
+        qnodes_with_single_id = {qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.ids and len(qnode.ids) == 1}
+        qnode_key_mappings = defaultdict(set)
+        kg_id_to_parent_query_id_map = defaultdict(set)
+        qedge_key_mappings = defaultdict(set)
         for result in results:
+            # Record mappings from the returned node to the parent curie listed in the QG that it is fulfilling
             for qnode_key, node_bindings in result.node_bindings.items():
-                kg_ids = {node_binding.id for node_binding in node_bindings}
-                for kg_id in kg_ids:
-                    if kg_id not in qnode_key_mappings:
-                        qnode_key_mappings[kg_id] = set()
+                query_node_ids = set(eu.convert_to_list(qg.nodes[qnode_key].ids))
+                for node_binding in node_bindings:
+                    kg_id = node_binding.id
                     qnode_key_mappings[kg_id].add(qnode_key)
+                    # Handle case where the KP does return a query_id
+                    if node_binding.query_id:
+                        if node_binding.query_id in query_node_ids:
+                            kg_id_to_parent_query_id_map[kg_id].add(node_binding.query_id)
+                        else:
+                            self.log.error(f"{self.kp_name} returned a NodeBinding.query_id ({node_binding.query_id}) "
+                                           f"for {qnode_key} that is not in {qnode_key}'s ids",
+                                           error_code="InvalidTRAPI")
+                    # Handle case where KP does NOT return a query_id (may or may not be valid TRAPI)
+                    else:
+                        if qnode_key in qnodes_with_single_id:
+                            implied_parent_id = list(query_node_ids)[0]
+                            kg_id_to_parent_query_id_map[kg_id].add(implied_parent_id)
+                        elif qnode_key in qnodes_with_multiple_ids:
+                            if kg_id in query_node_ids:
+                                implied_parent_id = kg_id
+                                kg_id_to_parent_query_id_map[kg_id].add(implied_parent_id)
+                            else:
+                                self.log.error(f"{self.kp_name} returned a node binding for {qnode_key} that does not "
+                                               f"include a query_id, and {qnode_key} has multiple ids, none of which "
+                                               f"are the KG ID ({kg_id})", error_code="InvalidTRAPI")
+
             for qedge_key, edge_bindings in result.edge_bindings.items():
-                kg_ids = {edge_binding.id for edge_binding in edge_bindings}
-                for kg_id in kg_ids:
-                    if kg_id not in qedge_key_mappings:
-                        qedge_key_mappings[kg_id] = set()
+                for edge_binding in edge_bindings:
+                    kg_id = edge_binding.id
                     qedge_key_mappings[kg_id].add(qedge_key)
-        return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}
+
+        if not self.kp_name == "infores:rtx-kg2":
+            # Convert parent curie mappings back to canonical form (we send KPs synonyms sometimes..)
+            raw_parent_query_ids = {parent_curie for kg_id, query_ids in kg_id_to_parent_query_id_map.items()
+                                    for parent_curie in query_ids}
+            canonical_parent_query_ids = eu.get_canonical_curies_dict(list(raw_parent_query_ids), self.log)
+            for kg_id in set(kg_id_to_parent_query_id_map):
+                canonical_query_ids = {canonical_parent_query_ids[raw_parent_id]["preferred_curie"]
+                                       if canonical_parent_query_ids.get(raw_parent_id) else raw_parent_id
+                                       for raw_parent_id in kg_id_to_parent_query_id_map.get(kg_id, set())}
+                kg_id_to_parent_query_id_map[kg_id] = canonical_query_ids
+
+        return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}, kg_id_to_parent_query_id_map
 
     async def _answer_query_using_kp_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         request_body = self._get_prepped_request_body(query_graph)
@@ -201,7 +243,7 @@ class TRAPIQuerier:
                             self.log.warning(f"{self.kp_name}: {http_error_message}. Query sent to KP was: {request_body}")
                             self.log.update_query_plan(qedge_key, self.kp_name, "Error", http_error_message)
                             return QGOrganizedKnowledgeGraph()
-                except concurrent.futures._base.TimeoutError:
+                except asyncio.exceptions.TimeoutError:
                     timeout_message = f"Query timed out after {query_timeout} seconds"
                     self.log.warning(f"{self.kp_name}: {timeout_message}")
                     self.log.update_query_plan(qedge_key, self.kp_name, "Timed out", timeout_message)
@@ -214,7 +256,7 @@ class TRAPIQuerier:
                     return QGOrganizedKnowledgeGraph()
 
         wait_time = round(time.time() - start)
-        answer_kg = self._load_kp_json_response(json_response)
+        answer_kg = self._load_kp_json_response(json_response, query_graph)
         done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {wait_time} seconds"
         self.log.update_query_plan(qedge_key, self.kp_name, "Done", done_message)
         return answer_kg
@@ -251,7 +293,7 @@ class TRAPIQuerier:
             else:
                 json_response = kp_response.json()
 
-        answer_kg = self._load_kp_json_response(json_response)
+        answer_kg = self._load_kp_json_response(json_response, query_graph)
         return answer_kg
 
     def _get_prepped_request_body(self, qg: QueryGraph) -> dict:
@@ -282,7 +324,7 @@ class TRAPIQuerier:
         json_response = kg2_araxquery_response.envelope.to_dict()
         return json_response
 
-    def _load_kp_json_response(self, json_response: dict) -> QGOrganizedKnowledgeGraph:
+    def _load_kp_json_response(self, json_response: dict, qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
         # Load the results into the object model
         answer_kg = QGOrganizedKnowledgeGraph()
         if not json_response.get("message"):
@@ -297,8 +339,12 @@ class TRAPIQuerier:
             self.log.debug(f"{self.kp_name}: Got results from {self.kp_name}.")
             kp_message = ARAXMessenger().from_dict(json_response["message"])
 
+        # Work around genetics provider's curie whitespace bug for now  TODO: remove once they've fixed it
+        if self.kp_name == "infores:genetics-data-provider":
+            self._remove_whitespace_from_curies(kp_message)
+
         # Build a map that indicates which qnodes/qedges a given node/edge fulfills
-        kg_to_qg_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results)
+        kg_to_qg_mappings, query_curie_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results, qg)
 
         # Populate our final KG with the returned nodes and edges
         returned_edge_keys_missing_qg_bindings = set()
@@ -342,6 +388,14 @@ class TRAPIQuerier:
             self.log.warning(f"{self.kp_name}: {len(returned_node_keys_missing_qg_bindings)} nodes in the KP's answer "
                              f"KG have no bindings to the QG: {returned_node_keys_missing_qg_bindings}")
 
+        # Fill out our unofficial node.query_ids property
+        for nodes in answer_kg.nodes_by_qg_id.values():
+            for node_key, node in nodes.items():
+                node.query_ids = eu.convert_to_list(query_curie_mappings.get(node_key))
+
+        # Add subclass_of edges for any parent to child relationships KPs returned
+        answer_kg = self._add_subclass_of_edges(answer_kg)
+
         return answer_kg
 
     @staticmethod
@@ -362,3 +416,71 @@ class TRAPIQuerier:
             return self.kp_timeout
         else:
             return 120
+
+    def _add_subclass_of_edges(self, answer_kg: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
+        for qnode_key in answer_kg.nodes_by_qg_id:
+            nodes_with_non_empty_parent_query_ids = {node_key for node_key, node in answer_kg.nodes_by_qg_id[qnode_key].items()
+                                                     if hasattr(node, "query_ids") and node.query_ids}
+            initial_edge_count = sum([len(edges) for edges in answer_kg.edges_by_qg_id.values()])
+            # Grab info for any parent nodes missing from the KG in bulk for easy access later
+            all_parent_query_ids = {parent_id for node_key in nodes_with_non_empty_parent_query_ids
+                                    for parent_id in answer_kg.nodes_by_qg_id[qnode_key][node_key].query_ids}
+            parents_missing_from_kg = all_parent_query_ids.difference(set(answer_kg.nodes_by_qg_id[qnode_key]))
+            parent_node_info = eu.get_canonical_curies_dict(list(parents_missing_from_kg), self.log)
+
+            # Add subclass_of edges to the answer KG for any nodes that the KP provided query ID mappings for
+            for node_key in nodes_with_non_empty_parent_query_ids:
+                subclass_edges = []
+                parent_query_ids = answer_kg.nodes_by_qg_id[qnode_key][node_key].query_ids
+                for parent_query_id in parent_query_ids:
+                    if parent_query_id is not None and parent_query_id != node_key:
+                        subclass_edge = Edge(subject=node_key, object=parent_query_id, predicate="biolink:subclass_of")
+                        # Add provenance info to this edge so it's clear where the assertion came from
+                        kp_source_attribute = Attribute(attribute_type_id="biolink:knowledge_source",
+                                                        value=self.kp_name,
+                                                        value_type_id="biolink:InformationResource",
+                                                        attribute_source="infores:arax",
+                                                        description=f"ARAX created this edge to represent the fact "
+                                                                    f"that {self.kp_name} fulfilled {subclass_edge.object}"
+                                                                    f" (for {qnode_key}) with {subclass_edge.subject}.")
+                        arax_source_attribute = eu.get_arax_source_attribute()
+                        subclass_edge.attributes = [kp_source_attribute, arax_source_attribute]
+                        subclass_edges.append(subclass_edge)
+                if subclass_edges:
+                    for edge in subclass_edges:
+                        # Add the parent to the KG if it isn't in there already
+                        if edge.object not in answer_kg.nodes_by_qg_id[qnode_key]:
+                            parent_info_dict = parent_node_info.get(edge.object)
+                            if parent_info_dict:
+                                parent_node = Node(name=parent_info_dict.get("preferred_name"),
+                                                   categories=[parent_info_dict.get("preferred_category")])
+                            else:
+                                parent_node = Node()
+                            parent_node.query_ids = []   # Does not need a mapping since it appears in the QG
+                            answer_kg.add_node(edge.object, parent_node, qnode_key)
+                        edge_key = f"{self.kp_name}:{edge.subject}--{edge.predicate}--{edge.object}"
+                        qedge_key = f"subclass:{qnode_key}--{qnode_key}"  # Technically someone could have used this key in their query, but seems highly unlikely..
+                        answer_kg.add_edge(edge_key, edge, qedge_key)
+            final_edge_count = sum([len(edges) for edges in answer_kg.edges_by_qg_id.values()])
+            num_edges_added = final_edge_count - initial_edge_count
+            if num_edges_added:
+                self.log.debug(f"{self.kp_name}: Added {num_edges_added} subclass_of edges to the KG based on "
+                               f"query ID mappings {self.kp_name} returned")
+        return answer_kg
+
+    @staticmethod
+    def _remove_whitespace_from_curies(kp_message):
+        kg = kp_message.knowledge_graph
+        for node_key in set(kg.nodes):
+            node = kg.nodes[node_key]
+            del kg.nodes[node_key]
+            kg.nodes[node_key.strip()] = node
+        for edge in kg.edges.values():
+            edge.subject = edge.subject.strip()
+            edge.object = edge.object.strip()
+        for result in kp_message.results:
+            for qnode_key, node_bindings in result.node_bindings.items():
+                for node_binding in node_bindings:
+                    node_binding.id = node_binding.id.strip()
+                    if node_binding.query_id:
+                        node_binding.query_id = node_binding.query_id.strip()
