@@ -65,10 +65,19 @@ All code changes should **go in the `kg2integration` branch**!
   - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_KG2.yaml` on line 4 (`version:`); same as for the KG2 `openapi.yaml` file
   
 
-##### 4. Do the rollout:
+##### 4. Pre-upload databases:
 
-- [ ] upload the new databases (referenced in `config_dbs.json`) to ITRB's SFTP server using the steps detailed [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#uploading-databases-to-itrbs-sftp-server)
-  - make sure to do this **before** proceeding with the below steps; this can be done well in advance of the actual roll-out (it doesn't hurt anything to do it early)
+Before rolling out, we need to pre-upload the new databases (referenced in `config_dbs.json`) to `arax.ncats.io` and the ITRB SFTP server. These steps can
+be done well in advance of the rollout; it doesn't hurt anything to do them early.
+
+- [ ] make sure `arax.ncats.io` has at least 100G of disk space free; delete old KG2 databases to free up space as needed (warn the team on slack first)
+- [ ] `scp` the new databases from `arax-databases.rtx.ai` to `arax.ncats.io:/data/orangeboard/databases/KG2.X.Y`
+- [ ] upload the new databases and their md5 checksums to ITRB's SFTP server using the steps detailed [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#steps-for-all-databases-at-once)
+
+
+
+##### 5. Do the rollout:
+
 - [ ] merge `master` into `kg2integration`
 - [ ] merge `kg2integration` into `master`
 - [ ] roll `master` out to the various `arax.ncats.io` endpoints
@@ -83,7 +92,7 @@ All code changes should **go in the `kg2integration` branch**!
   - [ ] `python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused`
 
 
-##### 5. Final items/clean up:
+##### 6. Final items/clean up:
 
 - [ ] generate KGX files and upload them to the KGE Archive @acevedol
 - [ ] turn off the old KG2c version's neo4j instance

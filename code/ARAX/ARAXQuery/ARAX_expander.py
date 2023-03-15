@@ -58,8 +58,12 @@ class ARAXExpander:
         self.logger.addHandler(handler)
         self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
-        self.supported_qnode_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
-        self.supported_qedge_constraints = {"biolink:knowledge_source": {"==": "*"}}
+        self.supported_qnode_attribute_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
+        self.supported_qedge_attribute_constraints = {"biolink:knowledge_source": {"==": "*"},
+                                                      "biolink:primary_knowledge_source": {"==": "*"},
+                                                      "biolink:aggregator_knowledge_source": {"==": "*"}}
+        self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
+                                                      "biolink:object_aspect_qualifier"}
 
     def describe_me(self):
         """
@@ -246,20 +250,26 @@ class ARAXExpander:
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.constraints:
                 for constraint in qnode.constraints:
-                    if not self.is_supported_constraint(constraint, self.supported_qnode_constraints):
+                    if not self.is_supported_constraint(constraint, self.supported_qnode_attribute_constraints):
                         log.error(f"Unsupported constraint(s) detected on qnode {qnode_key}: \n{constraint}\n"
                                   f"Don't know how to handle! Supported qnode constraints are: "
-                                  f"{self.supported_qnode_constraints}", error_code="UnsupportedConstraint")
+                                  f"{self.supported_qnode_attribute_constraints}", error_code="UnsupportedConstraint")
         for qedge_key, qedge in query_graph.edges.items():
             if qedge.attribute_constraints:
                 for constraint in qedge.attribute_constraints:
-                    if not self.is_supported_constraint(constraint, self.supported_qedge_constraints):
+                    if not self.is_supported_constraint(constraint, self.supported_qedge_attribute_constraints):
                         log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
                                   f"Don't know how to handle! Supported qedge constraints are: "
-                                  f"{self.supported_qedge_constraints}", error_code="UnsupportedConstraint")
-            if qedge.qualifier_constraints:
-                log.warning(f"Qualifier constraints are not yet supported! Will answer the query anyway, but "
-                            f"qualifier constraints will not be respected.")
+                                  f"{self.supported_qedge_attribute_constraints}", error_code="UnsupportedConstraint")
+            if mode == "RTXKG2":  # ARAX should pass along qualifier constraints
+                if qedge.qualifier_constraints:
+                    for constraint in qedge.qualifier_constraints:
+                        constraint_type_ids = {qualifier.qualifier_type_id for qualifier in constraint.qualifier_set}
+                        if not constraint_type_ids.issubset(self.supported_qedge_qualifier_constraints):
+                            log.warning(f"RTX-KG2 does not support {constraint.qualifier_type_id} qualifier constraints."
+                                        f" Supported qualifier constraints are: "
+                                        f"{self.supported_qedge_qualifier_constraints}")
+                            return response
 
         if response.status != 'OK':
             return response
@@ -349,35 +359,75 @@ class ARAXExpander:
         if mode != "RTXKG2":
             inferred_qedge_keys = [qedge_key for qedge_key, qedge in query_graph.edges.items() if qedge.knowledge_type == "inferred"]
             if inferred_qedge_keys:
+                log.debug(f"knowledge_type='inferred' qedges were detected ({', '.join(inferred_qedge_keys)}); "
+                          f"will determine which model to consult based on the category of source qnode and object qnode, as well as predicate.")
                 if len(query_graph.edges) == 1:
                     inferred_qedge_key = inferred_qedge_keys[0]
                     qedge = query_graph.edges[inferred_qedge_key]
-                    # Figure out if this is a "treats" query
-                    treats_ancestors = self.bh.get_ancestors("biolink:treats")
-                    if set(treats_ancestors).intersection(set(qedge.predicates)):
+                    # treats_ancestors = self.bh.get_ancestors("biolink:treats") ## we don't consider the ancestor because both "biolink:treats" and "biolink:regulates" share the same ancestors
+                    if set(['biolink:ameliorates', 'biolink:treats']).intersection(set(qedge.predicates)): # Figure out if this is a "treats" query, then use call XDTD
                         # Call XDTD and simply return whatever it returns
-                        # Get the subject of this edge
+                        # Get the subject and object of this edge
                         subject_qnode = query_graph.nodes[qedge.subject]  # drug
                         object_qnode = query_graph.nodes[qedge.object]  # disease
                         if object_qnode.ids and len(object_qnode.ids) >= 1:
                             object_curie = object_qnode.ids[0]  #FIXME: will need a way to handle multiple IDs
                         else:
-                            log.error(f"No CURIEs found for {object_qnode.name}", error_code="NoCURIEs")
+                            log.error(f"No CURIEs found for qnode {qedge.object}; ARAXInfer/XDTD requires that the"
+                                      f" object qnode has 'ids' specified", error_code="NoCURIEs")
                             #raise Exception(f"No CURIEs found for {object_qnode.name}")
-                            return
+                            return response
                         log.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
                         from ARAX_infer import ARAXInfer
                         infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': object_curie, 'qedge_id': inferred_qedge_key}
                         inferer = ARAXInfer()
                         infer_response = inferer.apply(response, infer_input_parameters)
                         return infer_response
+                    elif set(['biolink:regulates']).intersection(set(qedge.predicates)): # Figure out if this is a "regulates" query, then use call XCRG models
+                        # Call XCRG models and simply return whatever it returns
+                        # Get the subject and object of this edge
+                        subject_qnode = query_graph.nodes[qedge.subject] # chemical
+                        object_qnode = query_graph.nodes[qedge.object] # gene
+                        qualifier_direction = [qualifier.qualifier_value for qualifier_constraint in qedge.qualifier_constraints for qualifier in qualifier_constraint.qualifier_set if qualifier.qualifier_type_id == 'biolink:object_direction_qualifier'][0]
+                        if qualifier_direction == 'increased':
+                            regulation_type = 'increase'
+                        elif qualifier_direction == 'decreased':
+                            regulation_type = 'decrease'
+                        else:
+                            log.error(f"The action 'chemical_gene_regulation_graph_expansion' only support the qualifier_direction with either 'increased' or 'decreased' but {qualifier_direction} provided.")
+                            return response
+                        if subject_qnode.ids and len(subject_qnode.ids) >= 1:
+                            subject_curie = subject_qnode.ids[0] #FIXME: will need a way to handle multiple IDs
+                        else:
+                            subject_curie = None
+                        if object_qnode.ids and len(object_qnode.ids) >= 1:
+                            object_curie = object_qnode.ids[0] #FIXME: will need a way to handle multiple IDs
+                        else:
+                            object_curie = None
+                        if not subject_curie and not object_curie:
+                            log.error(f"No CURIEs found for both query subject node {qedge.subject} and query object node {qedge.object}; ARAXInfer/XCRG requires "
+                                      f"that at least subject qnode or object qnode has 'ids' specified", error_code="NoCURIEs")
+                            return response
+                        if subject_curie and object_curie:
+                            log.error(f"The action 'chemical_gene_regulation_graph_expansion' hasn't support the prediction for a single chemical-gene pair yet.", error_code="InvalidCURIEs")
+                            return response
+                        log.info(f"Calling XCRG from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
+                        from ARAX_infer import ARAXInfer
+                        if subject_curie:
+                            infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion", 'subject_qnode_id' : qedge.subject, 'qedge_id': inferred_qedge_key, 'regulation_type': regulation_type}
+                        else:
+                            infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion", 'object_qnode_id' : qedge.object, 'object_curie': object_curie, 'qedge_id': inferred_qedge_key, 'regulation_type': regulation_type}
+                        inferer = ARAXInfer()
+                        infer_response = inferer.apply(response, infer_input_parameters)
+                        return infer_response
                     else:
                         log.info(f"Qedge {inferred_qedge_key} has knowledge_type == inferred, but the query is not "
-                                 f"DTD-related. Will answer using the normal 'fill' strategy (not creative mode).")
+                                 f"DTD-related (e.g., 'biolink:ameliorates', 'biolink:treats') or CRG-related ('biolink:regulates') according to the specified predicate. Will answer using the normal 'fill' strategy (not creative mode).")
                 else:
                     log.warning(f"Expand does not yet know how to answer multi-qedge query graphs when one or more of "
                                 f"the qedges has knowledge_type == inferred. Will answer using the normal 'fill' strategy "
                                 f"(not creative mode).")
+
 
         # Expand any specified edges
         if qedge_keys_to_expand:
@@ -563,7 +613,8 @@ class ARAXExpander:
                 log.debug(f"Handling any knowledge source constraints")
                 allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
                 log.debug(f"KP allowlist is {allowlist}, denylist is {denylist}")
-                knowledge_source_type_ids = {"biolink:aggregator_knowledge_source", "biolink:knowledge_source"}
+                knowledge_source_type_ids = {"biolink:aggregator_knowledge_source", "biolink:knowledge_source",
+                                             "biolink:primary_knowledge_source"}
                 if qedge_key in overarching_kg.edges_by_qg_id:
                     kedges_to_remove = []
                     for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():

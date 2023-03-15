@@ -43,6 +43,11 @@ spec:
             - name: http
               containerPort: 80
               protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 60      
           volumeMounts:
             - name: {{ include "kg2.fullname" . }}-pvc
               mountPath: /mnt/data/orangeboard/databases/

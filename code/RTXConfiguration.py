@@ -132,6 +132,12 @@ class RTXConfiguration:
         self.autocomplete_version = self.autocomplete_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.explainable_dtd_db_path = database_downloads["explainable_dtd_db"]
         self.explainable_dtd_db_version = self.explainable_dtd_db_path.split('/')[-1].split('_v')[-1].replace('.db', '')
+        self.xcrg_embeddings_path = database_downloads["xcrg_embeddings"]
+        self.xcrg_embeddings_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.npz', '')
+        self.xcrg_increase_model_path = database_downloads["xcrg_increase_model"]
+        self.xcrg_increase_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
+        self.xcrg_decrease_model_path = database_downloads["xcrg_decrease_model"]
+        self.xcrg_decrease_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')         
 
         # Set up mysql feedback
         self.mysql_feedback_host = self.config_secrets["mysql_feedback"]["host"]

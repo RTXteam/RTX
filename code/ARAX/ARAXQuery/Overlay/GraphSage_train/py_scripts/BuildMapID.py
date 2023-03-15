@@ -48,11 +48,6 @@ def map_to_graph(row):
         preferred_disease_curie = res['preferred_curie'] if (res is not None) and (res['preferred_category']=='biolink:Disease' or res['preferred_category']=='biolink:PhenotypicFeature' or res['preferred_category']=='biolink:DiseaseOrPhenotypicFeature' or res['preferred_category']=='biolink:ClinicalFinding' or res['preferred_category']=='biolink:BehavioralFeature') else None
         return [count, preferred_drug_curie, preferred_disease_curie]
 
-def test(row):
-    if len(row) == 2:
-        print(row, flush=True)
-    else:
-        print(row, flush=True)
 
 files = os.listdir(args.path)
 for file_name in files:

@@ -294,7 +294,7 @@ class KPSelector:
                                 "prefixes": dict()}
             elif kp == "infores:arax-normalized-google-distance":
                 # This is just a placeholder; not really used for KP selection
-                predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:has_normalized_google_distance_with"}}}
+                predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:occurs_together_in_literature_with"}}}
                 meta_map[kp] = {"predicates": predicates,
                                 "prefixes": dict()}
 
