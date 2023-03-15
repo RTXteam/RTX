@@ -442,7 +442,7 @@ class TRAPIQuerier:
                     if parent_query_id is not None and parent_query_id != node_key:
                         subclass_edge = Edge(subject=node_key, object=parent_query_id, predicate="biolink:subclass_of")
                         # Add provenance info to this edge so it's clear where the assertion came from
-                        kp_source_attribute = Attribute(attribute_type_id="biolink:knowledge_source",
+                        kp_source_attribute = Attribute(attribute_type_id="biolink:primary_knowledge_source",
                                                         value=self.kp_name,
                                                         value_type_id="biolink:InformationResource",
                                                         attribute_source="infores:arax",
