@@ -84,11 +84,12 @@ def main():
     synonymizer_db_version = kg2c_config_info["synonymizer"]["synonymizer_db_version"]
     synonymizer_name = f"node_synonymizer_{synonymizer_db_version}_KG2.8.0.sqlite"
     upload_to_arax_databases_rtx_ai = kg2c_config_info["upload_to_arax_databases.rtx.ai"]
-    upload_directory = kg2c_config_info["upload_directory"]
+    upload_directory = f"/home/rtxconfig/KG{kg2_version}"
     logging.info(f"KG2pre version to use is {kg2_version}")
     logging.info(f"KG2pre neo4j endpoint to use is {kg2pre_endpoint}")
     logging.info(f"Biolink model version to use is {biolink_version}")
     logging.info(f"Synonymizer to use is {synonymizer_name}")
+    logging.info(f"Directory to upload files to on arax-databases.rtx.ai is {upload_directory}")
     synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
     synonymizer_file = pathlib.Path(f"{synonymizer_dir}/{synonymizer_name}")
     # Make sure synonymizer settings are valid
