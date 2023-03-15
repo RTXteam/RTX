@@ -235,7 +235,7 @@ class KG2Querier:
                                          attribute_source=self.kg2_infores_curie))
 
         # Create knowledge source attributes for each of this edge's knowledge sources
-        knowledge_source_attributes = [Attribute(attribute_type_id="biolink:knowledge_source",
+        knowledge_source_attributes = [Attribute(attribute_type_id="biolink:primary_knowledge_source",
                                                  value=infores_curie,
                                                  value_type_id="biolink:InformationResource",
                                                  attribute_source=self.kg2_infores_curie)

@@ -59,7 +59,9 @@ class ARAXExpander:
         self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
         self.supported_qnode_attribute_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
-        self.supported_qedge_attribute_constraints = {"biolink:knowledge_source": {"==": "*"}}
+        self.supported_qedge_attribute_constraints = {"biolink:knowledge_source": {"==": "*"},
+                                                      "biolink:primary_knowledge_source": {"==": "*"},
+                                                      "biolink:aggregator_knowledge_source": {"==": "*"}}
         self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
                                                       "biolink:object_aspect_qualifier"}
 
@@ -611,7 +613,8 @@ class ARAXExpander:
                 log.debug(f"Handling any knowledge source constraints")
                 allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
                 log.debug(f"KP allowlist is {allowlist}, denylist is {denylist}")
-                knowledge_source_type_ids = {"biolink:aggregator_knowledge_source", "biolink:knowledge_source"}
+                knowledge_source_type_ids = {"biolink:aggregator_knowledge_source", "biolink:knowledge_source",
+                                             "biolink:primary_knowledge_source"}
                 if qedge_key in overarching_kg.edges_by_qg_id:
                     kedges_to_remove = []
                     for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
