@@ -4,28 +4,17 @@ import pandas as pd
 import numpy as np
 import sqlite3
 import argparse
+import multiprocessing
 
-def refresh_drug(curie, synonymizer):
+def refresh_drug(curie_list, synonymizer):
 
-    if curie is not None:
-        res = synonymizer.get_canonical_curies(curie)
-        if res[curie] is not None and res[curie]['preferred_category'] in ['biolink:Drug','biolink:SmallMolecule']:
-            return res[curie]['preferred_curie']
-        else:
-            return None
-    else:
-        return None
+    res = synonymizer.get_canonical_curies(curie_list)
+    return [res[curie]['preferred_curie'] if res[curie] is not None and res[curie]['preferred_category'] in ['biolink:Drug','biolink:SmallMolecule'] else None for curie in curie_list]
 
-def refresh_disease(curie, synonymizer):
+def refresh_disease(curie_list, synonymizer):
 
-    if curie is not None:
-        res = synonymizer.get_canonical_curies(curie)
-        if res[curie] is not None and res[curie]['preferred_category'] in ['biolink:Disease','biolink:DiseaseOrPhenotypicFeature','biolink:PhenotypicFeature']:
-            return res[curie]['preferred_curie']
-        else:
-            return None
-    else:
-        return None
+    res = synonymizer.get_canonical_curies(curie_list)
+    return [res[curie]['preferred_curie'] if res[curie] is not None and res[curie]['preferred_category'] in ['biolink:Disease','biolink:DiseaseOrPhenotypicFeature','biolink:PhenotypicFeature'] else None for curie in curie_list]
 
 def main():
 
@@ -50,7 +39,18 @@ def main():
         con = sqlite3.connect(args.DTD_prob_db_file)
         DTD_prob_table = pd.read_sql_query("SELECT * from DTD_PROBABILITY", con)
         con.close()
-        DTD_prob_table = DTD_prob_table.apply(lambda row: [refresh_disease(row[0], synonymizer),refresh_drug(row[1], synonymizer),row[2]], axis=1, result_type='expand')
+        DTD_prob_table = DTD_prob_table.dropna().reset_index(drop=True)
+
+        print(f'Refresh disease', flush=True)
+        disease_list_temp = list(DTD_prob_table['disease'])
+        DTD_prob_table['disease'] = refresh_disease(disease_list_temp, synonymizer)
+        print(f'Refresh disease completed', flush=True)
+
+        print(f'Refresh drug', flush=True)
+        drug_list_temp = list(DTD_prob_table['drug'])
+        DTD_prob_table['drug'] = refresh_drug(drug_list_temp, synonymizer)
+        print(f'Refresh drug completed', flush=True)
+
         DTD_prob_table = DTD_prob_table.dropna().reset_index(drop=True)
         con = sqlite3.connect(os.path.join(args.output_folder, 'DTD_probability_database_refreshed.db'))
         con.execute(f"CREATE TABLE DTD_PROBABILITY( disease VARCHAR(255), drug VARCHAR(255), probability FLOAT )")
@@ -90,7 +90,9 @@ def main():
         mapfile = pd.read_csv(args.map_file, sep='\t', header=0)
         merged_table = mapfile.merge(rel_max, left_on='id', right_on=0)
         merged_table = merged_table.loc[:,['curie']+list(merged_table.columns)[3:]]
-        new_curie_ids = [synonymizer.get_canonical_curies(curie)[curie]['preferred_curie'] if synonymizer.get_canonical_curies(curie)[curie] is not None else None for curie in list(merged_table.curie)]
+        curie_list = list(merged_table.curie)
+        curie_list_res = synonymizer.get_canonical_curies(curie_list)
+        new_curie_ids = [curie_list_res[curie]['preferred_curie'] if curie_list_res[curie] is not None else None for curie in curie_list]
         graph = pd.concat([pd.DataFrame(new_curie_ids), merged_table.iloc[:,1:]], axis=1)
         graph = graph.dropna().reset_index(drop=True)
 

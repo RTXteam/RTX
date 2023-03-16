@@ -122,7 +122,7 @@ class ComputeNGD:
 
                             # edge properties
                             now = datetime.now()
-                            edge_type = "biolink:has_normalized_google_distance_with"
+                            edge_type = "biolink:occurs_together_in_literature_with"
                             qedge_keys = [parameters['virtual_relation_label']]
                             relation = parameters['virtual_relation_label']
                             is_defined_by = "ARAX"
@@ -145,9 +145,10 @@ class ComputeNGD:
                                 pmid_attribute,
                                 EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="biolink:Unknown"),
                                 #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
+                                EdgeAttribute(original_attribute_name=None, value="infores:rtx-kg2", attribute_type_id="biolink:knowledge_source", attribute_source="infores:rtx-kg2", value_type_id="biolink:InformationResource"),
                                 EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                                 EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
-                                EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
+                                EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                                 #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                                 #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
                                 #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)
@@ -175,8 +176,8 @@ class ComputeNGD:
 
                     # Now add a q_edge the query_graph since I've added an extra edge to the KG
                     if added_flag:
-                        #edge_type = parameters['virtual_edge_type']
-                        edge_type = [ "biolink:has_normalized_google_distance_with" ]
+                        # edge_type = parameters['virtual_edge_type']
+                        edge_type = ["biolink:occurs_together_in_literature_with"]
                         relation = parameters['virtual_relation_label']
                         option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, qg, self.response)
                         # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
@@ -226,7 +227,7 @@ class ComputeNGD:
 
                     # edge properties
                     now = datetime.now()
-                    edge_type = "biolink:has_normalized_google_distance_with"
+                    edge_type = "biolink:occurs_together_in_literature_with"
                     qedge_keys = [parameters['virtual_relation_label']]
                     relation = parameters['virtual_relation_label']
                     is_defined_by = "ARAX"
@@ -249,9 +250,11 @@ class ComputeNGD:
                         pmid_attribute,
                         EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="biolink:Unknown"),
                         #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
+                        EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                         EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
-                        EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax-reasoner-ara", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
+                        EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                         #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                         #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
                         #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)
@@ -279,8 +282,8 @@ class ComputeNGD:
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             if added_flag:
-                #edge_type = parameters['virtual_edge_type']
-                edge_type = [ "biolink:has_normalized_google_distance_with" ]
+                # edge_type = parameters['virtual_edge_type']
+                edge_type = ["biolink:occurs_together_in_literature_with"]
                 relation = parameters['virtual_relation_label']
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, qg, self.response)
                 # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
@@ -363,10 +366,11 @@ class ComputeNGD:
                     #self.response.debug(f"{n_pmids} publications found for edge ({subject_curie})-[]-({object_curie}) limiting to 30...")
                     self.response.debug(f"More than 30 publications found for some edges limiting to 30...")
                     self.first_ngd_log = False
-                limited_pmids = set()
-                for i, val in enumerate(itertools.islice(pubmed_id_set, 30)):
-                    limited_pmids.add(val)
-                pubmed_id_set = limited_pmids
+                # limited_pmids = set()
+                # for i, val in enumerate(itertools.islice(pubmed_id_set, 30)):
+                #     limited_pmids.add(val)
+                # pubmed_id_set = limited_pmids
+                pubmed_id_set = set([val for val in itertools.islice(pubmed_id_set, 30)])
             counts_res = self._compute_marginal_and_joint_counts(pubmed_ids_for_curies)
             return self._compute_multiway_ngd_from_counts(*counts_res), pubmed_id_set
         else:
