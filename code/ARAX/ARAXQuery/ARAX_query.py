@@ -176,6 +176,10 @@ class ARAXQuery:
             # Remove the little DONE flag the other thread used to signal this thread that it is done
             self.response.status = re.sub('DONE,', '', self.response.status)
 
+            #### Switch OK to Success for TRAPI compliance
+            if self.response.envelope.status == 'OK':
+                self.response.envelope.status = 'Success'
+
             # Stream the resulting message back to the client
             yield(json.dumps(self.response.envelope.to_dict(), sort_keys=True) + "\n")
 
@@ -240,6 +244,9 @@ class ARAXQuery:
             query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
         else:
             self.track_query_finish()
+            #### Switch OK to Success for TRAPI compliance
+            response.envelope.status = 'Success'
+
 
         return response.envelope
 
@@ -877,6 +884,10 @@ class ARAXQuery:
             #
             #response.envelope.validation_result = { 'status': 'PASS', 'version': trapi_version, 'size': '?', 'message': '' }
             #
+
+            #### Switch OK to Success for TRAPI compliance
+            if response.envelope.status == 'OK':
+                response.envelope.status = 'Success'
 
             if response.envelope.query_options is None:
                 response.envelope.query_options = {}
