@@ -28,7 +28,7 @@ joblib==1.2.0
 PyYAML==6.0
 ujson==5.4.0
 treelib==1.6.1
-reasoner-validator==3.4.8
+reasoner-validator==3.4.9
 asyncio==3.4.3
 aiohttp==3.8.4
 boto3==1.24.59
