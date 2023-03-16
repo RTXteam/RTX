@@ -115,7 +115,6 @@ class ComputeNGD:
                         else:
                             edge_value = default_value
                         edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
-                        pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
                         if edge_attribute:
                             added_flag = True
                             # make the edge, add the attribute
@@ -142,7 +141,6 @@ class ComputeNGD:
                             self.global_iter += 1
                             edge_attribute_list = [
                                 edge_attribute,
-                                pmid_attribute,
                                 EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="biolink:Unknown"),
                                 #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                                 EdgeAttribute(original_attribute_name=None, value="infores:rtx-kg2", attribute_type_id="biolink:knowledge_source", attribute_source="infores:rtx-kg2", value_type_id="biolink:InformationResource"),
@@ -158,6 +156,12 @@ class ComputeNGD:
                             #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                             #             provided_by=provided_by,
                             #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
+                            
+                            ## fix #1980 issue
+                            temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
+                            if len(temp_list) != 0:
+                                pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=temp_list)
+                                edge_attribute_list.append(pmid_attribute)
 
                             #### FIXME temporary hack by EWD
                             #edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
@@ -220,7 +224,7 @@ class ComputeNGD:
                 else:
                     edge_value = default_value
                 edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
-                pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=[f"PMID:{pmid}" for pmid in pmid_set])
+
                 if edge_attribute:
                     added_flag = True
                     # make the edge, add the attribute
@@ -247,7 +251,6 @@ class ComputeNGD:
                     self.global_iter += 1
                     edge_attribute_list = [
                         edge_attribute,
-                        pmid_attribute,
                         EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="biolink:Unknown"),
                         #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                         EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
@@ -264,6 +267,12 @@ class ComputeNGD:
                     #             is_defined_by=is_defined_by, defined_datetime=defined_datetime,
                     #             provided_by=provided_by,
                     #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
+
+                    ## fix #1980 issue
+                    temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
+                    if len(temp_list) != 0:
+                        pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=temp_list)
+                        edge_attribute_list.append(pmid_attribute)
 
                     #### FIXME temporary hack by EWD
                     #edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
@@ -325,9 +334,12 @@ class ComputeNGD:
                     else:
                         edge_value = default_value
                     ngd_edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
-                    pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=[f"PMID:{pmid}" for pmid in pmid_set])
                     edge.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
-                    edge.attributes.append(pmid_edge_attribute)
+                    ## fix #1980 issue
+                    temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
+                    if len(temp_list) != 0:
+                        pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=temp_list)
+                        edge.attributes.append(pmid_edge_attribute)
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
