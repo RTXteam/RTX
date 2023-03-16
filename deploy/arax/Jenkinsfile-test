@@ -63,11 +63,7 @@ pipeline {
       }
       stage('Deploy to AWS EKS Blue') {
             agent {
-<<<<<<< HEAD
-                label 'translator && ci && deploy'
-=======
                 label 'translator && test && deploy'
->>>>>>> 5d23b7c420babfd4319f055249030a3053d34cf8
             }
           steps {
               cleanWs()
