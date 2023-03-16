@@ -1168,6 +1168,7 @@ function process_ars_message(ars_msg, level) {
 
 
 function process_response(resp_url, resp_id, type, jsonObj2) {
+    var statusdiv = document.getElementById("statusdiv");
     if (type == "all") {
 	var devdiv = document.getElementById("devdiv");
 	devdiv.appendChild(document.createElement("br"));
@@ -1180,11 +1181,6 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
 	devdiv.appendChild(link);
 	devdiv.appendChild(document.createElement("br"));
-	// remove, for now, as it may gobble up way too much memory and is already available via link anyway:
-	//var pre = document.createElement("pre");
-	//pre.id = 'responseJSON';
-	//pre.textContent = JSON.stringify(jsonObj2,null,2);
-	//devdiv.appendChild(pre);
     }
 
     if (jsonObj2["children"]) {
@@ -1199,18 +1195,49 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 
     if (jsonObj2.validation_result) {
 	var nr = document.createElement("span");
-        if (type == "all")
-	    statusdiv.innerHTML += "<br>TRAPI v"+jsonObj2.validation_result.version+" validation: <b>"+jsonObj2.validation_result.status+"</b><br>";
+        if (type == "all") {
+	    statusdiv.appendChild(document.createElement("br"));
+	    statusdiv.appendChild(document.createTextNode("TRAPI v"+jsonObj2.validation_result.version+" validation: "));
+	    var vares;
+	    if (jsonObj2.validation_result.validation_messages) {
+		vares = document.createElement("a");
+		vares.style.fontWeight = "bold";
+                vares.style.cursor = "pointer";
+		vares.title = "Click for full (JSON) report";
+		var valink = document.createElement("a");
+                valink.target = '_validator';
+                valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
+                valink.innerHTML = 'Validation Codes Dictionary';
+		vares.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages, valink); };
+	    }
+	    else
+		vares = document.createElement("b");
+            vares.appendChild(document.createTextNode(jsonObj2.validation_result.status));
+	    statusdiv.appendChild(vares);
+	    if (vares.title)
+		statusdiv.appendChild(document.createTextNode(" ("+vares.title+")"));
+            statusdiv.appendChild(document.createElement("br"));
+	}
 	if (jsonObj2.validation_result.status == "FAIL") {
-	    if (type == "all")
-		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
+	    if (type == "all") {
+		var span = document.createElement("span");
+		span.className = 'error';
+		span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+		statusdiv.appendChild(span);
+		statusdiv.appendChild(document.createElement("br"));
+	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
 	    nr.title = 'Failed TRAPI 1.3 validation';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
-            if (type == "all")
-		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
+            if (type == "all") {
+                var span = document.createElement("span");
+                span.className = 'error';
+                span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+                statusdiv.appendChild(span);
+                statusdiv.appendChild(document.createElement("br"));
+	    }
 	    nr.innerHTML = '&nsub;';
 	    nr.className = 'explevel p0';
             nr.title = 'Response is non-TRAPI';
@@ -1364,12 +1391,16 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	document.getElementById("arsresultsdiv").style.height = document.getElementById("arsresultsdiv").scrollHeight + "px";
 
     if (type == "all") {
-	statusdiv.innerHTML += "<br>";
+	var h3 = document.createElement("h3");
+	h3.style.fontStyle = "italic";
 	if (jsonObj2.description)
-            statusdiv.innerHTML += "<h3><i>"+jsonObj2.description+"</i></h3>";
+            h3.appendChild(document.createTextNode(jsonObj2.description));
+	h3.appendChild(document.createElement("br"));
+	h3.appendChild(document.createElement("br"));
 	if (jsonObj2.status)
-            statusdiv.innerHTML += "<h3><i>"+jsonObj2.status+"</i></h3>";
-        statusdiv.innerHTML += "<br>";
+            h3.appendChild(document.createTextNode(jsonObj2.status));
+        statusdiv.appendChild(h3);
+        statusdiv.appendChild(document.createElement("br"));
     }
     sesame('openmax',statusdiv);
 
