@@ -11,8 +11,13 @@ import collections
 import argparse
 from torch.autograd import Variable
 import graph_tool.all as gt
+pathlist = os.path.realpath(__file__).split(os.path.sep)
+RTXindex = pathlist.index("RTX")
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
 nodesynonymizer = NodeSynonymizer()
+
+########### functions belows used for xDTD model #############
 
 DUMMY_RELATION_ID = 0
 SELF_LOOP_RELATION_ID = 1
@@ -55,7 +60,7 @@ def load_graphsage_unsupervised_embeddings(data_path: str):
         entity_embeddings_dict = pickle.load(infile)
     return entity_embeddings_dict
 
-def load_ML_model(model_path: str):
+def load_ML_DTDmodel(model_path: str):
     file_path = os.path.join(model_path,'ML_model','RF_model.pt')
     fitModel = joblib.load(file_path)
     return fitModel
@@ -214,4 +219,3 @@ def pad_and_cat(a, padding_value, padding_dim=1):
         else:
             padded_a.append(x)
     return torch.cat(padded_a, dim=0)
-

@@ -190,6 +190,7 @@ def test_chemical_substances_correlated_with_asthma_issue_18():
     assert len(message.results) > 0
 
 
+@pytest.mark.slow
 def test_diseases_treated_by_drug_issue_20():
     query = {
       "message": {

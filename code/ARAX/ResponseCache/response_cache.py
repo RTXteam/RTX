@@ -32,8 +32,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 from sqlalchemy import inspect
 
-from reasoner_validator import validate
-from jsonschema.exceptions import ValidationError
+sys.path = ['/mnt/data/python/TestValidator'] + sys.path
+from reasoner_validator import TRAPIResponseValidator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -304,22 +304,28 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
+                schema_version = trapi_version
+                if 'schema_version' in envelope:
+                    schema_version = envelope['schema_version']
                 try:
-                    validate(envelope,'Response',trapi_version)
-                    if 'description' not in envelope or envelope['description'] is None:
-                        envelope['description'] = 'reasoner-validator: PASS'
-                    envelope['validation_result'] = { 'status': 'PASS', 'version': trapi_version, 'message': '' }
+                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+                    validator.check_compliance_of_trapi_response(envelope)
+                    messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                    if len(messages['errors']) == 0:
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
+                    else:
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
 
-                except ValidationError as error:
+                except Exception as error:
                     timestamp = str(datetime.now().isoformat())
                     if 'logs' not in envelope or envelope['logs'] is None:
                         envelope['logs'] = []
-                    envelope['logs'].append( { "code": 'InvalidTRAPI', "level": "ERROR", "message": "TRAPI validator reported an error: " + str(error),
+                    envelope['logs'].append( { "code": 'ValidatorFailed', "level": "ERROR", "message": "TRAPI validator crashed with error: " + str(error),
                         "timestamp": timestamp } )
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = ''
-                    envelope['description'] = 'ERROR: TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description']
-                    envelope['validation_result'] = { 'status': 'FAIL', 'version': trapi_version, 'message': 'TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description'] }
+                    envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
+
 
                 #### Count provenance information
                 attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
@@ -353,6 +359,7 @@ class ResponseCache:
             if status_code != 200:
                 if debug:
                     eprint("Cannot fetch from ARS a response corresponding to response_id="+str(response_id))
+                    eprint(str(response_content.content))
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
             content_size = len(response_content.content)
@@ -493,19 +500,27 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
+                schema_version = trapi_version
+                if 'schema_version' in envelope:
+                    schema_version = envelope['schema_version']
                 try:
-                    validate(envelope,'Response',trapi_version)
-                    envelope['validation_result'] = { 'status': 'PASS', 'version': trapi_version, 'size': content_size, 'message': '' }
+                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+                    validator.check_compliance_of_trapi_response(envelope)
+                    messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                    if len(messages['errors']) == 0:
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages }
+                    else:
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages }
 
-                except ValidationError as error:
+                except Exception as error:
                     timestamp = str(datetime.now().isoformat())
                     if 'logs' not in envelope or envelope['logs'] is None:
                         envelope['logs'] = []
-                    envelope['logs'].append( { "code": 'InvalidTRAPI', "level": "ERROR", "message": "TRAPI validator reported an error: " + str(error),
+                    envelope['logs'].append( { "code": 'ValidatorFailed', "level": "ERROR", "message": "TRAPI validator crashed with error: " + str(error),
                         "timestamp": timestamp } )
                     if 'description' not in envelope or envelope['description'] is None:
                         envelope['description'] = ''
-                    envelope['validation_result'] = { 'status': 'FAIL', 'version': trapi_version, 'size': content_size, 'message': 'TRAPI validator reported an error: ' + str(error) + ' --- ' + envelope['description'] }
+                    envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
 
                 #### Try to add the reasoner_id
                 if 'name' in response_dict['fields'] and response_dict['fields']['name'] is not None:

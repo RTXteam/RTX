@@ -26,12 +26,13 @@ from smartapi import SmartAPI
 
 class KPSelector:
 
-    def __init__(self, valid_kps_override: Optional[Set[str]] = None, log: ARAXResponse = ARAXResponse()):
+    def __init__(self, kg2_mode: bool = False, log: ARAXResponse = ARAXResponse()):
         self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
         self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self.get_all_kps()
-        self.valid_kps = valid_kps_override if valid_kps_override else set(self.kp_urls.keys())
+        self.kg2_mode = kg2_mode
+        self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
         self.timeout_record = self._load_timeout_record()
         self.meta_map = self._load_meta_map()
         self.biolink_helper = BiolinkHelper()
@@ -43,7 +44,7 @@ class KPSelector:
         else:
             return None
 
-    def get_all_kps(self) -> Set[str]:
+    def get_all_kps(self) -> tuple:
         smartapi = SmartAPI()
         minor_version = RTXConfig.trapi_major_version
         maturity = RTXConfig.maturity
@@ -233,7 +234,7 @@ class KPSelector:
 
         # Make sure the map doesn't contain any 'stale' KPs
         stale_kps = set(meta_map).difference(self.valid_kps)
-        if stale_kps:
+        if stale_kps and not self.kg2_mode:  # For dev work, we don't want to edit the metamap when in KG2 mode
             for stale_kp in stale_kps:
                 self.log.debug(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
                 del meta_map[stale_kp]
@@ -293,7 +294,7 @@ class KPSelector:
                                 "prefixes": dict()}
             elif kp == "infores:arax-normalized-google-distance":
                 # This is just a placeholder; not really used for KP selection
-                predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:has_normalized_google_distance_with"}}}
+                predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:occurs_together_in_literature_with"}}}
                 meta_map[kp] = {"predicates": predicates,
                                 "prefixes": dict()}
 

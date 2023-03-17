@@ -178,9 +178,9 @@ class TRAPIQuerier:
                         if node_binding.query_id in query_node_ids:
                             kg_id_to_parent_query_id_map[kg_id].add(node_binding.query_id)
                         else:
-                            self.log.error(f"{self.kp_name} returned a NodeBinding.query_id ({node_binding.query_id}) "
-                                           f"for {qnode_key} that is not in {qnode_key}'s ids",
-                                           error_code="InvalidTRAPI")
+                            self.log.warning(f"{self.kp_name} returned a NodeBinding.query_id ({node_binding.query_id})"
+                                             f" for {qnode_key} that is not in {qnode_key}'s ids in the QG sent "
+                                             f"to {self.kp_name}. This is invalid TRAPI. Skipping this binding.")
                     # Handle case where KP does NOT return a query_id (may or may not be valid TRAPI)
                     else:
                         if qnode_key in qnodes_with_single_id:
@@ -191,9 +191,10 @@ class TRAPIQuerier:
                                 implied_parent_id = kg_id
                                 kg_id_to_parent_query_id_map[kg_id].add(implied_parent_id)
                             else:
-                                self.log.error(f"{self.kp_name} returned a node binding for {qnode_key} that does not "
-                                               f"include a query_id, and {qnode_key} has multiple ids, none of which "
-                                               f"are the KG ID ({kg_id})", error_code="InvalidTRAPI")
+                                self.log.warning(f"{self.kp_name} returned a node binding for {qnode_key} that does "
+                                                 f"not include a query_id, and {qnode_key} has multiple ids in the "
+                                                 f"query sent to {self.kp_name}, none of which are the KG ID ({kg_id})."
+                                                 f" This is invalid TRAPI. Skipping this binding.")
 
             for qedge_key, edge_bindings in result.edge_bindings.items():
                 for edge_binding in edge_bindings:
@@ -406,7 +407,12 @@ class TRAPIQuerier:
         return stripped_dict
 
     def _get_arax_edge_key(self, edge: Edge) -> str:
-        return f"{self.kp_name}:{edge.subject}-{edge.predicate}-{edge.object}"
+        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
+        edge_key = f"{self.kp_name}:{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}--{edge.object}"
+        return edge_key
 
     def _get_query_timeout_length(self) -> int:
         # Returns the number of seconds we should wait for a response
@@ -436,7 +442,7 @@ class TRAPIQuerier:
                     if parent_query_id is not None and parent_query_id != node_key:
                         subclass_edge = Edge(subject=node_key, object=parent_query_id, predicate="biolink:subclass_of")
                         # Add provenance info to this edge so it's clear where the assertion came from
-                        kp_source_attribute = Attribute(attribute_type_id="biolink:knowledge_source",
+                        kp_source_attribute = Attribute(attribute_type_id="biolink:primary_knowledge_source",
                                                         value=self.kp_name,
                                                         value_type_id="biolink:InformationResource",
                                                         attribute_source="infores:arax",
@@ -458,7 +464,7 @@ class TRAPIQuerier:
                                 parent_node = Node()
                             parent_node.query_ids = []   # Does not need a mapping since it appears in the QG
                             answer_kg.add_node(edge.object, parent_node, qnode_key)
-                        edge_key = f"{self.kp_name}:{edge.subject}--{edge.predicate}--{edge.object}"
+                        edge_key = self._get_arax_edge_key(edge)
                         qedge_key = f"subclass:{qnode_key}--{qnode_key}"  # Technically someone could have used this key in their query, but seems highly unlikely..
                         answer_kg.add_edge(edge_key, edge, qedge_key)
             final_edge_count = sum([len(edges) for edges in answer_kg.edges_by_qg_id.values()])

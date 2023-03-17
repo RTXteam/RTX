@@ -28,8 +28,8 @@ class NGDQuerier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
-        self.ngd_edge_predicate = "biolink:has_normalized_google_distance_with"
-        self.accepted_qedge_predicates = {"biolink:has_normalized_google_distance_with", "biolink:related_to"}
+        self.ngd_edge_predicate = "biolink:occurs_together_in_literature_with"
+        self.accepted_qedge_predicates = {"biolink:occurs_together_in_literature_with", "biolink:related_to"}
         self.ngd_edge_attribute_name = "normalized_google_distance"
         self.ngd_edge_attribute_type = "EDAM:data_2526"
         self.decorator = ARAXDecorator()

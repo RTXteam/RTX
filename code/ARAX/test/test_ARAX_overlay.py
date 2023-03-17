@@ -182,7 +182,7 @@ def test_compute_ngd_virtual():
     print(response.show())
     assert response.status == 'OK'
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert 'biolink:has_normalized_google_distance_with' in edge_predicates_in_kg
+    assert 'biolink:occurs_together_in_literature_with' in edge_predicates_in_kg
     ngd_edges = []
     for edge in message.knowledge_graph.edges.values():
         add_edge = False

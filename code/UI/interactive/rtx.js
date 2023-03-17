@@ -7,6 +7,7 @@ var predicates = {};
 var all_predicates = [];
 var all_nodes = {};
 var summary_table_html = '';
+var summary_score_histogram = {};
 var summary_tsv = [];
 var compare_tsv = [];
 var columnlist = [];
@@ -66,6 +67,7 @@ function main() {
     UIstate["pid"] = null;
     UIstate["viewing"] = null;
     UIstate["version"] = checkUIversion(false);
+    UIstate["scorestep"] = 0.1;
     UIstate["maxresults"] = 1000;
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
@@ -391,7 +393,7 @@ function postQuery_EXT(queryObj) {
 	statusdiv.appendChild(document.createElement("br"));
 	sesame('openmax',statusdiv);
 
-	if (!data["status"] || data["status"] == "OK") {
+	if (!data["status"] || data["status"] == "OK" || data["status"] == "Success") {
 	    input_qg = { "edges": {}, "nodes": {} };
 	    render_response(data, true);
 	}
@@ -597,7 +599,7 @@ function postQuery_ARAX(qtype,queryObj) {
 		document.getElementById("killquerybutton").remove();
 
 	    document.getElementById("progressBar").style.width = "800px";
-	    if (data.status == "OK")
+	    if (data.status == "OK" || data.status == "Success")
 		document.getElementById("progressBar").innerHTML = "Finished\u00A0\u00A0";
 	    else {
 		document.getElementById("progressBar").classList.add("barerror");
@@ -612,7 +614,7 @@ function postQuery_ARAX(qtype,queryObj) {
 	    if (data["status"] == "QueryGraphZeroNodes") {
 		qg_new(false,false);
 	    }
-	    else if (data["status"] == "OK") {
+	    else if (data["status"] == "OK" || data["status"] == "Success") {
 		input_qg = { "edges": {}, "nodes": {} };
 		render_response(data,qtype == "DSL");
 	    }
@@ -667,7 +669,7 @@ function kill_query() {
 	    else throw new Error('Something went wrong with termination...');
 	})
         .then(data => {
-            if (data.status == 'OK') {
+            if (data.status == 'OK' || data.status == 'Success') {
 		document.getElementById("killquerybutton").id = 'killquerybuttondead';
 		addCheckBox(document.getElementById("killquerybuttondead"),true);
 		var timeout = setTimeout(function() { document.getElementById("killquerybuttondead").remove(); } , 1500 );
@@ -1166,6 +1168,7 @@ function process_ars_message(ars_msg, level) {
 
 
 function process_response(resp_url, resp_id, type, jsonObj2) {
+    var statusdiv = document.getElementById("statusdiv");
     if (type == "all") {
 	var devdiv = document.getElementById("devdiv");
 	devdiv.appendChild(document.createElement("br"));
@@ -1178,11 +1181,6 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
 	devdiv.appendChild(link);
 	devdiv.appendChild(document.createElement("br"));
-	// remove, for now, as it may gobble up way too much memory and is already available via link anyway:
-	//var pre = document.createElement("pre");
-	//pre.id = 'responseJSON';
-	//pre.textContent = JSON.stringify(jsonObj2,null,2);
-	//devdiv.appendChild(pre);
     }
 
     if (jsonObj2["children"]) {
@@ -1197,18 +1195,49 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 
     if (jsonObj2.validation_result) {
 	var nr = document.createElement("span");
-        if (type == "all")
-	    statusdiv.innerHTML += "<br>TRAPI v"+jsonObj2.validation_result.version+" validation: <b>"+jsonObj2.validation_result.status+"</b><br>";
+        if (type == "all") {
+	    statusdiv.appendChild(document.createElement("br"));
+	    statusdiv.appendChild(document.createTextNode("TRAPI v"+jsonObj2.validation_result.version+" validation: "));
+	    var vares;
+	    if (jsonObj2.validation_result.validation_messages) {
+		vares = document.createElement("a");
+		vares.style.fontWeight = "bold";
+                vares.style.cursor = "pointer";
+		vares.title = "Click for full (JSON) report";
+		var valink = document.createElement("a");
+                valink.target = '_validator';
+                valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
+                valink.innerHTML = 'Validation Codes Dictionary';
+		vares.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages, valink); };
+	    }
+	    else
+		vares = document.createElement("b");
+            vares.appendChild(document.createTextNode(jsonObj2.validation_result.status));
+	    statusdiv.appendChild(vares);
+	    if (vares.title)
+		statusdiv.appendChild(document.createTextNode(" ("+vares.title+")"));
+            statusdiv.appendChild(document.createElement("br"));
+	}
 	if (jsonObj2.validation_result.status == "FAIL") {
-	    if (type == "all")
-		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
+	    if (type == "all") {
+		var span = document.createElement("span");
+		span.className = 'error';
+		span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+		statusdiv.appendChild(span);
+		statusdiv.appendChild(document.createElement("br"));
+	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
 	    nr.title = 'Failed TRAPI 1.3 validation';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
-            if (type == "all")
-		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
+            if (type == "all") {
+                var span = document.createElement("span");
+                span.className = 'error';
+                span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+                statusdiv.appendChild(span);
+                statusdiv.appendChild(document.createElement("br"));
+	    }
 	    nr.innerHTML = '&nsub;';
 	    nr.className = 'explevel p0';
             nr.title = 'Response is non-TRAPI';
@@ -1229,6 +1258,55 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 		document.getElementById("respsize_"+jsonObj2.araxui_response).title = "Warning: Very large responses might render slowly";
 	    }
 	    document.getElementById("respsize_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.size;
+
+            if (jsonObj2.validation_result.validation_messages) {
+                var table, tr, td;
+                var html_node = document.getElementById("istrapi_"+jsonObj2.araxui_response);
+                html_node.className += " tooltip";
+                var tnode = document.createElement("span");
+                tnode.className = 'tooltiptext';
+                table = document.createElement("table");
+		table.title = "Click for more details";
+                table.style.width = "100%";
+                table.style.borderCollapse = "collapse";
+
+		for (var vtype of ["errors","warnings","information"] ) {
+                    if (Object.keys(jsonObj2.validation_result.validation_messages[vtype]).length > 0) {
+			tr = document.createElement("tr");
+			td = document.createElement("th");
+			td.style.background = "#3d6d98";
+			td.style.padding = "5px 0px";
+			td.appendChild(document.createTextNode("Validation "+vtype));
+			tr.appendChild(td);
+			table.appendChild(tr);
+			for (var vmsg in jsonObj2.validation_result.validation_messages[vtype]) {
+                            tr = document.createElement("tr");
+                            tr.style.background = "initial";
+                            td = document.createElement("td");
+                            td.appendChild(document.createTextNode(vmsg));
+                            tr.appendChild(td);
+                            table.appendChild(tr);
+			}
+		    }
+		}
+
+		tnode.appendChild(table);
+                html_node.appendChild(tnode);
+		var valink = document.createElement("a");
+		valink.target = '_validator';
+		valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
+		valink.innerHTML = 'Validation Codes Dictionary';
+                html_node.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages, valink); };
+	    }
+            else if (jsonObj2.validation_result.message) {
+                var tnode = document.createElement("span");
+                tnode.className = 'tooltiptext';
+		tnode.style.padding = "10px";
+		tnode.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+                var html_node = document.getElementById("istrapi_"+jsonObj2.araxui_response);
+                html_node.className += " tooltip";
+                html_node.appendChild(tnode);
+	    }
 
 	    if (jsonObj2.validation_result.n_nodes)
 		document.getElementById("nodedges_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.n_nodes+' / '+jsonObj2.validation_result.n_edges;
@@ -1313,12 +1391,16 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	document.getElementById("arsresultsdiv").style.height = document.getElementById("arsresultsdiv").scrollHeight + "px";
 
     if (type == "all") {
-	statusdiv.innerHTML += "<br>";
+	var h3 = document.createElement("h3");
+	h3.style.fontStyle = "italic";
 	if (jsonObj2.description)
-            statusdiv.innerHTML += "<h3><i>"+jsonObj2.description+"</i></h3>";
+            h3.appendChild(document.createTextNode(jsonObj2.description));
+	h3.appendChild(document.createElement("br"));
+	h3.appendChild(document.createElement("br"));
 	if (jsonObj2.status)
-            statusdiv.innerHTML += "<h3><i>"+jsonObj2.status+"</i></h3>";
-        statusdiv.innerHTML += "<br>";
+            h3.appendChild(document.createTextNode(jsonObj2.status));
+        statusdiv.appendChild(h3);
+        statusdiv.appendChild(document.createElement("br"));
     }
     sesame('openmax',statusdiv);
 
@@ -1602,8 +1684,46 @@ function render_response(respObj,dispjson) {
 	button.setAttribute('onclick', 'copyTSVToClipboard(this,summary_tsv);');
         div.appendChild(button);
 
-        div.appendChild(document.createElement("br"));
-	div.appendChild(document.createElement("br"));
+
+	if (Object.keys(summary_score_histogram).length > 0) {
+	    var table = document.createElement("table");
+	    table.style.display = "inline-table";
+            table.style.marginLeft = "80px";
+
+	    var tr = document.createElement("tr");
+            var td = document.createElement("th");
+	    td.style.borderBottom = "1px solid black";
+	    td.colSpan = Object.keys(summary_score_histogram).length;
+            td.appendChild(document.createTextNode("SCORE DISTRIBUTION"));
+            tr.appendChild(td);
+            table.appendChild(tr);
+
+	    var tr = document.createElement("tr");
+	    for (var s in summary_score_histogram) {
+		td = document.createElement("td");
+		td.className = 'hoverable';
+		td.style.verticalAlign = "bottom";
+		td.style.textAlign = "center";
+		td.style.padding = "0px";
+                td.appendChild(document.createTextNode(summary_score_histogram[s]));
+		td.appendChild(document.createElement("br"));
+
+		var span = document.createElement("span");
+		span.className = "bar";
+		var barh = Number(summary_score_histogram[s]);
+		span.style.height = barh + "px";
+		span.style.width = "25px";
+		td.appendChild(span);
+		td.appendChild(document.createElement("br"));
+
+		td.appendChild(document.createTextNode(s));
+		tr.appendChild(td);
+	    }
+	    table.appendChild(tr);
+            div.appendChild(table);
+	    div.appendChild(document.createElement("br"));
+            div.appendChild(document.createElement("br"));
+	}
 
 	var table = document.createElement("table");
 	table.className = 'sumtab';
@@ -1954,7 +2074,7 @@ function render_queryplan_table(qp,node) {
                 var link = document.createElement("a");
 		link.title = 'view the posted query (JSON)';
 		link.style.cursor = "pointer";
-		link.onclick = function () { showKPQuery(kp, qp.qedge_keys[edge][kp]["query"]); };
+		link.onclick = function () { showJSONpopup("Query sent to "+kp, qp.qedge_keys[edge][kp]["query"], false); };
 		link.appendChild(document.createTextNode("query"));
 		td.appendChild(link);
 	    }
@@ -1967,7 +2087,7 @@ function render_queryplan_table(qp,node) {
     node.appendChild(table);
 }
 
-function showKPQuery(kp,query) {
+function showJSONpopup(wtitle,query,footer) {
     var popup;
     if (document.getElementById("kpq"))
 	popup = document.getElementById("kpq");
@@ -1988,7 +2108,7 @@ function showKPQuery(kp,query) {
     var div = document.createElement("div");
     div.className = 'statushead';
     div.style.marginTop = "-40px";
-    div.appendChild(document.createTextNode("Query sent to "+kp));
+    div.appendChild(document.createTextNode(wtitle));
     popup.appendChild(div);
 
     div = document.createElement("div");
@@ -2002,6 +2122,13 @@ function showKPQuery(kp,query) {
     pre.appendChild(document.createTextNode(JSON.stringify(query,null,2)));
     div.appendChild(pre);
     popup.appendChild(div);
+
+    if (footer) {
+	div = document.createElement("div");
+	div.className = 'statusfoot';
+	div.appendChild(footer);
+	popup.appendChild(div);
+    }
 
     dragElement(popup);
     var timeout = setTimeout(function() { popup.classList.add('shake'); }, 50 );
@@ -2152,6 +2279,31 @@ function filtermsgs(span, type) {
     }
 }
 
+
+function add_to_score_histogram(score) {
+    if (score == 'n/a')
+	return;
+
+    if (Object.keys(summary_score_histogram).length == 0) {
+        for (var s = 0; s < 1; s+=UIstate["scorestep"]) {
+	    summary_score_histogram[s.toFixed(1)] = 0;
+	}
+    }
+
+    var p = 0;
+    var missedit = true;
+    for (var s in summary_score_histogram) {
+	if (score < Number(s)) {
+	    summary_score_histogram[p]++;
+	    missedit = false;
+	    break;
+	}
+	p = s;
+    }
+    if (missedit)
+	summary_score_histogram[p]++;
+
+}
 
 function add_to_summary(rowdata, num) {
     var cell = 'td';
@@ -2355,6 +2507,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	    (rsrc=="ImProving")? "simp" :
 	    "p0";
 
+	if (rsrc=="ARAX")
+	    add_to_score_histogram(cnf);
 
 	var div = document.createElement("div");
         div.id = 'h'+num+'_div';

@@ -85,7 +85,7 @@ class ExplainableDTD(object):
                 self.outdir = outdir
         else:
             if database_name is None:
-                self.database_name = "ExplainableDTD.db"
+                self.database_name = RTXConfig.explainable_dtd_db_path.split("/")[-1]
             else:
                 self.database_name = database_name
             if outdir is None:
