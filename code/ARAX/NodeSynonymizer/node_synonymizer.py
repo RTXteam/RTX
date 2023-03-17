@@ -567,9 +567,9 @@ class NodeSynonymizer:
             normalizer.load_cache()
             self.normalizer = normalizer
 
-        normalizer_supported_categories = normalizer.get_supported_types()
-        if normalizer_supported_categories is None:
-            return
+        # normalizer_supported_categories = normalizer.get_supported_types()
+        # if normalizer_supported_categories is None:
+        #     return
         normalizer_supported_prefixes = normalizer.get_supported_prefixes()
         if normalizer_supported_prefixes is None:
             return
